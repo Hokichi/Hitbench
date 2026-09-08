@@ -1,0 +1,40 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Folder Include="Behaviors\" />
+    <Folder Include="CustomControls\" />
+    <Folder Include="Extensions\" />
+    <Folder Include="Mappings\" />
+    <Folder Include="Resources\" />
+    <Folder Include="Resources\Converters\" />
+    <Folder Include="Resources\DataModels\" />
+    <Folder Include="Resources\Fonts\" />
+    <Folder Include="Resources\Helpers\" />
+    <Folder Include="Resources\Messages\" />
+    <Folder Include="Resources\Styles\" />
+    <Folder Include="Resources\Themes\" />
+    <Folder Include="Services\" />
+    <Folder Include="Services\Dialogs\" />
+    <Folder Include="Services\FileSystem\" />
+    <Folder Include="Services\ProjectFiles\" />
+    <Folder Include="Services\Serialization\" />
+    <Folder Include="Services\Ui\" />
+    <Folder Include="ViewModels\" />
+    <Folder Include="ViewModels\Controls\" />
+    <Folder Include="ViewModels\CustomControls\" />
+    <Folder Include="ViewModels\Entities\" />
+    <Folder Include="ViewModels\Popups\" />
+    <Folder Include="ViewModels\Shell\" />
+    <Folder Include="Views\Pages\" />
+    <Folder Include="Views\Popups\" />
+  </ItemGroup>
+
+</Project>
