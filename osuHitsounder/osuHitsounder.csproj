@@ -9,12 +9,18 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="CustomControls\**" />
+    <EmbeddedResource Remove="CustomControls\**" />
+    <None Remove="CustomControls\**" />
+    <Page Remove="CustomControls\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Folder Include="Behaviors\" />
-    <Folder Include="CustomControls\" />
     <Folder Include="Extensions\" />
     <Folder Include="Mappings\" />
-    <Folder Include="Resources\" />
     <Folder Include="Resources\Converters\" />
+    <Folder Include="Resources\CustomControls\" />
     <Folder Include="Resources\DataModels\" />
     <Folder Include="Resources\Fonts\" />
     <Folder Include="Resources\Helpers\" />
@@ -33,7 +39,6 @@
     <Folder Include="ViewModels\Entities\" />
     <Folder Include="ViewModels\Popups\" />
     <Folder Include="ViewModels\Shell\" />
-    <Folder Include="Views\Pages\" />
     <Folder Include="Views\Popups\" />
   </ItemGroup>
 
