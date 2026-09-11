@@ -16,6 +16,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.11" />
+    <Resource Include="Resources\Fonts\*.ttf" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Folder Include="Behaviors\" />
     <Folder Include="Extensions\" />
     <Folder Include="Mappings\" />
@@ -40,6 +46,10 @@
     <Folder Include="ViewModels\Popups\" />
     <Folder Include="ViewModels\Shell\" />
     <Folder Include="Views\Popups\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\osuHitsounder.Core\osuHitsounder.Core.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,26 +1,19 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
+using osuHitsounder.ViewModels.Shell.HomePage;
 
-namespace osuHitsounder.Views.Pages
+namespace osuHitsounder.Views.Pages;
+
+public partial class HomePage : UserControl
 {
-    /// <summary>
-    /// Interaction logic for HomePage.xaml
-    /// </summary>
-    public partial class HomePage : UserControl
+    private readonly HomePageVM viewModel;
+
+    public HomePage(HomePageVM viewModel)
     {
-        public HomePage()
-        {
-            InitializeComponent();
-        }
+        this.viewModel = viewModel;
+        InitializeComponent();
+        DataContext = viewModel;
     }
+
+    public string? FatalError => viewModel.FatalError;
+    public Task LoadAsync(CancellationToken cancellationToken) => viewModel.LoadAsync(cancellationToken);
 }

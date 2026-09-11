@@ -1,7 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
     <LangVersion>latest</LangVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
@@ -18,6 +19,8 @@
 
   <ItemGroup>
     <Using Include="NUnit.Framework" />
+    <Using Include="System.IO" />
+    <ProjectReference Include="..\osuHitsounder\osuHitsounder.csproj" />
   </ItemGroup>
 
   <ItemGroup>
