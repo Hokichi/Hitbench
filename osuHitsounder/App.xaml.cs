@@ -1,6 +1,10 @@
 using System.Windows;
+using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.DependencyInjection;
 using osuHitsounder.Services.FileSystem;
+using osuHitsounder.Services.ProjectFiles;
+using osuHitsounder.Services.Dialogs;
+using osuHitsounder.Services.Ui;
 using osuHitsounder.ViewModels.Shell.HomePage;
 using osuHitsounder.Views.Pages;
 
@@ -13,7 +17,15 @@ public partial class App : Application
     public static ServiceProvider CreateServices()
     {
         var registrations = new ServiceCollection();
+        registrations.AddSingleton<IMessenger, WeakReferenceMessenger>();
+        registrations.AddSingleton<IProjectFileService>(_ => new ProjectFileService(AppContext.BaseDirectory));
+        registrations.AddTransient<WorkstationPage>();
+        registrations.AddSingleton<Func<WorkstationPage>>(provider => () => provider.GetRequiredService<WorkstationPage>());
         registrations.AddSingleton<IHomeFolderService>(_ => new HomeFolderService(AppContext.BaseDirectory));
+        registrations.AddSingleton<IAppSettingsService>(_ => new AppSettingsService(AppContext.BaseDirectory));
+        registrations.AddSingleton<IUiScheduler>(_ => new UiScheduler(Current.Dispatcher));
+        registrations.AddSingleton<IInstallationDialogService>(_ =>
+            new InstallationDialogService(() => Current.MainWindow, Current.Dispatcher));
         registrations.AddSingleton<HomePageVM>();
         registrations.AddSingleton<HomePage>();
         registrations.AddSingleton<MainWindow>();
@@ -33,6 +45,7 @@ public partial class App : Application
             services = CreateServices();
             window = services.GetRequiredService<MainWindow>();
             MainWindow = window;
+            window.Closed += (_, _) => Shutdown();
             window.Show();
             await window.LoadAsync();
             if (!window.IsVisible)
@@ -46,7 +59,8 @@ public partial class App : Application
                 Shutdown();
                 return;
             }
-            window.Closed += (_, _) => Shutdown();
+            if (window.RequiresShutdown)
+                Shutdown();
         }
         catch (OperationCanceledException) when (window is not null && !window.IsVisible)
         {

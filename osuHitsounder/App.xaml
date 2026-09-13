@@ -11,6 +11,7 @@
                 <ResourceDictionary Source="Resources/Styles/ItemsControl.xaml" />
                 <ResourceDictionary Source="Resources/Styles/Border.xaml" />
                 <ResourceDictionary Source="Resources/Styles/ContentPresenter.xaml" />
+                <ResourceDictionary Source="Resources/Styles/Button.xaml" />
                 <ResourceDictionary Source="Resources/Styles/ToolTip.xaml" />
                 <ResourceDictionary Source="Resources/Styles/Window.xaml" />
             </ResourceDictionary.MergedDictionaries>

@@ -1,102 +1,108 @@
 using System.IO;
+using System.IO.Enumeration;
 using osuHitsounder.Resources.DataModels;
 
 namespace osuHitsounder.Services.FileSystem;
 
-public sealed class HomeFolderService(string applicationDirectory, Func<IEnumerable<string>>? driveRoots = null)
+public sealed class HomeFolderService(string applicationDirectory, Func<CancellationToken, Action, IEnumerable<string>>? installationDirectories = null)
     : IHomeFolderService
 {
-    public Task<HomeFolderData> LoadAsync(CancellationToken cancellationToken) =>
-        Task.Run(async () =>
+    public Task<FolderSnapshot> LoadProjectsAsync(CancellationToken cancellationToken) =>
+        Task.Run(() =>
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var projectsDirectory = Directory.CreateDirectory(Path.Combine(applicationDirectory, "projects"));
-            var projects = ListFolders(projectsDirectory.FullName, cancellationToken);
-            string? executable = null;
-            var skipped = 0;
-            void MarkSkipped() => Interlocked.Exchange(ref skipped, 1);
-
-            using var search = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            try
-            {
-                await Parallel.ForEachAsync(driveRoots?.Invoke() ?? LocalDrives(MarkSkipped),
-                    new ParallelOptions { MaxDegreeOfParallelism = 2, CancellationToken = search.Token },
-                    (root, token) =>
-                    {
-                        try
-                        {
-                            token.ThrowIfCancellationRequested();
-                            using var entries = new OsuExecutableEnumerator(root, token, MarkSkipped);
-                            while (entries.MoveNext())
-                            {
-                                token.ThrowIfCancellationRequested();
-                                if (!File.Exists(entries.Current))
-                                    continue;
-                                if (Interlocked.CompareExchange(ref executable, entries.Current, null) is null)
-                                    search.Cancel();
-                                break;
-                            }
-                        }
-                        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
-                        {
-                            MarkSkipped();
-                        }
-                        return ValueTask.CompletedTask;
-                    });
-            }
-            catch (OperationCanceledException) when (executable is not null && !cancellationToken.IsCancellationRequested)
-            {
-                // First result cancels the other worker; caller cancellation still propagates.
-            }
-
-            cancellationToken.ThrowIfCancellationRequested();
-            var osuDirectory = executable is null ? null : Path.GetDirectoryName(executable);
-            var songsPath = osuDirectory is null ? null : Path.Combine(osuDirectory, "Songs");
-            IReadOnlyList<DirectoryInfo> songs = [];
-            var songsExist = false;
-            if (songsPath is not null)
-            {
-                try
-                {
-                    songs = ListFolders(songsPath, cancellationToken);
-                    songsExist = true;
-                }
-                catch (DirectoryNotFoundException)
-                {
-                    // Do not create folders in the user's osu! installation.
-                }
-            }
-            return new HomeFolderData(projects, songs, osuDirectory, songsExist, skipped != 0);
+            var path = Directory.CreateDirectory(Path.Combine(applicationDirectory, "projects")).FullName;
+            return ReadSnapshot(path, cancellationToken);
         }, cancellationToken);
 
-    private static DirectoryInfo[] ListFolders(string path, CancellationToken token) =>
-        new DirectoryInfo(path).EnumerateDirectories("*", new EnumerationOptions
+    public Task<FolderSnapshot?> LoadSongsAsync(string osuDirectory, CancellationToken cancellationToken) =>
+        Task.Run(() =>
         {
-            AttributesToSkip = 0,
-            IgnoreInaccessible = false
-        }).Select(folder =>
+            cancellationToken.ThrowIfCancellationRequested();
+            var songsPath = Path.Combine(osuDirectory, "Songs");
+            try { return ReadSnapshot(songsPath, cancellationToken, songs: true); }
+            catch (DirectoryNotFoundException) when (!Directory.Exists(songsPath)) { return null; }
+        }, cancellationToken);
+
+    public Task<bool> IsInstallationAsync(string directory, CancellationToken cancellationToken) =>
+        Task.Run(() =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Path.IsPathFullyQualified(directory) &&
+                File.Exists(Path.Combine(directory, "osu!.exe"));
+        }, cancellationToken);
+
+    private static FolderSnapshot ReadSnapshot(string path, CancellationToken token, bool songs = false)
+    {
+        var entries = new FileSystemEnumerable<FolderEntry>(path,
+            (ref FileSystemEntry entry) => new FolderEntry(
+                entry.ToFullPath(), entry.FileName.ToString(), entry.LastWriteTimeUtc),
+            new EnumerationOptions { RecurseSubdirectories = false, AttributesToSkip = 0, IgnoreInaccessible = false });
+        entries.ShouldIncludePredicate = (ref FileSystemEntry entry) =>
         {
             token.ThrowIfCancellationRequested();
-            return folder;
-        }).OrderBy(folder => folder.Name, StringComparer.CurrentCultureIgnoreCase)
-          .ThenBy(folder => folder.FullName, StringComparer.Ordinal).ToArray();
+            return entry.IsDirectory;
+        };
+        return new FolderSnapshot(songs ? ReadSongEntries(entries, token) : entries, token);
+    }
 
-    private static IEnumerable<string> LocalDrives(Action onSkippedLocation)
+    private static IEnumerable<FolderEntry> ReadSongEntries(IEnumerable<FolderEntry> entries, CancellationToken token)
     {
-        foreach (var drive in DriveInfo.GetDrives())
+        var options = new EnumerationOptions
         {
-            string? root = null;
-            try
+            RecurseSubdirectories = false, AttributesToSkip = 0,
+            IgnoreInaccessible = false, MatchCasing = MatchCasing.CaseInsensitive
+        };
+        foreach (var entry in entries)
+        {
+            token.ThrowIfCancellationRequested();
+            string? first = null;
+            foreach (var file in Directory.EnumerateFiles(entry.FullName, "*.osu", options))
             {
-                if (drive.DriveType is DriveType.Fixed or DriveType.Removable && drive.IsReady)
-                    root = drive.RootDirectory.FullName;
+                token.ThrowIfCancellationRequested();
+                if (first is null || StringComparer.Ordinal.Compare(file, first) < 0) first = file;
             }
-            catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+            if (first is null) continue;
+            var metadata = false;
+            var artist = "";
+            var title = "";
+            foreach (var line in File.ReadLines(first))
             {
-                onSkippedLocation();
+                token.ThrowIfCancellationRequested();
+                var trimmed = line.Trim();
+                if (trimmed.StartsWith('['))
+                {
+                    if (metadata) break;
+                    metadata = trimmed == "[Metadata]";
+                    continue;
+                }
+                if (!metadata) continue;
+                var separator = line.IndexOf(':');
+                if (separator < 0) continue;
+                var key = line[..separator].Trim();
+                if (key == "ArtistUnicode") artist = line[(separator + 1)..].Trim();
+                if (key == "TitleUnicode") title = line[(separator + 1)..].Trim();
             }
-            if (root is not null)
-                yield return root;
+            yield return entry with { DisplayName = $"{artist} - {title}" };
         }
     }
+
+    public Task<OsuSearchResult> FindInstallationAsync(CancellationToken cancellationToken) =>
+        Task.Run(() =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var skipped = false;
+            var candidates = (installationDirectories ?? InstalledApplicationEnumerator.Enumerate)(
+                cancellationToken, () => skipped = true);
+            var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var directory in candidates)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (!visited.Add(directory) || !Path.IsPathFullyQualified(directory)) continue;
+                if (File.Exists(Path.Combine(directory, "osu!.exe")))
+                    return new OsuSearchResult(directory, skipped);
+            }
+            cancellationToken.ThrowIfCancellationRequested();
+            return new OsuSearchResult(null, skipped);
+        }, cancellationToken);
 }

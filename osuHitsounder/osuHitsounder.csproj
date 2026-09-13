@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -18,6 +18,7 @@
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.11" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <Resource Include="Resources\Fonts\*.ttf" />
   </ItemGroup>
 
@@ -52,4 +53,14 @@
     <ProjectReference Include="..\osuHitsounder.Core\osuHitsounder.Core.csproj" />
   </ItemGroup>
 
+  <Target Name="SeedAppSettingsForBuild" AfterTargets="Build">
+    <Copy SourceFiles="$(MSBuildProjectDirectory)/appsettings.json"
+          DestinationFiles="$(TargetDir)appsettings.json"
+          Condition="!Exists('$(TargetDir)appsettings.json')" />
+  </Target>
+  <Target Name="SeedAppSettingsForPublish" AfterTargets="Publish">
+    <Copy SourceFiles="$(MSBuildProjectDirectory)/appsettings.json"
+          DestinationFiles="$(PublishDir)appsettings.json"
+          Condition="!Exists('$(PublishDir)appsettings.json')" />
+  </Target>
 </Project>

@@ -4,5 +4,8 @@ namespace osuHitsounder.Services.FileSystem;
 
 public interface IHomeFolderService
 {
-    Task<HomeFolderData> LoadAsync(CancellationToken cancellationToken);
+    Task<FolderSnapshot> LoadProjectsAsync(CancellationToken cancellationToken);
+    Task<FolderSnapshot?> LoadSongsAsync(string osuDirectory, CancellationToken cancellationToken);
+    Task<bool> IsInstallationAsync(string directory, CancellationToken cancellationToken);
+    Task<OsuSearchResult> FindInstallationAsync(CancellationToken cancellationToken);
 }

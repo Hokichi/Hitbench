@@ -77,11 +77,37 @@
                 </TextBlock>
             </Border>
         </DataTemplate>
+        <Style x:Key="HomePageSongTextStyle" TargetType="TextBlock" BasedOn="{StaticResource HomePageBodyStyle}">
+            <Setter Property="Text" Value="{Binding DisplayName, Mode=OneWay}" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+            <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}, Mode=OneWay}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsKeyboardFocused, RelativeSource={RelativeSource AncestorType=Button}, Mode=OneWay}" Value="True">
+                    <Setter Property="TextWrapping" Value="Wrap" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
+                    <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}, Mode=OneWay}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <DataTemplate x:Key="HomePageSongTemplate">
+            <Button Style="{StaticResource FolderActionButtonStyle}"
+                    Command="{Binding DataContext.CreateProjectCommand, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=OneWay}"
+                    CommandParameter="{Binding Directory, Mode=OneWay}"
+                    ToolTipService.ShowsToolTipOnKeyboardFocus="True"
+                    AutomationProperties.Name="{Binding DisplayName, Mode=OneWay}"
+                    AutomationProperties.HelpText="{Binding FullName, Mode=OneWay}">
+                <TextBlock Style="{StaticResource HomePageSongTextStyle}" />
+                <Button.ToolTip>
+                    <ToolTip Style="{StaticResource BaseToolTipStyle}" Content="{Binding FullName, Mode=OneWay}" />
+                </Button.ToolTip>
+            </Button>
+        </DataTemplate>
         <ItemsPanelTemplate x:Key="HomePageVirtualizingPanel">
             <VirtualizingStackPanel />
         </ItemsPanelTemplate>
         <ControlTemplate x:Key="HomePageItemsTemplate" TargetType="ItemsControl">
-            <ScrollViewer CanContentScroll="True" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+            <ScrollViewer x:Name="PART_ScrollViewer" CanContentScroll="True" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
                           Padding="{TemplateBinding Padding}" Focusable="True"
                           AutomationProperties.Name="{Binding Path=(AutomationProperties.Name), RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}">
                 <ItemsPresenter />
@@ -95,6 +121,24 @@
             <Setter Property="VirtualizingPanel.IsVirtualizing" Value="True" />
             <Setter Property="VirtualizingPanel.VirtualizationMode" Value="Recycling" />
         </Style>
+        <Style x:Key="HomePageRetryButtonStyle" TargetType="Button" BasedOn="{StaticResource FolderActionButtonStyle}">
+            <Setter Property="Margin" Value="0,0,0,8" />
+            <Setter Property="Visibility" Value="Collapsed" />
+        </Style>
+        <Style x:Key="HomePageProjectsRetryStyle" TargetType="Button" BasedOn="{StaticResource HomePageRetryButtonStyle}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding CanRetryProjects, Mode=OneWay}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="HomePageSongsRetryStyle" TargetType="Button" BasedOn="{StaticResource HomePageRetryButtonStyle}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding CanRetrySongs, Mode=OneWay}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="HomePageRetryTextStyle" TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlockStyle}">
+            <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}, Mode=OneWay}" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
     </UserControl.Resources>
     <Grid Margin="12,16">
         <Grid.ColumnDefinitions>
@@ -106,11 +150,13 @@
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
                 <TextBlock Text="Projects" Style="{StaticResource HomePageHeadingStyle}" />
                 <TextBlock Grid.Row="1" Text="{Binding ProjectsStatus, Mode=OneWay}" Style="{StaticResource HomePageStatusStyle}" />
-                <ItemsControl Grid.Row="2" ItemsSource="{Binding Projects, Mode=OneWay}"
+                <Button Grid.Row="2" Style="{StaticResource HomePageProjectsRetryStyle}" Command="{Binding RetryProjectsCommand, Mode=OneWay}" AutomationProperties.Name="Retry Projects"><TextBlock Text="Retry Projects" Style="{StaticResource HomePageRetryTextStyle}" /></Button>
+                <ItemsControl x:Name="ProjectsList" Grid.Row="3" ItemsSource="{Binding Projects, Mode=OneWay}"
                               Style="{StaticResource HomePageFoldersStyle}" AutomationProperties.Name="Projects" />
             </Grid>
         </Border>
@@ -119,11 +165,14 @@
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
                 <TextBlock Text="Songs" Style="{StaticResource HomePageHeadingStyle}" />
                 <TextBlock Grid.Row="1" Text="{Binding SongsStatus, Mode=OneWay}" Style="{StaticResource HomePageStatusStyle}" />
-                <ItemsControl Grid.Row="2" ItemsSource="{Binding Songs, Mode=OneWay}"
+                <Button Grid.Row="2" Style="{StaticResource HomePageSongsRetryStyle}" Command="{Binding RetrySongsCommand, Mode=OneWay}" AutomationProperties.Name="Retry Songs"><TextBlock Text="Retry Songs" Style="{StaticResource HomePageRetryTextStyle}" /></Button>
+                <ItemsControl x:Name="SongsList" Grid.Row="3" ItemsSource="{Binding Songs, Mode=OneWay}"
+                              ItemTemplate="{StaticResource HomePageSongTemplate}"
                               Style="{StaticResource HomePageFoldersStyle}" AutomationProperties.Name="Songs" />
             </Grid>
         </Border>
