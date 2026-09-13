@@ -24,6 +24,7 @@ public class HomeFolderPerformanceTests
                 var folder = songs.CreateSubdirectory($"{i:D5}");
                 await File.WriteAllTextAsync(Path.Combine(folder.FullName, "map.osu"),
                     $"[Metadata]\nArtistUnicode:Artist\nTitleUnicode:Title {i}\n");
+                await File.WriteAllTextAsync(Path.Combine(folder.FullName, "background.jpg"), "image");
                 folder.LastWriteTimeUtc = DateTime.UnixEpoch.AddMinutes(i);
             }
             var folders = new HomeFolderService(root.FullName,

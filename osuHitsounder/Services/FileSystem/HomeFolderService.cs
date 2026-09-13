@@ -7,6 +7,11 @@ namespace osuHitsounder.Services.FileSystem;
 public sealed class HomeFolderService(string applicationDirectory, Func<CancellationToken, Action, IEnumerable<string>>? installationDirectories = null)
     : IHomeFolderService
 {
+    private static readonly HashSet<string> ImageExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".bmp", ".gif", ".jpg", ".jpeg", ".png", ".tif", ".tiff"
+    };
+
     public Task<FolderSnapshot> LoadProjectsAsync(CancellationToken cancellationToken) =>
         Task.Run(() =>
         {
@@ -64,27 +69,65 @@ public sealed class HomeFolderService(string applicationDirectory, Func<Cancella
             }
             if (first is null) continue;
             var metadata = false;
+            var backgroundEvents = false;
             var artist = "";
             var title = "";
+            string? backgroundPath = null;
             foreach (var line in File.ReadLines(first))
             {
                 token.ThrowIfCancellationRequested();
                 var trimmed = line.Trim();
-                if (trimmed.StartsWith('['))
+                if (trimmed == "//Background and Video events")
                 {
-                    if (metadata) break;
-                    metadata = trimmed == "[Metadata]";
+                    backgroundEvents = true;
                     continue;
                 }
-                if (!metadata) continue;
-                var separator = line.IndexOf(':');
-                if (separator < 0) continue;
-                var key = line[..separator].Trim();
-                if (key == "ArtistUnicode") artist = line[(separator + 1)..].Trim();
-                if (key == "TitleUnicode") title = line[(separator + 1)..].Trim();
+                if (trimmed.StartsWith('['))
+                {
+                    metadata = trimmed == "[Metadata]";
+                    backgroundEvents = false;
+                    continue;
+                }
+                if (backgroundEvents && backgroundPath is null && TryReadBackgroundPath(trimmed, out var relativePath))
+                    backgroundPath = Path.Combine(entry.FullName, relativePath);
+                if (metadata)
+                {
+                    var separator = line.IndexOf(':');
+                    if (separator < 0) continue;
+                    var key = line[..separator].Trim();
+                    if (key == "ArtistUnicode") artist = line[(separator + 1)..].Trim();
+                    if (key == "TitleUnicode") title = line[(separator + 1)..].Trim();
+                }
             }
-            yield return entry with { DisplayName = $"{artist} - {title}" };
+            backgroundPath ??= Directory.EnumerateFiles(entry.FullName, "*", options)
+                .Where(path => ImageExtensions.Contains(Path.GetExtension(path)))
+                .Order(StringComparer.Ordinal)
+                .First();
+            yield return entry with
+            {
+                Artist = artist,
+                Title = title,
+                DisplayName = $"{artist} - {title}",
+                BackgroundPath = backgroundPath
+            };
         }
+    }
+
+    private static bool TryReadBackgroundPath(string line, out string path)
+    {
+        const string prefix = "0,0,";
+        const string suffix = ",0,0";
+        if (!line.StartsWith(prefix, StringComparison.Ordinal) ||
+            !line.EndsWith(suffix, StringComparison.Ordinal))
+        {
+            path = "";
+            return false;
+        }
+
+        path = line[prefix.Length..^suffix.Length].Trim();
+        if (path.Length >= 2 && path[0] == '"' && path[^1] == '"')
+            path = path[1..^1];
+        return path.Length > 0;
     }
 
     public Task<OsuSearchResult> FindInstallationAsync(CancellationToken cancellationToken) =>

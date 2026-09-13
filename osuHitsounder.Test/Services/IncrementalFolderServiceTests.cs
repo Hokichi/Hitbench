@@ -16,7 +16,10 @@ public class IncrementalFolderServiceTests
             var newest = songs.CreateSubdirectory("Newest");
             newest.Attributes |= FileAttributes.Hidden;
             foreach (var folder in new[] { old, newest })
+            {
                 File.WriteAllText(Path.Combine(folder.FullName, "map.osu"), "[Metadata]\nArtistUnicode:Artist\nTitleUnicode:Title\n");
+                File.WriteAllText(Path.Combine(folder.FullName, "background.jpg"), "image");
+            }
             old.LastWriteTimeUtc = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc);
             newest.LastWriteTimeUtc = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc);
             var service = new HomeFolderService(root.FullName, (_, _) => []);
