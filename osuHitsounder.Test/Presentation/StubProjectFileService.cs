@@ -2,7 +2,13 @@ using osuHitsounder.Services.ProjectFiles;
 
 namespace osuHitsounder.Test.Presentation;
 
-public sealed class StubProjectFileService(Func<DirectoryInfo, CancellationToken, Task<string>> create) : IProjectFileService
+public sealed class StubProjectFileService(
+    Func<DirectoryInfo, string, CancellationToken, Task<string>> create,
+    IReadOnlySet<string>? existingNames = null) : IProjectFileService
 {
-    public Task<string> CreateAsync(DirectoryInfo folder, CancellationToken cancellationToken) => create(folder, cancellationToken);
+    public Task<IReadOnlySet<string>> GetExistingNamesAsync(CancellationToken cancellationToken) =>
+        Task.FromResult(existingNames ?? (IReadOnlySet<string>)new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+
+    public Task<string> CreateAsync(DirectoryInfo folder, string projectName, CancellationToken cancellationToken) =>
+        create(folder, projectName, cancellationToken);
 }

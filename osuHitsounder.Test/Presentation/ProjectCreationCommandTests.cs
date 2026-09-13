@@ -27,9 +27,10 @@ public class ProjectCreationCommandTests
     {
         var pending = new TaskCompletionSource<string>();
         var calls = 0;
-        var vm = CreateVM((folder, _) =>
+        var vm = CreateVM((folder, projectName, _) =>
         {
             Assert.That(folder, Is.SameAs(song));
+            Assert.That(projectName, Is.EqualTo(song.Name));
             calls++;
             return pending.Task;
         });
@@ -53,7 +54,7 @@ public class ProjectCreationCommandTests
     public async Task FailureDoesNotNavigateAndAllowsExplicitRetry()
     {
         var fail = true;
-        var vm = CreateVM((_, _) => fail ? throw new IOException("Disk unavailable") : Task.FromResult("saved.json"));
+        var vm = CreateVM((_, _, _) => fail ? throw new IOException("Disk unavailable") : Task.FromResult("saved.json"));
         await vm.CreateProjectCommand.ExecuteAsync(song);
         Assert.That(created, Is.Empty);
         Assert.That(failures.Single(), Does.Contain("Disk unavailable"));
@@ -70,7 +71,7 @@ public class ProjectCreationCommandTests
     public async Task CancellationDoesNotPublishSuccessOrFailure()
     {
         var pending = new TaskCompletionSource<string>();
-        var vm = CreateVM((_, token) => pending.Task.WaitAsync(token));
+        var vm = CreateVM((_, _, token) => pending.Task.WaitAsync(token));
         var operation = vm.CreateProjectCommand.ExecuteAsync(song);
         vm.CreateProjectCommand.Cancel();
         await operation;
@@ -83,7 +84,7 @@ public class ProjectCreationCommandTests
     public async Task CancelledOperationIgnoringTokenDoesNotNavigate()
     {
         var pending = new TaskCompletionSource<string>();
-        var vm = CreateVM((_, _) => pending.Task);
+        var vm = CreateVM((_, _, _) => pending.Task);
         var operation = vm.CreateProjectCommand.ExecuteAsync(song);
         vm.CreateProjectCommand.Cancel();
         pending.SetResult("saved.json");
@@ -95,7 +96,7 @@ public class ProjectCreationCommandTests
     [Test]
     public async Task NullSelectionAndLoadingCannotCreate()
     {
-        var vm = CreateVM((_, _) => throw new AssertionException("Creation must not run"));
+        var vm = CreateVM((_, _, _) => throw new AssertionException("Creation must not run"));
         Assert.That(vm.CreateProjectCommand.CanExecute(null), Is.False);
         await vm.CreateProjectCommand.ExecuteAsync(null);
         vm.IsInteractionBlocked = true;
@@ -105,7 +106,7 @@ public class ProjectCreationCommandTests
         Assert.That(failures, Is.Empty);
     }
 
-    private HomePageVM CreateVM(Func<DirectoryInfo, CancellationToken, Task<string>> create) =>
+    private HomePageVM CreateVM(Func<DirectoryInfo, string, CancellationToken, Task<string>> create) =>
         new(new StubHomeFolderService(_ => Task.FromResult(new HomeFolderData([], [], "C:\\osu", true, false))),
             new StubAppSettingsService(), new StubInstallationDialogService(), new ImmediateUiScheduler(), new StubProjectFileService(create), messenger);
 }

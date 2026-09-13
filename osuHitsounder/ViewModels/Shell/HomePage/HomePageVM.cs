@@ -85,7 +85,7 @@ public partial class HomePageVM(
             string projectPath;
             try
             {
-                projectPath = await projectFiles.CreateAsync(folder!, linked.Token);
+                projectPath = await projectFiles.CreateAsync(folder!, folder!.Name, linked.Token);
                 linked.Token.ThrowIfCancellationRequested();
                 if (!active) return;
             }

@@ -134,7 +134,7 @@ public class HomePageIntegrationTests
         var pending = new TaskCompletionSource<string>();
         var messenger = new WeakReferenceMessenger();
         var vm = new HomePageVM(new StubHomeFolderService(_ => Task.FromResult(new HomeFolderData([], [], "C:\\osu", true, false))),
-            new StubAppSettingsService(), new StubInstallationDialogService(), new ImmediateUiScheduler(), new StubProjectFileService((_, token) => pending.Task.WaitAsync(token)), messenger);
+            new StubAppSettingsService(), new StubInstallationDialogService(), new ImmediateUiScheduler(), new StubProjectFileService((_, _, token) => pending.Task.WaitAsync(token)), messenger);
         var window = new MainWindow(new HomePage(vm), messenger, () => throw new AssertionException("Must not navigate"), vm);
         window.Show();
         var operation = vm.CreateProjectCommand.ExecuteAsync(new DirectoryInfo("C:\\Songs\\Selected"));
@@ -162,7 +162,7 @@ public class HomePageIntegrationTests
             { DisplayName = "??? - ?:?" };
         var vm = new HomePageVM(new StubHomeFolderService
             { Songs = (_, _) => Task.FromResult<FolderSnapshot?>(new FolderSnapshot([row])) },
-            new StubAppSettingsService(), new StubInstallationDialogService(), new ImmediateUiScheduler(), new StubProjectFileService((folder, _) => { selected = folder; return pending.Task; }), messenger);
+            new StubAppSettingsService(), new StubInstallationDialogService(), new ImmediateUiScheduler(), new StubProjectFileService((folder, _, _) => { selected = folder; return pending.Task; }), messenger);
         var page = new HomePage(vm);
         var window = new MainWindow(page, messenger, () => new WorkstationPage(), vm);
         window.Show();
@@ -299,5 +299,5 @@ public class HomePageIntegrationTests
         }
     }
     private static HomePageVM CreateVM(IHomeFolderService folders) =>
-        new(folders, new StubAppSettingsService(), new StubInstallationDialogService(), new ImmediateUiScheduler(), new StubProjectFileService((_, _) => Task.FromResult("saved.json")), new WeakReferenceMessenger());
+        new(folders, new StubAppSettingsService(), new StubInstallationDialogService(), new ImmediateUiScheduler(), new StubProjectFileService((_, _, _) => Task.FromResult("saved.json")), new WeakReferenceMessenger());
 }

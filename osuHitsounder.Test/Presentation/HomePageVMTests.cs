@@ -8,7 +8,7 @@ public class HomePageVMTests
 {
     private static HomePageVM CreateVM(StubHomeFolderService folders) =>
         new(folders, new StubAppSettingsService(), new StubInstallationDialogService(), new ImmediateUiScheduler(),
-            new StubProjectFileService((_, _) => Task.FromResult("saved.json")), new WeakReferenceMessenger());
+            new StubProjectFileService((_, _, _) => Task.FromResult("saved.json")), new WeakReferenceMessenger());
 
     [TestCase(true, "No song folders found.")]
     [TestCase(false, "Songs folder wasn't found.")]

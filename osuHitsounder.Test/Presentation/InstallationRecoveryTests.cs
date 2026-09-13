@@ -10,7 +10,7 @@ public class InstallationRecoveryTests
     private static HomePageVM Create(StubHomeFolderService folders, StubAppSettingsService settings,
         StubInstallationDialogService dialogs, ImmediateUiScheduler? scheduler = null) =>
         new(folders, settings, dialogs, scheduler ?? new ImmediateUiScheduler(),
-            new StubProjectFileService((_, _) => Task.FromResult("saved.json")), new WeakReferenceMessenger());
+            new StubProjectFileService((_, _, _) => Task.FromResult("saved.json")), new WeakReferenceMessenger());
 
     [Test]
     public async Task InvalidConfiguredPathNeverScansOrShowsPicker()
