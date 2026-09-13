@@ -1,0 +1,17 @@
+<UserControl
+    x:Class="osuHitsounder.Resources.CustomControls.Icon"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    x:Name="Root">
+    <UserControl.Resources>
+        <DrawingBrush x:Key="PathMaskBrush" Stretch="Uniform">
+            <DrawingBrush.Drawing>
+                <GeometryDrawing Brush="Black" Geometry="{Binding Path, ElementName=Root}" />
+            </DrawingBrush.Drawing>
+        </DrawingBrush>
+    </UserControl.Resources>
+
+    <Rectangle Fill="{Binding Color, ElementName=Root}" OpacityMask="{StaticResource PathMaskBrush}" />
+</UserControl>
+
+

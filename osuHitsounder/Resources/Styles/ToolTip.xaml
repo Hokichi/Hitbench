@@ -1,6 +1,7 @@
-<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <Style x:Key="BaseToolTipStyle" TargetType="ToolTip">
-        <Setter Property="FontFamily" Value="{StaticResource Font.Urbanist.Medium}" />
-        <Setter Property="FontSize" Value="13" />
-    </Style>
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:customControls="clr-namespace:osuHitsounder.Resources.CustomControls" >
+<Style x:Key="BaseToolTipStyle" TargetType="ToolTip" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"><Setter Property="FontFamily" Value="{StaticResource Regular}" /><Setter Property="FontSize" Value="13" /></Style>
+
+<ControlTemplate x:Key="DefaultToolTipTemplate" TargetType="ToolTip" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"><Border Padding="{TemplateBinding Padding}" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="4"><ContentPresenter /></Border></ControlTemplate>
+<Style BasedOn="{StaticResource BaseToolTipStyle}" TargetType="ToolTip" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"><Setter Property="Background" Value="{DynamicResource Brush.BalloonButton.Background.Default}" /><Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Subtle}" /><Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" /><Setter Property="FontFamily" Value="{StaticResource Regular}" /><Setter Property="FontSize" Value="11" /><Setter Property="Template" Value="{StaticResource DefaultToolTipTemplate}" /></Style>
+
 </ResourceDictionary>

@@ -4,9 +4,20 @@
              ShutdownMode="OnExplicitShutdown">
     <Application.Resources>
         <ResourceDictionary>
+            <FontFamily x:Key="Display">pack://application:,,,/osuHitsounder;component/Resources/Fonts/AllerDisplay_Std_Rg.ttf#Aller Display</FontFamily>
+            <FontFamily x:Key="Regular">pack://application:,,,/osuHitsounder;component/Resources/Fonts/Aller_Std_Rg.ttf#Aller</FontFamily>
+            <FontFamily x:Key="Italic">pack://application:,,,/osuHitsounder;component/Resources/Fonts/Aller_Std_It.ttf#Aller</FontFamily>
+            <FontFamily x:Key="Bold">pack://application:,,,/osuHitsounder;component/Resources/Fonts/Aller_Std_Bd.ttf#Aller</FontFamily>
+            <FontFamily x:Key="BoldItalic">pack://application:,,,/osuHitsounder;component/Resources/Fonts/Aller_Std_BdIt.ttf#Aller</FontFamily>
+            <FontFamily x:Key="Light">pack://application:,,,/osuHitsounder;component/Resources/Fonts/Aller_Std_Lt.ttf#Aller Light</FontFamily>
+            <FontFamily x:Key="LightItalic">pack://application:,,,/osuHitsounder;component/Resources/Fonts/Aller_Std_LtIt.ttf#Aller Light</FontFamily>
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="Resources/Themes/Dark.xaml" />
-                <ResourceDictionary Source="Resources/Fonts/Fonts.xaml" />
+                <ResourceDictionary Source="Resources/Converters/Converters.xaml" />
+                <ResourceDictionary Source="Resources/Icons.xaml" />
+                <ResourceDictionary Source="Resources/Styles/ColumnDefinition.xaml" />
+                <ResourceDictionary Source="Resources/Styles/Grid.xaml" />
+                <ResourceDictionary Source="Resources/Styles/StackPanel.xaml" />
                 <ResourceDictionary Source="Resources/Styles/TextBlock.xaml" />
                 <ResourceDictionary Source="Resources/Styles/ItemsControl.xaml" />
                 <ResourceDictionary Source="Resources/Styles/Border.xaml" />
@@ -14,6 +25,14 @@
                 <ResourceDictionary Source="Resources/Styles/Button.xaml" />
                 <ResourceDictionary Source="Resources/Styles/ToolTip.xaml" />
                 <ResourceDictionary Source="Resources/Styles/Window.xaml" />
+                <ResourceDictionary Source="Resources/Styles/ListBox.xaml" />
+                <ResourceDictionary Source="Resources/Styles/ListView.xaml" />
+                <ResourceDictionary Source="Resources/Styles/ComboBox.xaml" />
+                <ResourceDictionary Source="Resources/Styles/TextBox.xaml" />
+                <ResourceDictionary Source="Resources/Styles/ProgressBar.xaml" />
+                <ResourceDictionary Source="Resources/Styles/ScrollViewer.xaml" />
+                <ResourceDictionary Source="Resources/Styles/StepNavigator.xaml" />
+                <ResourceDictionary Source="Resources/Styles/Popup.xaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Application.Resources>

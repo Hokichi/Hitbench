@@ -1,0 +1,19 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:converters="clr-namespace:osuHitsounder.Resources.Converters">
+    <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+    <converters:BoolToVisibilityInvertedConverter x:Key="BoolToVisibilityInvertedConverter" />
+    <converters:BoolNegationConverter x:Key="BoolNegationConverter" />
+    <converters:BorderCornerClipConverter x:Key="BorderCornerClipConverter" />
+    <converters:CornerRadiusConverter x:Key="CornerRadiusConverter" />
+    <converters:DateTimeToRelativeDateConverter x:Key="DateTimeToRelativeDateConverter" />
+    <converters:ProgressToArcGeometryConverter x:Key="ProgressToArcGeometryConverter" />
+    <converters:BackgroundToForegroundConverter x:Key="BackgroundToForegroundConverter" />
+    <converters:SourceSequenceLabelConverter x:Key="SourceSequenceLabelConverter" />
+    <converters:WizardStepForegroundConverter
+        x:Key="WizardStepForegroundConverter"
+        CompletedBrushKey="Brush.Text.Muted"
+        CurrentBrushKey="Brush.Text.Primary"
+        FutureBrushKey="Brush.Text.Secondary" />
+</ResourceDictionary>

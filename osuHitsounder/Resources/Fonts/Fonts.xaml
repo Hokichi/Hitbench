@@ -1,5 +1,0 @@
-<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <!-- Static faces from https://github.com/coreyhu/Urbanist; license in OFL.txt. -->
-    <FontFamily x:Key="Font.Urbanist.Medium">pack://application:,,,/osuHitsounder;component/Resources/Fonts/#Urbanist Medium</FontFamily>
-    <FontFamily x:Key="Font.Urbanist.Bold">pack://application:,,,/osuHitsounder;component/Resources/Fonts/#Urbanist</FontFamily>
-</ResourceDictionary>

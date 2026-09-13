@@ -91,7 +91,8 @@ public class HomePageIntegrationTests
     {
         var app = Application.Current ?? new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
         app.Resources.MergedDictionaries.Clear();
-        foreach (var resource in new[] { "Themes/Dark.xaml", "Fonts/Fonts.xaml", "Styles/TextBlock.xaml", "Styles/ItemsControl.xaml", "Styles/Border.xaml", "Styles/ContentPresenter.xaml", "Styles/Button.xaml", "Styles/ToolTip.xaml", "Styles/Window.xaml" })
+        UiTestPump.EnsureFontResources(app);
+        foreach (var resource in new[] { "Themes/Dark.xaml", "Styles/TextBlock.xaml", "Styles/ItemsControl.xaml", "Styles/Border.xaml", "Styles/ContentPresenter.xaml", "Styles/Button.xaml", "Styles/ToolTip.xaml", "Styles/Window.xaml" })
             app.Resources.MergedDictionaries.Add(new ResourceDictionary
             {
                 Source = new Uri($"/osuHitsounder;component/Resources/{resource}", UriKind.Relative)
@@ -219,7 +220,8 @@ public class HomePageIntegrationTests
             foreach (var theme in new[] { "Dark", "Light" })
             {
                 app.Resources.MergedDictionaries.Clear();
-                foreach (var resource in new[] { $"Themes/{theme}.xaml", "Fonts/Fonts.xaml", "Styles/TextBlock.xaml", "Styles/ItemsControl.xaml", "Styles/Border.xaml", "Styles/ContentPresenter.xaml", "Styles/Button.xaml", "Styles/ToolTip.xaml", "Styles/Window.xaml" })
+                UiTestPump.EnsureFontResources(app);
+                foreach (var resource in new[] { $"Themes/{theme}.xaml", "Styles/TextBlock.xaml", "Styles/ItemsControl.xaml", "Styles/Border.xaml", "Styles/ContentPresenter.xaml", "Styles/Button.xaml", "Styles/ToolTip.xaml", "Styles/Window.xaml" })
                     app.Resources.MergedDictionaries.Add(new ResourceDictionary
                     {
                         Source = new Uri($"/osuHitsounder;component/Resources/{resource}", UriKind.Relative)

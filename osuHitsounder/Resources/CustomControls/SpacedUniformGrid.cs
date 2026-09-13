@@ -1,7 +1,7 @@
 ﻿using System.Windows;
 using System.Windows.Controls;
 
-namespace Fluxo.Resources.CustomControls
+namespace osuHitsounder.Resources.CustomControls
 {
     public class SpacedUniformGrid : Panel
     {

@@ -1,9 +1,16 @@
+using System.Windows;
 using System.Windows.Threading;
 
 namespace osuHitsounder.Test.Presentation;
 
 public static class UiTestPump
 {
+    public static void EnsureFontResources(Application app)
+    {
+        foreach (var key in new[] { "Display", "Regular", "Italic", "Bold", "BoldItalic", "Light", "LightItalic" })
+            app.Resources[key] = SystemFonts.MessageFontFamily;
+    }
+
     public static void Run(Task task)
     {
         if (!task.IsCompleted)
@@ -22,4 +29,3 @@ public static class UiTestPump
         task.GetAwaiter().GetResult();
     }
 }
-

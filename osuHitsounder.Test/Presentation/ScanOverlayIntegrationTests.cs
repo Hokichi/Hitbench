@@ -25,7 +25,8 @@ public class ScanOverlayIntegrationTests
         SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext());
         var app = Application.Current ?? new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
         app.Resources.MergedDictionaries.Clear();
-        foreach (var resource in new[] { "Themes/Dark.xaml", "Fonts/Fonts.xaml", "Styles/TextBlock.xaml",
+        UiTestPump.EnsureFontResources(app);
+        foreach (var resource in new[] { "Themes/Dark.xaml", "Styles/TextBlock.xaml",
             "Styles/ItemsControl.xaml", "Styles/Border.xaml", "Styles/ContentPresenter.xaml", "Styles/Button.xaml",
             "Styles/ToolTip.xaml", "Styles/Window.xaml" })
             app.Resources.MergedDictionaries.Add(new ResourceDictionary

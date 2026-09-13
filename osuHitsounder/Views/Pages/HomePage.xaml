@@ -12,7 +12,7 @@
             </Style.Triggers>
         </Style>
         <Style x:Key="HomePageHeadingStyle" TargetType="TextBlock" BasedOn="{StaticResource HomePageBodyStyle}">
-            <Setter Property="FontFamily" Value="{StaticResource Font.Urbanist.Bold}" />
+            <Setter Property="FontFamily" Value="{StaticResource Bold}" />
             <Setter Property="FontWeight" Value="Bold" />
             <Setter Property="FontSize" Value="14" />
             <Setter Property="TextWrapping" Value="Wrap" />
