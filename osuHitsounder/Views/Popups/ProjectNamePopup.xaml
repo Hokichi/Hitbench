@@ -1,0 +1,149 @@
+<customControls:BasePopup
+    x:Class="osuHitsounder.Views.Popups.ProjectNamePopup"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:customControls="clr-namespace:osuHitsounder.Resources.CustomControls"
+    Width="420"
+    MinWidth="420"
+    MaxWidth="420"
+    Mode="None"
+    PopupTitle="Create project"
+    ShowCloseButton="False"
+    ShowInTaskbar="False">
+    <customControls:BasePopup.Resources>
+        <Style x:Key="ProjectNamePopupFieldLabelStyle"
+               BasedOn="{StaticResource FieldLabelTextStyle}"
+               TargetType="TextBlock" />
+        <Style x:Key="ProjectNamePopupInputStyle"
+               BasedOn="{StaticResource RoundedTextInputStyle}"
+               TargetType="TextBox">
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Danger}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding ValidationError, Mode=OneWay}" Value="{x:Null}">
+                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Subtle}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
+                    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+                    <Setter Property="CaretBrush" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+                </DataTrigger>
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True" />
+                        <Condition Binding="{Binding CanCreate, Mode=OneWay}" Value="False" />
+                    </MultiDataTrigger.Conditions>
+                    <Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
+                </MultiDataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="ProjectNamePopupWatermarkStyle"
+               BasedOn="{StaticResource BaseTextBlockStyle}"
+               TargetType="TextBlock">
+            <Setter Property="Margin" Value="12,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Muted}" />
+            <Setter Property="Visibility" Value="Collapsed" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding ProjectName}" Value="">
+                    <Setter Property="Visibility" Value="Visible" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
+                    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="ProjectNamePopupValidationStyle"
+               BasedOn="{StaticResource BaseTextBlockStyle}"
+               TargetType="TextBlock">
+            <Setter Property="Margin" Value="0,8,0,0" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Danger}" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Visibility" Value="Visible" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding ValidationError, Mode=OneWay}" Value="{x:Null}">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
+                    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="ProjectNamePopupCancelButtonStyle"
+               BasedOn="{StaticResource DialogActionButtonStyle}"
+               TargetType="Button">
+            <Setter Property="Margin" Value="0,0,8,0" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
+                    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="ProjectNamePopupCreateButtonStyle"
+               BasedOn="{StaticResource PrimaryDialogActionButtonStyle}"
+               TargetType="Button">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
+                    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.HighlightTextBrushKey}}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
+                </DataTrigger>
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True" />
+                        <Condition Binding="{Binding IsEnabled, RelativeSource={RelativeSource Self}, Mode=OneWay}" Value="False" />
+                    </MultiDataTrigger.Conditions>
+                    <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
+                    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}" />
+                </MultiDataTrigger>
+            </Style.Triggers>
+        </Style>
+    </customControls:BasePopup.Resources>
+
+    <Grid Margin="24,8,24,24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="24" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Text="Project name"
+                   Style="{StaticResource ProjectNamePopupFieldLabelStyle}" />
+        <Grid Grid.Row="1">
+            <TextBox x:Name="ProjectNameTextBox"
+                     Text="{Binding ProjectName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                     PreviewTextInput="OnPreviewTextInput"
+                     Style="{StaticResource ProjectNamePopupInputStyle}"
+                     AutomationProperties.Name="Project name" />
+            <TextBlock x:Name="ProjectNameWatermark"
+                       Text="{Binding SuggestedName, Mode=OneWay}"
+                       Style="{StaticResource ProjectNamePopupWatermarkStyle}"
+                       IsHitTestVisible="False" />
+        </Grid>
+        <TextBlock x:Name="ProjectNameValidation"
+                   Grid.Row="2"
+                   Text="{Binding ValidationError, Mode=OneWay}"
+                   Style="{StaticResource ProjectNamePopupValidationStyle}"
+                   AutomationProperties.LiveSetting="Polite" />
+        <StackPanel Grid.Row="4"
+                    HorizontalAlignment="Right"
+                    Orientation="Horizontal">
+            <Button x:Name="CancelButton"
+                    Content="Cancel"
+                    IsCancel="True"
+                    Click="OnCancelClick"
+                    Style="{StaticResource ProjectNamePopupCancelButtonStyle}" />
+            <Button x:Name="CreateButton"
+                    Content="+ Create"
+                    IsDefault="True"
+                    IsEnabled="{Binding CanCreate, Mode=OneWay}"
+                    Click="OnCreateClick"
+                    Style="{StaticResource ProjectNamePopupCreateButtonStyle}" />
+        </StackPanel>
+    </Grid>
+</customControls:BasePopup>

@@ -6,6 +6,7 @@ using osuHitsounder.Services.ProjectFiles;
 using osuHitsounder.Services.Dialogs;
 using osuHitsounder.Services.Ui;
 using osuHitsounder.ViewModels.Shell.HomePage;
+using osuHitsounder.ViewModels.Popups;
 using osuHitsounder.Views.Pages;
 
 namespace osuHitsounder;
@@ -26,6 +27,11 @@ public partial class App : Application
         registrations.AddSingleton<IUiScheduler>(_ => new UiScheduler(Current.Dispatcher));
         registrations.AddSingleton<IInstallationDialogService>(_ =>
             new InstallationDialogService(() => Current.MainWindow, Current.Dispatcher));
+        registrations.AddSingleton<Func<string, IReadOnlySet<string>, ProjectNamePopupVM>>(_ =>
+            (suggestedName, existingNames) => new ProjectNamePopupVM(suggestedName, existingNames));
+        registrations.AddSingleton<IProjectCreationDialogService>(provider =>
+            new ProjectCreationDialogService(() => Current.MainWindow, Current.Dispatcher,
+                provider.GetRequiredService<Func<string, IReadOnlySet<string>, ProjectNamePopupVM>>()));
         registrations.AddSingleton<HomePageVM>();
         registrations.AddSingleton<HomePage>();
         registrations.AddSingleton<MainWindow>();
