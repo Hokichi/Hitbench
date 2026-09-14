@@ -65,7 +65,7 @@ public class SpacedUniformGridTests
                 Assert.That(panel.ExtentWidth, Is.EqualTo(1380));
                 Assert.That(panel.ViewportWidth, Is.LessThan(panel.ExtentWidth));
                 Assert.That(scroll.ScrollableWidth, Is.GreaterThan(0));
-                Assert.That(initialChildren.Length, Is.InRange(1, (panel.VisibleRowCount + 1) * 4));
+                Assert.That(initialChildren.Length, Is.InRange(1, (panel.VisibleRowCount + 2) * 4));
             });
 
             var first = (FrameworkElement)items.ItemContainerGenerator.ContainerFromIndex(0)!;

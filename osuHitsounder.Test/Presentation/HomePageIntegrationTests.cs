@@ -293,8 +293,11 @@ public class HomePageIntegrationTests
                         Assert.That(panel.Children.Count, Is.InRange(1, 20));
                         Assert.That(button.ActualWidth, Is.EqualTo(336).Within(0.01));
                         Assert.That(button.ActualHeight, Is.EqualTo(228).Within(0.01));
+                        Assert.That(backgroundBorder.ActualHeight, Is.GreaterThanOrEqualTo(226));
                         Assert.That(labels.Select(label => label.Text), Is.EqualTo(new[]
                             { "Artist", "Title " + new string('x', 80) }));
+                        Assert.That(((SolidColorBrush)labels[0].Foreground).Color,
+                            Is.EqualTo(((SolidColorBrush)app.FindResource("Brush.Text.Primary")).Color));
                         Assert.That(labels[0].TranslatePoint(new Point(), button).Y,
                             Is.LessThan(labels[1].TranslatePoint(new Point(), button).Y));
                         Assert.That(((ImageBrush)backgroundBorder.Background).Stretch, Is.EqualTo(Stretch.UniformToFill));
