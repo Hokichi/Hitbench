@@ -11,12 +11,14 @@
     ShowCloseButton="False"
     ShowInTaskbar="False">
     <customControls:BasePopup.Resources>
-        <Style x:Key="ProjectNamePopupFieldLabelStyle"
-               BasedOn="{StaticResource FieldLabelTextStyle}"
-               TargetType="TextBlock" />
-        <Style x:Key="ProjectNamePopupInputStyle"
-               BasedOn="{StaticResource RoundedTextInputStyle}"
-               TargetType="TextBox">
+        <Style
+            x:Key="ProjectNamePopupFieldLabelStyle"
+            BasedOn="{StaticResource FieldLabelTextStyle}"
+            TargetType="TextBlock" />
+        <Style
+            x:Key="ProjectNamePopupInputStyle"
+            BasedOn="{StaticResource RoundedTextInputStyle}"
+            TargetType="TextBox">
             <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Danger}" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding ValidationError, Mode=OneWay}" Value="{x:Null}">
@@ -37,9 +39,10 @@
                 </MultiDataTrigger>
             </Style.Triggers>
         </Style>
-        <Style x:Key="ProjectNamePopupWatermarkStyle"
-               BasedOn="{StaticResource BaseTextBlockStyle}"
-               TargetType="TextBlock">
+        <Style
+            x:Key="ProjectNamePopupWatermarkStyle"
+            BasedOn="{StaticResource BaseTextBlockStyle}"
+            TargetType="TextBlock">
             <Setter Property="Margin" Value="12,0" />
             <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Muted}" />
@@ -53,9 +56,10 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
-        <Style x:Key="ProjectNamePopupValidationStyle"
-               BasedOn="{StaticResource BaseTextBlockStyle}"
-               TargetType="TextBlock">
+        <Style
+            x:Key="ProjectNamePopupValidationStyle"
+            BasedOn="{StaticResource BaseTextBlockStyle}"
+            TargetType="TextBlock">
             <Setter Property="Margin" Value="0,8,0,0" />
             <Setter Property="Foreground" Value="{DynamicResource Brush.Danger}" />
             <Setter Property="TextWrapping" Value="Wrap" />
@@ -69,9 +73,10 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
-        <Style x:Key="ProjectNamePopupCancelButtonStyle"
-               BasedOn="{StaticResource DialogActionButtonStyle}"
-               TargetType="Button">
+        <Style
+            x:Key="ProjectNamePopupCancelButtonStyle"
+            BasedOn="{StaticResource DialogActionButtonStyle}"
+            TargetType="Button">
             <Setter Property="Margin" Value="0,0,8,0" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
@@ -81,9 +86,10 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
-        <Style x:Key="ProjectNamePopupCreateButtonStyle"
-               BasedOn="{StaticResource PrimaryDialogActionButtonStyle}"
-               TargetType="Button">
+        <Style
+            x:Key="ProjectNamePopupCreateButtonStyle"
+            BasedOn="{StaticResource PrimaryDialogActionButtonStyle}"
+            TargetType="Button">
             <Style.Triggers>
                 <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
                     <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
@@ -112,38 +118,43 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <TextBlock Text="Project name"
-                   Style="{StaticResource ProjectNamePopupFieldLabelStyle}" />
+        <TextBlock Style="{StaticResource ProjectNamePopupFieldLabelStyle}" Text="Project name" />
         <Grid Grid.Row="1">
-            <TextBox x:Name="ProjectNameTextBox"
-                     Text="{Binding ProjectName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                     PreviewTextInput="OnPreviewTextInput"
-                     Style="{StaticResource ProjectNamePopupInputStyle}"
-                     AutomationProperties.Name="Project name" />
-            <TextBlock x:Name="ProjectNameWatermark"
-                       Text="{Binding SuggestedName, Mode=OneWay}"
-                       Style="{StaticResource ProjectNamePopupWatermarkStyle}"
-                       IsHitTestVisible="False" />
+            <TextBox
+                x:Name="ProjectNameTextBox"
+                AutomationProperties.Name="Project name"
+                PreviewTextInput="OnPreviewTextInput"
+                Style="{StaticResource ProjectNamePopupInputStyle}"
+                Text="{Binding ProjectName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+            <TextBlock
+                x:Name="ProjectNameWatermark"
+                IsHitTestVisible="False"
+                Style="{StaticResource ProjectNamePopupWatermarkStyle}"
+                Text="{Binding SuggestedName, Mode=OneWay}" />
         </Grid>
-        <TextBlock x:Name="ProjectNameValidation"
-                   Grid.Row="2"
-                   Text="{Binding ValidationError, Mode=OneWay}"
-                   Style="{StaticResource ProjectNamePopupValidationStyle}"
-                   AutomationProperties.LiveSetting="Polite" />
-        <StackPanel Grid.Row="4"
-                    HorizontalAlignment="Right"
-                    Orientation="Horizontal">
-            <Button x:Name="CancelButton"
-                    Content="Cancel"
-                    IsCancel="True"
-                    Click="OnCancelClick"
-                    Style="{StaticResource ProjectNamePopupCancelButtonStyle}" />
-            <Button x:Name="CreateButton"
-                    Content="+ Create"
-                    IsDefault="True"
-                    IsEnabled="{Binding CanCreate, Mode=OneWay}"
-                    Click="OnCreateClick"
-                    Style="{StaticResource ProjectNamePopupCreateButtonStyle}" />
+        <TextBlock
+            x:Name="ProjectNameValidation"
+            Grid.Row="2"
+            AutomationProperties.LiveSetting="Polite"
+            Style="{StaticResource ProjectNamePopupValidationStyle}"
+            Text="{Binding ValidationError, Mode=OneWay}" />
+        <StackPanel
+            Grid.Row="4"
+            HorizontalAlignment="Right"
+            Orientation="Horizontal">
+            <Button
+                x:Name="CancelButton"
+                Click="OnCancelClick"
+                Content="Cancel"
+                IsCancel="True"
+                Style="{StaticResource ProjectNamePopupCancelButtonStyle}" />
+            <Button
+                x:Name="CreateButton"
+                Click="OnCreateClick"
+                Content="+ Create"
+                IsDefault="True"
+                IsEnabled="{Binding CanCreate, Mode=OneWay}"
+                Style="{StaticResource ProjectNamePopupCreateButtonStyle}" />
         </StackPanel>
     </Grid>
 </customControls:BasePopup>
