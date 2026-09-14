@@ -266,7 +266,7 @@ public class HomePageIntegrationTests
                 {
                     window.Show();
                     UiTestPump.Run(page.LoadAsync(CancellationToken.None));
-                    PumpUntil(() => vm.Songs.Count == 20);
+                    PumpUntil(() => vm.Songs.Count == 36);
                     window.UpdateLayout();
                     TestContext.Progress.WriteLine($"Theme={theme} StubFolders=2000 HomePageFirstActionableRowMs={firstRowTimer.Elapsed.TotalMilliseconds:F2}");
                     var lists = Descendants<ItemsControl>(page).ToArray();
@@ -282,18 +282,18 @@ public class HomePageIntegrationTests
                     {
                         Assert.That(lists, Has.Length.EqualTo(2));
                         Assert.That(lists[0].Items.Count, Is.EqualTo(1));
-                        Assert.That(songsList.Items.Count, Is.EqualTo(20));
+                        Assert.That(songsList.Items.Count, Is.EqualTo(36));
                         var columns = ((Grid)page.Content).ColumnDefinitions;
                         Assert.That(columns[1].ActualWidth / columns[0].ActualWidth, Is.EqualTo(3).Within(0.01));
                         Assert.That(panel.Columns, Is.EqualTo(4));
                         Assert.That(panel.ItemWidth, Is.EqualTo(336));
-                        Assert.That(panel.ItemHeight, Is.EqualTo(228));
+                        Assert.That(panel.ItemHeight, Is.EqualTo(108));
                         Assert.That(panel.HorizontalGap, Is.EqualTo(12));
                         Assert.That(panel.VerticalGap, Is.EqualTo(12));
-                        Assert.That(panel.Children.Count, Is.InRange(1, 20));
+                        Assert.That(panel.Children.Count, Is.InRange(1, 36));
                         Assert.That(button.ActualWidth, Is.EqualTo(336).Within(0.01));
-                        Assert.That(button.ActualHeight, Is.EqualTo(228).Within(0.01));
-                        Assert.That(backgroundBorder.ActualHeight, Is.GreaterThanOrEqualTo(226));
+                        Assert.That(button.ActualHeight, Is.EqualTo(108).Within(0.01));
+                        Assert.That(backgroundBorder.ActualHeight, Is.GreaterThanOrEqualTo(106));
                         Assert.That(labels.Select(label => label.Text), Is.EqualTo(new[]
                             { "Artist", "Title " + new string('x', 80) }));
                         Assert.That(((SolidColorBrush)labels[0].Foreground).Color,
@@ -361,7 +361,7 @@ public class HomePageIntegrationTests
         try
         {
             UiTestPump.Run(page.LoadAsync(CancellationToken.None));
-            PumpUntil(() => vm.Songs.Count == 20);
+            PumpUntil(() => vm.Songs.Count == 36);
             var songsList = Descendants<ItemsControl>(page)
                 .Single(list => AutomationProperties.GetName(list) == "Songs");
             var panel = Descendants<SpacedUniformGrid>(songsList).Single();
@@ -370,24 +370,24 @@ public class HomePageIntegrationTests
             window.Width = 1900;
             window.UpdateLayout();
             window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
-            Assert.That(vm.Songs, Has.Count.EqualTo(20), "Resize/layout must not count as user scrolling.");
+            Assert.That(vm.Songs, Has.Count.EqualTo(36), "Resize/layout must not count as user scrolling.");
 
             scroll.ScrollToVerticalOffset(1);
-            PumpUntil(() => vm.Songs.Count == 36);
+            PumpUntil(() => vm.Songs.Count == 68);
 
             scroll.ScrollToEnd();
             scroll.ScrollToVerticalOffset(Math.Max(0, scroll.ScrollableHeight - 1));
             scroll.ScrollToEnd();
-            PumpUntil(() => vm.Songs.Count == 52);
+            PumpUntil(() => vm.Songs.Count == 100);
             window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
-            Assert.That(vm.Songs, Has.Count.EqualTo(52), "Repeated notifications must coalesce to one batch.");
+            Assert.That(vm.Songs, Has.Count.EqualTo(100), "Repeated notifications must coalesce to one batch.");
 
             scroll.ScrollToVerticalOffset(Math.Max(0, scroll.ScrollableHeight - panel.RowStride * 2));
             window.UpdateLayout();
             window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
-            Assert.That(vm.Songs, Has.Count.EqualTo(52));
+            Assert.That(vm.Songs, Has.Count.EqualTo(100));
             scroll.LineDown();
-            PumpUntil(() => vm.Songs.Count == 68);
+            PumpUntil(() => vm.Songs.Count == 132);
         }
         finally
         {

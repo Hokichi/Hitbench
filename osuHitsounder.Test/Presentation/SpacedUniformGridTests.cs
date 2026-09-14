@@ -16,7 +16,7 @@ public class SpacedUniformGridTests
         {
             Columns = 4,
             ItemWidth = 336,
-            ItemHeight = 228,
+            ItemHeight = 108,
             HorizontalGap = 12,
             VerticalGap = 12,
             CanHorizontallyScroll = true,
@@ -28,16 +28,16 @@ public class SpacedUniformGridTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(panel.VisibleRowCount, Is.EqualTo(4));
-            Assert.That(panel.ItemsPerViewport, Is.EqualTo(16));
-            Assert.That(panel.RowStride, Is.EqualTo(240));
+            Assert.That(panel.VisibleRowCount, Is.EqualTo(8));
+            Assert.That(panel.ItemsPerViewport, Is.EqualTo(32));
+            Assert.That(panel.RowStride, Is.EqualTo(120));
             Assert.That(panel.ExtentWidth, Is.EqualTo(1380));
             Assert.That(panel.ViewportHeight, Is.EqualTo(948));
         });
 
         panel.Measure(new Size(640, 947));
         panel.Arrange(new Rect(0, 0, 640, 947));
-        Assert.That(panel.VisibleRowCount, Is.EqualTo(3));
+        Assert.That(panel.VisibleRowCount, Is.EqualTo(7));
     }
 
     [TestCase(FlowDirection.LeftToRight)]
@@ -107,7 +107,7 @@ public class SpacedUniformGridTests
         var panelFactory = new FrameworkElementFactory(typeof(SpacedUniformGrid));
         panelFactory.SetValue(SpacedUniformGrid.ColumnsProperty, 4);
         panelFactory.SetValue(SpacedUniformGrid.ItemWidthProperty, 336d);
-        panelFactory.SetValue(SpacedUniformGrid.ItemHeightProperty, 228d);
+        panelFactory.SetValue(SpacedUniformGrid.ItemHeightProperty, 108d);
         panelFactory.SetValue(SpacedUniformGrid.HorizontalGapProperty, 12d);
         panelFactory.SetValue(SpacedUniformGrid.VerticalGapProperty, 12d);
 
