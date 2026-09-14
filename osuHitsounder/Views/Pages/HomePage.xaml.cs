@@ -2,8 +2,10 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.Input;
+using osuHitsounder.Resources.CustomControls;
 using osuHitsounder.ViewModels.Shell.HomePage;
 
 namespace osuHitsounder.Views.Pages;
@@ -15,6 +17,7 @@ public partial class HomePage : UserControl
     private Task demand = Task.CompletedTask;
     private bool attached;
     private bool checkAgain;
+    private bool songsScrollInput;
 
     public HomePage(HomePageVM viewModel)
     {
@@ -47,7 +50,12 @@ public partial class HomePage : UserControl
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e) => Deactivate();
-    private void OnScrollChanged(object sender, ScrollChangedEventArgs e) => QueueCheck();
+    private void OnScrollChanged(object sender, ScrollChangedEventArgs e)
+    {
+        if (ReferenceEquals(e.OriginalSource, FindScrollViewer(SongsList)) && e.VerticalChange != 0)
+            songsScrollInput = true;
+        QueueCheck();
+    }
     private void OnSizeChanged(object sender, SizeChangedEventArgs e) => QueueCheck();
     private void OnStateChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -75,8 +83,8 @@ public partial class HomePage : UserControl
             do
             {
                 checkAgain = false;
-                await CheckListAsync(ProjectsList, viewModel.LoadMoreProjectsCommand);
-                await CheckListAsync(SongsList, viewModel.LoadMoreSongsCommand);
+                await CheckProjectsAsync();
+                await CheckSongsAsync();
                 if (attached) await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Background);
             } while (attached && checkAgain);
         }
@@ -88,13 +96,53 @@ public partial class HomePage : UserControl
         }
     }
 
-    private async Task CheckListAsync(ItemsControl list, IAsyncRelayCommand command)
+    private async Task CheckProjectsAsync()
     {
-        if (!attached || !command.CanExecute(null)) return;
-        if (list.Template.FindName("PART_ScrollViewer", list) is not ScrollViewer viewer) return;
+        if (!attached || !viewModel.LoadMoreProjectsCommand.CanExecute(null)) return;
+        if (FindScrollViewer(ProjectsList) is not { } viewer) return;
         if (viewer.ViewportHeight > 0 &&
             viewer.ExtentHeight - viewer.VerticalOffset - viewer.ViewportHeight <= viewer.ViewportHeight)
-            await command.ExecuteAsync(null);
+            await viewModel.LoadMoreProjectsCommand.ExecuteAsync(null);
+    }
+
+    private async Task CheckSongsAsync()
+    {
+        if (!attached) return;
+        var panel = FindDescendant<SpacedUniformGrid>(SongsList);
+        if (panel is null) return;
+
+        if (viewModel.Songs.Count == 0)
+        {
+            var panelHeight = panel.ViewportHeight > 0 ? panel.ViewportHeight : panel.ActualHeight;
+            if (panelHeight <= 0) panelHeight = SongsList.ActualHeight;
+            if (panelHeight <= 0) return;
+            var visibleRows = Math.Max(1,
+                (int)Math.Floor((panelHeight + panel.VerticalGap) / panel.RowStride));
+            var initialCount = checked((visibleRows + 1) * Math.Max(1, panel.Columns));
+            if (viewModel.LoadMoreSongsCommand.CanExecute(initialCount))
+                await viewModel.LoadMoreSongsCommand.ExecuteAsync(initialCount);
+            return;
+        }
+
+        if (!songsScrollInput || !panel.IsPrefetchThresholdReached) return;
+        songsScrollInput = false;
+        var requestedCount = panel.ItemsPerViewport;
+        if (viewModel.LoadMoreSongsCommand.CanExecute(requestedCount))
+            await viewModel.LoadMoreSongsCommand.ExecuteAsync(requestedCount);
+    }
+
+    private static ScrollViewer? FindScrollViewer(ItemsControl list) =>
+        list.Template.FindName("PART_ScrollViewer", list) as ScrollViewer;
+
+    private static T? FindDescendant<T>(DependencyObject parent) where T : DependencyObject
+    {
+        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(parent); index++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, index);
+            if (child is T match) return match;
+            if (FindDescendant<T>(child) is { } descendant) return descendant;
+        }
+        return null;
     }
 
     private void Detach()

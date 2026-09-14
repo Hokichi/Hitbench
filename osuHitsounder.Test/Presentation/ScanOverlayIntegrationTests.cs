@@ -93,17 +93,19 @@ public class ScanOverlayIntegrationTests
                 .Select(i => new FolderEntry($@"C:\Songs\{i}", $"{i}", DateTimeOffset.MinValue))));
             UiTestPump.Run(load);
             window.UpdateLayout();
-            Assert.That(vm.Songs, Has.Count.EqualTo(130));
+            Assert.That(vm.Songs, Is.Empty, "Snapshot completion must not eagerly publish every song.");
             Assert.That(label.IsVisible, Is.False);
             Assert.That(host.IsEnabled, Is.True);
             Assert.That(vm.RequiresShutdown, Is.False);
+            PumpUntil(() => vm.Songs.Count > 0);
+            Assert.That(vm.Songs.Count, Is.LessThan(130));
         }
         finally { window.Close(); }
     }
 
     [TestCase(true)]
     [TestCase(false)]
-    public void ProcessingCoversSavedAndDiscoveredInstallationThroughEverySong(bool configured)
+    public void ProcessingEndsAfterSnapshotBeforeDemandPublishesSongs(bool configured)
     {
         var songs = new TaskCompletionSource<FolderSnapshot?>(TaskCreationOptions.RunContinuationsAsynchronously);
         var reading = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -135,10 +137,15 @@ public class ScanOverlayIntegrationTests
                 .Select(i => new FolderEntry($@"C:\Songs\{i}", $"{i}", DateTimeOffset.MinValue))));
             UiTestPump.Run(load);
             window.UpdateLayout();
-            Assert.That(vm.Songs, Has.Count.EqualTo(130));
+            Assert.That(vm.Songs, Is.Empty);
             Assert.That(states, Is.All.True);
             Assert.That(label.IsVisible, Is.False);
             Assert.That(host.IsEnabled, Is.True);
+            var snapshotNotifications = states.Count;
+            PumpUntil(() => vm.Songs.Count > 0);
+            Assert.That(states.Skip(snapshotNotifications), Is.Not.Empty.And.All.False,
+                "Demand publication must happen after the processing gate opens.");
+            Assert.That(vm.Songs.Count, Is.LessThan(130));
         }
         finally { window.Close(); }
     }
@@ -151,5 +158,22 @@ public class ScanOverlayIntegrationTests
             if (child is T match) yield return match;
             foreach (var descendant in Descendants<T>(child)) yield return descendant;
         }
+    }
+
+    private static void PumpUntil(Func<bool> condition)
+    {
+        if (condition()) return;
+        var frame = new DispatcherFrame();
+        var poll = new DispatcherTimer(TimeSpan.FromMilliseconds(10), DispatcherPriority.Background,
+            (_, _) =>
+            {
+                if (condition()) frame.Continue = false;
+            }, Dispatcher.CurrentDispatcher);
+        var timeout = new DispatcherTimer(TimeSpan.FromSeconds(8), DispatcherPriority.Send,
+            (_, _) => frame.Continue = false, Dispatcher.CurrentDispatcher);
+        Dispatcher.PushFrame(frame);
+        poll.Stop();
+        timeout.Stop();
+        Assert.That(condition(), Is.True, "Expected UI state was not reached.");
     }
 }

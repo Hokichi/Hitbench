@@ -10,7 +10,7 @@ namespace osuHitsounder.Test.Presentation;
 public class SpacedUniformGridTests
 {
     [Test]
-    public void FixedCardMathUsesFourColumnsAndCeilingRows()
+    public void FixedCardMathUsesFourColumnsAndFullyVisibleRows()
     {
         var panel = new SpacedUniformGrid
         {
@@ -37,7 +37,7 @@ public class SpacedUniformGridTests
 
         panel.Measure(new Size(640, 947));
         panel.Arrange(new Rect(0, 0, 640, 947));
-        Assert.That(panel.VisibleRowCount, Is.EqualTo(4));
+        Assert.That(panel.VisibleRowCount, Is.EqualTo(3));
     }
 
     [TestCase(FlowDirection.LeftToRight)]

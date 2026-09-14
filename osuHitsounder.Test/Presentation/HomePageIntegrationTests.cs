@@ -11,6 +11,7 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using Microsoft.Extensions.DependencyInjection;
 using osuHitsounder.Resources.DataModels;
+using osuHitsounder.Resources.CustomControls;
 using osuHitsounder.Resources.Messages;
 using osuHitsounder.ViewModels.Shell.HomePage;
 using osuHitsounder.Views.Pages;
@@ -158,11 +159,12 @@ public class HomePageIntegrationTests
     {
         EnsureResources();
         var song = new DirectoryInfo("C:\\Songs\\Selected");
+        var background = CreateTestImage();
         var pending = new TaskCompletionSource<string>();
         var messenger = new WeakReferenceMessenger();
         DirectoryInfo? selected = null;
         var row = new FolderEntry(song.FullName, song.Name, DateTimeOffset.MinValue)
-            { DisplayName = "??? - ?:?" };
+            { Artist = "Artist", Title = "Title", DisplayName = "Artist - Title", BackgroundPath = background };
         var vm = new HomePageVM(new StubHomeFolderService
             { Songs = (_, _) => Task.FromResult<FolderSnapshot?>(new FolderSnapshot([row])) },
             new StubAppSettingsService(), new StubInstallationDialogService(),
@@ -174,24 +176,23 @@ public class HomePageIntegrationTests
         try
         {
             UiTestPump.Run(window.LoadAsync());
-            window.UpdateLayout();
-            var button = Descendants<Button>(page).Single(button => button.IsVisible);
-            var text = Descendants<TextBlock>(button).Single();
-            Assert.That(text.Text, Is.EqualTo("??? - ?:?"));
+            PumpUntil(() => vm.Songs.Count == 1);
+            var button = Descendants<Button>(page).Single(button => button.IsVisible && button.DataContext is FolderEntry);
+            var text = Descendants<TextBlock>(button).ToArray();
+            Assert.That(text.Select(value => value.Text), Is.EqualTo(new[] { "Artist", "Title" }));
             button.Focus();
             window.UpdateLayout();
-            Assert.That(text.Text, Is.EqualTo("??? - ?:?"));
             var tooltip = (ToolTip)button.ToolTip;
             tooltip.PlacementTarget = button;
             tooltip.IsOpen = true;
             window.Dispatcher.Invoke(() => { }, DispatcherPriority.ContextIdle);
             Assert.That(tooltip.Content, Is.EqualTo(song.FullName));
             tooltip.IsOpen = false;
-            Assert.That(((DirectoryInfo)button.CommandParameter).FullName, Is.EqualTo(song.FullName));
+            Assert.That(button.CommandParameter, Is.SameAs(row));
             Assert.That(vm.FatalError, Is.Null);
             Assert.That(button.IsEnabled, Is.True);
             var peer = new ButtonAutomationPeer(button);
-            Assert.That(peer.GetName(), Is.EqualTo("??? - ?:?"));
+            Assert.That(peer.GetName(), Is.EqualTo("Artist - Title"));
             ((IInvokeProvider)peer.GetPattern(PatternInterface.Invoke)).Invoke();
             window.Dispatcher.Invoke(() => { }, DispatcherPriority.ContextIdle);
             Assert.That(selected!.FullName, Is.EqualTo(song.FullName));
@@ -208,13 +209,18 @@ public class HomePageIntegrationTests
             operation.GetAwaiter().GetResult();
             Assert.That(((ContentControl)window.FindName("PageHost")).Content, Is.TypeOf<WorkstationPage>());
         }
-        finally { window.Close(); }
+        finally
+        {
+            window.Close();
+            Directory.Delete(Path.GetDirectoryName(background)!, true);
+        }
     }
 
     [Test]
-    public void PanelsBindAndVirtualizeAcrossSizesAndThemes()
+    public void SongCardsUseFixedVirtualizedGridAcrossSizesAndThemes()
     {
         var app = Application.Current ?? new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+        var background = CreateTestImage();
         var trace = new StringBuilder();
         using var writer = new StringWriter(trace);
         using var listener = new TextWriterTraceListener(writer);
@@ -239,59 +245,152 @@ public class HomePageIntegrationTests
                         [new FolderEntry(@"C:\Projects\One", "One", DateTimeOffset.MinValue)])),
                     Songs = (_, _) => Task.FromResult<FolderSnapshot?>(new FolderSnapshot(folders.Select(folder =>
                         new FolderEntry(folder.FullName, folder.Name, DateTimeOffset.MinValue)
-                        { DisplayName = "??? - ??????? " + new string('?', 80) })))
+                        {
+                            Artist = "Artist",
+                            Title = "Title " + new string('x', 80),
+                            DisplayName = "Artist - Title",
+                            BackgroundPath = background
+                        })))
                 });
                 var page = new HomePage(vm);
                 var firstRowTimer = Stopwatch.StartNew();
-                UiTestPump.Run(page.LoadAsync(CancellationToken.None));
-                var window = new Window { Content = page, ShowInTaskbar = false, WindowStyle = WindowStyle.None };
+                var window = new Window
+                {
+                    Content = page,
+                    Width = 1920,
+                    Height = 1080,
+                    ShowInTaskbar = false,
+                    WindowStyle = WindowStyle.None
+                };
                 try
                 {
                     window.Show();
+                    UiTestPump.Run(page.LoadAsync(CancellationToken.None));
+                    PumpUntil(() => vm.Songs.Count == 20);
                     window.UpdateLayout();
-                    Assert.That(Descendants<Button>(page).Any(button => button.IsVisible && button.IsEnabled), Is.True);
                     TestContext.Progress.WriteLine($"Theme={theme} StubFolders=2000 HomePageFirstActionableRowMs={firstRowTimer.Elapsed.TotalMilliseconds:F2}");
-                    foreach (var direction in new[] { FlowDirection.LeftToRight, FlowDirection.RightToLeft })
-                    foreach (var width in new[] { 640d, 800d, 1280d })
+                    var lists = Descendants<ItemsControl>(page).ToArray();
+                    var songsList = lists.Single(list => AutomationProperties.GetName(list) == "Songs");
+                    var panel = Descendants<SpacedUniformGrid>(songsList).Single();
+                    var button = Descendants<Button>(songsList)
+                        .First(candidate => candidate.DataContext is FolderEntry);
+                    var labels = Descendants<TextBlock>(button).ToArray();
+                    var backgroundBorder = Descendants<Border>(button)
+                        .First(border => border.Background is ImageBrush);
+                    var peer = new ButtonAutomationPeer(button);
+                    Assert.Multiple(() =>
                     {
-                        window.FlowDirection = direction;
-                        window.Width = width;
-                        window.Height = 360;
-                        window.UpdateLayout();
-                        window.Dispatcher.Invoke(() => { }, DispatcherPriority.ContextIdle);
-                        var lists = Descendants<ItemsControl>(page).ToArray();
                         Assert.That(lists, Has.Length.EqualTo(2));
                         Assert.That(lists[0].Items.Count, Is.EqualTo(1));
-                        Assert.That(lists[1].Items.Count, Is.EqualTo(2000));
+                        Assert.That(songsList.Items.Count, Is.EqualTo(20));
                         var columns = ((Grid)page.Content).ColumnDefinitions;
                         Assert.That(columns[1].ActualWidth / columns[0].ActualWidth, Is.EqualTo(3).Within(0.01));
-                        var panel = Descendants<VirtualizingStackPanel>(lists[1]).Single();
-                        Assert.That(panel.Children.Count, Is.InRange(1, 100));
-                        var button = Descendants<Button>(lists[1]).First();
-                        Assert.That(button.ActualHeight, Is.GreaterThanOrEqualTo(40));
-                        Assert.That(button.FlowDirection, Is.EqualTo(direction));
-                        button.Focus();
-                        window.UpdateLayout();
-                        var text = Descendants<TextBlock>(button).Single();
-                        Assert.That(text.Text, Is.EqualTo(((FolderEntry)button.DataContext).DisplayName));
-                        Assert.That(text.TextWrapping, Is.EqualTo(TextWrapping.Wrap));
-                        var scroll = Descendants<ScrollViewer>(lists[1]).Single();
-                        var previousCount = lists[1].Items.Count;
-                        scroll.ScrollToEnd();
-                        window.UpdateLayout();
-                        window.Dispatcher.Invoke(() => { }, DispatcherPriority.ContextIdle);
-                        UiTestPump.Run(vm.LoadMoreSongsCommand.ExecutionTask ?? Task.CompletedTask);
-                        Assert.That(lists[1].Items.Count, Is.EqualTo(previousCount));
-                        Assert.That(scroll.VerticalOffset, Is.GreaterThan(0));
-                        Assert.That(panel.Children.Count, Is.LessThan(100));
-                    }
+                        Assert.That(panel.Columns, Is.EqualTo(4));
+                        Assert.That(panel.ItemWidth, Is.EqualTo(336));
+                        Assert.That(panel.ItemHeight, Is.EqualTo(228));
+                        Assert.That(panel.HorizontalGap, Is.EqualTo(12));
+                        Assert.That(panel.VerticalGap, Is.EqualTo(12));
+                        Assert.That(panel.Children.Count, Is.InRange(1, 20));
+                        Assert.That(button.ActualWidth, Is.EqualTo(336).Within(0.01));
+                        Assert.That(button.ActualHeight, Is.EqualTo(228).Within(0.01));
+                        Assert.That(labels.Select(label => label.Text), Is.EqualTo(new[]
+                            { "Artist", "Title " + new string('x', 80) }));
+                        Assert.That(labels[0].TranslatePoint(new Point(), button).Y,
+                            Is.LessThan(labels[1].TranslatePoint(new Point(), button).Y));
+                        Assert.That(((ImageBrush)backgroundBorder.Background).Stretch, Is.EqualTo(Stretch.UniformToFill));
+                        Assert.That(peer.GetName(), Is.EqualTo("Artist - Title"));
+                        Assert.That(peer.GetHelpText(), Does.Contain("long folder name"));
+                    });
+
+                    window.FlowDirection = FlowDirection.RightToLeft;
+                    window.Width = 640;
+                    window.Height = 360;
+                    window.UpdateLayout();
+                    window.Dispatcher.Invoke(() => { }, DispatcherPriority.ContextIdle);
+                    var scroll = Descendants<ScrollViewer>(songsList).Single();
+                    Assert.Multiple(() =>
+                    {
+                        Assert.That(panel.Columns, Is.EqualTo(4));
+                        Assert.That(scroll.ScrollableWidth, Is.GreaterThan(0));
+                        Assert.That(scroll.ScrollableHeight, Is.GreaterThan(0));
+                        Assert.That(panel.ExtentWidth, Is.EqualTo(1380));
+                    });
                 }
                 finally { window.Close(); }
             }
             listener.Flush();
             Assert.That(trace.ToString(), Is.Empty);
         }
-        finally { PresentationTraceSources.DataBindingSource.Listeners.Remove(listener); }
+        finally
+        {
+            PresentationTraceSources.DataBindingSource.Listeners.Remove(listener);
+            Directory.Delete(Path.GetDirectoryName(background)!, true);
+        }
+    }
+
+    [Test]
+    public void SongsLoadOnlyAfterInitialLayoutAndGenuineThresholdScrolls()
+    {
+        EnsureResources();
+        var background = CreateTestImage();
+        var rows = Enumerable.Range(0, 200).Select(index =>
+            new FolderEntry($@"C:\Songs\{index:D3}", $"{index:D3}", DateTimeOffset.UnixEpoch.AddMinutes(index))
+            {
+                Artist = "Artist",
+                Title = $"Title {index}",
+                DisplayName = $"Artist - Title {index}",
+                BackgroundPath = background
+            });
+        var vm = CreateVM(new StubHomeFolderService
+        {
+            Songs = (_, _) => Task.FromResult<FolderSnapshot?>(new FolderSnapshot(rows))
+        });
+        var page = new HomePage(vm);
+        var window = new Window
+        {
+            Content = page,
+            Width = 1920,
+            Height = 1080,
+            ShowInTaskbar = false,
+            WindowStyle = WindowStyle.None
+        };
+        window.Show();
+        try
+        {
+            UiTestPump.Run(page.LoadAsync(CancellationToken.None));
+            PumpUntil(() => vm.Songs.Count == 20);
+            var songsList = Descendants<ItemsControl>(page)
+                .Single(list => AutomationProperties.GetName(list) == "Songs");
+            var panel = Descendants<SpacedUniformGrid>(songsList).Single();
+            var scroll = Descendants<ScrollViewer>(songsList).Single();
+
+            window.Width = 1900;
+            window.UpdateLayout();
+            window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+            Assert.That(vm.Songs, Has.Count.EqualTo(20), "Resize/layout must not count as user scrolling.");
+
+            scroll.ScrollToVerticalOffset(1);
+            PumpUntil(() => vm.Songs.Count == 36);
+
+            scroll.ScrollToEnd();
+            scroll.ScrollToVerticalOffset(Math.Max(0, scroll.ScrollableHeight - 1));
+            scroll.ScrollToEnd();
+            PumpUntil(() => vm.Songs.Count == 52);
+            window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+            Assert.That(vm.Songs, Has.Count.EqualTo(52), "Repeated notifications must coalesce to one batch.");
+
+            scroll.ScrollToVerticalOffset(Math.Max(0, scroll.ScrollableHeight - panel.RowStride * 2));
+            window.UpdateLayout();
+            window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+            Assert.That(vm.Songs, Has.Count.EqualTo(52));
+            scroll.LineDown();
+            PumpUntil(() => vm.Songs.Count == 68);
+        }
+        finally
+        {
+            window.Close();
+            Directory.Delete(Path.GetDirectoryName(background)!, true);
+        }
     }
 
     private static IEnumerable<T> Descendants<T>(DependencyObject parent) where T : DependencyObject
@@ -303,6 +402,33 @@ public class HomePageIntegrationTests
             foreach (var descendant in Descendants<T>(child)) yield return descendant;
         }
     }
+
+    private static string CreateTestImage()
+    {
+        var directory = Directory.CreateTempSubdirectory("osu-card-image-");
+        var path = Path.Combine(directory.FullName, "background.png");
+        File.WriteAllBytes(path, Convert.FromBase64String(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2nC8AAAAASUVORK5CYII="));
+        return path;
+    }
+
+    private static void PumpUntil(Func<bool> condition)
+    {
+        if (condition()) return;
+        var frame = new DispatcherFrame();
+        var poll = new DispatcherTimer(TimeSpan.FromMilliseconds(10), DispatcherPriority.Background,
+            (_, _) =>
+            {
+                if (condition()) frame.Continue = false;
+            }, Dispatcher.CurrentDispatcher);
+        var timeout = new DispatcherTimer(TimeSpan.FromSeconds(8), DispatcherPriority.Send,
+            (_, _) => frame.Continue = false, Dispatcher.CurrentDispatcher);
+        Dispatcher.PushFrame(frame);
+        poll.Stop();
+        timeout.Stop();
+        Assert.That(condition(), Is.True, "Expected UI state was not reached.");
+    }
+
     private static HomePageVM CreateVM(IHomeFolderService folders) =>
         new(folders, new StubAppSettingsService(), new StubInstallationDialogService(),
             new StubProjectCreationDialogService(), new ImmediateUiScheduler(),

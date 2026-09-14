@@ -55,10 +55,11 @@ public class SpacedUniformGrid : VirtualizingPanel, IScrollInfo
         set => SetValue(ItemHeightProperty, value);
     }
 
-    public int VisibleRowCount => Math.Max(1, (int)Math.Ceiling(ViewportHeight / RowStride));
+    public int VisibleRowCount => Math.Max(1, (int)Math.Floor((ViewportHeight + VerticalGap) / RowStride));
     public int ItemsPerViewport => checked(VisibleRowCount * Math.Max(1, Columns));
     public double RowStride => ItemHeight + VerticalGap;
-    public bool IsPrefetchThresholdReached => ExtentHeight - VerticalOffset - ViewportHeight <= RowStride;
+    public bool IsPrefetchThresholdReached =>
+        ExtentHeight - VerticalOffset - ViewportHeight <= RowStride + 0.01;
 
     public bool CanHorizontallyScroll { get; set; }
     public bool CanVerticallyScroll { get; set; }

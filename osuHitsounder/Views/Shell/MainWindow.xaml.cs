@@ -68,7 +68,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>, IRe
     private async Task LoadPageAsync()
     {
         try { await page.LoadAsync(lifetime.Token); }
-        catch (OperationCanceledException) when (!closed && PageHost.Content != page)
+        catch (OperationCanceledException) when (!closed)
         {
             // Navigation owns the cancellation of unfinished home-page loading.
         }
