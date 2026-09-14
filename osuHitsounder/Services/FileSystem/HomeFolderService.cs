@@ -53,64 +53,80 @@ public sealed class HomeFolderService(string applicationDirectory, Func<Cancella
 
     private static IEnumerable<FolderEntry> ReadSongEntries(IEnumerable<FolderEntry> entries, CancellationToken token)
     {
+        foreach (var entry in entries)
+        {
+            token.ThrowIfCancellationRequested();
+            FolderEntry? song;
+            try
+            {
+                song = ReadSongEntry(entry, token);
+            }
+            catch (Exception error) when (error is not OperationCanceledException and not OutOfMemoryException)
+            {
+                token.ThrowIfCancellationRequested();
+                continue;
+            }
+
+            if (song is not null) yield return song;
+        }
+    }
+
+    private static FolderEntry? ReadSongEntry(FolderEntry entry, CancellationToken token)
+    {
         var options = new EnumerationOptions
         {
             RecurseSubdirectories = false, AttributesToSkip = 0,
             IgnoreInaccessible = false, MatchCasing = MatchCasing.CaseInsensitive
         };
-        foreach (var entry in entries)
+        string? first = null;
+        foreach (var file in Directory.EnumerateFiles(entry.FullName, "*.osu", options))
         {
             token.ThrowIfCancellationRequested();
-            string? first = null;
-            foreach (var file in Directory.EnumerateFiles(entry.FullName, "*.osu", options))
-            {
-                token.ThrowIfCancellationRequested();
-                if (first is null || StringComparer.Ordinal.Compare(file, first) < 0) first = file;
-            }
-            if (first is null) continue;
-            var metadata = false;
-            var backgroundEvents = false;
-            var artist = "";
-            var title = "";
-            string? backgroundPath = null;
-            foreach (var line in File.ReadLines(first))
-            {
-                token.ThrowIfCancellationRequested();
-                var trimmed = line.Trim();
-                if (trimmed == "//Background and Video events")
-                {
-                    backgroundEvents = true;
-                    continue;
-                }
-                if (trimmed.StartsWith('['))
-                {
-                    metadata = trimmed == "[Metadata]";
-                    backgroundEvents = false;
-                    continue;
-                }
-                if (backgroundEvents && backgroundPath is null && TryReadBackgroundPath(trimmed, out var relativePath))
-                    backgroundPath = Path.Combine(entry.FullName, relativePath);
-                if (metadata)
-                {
-                    var separator = line.IndexOf(':');
-                    if (separator < 0) continue;
-                    var key = line[..separator].Trim();
-                    if (key == "ArtistUnicode") artist = line[(separator + 1)..].Trim();
-                    if (key == "TitleUnicode") title = line[(separator + 1)..].Trim();
-                }
-            }
-            backgroundPath ??= Directory.EnumerateFiles(entry.FullName, "*", options)
-                .Where(path => ImageExtensions.Contains(Path.GetExtension(path)))
-                .Order(StringComparer.Ordinal)
-                .First();
-            yield return entry with
-            {
-                Artist = artist,
-                Title = title,
-                DisplayName = $"{artist} - {title}",
-                BackgroundPath = backgroundPath
-            };
+            if (first is null || StringComparer.Ordinal.Compare(file, first) < 0) first = file;
         }
+        if (first is null) return null;
+        var metadata = false;
+        var backgroundEvents = false;
+        var artist = "";
+        var title = "";
+        string? backgroundPath = null;
+        foreach (var line in File.ReadLines(first))
+        {
+            token.ThrowIfCancellationRequested();
+            var trimmed = line.Trim();
+            if (trimmed == "//Background and Video events")
+            {
+                backgroundEvents = true;
+                continue;
+            }
+            if (trimmed.StartsWith('['))
+            {
+                metadata = trimmed == "[Metadata]";
+                backgroundEvents = false;
+                continue;
+            }
+            if (backgroundEvents && backgroundPath is null && TryReadBackgroundPath(trimmed, out var relativePath))
+                backgroundPath = Path.Combine(entry.FullName, relativePath);
+            if (metadata)
+            {
+                var separator = line.IndexOf(':');
+                if (separator < 0) continue;
+                var key = line[..separator].Trim();
+                if (key == "ArtistUnicode") artist = line[(separator + 1)..].Trim();
+                if (key == "TitleUnicode") title = line[(separator + 1)..].Trim();
+            }
+        }
+        backgroundPath ??= Directory.EnumerateFiles(entry.FullName, "*", options)
+            .Where(path => ImageExtensions.Contains(Path.GetExtension(path)))
+            .Order(StringComparer.Ordinal)
+            .First();
+        return entry with
+        {
+            Artist = artist,
+            Title = title,
+            DisplayName = $"{artist} - {title}",
+            BackgroundPath = backgroundPath
+        };
     }
 
     private static bool TryReadBackgroundPath(string line, out string path)

@@ -120,6 +120,32 @@ public class HomeFolderServiceTests
     }
 
     [Test]
+    public async Task FailingSongFolderIsSkippedWithoutAbortingOtherFolders()
+    {
+        var songs = Directory.CreateDirectory(Path.Combine(root, "Songs"));
+        var broken = songs.CreateSubdirectory("broken");
+        File.WriteAllText(Path.Combine(broken.FullName, "map.osu"),
+            "[Metadata]\nArtistUnicode:Broken\nTitleUnicode:Broken\n");
+        var valid = songs.CreateSubdirectory("valid");
+        File.WriteAllText(Path.Combine(valid.FullName, "map.osu"),
+            "[Metadata]\nArtistUnicode:Artist\nTitleUnicode:Title\n");
+        File.WriteAllText(Path.Combine(valid.FullName, "background.jpg"), "image");
+
+        var snapshot = await new HomeFolderService(appRoot).LoadSongsAsync(root, CancellationToken.None);
+
+        Assert.That(snapshot!.ReadPage(0, 64).Select(row => row.Name), Is.EqualTo(new[] { "valid" }));
+    }
+
+    [Test]
+    public void CancelledSongsLoadStillPropagates()
+    {
+        Directory.CreateDirectory(Path.Combine(root, "Songs"));
+
+        Assert.CatchAsync<OperationCanceledException>(() =>
+            new HomeFolderService(appRoot).LoadSongsAsync(root, new CancellationToken(true)));
+    }
+
+    [Test]
     public void CancelledLoadDoesNotCreateProjects()
     {
         Assert.CatchAsync<OperationCanceledException>(() =>
