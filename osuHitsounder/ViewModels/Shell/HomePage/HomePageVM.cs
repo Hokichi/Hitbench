@@ -15,7 +15,8 @@ namespace osuHitsounder.ViewModels.Shell.HomePage;
 
 public partial class HomePageVM(
     IHomeFolderService folders, IAppSettingsService settings, IInstallationDialogService dialogs,
-    IUiScheduler ui, IProjectFileService projectFiles, IMessenger messenger) : ObservableObject
+    IProjectCreationDialogService projectDialogs, IUiScheduler ui,
+    IProjectFileService projectFiles, IMessenger messenger) : ObservableObject
 {
     public ObservableCollection<FolderEntry> Projects { get; } = [];
     public ObservableCollection<FolderEntry> Songs { get; } = [];
@@ -68,16 +69,17 @@ public partial class HomePageVM(
         RetrySongsCommand.NotifyCanExecuteChanged();
     }
 
-    private bool CanCreateProject(DirectoryInfo? folder) => folder is not null && CanInteract && !IsCreatingProject;
+    private bool CanCreateProject(FolderEntry? entry) => entry is not null && CanInteract && !IsCreatingProject;
     private bool CanLoadMoreProjects() => CanInteract && HasMoreProjects && !IsLoadingProjects && !CanRetryProjects;
-    private bool CanLoadMoreSongs() => CanInteract && HasMoreSongs && !IsLoadingSongs && !CanRetrySongs;
+    private bool CanLoadMoreSongs(int requestedCount) =>
+        requestedCount > 0 && CanInteract && HasMoreSongs && !IsLoadingSongs && !CanRetrySongs;
     private bool CanRestartProjects() => CanInteract && CanRetryProjects && !IsLoadingProjects;
     private bool CanRestartSongs() => CanInteract && CanRetrySongs && !IsLoadingSongs;
 
     [RelayCommand(CanExecute = nameof(CanCreateProject))]
-    private async Task CreateProjectAsync(DirectoryInfo? folder, CancellationToken cancellationToken)
+    private async Task CreateProjectAsync(FolderEntry? entry, CancellationToken cancellationToken)
     {
-        if (!CanCreateProject(folder)) return;
+        if (!CanCreateProject(entry)) return;
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, lifetime.Token);
         IsCreatingProject = true;
         try
@@ -85,7 +87,13 @@ public partial class HomePageVM(
             string projectPath;
             try
             {
-                projectPath = await projectFiles.CreateAsync(folder!, folder!.Name, linked.Token);
+                var existingNames = await projectFiles.GetExistingNamesAsync(linked.Token);
+                linked.Token.ThrowIfCancellationRequested();
+                var projectName = await projectDialogs.RequestNameAsync(
+                    entry!.DisplayName, existingNames, linked.Token);
+                linked.Token.ThrowIfCancellationRequested();
+                if (string.IsNullOrWhiteSpace(projectName)) return;
+                projectPath = await projectFiles.CreateAsync(entry.Directory, projectName, linked.Token);
                 linked.Token.ThrowIfCancellationRequested();
                 if (!active) return;
             }
@@ -213,22 +221,17 @@ public partial class HomePageVM(
             else songsSnapshot = snapshot;
             var rows = projects ? Projects : Songs;
             rows.Clear();
-            if (snapshot is not null)
-            {
-                do
-                {
-                    await PublishPageAsync(projects, snapshot, generation, token);
-                    token.ThrowIfCancellationRequested();
-                    if (!IsCurrent(projects, generation)) return;
-                    if (projects || rows.Count >= snapshot.Count) break;
-                    await ui.YieldForRenderAsync(token);
-                } while (true);
-            }
+            if (projects && snapshot is not null)
+                await PublishPageAsync(true, snapshot, generation, 64, token);
             token.ThrowIfCancellationRequested();
             if (!IsCurrent(projects, generation)) return;
             if (projects) ProjectsStatus = rows.Count == 0 ? "No project folders found." : "";
-            else SongsLoadStatus = snapshot is null ? "Songs folder wasn't found."
-                : rows.Count == 0 ? "No song folders found." : "";
+            else
+            {
+                SongsLoadStatus = snapshot is null ? "Songs folder wasn't found."
+                    : snapshot.Count == 0 ? "No song folders found." : "";
+                CanRetrySongs = snapshot is null || snapshot.Count == 0;
+            }
         }
         finally { SetBusy(projects, false); }
     }
@@ -243,11 +246,12 @@ public partial class HomePageVM(
         RefreshCommands();
     }
 
-    private async Task PublishPageAsync(bool projects, FolderSnapshot snapshot, int generation, CancellationToken token)
+    private async Task PublishPageAsync(
+        bool projects, FolderSnapshot snapshot, int generation, int requestedCount, CancellationToken token)
     {
         var collection = projects ? Projects : Songs;
         var offset = collection.Count;
-        var page = await Task.Run(() => snapshot.ReadPage(offset, 64), token);
+        var page = await Task.Run(() => snapshot.ReadPage(offset, requestedCount), token);
         token.ThrowIfCancellationRequested();
         if (!IsCurrent(projects, generation)) return;
         foreach (var row in page)
@@ -260,23 +264,24 @@ public partial class HomePageVM(
     }
 
     [RelayCommand(CanExecute = nameof(CanLoadMoreProjects))]
-    private Task LoadMoreProjectsAsync(CancellationToken token) => LoadMoreAsync(true, token);
+    private Task LoadMoreProjectsAsync(CancellationToken token) => LoadMoreAsync(true, 64, token);
     [RelayCommand(CanExecute = nameof(CanLoadMoreSongs))]
-    private Task LoadMoreSongsAsync(CancellationToken token) => LoadMoreAsync(false, token);
+    private Task LoadMoreSongsAsync(int requestedCount, CancellationToken token) =>
+        LoadMoreAsync(false, requestedCount, token);
     [RelayCommand(CanExecute = nameof(CanRestartProjects))]
     private Task RetryProjectsAsync(CancellationToken token) => RetryAsync(true, token);
     [RelayCommand(CanExecute = nameof(CanRestartSongs))]
     private Task RetrySongsAsync(CancellationToken token) => RetryAsync(false, token);
 
-    private async Task LoadMoreAsync(bool projects, CancellationToken cancellationToken)
+    private async Task LoadMoreAsync(bool projects, int requestedCount, CancellationToken cancellationToken)
     {
-        if (!(projects ? CanLoadMoreProjects() : CanLoadMoreSongs())) return;
+        if (!(projects ? CanLoadMoreProjects() : CanLoadMoreSongs(requestedCount))) return;
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token, cancellationToken);
         SetBusy(projects, true);
         try
         {
             await PublishPageAsync(projects, (projects ? projectsSnapshot : songsSnapshot)!,
-                projects ? projectsGeneration : songsGeneration, linked.Token);
+                projects ? projectsGeneration : songsGeneration, requestedCount, linked.Token);
         }
         catch (OperationCanceledException) when (linked.IsCancellationRequested) { }
         catch (Exception error) { FailPanel(projects, error); }

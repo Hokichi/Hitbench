@@ -48,13 +48,17 @@ public class HomeFolderPerformanceTests
                 Assert.That(page[0].Name, Is.EqualTo($"{count - 1:D5}"));
                 var vm = new HomePageVM(folders, settings, new StubInstallationDialogService
                     { Locate = _ => throw new AssertionException("Configured startup must not open picker") },
-                    new ImmediateUiScheduler(), new ProjectFileService(root.FullName), new WeakReferenceMessenger());
+                    new StubProjectCreationDialogService(), new ImmediateUiScheduler(),
+                    new ProjectFileService(root.FullName), new WeakReferenceMessenger());
                 timer.Restart();
                 await vm.LoadAsync(CancellationToken.None);
                 var readyMs = timer.Elapsed.TotalMilliseconds;
                 Assert.That(vm.FatalError, Is.Null);
-                Assert.That(vm.Songs, Has.Count.EqualTo(count));
-                Assert.That(vm.CreateProjectCommand.CanExecute(vm.Songs[0].Directory), Is.True);
+                Assert.That(vm.Songs, Is.Empty);
+                Assert.That(vm.HasMoreSongs, Is.True);
+                await vm.LoadMoreSongsCommand.ExecuteAsync(64);
+                Assert.That(vm.Songs, Has.Count.EqualTo(64));
+                Assert.That(vm.CreateProjectCommand.CanExecute(vm.Songs[0]), Is.True);
                 vm.Deactivate();
                 TestContext.Progress.WriteLine(
                     $"Folders={count} Run={run + 1} EagerListMs={baselineMs:F2} MetadataMs={metadataMs:F2} PageMs={pageMs:F2} ViewModelReadyMs={readyMs:F2}");
