@@ -26,7 +26,7 @@ public class ScanOverlayIntegrationTests
         var app = Application.Current ?? new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
         app.Resources.MergedDictionaries.Clear();
         UiTestPump.EnsureFontResources(app);
-        foreach (var resource in new[] { "Themes/Dark.xaml", "Styles/TextBlock.xaml",
+        foreach (var resource in new[] { "Themes/Dark.xaml", "Icons.xaml", "Styles/TextBlock.xaml",
             "Styles/ItemsControl.xaml", "Styles/Border.xaml", "Styles/ContentPresenter.xaml", "Styles/Button.xaml",
             "Styles/ToolTip.xaml", "Styles/Window.xaml" })
             app.Resources.MergedDictionaries.Add(new ResourceDictionary
@@ -58,7 +58,8 @@ public class ScanOverlayIntegrationTests
             new StubProjectCreationDialogService(), new UiScheduler(Dispatcher.CurrentDispatcher),
             new StubProjectFileService((_, _, _) => Task.FromResult("saved.json")),
             new WeakReferenceMessenger());
-        var window = new MainWindow(new HomePage(vm), new WeakReferenceMessenger(), () => new WorkstationPage(), vm);
+        var window = new MainWindow(new HomePage(vm), new WeakReferenceMessenger(), () => new WorkstationPage(), vm,
+            new StubAppSettingsService());
         window.Show();
         try
         {
@@ -120,7 +121,8 @@ public class ScanOverlayIntegrationTests
             new StubProjectCreationDialogService(), new UiScheduler(Dispatcher.CurrentDispatcher),
             new StubProjectFileService((_, _, _) => Task.FromResult("saved.json")),
             new WeakReferenceMessenger());
-        var window = new MainWindow(new HomePage(vm), new WeakReferenceMessenger(), () => new WorkstationPage(), vm);
+        var window = new MainWindow(new HomePage(vm), new WeakReferenceMessenger(), () => new WorkstationPage(), vm,
+            new StubAppSettingsService());
         window.Show();
         try
         {

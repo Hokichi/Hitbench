@@ -49,7 +49,10 @@ public partial class App : Application
         try
         {
             services = CreateServices();
+            var settings = await services.GetRequiredService<IAppSettingsService>()
+                .LoadAsync(CancellationToken.None);
             window = services.GetRequiredService<MainWindow>();
+            window.ApplySettings(settings);
             MainWindow = window;
             window.Closed += (_, _) => Shutdown();
             window.Show();

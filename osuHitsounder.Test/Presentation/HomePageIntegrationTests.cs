@@ -10,6 +10,7 @@ using System.Windows.Automation.Provider;
 using System.Windows.Media;
 using System.Windows.Threading;
 using Microsoft.Extensions.DependencyInjection;
+using osuHitsounder.Core.Entities;
 using osuHitsounder.Resources.DataModels;
 using osuHitsounder.Resources.CustomControls;
 using osuHitsounder.Resources.Messages;
@@ -33,6 +34,90 @@ public class HomePageIntegrationTests
     public void TearDown() => SynchronizationContext.SetSynchronizationContext(previousContext);
 
     [Test]
+    public void ApplyingWindowSettingsRestoresSavedBoundsAndState()
+    {
+        EnsureResources();
+        var vm = CreateVM(new StubHomeFolderService());
+        var window = new MainWindow(new HomePage(vm), new WeakReferenceMessenger(),
+            () => new WorkstationPage(), vm, new StubAppSettingsService());
+        try
+        {
+            window.ApplySettings(new AppSettings
+            {
+                RestoredWidth = 400,
+                RestoredHeight = 200,
+                IsMaximized = true
+            });
+
+            Assert.That(window.Width, Is.EqualTo(window.MinWidth));
+            Assert.That(window.Height, Is.EqualTo(window.MinHeight));
+            Assert.That(window.WindowState, Is.EqualTo(WindowState.Maximized));
+        }
+        finally { window.Close(); }
+    }
+
+    [Test]
+    public void ClosingAfterRestoredResizePersistsLatestPlacement()
+    {
+        EnsureResources();
+        (bool IsMaximized, double Width, double Height)? saved = null;
+        var settings = new StubAppSettingsService
+        {
+            SaveWindowPlacement = (placement, _) =>
+            {
+                saved = placement;
+                return Task.CompletedTask;
+            }
+        };
+        var vm = CreateVM(new StubHomeFolderService());
+        var window = new MainWindow(new HomePage(vm), new WeakReferenceMessenger(),
+            () => new WorkstationPage(), vm, settings);
+        window.ApplySettings(new AppSettings());
+        window.Show();
+        window.Width = 1024;
+        window.Height = 640;
+
+        window.Close();
+
+        Assert.That(saved, Is.EqualTo((false, 1024d, 640d)));
+    }
+
+    [Test]
+    public void CaptionButtonsToggleStateWithoutTreatingMinimizeAsRestore()
+    {
+        EnsureResources();
+        (bool IsMaximized, double Width, double Height)? saved = null;
+        var settings = new StubAppSettingsService
+        {
+            SaveWindowPlacement = (placement, _) =>
+            {
+                saved = placement;
+                return Task.CompletedTask;
+            }
+        };
+        var vm = CreateVM(new StubHomeFolderService());
+        var window = new MainWindow(new HomePage(vm), new WeakReferenceMessenger(),
+            () => new WorkstationPage(), vm, settings);
+        window.ApplySettings(new AppSettings { RestoredWidth = 1024, RestoredHeight = 640 });
+        window.Show();
+        try
+        {
+            var maximize = (Button)window.FindName("MaximizeRestoreButton");
+            var minimize = (Button)window.FindName("MinimizeButton");
+
+            ((IInvokeProvider)new ButtonAutomationPeer(maximize).GetPattern(PatternInterface.Invoke)!).Invoke();
+            window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+            Assert.That(window.WindowState, Is.EqualTo(WindowState.Maximized));
+            ((IInvokeProvider)new ButtonAutomationPeer(minimize).GetPattern(PatternInterface.Invoke)!).Invoke();
+            window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+            Assert.That(window.WindowState, Is.EqualTo(WindowState.Minimized));
+        }
+        finally { window.Close(); }
+
+        Assert.That(saved, Is.EqualTo((true, 1024d, 640d)));
+    }
+
+    [Test]
     public void NavigatingWhileProjectsLoadCompletesStartupWithoutFailure()
     {
         EnsureResources();
@@ -45,7 +130,8 @@ public class HomePageIntegrationTests
             Songs = (_, _) => { songsReady.SetResult(); return Task.FromResult<FolderSnapshot?>(new FolderSnapshot([])); }
         };
         var vm = CreateVM(folders);
-        var window = new MainWindow(new HomePage(vm), messenger, () => new WorkstationPage(), vm);
+        var window = new MainWindow(new HomePage(vm), messenger, () => new WorkstationPage(), vm,
+            new StubAppSettingsService());
         window.Show();
         try
         {
@@ -65,7 +151,8 @@ public class HomePageIntegrationTests
         EnsureResources();
         var pending = new TaskCompletionSource<HomeFolderData>();
         var vm = CreateVM(new StubHomeFolderService(token => pending.Task.WaitAsync(token)));
-        var window = new MainWindow(new HomePage(vm), new WeakReferenceMessenger(), () => new WorkstationPage(), vm);
+        var window = new MainWindow(new HomePage(vm), new WeakReferenceMessenger(), () => new WorkstationPage(), vm,
+            new StubAppSettingsService());
         window.Show();
         var load = window.LoadAsync();
         window.Close();
@@ -134,7 +221,7 @@ public class HomePageIntegrationTests
         var app = Application.Current ?? new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
         app.Resources.MergedDictionaries.Clear();
         UiTestPump.EnsureFontResources(app);
-        foreach (var resource in new[] { "Themes/Dark.xaml", "Styles/TextBlock.xaml", "Styles/ItemsControl.xaml", "Styles/Border.xaml", "Styles/ContentPresenter.xaml", "Styles/Button.xaml", "Styles/ToolTip.xaml", "Styles/Window.xaml" })
+        foreach (var resource in new[] { "Themes/Dark.xaml", "Icons.xaml", "Styles/TextBlock.xaml", "Styles/ItemsControl.xaml", "Styles/Border.xaml", "Styles/ContentPresenter.xaml", "Styles/Button.xaml", "Styles/ToolTip.xaml", "Styles/Window.xaml" })
             app.Resources.MergedDictionaries.Add(new ResourceDictionary
             {
                 Source = new Uri($"/osuHitsounder;component/Resources/{resource}", UriKind.Relative)
@@ -149,7 +236,8 @@ public class HomePageIntegrationTests
         var vm = CreateVM(new StubHomeFolderService(_ => Task.FromResult(new HomeFolderData([], [], "C:\\osu", true, false))));
         var page = new HomePage(vm);
         var creations = 0;
-        var window = new MainWindow(page, messenger, () => { creations++; return new WorkstationPage(); }, vm);
+        var window = new MainWindow(page, messenger, () => { creations++; return new WorkstationPage(); }, vm,
+            new StubAppSettingsService());
         window.Show();
         try
         {
@@ -179,7 +267,8 @@ public class HomePageIntegrationTests
             new StubAppSettingsService(), new StubInstallationDialogService(),
             new StubProjectCreationDialogService { Result = "Selected" }, new ImmediateUiScheduler(),
             new StubProjectFileService((_, _, token) => pending.Task.WaitAsync(token)), messenger);
-        var window = new MainWindow(new HomePage(vm), messenger, () => throw new AssertionException("Must not navigate"), vm);
+        var window = new MainWindow(new HomePage(vm), messenger,
+            () => throw new AssertionException("Must not navigate"), vm, new StubAppSettingsService());
         window.Show();
         var operation = vm.CreateProjectCommand.ExecuteAsync(
             new FolderEntry("C:\\Songs\\Selected", "Selected", DateTimeOffset.MinValue));
@@ -212,7 +301,8 @@ public class HomePageIntegrationTests
             new StubProjectCreationDialogService { Result = "Selected" }, new ImmediateUiScheduler(),
             new StubProjectFileService((folder, _, _) => { selected = folder; return pending.Task; }), messenger);
         var page = new HomePage(vm);
-        var window = new MainWindow(page, messenger, () => new WorkstationPage(), vm);
+        var window = new MainWindow(page, messenger, () => new WorkstationPage(), vm,
+            new StubAppSettingsService());
         window.Show();
         try
         {
