@@ -12,6 +12,40 @@ namespace osuHitsounder.Test.Presentation;
 public class SongBackgroundTests
 {
     [Test]
+    public void BlurStateOwnsPerInstanceEffectAndReachesRequestedRadius()
+    {
+        var previous = SynchronizationContext.Current;
+        SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext());
+        var first = new OHsSongBackground();
+        var second = new OHsSongBackground();
+        var panel = new System.Windows.Controls.StackPanel { Children = { first, second } };
+        var window = new Window { Content = panel, Width = 200, Height = 200, ShowInTaskbar = false };
+        try
+        {
+            window.Show();
+            Assert.That(first.Effect, Is.TypeOf<System.Windows.Media.Effects.BlurEffect>());
+            Assert.That(second.Effect, Is.TypeOf<System.Windows.Media.Effects.BlurEffect>());
+            Assert.That(second.Effect, Is.Not.SameAs(first.Effect));
+            Assert.That(((System.Windows.Media.Effects.BlurEffect)first.Effect).Radius, Is.EqualTo(10));
+
+            first.IsBlurred = false;
+            PumpFor(TimeSpan.FromMilliseconds(150));
+
+            Assert.That(((System.Windows.Media.Effects.BlurEffect)first.Effect).Radius, Is.EqualTo(0).Within(0.01));
+            Assert.That(((System.Windows.Media.Effects.BlurEffect)second.Effect).Radius, Is.EqualTo(10));
+
+            first.IsBlurred = true;
+            PumpFor(TimeSpan.FromMilliseconds(150));
+            Assert.That(((System.Windows.Media.Effects.BlurEffect)first.Effect).Radius, Is.EqualTo(10).Within(0.01));
+        }
+        finally
+        {
+            window.Close();
+            SynchronizationContext.SetSynchronizationContext(previous);
+        }
+    }
+
+    [Test]
     [Explicit("Local decode responsiveness measurement; no hardware-dependent latency assertion")]
     public void MeasureImageDecodeResponsiveness()
     {
@@ -102,5 +136,14 @@ public class SongBackgroundTests
             File.Delete(path);
             SynchronizationContext.SetSynchronizationContext(previous);
         }
+    }
+
+    private static void PumpFor(TimeSpan duration)
+    {
+        var frame = new DispatcherFrame();
+        var timer = new DispatcherTimer(duration, DispatcherPriority.Background,
+            (_, _) => frame.Continue = false, Dispatcher.CurrentDispatcher);
+        Dispatcher.PushFrame(frame);
+        timer.Stop();
     }
 }

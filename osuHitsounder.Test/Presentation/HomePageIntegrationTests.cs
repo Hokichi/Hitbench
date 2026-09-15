@@ -317,10 +317,12 @@ public class HomePageIntegrationTests
             button.Focus();
             window.UpdateLayout();
             Assert.That(button.ToolTip, Is.Null);
-            Assert.That(button.IsTabStop, Is.False);
-            Assert.That(button.Opacity, Is.EqualTo(button.IsMouseOver ? 1 : 0.7));
-            Assert.That(((System.Windows.Media.Effects.BlurEffect)button.Effect).Radius,
-                Is.EqualTo(button.IsMouseOver ? 0 : 10));
+            Assert.That(button.IsTabStop, Is.True);
+            Assert.That(button.Opacity, Is.EqualTo(1));
+            Assert.That(button.Effect, Is.Null);
+            PumpFor(TimeSpan.FromMilliseconds(150));
+            Assert.That(((System.Windows.Media.Effects.BlurEffect)backgroundControl.Effect).Radius,
+                Is.EqualTo(0).Within(0.01));
             Assert.That(button.CommandParameter, Is.SameAs(row));
             Assert.That(vm.FatalError, Is.Null);
             Assert.That(button.IsEnabled, Is.True);
@@ -563,6 +565,15 @@ public class HomePageIntegrationTests
         poll.Stop();
         timeout.Stop();
         Assert.That(condition(), Is.True, "Expected UI state was not reached.");
+    }
+
+    private static void PumpFor(TimeSpan duration)
+    {
+        var frame = new DispatcherFrame();
+        var timer = new DispatcherTimer(duration, DispatcherPriority.Background,
+            (_, _) => frame.Continue = false, Dispatcher.CurrentDispatcher);
+        Dispatcher.PushFrame(frame);
+        timer.Stop();
     }
 
     private static HomePageVM CreateVM(IHomeFolderService folders) =>

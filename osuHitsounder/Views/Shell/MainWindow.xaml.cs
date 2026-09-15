@@ -239,7 +239,8 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>, IRe
 
     private void ToggleMaximizeRestore()
     {
-        if (WindowState == WindowState.Maximized) SystemCommands.RestoreWindow(this);
+        if (WindowState == WindowState.Maximized)
+            SystemCommands.RestoreWindow(this);
         else SystemCommands.MaximizeWindow(this);
     }
 
