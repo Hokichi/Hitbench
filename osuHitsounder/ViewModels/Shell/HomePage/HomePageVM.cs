@@ -23,6 +23,8 @@ public partial class HomePageVM(
     [ObservableProperty, NotifyPropertyChangedFor(nameof(IsLoading))] private bool isLoadingProjects;
     [ObservableProperty, NotifyPropertyChangedFor(nameof(IsLoading), nameof(SongsStatus))] private bool isLoadingSongs;
     [ObservableProperty] private bool isProcessing;
+    [ObservableProperty] private bool isAwaitingSongsPresentation;
+    public int SongsPresentationGeneration => songsGeneration;
     [ObservableProperty, NotifyPropertyChangedFor(nameof(CanInteract))] private bool isInteractionBlocked;
     [ObservableProperty, NotifyPropertyChangedFor(nameof(CanInteract))] private bool requiresShutdown;
     [ObservableProperty] private string? fatalError;
@@ -140,15 +142,19 @@ public partial class HomePageVM(
             lifetime.Token.ThrowIfCancellationRequested();
             osuDirectory = await ResolveInstallationAsync(lifetime.Token);
             lifetime.Token.ThrowIfCancellationRequested();
-            if (osuDirectory is not null) await PreparePanelAsync(false, lifetime.Token);
+            if (osuDirectory is not null)
+            {
+                await PreparePanelAsync(false, lifetime.Token);
+                IsAwaitingSongsPresentation = true;
+            }
         }
         catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
         catch (Exception error) { FailInitialization(error); }
         finally
         {
             IsLoadingSongs = false;
-            IsProcessing = false;
-            IsInteractionBlocked = false;
+            if (!IsAwaitingSongsPresentation || lifetime.IsCancellationRequested || RequiresShutdown)
+                EndProcessing();
         }
     }
 
@@ -158,6 +164,35 @@ public partial class HomePageVM(
         FatalError = $"Unable to load folders: {error.Message}";
         RequiresShutdown = true;
         lifetime.Cancel();
+        EndProcessing();
+    }
+
+    private void EndProcessing()
+    {
+        IsAwaitingSongsPresentation = false;
+        IsProcessing = false;
+        IsInteractionBlocked = false;
+    }
+
+    public void CompleteSongsPresentation(int generation)
+    {
+        if (!active || generation != songsGeneration || !IsAwaitingSongsPresentation || IsLoading) return;
+        EndProcessing();
+    }
+
+    public async Task LoadInitialSongsAsync(int requestedCount, CancellationToken cancellationToken)
+    {
+        if (!active || !IsAwaitingSongsPresentation || IsLoadingSongs ||
+            songsSnapshot is null || requestedCount <= Songs.Count) return;
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token, cancellationToken);
+        SetBusy(false, true);
+        try
+        {
+            await PublishPageAsync(false, songsSnapshot, songsGeneration, requestedCount - Songs.Count, linked.Token);
+        }
+        catch (OperationCanceledException) when (linked.IsCancellationRequested) { EndProcessing(); }
+        catch (Exception error) { FailPanel(false, error); EndProcessing(); }
+        finally { SetBusy(false, false); }
     }
 
     private async Task<string?> ResolveInstallationAsync(CancellationToken token)
@@ -296,12 +331,14 @@ public partial class HomePageVM(
         {
             if (!projects)
             {
+                IsAwaitingSongsPresentation = false;
                 IsProcessing = true;
                 IsInteractionBlocked = true;
                 await ui.YieldForRenderAsync(linked.Token);
                 linked.Token.ThrowIfCancellationRequested();
             }
             await PreparePanelAsync(projects, linked.Token);
+            if (!projects) IsAwaitingSongsPresentation = true;
         }
         catch (OperationCanceledException) when (linked.IsCancellationRequested) { }
         catch (Exception error) { FailPanel(projects, error); }
@@ -309,8 +346,7 @@ public partial class HomePageVM(
         {
             if (!projects)
             {
-                IsProcessing = false;
-                IsInteractionBlocked = false;
+                if (!IsAwaitingSongsPresentation || linked.IsCancellationRequested) EndProcessing();
             }
         }
     }
@@ -329,8 +365,7 @@ public partial class HomePageVM(
         projectsGeneration++;
         songsGeneration++;
         projectsSnapshot = songsSnapshot = null;
-        IsProcessing = false;
-        IsInteractionBlocked = false;
+        EndProcessing();
         lifetime.Cancel();
         CreateProjectCommand.Cancel();
         LoadMoreProjectsCommand.Cancel();
@@ -345,6 +380,7 @@ public partial class HomePageVM(
     {
         FailPanel(true, error);
         FailPanel(false, error);
+        EndProcessing();
     }
 
     private async Task CleanupAsync()

@@ -14,6 +14,102 @@ public class HomeFolderServiceTests
     [TearDown] public void TearDown() => Directory.Delete(root, true);
 
     [Test]
+    public async Task WarmCacheReusesMetadataAcrossServiceInstances()
+    {
+        var folder = Directory.CreateDirectory(Path.Combine(root, "Songs", "A"));
+        var map = Path.Combine(folder.FullName, "map.osu");
+        File.WriteAllText(map, "[Metadata]\nArtistUnicode:Artist\nTitleUnicode:Original\n");
+        File.WriteAllText(Path.Combine(folder.FullName, "bg.jpg"), "image");
+        await new HomeFolderService(appRoot).LoadSongsAsync(root, CancellationToken.None);
+        File.WriteAllText(map, "[Metadata]\nArtistUnicode:Artist\nTitleUnicode:Changed\n");
+        var warm = await new HomeFolderService(appRoot).LoadSongsAsync(root, CancellationToken.None);
+        Assert.That(warm!.ReadPage(0, 10).Single().Title, Is.EqualTo("Original"));
+        Assert.That(File.Exists(Path.Combine(appRoot, "data.json")), Is.True);
+    }
+
+    [Test]
+    public async Task CacheTracksAdditionsDeletionsAndEqualCountReplacements()
+    {
+        CreateCachedSong("A");
+        var service = new HomeFolderService(appRoot);
+        await service.LoadSongsAsync(root, CancellationToken.None);
+        CreateCachedSong("B");
+        var added = await service.LoadSongsAsync(root, CancellationToken.None);
+        Assert.That(added!.ReadPage(0, 10).Select(x => x.Name), Is.EquivalentTo(new[] { "A", "B" }));
+        Directory.Delete(Path.Combine(root, "Songs", "A"), true);
+        CreateCachedSong("C");
+        var replaced = await service.LoadSongsAsync(root, CancellationToken.None);
+        Assert.That(replaced!.ReadPage(0, 10).Select(x => x.Name), Is.EquivalentTo(new[] { "B", "C" }));
+        Directory.Delete(Path.Combine(root, "Songs", "B"), true);
+        var removed = await service.LoadSongsAsync(root, CancellationToken.None);
+        Assert.That(removed!.ReadPage(0, 10).Single().Name, Is.EqualTo("C"));
+    }
+
+    [TestCase("broken")]
+    [TestCase("{\"Version\":2,\"Folders\":[],\"Songs\":[]}")]
+    [TestCase("null")]
+    public async Task InvalidCacheRebuilds(string contents)
+    {
+        CreateCachedSong("A");
+        Directory.CreateDirectory(appRoot);
+        File.WriteAllText(Path.Combine(appRoot, "data.json"), contents);
+        var result = await new HomeFolderService(appRoot).LoadSongsAsync(root, CancellationToken.None);
+        Assert.That(result!.Count, Is.EqualTo(1));
+        Assert.That(File.ReadAllText(Path.Combine(appRoot, "data.json")), Does.Contain("Artist"));
+    }
+
+    [Test]
+    public async Task CacheDoesNotReuseDifferentSongsRoot()
+    {
+        CreateCachedSong("A");
+        await new HomeFolderService(appRoot).LoadSongsAsync(root, CancellationToken.None);
+        var other = Directory.CreateDirectory(Path.Combine(root, "Other", "Songs", "B"));
+        File.WriteAllText(Path.Combine(other.FullName, "map.osu"), "[Metadata]\nArtistUnicode:Other\nTitleUnicode:B\n");
+        File.WriteAllText(Path.Combine(other.FullName, "bg.jpg"), "image");
+        var result = await new HomeFolderService(appRoot).LoadSongsAsync(Path.Combine(root, "Other"), CancellationToken.None);
+        Assert.That(result!.ReadPage(0, 10).Single().Artist, Is.EqualTo("Other"));
+    }
+
+    [Test]
+    public async Task SkippedFoldersAreInventoriedWithoutRepeatedParsing()
+    {
+        Directory.CreateDirectory(Path.Combine(root, "Songs", "A"));
+        await new HomeFolderService(appRoot).LoadSongsAsync(root, CancellationToken.None);
+        CreateCachedSong("A");
+        var result = await new HomeFolderService(appRoot).LoadSongsAsync(root, CancellationToken.None);
+        Assert.That(result!.Count, Is.Zero);
+    }
+
+    [Test]
+    public async Task CacheWriteFailureStillReturnsSongsAndCleansTemporaryFile()
+    {
+        CreateCachedSong("A");
+        Directory.CreateDirectory(Path.Combine(appRoot, "data.json"));
+        var result = await new HomeFolderService(appRoot).LoadSongsAsync(root, CancellationToken.None);
+        Assert.That(result!.Count, Is.EqualTo(1));
+        Assert.That(Directory.GetFiles(appRoot, "*.tmp"), Is.Empty);
+    }
+
+    [Test]
+    public async Task CancelledLoadPreservesExistingCache()
+    {
+        CreateCachedSong("A");
+        var service = new HomeFolderService(appRoot);
+        await service.LoadSongsAsync(root, CancellationToken.None);
+        var before = File.ReadAllBytes(Path.Combine(appRoot, "data.json"));
+        Assert.ThrowsAsync<TaskCanceledException>(async () =>
+            await service.LoadSongsAsync(root, new CancellationToken(true)));
+        Assert.That(File.ReadAllBytes(Path.Combine(appRoot, "data.json")), Is.EqualTo(before));
+    }
+
+    private void CreateCachedSong(string name)
+    {
+        var folder = Directory.CreateDirectory(Path.Combine(root, "Songs", name));
+        File.WriteAllText(Path.Combine(folder.FullName, "map.osu"), "[Metadata]\nArtistUnicode:Artist\nTitleUnicode:" + name + "\n");
+        File.WriteAllText(Path.Combine(folder.FullName, "bg.jpg"), "image");
+    }
+
+    [Test]
     public async Task CreatesProjectsAndListsOnlyImmediateSongFolders()
     {
         var install = Directory.CreateDirectory(Path.Combine(root, "game"));

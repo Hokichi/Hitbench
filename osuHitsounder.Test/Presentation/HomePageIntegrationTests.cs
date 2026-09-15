@@ -77,6 +77,47 @@ public class HomePageIntegrationTests
     }
 
     [Test]
+    public void CancellationWhileWaitingForVisibleViewportClearsProcessing()
+    {
+        EnsureResources();
+        var vm = CreateVM(new StubHomeFolderService());
+        var page = new HomePage(vm) { Visibility = Visibility.Hidden };
+        var window = new Window { Content = page, ShowInTaskbar = false };
+        using var cancellation = new CancellationTokenSource();
+        window.Show();
+        try
+        {
+            var loading = page.LoadAsync(cancellation.Token);
+            UiTestPump.Run(vm.LoadAsync(cancellation.Token));
+            Assert.That(vm.IsProcessing, Is.True);
+            cancellation.Cancel();
+            Assert.Catch<OperationCanceledException>(() => UiTestPump.Run(loading));
+            Assert.That(vm.IsProcessing, Is.False);
+        }
+        finally { window.Close(); }
+    }
+
+    [Test]
+    public void HiddenViewportResumesPresentationWhenShown()
+    {
+        EnsureResources();
+        var vm = CreateVM(new StubHomeFolderService());
+        var page = new HomePage(vm) { Visibility = Visibility.Hidden };
+        var window = new Window { Content = page, ShowInTaskbar = false };
+        window.Show();
+        try
+        {
+            var loading = page.LoadAsync(CancellationToken.None);
+            UiTestPump.Run(vm.LoadAsync(CancellationToken.None));
+            Assert.That(vm.IsProcessing, Is.True);
+            page.Visibility = Visibility.Visible;
+            UiTestPump.Run(loading);
+            Assert.That(vm.IsProcessing, Is.False);
+        }
+        finally { window.Close(); }
+    }
+
+    [Test]
     public void ContainerBuildsShellWithInjectedPageAndViewModel()
     {
         EnsureResources();
@@ -179,15 +220,17 @@ public class HomePageIntegrationTests
             PumpUntil(() => vm.Songs.Count == 1);
             var button = Descendants<Button>(page).Single(button => button.IsVisible && button.DataContext is FolderEntry);
             var text = Descendants<TextBlock>(button).ToArray();
+            var backgroundControl = Descendants<OHsSongBackground>(button).Single();
+            Assert.That(backgroundControl.LoadingTask.IsCompleted, Is.True);
+            Assert.That(backgroundControl.ImageBrush, Is.Not.Null, "Initial background must be ready when loading completes.");
             Assert.That(text.Select(value => value.Text), Is.EqualTo(new[] { "Artist", "Title" }));
             button.Focus();
             window.UpdateLayout();
-            var tooltip = (ToolTip)button.ToolTip;
-            tooltip.PlacementTarget = button;
-            tooltip.IsOpen = true;
-            window.Dispatcher.Invoke(() => { }, DispatcherPriority.ContextIdle);
-            Assert.That(tooltip.Content, Is.EqualTo(song.FullName));
-            tooltip.IsOpen = false;
+            Assert.That(button.ToolTip, Is.Null);
+            Assert.That(button.IsTabStop, Is.False);
+            Assert.That(button.Opacity, Is.EqualTo(button.IsMouseOver ? 1 : 0.7));
+            Assert.That(((System.Windows.Media.Effects.BlurEffect)button.Effect).Radius,
+                Is.EqualTo(button.IsMouseOver ? 0 : 10));
             Assert.That(button.CommandParameter, Is.SameAs(row));
             Assert.That(vm.FatalError, Is.Null);
             Assert.That(button.IsEnabled, Is.True);

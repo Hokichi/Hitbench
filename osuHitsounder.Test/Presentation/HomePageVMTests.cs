@@ -6,6 +6,26 @@ namespace osuHitsounder.Test.Presentation;
 
 public class HomePageVMTests
 {
+    [Test]
+    public async Task ProcessingWaitsForCurrentViewportPresentation()
+    {
+        var vm = CreateVM(new StubHomeFolderService
+        {
+            Songs = (_, _) => Task.FromResult<FolderSnapshot?>(new FolderSnapshot(
+                [new FolderEntry(@"C:\Songs\One", "One", DateTimeOffset.MinValue)]))
+        });
+        await vm.LoadAsync(CancellationToken.None);
+        Assert.That(vm.IsProcessing, Is.True);
+        var generation = vm.SongsPresentationGeneration;
+        await vm.LoadInitialSongsAsync(8, CancellationToken.None);
+        Assert.That(vm.Songs.Count, Is.EqualTo(1));
+        Assert.That(vm.CanInteract, Is.False);
+        vm.CompleteSongsPresentation(generation - 1);
+        Assert.That(vm.IsProcessing, Is.True);
+        vm.CompleteSongsPresentation(generation);
+        Assert.That(vm.IsProcessing, Is.False);
+        Assert.That(vm.CanInteract, Is.True);
+    }
     private static HomePageVM CreateVM(StubHomeFolderService folders) =>
         new(folders, new StubAppSettingsService(), new StubInstallationDialogService(),
             new StubProjectCreationDialogService(), new ImmediateUiScheduler(),
@@ -66,8 +86,9 @@ public class HomePageVMTests
         }
         Assert.That(vm.Songs, Is.Empty);
         Assert.That(vm.HasMoreSongs, Is.True);
-        Assert.That(vm.LoadMoreSongsCommand.CanExecute(20), Is.True);
-        await vm.LoadMoreSongsCommand.ExecuteAsync(20);
+        Assert.That(vm.LoadMoreSongsCommand.CanExecute(20), Is.False);
+        await vm.LoadInitialSongsAsync(20, CancellationToken.None);
+        vm.CompleteSongsPresentation(vm.SongsPresentationGeneration);
         Assert.That(vm.Songs, Has.Count.EqualTo(20));
         Assert.That(vm.Songs.First().Name, Is.EqualTo("129"));
         Assert.That(vm.Songs.Last().Name, Is.EqualTo("110"));
@@ -90,6 +111,7 @@ public class HomePageVMTests
         });
         await vm.LoadAsync(CancellationToken.None);
         Assert.That(vm.Projects, Has.Count.EqualTo(64));
+        vm.CompleteSongsPresentation(vm.SongsPresentationGeneration);
         await vm.LoadMoreProjectsCommand.ExecuteAsync(null);
         Assert.That(vm.Projects, Has.Count.EqualTo(128));
         await vm.LoadMoreProjectsCommand.ExecuteAsync(null);
@@ -121,6 +143,7 @@ public class HomePageVMTests
         var vm = CreateVM(folders);
         await vm.LoadAsync(CancellationToken.None);
         Assert.That(vm.CanRetrySongs, Is.True);
+        vm.CompleteSongsPresentation(vm.SongsPresentationGeneration);
 
         await vm.RetrySongsCommand.ExecuteAsync(null);
 
@@ -178,6 +201,7 @@ public class HomePageVMTests
                 .Select(i => new FolderEntry($@"C:\Songs\{i}", $"{i}", DateTimeOffset.MinValue))))
         });
         await vm.LoadAsync(cancellation.Token);
+        vm.CompleteSongsPresentation(vm.SongsPresentationGeneration);
         vm.Songs.CollectionChanged += (_, _) =>
         {
             if (vm.Songs.Count == 20) cancellation.Cancel();
@@ -212,6 +236,8 @@ public class HomePageVMTests
         }
         Assert.That(vm.Songs, Is.Empty);
         Assert.That(vm.HasMoreSongs, Is.True);
+        Assert.That(vm.IsProcessing, Is.True);
+        vm.CompleteSongsPresentation(vm.SongsPresentationGeneration);
         Assert.That(vm.IsProcessing, Is.False);
         Assert.That(vm.IsInteractionBlocked, Is.False);
         Assert.That(vm.CanRetrySongs, Is.False);

@@ -52,6 +52,8 @@ public class InstallationRecoveryTests
         await vm.LoadAsync(CancellationToken.None);
         Assert.That(calls, Is.EqualTo(new[] { "picker", @"save:C:\chosen", @"songs:C:\chosen" }));
         Assert.That(vm.RequiresShutdown, Is.False);
+        Assert.That(vm.IsInteractionBlocked, Is.True);
+        vm.CompleteSongsPresentation(vm.SongsPresentationGeneration);
         Assert.That(vm.IsInteractionBlocked, Is.False);
     }
 

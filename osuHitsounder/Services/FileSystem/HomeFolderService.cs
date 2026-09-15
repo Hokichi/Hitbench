@@ -1,5 +1,8 @@
 using System.IO;
 using System.IO.Enumeration;
+using System.Diagnostics;
+using System.Text.Json;
+using osuHitsounder.Core.Entities;
 using osuHitsounder.Resources.DataModels;
 
 namespace osuHitsounder.Services.FileSystem;
@@ -24,8 +27,8 @@ public sealed class HomeFolderService(string applicationDirectory, Func<Cancella
         Task.Run(() =>
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var songsPath = Path.Combine(osuDirectory, "Songs");
-            try { return ReadSnapshot(songsPath, cancellationToken, songs: true); }
+            var songsPath = Path.GetFullPath(Path.Combine(osuDirectory, "Songs"));
+            try { return ReadCachedSongs(songsPath, cancellationToken); }
             catch (DirectoryNotFoundException) when (!Directory.Exists(songsPath)) { return null; }
         }, cancellationToken);
 
@@ -37,7 +40,79 @@ public sealed class HomeFolderService(string applicationDirectory, Func<Cancella
                 File.Exists(Path.Combine(directory, "osu!.exe"));
         }, cancellationToken);
 
-    private static FolderSnapshot ReadSnapshot(string path, CancellationToken token, bool songs = false)
+    private FolderSnapshot ReadCachedSongs(string path, CancellationToken token)
+    {
+        var inventory = ReadSnapshot(path, token);
+        var folders = inventory.ReadPage(0, inventory.Count);
+        var cachePath = Path.Combine(applicationDirectory, "data.json");
+        var cache = ReadCache(cachePath, path);
+        var known = new HashSet<string>(cache?.Folders ?? [], StringComparer.OrdinalIgnoreCase);
+        var current = folders.Select(folder => folder.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var reused = (cache?.Songs ?? []).Where(song => current.Contains(song.Name)).Select(song =>
+            new FolderEntry(song.FullName, song.Name, song.LastWriteTimeUtc)
+            {
+                Artist = song.Artist, Title = song.Title, DisplayName = song.DisplayName,
+                BackgroundPath = song.BackgroundPath
+            });
+        var snapshot = new FolderSnapshot(reused.Concat(ReadSongEntries(
+            folders.Where(folder => !known.Contains(folder.Name)), token)), token);
+        if (cache is not null && known.Count == current.Count && known.SetEquals(current)) return snapshot;
+        var songs = snapshot.ReadPage(0, snapshot.Count).Select(song => new Song(song.FullName,
+            song.Name, song.LastWriteTimeUtc, song.Artist, song.Title, song.DisplayName, song.BackgroundPath)).ToArray();
+        token.ThrowIfCancellationRequested();
+        SaveCache(cachePath, new SongCache(1, path, current.ToArray(), songs), token);
+        return snapshot;
+    }
+
+    private static SongCache? ReadCache(string cachePath, string songsRoot)
+    {
+        try
+        {
+            using var stream = File.OpenRead(cachePath);
+            var cache = JsonSerializer.Deserialize<SongCache>(stream);
+            if (cache is not { Version: 1, Folders: not null, Songs: not null } ||
+                !StringComparer.OrdinalIgnoreCase.Equals(cache.SongsRoot, songsRoot)) return null;
+            var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var name in cache.Folders)
+                if (string.IsNullOrWhiteSpace(name) || name != Path.GetFileName(name) ||
+                    name is "." or ".." || !names.Add(name)) return null;
+            var songNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var song in cache.Songs)
+                if (song is null || song.Name is null || !names.Contains(song.Name) || !songNames.Add(song.Name) ||
+                    !StringComparer.OrdinalIgnoreCase.Equals(song.FullName, Path.Combine(songsRoot, song.Name)) ||
+                    song.Artist is null || song.Title is null || song.DisplayName is null || song.BackgroundPath is null)
+                    return null;
+            return cache;
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or JsonException or ArgumentException)
+        {
+            return null;
+        }
+    }
+
+    private void SaveCache(string cachePath, SongCache cache, CancellationToken token)
+    {
+        var temporary = cachePath + "." + Guid.NewGuid().ToString("N") + ".tmp";
+        try
+        {
+            Directory.CreateDirectory(applicationDirectory);
+            using (var stream = File.Create(temporary)) JsonSerializer.Serialize(stream, cache);
+            token.ThrowIfCancellationRequested();
+            File.Move(temporary, cachePath, overwrite: true);
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+        {
+            Trace.TraceWarning("Song cache could not be saved: {0}", error.Message);
+        }
+        finally
+        {
+            try { File.Delete(temporary); }
+            catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+            { Trace.TraceWarning("Song cache temporary file cleanup failed: {0}", error.Message); }
+        }
+    }
+
+    private static FolderSnapshot ReadSnapshot(string path, CancellationToken token)
     {
         var entries = new FileSystemEnumerable<FolderEntry>(path,
             (ref FileSystemEntry entry) => new FolderEntry(
@@ -48,7 +123,7 @@ public sealed class HomeFolderService(string applicationDirectory, Func<Cancella
             token.ThrowIfCancellationRequested();
             return entry.IsDirectory;
         };
-        return new FolderSnapshot(songs ? ReadSongEntries(entries, token) : entries, token);
+        return new FolderSnapshot(entries, token);
     }
 
     private static IEnumerable<FolderEntry> ReadSongEntries(IEnumerable<FolderEntry> entries, CancellationToken token)
