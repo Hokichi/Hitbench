@@ -24,6 +24,69 @@ public class AppSettingsServiceTests
         Assert.That(json["osuPath"]!.Value<string>(), Is.EqualTo(root.FullName));
     }
 
+    [Test]
+    public async Task SeedsMissingWindowPlacementWithDefaults()
+    {
+        await File.WriteAllTextAsync(FilePath, "{\"keep\":17}");
+        using var service = new AppSettingsService(root.FullName);
+
+        var settings = await service.LoadAsync(CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(settings.IsMaximized, Is.False);
+            Assert.That(settings.RestoredWidth, Is.EqualTo(1280));
+            Assert.That(settings.RestoredHeight, Is.EqualTo(720));
+        });
+        var json = JObject.Parse(await File.ReadAllTextAsync(FilePath));
+        Assert.That(json["keep"]!.Value<int>(), Is.EqualTo(17));
+        Assert.That(json["isMaximized"]!.Value<bool>(), Is.False);
+        Assert.That(json["restoredWidth"]!.Value<double>(), Is.EqualTo(1280));
+        Assert.That(json["restoredHeight"]!.Value<double>(), Is.EqualTo(720));
+    }
+
+    [Test]
+    public async Task SavesWindowPlacementAtomicallyAndPreservesOtherProperties()
+    {
+        await File.WriteAllTextAsync(FilePath, "{\"osuPath\":\"C:\\\\osu\",\"keep\":17}");
+        using var service = new AppSettingsService(root.FullName);
+
+        await service.SaveWindowPlacementAsync(true, 1440, 900, CancellationToken.None);
+
+        var json = JObject.Parse(await File.ReadAllTextAsync(FilePath));
+        Assert.That(json["osuPath"]!.Value<string>(), Is.EqualTo(@"C:\osu"));
+        Assert.That(json["keep"]!.Value<int>(), Is.EqualTo(17));
+        Assert.That(json["isMaximized"]!.Value<bool>(), Is.True);
+        Assert.That(json["restoredWidth"]!.Value<double>(), Is.EqualTo(1440));
+        Assert.That(json["restoredHeight"]!.Value<double>(), Is.EqualTo(900));
+    }
+
+    [TestCase("{\"isMaximized\":17}")]
+    [TestCase("{\"restoredWidth\":\"wide\"}")]
+    [TestCase("{\"restoredHeight\":true}")]
+    public async Task InvalidWindowPlacementTypesArePreserved(string json)
+    {
+        await File.WriteAllTextAsync(FilePath, json);
+        using var service = new AppSettingsService(root.FullName);
+
+        Assert.ThrowsAsync<IOException>(() => service.LoadAsync(CancellationToken.None));
+        Assert.That(await File.ReadAllTextAsync(FilePath), Is.EqualTo(json));
+    }
+
+    [TestCase(0, 720)]
+    [TestCase(-1, 720)]
+    [TestCase(double.NaN, 720)]
+    [TestCase(1280, 0)]
+    [TestCase(1280, double.PositiveInfinity)]
+    public void RejectsInvalidWindowPlacementDimensions(double width, double height)
+    {
+        using var service = new AppSettingsService(root.FullName);
+
+        Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            service.SaveWindowPlacementAsync(false, width, height, CancellationToken.None));
+        Assert.That(File.Exists(FilePath), Is.False);
+    }
+
     [TestCase("{\"osuPath\":null}")]
     [TestCase("{\"osuPath\":\"  \"}")]
     public async Task NormalizesUnsetPath(string json)
@@ -64,4 +127,3 @@ public class AppSettingsServiceTests
         Assert.That(File.Exists(FilePath), Is.False);
     }
 }
-

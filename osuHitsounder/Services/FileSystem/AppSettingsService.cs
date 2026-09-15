@@ -17,16 +17,36 @@ public sealed class AppSettingsService(string applicationDirectory) : IAppSettin
         try
         {
             var json = await ReadAsync(cancellationToken);
+            var changed = false;
             if (!json.ContainsKey("osuPath"))
             {
                 json["osuPath"] = "";
-                await WriteAsync(json, cancellationToken);
+                changed = true;
             }
+            if (!json.ContainsKey("isMaximized"))
+            {
+                json["isMaximized"] = false;
+                changed = true;
+            }
+            if (!json.ContainsKey("restoredWidth"))
+            {
+                json["restoredWidth"] = 1280d;
+                changed = true;
+            }
+            if (!json.ContainsKey("restoredHeight"))
+            {
+                json["restoredHeight"] = 720d;
+                changed = true;
+            }
+            if (changed) await WriteAsync(json, cancellationToken);
             var settings = json.ToObject<AppSettings>(JsonSerializer.Create(new JsonSerializerSettings
             {
                 ContractResolver = new CamelCasePropertyNamesContractResolver()
             }))!;
             settings.OsuPath = string.IsNullOrWhiteSpace(settings.OsuPath) ? "" : settings.OsuPath;
+            if (json["isMaximized"]?.Type == JTokenType.Null) settings.IsMaximized = false;
+            if (json["restoredWidth"]?.Type == JTokenType.Null) settings.RestoredWidth = 1280;
+            if (json["restoredHeight"]?.Type == JTokenType.Null) settings.RestoredHeight = 720;
             return settings;
         }
         finally { gate.Release(); }
@@ -46,6 +66,25 @@ public sealed class AppSettingsService(string applicationDirectory) : IAppSettin
         finally { gate.Release(); }
     }
 
+    public async Task SaveWindowPlacementAsync(bool isMaximized, double restoredWidth, double restoredHeight,
+        CancellationToken cancellationToken)
+    {
+        if (!double.IsFinite(restoredWidth) || restoredWidth <= 0)
+            throw new ArgumentOutOfRangeException(nameof(restoredWidth));
+        if (!double.IsFinite(restoredHeight) || restoredHeight <= 0)
+            throw new ArgumentOutOfRangeException(nameof(restoredHeight));
+        await gate.WaitAsync(cancellationToken);
+        try
+        {
+            var json = await ReadAsync(cancellationToken);
+            json["isMaximized"] = isMaximized;
+            json["restoredWidth"] = restoredWidth;
+            json["restoredHeight"] = restoredHeight;
+            await WriteAsync(json, cancellationToken);
+        }
+        finally { gate.Release(); }
+    }
+
     private async Task<JObject> ReadAsync(CancellationToken token)
     {
         try
@@ -54,6 +93,15 @@ public sealed class AppSettingsService(string applicationDirectory) : IAppSettin
             if (json.TryGetValue("osuPath", out var value) &&
                 value.Type is not (JTokenType.String or JTokenType.Null))
                 throw new JsonSerializationException("osuPath must be a string or null.");
+            if (json.TryGetValue("isMaximized", out value) &&
+                value.Type is not (JTokenType.Boolean or JTokenType.Null))
+                throw new JsonSerializationException("isMaximized must be a boolean or null.");
+            if (json.TryGetValue("restoredWidth", out value) &&
+                value.Type is not (JTokenType.Integer or JTokenType.Float or JTokenType.Null))
+                throw new JsonSerializationException("restoredWidth must be a number or null.");
+            if (json.TryGetValue("restoredHeight", out value) &&
+                value.Type is not (JTokenType.Integer or JTokenType.Float or JTokenType.Null))
+                throw new JsonSerializationException("restoredHeight must be a number or null.");
             return json;
         }
         catch (FileNotFoundException) { return new JObject(); }
@@ -87,4 +135,3 @@ public sealed class AppSettingsService(string applicationDirectory) : IAppSettin
 
     public void Dispose() => gate.Dispose();
 }
-
