@@ -183,8 +183,8 @@
                 Style="{StaticResource HomePageSongCardButtonStyle}">
                 <Grid>
                     <customControls:OHsSongBackground
-                        Path="{Binding BackgroundPath, Mode=OneWay}"
                         Loader="{Binding ImageLoader, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=OneWay}"
+                        Path="{Binding BackgroundPath, Mode=OneWay}"
                         Style="{StaticResource HomePageSongBackgroundStyle}" />
                     <StackPanel
                         Width="304"
@@ -288,7 +288,7 @@
     </UserControl.Resources>
     <Grid Margin="12,16">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="300" />
             <ColumnDefinition Width="3*" />
         </Grid.ColumnDefinitions>
         <Border Grid.Column="0" Style="{StaticResource HomePagePanelStyle}">

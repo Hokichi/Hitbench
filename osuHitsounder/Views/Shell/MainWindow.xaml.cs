@@ -251,7 +251,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>, IRe
         if (!IsInitialized) return;
         var restoring = WindowState == WindowState.Maximized;
         var label = restoring ? "Restore" : "Maximize";
-        MaximizeRestoreIcon.Path = (Geometry)FindResource(restoring ? "WindowRestore" : "WindowMaximize");
+        MaximizeRestoreIcon.Path = (Geometry)FindResource(restoring ? "CompressAlt" : "ExpandAlt");
         AutomationProperties.SetName(MaximizeRestoreButton, label);
         MaximizeRestoreButton.ToolTip = label;
     }
