@@ -438,7 +438,7 @@ public class HomePageIntegrationTests
             {
                 app.Resources.MergedDictionaries.Clear();
                 UiTestPump.EnsureFontResources(app);
-                foreach (var resource in new[] { $"Themes/{theme}.xaml", "Styles/TextBlock.xaml", "Styles/ItemsControl.xaml", "Styles/Border.xaml", "Styles/ContentPresenter.xaml", "Styles/Button.xaml", "Styles/ToolTip.xaml", "Styles/Window.xaml" })
+                foreach (var resource in new[] { $"Themes/{theme}.xaml", "Converters/Converters.xaml", "Icons.xaml", "Styles/TextBlock.xaml", "Styles/ItemsControl.xaml", "Styles/Border.xaml", "Styles/ContentPresenter.xaml", "Styles/Button.xaml", "Styles/ToolTip.xaml", "Styles/Window.xaml" })
                     app.Resources.MergedDictionaries.Add(new ResourceDictionary
                     {
                         Source = new Uri($"/osuHitsounder;component/Resources/{resource}", UriKind.Relative)
@@ -490,7 +490,8 @@ public class HomePageIntegrationTests
                         Assert.That(lists[0].Items.Count, Is.EqualTo(1));
                         Assert.That(songsList.Items.Count, Is.EqualTo(36));
                         var columns = ((Grid)page.Content).ColumnDefinitions;
-                        Assert.That(columns[1].ActualWidth / columns[0].ActualWidth, Is.EqualTo(3).Within(0.01));
+                        Assert.That(columns[0].ActualWidth, Is.EqualTo(300).Within(0.01));
+                        Assert.That(columns[1].ActualWidth, Is.GreaterThan(columns[0].ActualWidth * 3));
                         Assert.That(panel.Columns, Is.EqualTo(4));
                         Assert.That(panel.ItemWidth, Is.EqualTo(336));
                         Assert.That(panel.ItemHeight, Is.EqualTo(108));
