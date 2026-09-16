@@ -17,7 +17,7 @@ public class HomePageVMTests
         await vm.LoadAsync(CancellationToken.None);
         Assert.That(vm.IsProcessing, Is.True);
         var generation = vm.SongsPresentationGeneration;
-        await vm.LoadInitialSongsAsync(8, CancellationToken.None);
+        await vm.LoadInitialSongsAsync(CancellationToken.None);
         Assert.That(vm.Songs.Count, Is.EqualTo(1));
         Assert.That(vm.CanInteract, Is.False);
         vm.CompleteSongsPresentation(generation - 1);
@@ -68,7 +68,7 @@ public class HomePageVMTests
     }
 
     [Test]
-    public async Task SongSnapshotWaitsForExplicitViewportSizedDemand()
+    public async Task SongSnapshotWaitsForFixedInitialDemandThenUsesViewportSizedPages()
     {
         var pending = new TaskCompletionSource<FolderSnapshot?>(TaskCreationOptions.RunContinuationsAsynchronously);
         var vm = CreateVM(new StubHomeFolderService { Songs = (_, token) => pending.Task.WaitAsync(token) });
@@ -87,18 +87,35 @@ public class HomePageVMTests
         Assert.That(vm.Songs, Is.Empty);
         Assert.That(vm.HasMoreSongs, Is.True);
         Assert.That(vm.LoadMoreSongsCommand.CanExecute(20), Is.False);
-        await vm.LoadInitialSongsAsync(20, CancellationToken.None);
+        await vm.LoadInitialSongsAsync(CancellationToken.None);
         vm.CompleteSongsPresentation(vm.SongsPresentationGeneration);
-        Assert.That(vm.Songs, Has.Count.EqualTo(20));
-        Assert.That(vm.Songs.First().Name, Is.EqualTo("129"));
-        Assert.That(vm.Songs.Last().Name, Is.EqualTo("110"));
-        await vm.LoadMoreSongsCommand.ExecuteAsync(16);
         Assert.That(vm.Songs, Has.Count.EqualTo(36));
+        Assert.That(vm.Songs.First().Name, Is.EqualTo("129"));
         Assert.That(vm.Songs.Last().Name, Is.EqualTo("094"));
+        await vm.LoadMoreSongsCommand.ExecuteAsync(16);
+        Assert.That(vm.Songs, Has.Count.EqualTo(52));
+        Assert.That(vm.Songs.Last().Name, Is.EqualTo("078"));
         Assert.That(vm.IsProcessing, Is.False);
         Assert.That(vm.CanInteract, Is.True);
         Assert.That(vm.HasMoreSongs, Is.True);
         Assert.That(vm.LoadMoreSongsCommand.CanExecute(0), Is.False);
+    }
+
+    [Test]
+    public async Task InitialSongDemandPublishesAllWhenFewerThanThirtySixExist()
+    {
+        var vm = CreateVM(new StubHomeFolderService
+        {
+            Songs = (_, _) => Task.FromResult<FolderSnapshot?>(new FolderSnapshot(
+                Enumerable.Range(0, 7).Select(i =>
+                    new FolderEntry($@"C:\Songs\{i}", $"{i}", DateTimeOffset.UnixEpoch.AddMinutes(i)))))
+        });
+
+        await vm.LoadAsync(CancellationToken.None);
+        await vm.LoadInitialSongsAsync(CancellationToken.None);
+
+        Assert.That(vm.Songs, Has.Count.EqualTo(7));
+        Assert.That(vm.HasMoreSongs, Is.False);
     }
 
     [Test]

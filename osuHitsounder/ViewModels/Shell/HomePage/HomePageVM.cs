@@ -18,6 +18,8 @@ public partial class HomePageVM(
     IProjectCreationDialogService projectDialogs, IUiScheduler ui,
     IProjectFileService projectFiles, IMessenger messenger) : ObservableObject
 {
+    internal const int InitialSongCount = 9 * 4;
+
     public ObservableCollection<FolderEntry> Projects { get; } = [];
     public ObservableCollection<FolderEntry> Songs { get; } = [];
     [ObservableProperty, NotifyPropertyChangedFor(nameof(IsLoading))] private bool isLoadingProjects;
@@ -180,15 +182,16 @@ public partial class HomePageVM(
         EndProcessing();
     }
 
-    public async Task LoadInitialSongsAsync(int requestedCount, CancellationToken cancellationToken)
+    public async Task LoadInitialSongsAsync(CancellationToken cancellationToken)
     {
         if (!active || !IsAwaitingSongsPresentation || IsLoadingSongs ||
-            songsSnapshot is null || requestedCount <= Songs.Count) return;
+            songsSnapshot is null || Songs.Count >= InitialSongCount) return;
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token, cancellationToken);
         SetBusy(false, true);
         try
         {
-            await PublishPageAsync(false, songsSnapshot, songsGeneration, requestedCount - Songs.Count, linked.Token);
+            await PublishPageAsync(false, songsSnapshot, songsGeneration,
+                InitialSongCount - Songs.Count, linked.Token);
         }
         catch (OperationCanceledException) when (linked.IsCancellationRequested) { EndProcessing(); }
         catch (Exception error) { FailPanel(false, error); EndProcessing(); }

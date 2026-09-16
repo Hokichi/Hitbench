@@ -56,7 +56,7 @@ public class HomeFolderPerformanceTests
                 Assert.That(vm.FatalError, Is.Null);
                 Assert.That(vm.Songs, Is.Empty);
                 Assert.That(vm.HasMoreSongs, Is.True);
-                await vm.LoadInitialSongsAsync(64, CancellationToken.None);
+                await vm.LoadInitialSongsAsync(CancellationToken.None);
                 vm.CompleteSongsPresentation(vm.SongsPresentationGeneration);
                 Assert.That(vm.Songs, Has.Count.EqualTo(64));
                 Assert.That(vm.CreateProjectCommand.CanExecute(vm.Songs[0]), Is.True);

@@ -141,9 +141,7 @@ public partial class HomePage : UserControl
             if (viewModel.IsLoading || !IsVisible || SongsList.ActualHeight <= 0) return;
             var generation = viewModel.SongsPresentationGeneration;
             var size = SongsList.RenderSize;
-            var height = panel.ViewportHeight > 0 ? panel.ViewportHeight : SongsList.ActualHeight;
-            var count = checked(((int)Math.Ceiling(height / panel.RowStride) + 1) * Math.Max(1, panel.Columns));
-            await viewModel.LoadInitialSongsAsync(count, lifetime.Token);
+            await viewModel.LoadInitialSongsAsync(lifetime.Token);
             await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Loaded, lifetime.Token);
             SongsList.UpdateLayout();
             var backgrounds = Descendants<OHsSongBackground>(SongsList).ToArray();
