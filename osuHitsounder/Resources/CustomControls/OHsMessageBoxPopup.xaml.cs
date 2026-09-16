@@ -1,12 +1,14 @@
 using System.Windows;
-using System.Windows.Controls;
+using System.Windows.Automation;
 using System.Windows.Documents;
+using System.Windows.Input;
 using System.Windows.Media;
 namespace osuHitsounder.Resources.CustomControls;
 
 public partial class OHsMessageBoxPopup : BasePopup
 {
     private MessageBoxButton _buttons;
+    private BalloonButton? defaultButton;
 
     protected override bool ShouldBubbleApplicationClose => false;
 
@@ -32,40 +34,57 @@ public partial class OHsMessageBoxPopup : BasePopup
         {
             case MessageBoxButton.OK:
                 ConfigureButton(PrimaryButton, "OK", MessageBoxResult.OK, true);
-                PrimaryButton.IsCancel = true;
                 break;
 
             case MessageBoxButton.OKCancel:
                 ConfigureButton(PrimaryButton, "OK", MessageBoxResult.OK, true);
-                ConfigureButton(SecondaryButton, "Cancel", MessageBoxResult.Cancel, isCancel: true);
+                ConfigureButton(SecondaryButton, "Cancel", MessageBoxResult.Cancel);
                 break;
 
             case MessageBoxButton.YesNo:
                 ConfigureButton(PrimaryButton, "Yes", MessageBoxResult.Yes, true);
-                ConfigureButton(SecondaryButton, "No", MessageBoxResult.No, isCancel: true);
+                ConfigureButton(SecondaryButton, "No", MessageBoxResult.No);
                 break;
 
             case MessageBoxButton.YesNoCancel:
                 ConfigureButton(PrimaryButton, "Yes", MessageBoxResult.Yes, true);
                 ConfigureButton(SecondaryButton, "No", MessageBoxResult.No);
-                ConfigureButton(TertiaryButton, "Cancel", MessageBoxResult.Cancel, isCancel: true);
+                ConfigureButton(TertiaryButton, "Cancel", MessageBoxResult.Cancel);
                 break;
 
             default:
                 ConfigureButton(PrimaryButton, "OK", MessageBoxResult.OK, true);
-                PrimaryButton.IsCancel = true;
                 break;
         }
     }
 
-    private void ConfigureButton(Button button, string content, MessageBoxResult result,
-        bool isDefault = false, bool isCancel = false)
+    private void ConfigureButton(BalloonButton button, string content, MessageBoxResult result,
+        bool isDefault = false)
     {
-        button.Content = content;
+        var affirmative = result is MessageBoxResult.OK or MessageBoxResult.Yes;
+        button.ButtonText = content;
+        button.ButtonIcon = FindResource(affirmative ? "Check" : "Ban");
+        button.Style = (Style)FindResource(affirmative
+            ? "OHsBalloonConfirmActionStyle"
+            : "OHsBalloonDestructiveActionStyle");
+        AutomationProperties.SetName(button, content);
         button.Tag = result;
         button.Visibility = Visibility.Visible;
-        button.IsDefault = isDefault;
-        button.IsCancel = isCancel;
+        if (isDefault)
+            defaultButton = button;
+    }
+
+    protected override void OnPreviewKeyDown(KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter && Keyboard.Modifiers == ModifierKeys.None &&
+            defaultButton is { IsEnabled: true } button)
+        {
+            e.Handled = true;
+            SetResultFrom(button);
+            return;
+        }
+
+        base.OnPreviewKeyDown(e);
     }
 
     private void ConfigureIcon(MessageBoxImage icon)
@@ -108,7 +127,7 @@ public partial class OHsMessageBoxPopup : BasePopup
 
     private void SetResultFrom(object sender)
     {
-        if (sender is Button { Tag: MessageBoxResult result })
+        if (sender is BalloonButton { Tag: MessageBoxResult result })
             Result = result;
 
         Close();
@@ -172,4 +191,3 @@ public partial class OHsMessageBoxPopup : BasePopup
         }
     }
 }
-
