@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.Input;
 using osuHitsounder.Resources.CustomControls;
@@ -57,6 +58,7 @@ public partial class HomePage : UserControl
         lifetime.Cancel();
         presentation.TrySetCanceled(lifetime.Token);
         viewModel.Deactivate();
+        HideSongs();
         ImageLoader.Clear();
     }
 
@@ -84,6 +86,10 @@ public partial class HomePage : UserControl
     private void OnStateChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (!viewModel.IsProcessing) presentation.TrySetResult();
+        if ((e.PropertyName == nameof(HomePageVM.IsProcessing) && viewModel.IsProcessing) ||
+            (e.PropertyName == nameof(HomePageVM.IsAwaitingSongsPresentation) &&
+             viewModel.IsAwaitingSongsPresentation))
+            HideSongs();
         if (e.PropertyName is nameof(HomePageVM.HasMoreProjects) or nameof(HomePageVM.HasMoreSongs)
             or nameof(HomePageVM.IsLoadingProjects) or nameof(HomePageVM.IsLoadingSongs)
             or nameof(HomePageVM.CanInteract) or nameof(HomePageVM.IsAwaitingSongsPresentation))
@@ -140,22 +146,14 @@ public partial class HomePage : UserControl
         {
             if (viewModel.IsLoading || !IsVisible || SongsList.ActualHeight <= 0) return;
             var generation = viewModel.SongsPresentationGeneration;
-            var size = SongsList.RenderSize;
             await viewModel.LoadInitialSongsAsync(lifetime.Token);
-            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Loaded, lifetime.Token);
-            SongsList.UpdateLayout();
-            var backgrounds = Descendants<OHsSongBackground>(SongsList).ToArray();
-            var tasks = backgrounds.Select(background => background.LoadingTask).ToArray();
-            await Task.WhenAll(tasks).WaitAsync(lifetime.Token);
-            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Background, lifetime.Token);
-            if (!attached) return;
-            if (generation != viewModel.SongsPresentationGeneration || size != SongsList.RenderSize ||
-                backgrounds.Where((background, index) => !ReferenceEquals(background.LoadingTask, tasks[index])).Any())
+            if (!await PrepareInitialSongsAsync(generation, lifetime.Token))
             {
                 checkAgain = true;
                 return;
             }
             viewModel.CompleteSongsPresentation(generation);
+            RevealSongs(generation);
             return;
         }
 
@@ -201,6 +199,53 @@ public partial class HomePage : UserControl
             if (child is T match) yield return match;
             foreach (var descendant in Descendants<T>(child)) yield return descendant;
         }
+    }
+
+    private async Task<bool> PrepareInitialSongsAsync(int generation, CancellationToken token)
+    {
+        var decodeWidth = (int)Math.Ceiling(336 * VisualTreeHelper.GetDpi(SongsList).DpiScaleX);
+        var preloadTasks = viewModel.Songs
+            .Select(song => ImageLoader.LoadAsync(song.BackgroundPath, decodeWidth, token))
+            .ToArray();
+        await Task.WhenAll(preloadTasks).WaitAsync(token);
+        if (!attached || generation != viewModel.SongsPresentationGeneration) return false;
+
+        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Loaded, token);
+        SongsList.UpdateLayout();
+        var size = SongsList.RenderSize;
+        var backgrounds = Descendants<OHsSongBackground>(SongsList).ToArray();
+        var tasks = backgrounds.Select(background => background.LoadingTask).ToArray();
+        await Task.WhenAll(tasks).WaitAsync(token);
+        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render, token);
+
+        var changed = backgrounds.Where((background, index) =>
+            !ReferenceEquals(background.LoadingTask, tasks[index])).Any();
+        return attached && generation == viewModel.SongsPresentationGeneration &&
+            size == SongsList.RenderSize && !changed;
+    }
+
+    private void RevealSongs(int generation)
+    {
+        if (!attached || generation != viewModel.SongsPresentationGeneration ||
+            viewModel.IsAwaitingSongsPresentation)
+            return;
+
+        SongsList.BeginAnimation(OpacityProperty, null);
+        SongsList.Opacity = 1;
+        if (!SystemParameters.ClientAreaAnimation) return;
+
+        SongsList.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1,
+            TimeSpan.FromMilliseconds(160))
+        {
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+            FillBehavior = FillBehavior.Stop
+        }, HandoffBehavior.SnapshotAndReplace);
+    }
+
+    private void HideSongs()
+    {
+        SongsList.BeginAnimation(OpacityProperty, null);
+        SongsList.Opacity = 0;
     }
 
     private void Detach()

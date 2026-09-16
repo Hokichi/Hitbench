@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
@@ -94,7 +95,11 @@ public class ScanOverlayIntegrationTests
                 .Select(i => new FolderEntry($@"C:\Songs\{i}", $"{i}", DateTimeOffset.MinValue))));
             UiTestPump.Run(load);
             window.UpdateLayout();
-            Assert.That(vm.Songs, Is.Not.Empty, "Initial viewport must publish before Processing clears.");
+            var songsList = Descendants<ItemsControl>(window)
+                .Single(list => AutomationProperties.GetName(list) == "Songs");
+            Assert.That(vm.Songs, Has.Count.EqualTo(HomePageVM.InitialSongCount),
+                "Nine rows must publish before Processing clears.");
+            PumpUntil(() => Math.Abs(songsList.Opacity - 1) < 0.001);
             Assert.That(label.IsVisible, Is.False);
             Assert.That(host.IsEnabled, Is.True);
             Assert.That(vm.RequiresShutdown, Is.False);
@@ -139,7 +144,10 @@ public class ScanOverlayIntegrationTests
                 .Select(i => new FolderEntry($@"C:\Songs\{i}", $"{i}", DateTimeOffset.MinValue))));
             UiTestPump.Run(load);
             window.UpdateLayout();
-            Assert.That(vm.Songs, Is.Not.Empty);
+            var songsList = Descendants<ItemsControl>(window)
+                .Single(list => AutomationProperties.GetName(list) == "Songs");
+            Assert.That(vm.Songs, Has.Count.EqualTo(HomePageVM.InitialSongCount));
+            PumpUntil(() => Math.Abs(songsList.Opacity - 1) < 0.001);
             Assert.That(states, Is.Not.Empty.And.All.True);
             Assert.That(label.IsVisible, Is.False);
             Assert.That(host.IsEnabled, Is.True);

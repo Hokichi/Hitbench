@@ -495,10 +495,11 @@ public class HomePageIntegrationTests
         window.Show();
         try
         {
+            var songsList = (ItemsControl)page.FindName("SongsList");
+            Assert.That(songsList.Opacity, Is.Zero);
             UiTestPump.Run(page.LoadAsync(CancellationToken.None));
-            PumpUntil(() => vm.Songs.Count == 36);
-            var songsList = Descendants<ItemsControl>(page)
-                .Single(list => AutomationProperties.GetName(list) == "Songs");
+            PumpUntil(() => vm.Songs.Count == HomePageVM.InitialSongCount);
+            PumpUntil(() => Math.Abs(songsList.Opacity - 1) < 0.001);
             var panel = Descendants<SpacedUniformGrid>(songsList).Single();
             var scroll = Descendants<ScrollViewer>(songsList).Single();
 
@@ -528,6 +529,160 @@ public class HomePageIntegrationTests
         {
             window.Close();
             Directory.Delete(Path.GetDirectoryName(background)!, true);
+        }
+    }
+
+    [Test]
+    public void InitialPresentationWarmsEveryBackgroundAndMissingImagesDoNotBlockReveal()
+    {
+        EnsureResources();
+        var imageDirectory = Directory.CreateTempSubdirectory("osu-initial-images-");
+        var imageBytes = Convert.FromBase64String(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2nC8AAAAASUVORK5CYII=");
+        var entries = Enumerable.Range(0, HomePageVM.InitialSongCount).Select(index =>
+        {
+            var path = Path.Combine(imageDirectory.FullName, $"{index:D2}.png");
+            File.WriteAllBytes(path, imageBytes);
+            return new FolderEntry($@"C:\Songs\{index:D2}", index.ToString(), DateTimeOffset.UnixEpoch.AddMinutes(index))
+            {
+                DisplayName = index.ToString(),
+                BackgroundPath = index == HomePageVM.InitialSongCount - 1
+                    ? Path.Combine(imageDirectory.FullName, "missing.png")
+                    : path
+            };
+        }).ToArray();
+        var validPaths = entries.Select(entry => entry.BackgroundPath).Where(File.Exists).ToArray();
+        var vm = CreateVM(new StubHomeFolderService
+        {
+            Songs = (_, _) => Task.FromResult<FolderSnapshot?>(new FolderSnapshot(entries))
+        });
+        var page = new HomePage(vm);
+        var window = new Window
+        {
+            Content = page,
+            Width = 1280,
+            Height = 720,
+            ShowInTaskbar = false,
+            WindowStyle = WindowStyle.None
+        };
+        window.Show();
+        try
+        {
+            UiTestPump.Run(page.LoadAsync(CancellationToken.None));
+            var songsList = (ItemsControl)page.FindName("SongsList");
+            PumpUntil(() => Math.Abs(songsList.Opacity - 1) < 0.001);
+            foreach (var path in validPaths) File.Delete(path);
+            var decodeWidth = (int)Math.Ceiling(336 * VisualTreeHelper.GetDpi(songsList).DpiScaleX);
+            var cachedLoads = Task.WhenAll(validPaths.Select(path =>
+                page.ImageLoader.LoadAsync(path, decodeWidth, CancellationToken.None)));
+            UiTestPump.Run(cachedLoads);
+            var missingLoad = page.ImageLoader.LoadAsync(
+                Path.Combine(imageDirectory.FullName, "missing.png"), decodeWidth, CancellationToken.None);
+            UiTestPump.Run(missingLoad);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(vm.Songs, Has.Count.EqualTo(HomePageVM.InitialSongCount));
+                Assert.That(cachedLoads.Result, Has.All.Not.Null);
+                Assert.That(missingLoad.Result, Is.Null);
+                Assert.That(songsList.Opacity, Is.EqualTo(1).Within(0.001));
+            });
+        }
+        finally
+        {
+            window.Close();
+            imageDirectory.Delete(true);
+        }
+    }
+
+    [Test]
+    public void RetryHidesSongsThenRevealsCurrentReplacementGeneration()
+    {
+        EnsureResources();
+        var image = CreateTestImage();
+        FolderSnapshot Snapshot(string prefix) => new(Enumerable.Range(0, HomePageVM.InitialSongCount).Select(index =>
+            new FolderEntry($@"C:\Songs\{prefix}{index}", $"{prefix}{index}", DateTimeOffset.UnixEpoch)
+            {
+                BackgroundPath = image
+            }));
+        var pending = new TaskCompletionSource<FolderSnapshot?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var folders = new StubHomeFolderService
+        {
+            Songs = (_, _) => Task.FromResult<FolderSnapshot?>(Snapshot("Initial"))
+        };
+        var vm = CreateVM(folders);
+        var page = new HomePage(vm);
+        var window = new Window { Content = page, Width = 1280, Height = 720, ShowInTaskbar = false };
+        window.Show();
+        try
+        {
+            UiTestPump.Run(page.LoadAsync(CancellationToken.None));
+            var songsList = (ItemsControl)page.FindName("SongsList");
+            PumpUntil(() => Math.Abs(songsList.Opacity - 1) < 0.001);
+            vm.ReportDemandFailure(new IOException("retry"));
+            folders.Songs = (_, token) => pending.Task.WaitAsync(token);
+
+            var retry = vm.RetrySongsCommand.ExecuteAsync(null);
+            PumpUntil(() => vm.IsProcessing);
+            Assert.That(songsList.Opacity, Is.Zero);
+            pending.SetResult(Snapshot("Replacement"));
+            UiTestPump.Run(retry);
+            PumpUntil(() => Math.Abs(songsList.Opacity - 1) < 0.001);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(vm.Songs, Has.Count.EqualTo(HomePageVM.InitialSongCount));
+                Assert.That(vm.Songs.Select(song => song.Name), Has.All.StartsWith("Replacement"));
+                Assert.That(vm.IsProcessing, Is.False);
+            });
+        }
+        finally
+        {
+            window.Close();
+            Directory.Delete(Path.GetDirectoryName(image)!, true);
+        }
+    }
+
+    [Test]
+    public void DeactivationDuringRetryPreventsLateReveal()
+    {
+        EnsureResources();
+        var image = CreateTestImage();
+        var snapshot = new FolderSnapshot(Enumerable.Range(0, HomePageVM.InitialSongCount).Select(index =>
+            new FolderEntry($@"C:\Songs\{index}", index.ToString(), DateTimeOffset.UnixEpoch)
+            {
+                BackgroundPath = image
+            }));
+        var pending = new TaskCompletionSource<FolderSnapshot?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var folders = new StubHomeFolderService
+        {
+            Songs = (_, _) => Task.FromResult<FolderSnapshot?>(snapshot)
+        };
+        var vm = CreateVM(folders);
+        var page = new HomePage(vm);
+        var window = new Window { Content = page, Width = 1280, Height = 720, ShowInTaskbar = false };
+        window.Show();
+        try
+        {
+            UiTestPump.Run(page.LoadAsync(CancellationToken.None));
+            var songsList = (ItemsControl)page.FindName("SongsList");
+            PumpUntil(() => Math.Abs(songsList.Opacity - 1) < 0.001);
+            vm.ReportDemandFailure(new IOException("retry"));
+            folders.Songs = (_, token) => pending.Task.WaitAsync(token);
+            var retry = vm.RetrySongsCommand.ExecuteAsync(null);
+            PumpUntil(() => vm.IsProcessing);
+
+            page.Deactivate();
+            pending.TrySetResult(snapshot);
+            UiTestPump.Run(retry);
+            window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+
+            Assert.That(songsList.Opacity, Is.Zero);
+        }
+        finally
+        {
+            window.Close();
+            Directory.Delete(Path.GetDirectoryName(image)!, true);
         }
     }
 

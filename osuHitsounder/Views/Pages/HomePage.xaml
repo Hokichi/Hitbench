@@ -344,6 +344,7 @@
                     Grid.Row="3"
                     AutomationProperties.Name="Songs"
                     ItemsSource="{Binding Songs, Mode=OneWay}"
+                    Opacity="0"
                     Style="{StaticResource HomePageSongsStyle}" />
             </Grid>
         </Border>
