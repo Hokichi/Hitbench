@@ -43,4 +43,55 @@ public sealed class SharedUiResourceIntegrationTests
         Assert.That(popup.ApplyTemplate(), Is.True);
         popup.Close();
     }
+
+    [TestCase("OHsBalloonNeutralActionStyle", "Brush.BalloonButton.Background.Neutral", "Brush.BalloonButton.Background.Neutral.Hovered")]
+    [TestCase("OHsBalloonDefaultActionStyle", "Brush.BalloonButton.Background.Default", "Brush.BalloonButton.Background.Default.Hovered")]
+    [TestCase("OHsBalloonConfirmActionStyle", "Brush.BalloonButton.Background.ConfirmSave", "Brush.BalloonButton.Background.ConfirmSave.Hovered")]
+    [TestCase("OHsBalloonDestructiveActionStyle", "Brush.BalloonButton.Background.Destructive", "Brush.BalloonButton.Background.Destructive.Hovered")]
+    public void BalloonActionStyles_ProvideSharedGeometryAndSemanticBrushes(
+        string styleKey,
+        string defaultBrushKey,
+        string hoveredBrushKey)
+    {
+        var app = Application.Current ?? new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+        app.Resources.MergedDictionaries.Clear();
+        UiTestPump.EnsureFontResources(app);
+        app.Resources.MergedDictionaries.Add(new ResourceDictionary
+        {
+            Source = new Uri("/osuHitsounder;component/Resources/Themes/Dark.xaml", UriKind.Relative)
+        });
+        app.Resources.MergedDictionaries.Add(new ResourceDictionary
+        {
+            Source = new Uri("/osuHitsounder;component/Resources/Converters/Converters.xaml", UriKind.Relative)
+        });
+        app.Resources.MergedDictionaries.Add(new ResourceDictionary
+        {
+            Source = new Uri("/osuHitsounder;component/Resources/Styles/ContentPresenter.xaml", UriKind.Relative)
+        });
+        app.Resources.MergedDictionaries.Add(new ResourceDictionary
+        {
+            Source = new Uri("/osuHitsounder;component/Resources/Styles/Border.xaml", UriKind.Relative)
+        });
+        app.Resources.MergedDictionaries.Add(new ResourceDictionary
+        {
+            Source = new Uri("/osuHitsounder;component/Resources/Styles/Button.xaml", UriKind.Relative)
+        });
+
+        var style = app.TryFindResource(styleKey) as Style;
+        Assert.That(style, Is.Not.Null);
+        Assert.That(style!.TargetType, Is.EqualTo(typeof(BalloonButton)));
+
+        var button = new BalloonButton { Style = style };
+        Assert.Multiple(() =>
+        {
+            Assert.That(button.ButtonSize, Is.EqualTo(40));
+            Assert.That(button.CornerRadius, Is.EqualTo(8));
+            Assert.That(button.CurveHeight, Is.EqualTo(8));
+            Assert.That(button.IconSize, Is.EqualTo(12));
+            Assert.That(button.Padding, Is.EqualTo(new Thickness(12)));
+            Assert.That(button.FontSize, Is.EqualTo(12));
+            Assert.That(button.DefaultBackground, Is.SameAs(app.TryFindResource(defaultBrushKey)));
+            Assert.That(button.HoveredBackground, Is.SameAs(app.TryFindResource(hoveredBrushKey)));
+        });
+    }
 }

@@ -19,6 +19,41 @@
 <Style BasedOn="{StaticResource BaseBalloonControlStyle}" TargetType="{x:Type c:BalloonControl}" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"><Setter Property="Background" Value="{Binding DefaultBackground, RelativeSource={RelativeSource Self}}" /><Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" /><Setter Property="Height" Value="{Binding RelativeSource={RelativeSource Self}, Path=ButtonSize}" /><Setter Property="Template" Value="{StaticResource BalloonControlTemplate}" /><Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{Binding HoveredBackground, RelativeSource={RelativeSource Self}}" /></Trigger><Trigger Property="IsKeyboardFocused" Value="True"><Setter Property="StrokeBrush" Value="{DynamicResource Brush.Border.Focus}" /><Setter Property="StrokeThickness" Value="2" /></Trigger><Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.4" /><Setter Property="Cursor" Value="Arrow" /></Trigger></Style.Triggers></Style>
 <Style x:Key="BaseBalloonButtonStyle" BasedOn="{StaticResource {x:Type c:BalloonControl}}" TargetType="{x:Type c:BalloonButton}" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"><Setter Property="OverridesDefaultStyle" Value="True" /></Style>
 <Style BasedOn="{StaticResource BaseBalloonButtonStyle}" TargetType="{x:Type c:BalloonButton}" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" />
+<Style x:Key="OHsBalloonActionStyle" BasedOn="{StaticResource BaseBalloonButtonStyle}" TargetType="{x:Type c:BalloonButton}">
+    <Setter Property="ButtonSize" Value="40" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="CurveHeight" Value="8" />
+    <Setter Property="IconSize" Value="12" />
+    <Setter Property="Padding" Value="12" />
+    <Setter Property="FontFamily" Value="{DynamicResource Bold}" />
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="ShouldExpand" Value="True" />
+    <Setter Property="ShouldShowText" Value="True" />
+    <Style.Triggers>
+        <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
+            <Setter Property="DefaultBackground" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
+            <Setter Property="HoveredBackground" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
+            <Setter Property="StrokeBrush" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+            <Setter Property="StrokeThickness" Value="1" />
+        </DataTrigger>
+    </Style.Triggers>
+</Style>
+<Style x:Key="OHsBalloonNeutralActionStyle" BasedOn="{StaticResource OHsBalloonActionStyle}" TargetType="{x:Type c:BalloonButton}">
+    <Setter Property="DefaultBackground" Value="{DynamicResource Brush.BalloonButton.Background.Neutral}" />
+    <Setter Property="HoveredBackground" Value="{DynamicResource Brush.BalloonButton.Background.Neutral.Hovered}" />
+</Style>
+<Style x:Key="OHsBalloonDefaultActionStyle" BasedOn="{StaticResource OHsBalloonActionStyle}" TargetType="{x:Type c:BalloonButton}">
+    <Setter Property="DefaultBackground" Value="{DynamicResource Brush.BalloonButton.Background.Default}" />
+    <Setter Property="HoveredBackground" Value="{DynamicResource Brush.BalloonButton.Background.Default.Hovered}" />
+</Style>
+<Style x:Key="OHsBalloonConfirmActionStyle" BasedOn="{StaticResource OHsBalloonActionStyle}" TargetType="{x:Type c:BalloonButton}">
+    <Setter Property="DefaultBackground" Value="{DynamicResource Brush.BalloonButton.Background.ConfirmSave}" />
+    <Setter Property="HoveredBackground" Value="{DynamicResource Brush.BalloonButton.Background.ConfirmSave.Hovered}" />
+</Style>
+<Style x:Key="OHsBalloonDestructiveActionStyle" BasedOn="{StaticResource OHsBalloonActionStyle}" TargetType="{x:Type c:BalloonButton}">
+    <Setter Property="DefaultBackground" Value="{DynamicResource Brush.BalloonButton.Background.Destructive}" />
+    <Setter Property="HoveredBackground" Value="{DynamicResource Brush.BalloonButton.Background.Destructive.Hovered}" />
+</Style>
 <Style x:Key="BaseBalloonToggleStyle" BasedOn="{StaticResource {x:Type c:BalloonControl}}" TargetType="{x:Type c:BalloonToggle}" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"><Setter Property="OverridesDefaultStyle" Value="True" /></Style>
 <Style BasedOn="{StaticResource BaseBalloonToggleStyle}" TargetType="{x:Type c:BalloonToggle}" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" />
 <Style x:Key="BaseBalloonCheckBoxStyle" BasedOn="{StaticResource {x:Type c:BalloonControl}}" TargetType="{x:Type c:BalloonCheckBox}" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"><Setter Property="OverridesDefaultStyle" Value="True" /></Style>
