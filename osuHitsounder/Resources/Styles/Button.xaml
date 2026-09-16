@@ -73,7 +73,7 @@
         <Setter Property="HorizontalAlignment" Value="Stretch" />
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
-        <Setter Property="FontFamily" Value="{StaticResource Regular}" />
+        <Setter Property="FontFamily" Value="{DynamicResource Regular}" />
         <Setter Property="FontSize" Value="13" />
         <Setter Property="Background" Value="{DynamicResource Brush.Background.Surface}" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
@@ -276,7 +276,7 @@
                             <TextBlock
                                 x:Name="PART_ButtonText"
                                 VerticalAlignment="Center"
-                                FontFamily="{StaticResource Bold}"
+                                FontFamily="{DynamicResource Bold}"
                                 FontSize="{TemplateBinding FontSize}"
                                 Opacity="0"
                                 Text="{TemplateBinding ButtonText}"
@@ -293,7 +293,7 @@
                                 x:Name="PART_SubText"
                                 Margin="8,2,0,0"
                                 VerticalAlignment="Center"
-                                FontFamily="{StaticResource Light}"
+                                FontFamily="{DynamicResource Light}"
                                 FontSize="10"
                                 Opacity="0"
                                 Text="{TemplateBinding SubText}"
@@ -602,7 +602,7 @@
         <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Subtle}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="Cursor" Value="Hand" />
-        <Setter Property="FontFamily" Value="{StaticResource Bold}" />
+        <Setter Property="FontFamily" Value="{DynamicResource Bold}" />
         <Setter Property="FontSize" Value="12" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
         <Setter Property="Template" Value="{StaticResource PopupTextButtonTemplate}" />
@@ -658,7 +658,7 @@
         <Setter Property="Margin" Value="0,0,0,8" />
         <Setter Property="Height" Value="42" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Muted}" />
-        <Setter Property="FontFamily" Value="{StaticResource Bold}" />
+        <Setter Property="FontFamily" Value="{DynamicResource Bold}" />
         <Setter Property="FontSize" Value="12" />
         <Setter Property="Template" Value="{StaticResource TabButtonTemplate}" />
     </Style>
@@ -740,7 +740,7 @@
         <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Subtle}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="Cursor" Value="Hand" />
-        <Setter Property="FontFamily" Value="{StaticResource Bold}" />
+        <Setter Property="FontFamily" Value="{DynamicResource Bold}" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
         <Setter Property="HorizontalContentAlignment" Value="Center" />
         <Setter Property="Template" Value="{StaticResource RoundedActionButtonTemplate}" />
@@ -837,7 +837,7 @@
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
-        <Setter Property="FontFamily" Value="{StaticResource Regular}" />
+        <Setter Property="FontFamily" Value="{DynamicResource Regular}" />
         <Setter Property="FontSize" Value="12" />
         <Setter Property="Template" Value="{StaticResource CalendarDayButtonTemplate}" />
     </Style>
@@ -881,7 +881,7 @@
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
-        <Setter Property="FontFamily" Value="{StaticResource Regular}" />
+        <Setter Property="FontFamily" Value="{DynamicResource Regular}" />
         <Setter Property="FontSize" Value="12" />
         <Setter Property="Template" Value="{StaticResource CalendarChoiceButtonTemplate}" />
     </Style>
@@ -1018,7 +1018,7 @@
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderBrush" Value="Transparent" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Muted}" />
-        <Setter Property="FontFamily" Value="{StaticResource Bold}" />
+        <Setter Property="FontFamily" Value="{DynamicResource Bold}" />
         <Setter Property="FontSize" Value="11" />
         <Setter Property="Template" Value="{StaticResource SegmentedToggleOptionTemplate}" />
         <Style.Triggers>
@@ -1064,7 +1064,7 @@
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="Padding" Value="2" />
-        <Setter Property="FontFamily" Value="{StaticResource Regular}" />
+        <Setter Property="FontFamily" Value="{DynamicResource Regular}" />
         <Setter Property="FontSize" Value="10" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Muted}" />
         <Setter Property="Template" Value="{StaticResource TextOnlyButtonTemplate}" />
@@ -1102,7 +1102,7 @@
                 <TextBlock
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"
-                    FontFamily="{StaticResource Bold}"
+                    FontFamily="{DynamicResource Bold}"
                     FontSize="12"
                     Foreground="{TemplateBinding Foreground}"
                     Text="{TemplateBinding Content}"

@@ -109,7 +109,7 @@
                             <TextBlock
                                 Grid.Column="1"
                                 Margin="8,0,0,0"
-                                FontFamily="{StaticResource Regular}"
+                                FontFamily="{DynamicResource Regular}"
                                 FontSize="10"
                                 Foreground="{DynamicResource Brush.Text.Muted}"
                                 IsHitTestVisible="False"

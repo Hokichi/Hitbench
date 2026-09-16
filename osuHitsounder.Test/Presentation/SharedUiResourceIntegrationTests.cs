@@ -9,6 +9,43 @@ namespace osuHitsounder.Test.Presentation;
 public sealed class SharedUiResourceIntegrationTests
 {
     [Test]
+    public void SharedResources_DeferApplicationFontLookupUntilFontsAreAvailable()
+    {
+        var app = Application.Current ?? new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+        app.Resources.Clear();
+
+        Assert.DoesNotThrow(() =>
+        {
+            foreach (var resource in new[]
+                     {
+                         "Themes/Dark.xaml", "Converters/Converters.xaml", "Icons.xaml",
+                         "Styles/ColumnDefinition.xaml", "Styles/Grid.xaml", "Styles/StackPanel.xaml",
+                         "Styles/TextBlock.xaml", "Styles/ItemsControl.xaml", "Styles/Border.xaml",
+                         "Styles/ContentPresenter.xaml", "Styles/Button.xaml", "Styles/ToolTip.xaml",
+                         "Styles/Window.xaml", "Styles/ListBox.xaml", "Styles/ListView.xaml",
+                         "Styles/ComboBox.xaml", "Styles/TextBox.xaml", "Styles/ProgressBar.xaml",
+                         "Styles/ScrollViewer.xaml", "Styles/StepNavigator.xaml", "Styles/Popup.xaml"
+                     })
+                app.Resources.MergedDictionaries.Add(new ResourceDictionary
+                {
+                    Source = new Uri($"/osuHitsounder;component/Resources/{resource}", UriKind.Relative)
+                });
+        });
+
+        UiTestPump.EnsureFontResources(app);
+        var button = new BalloonButton
+        {
+            ButtonText = "Deferred font",
+            Style = (Style)app.FindResource(typeof(BalloonButton))
+        };
+
+        Assert.That(button.ApplyTemplate(), Is.True);
+        var text = (TextBlock?)button.Template.FindName("PART_ButtonText", button);
+        Assert.That(text, Is.Not.Null);
+        Assert.That(text!.FontFamily, Is.SameAs(app.FindResource("Bold")));
+    }
+
+    [Test]
     public void SharedResources_LoadTogetherAndProvideReusableControlContracts()
     {
         var app = Application.Current ?? new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };

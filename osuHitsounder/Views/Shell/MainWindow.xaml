@@ -50,7 +50,7 @@
             x:Key="MainWindowTitleStyle"
             BasedOn="{StaticResource BaseTextBlockStyle}"
             TargetType="TextBlock">
-            <Setter Property="FontFamily" Value="{StaticResource Bold}" />
+            <Setter Property="FontFamily" Value="{DynamicResource Bold}" />
             <Setter Property="FontSize" Value="14" />
             <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
             <Setter Property="TextTrimming" Value="CharacterEllipsis" />
@@ -108,7 +108,7 @@
             x:Key="MainWindowProcessingTextStyle"
             BasedOn="{StaticResource BaseTextBlockStyle}"
             TargetType="TextBlock">
-            <Setter Property="FontFamily" Value="{StaticResource Bold}" />
+            <Setter Property="FontFamily" Value="{DynamicResource Bold}" />
             <Setter Property="FontWeight" Value="Bold" />
             <Setter Property="FontSize" Value="14" />
             <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />

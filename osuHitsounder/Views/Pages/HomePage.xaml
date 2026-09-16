@@ -24,7 +24,7 @@
             x:Key="HomePageHeadingStyle"
             BasedOn="{StaticResource HomePageBodyStyle}"
             TargetType="TextBlock">
-            <Setter Property="FontFamily" Value="{StaticResource Bold}" />
+            <Setter Property="FontFamily" Value="{DynamicResource Bold}" />
             <Setter Property="FontWeight" Value="Bold" />
             <Setter Property="FontSize" Value="14" />
             <Setter Property="TextWrapping" Value="Wrap" />
@@ -135,7 +135,7 @@
             BasedOn="{StaticResource HomePageBodyStyle}"
             TargetType="TextBlock">
             <Setter Property="Text" Value="{Binding Artist, Mode=OneWay}" />
-            <Setter Property="FontFamily" Value="{StaticResource Regular}" />
+            <Setter Property="FontFamily" Value="{DynamicResource Regular}" />
             <Setter Property="FontSize" Value="14" />
             <Setter Property="TextAlignment" Value="Center" />
             <Setter Property="TextTrimming" Value="CharacterEllipsis" />
@@ -153,7 +153,7 @@
             BasedOn="{StaticResource HomePageSongArtistStyle}"
             TargetType="TextBlock">
             <Setter Property="Text" Value="{Binding Title, Mode=OneWay}" />
-            <Setter Property="FontFamily" Value="{StaticResource Bold}" />
+            <Setter Property="FontFamily" Value="{DynamicResource Bold}" />
             <Setter Property="FontSize" Value="18" />
             <Setter Property="Margin" Value="0,4,0,0" />
         </Style>
