@@ -75,38 +75,14 @@
         </Style>
         <Style
             x:Key="ProjectNamePopupCancelButtonStyle"
-            BasedOn="{StaticResource DialogActionButtonStyle}"
-            TargetType="Button">
+            BasedOn="{StaticResource OHsBalloonDestructiveActionStyle}"
+            TargetType="customControls:BalloonButton">
             <Setter Property="Margin" Value="0,0,8,0" />
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
-                    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
-                    <Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
-                </DataTrigger>
-            </Style.Triggers>
         </Style>
         <Style
             x:Key="ProjectNamePopupCreateButtonStyle"
-            BasedOn="{StaticResource PrimaryDialogActionButtonStyle}"
-            TargetType="Button">
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
-                    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.HighlightTextBrushKey}}" />
-                    <Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
-                </DataTrigger>
-                <MultiDataTrigger>
-                    <MultiDataTrigger.Conditions>
-                        <Condition Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True" />
-                        <Condition Binding="{Binding IsEnabled, RelativeSource={RelativeSource Self}, Mode=OneWay}" Value="False" />
-                    </MultiDataTrigger.Conditions>
-                    <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
-                    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}" />
-                    <Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}" />
-                </MultiDataTrigger>
-            </Style.Triggers>
-        </Style>
+            BasedOn="{StaticResource OHsBalloonConfirmActionStyle}"
+            TargetType="customControls:BalloonButton" />
     </customControls:BasePopup.Resources>
 
     <Grid Margin="24,8,24,24">
@@ -142,18 +118,22 @@
             Grid.Row="4"
             HorizontalAlignment="Right"
             Orientation="Horizontal">
-            <Button
+            <customControls:BalloonButton
                 x:Name="CancelButton"
+                AutomationProperties.Name="Cancel"
+                ButtonIcon="{StaticResource Ban}"
+                ButtonText="Cancel"
                 Click="OnCancelClick"
-                Content="Cancel"
-                IsCancel="True"
+                ShouldShowText="True"
                 Style="{StaticResource ProjectNamePopupCancelButtonStyle}" />
-            <Button
+            <customControls:BalloonButton
                 x:Name="CreateButton"
+                AutomationProperties.Name="Create"
+                ButtonIcon="{StaticResource PlusSolid}"
+                ButtonText="Create"
                 Click="OnCreateClick"
-                Content="+ Create"
-                IsDefault="True"
                 IsEnabled="{Binding CanCreate, Mode=OneWay}"
+                ShouldShowText="True"
                 Style="{StaticResource ProjectNamePopupCreateButtonStyle}" />
         </StackPanel>
     </Grid>

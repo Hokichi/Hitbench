@@ -22,6 +22,24 @@ public partial class ProjectNamePopup : BasePopup
 
     protected override bool ShouldBubbleApplicationClose => false;
 
+    protected override void OnPreviewKeyDown(KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter && Keyboard.Modifiers == ModifierKeys.None && CreateButton.IsEnabled)
+        {
+            e.Handled = true;
+            OnCreateClick(CreateButton, e);
+            return;
+        }
+
+        base.OnPreviewKeyDown(e);
+    }
+
+    protected override void OnCloseButtonClick()
+    {
+        Result = null;
+        DialogResult = false;
+    }
+
     private void OnPreviewTextInput(object sender, TextCompositionEventArgs e) =>
         e.Handled = ProjectNameRules.RemoveInvalidCharacters(e.Text) != e.Text;
 
@@ -48,7 +66,6 @@ public partial class ProjectNamePopup : BasePopup
 
     private void OnCancelClick(object sender, RoutedEventArgs e)
     {
-        Result = null;
-        DialogResult = false;
+        OnCloseButtonClick();
     }
 }

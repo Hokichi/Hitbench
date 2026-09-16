@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
+using osuHitsounder.Resources.CustomControls;
 using osuHitsounder.ViewModels.Popups;
 using osuHitsounder.Views.Popups;
 
@@ -27,14 +28,18 @@ public class ProjectNamePopupIntegrationTests
             var input = (TextBox)popup.FindName("ProjectNameTextBox");
             var watermark = (TextBlock)popup.FindName("ProjectNameWatermark");
             var validation = (TextBlock)popup.FindName("ProjectNameValidation");
-            var create = (Button)popup.FindName("CreateButton");
+            var cancel = (BalloonButton)popup.FindName("CancelButton");
+            var create = (BalloonButton)popup.FindName("CreateButton");
             Assert.Multiple(() =>
             {
                 Assert.That(Keyboard.FocusedElement, Is.SameAs(input));
                 Assert.That(input.Text, Is.Empty);
                 Assert.That(watermark.Text, Is.EqualTo("Artist - Title"));
                 Assert.That(watermark.Visibility, Is.EqualTo(Visibility.Visible));
-                Assert.That(create.IsDefault, Is.True);
+                Assert.That(cancel.ButtonIcon, Is.SameAs(popup.FindResource("Ban")));
+                Assert.That(cancel.ButtonText, Is.EqualTo("Cancel"));
+                Assert.That(create.ButtonIcon, Is.SameAs(popup.FindResource("PlusSolid")));
+                Assert.That(create.ButtonText, Is.EqualTo("Create"));
             });
 
             vm.ProjectName = "CON";
@@ -48,7 +53,7 @@ public class ProjectNamePopupIntegrationTests
 
             vm.ProjectName = "Custom";
             popup.UpdateLayout();
-            create.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            popup.RaiseEvent(CreateKeyEvent(popup, Key.Enter));
         }, DispatcherPriority.ApplicationIdle);
 
         try
@@ -92,9 +97,9 @@ public class ProjectNamePopupIntegrationTests
             input.RaiseEvent(paste);
             Assert.That(input.Text, Is.EqualTo("AB"));
 
-            var cancel = (Button)popup.FindName("CancelButton");
-            Assert.That(cancel.IsCancel, Is.True);
-            cancel.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            var cancel = (BalloonButton)popup.FindName("CancelButton");
+            Assert.That(cancel.ButtonIcon, Is.SameAs(popup.FindResource("Ban")));
+            popup.RaiseEvent(CreateKeyEvent(popup, Key.Escape));
         }, DispatcherPriority.ApplicationIdle);
 
         try
@@ -108,6 +113,45 @@ public class ProjectNamePopupIntegrationTests
             owner.Close();
         }
     }
+
+    [Test]
+    public void DisabledCreateIgnoresEnterUntilEscapeCancels()
+    {
+        EnsureResources();
+        var owner = new Window { Width = 640, Height = 360, ShowInTaskbar = false };
+        owner.Show();
+        var vm = new ProjectNamePopupVM("Artist - Title", new HashSet<string>()) { ProjectName = "CON" };
+        var popup = new ProjectNamePopup(vm) { Owner = owner };
+        popup.Loaded += (_, _) => popup.Dispatcher.BeginInvoke(() =>
+        {
+            var create = (BalloonButton)popup.FindName("CreateButton");
+            Assert.That(create.IsEnabled, Is.False);
+            popup.RaiseEvent(CreateKeyEvent(popup, Key.Enter));
+            Assert.That(popup.IsVisible, Is.True);
+            Assert.That(popup.Result, Is.Null);
+            popup.RaiseEvent(CreateKeyEvent(popup, Key.Escape));
+        }, DispatcherPriority.ApplicationIdle);
+
+        try
+        {
+            Assert.That(popup.ShowDialog(), Is.False);
+            Assert.That(popup.Result, Is.Null);
+        }
+        finally
+        {
+            if (popup.IsVisible) popup.Close();
+            owner.Close();
+        }
+    }
+
+    private static KeyEventArgs CreateKeyEvent(UIElement target, Key key) => new(
+        Keyboard.PrimaryDevice,
+        PresentationSource.FromVisual(target),
+        Environment.TickCount,
+        key)
+    {
+        RoutedEvent = Keyboard.PreviewKeyDownEvent
+    };
 
     private static void EnsureResources()
     {
