@@ -9,11 +9,15 @@ namespace osuHitsounder.Views.Popups;
 public partial class ProjectNamePopup : BasePopup
 {
     private readonly ProjectNamePopupVM viewModel;
+    private readonly Action<bool> completeDialog;
 
-    public ProjectNamePopup(ProjectNamePopupVM viewModel)
+    public ProjectNamePopup(ProjectNamePopupVM viewModel) : this(viewModel, null) { }
+
+    internal ProjectNamePopup(ProjectNamePopupVM viewModel, Action<bool>? completeDialog)
     {
         InitializeComponent();
         this.viewModel = viewModel;
+        this.completeDialog = completeDialog ?? (accepted => DialogResult = accepted);
         DataContext = viewModel;
         DataObject.AddPastingHandler(ProjectNameTextBox, OnPasting);
     }
@@ -37,7 +41,7 @@ public partial class ProjectNamePopup : BasePopup
     protected override void OnCloseButtonClick()
     {
         Result = null;
-        DialogResult = false;
+        CompleteDialog(false);
     }
 
     private void OnPreviewTextInput(object sender, TextCompositionEventArgs e) =>
@@ -61,8 +65,10 @@ public partial class ProjectNamePopup : BasePopup
     {
         if (!viewModel.CanCreate) return;
         Result = viewModel.EffectiveName;
-        DialogResult = true;
+        CompleteDialog(true);
     }
+
+    private void CompleteDialog(bool accepted) => completeDialog(accepted);
 
     private void OnCancelClick(object sender, RoutedEventArgs e)
     {

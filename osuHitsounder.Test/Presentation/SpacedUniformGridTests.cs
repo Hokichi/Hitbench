@@ -53,10 +53,10 @@ public class SpacedUniformGridTests
             ShowInTaskbar = false,
             WindowStyle = WindowStyle.None
         };
-        window.Show();
+        using var view = new InMemoryView(window);
         try
         {
-            window.UpdateLayout();
+            view.UpdateLayout();
             var panel = Descendants<SpacedUniformGrid>(items).Single();
             var scroll = Descendants<ScrollViewer>(items).Single();
             var initialChildren = panel.Children.Cast<UIElement>().ToArray();
@@ -78,7 +78,7 @@ public class SpacedUniformGridTests
                 Assert.That(firstX, Is.GreaterThan(fourthX));
 
             scroll.ScrollToVerticalOffset(panel.RowStride * 20);
-            window.UpdateLayout();
+            view.UpdateLayout();
             var scrolledChildren = panel.Children.Cast<UIElement>().ToArray();
             Assert.Multiple(() =>
             {
@@ -91,7 +91,7 @@ public class SpacedUniformGridTests
 
             var last = (FrameworkElement)scrolledChildren[^1];
             panel.MakeVisible(last, new Rect(last.RenderSize));
-            window.UpdateLayout();
+            view.UpdateLayout();
             var top = last.TranslatePoint(new Point(), panel).Y;
             Assert.That(top, Is.GreaterThanOrEqualTo(-0.01));
             Assert.That(top + last.ActualHeight, Is.LessThanOrEqualTo(panel.ViewportHeight + 0.01));

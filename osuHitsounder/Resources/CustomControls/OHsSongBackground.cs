@@ -24,12 +24,13 @@ public sealed class OHsSongBackground : Border
         new PropertyMetadata(true, OnIsBlurredChanged));
     private readonly BlurEffect blur = new() { Radius = BlurredRadius };
     private CancellationTokenSource? loading;
+    private bool attached;
 
     public OHsSongBackground()
     {
         Effect = blur;
-        Loaded += (_, _) => Restart();
-        Unloaded += (_, _) => Cancel();
+        Loaded += (_, _) => { attached = true; Restart(); };
+        Unloaded += (_, _) => { attached = false; Cancel(); };
     }
 
     public string Path { get => (string)GetValue(PathProperty); set => SetValue(PathProperty, value); }
@@ -77,7 +78,7 @@ public sealed class OHsSongBackground : Border
     private void Restart()
     {
         Cancel();
-        if (!IsLoaded || Loader is null) return;
+        if (!attached || Loader is null) return;
         var source = new CancellationTokenSource();
         loading = source;
         LoadingTask = LoadAsync(Loader, Path, source);
@@ -89,7 +90,7 @@ public sealed class OHsSongBackground : Border
         {
             var width = (int)Math.Ceiling(336 * VisualTreeHelper.GetDpi(this).DpiScaleX);
             var image = await loader.LoadAsync(path, width, source.Token);
-            if (!ReferenceEquals(loading, source) || source.IsCancellationRequested || !IsLoaded) return;
+            if (!ReferenceEquals(loading, source) || source.IsCancellationRequested || !attached) return;
             if (image is not null)
             {
                 var brush = new ImageBrush(image) { Stretch = Stretch.UniformToFill };

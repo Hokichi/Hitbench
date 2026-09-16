@@ -22,7 +22,7 @@ public class SongBackgroundTests
         var window = new Window { Content = panel, Width = 200, Height = 200, ShowInTaskbar = false };
         try
         {
-            window.Show();
+            using var view = new InMemoryView(window);
             Assert.That(first.Effect, Is.TypeOf<System.Windows.Media.Effects.BlurEffect>());
             Assert.That(second.Effect, Is.TypeOf<System.Windows.Media.Effects.BlurEffect>());
             Assert.That(second.Effect, Is.Not.SameAs(first.Effect));
@@ -116,8 +116,8 @@ public class SongBackgroundTests
             encoder.Frames.Add(BitmapFrame.Create(BitmapSource.Create(1, 1, 96, 96, PixelFormats.Bgra32,
                 null, new byte[] { 0, 0, 255, 255 }, 4)));
             using (var stream = File.Create(path)) encoder.Save(stream);
-            window.Show();
-            window.UpdateLayout();
+            using var view = new InMemoryView(window);
+            view.UpdateLayout();
             var first = background.LoadingTask;
             background.Path = path + ".missing";
             UiTestPump.Run(Task.WhenAll(first, background.LoadingTask));
@@ -126,7 +126,7 @@ public class SongBackgroundTests
             UiTestPump.Run(background.LoadingTask);
             Assert.That(background.ImageBrush, Is.Not.Null);
             background.Path = path + ".missing-again";
-            window.Close();
+            view.Dispose();
             UiTestPump.Run(background.LoadingTask);
             Assert.That(background.ImageBrush, Is.Null);
         }

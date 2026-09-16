@@ -4,7 +4,6 @@ using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
-using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.Messaging;
 using osuHitsounder.Core.Entities;
@@ -59,43 +58,35 @@ public class ScanOverlayIntegrationTests
             new StubProjectCreationDialogService(), new UiScheduler(Dispatcher.CurrentDispatcher),
             new StubProjectFileService((_, _, _) => Task.FromResult("saved.json")),
             new WeakReferenceMessenger());
-        var window = new MainWindow(new HomePage(vm), new WeakReferenceMessenger(), () => new WorkstationPage(), vm,
+        var window = TestShell.Create(new HomePage(vm), new WeakReferenceMessenger(), () => new WorkstationPage(), vm,
             new StubAppSettingsService());
-        window.Show();
+        using var view = new InMemoryView(window);
         try
         {
             var load = window.LoadAsync();
             UiTestPump.Run(started.Task);
-            window.UpdateLayout();
+            view.UpdateLayout();
             var host = (ContentControl)window.FindName("PageHost");
             Assert.That(host.IsEnabled, Is.False);
-            var label = Descendants<TextBlock>(window).Single(text => text.IsVisible && text.Text == "Processing...");
-            Assert.That(Descendants<Border>(window).Any(border => border.Effect is BlurEffect), Is.True);
-            var visual = (FrameworkElement)window.Content;
-            var bitmap = new RenderTargetBitmap((int)visual.ActualWidth, (int)visual.ActualHeight, 96, 96, PixelFormats.Pbgra32);
-            bitmap.Render(visual);
-            var image = new PngBitmapEncoder();
-            image.Frames.Add(BitmapFrame.Create(bitmap));
-            var directory = Path.GetFullPath(Path.Combine(TestContext.CurrentContext.TestDirectory, "../../../../artifacts/on-demand-loading"));
-            Directory.CreateDirectory(directory);
-            using (var stream = File.Create(Path.Combine(directory, $"scan-{theme}.png"))) image.Save(stream);
+            var label = Descendants<TextBlock>(view.Root).Single(text => text.IsVisible && text.Text == "Processing...");
+            Assert.That(Descendants<Border>(view.Root).Any(border => border.Effect is BlurEffect), Is.True);
             for (DependencyObject? parent = label; parent is not null; parent = VisualTreeHelper.GetParent(parent))
                 if (parent is UIElement element) Assert.That(element.Effect, Is.Null, "Overlay label must remain sharp.");
             pending.SetResult(new OsuSearchResult(null, false));
             UiTestPump.Run(picking.Task);
-            window.UpdateLayout();
+            view.UpdateLayout();
             Assert.That(label.IsVisible, Is.True);
             Assert.That(host.IsEnabled, Is.False, "Input gate must survive the picker transition.");
             picker.SetResult(@"C:\chosen");
             UiTestPump.Run(readingSongs.Task);
-            window.UpdateLayout();
+            view.UpdateLayout();
             Assert.That(label.IsVisible, Is.True);
             Assert.That(host.IsEnabled, Is.False);
             songs.SetResult(new FolderSnapshot(Enumerable.Range(0, 130)
                 .Select(i => new FolderEntry($@"C:\Songs\{i}", $"{i}", DateTimeOffset.MinValue))));
             UiTestPump.Run(load);
-            window.UpdateLayout();
-            var songsList = Descendants<ItemsControl>(window)
+            view.UpdateLayout();
+            var songsList = Descendants<ItemsControl>(view.Root)
                 .Single(list => AutomationProperties.GetName(list) == "Songs");
             Assert.That(vm.Songs, Has.Count.EqualTo(HomePageVM.InitialSongCount),
                 "Nine rows must publish before Processing clears.");
@@ -126,14 +117,14 @@ public class ScanOverlayIntegrationTests
             new StubProjectCreationDialogService(), new UiScheduler(Dispatcher.CurrentDispatcher),
             new StubProjectFileService((_, _, _) => Task.FromResult("saved.json")),
             new WeakReferenceMessenger());
-        var window = new MainWindow(new HomePage(vm), new WeakReferenceMessenger(), () => new WorkstationPage(), vm,
+        var window = TestShell.Create(new HomePage(vm), new WeakReferenceMessenger(), () => new WorkstationPage(), vm,
             new StubAppSettingsService());
-        window.Show();
+        using var view = new InMemoryView(window);
         try
         {
             var load = window.LoadAsync();
             UiTestPump.Run(reading.Task);
-            window.UpdateLayout();
+            view.UpdateLayout();
             var label = (TextBlock)window.FindName("ProcessingText");
             var host = (ContentControl)window.FindName("PageHost");
             Assert.That(label.IsVisible, Is.True);
@@ -143,8 +134,8 @@ public class ScanOverlayIntegrationTests
             songs.SetResult(new FolderSnapshot(Enumerable.Range(0, 130)
                 .Select(i => new FolderEntry($@"C:\Songs\{i}", $"{i}", DateTimeOffset.MinValue))));
             UiTestPump.Run(load);
-            window.UpdateLayout();
-            var songsList = Descendants<ItemsControl>(window)
+            view.UpdateLayout();
+            var songsList = Descendants<ItemsControl>(view.Root)
                 .Single(list => AutomationProperties.GetName(list) == "Songs");
             Assert.That(vm.Songs, Has.Count.EqualTo(HomePageVM.InitialSongCount));
             PumpUntil(() => Math.Abs(songsList.Opacity - 1) < 0.001);

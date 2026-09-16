@@ -1,7 +1,8 @@
-<Application x:Class="osuHitsounder.App"
-             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             ShutdownMode="OnExplicitShutdown">
+<Application
+    x:Class="osuHitsounder.App"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    ShutdownMode="OnExplicitShutdown">
     <Application.Resources>
         <ResourceDictionary>
             <FontFamily x:Key="Display">pack://application:,,,/osuHitsounder;component/Resources/Fonts/AllerDisplay_Std_Rg.ttf#Aller Display</FontFamily>

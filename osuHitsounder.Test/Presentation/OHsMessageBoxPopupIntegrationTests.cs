@@ -1,8 +1,6 @@
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Threading;
 using osuHitsounder.Resources.CustomControls;
 
 namespace osuHitsounder.Test.Presentation;
@@ -38,22 +36,17 @@ public sealed class OHsMessageBoxPopupIntegrationTests
     public void UnmodifiedEnterInvokesConfiguredDefaultAction()
     {
         EnsureResources();
-        var owner = new Window { Width = 640, Height = 360, ShowInTaskbar = false };
-        owner.Show();
-        var popup = new OHsMessageBoxPopup("Continue?", "Question", MessageBoxButton.YesNo) { Owner = owner };
-        popup.Loaded += (_, _) => popup.Dispatcher.BeginInvoke(
-            () => popup.RaiseEvent(CreateKeyEvent(popup, Key.Enter)),
-            DispatcherPriority.ApplicationIdle);
+        var popup = new OHsMessageBoxPopup("Continue?", "Question", MessageBoxButton.YesNo);
 
         try
         {
-            popup.ShowDialog();
+            using var source = new InMemoryPresentationSource();
+            popup.RaiseEvent(CreateKeyEvent(source, Key.Enter));
             Assert.That(popup.Result, Is.EqualTo(MessageBoxResult.Yes));
         }
         finally
         {
-            if (popup.IsVisible) popup.Close();
-            owner.Close();
+            popup.Close();
         }
     }
 
@@ -64,22 +57,17 @@ public sealed class OHsMessageBoxPopupIntegrationTests
     public void EscapeUsesConfiguredDismissResult(MessageBoxButton buttons, MessageBoxResult expected)
     {
         EnsureResources();
-        var owner = new Window { Width = 640, Height = 360, ShowInTaskbar = false };
-        owner.Show();
-        var popup = new OHsMessageBoxPopup("Continue?", "Question", buttons) { Owner = owner };
-        popup.Loaded += (_, _) => popup.Dispatcher.BeginInvoke(
-            () => popup.RaiseEvent(CreateKeyEvent(popup, Key.Escape)),
-            DispatcherPriority.ApplicationIdle);
+        var popup = new OHsMessageBoxPopup("Continue?", "Question", buttons);
 
         try
         {
-            popup.ShowDialog();
+            using var source = new InMemoryPresentationSource();
+            popup.RaiseEvent(CreateKeyEvent(source, Key.Escape));
             Assert.That(popup.Result, Is.EqualTo(expected));
         }
         finally
         {
-            if (popup.IsVisible) popup.Close();
-            owner.Close();
+            popup.Close();
         }
     }
 
@@ -125,9 +113,9 @@ public sealed class OHsMessageBoxPopupIntegrationTests
         });
     }
 
-    private static KeyEventArgs CreateKeyEvent(UIElement target, Key key) => new(
+    private static KeyEventArgs CreateKeyEvent(PresentationSource source, Key key) => new(
         Keyboard.PrimaryDevice,
-        PresentationSource.FromVisual(target),
+        source,
         Environment.TickCount,
         key)
     {

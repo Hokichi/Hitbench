@@ -5,6 +5,14 @@ namespace osuHitsounder.Test.Presentation;
 
 public static class UiTestPump
 {
+    public static void Layout(FrameworkElement element, double width, double height)
+    {
+        element.ApplyTemplate();
+        element.Measure(new Size(width, height));
+        element.Arrange(new Rect(0, 0, width, height));
+        element.UpdateLayout();
+    }
+
     public static void EnsureFontResources(Application app)
     {
         foreach (var key in new[] { "Display", "Regular", "Italic", "Bold", "BoldItalic", "Light", "LightItalic" })

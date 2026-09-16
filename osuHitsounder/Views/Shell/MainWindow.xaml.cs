@@ -37,10 +37,25 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>, IRe
     private bool lastIsMaximized;
     private bool closingForSave;
     private bool closingAfterSave;
+    private readonly Action<string> reportError;
+    private readonly Action<WindowState> requestWindowState;
 
     public MainWindow(HomePage page, IMessenger messenger, Func<WorkstationPage> createWorkstation,
         HomePageVM viewModel, IAppSettingsService settings)
+        : this(page, messenger, createWorkstation, viewModel, settings, null) { }
+
+    internal MainWindow(HomePage page, IMessenger messenger, Func<WorkstationPage> createWorkstation,
+        HomePageVM viewModel, IAppSettingsService settings, Action<string>? reportError,
+        Action<WindowState>? requestWindowState = null)
     {
+        this.reportError = reportError ?? (error => MessageBox.Show(this, error, "osuHitsounder",
+            MessageBoxButton.OK, MessageBoxImage.Error));
+        this.requestWindowState = requestWindowState ?? (state =>
+        {
+            if (state == WindowState.Minimized) SystemCommands.MinimizeWindow(this);
+            else if (state == WindowState.Maximized) SystemCommands.MaximizeWindow(this);
+            else SystemCommands.RestoreWindow(this);
+        });
         this.page = page;
         this.viewModel = viewModel;
         this.messenger = messenger;
@@ -91,15 +106,14 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>, IRe
         }
         catch (Exception error)
         {
-            MessageBox.Show(this, $"Unable to open workstation: {error.Message}", "osuHitsounder",
-                MessageBoxButton.OK, MessageBoxImage.Error);
+            reportError($"Unable to open workstation: {error.Message}");
         }
     }
 
     public void Receive(ProjectCreationFailedMessage message)
     {
         if (!closed && PageHost.Content == page)
-            MessageBox.Show(this, message.Error, "osuHitsounder", MessageBoxButton.OK, MessageBoxImage.Error);
+            reportError(message.Error);
     }
 
     private async Task LoadPageAsync()
@@ -127,8 +141,8 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>, IRe
         viewModel.PropertyChanged -= OnStateChanged;
         ProcessingText.IsVisibleChanged -= OnProcessingVisibilityChanged;
         messenger.UnregisterAll(this);
-        page.Deactivate();
         lifetime.Cancel();
+        page.Deactivate();
         if (loading is null || loading.IsCompleted)
             lifetime.Dispose();
         base.OnClosed(e);
@@ -168,22 +182,28 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>, IRe
         Math.Max(minimum, double.IsFinite(value) && value > 0 ? value : fallback);
 
     private void OnWindowSizeChanged(object sender, SizeChangedEventArgs e)
+        => RecordWindowSize(ActualWidth, ActualHeight);
+
+    internal void RecordWindowSize(double width, double height)
     {
         if (!placementInitialized || closed || WindowState != WindowState.Normal) return;
-        restoredWidth = ActualWidth;
-        restoredHeight = ActualHeight;
+        restoredWidth = width;
+        restoredHeight = height;
         QueuePlacementSave();
     }
 
     private void OnWindowStateChanged(object? sender, EventArgs e)
+        => RecordWindowState(ActualWidth, ActualHeight);
+
+    internal void RecordWindowState(double width, double height)
     {
         UpdateMaximizeRestoreButton();
         if (!placementInitialized || closed || WindowState == WindowState.Minimized) return;
         lastIsMaximized = WindowState == WindowState.Maximized;
         if (!lastIsMaximized)
         {
-            restoredWidth = ActualWidth;
-            restoredHeight = ActualHeight;
+            restoredWidth = width;
+            restoredHeight = height;
         }
         QueuePlacementSave();
     }
@@ -233,15 +253,15 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>, IRe
         if (WindowState == WindowState.Normal) DragMove();
     }
 
-    private void OnMinimizeClick(object sender, RoutedEventArgs e) => SystemCommands.MinimizeWindow(this);
+    private void OnMinimizeClick(object sender, RoutedEventArgs e) => requestWindowState(WindowState.Minimized);
 
     private void OnMaximizeRestoreClick(object sender, RoutedEventArgs e) => ToggleMaximizeRestore();
 
     private void ToggleMaximizeRestore()
     {
         if (WindowState == WindowState.Maximized)
-            SystemCommands.RestoreWindow(this);
-        else SystemCommands.MaximizeWindow(this);
+            requestWindowState(WindowState.Normal);
+        else requestWindowState(WindowState.Maximized);
     }
 
     private void OnCloseClick(object sender, RoutedEventArgs e) => SystemCommands.CloseWindow(this);

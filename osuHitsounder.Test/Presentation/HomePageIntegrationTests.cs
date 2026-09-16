@@ -7,7 +7,6 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Automation;
 using System.Windows.Automation.Peers;
-using System.Windows.Automation.Provider;
 using System.Windows.Media;
 using System.Windows.Threading;
 using Microsoft.Extensions.DependencyInjection;
@@ -39,7 +38,7 @@ public class HomePageIntegrationTests
     {
         EnsureResources();
         var vm = CreateVM(new StubHomeFolderService());
-        var window = new MainWindow(new HomePage(vm), new WeakReferenceMessenger(),
+        var window = TestShell.Create(new HomePage(vm), new WeakReferenceMessenger(),
             () => new WorkstationPage(), vm, new StubAppSettingsService());
         try
         {
@@ -72,14 +71,16 @@ public class HomePageIntegrationTests
             }
         };
         var vm = CreateVM(new StubHomeFolderService());
-        var window = new MainWindow(new HomePage(vm), new WeakReferenceMessenger(),
+        var window = TestShell.Create(new HomePage(vm), new WeakReferenceMessenger(),
             () => new WorkstationPage(), vm, settings);
         window.ApplySettings(new AppSettings());
-        window.Show();
+        using var view = new InMemoryView(window);
         window.Width = 1024;
         window.Height = 640;
+        window.RecordWindowSize(1024, 640);
 
         window.Close();
+        window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
 
         Assert.That(saved, Is.EqualTo((false, 1024d, 640d)));
     }
@@ -98,10 +99,11 @@ public class HomePageIntegrationTests
             }
         };
         var vm = CreateVM(new StubHomeFolderService());
-        var window = new MainWindow(new HomePage(vm), new WeakReferenceMessenger(),
-            () => new WorkstationPage(), vm, settings);
+        var requests = new List<WindowState>();
+        var window = TestShell.Create(new HomePage(vm), new WeakReferenceMessenger(),
+            () => new WorkstationPage(), vm, settings, state => requests.Add(state));
         window.ApplySettings(new AppSettings { RestoredWidth = 1024, RestoredHeight = 640 });
-        window.Show();
+        using var view = new InMemoryView(window);
         try
         {
             var maximize = (BalloonButton)window.FindName("MaximizeRestoreButton");
@@ -109,13 +111,18 @@ public class HomePageIntegrationTests
 
             maximize.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
             window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
-            Assert.That(window.WindowState, Is.EqualTo(WindowState.Maximized));
+            Assert.That(requests, Is.EqualTo(new[] { WindowState.Maximized }));
+            window.WindowState = WindowState.Maximized;
+            window.RecordWindowState(1920, 1080);
             minimize.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
             window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
-            Assert.That(window.WindowState, Is.EqualTo(WindowState.Minimized));
+            Assert.That(requests, Is.EqualTo(new[] { WindowState.Maximized, WindowState.Minimized }));
+            window.WindowState = WindowState.Minimized;
+            window.RecordWindowState(0, 0);
         }
         finally { window.Close(); }
 
+        window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
         Assert.That(saved, Is.EqualTo((true, 1024d, 640d)));
     }
 
@@ -124,7 +131,7 @@ public class HomePageIntegrationTests
     {
         EnsureResources();
         var vm = CreateVM(new StubHomeFolderService());
-        var window = new MainWindow(new HomePage(vm), new WeakReferenceMessenger(),
+        var window = TestShell.Create(new HomePage(vm), new WeakReferenceMessenger(),
             () => new WorkstationPage(), vm, new StubAppSettingsService());
         try
         {
@@ -165,7 +172,7 @@ public class HomePageIntegrationTests
         var vm = CreateVM(new StubHomeFolderService());
         var page = new HomePage(vm);
         var window = new Window { Content = page, ShowInTaskbar = false };
-        window.Show();
+        using var view = new InMemoryView(window);
         try
         {
             var projects = (BalloonButton)page.FindName("ProjectsRetryButton");
@@ -201,9 +208,9 @@ public class HomePageIntegrationTests
             Songs = (_, _) => { songsReady.SetResult(); return Task.FromResult<FolderSnapshot?>(new FolderSnapshot([])); }
         };
         var vm = CreateVM(folders);
-        var window = new MainWindow(new HomePage(vm), messenger, () => new WorkstationPage(), vm,
+        var window = TestShell.Create(new HomePage(vm), messenger, () => new WorkstationPage(), vm,
             new StubAppSettingsService());
-        window.Show();
+        using var view = new InMemoryView(window);
         try
         {
             var startup = window.LoadAsync();
@@ -222,9 +229,9 @@ public class HomePageIntegrationTests
         EnsureResources();
         var pending = new TaskCompletionSource<HomeFolderData>();
         var vm = CreateVM(new StubHomeFolderService(token => pending.Task.WaitAsync(token)));
-        var window = new MainWindow(new HomePage(vm), new WeakReferenceMessenger(), () => new WorkstationPage(), vm,
+        var window = TestShell.Create(new HomePage(vm), new WeakReferenceMessenger(), () => new WorkstationPage(), vm,
             new StubAppSettingsService());
-        window.Show();
+        using var view = new InMemoryView(window);
         var load = window.LoadAsync();
         window.Close();
         var frame = new DispatcherFrame();
@@ -242,7 +249,7 @@ public class HomePageIntegrationTests
         var page = new HomePage(vm) { Visibility = Visibility.Hidden };
         var window = new Window { Content = page, ShowInTaskbar = false };
         using var cancellation = new CancellationTokenSource();
-        window.Show();
+        using var view = new InMemoryView(window);
         try
         {
             var loading = page.LoadAsync(cancellation.Token);
@@ -262,7 +269,7 @@ public class HomePageIntegrationTests
         var vm = CreateVM(new StubHomeFolderService());
         var page = new HomePage(vm) { Visibility = Visibility.Hidden };
         var window = new Window { Content = page, ShowInTaskbar = false };
-        window.Show();
+        using var view = new InMemoryView(window);
         try
         {
             var loading = page.LoadAsync(CancellationToken.None);
@@ -307,9 +314,9 @@ public class HomePageIntegrationTests
         var vm = CreateVM(new StubHomeFolderService(_ => Task.FromResult(new HomeFolderData([], [], "C:\\osu", true, false))));
         var page = new HomePage(vm);
         var creations = 0;
-        var window = new MainWindow(page, messenger, () => { creations++; return new WorkstationPage(); }, vm,
+        var window = TestShell.Create(page, messenger, () => { creations++; return new WorkstationPage(); }, vm,
             new StubAppSettingsService());
-        window.Show();
+        using var view = new InMemoryView(window);
         try
         {
             UiTestPump.Run(window.LoadAsync());
@@ -329,6 +336,26 @@ public class HomePageIntegrationTests
     }
 
     [Test]
+    public void ShellFailuresUseSubstitutedNotificationAndIgnoreMessagesAfterClose()
+    {
+        EnsureResources();
+        var errors = new List<string>();
+        var messenger = new WeakReferenceMessenger();
+        var vm = CreateVM(new StubHomeFolderService());
+        var window = new MainWindow(new HomePage(vm), messenger,
+            () => throw new IOException("Navigation failed"), vm, new StubAppSettingsService(), errors.Add);
+        try
+        {
+            messenger.Send(new ProjectCreationFailedMessage("Save failed"));
+            messenger.Send(new ProjectCreatedMessage("saved.json"));
+            Assert.That(errors, Is.EqualTo(new[] { "Save failed", "Unable to open workstation: Navigation failed" }));
+        }
+        finally { window.Close(); }
+        messenger.Send(new ProjectCreationFailedMessage("Late failure"));
+        Assert.That(errors, Has.Count.EqualTo(2));
+    }
+
+    [Test]
     public void ClosingShellCancelsProjectCreation()
     {
         EnsureResources();
@@ -338,9 +365,9 @@ public class HomePageIntegrationTests
             new StubAppSettingsService(), new StubInstallationDialogService(),
             new StubProjectCreationDialogService { Result = "Selected" }, new ImmediateUiScheduler(),
             new StubProjectFileService((_, _, token) => pending.Task.WaitAsync(token)), messenger);
-        var window = new MainWindow(new HomePage(vm), messenger,
+        var window = TestShell.Create(new HomePage(vm), messenger,
             () => throw new AssertionException("Must not navigate"), vm, new StubAppSettingsService());
-        window.Show();
+        using var view = new InMemoryView(window);
         var operation = vm.CreateProjectCommand.ExecuteAsync(
             new FolderEntry("C:\\Songs\\Selected", "Selected", DateTimeOffset.MinValue));
         window.Close();
@@ -372,9 +399,9 @@ public class HomePageIntegrationTests
             new StubProjectCreationDialogService { Result = "Selected" }, new ImmediateUiScheduler(),
             new StubProjectFileService((folder, _, _) => { selected = folder; return pending.Task; }), messenger);
         var page = new HomePage(vm);
-        var window = new MainWindow(page, messenger, () => new WorkstationPage(), vm,
+        var window = TestShell.Create(page, messenger, () => new WorkstationPage(), vm,
             new StubAppSettingsService());
-        window.Show();
+        using var view = new InMemoryView(window);
         try
         {
             UiTestPump.Run(window.LoadAsync());
@@ -385,8 +412,8 @@ public class HomePageIntegrationTests
             Assert.That(backgroundControl.LoadingTask.IsCompleted, Is.True);
             Assert.That(backgroundControl.ImageBrush, Is.Not.Null, "Initial background must be ready when loading completes.");
             Assert.That(text.Select(value => value.Text), Is.EqualTo(new[] { "Artist", "Title" }));
-            button.Focus();
-            window.UpdateLayout();
+            backgroundControl.IsBlurred = false;
+            view.UpdateLayout();
             Assert.That(button.ToolTip, Is.Null);
             Assert.That(button.IsTabStop, Is.True);
             Assert.That(button.Opacity, Is.EqualTo(1));
@@ -399,7 +426,7 @@ public class HomePageIntegrationTests
             Assert.That(button.IsEnabled, Is.True);
             var peer = new ButtonAutomationPeer(button);
             Assert.That(peer.GetName(), Is.EqualTo("Artist - Title"));
-            ((IInvokeProvider)peer.GetPattern(PatternInterface.Invoke)).Invoke();
+            button.Command!.Execute(button.CommandParameter);
             window.Dispatcher.Invoke(() => { }, DispatcherPriority.ContextIdle);
             Assert.That(selected!.FullName, Is.EqualTo(song.FullName));
             Assert.That(button.IsEnabled, Is.False);
@@ -470,10 +497,10 @@ public class HomePageIntegrationTests
                 };
                 try
                 {
-                    window.Show();
+                    using var view = new InMemoryView(window);
                     UiTestPump.Run(page.LoadAsync(CancellationToken.None));
                     PumpUntil(() => vm.Songs.Count == 36);
-                    window.UpdateLayout();
+                    view.UpdateLayout();
                     TestContext.Progress.WriteLine($"Theme={theme} StubFolders=2000 HomePageFirstActionableRowMs={firstRowTimer.Elapsed.TotalMilliseconds:F2}");
                     var lists = Descendants<ItemsControl>(page).ToArray();
                     var songsList = lists.Single(list => AutomationProperties.GetName(list) == "Songs");
@@ -515,7 +542,7 @@ public class HomePageIntegrationTests
                     window.FlowDirection = FlowDirection.RightToLeft;
                     window.Width = 640;
                     window.Height = 360;
-                    window.UpdateLayout();
+                    view.UpdateLayout();
                     window.Dispatcher.Invoke(() => { }, DispatcherPriority.ContextIdle);
                     var scroll = Descendants<ScrollViewer>(songsList).Single();
                     Assert.Multiple(() =>
@@ -564,7 +591,7 @@ public class HomePageIntegrationTests
             ShowInTaskbar = false,
             WindowStyle = WindowStyle.None
         };
-        window.Show();
+        using var view = new InMemoryView(window);
         try
         {
             var songsList = (ItemsControl)page.FindName("SongsList");
@@ -576,7 +603,7 @@ public class HomePageIntegrationTests
             var scroll = Descendants<ScrollViewer>(songsList).Single();
 
             window.Width = 1900;
-            window.UpdateLayout();
+            view.UpdateLayout();
             window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
             Assert.That(vm.Songs, Has.Count.EqualTo(36), "Resize/layout must not count as user scrolling.");
 
@@ -591,7 +618,7 @@ public class HomePageIntegrationTests
             Assert.That(vm.Songs, Has.Count.EqualTo(100), "Repeated notifications must coalesce to one batch.");
 
             scroll.ScrollToVerticalOffset(Math.Max(0, scroll.ScrollableHeight - panel.RowStride * 2));
-            window.UpdateLayout();
+            view.UpdateLayout();
             window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
             Assert.That(vm.Songs, Has.Count.EqualTo(100));
             scroll.LineDown();
@@ -637,7 +664,7 @@ public class HomePageIntegrationTests
             ShowInTaskbar = false,
             WindowStyle = WindowStyle.None
         };
-        window.Show();
+        using var view = new InMemoryView(window);
         try
         {
             UiTestPump.Run(page.LoadAsync(CancellationToken.None));
@@ -685,7 +712,7 @@ public class HomePageIntegrationTests
         var vm = CreateVM(folders);
         var page = new HomePage(vm);
         var window = new Window { Content = page, Width = 1280, Height = 720, ShowInTaskbar = false };
-        window.Show();
+        using var view = new InMemoryView(window);
         try
         {
             UiTestPump.Run(page.LoadAsync(CancellationToken.None));
@@ -733,7 +760,7 @@ public class HomePageIntegrationTests
         var vm = CreateVM(folders);
         var page = new HomePage(vm);
         var window = new Window { Content = page, Width = 1280, Height = 720, ShowInTaskbar = false };
-        window.Show();
+        using var view = new InMemoryView(window);
         try
         {
             UiTestPump.Run(page.LoadAsync(CancellationToken.None));
