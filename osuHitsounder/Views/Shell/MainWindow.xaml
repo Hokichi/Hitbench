@@ -25,7 +25,7 @@
             x:Key="MainWindowStyle"
             BasedOn="{StaticResource BaseWindowStyle}"
             TargetType="Window">
-            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Background" Value="{DynamicResource Brush.Background.Main}" />
         </Style>
         <Style
             x:Key="MainWindowRootStyle"

@@ -52,6 +52,7 @@ public class HomePageIntegrationTests
             Assert.That(window.Width, Is.EqualTo(window.MinWidth));
             Assert.That(window.Height, Is.EqualTo(window.MinHeight));
             Assert.That(window.WindowState, Is.EqualTo(WindowState.Maximized));
+            Assert.That(window.Background, Is.SameAs(window.FindResource("Brush.Background.Main")));
         }
         finally { window.Close(); }
     }
