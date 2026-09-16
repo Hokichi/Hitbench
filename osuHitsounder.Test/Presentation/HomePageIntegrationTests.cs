@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Automation;
 using System.Windows.Automation.Peers;
 using System.Windows.Automation.Provider;
@@ -103,19 +104,88 @@ public class HomePageIntegrationTests
         window.Show();
         try
         {
-            var maximize = (Button)window.FindName("MaximizeRestoreButton");
-            var minimize = (Button)window.FindName("MinimizeButton");
+            var maximize = (BalloonButton)window.FindName("MaximizeRestoreButton");
+            var minimize = (BalloonButton)window.FindName("MinimizeButton");
 
-            ((IInvokeProvider)new ButtonAutomationPeer(maximize).GetPattern(PatternInterface.Invoke)!).Invoke();
+            maximize.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
             window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
             Assert.That(window.WindowState, Is.EqualTo(WindowState.Maximized));
-            ((IInvokeProvider)new ButtonAutomationPeer(minimize).GetPattern(PatternInterface.Invoke)!).Invoke();
+            minimize.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
             window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
             Assert.That(window.WindowState, Is.EqualTo(WindowState.Minimized));
         }
         finally { window.Close(); }
 
         Assert.That(saved, Is.EqualTo((true, 1024d, 640d)));
+    }
+
+    [Test]
+    public void ShellCaptionActionsUseBalloonButtonsWithSemanticIconsAndNames()
+    {
+        EnsureResources();
+        var vm = CreateVM(new StubHomeFolderService());
+        var window = new MainWindow(new HomePage(vm), new WeakReferenceMessenger(),
+            () => new WorkstationPage(), vm, new StubAppSettingsService());
+        try
+        {
+            var minimize = (BalloonButton)window.FindName("MinimizeButton");
+            var maximize = (BalloonButton)window.FindName("MaximizeRestoreButton");
+            var close = (BalloonButton)window.FindName("CloseButton");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(minimize.ButtonIcon, Is.SameAs(window.FindResource("Minus")));
+                Assert.That(minimize.ButtonText, Is.EqualTo("Minimize"));
+                Assert.That(AutomationProperties.GetName(minimize), Is.EqualTo("Minimize"));
+                Assert.That(maximize.ButtonIcon, Is.SameAs(window.FindResource("ExpandAlt")));
+                Assert.That(maximize.ButtonText, Is.EqualTo("Maximize"));
+                Assert.That(AutomationProperties.GetName(maximize), Is.EqualTo("Maximize"));
+                Assert.That(close.ButtonIcon, Is.SameAs(window.FindResource("Close")));
+                Assert.That(close.ButtonText, Is.EqualTo("Close"));
+                Assert.That(AutomationProperties.GetName(close), Is.EqualTo("Close"));
+                Assert.That(close.Style, Is.SameAs(window.FindResource("OHsBalloonDestructiveActionStyle")));
+            });
+
+            window.ApplySettings(new AppSettings { IsMaximized = true });
+            Assert.Multiple(() =>
+            {
+                Assert.That(maximize.ButtonIcon, Is.SameAs(window.FindResource("CompressAlt")));
+                Assert.That(maximize.ButtonText, Is.EqualTo("Restore"));
+                Assert.That(AutomationProperties.GetName(maximize), Is.EqualTo("Restore"));
+                Assert.That(maximize.ToolTip, Is.EqualTo("Restore"));
+            });
+        }
+        finally { window.Close(); }
+    }
+
+    [Test]
+    public void HomeRetryActionsUseBalloonButtonsWithPersistentTextAndIcons()
+    {
+        EnsureResources();
+        var vm = CreateVM(new StubHomeFolderService());
+        var page = new HomePage(vm);
+        var window = new Window { Content = page, ShowInTaskbar = false };
+        window.Show();
+        try
+        {
+            var projects = (BalloonButton)page.FindName("ProjectsRetryButton");
+            var songs = (BalloonButton)page.FindName("SongsRetryButton");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(projects.ButtonIcon, Is.SameAs(page.FindResource("UpdateOutline")));
+                Assert.That(projects.ButtonText, Is.EqualTo("Retry Projects"));
+                Assert.That(projects.ShouldShowText, Is.True);
+                Assert.That(projects.Command, Is.SameAs(vm.RetryProjectsCommand));
+                Assert.That(AutomationProperties.GetName(projects), Is.EqualTo("Retry Projects"));
+                Assert.That(songs.ButtonIcon, Is.SameAs(page.FindResource("UpdateOutline")));
+                Assert.That(songs.ButtonText, Is.EqualTo("Refresh Songs"));
+                Assert.That(songs.ShouldShowText, Is.True);
+                Assert.That(songs.Command, Is.SameAs(vm.RetrySongsCommand));
+                Assert.That(AutomationProperties.GetName(songs), Is.EqualTo("Refresh Songs"));
+            });
+        }
+        finally { window.Close(); }
     }
 
     [Test]
@@ -222,7 +292,7 @@ public class HomePageIntegrationTests
         var app = Application.Current ?? new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
         app.Resources.MergedDictionaries.Clear();
         UiTestPump.EnsureFontResources(app);
-        foreach (var resource in new[] { "Themes/Dark.xaml", "Icons.xaml", "Styles/TextBlock.xaml", "Styles/ItemsControl.xaml", "Styles/Border.xaml", "Styles/ContentPresenter.xaml", "Styles/Button.xaml", "Styles/ToolTip.xaml", "Styles/Window.xaml" })
+        foreach (var resource in new[] { "Themes/Dark.xaml", "Converters/Converters.xaml", "Icons.xaml", "Styles/TextBlock.xaml", "Styles/ItemsControl.xaml", "Styles/Border.xaml", "Styles/ContentPresenter.xaml", "Styles/Button.xaml", "Styles/ToolTip.xaml", "Styles/Window.xaml" })
             app.Resources.MergedDictionaries.Add(new ResourceDictionary
             {
                 Source = new Uri($"/osuHitsounder;component/Resources/{resource}", UriKind.Relative)

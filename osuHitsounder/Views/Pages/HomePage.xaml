@@ -253,15 +253,15 @@
         </Style>
         <Style
             x:Key="HomePageRetryButtonStyle"
-            BasedOn="{StaticResource FolderActionButtonStyle}"
-            TargetType="Button">
+            BasedOn="{StaticResource OHsBalloonDefaultActionStyle}"
+            TargetType="customControls:BalloonButton">
             <Setter Property="Margin" Value="0,0,0,8" />
             <Setter Property="Visibility" Value="Collapsed" />
         </Style>
         <Style
             x:Key="HomePageProjectsRetryStyle"
             BasedOn="{StaticResource HomePageRetryButtonStyle}"
-            TargetType="Button">
+            TargetType="customControls:BalloonButton">
             <Style.Triggers>
                 <DataTrigger Binding="{Binding CanRetryProjects, Mode=OneWay}" Value="True">
                     <Setter Property="Visibility" Value="Visible" />
@@ -271,19 +271,12 @@
         <Style
             x:Key="HomePageSongsRetryStyle"
             BasedOn="{StaticResource HomePageRetryButtonStyle}"
-            TargetType="Button">
+            TargetType="customControls:BalloonButton">
             <Style.Triggers>
                 <DataTrigger Binding="{Binding CanRetrySongs, Mode=OneWay}" Value="True">
                     <Setter Property="Visibility" Value="Visible" />
                 </DataTrigger>
             </Style.Triggers>
-        </Style>
-        <Style
-            x:Key="HomePageRetryTextStyle"
-            BasedOn="{StaticResource BaseTextBlockStyle}"
-            TargetType="TextBlock">
-            <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}, Mode=OneWay}" />
-            <Setter Property="TextWrapping" Value="Wrap" />
         </Style>
     </UserControl.Resources>
     <Grid Margin="12,16">
@@ -304,13 +297,15 @@
                     Grid.Row="1"
                     Style="{StaticResource HomePageStatusStyle}"
                     Text="{Binding ProjectsStatus, Mode=OneWay}" />
-                <Button
+                <customControls:BalloonButton
+                    x:Name="ProjectsRetryButton"
                     Grid.Row="2"
                     AutomationProperties.Name="Retry Projects"
+                    ButtonIcon="{StaticResource UpdateOutline}"
+                    ButtonText="Retry Projects"
                     Command="{Binding RetryProjectsCommand, Mode=OneWay}"
-                    Style="{StaticResource HomePageProjectsRetryStyle}">
-                    <TextBlock Style="{StaticResource HomePageRetryTextStyle}" Text="Retry Projects" />
-                </Button>
+                    ShouldShowText="True"
+                    Style="{StaticResource HomePageProjectsRetryStyle}" />
                 <ItemsControl
                     x:Name="ProjectsList"
                     Grid.Row="3"
@@ -332,13 +327,15 @@
                     Grid.Row="1"
                     Style="{StaticResource HomePageStatusStyle}"
                     Text="{Binding SongsStatus, Mode=OneWay}" />
-                <Button
+                <customControls:BalloonButton
+                    x:Name="SongsRetryButton"
                     Grid.Row="2"
                     AutomationProperties.Name="Refresh Songs"
+                    ButtonIcon="{StaticResource UpdateOutline}"
+                    ButtonText="Refresh Songs"
                     Command="{Binding RetrySongsCommand, Mode=OneWay}"
-                    Style="{StaticResource HomePageSongsRetryStyle}">
-                    <TextBlock Style="{StaticResource HomePageRetryTextStyle}" Text="Refresh Songs" />
-                </Button>
+                    ShouldShowText="True"
+                    Style="{StaticResource HomePageSongsRetryStyle}" />
                 <ItemsControl
                     x:Name="SongsList"
                     Grid.Row="3"

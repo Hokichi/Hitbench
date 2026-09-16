@@ -61,76 +61,6 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
-        <ControlTemplate x:Key="MainWindowCaptionButtonTemplate" TargetType="Button">
-            <Border
-                Padding="{TemplateBinding Padding}"
-                Background="{TemplateBinding Background}"
-                BorderBrush="{TemplateBinding BorderBrush}"
-                BorderThickness="{TemplateBinding BorderThickness}"
-                CornerRadius="4">
-                <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
-            </Border>
-        </ControlTemplate>
-        <Style
-            x:Key="MainWindowCaptionButtonStyle"
-            BasedOn="{StaticResource BaseButtonStyle}"
-            TargetType="Button">
-            <Setter Property="Width" Value="40" />
-            <Setter Property="Height" Value="40" />
-            <Setter Property="Padding" Value="12" />
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderBrush" Value="Transparent" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
-            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-            <Setter Property="VerticalContentAlignment" Value="Stretch" />
-            <Setter Property="Template" Value="{StaticResource MainWindowCaptionButtonTemplate}" />
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
-                    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
-                </DataTrigger>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource Brush.Background.Hover}" />
-                </Trigger>
-                <Trigger Property="IsKeyboardFocused" Value="True">
-                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Focus}" />
-                </Trigger>
-                <MultiDataTrigger>
-                    <MultiDataTrigger.Conditions>
-                        <Condition Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True" />
-                        <Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource Self}, Mode=OneWay}" Value="True" />
-                    </MultiDataTrigger.Conditions>
-                    <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
-                    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.HighlightTextBrushKey}}" />
-                </MultiDataTrigger>
-                <MultiDataTrigger>
-                    <MultiDataTrigger.Conditions>
-                        <Condition Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True" />
-                        <Condition Binding="{Binding IsKeyboardFocused, RelativeSource={RelativeSource Self}, Mode=OneWay}" Value="True" />
-                    </MultiDataTrigger.Conditions>
-                    <Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
-                </MultiDataTrigger>
-            </Style.Triggers>
-        </Style>
-        <Style
-            x:Key="MainWindowCloseButtonStyle"
-            BasedOn="{StaticResource MainWindowCaptionButtonStyle}"
-            TargetType="Button">
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource Brush.Danger}" />
-                    <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary.Inverted}" />
-                </Trigger>
-                <MultiDataTrigger>
-                    <MultiDataTrigger.Conditions>
-                        <Condition Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True" />
-                        <Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource Self}, Mode=OneWay}" Value="True" />
-                    </MultiDataTrigger.Conditions>
-                    <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
-                    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.HighlightTextBrushKey}}" />
-                </MultiDataTrigger>
-            </Style.Triggers>
-        </Style>
         <BlurEffect x:Key="MainWindowScanBlur" Radius="8" />
         <Style
             x:Key="MainWindowScanContentStyle"
@@ -211,40 +141,30 @@
                     Style="{StaticResource MainWindowTitleStyle}"
                     Text="osuHitsounder" />
                 <StackPanel Grid.Column="1" Orientation="Horizontal">
-                    <Button
+                    <customControls:BalloonButton
                         x:Name="MinimizeButton"
                         AutomationProperties.Name="Minimize"
+                        ButtonIcon="{StaticResource Minus}"
+                        ButtonText="Minimize"
                         Click="OnMinimizeClick"
-                        Style="{StaticResource MainWindowCaptionButtonStyle}"
-                        ToolTip="Minimize">
-                        <customControls:Icon
-                            Focusable="False"
-                            Path="{StaticResource Minus}"
-                            Color="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}, Mode=OneWay}" />
-                    </Button>
-                    <Button
+                        Style="{StaticResource OHsBalloonNeutralActionStyle}"
+                        ToolTip="Minimize" />
+                    <customControls:BalloonButton
                         x:Name="MaximizeRestoreButton"
                         AutomationProperties.Name="Maximize"
+                        ButtonIcon="{StaticResource ExpandAlt}"
+                        ButtonText="Maximize"
                         Click="OnMaximizeRestoreClick"
-                        Style="{StaticResource MainWindowCaptionButtonStyle}"
-                        ToolTip="Maximize">
-                        <customControls:Icon
-                            x:Name="MaximizeRestoreIcon"
-                            Focusable="False"
-                            Path="{StaticResource ExpandAlt}"
-                            Color="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}, Mode=OneWay}" />
-                    </Button>
-                    <Button
+                        Style="{StaticResource OHsBalloonNeutralActionStyle}"
+                        ToolTip="Maximize" />
+                    <customControls:BalloonButton
                         x:Name="CloseButton"
                         AutomationProperties.Name="Close"
+                        ButtonIcon="{StaticResource Close}"
+                        ButtonText="Close"
                         Click="OnCloseClick"
-                        Style="{StaticResource MainWindowCloseButtonStyle}"
-                        ToolTip="Close">
-                        <customControls:Icon
-                            Focusable="False"
-                            Path="{StaticResource Close}"
-                            Color="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}, Mode=OneWay}" />
-                    </Button>
+                        Style="{StaticResource OHsBalloonDestructiveActionStyle}"
+                        ToolTip="Close" />
                 </StackPanel>
             </Grid>
             <Grid Grid.Row="1">
