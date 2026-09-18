@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
@@ -20,6 +21,11 @@ public partial class HomePage : UserControl
     private bool attached;
     private bool checkAgain;
     private bool songsScrollInput;
+    private long lastScrollRequest;
+    private Size maximizedPageSize;
+    private SongTileLayout? tileLayout;
+    private bool updatingLayout;
+    private double baselineHeaderHeight;
     private readonly CancellationTokenSource lifetime = new();
     private readonly TaskCompletionSource presentation = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -59,6 +65,7 @@ public partial class HomePage : UserControl
         presentation.TrySetCanceled(lifetime.Token);
         viewModel.Deactivate();
         HideSongs();
+        ReleaseSongImages();
         ImageLoader.Clear();
     }
 
@@ -69,6 +76,7 @@ public partial class HomePage : UserControl
         ProjectsList.AddHandler(ScrollViewer.ScrollChangedEvent, new ScrollChangedEventHandler(OnScrollChanged));
         SongsList.AddHandler(ScrollViewer.ScrollChangedEvent, new ScrollChangedEventHandler(OnScrollChanged));
         SizeChanged += OnSizeChanged;
+        LayoutUpdated += OnLayoutUpdated;
         IsVisibleChanged += OnVisibilityChanged;
         viewModel.PropertyChanged += OnStateChanged;
         QueueCheck();
@@ -77,11 +85,82 @@ public partial class HomePage : UserControl
     private void OnUnloaded(object sender, RoutedEventArgs e) => Deactivate();
     private void OnScrollChanged(object sender, ScrollChangedEventArgs e)
     {
-        if (ReferenceEquals(e.OriginalSource, FindScrollViewer(SongsList)) && e.VerticalChange != 0)
-            songsScrollInput = true;
+        if (ReferenceEquals(e.OriginalSource, FindScrollViewer(SongsList)) &&
+            FindDescendant<SpacedUniformGrid>(SongsList) is { } panel)
+        {
+            if (panel.VerticalScrollRequestVersion != lastScrollRequest)
+                songsScrollInput = true;
+            lastScrollRequest = panel.VerticalScrollRequestVersion;
+        }
         QueueCheck();
     }
-    private void OnSizeChanged(object sender, SizeChangedEventArgs e) => QueueCheck();
+    private void OnSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        songsScrollInput = false;
+        QueueCheck();
+    }
+
+    private void OnLayoutUpdated(object? sender, EventArgs e)
+    {
+        if (maximizedPageSize.Width > 0) UpdateSongsLayout(maximizedPageSize);
+    }
+
+    public void UpdateSongsLayout(Size maximizedSize)
+    {
+        if (updatingLayout || !double.IsFinite(maximizedSize.Width) || !double.IsFinite(maximizedSize.Height) ||
+            maximizedSize.Width <= 0 || maximizedSize.Height <= 0 || SongsList.ActualWidth <= 0 ||
+            FindDescendant<SpacedUniformGrid>(SongsList) is not { } panel ||
+            FindScrollViewer(SongsList) is not { } viewer) return;
+        updatingLayout = true;
+        try
+        {
+            var scrollbar = viewer.Template.FindName("PART_VerticalScrollBar", viewer) as ScrollBar;
+            var lane = scrollbar?.ActualWidth ?? SystemParameters.VerticalScrollBarWidth;
+            if (lane <= 0) lane = SystemParameters.VerticalScrollBarWidth;
+            // Native viewers reserve their own lane; the shared overlay viewer needs padding instead.
+            var nativeLane = Math.Max(0, SongsList.ActualWidth - panel.ViewportWidth -
+                SongsList.Padding.Left - SongsList.Padding.Right);
+            lane = Math.Max(lane, nativeLane);
+            var reservedPadding = Math.Max(0, lane - nativeLane);
+            var padding = FlowDirection == FlowDirection.RightToLeft
+                ? new Thickness(reservedPadding, 0, 0, 0) : new Thickness(0, 0, reservedPadding, 0);
+            if (SongsList.Padding != padding) SongsList.Padding = padding;
+
+            var horizontalChrome = SongsPanel.Padding.Left + SongsPanel.Padding.Right +
+                SongsPanel.BorderThickness.Left + SongsPanel.BorderThickness.Right;
+            var verticalChrome = SongsPanel.Padding.Top + SongsPanel.Padding.Bottom +
+                SongsPanel.BorderThickness.Top + SongsPanel.BorderThickness.Bottom;
+            var outsideWidth = PageLayout.Margin.Left + PageLayout.Margin.Right +
+                PageLayout.ColumnDefinitions[0].ActualWidth + SongsPanel.Margin.Left + SongsPanel.Margin.Right;
+            var outsideHeight = PageLayout.Margin.Top + PageLayout.Margin.Bottom +
+                SongsPanel.Margin.Top + SongsPanel.Margin.Bottom;
+            var headerHeight = SongsContent.RowDefinitions.Take(3).Sum(row => row.ActualHeight);
+            if (tileLayout is null || maximizedPageSize != maximizedSize ||
+                (Math.Abs(ActualWidth - maximizedSize.Width) < .1 && Math.Abs(baselineHeaderHeight - headerHeight) > .01))
+            {
+                var width = maximizedSize.Width - outsideWidth - horizontalChrome - lane;
+                var height = maximizedSize.Height - outsideHeight - verticalChrome - headerHeight;
+                if (width <= 4 * panel.HorizontalGap || height <= 7 * panel.VerticalGap) return;
+                tileLayout = new SongTileLayout(width, height, panel.HorizontalGap, panel.VerticalGap);
+                baselineHeaderHeight = headerHeight;
+                maximizedPageSize = maximizedSize;
+            }
+            var viewportWidth = Math.Max(tileLayout.MinimumViewportWidth, SongsList.ActualWidth - lane);
+            SetLayoutValue(panel, SpacedUniformGrid.ColumnsProperty, tileLayout.GetColumns(viewportWidth));
+            SetLayoutValue(panel, SpacedUniformGrid.ItemWidthProperty, tileLayout.GetTileWidth(viewportWidth));
+            SetLayoutValue(panel, SpacedUniformGrid.ItemHeightProperty, tileLayout.TileHeight);
+            SetLayoutValue(SongsPanel, MinWidthProperty, tileLayout.MinimumViewportWidth + horizontalChrome + lane);
+            SetLayoutValue(SongsPanel, MinHeightProperty, tileLayout.MinimumViewportHeight + verticalChrome + headerHeight);
+            SetLayoutValue(this, MinWidthProperty, outsideWidth + SongsPanel.MinWidth);
+            SetLayoutValue(this, MinHeightProperty, outsideHeight + SongsPanel.MinHeight);
+        }
+        finally { updatingLayout = false; }
+    }
+
+    private static void SetLayoutValue(DependencyObject target, DependencyProperty property, object value)
+    {
+        if (!Equals(target.GetValue(property), value)) target.SetCurrentValue(property, value);
+    }
     private void OnVisibilityChanged(object sender, DependencyPropertyChangedEventArgs e) => QueueCheck();
     private void OnStateChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -170,8 +249,9 @@ public partial class HomePage : UserControl
             return;
         }
 
-        if (!songsScrollInput || !panel.IsPrefetchThresholdReached) return;
+        var scrollRequested = songsScrollInput;
         songsScrollInput = false;
+        if (!scrollRequested || !panel.IsPrefetchThresholdReached) return;
         var requestedCount = panel.ItemsPerViewport;
         if (viewModel.LoadMoreSongsCommand.CanExecute(requestedCount))
             await viewModel.LoadMoreSongsCommand.ExecuteAsync(requestedCount);
@@ -203,9 +283,8 @@ public partial class HomePage : UserControl
 
     private async Task<bool> PrepareInitialSongsAsync(int generation, CancellationToken token)
     {
-        var decodeWidth = (int)Math.Ceiling(336 * VisualTreeHelper.GetDpi(SongsList).DpiScaleX);
         var preloadTasks = viewModel.Songs
-            .Select(song => ImageLoader.LoadAsync(song.BackgroundPath, decodeWidth, token))
+            .Select(song => ImageLoader.LoadAsync(song.BackgroundPath, SongImageDecodeWidth, token))
             .ToArray();
         await Task.WhenAll(preloadTasks).WaitAsync(token);
         if (!attached || generation != viewModel.SongsPresentationGeneration) return false;
@@ -213,13 +292,16 @@ public partial class HomePage : UserControl
         await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Loaded, token);
         SongsList.UpdateLayout();
         var size = SongsList.RenderSize;
-        var backgrounds = Descendants<OHsSongBackground>(SongsList).ToArray();
-        var tasks = backgrounds.Select(background => background.LoadingTask).ToArray();
+        var backgrounds = Descendants<Image>(SongsList).ToArray();
+        foreach (var background in backgrounds) StartSongImage(background);
+        if (backgrounds.Any(background => !imageRequests.ContainsKey(background))) return false;
+        var tasks = backgrounds.Select(background => imageRequests[background].LoadingTask).ToArray();
         await Task.WhenAll(tasks).WaitAsync(token);
         await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render, token);
 
         var changed = backgrounds.Where((background, index) =>
-            !ReferenceEquals(background.LoadingTask, tasks[index])).Any();
+            !imageRequests.TryGetValue(background, out var request) ||
+            !ReferenceEquals(request.LoadingTask, tasks[index])).Any();
         return attached && generation == viewModel.SongsPresentationGeneration &&
             size == SongsList.RenderSize && !changed;
     }
@@ -256,6 +338,7 @@ public partial class HomePage : UserControl
         ProjectsList.RemoveHandler(ScrollViewer.ScrollChangedEvent, new ScrollChangedEventHandler(OnScrollChanged));
         SongsList.RemoveHandler(ScrollViewer.ScrollChangedEvent, new ScrollChangedEventHandler(OnScrollChanged));
         SizeChanged -= OnSizeChanged;
+        LayoutUpdated -= OnLayoutUpdated;
         IsVisibleChanged -= OnVisibilityChanged;
         viewModel.PropertyChanged -= OnStateChanged;
     }

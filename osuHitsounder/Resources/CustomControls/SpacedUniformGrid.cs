@@ -67,6 +67,7 @@ public class SpacedUniformGrid : VirtualizingPanel, IScrollInfo
     public double ExtentWidth { get; private set; }
     public double HorizontalOffset { get; private set; }
     public double VerticalOffset { get; private set; }
+    public long VerticalScrollRequestVersion { get; private set; }
     public double ViewportHeight { get; private set; }
     public double ViewportWidth { get; private set; }
     public ScrollViewer? ScrollOwner { get; set; }
@@ -274,6 +275,7 @@ public class SpacedUniformGrid : VirtualizingPanel, IScrollInfo
     {
         var value = CanVerticallyScroll ? Clamp(offset, ExtentHeight, ViewportHeight) : 0;
         if (AreClose(value, VerticalOffset)) return;
+        VerticalScrollRequestVersion++;
         VerticalOffset = value;
         ScrollOwner?.InvalidateScrollInfo();
         InvalidateMeasure();

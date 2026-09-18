@@ -112,21 +112,14 @@
             Color="{DynamicResource Color.Text.Primary.Inverted}" />
         <Style
             x:Key="HomePageSongBackgroundStyle"
-            BasedOn="{StaticResource BaseBorderStyle}"
-            TargetType="customControls:OHsSongBackground">
-            <Setter Property="CornerRadius" Value="7" />
-            <Setter Property="Background" Value="{Binding ImageBrush, RelativeSource={RelativeSource Self}, Mode=OneWay}" />
-            <Setter Property="IsBlurred" Value="True" />
+            BasedOn="{StaticResource BaseImageStyle}"
+            TargetType="Image">
+            <Setter Property="Stretch" Value="UniformToFill" />
+            <Setter Property="IsHitTestVisible" Value="False" />
+            <Setter Property="Focusable" Value="False" />
             <Style.Triggers>
-                <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Button}, Mode=OneWay}" Value="True">
-                    <Setter Property="IsBlurred" Value="False" />
-                </DataTrigger>
-                <DataTrigger Binding="{Binding IsKeyboardFocusWithin, RelativeSource={RelativeSource AncestorType=Button}, Mode=OneWay}" Value="True">
-                    <Setter Property="IsBlurred" Value="False" />
-                </DataTrigger>
                 <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
-                    <Setter Property="IsBlurred" Value="False" />
+                    <Setter Property="Visibility" Value="Hidden" />
                 </DataTrigger>
             </Style.Triggers>
         </Style>
@@ -161,8 +154,6 @@
             x:Key="HomePageSongCardButtonStyle"
             BasedOn="{StaticResource FolderActionButtonStyle}"
             TargetType="Button">
-            <Setter Property="Width" Value="336" />
-            <Setter Property="Height" Value="108" />
             <Setter Property="Padding" Value="0" />
             <Setter Property="VerticalContentAlignment" Value="Stretch" />
             <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
@@ -181,14 +172,15 @@
                 Command="{Binding DataContext.CreateProjectCommand, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=OneWay}"
                 CommandParameter="{Binding Mode=OneWay}"
                 Style="{StaticResource HomePageSongCardButtonStyle}">
-                <Grid>
-                    <customControls:OHsSongBackground
-                        Loader="{Binding ImageLoader, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=OneWay}"
-                        Path="{Binding BackgroundPath, Mode=OneWay}"
-                        Style="{StaticResource HomePageSongBackgroundStyle}" />
+                <Grid SizeChanged="OnSongCardSizeChanged">
+                    <Image
+                        DataContextChanged="OnSongImageDataContextChanged"
+                        Loaded="OnSongImageLoaded"
+                        Style="{StaticResource HomePageSongBackgroundStyle}"
+                        Unloaded="OnSongImageUnloaded" />
                     <StackPanel
-                        Width="304"
-                        HorizontalAlignment="Center"
+                        Margin="16,0"
+                        HorizontalAlignment="Stretch"
                         VerticalAlignment="Center"
                         IsHitTestVisible="False">
                         <TextBlock Style="{StaticResource HomePageSongArtistStyle}" />
@@ -249,7 +241,7 @@
             TargetType="ItemsControl">
             <Setter Property="Template" Value="{StaticResource HomePageSongsItemsTemplate}" />
             <Setter Property="ItemTemplate" Value="{StaticResource HomePageSongTemplate}" />
-            <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Auto" />
+            <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Visible" />
         </Style>
         <Style
             x:Key="HomePageRetryButtonStyle"
@@ -279,7 +271,7 @@
             </Style.Triggers>
         </Style>
     </UserControl.Resources>
-    <Grid Margin="12,16">
+    <Grid x:Name="PageLayout" Margin="12,16">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="300" />
             <ColumnDefinition Width="3*" />
@@ -314,8 +306,11 @@
                     Style="{StaticResource HomePageFoldersStyle}" />
             </Grid>
         </Border>
-        <Border Grid.Column="1" Style="{StaticResource HomePagePanelStyle}">
-            <Grid>
+        <Border
+            x:Name="SongsPanel"
+            Grid.Column="1"
+            Style="{StaticResource HomePagePanelStyle}">
+            <Grid x:Name="SongsContent">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />

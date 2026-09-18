@@ -125,7 +125,7 @@
     <Window.Style>
         <StaticResource ResourceKey="MainWindowStyle" />
     </Window.Style>
-    <Border Style="{StaticResource MainWindowRootStyle}">
+    <Border x:Name="ShellRoot" Style="{StaticResource MainWindowRootStyle}">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="40" />

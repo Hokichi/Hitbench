@@ -12,5 +12,6 @@ public static class TestShell
         HomePageVM viewModel, IAppSettingsService settings, Action<WindowState>? requestWindowState = null) =>
         new(page, messenger, createWorkstation, viewModel, settings,
             error => throw new AssertionException($"Unexpected shell error: {error}"),
-            requestWindowState ?? (_ => throw new AssertionException("Unexpected native window-state request.")));
+            requestWindowState ?? (_ => throw new AssertionException("Unexpected native window-state request.")),
+            _ => new Size(1920, 1080));
 }

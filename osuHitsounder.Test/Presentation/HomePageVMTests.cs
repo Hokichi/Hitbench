@@ -89,12 +89,12 @@ public class HomePageVMTests
         Assert.That(vm.LoadMoreSongsCommand.CanExecute(20), Is.False);
         await vm.LoadInitialSongsAsync(CancellationToken.None);
         vm.CompleteSongsPresentation(vm.SongsPresentationGeneration);
-        Assert.That(vm.Songs, Has.Count.EqualTo(36));
+        Assert.That(vm.Songs, Has.Count.EqualTo(45));
         Assert.That(vm.Songs.First().Name, Is.EqualTo("129"));
-        Assert.That(vm.Songs.Last().Name, Is.EqualTo("094"));
+        Assert.That(vm.Songs.Last().Name, Is.EqualTo("085"));
         await vm.LoadMoreSongsCommand.ExecuteAsync(16);
-        Assert.That(vm.Songs, Has.Count.EqualTo(52));
-        Assert.That(vm.Songs.Last().Name, Is.EqualTo("078"));
+        Assert.That(vm.Songs, Has.Count.EqualTo(61));
+        Assert.That(vm.Songs.Last().Name, Is.EqualTo("069"));
         Assert.That(vm.IsProcessing, Is.False);
         Assert.That(vm.CanInteract, Is.True);
         Assert.That(vm.HasMoreSongs, Is.True);

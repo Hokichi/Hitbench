@@ -18,7 +18,7 @@ public partial class HomePageVM(
     IProjectCreationDialogService projectDialogs, IUiScheduler ui,
     IProjectFileService projectFiles, IMessenger messenger) : ObservableObject
 {
-    internal const int InitialSongCount = 9 * 4;
+    internal const int InitialSongCount = 9 * 5;
 
     public ObservableCollection<FolderEntry> Projects { get; } = [];
     public ObservableCollection<FolderEntry> Songs { get; } = [];

@@ -20,7 +20,7 @@ public sealed class SharedUiResourceIntegrationTests
                      {
                          "Themes/Dark.xaml", "Converters/Converters.xaml", "Icons.xaml",
                          "Styles/ColumnDefinition.xaml", "Styles/Grid.xaml", "Styles/StackPanel.xaml",
-                         "Styles/TextBlock.xaml", "Styles/ItemsControl.xaml", "Styles/Border.xaml",
+                         "Styles/TextBlock.xaml", "Styles/ItemsControl.xaml", "Styles/Image.xaml", "Styles/Border.xaml",
                          "Styles/ContentPresenter.xaml", "Styles/Button.xaml", "Styles/ToolTip.xaml",
                          "Styles/Window.xaml", "Styles/ListBox.xaml", "Styles/ListView.xaml",
                          "Styles/ComboBox.xaml", "Styles/TextBox.xaml", "Styles/ProgressBar.xaml",
@@ -56,7 +56,7 @@ public sealed class SharedUiResourceIntegrationTests
                  {
                      "Themes/Dark.xaml", "Converters/Converters.xaml", "Icons.xaml",
                      "Styles/ColumnDefinition.xaml", "Styles/Grid.xaml", "Styles/StackPanel.xaml",
-                     "Styles/TextBlock.xaml", "Styles/ItemsControl.xaml", "Styles/Border.xaml",
+                     "Styles/TextBlock.xaml", "Styles/ItemsControl.xaml", "Styles/Image.xaml", "Styles/Border.xaml",
                      "Styles/ContentPresenter.xaml", "Styles/Button.xaml", "Styles/ToolTip.xaml",
                      "Styles/Window.xaml", "Styles/ListBox.xaml", "Styles/ListView.xaml",
                      "Styles/ComboBox.xaml", "Styles/TextBox.xaml", "Styles/ProgressBar.xaml",

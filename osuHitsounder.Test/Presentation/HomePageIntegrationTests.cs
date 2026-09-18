@@ -270,6 +270,7 @@ public class HomePageIntegrationTests
         var page = new HomePage(vm) { Visibility = Visibility.Hidden };
         var window = new Window { Content = page, ShowInTaskbar = false };
         using var view = new InMemoryView(window);
+        page.UpdateSongsLayout(new Size(1920, 1040));
         try
         {
             var loading = page.LoadAsync(CancellationToken.None);
@@ -299,7 +300,7 @@ public class HomePageIntegrationTests
         var app = Application.Current ?? new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
         app.Resources.MergedDictionaries.Clear();
         UiTestPump.EnsureFontResources(app);
-        foreach (var resource in new[] { "Themes/Dark.xaml", "Converters/Converters.xaml", "Icons.xaml", "Styles/TextBlock.xaml", "Styles/ItemsControl.xaml", "Styles/Border.xaml", "Styles/ContentPresenter.xaml", "Styles/Button.xaml", "Styles/ToolTip.xaml", "Styles/Window.xaml" })
+        foreach (var resource in new[] { "Themes/Dark.xaml", "Converters/Converters.xaml", "Icons.xaml", "Styles/TextBlock.xaml", "Styles/ItemsControl.xaml", "Styles/Image.xaml", "Styles/Grid.xaml", "Styles/Border.xaml", "Styles/ContentPresenter.xaml", "Styles/Button.xaml", "Styles/ToolTip.xaml", "Styles/Window.xaml" })
             app.Resources.MergedDictionaries.Add(new ResourceDictionary
             {
                 Source = new Uri($"/osuHitsounder;component/Resources/{resource}", UriKind.Relative)
@@ -408,17 +409,17 @@ public class HomePageIntegrationTests
             PumpUntil(() => vm.Songs.Count == 1);
             var button = Descendants<Button>(page).Single(button => button.IsVisible && button.DataContext is FolderEntry);
             var text = Descendants<TextBlock>(button).ToArray();
-            var backgroundControl = Descendants<OHsSongBackground>(button).Single();
-            Assert.That(backgroundControl.LoadingTask.IsCompleted, Is.True);
-            Assert.That(backgroundControl.ImageBrush, Is.Not.Null, "Initial background must be ready when loading completes.");
+            var backgroundControl = Descendants<Image>(button).Single();
+            Assert.That(backgroundControl.Source, Is.Not.Null, "Initial background must be ready when loading completes.");
             Assert.That(text.Select(value => value.Text), Is.EqualTo(new[] { "Artist", "Title" }));
-            backgroundControl.IsBlurred = false;
+            button.RaiseEvent(new System.Windows.Input.MouseEventArgs(System.Windows.Input.Mouse.PrimaryDevice, 0)
+            { RoutedEvent = UIElement.MouseEnterEvent });
             view.UpdateLayout();
             Assert.That(button.ToolTip, Is.Null);
             Assert.That(button.IsTabStop, Is.True);
             Assert.That(button.Opacity, Is.EqualTo(1));
             Assert.That(button.Effect, Is.Null);
-            PumpFor(TimeSpan.FromMilliseconds(150));
+            PumpFor(TimeSpan.FromMilliseconds(220));
             Assert.That(((System.Windows.Media.Effects.BlurEffect)backgroundControl.Effect).Radius,
                 Is.EqualTo(0).Within(0.01));
             Assert.That(button.CommandParameter, Is.SameAs(row));
@@ -450,7 +451,7 @@ public class HomePageIntegrationTests
     }
 
     [Test]
-    public void SongCardsUseFixedVirtualizedGridAcrossSizesAndThemes()
+    public void SongCardsUseResponsiveVirtualizedGridAcrossSizesAndThemes()
     {
         var app = Application.Current ?? new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
         var background = CreateTestImage();
@@ -465,7 +466,7 @@ public class HomePageIntegrationTests
             {
                 app.Resources.MergedDictionaries.Clear();
                 UiTestPump.EnsureFontResources(app);
-                foreach (var resource in new[] { $"Themes/{theme}.xaml", "Converters/Converters.xaml", "Icons.xaml", "Styles/TextBlock.xaml", "Styles/ItemsControl.xaml", "Styles/Border.xaml", "Styles/ContentPresenter.xaml", "Styles/Button.xaml", "Styles/ToolTip.xaml", "Styles/Window.xaml" })
+                foreach (var resource in new[] { $"Themes/{theme}.xaml", "Converters/Converters.xaml", "Icons.xaml", "Styles/TextBlock.xaml", "Styles/ItemsControl.xaml", "Styles/Image.xaml", "Styles/Grid.xaml", "Styles/Border.xaml", "Styles/ContentPresenter.xaml", "Styles/Button.xaml", "Styles/ToolTip.xaml", "Styles/Window.xaml" })
                     app.Resources.MergedDictionaries.Add(new ResourceDictionary
                     {
                         Source = new Uri($"/osuHitsounder;component/Resources/{resource}", UriKind.Relative)
@@ -498,8 +499,9 @@ public class HomePageIntegrationTests
                 try
                 {
                     using var view = new InMemoryView(window);
+                    page.UpdateSongsLayout(new Size(1920, 1080));
                     UiTestPump.Run(page.LoadAsync(CancellationToken.None));
-                    PumpUntil(() => vm.Songs.Count == 36);
+                    PumpUntil(() => vm.Songs.Count == 45);
                     view.UpdateLayout();
                     TestContext.Progress.WriteLine($"Theme={theme} StubFolders=2000 HomePageFirstActionableRowMs={firstRowTimer.Elapsed.TotalMilliseconds:F2}");
                     var lists = Descendants<ItemsControl>(page).ToArray();
@@ -508,49 +510,48 @@ public class HomePageIntegrationTests
                     var button = Descendants<Button>(songsList)
                         .First(candidate => candidate.DataContext is FolderEntry);
                     var labels = Descendants<TextBlock>(button).ToArray();
-                    var backgroundBorder = Descendants<Border>(button)
-                        .First(border => border.Background is ImageBrush);
+                    var backgroundImage = Descendants<Image>(button).Single();
                     var peer = new ButtonAutomationPeer(button);
                     Assert.Multiple(() =>
                     {
                         Assert.That(lists, Has.Length.EqualTo(2));
                         Assert.That(lists[0].Items.Count, Is.EqualTo(1));
-                        Assert.That(songsList.Items.Count, Is.EqualTo(36));
+                        Assert.That(songsList.Items.Count, Is.EqualTo(45));
                         var columns = ((Grid)page.Content).ColumnDefinitions;
                         Assert.That(columns[0].ActualWidth, Is.EqualTo(300).Within(0.01));
                         Assert.That(columns[1].ActualWidth, Is.GreaterThan(columns[0].ActualWidth * 3));
-                        Assert.That(panel.Columns, Is.EqualTo(4));
-                        Assert.That(panel.ItemWidth, Is.EqualTo(336));
-                        Assert.That(panel.ItemHeight, Is.EqualTo(108));
+                        Assert.That(panel.Columns, Is.EqualTo(5));
+                        Assert.That(panel.VisibleRowCount, Is.EqualTo(8));
+                        Assert.That(panel.ExtentWidth, Is.EqualTo(panel.ViewportWidth).Within(.01));
                         Assert.That(panel.HorizontalGap, Is.EqualTo(12));
                         Assert.That(panel.VerticalGap, Is.EqualTo(12));
-                        Assert.That(panel.Children.Count, Is.InRange(1, 36));
-                        Assert.That(button.ActualWidth, Is.EqualTo(336).Within(0.01));
-                        Assert.That(button.ActualHeight, Is.EqualTo(108).Within(0.01));
-                        Assert.That(backgroundBorder.ActualHeight, Is.GreaterThanOrEqualTo(106));
+                        Assert.That(panel.Children.Count, Is.InRange(40, 45));
+                        Assert.That(button.ActualWidth, Is.EqualTo(panel.ItemWidth).Within(0.01));
+                        Assert.That(button.ActualHeight, Is.EqualTo(panel.ItemHeight).Within(0.01));
+                        Assert.That(backgroundImage.ActualHeight, Is.EqualTo(button.ActualHeight - 2).Within(.01));
                         Assert.That(labels.Select(label => label.Text), Is.EqualTo(new[]
                             { "Artist", "Title " + new string('x', 80) }));
                         Assert.That(((SolidColorBrush)labels[0].Foreground).Color,
                             Is.EqualTo(((SolidColorBrush)app.FindResource("Brush.Text.Primary")).Color));
                         Assert.That(labels[0].TranslatePoint(new Point(), button).Y,
                             Is.LessThan(labels[1].TranslatePoint(new Point(), button).Y));
-                        Assert.That(((ImageBrush)backgroundBorder.Background).Stretch, Is.EqualTo(Stretch.UniformToFill));
+                        Assert.That(backgroundImage.Stretch, Is.EqualTo(Stretch.Fill));
                         Assert.That(peer.GetName(), Is.EqualTo("Artist - Title"));
                         Assert.That(peer.GetHelpText(), Does.Contain("long folder name"));
                     });
 
                     window.FlowDirection = FlowDirection.RightToLeft;
-                    window.Width = 640;
-                    window.Height = 360;
+                    window.Width = page.MinWidth;
+                    window.Height = page.MinHeight;
                     view.UpdateLayout();
                     window.Dispatcher.Invoke(() => { }, DispatcherPriority.ContextIdle);
                     var scroll = Descendants<ScrollViewer>(songsList).Single();
                     Assert.Multiple(() =>
                     {
-                        Assert.That(panel.Columns, Is.EqualTo(4));
-                        Assert.That(scroll.ScrollableWidth, Is.GreaterThan(0));
+                        Assert.That(panel.Columns, Is.EqualTo(1));
+                        Assert.That(scroll.ScrollableWidth, Is.Zero);
                         Assert.That(scroll.ScrollableHeight, Is.GreaterThan(0));
-                        Assert.That(panel.ExtentWidth, Is.EqualTo(1380));
+                        Assert.That(panel.ExtentWidth, Is.EqualTo(panel.ViewportWidth).Within(.01));
                     });
                 }
                 finally { window.Close(); }
@@ -596,6 +597,7 @@ public class HomePageIntegrationTests
         {
             var songsList = (ItemsControl)page.FindName("SongsList");
             Assert.That(songsList.Opacity, Is.Zero);
+            page.UpdateSongsLayout(new Size(1920, 1080));
             UiTestPump.Run(page.LoadAsync(CancellationToken.None));
             PumpUntil(() => vm.Songs.Count == HomePageVM.InitialSongCount);
             PumpUntil(() => Math.Abs(songsList.Opacity - 1) < 0.001);
@@ -605,24 +607,36 @@ public class HomePageIntegrationTests
             window.Width = 1900;
             view.UpdateLayout();
             window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
-            Assert.That(vm.Songs, Has.Count.EqualTo(36), "Resize/layout must not count as user scrolling.");
+            Assert.That(vm.Songs, Has.Count.EqualTo(45), "Resize/layout must not count as user scrolling.");
 
             scroll.ScrollToVerticalOffset(1);
-            PumpUntil(() => vm.Songs.Count == 68);
+            PumpUntil(() => vm.Songs.Count == 85);
 
             scroll.ScrollToEnd();
             scroll.ScrollToVerticalOffset(Math.Max(0, scroll.ScrollableHeight - 1));
             scroll.ScrollToEnd();
-            PumpUntil(() => vm.Songs.Count == 100);
+            PumpUntil(() => vm.Songs.Count == 125);
             window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
-            Assert.That(vm.Songs, Has.Count.EqualTo(100), "Repeated notifications must coalesce to one batch.");
+            Assert.That(vm.Songs, Has.Count.EqualTo(125), "Repeated notifications must coalesce to one batch.");
 
             scroll.ScrollToVerticalOffset(Math.Max(0, scroll.ScrollableHeight - panel.RowStride * 2));
             view.UpdateLayout();
             window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
-            Assert.That(vm.Songs, Has.Count.EqualTo(100));
+            Assert.That(vm.Songs, Has.Count.EqualTo(125));
             scroll.LineDown();
-            PumpUntil(() => vm.Songs.Count == 132);
+            PumpUntil(() => vm.Songs.Count == 165);
+
+            window.Width = page.MinWidth;
+            view.UpdateLayout();
+            // A direct panel offset models an accessibility scroll request; allow its batch to finish.
+            panel.SetVerticalOffset(panel.ExtentHeight - panel.ViewportHeight);
+            view.UpdateLayout();
+            window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+            var countBeforeReflow = vm.Songs.Count;
+            window.Width = 1920;
+            view.UpdateLayout();
+            window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+            Assert.That(vm.Songs, Has.Count.EqualTo(countBeforeReflow), "Offset clamping during reflow is not a scroll request.");
         }
         finally
         {
@@ -667,17 +681,20 @@ public class HomePageIntegrationTests
         using var view = new InMemoryView(window);
         try
         {
+            page.UpdateSongsLayout(new Size(1920, 1040));
             UiTestPump.Run(page.LoadAsync(CancellationToken.None));
             var songsList = (ItemsControl)page.FindName("SongsList");
             PumpUntil(() => Math.Abs(songsList.Opacity - 1) < 0.001);
             foreach (var path in validPaths) File.Delete(path);
-            var decodeWidth = (int)Math.Ceiling(336 * VisualTreeHelper.GetDpi(songsList).DpiScaleX);
+            var panel = Descendants<SpacedUniformGrid>(songsList).Single();
+            const int decodeWidth = 336;
             var cachedLoads = Task.WhenAll(validPaths.Select(path =>
                 page.ImageLoader.LoadAsync(path, decodeWidth, CancellationToken.None)));
             UiTestPump.Run(cachedLoads);
             var missingLoad = page.ImageLoader.LoadAsync(
                 Path.Combine(imageDirectory.FullName, "missing.png"), decodeWidth, CancellationToken.None);
             UiTestPump.Run(missingLoad);
+            PumpUntil(() => Math.Abs(songsList.Opacity - 1) < 0.001);
 
             Assert.Multiple(() =>
             {
@@ -713,6 +730,7 @@ public class HomePageIntegrationTests
         var page = new HomePage(vm);
         var window = new Window { Content = page, Width = 1280, Height = 720, ShowInTaskbar = false };
         using var view = new InMemoryView(window);
+        page.UpdateSongsLayout(new Size(1920, 1040));
         try
         {
             UiTestPump.Run(page.LoadAsync(CancellationToken.None));
@@ -761,6 +779,7 @@ public class HomePageIntegrationTests
         var page = new HomePage(vm);
         var window = new Window { Content = page, Width = 1280, Height = 720, ShowInTaskbar = false };
         using var view = new InMemoryView(window);
+        page.UpdateSongsLayout(new Size(1920, 1040));
         try
         {
             UiTestPump.Run(page.LoadAsync(CancellationToken.None));

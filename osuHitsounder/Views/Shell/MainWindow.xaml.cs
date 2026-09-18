@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Controls;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Windows.Input;
@@ -10,6 +11,7 @@ using CommunityToolkit.Mvvm.Messaging;
 using osuHitsounder.Core.Entities;
 using osuHitsounder.Resources.Messages;
 using osuHitsounder.Services.FileSystem;
+using osuHitsounder.Services.Ui;
 using osuHitsounder.Views.Pages;
 using osuHitsounder.ViewModels.Shell.HomePage;
 
@@ -39,6 +41,10 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>, IRe
     private bool closingAfterSave;
     private readonly Action<string> reportError;
     private readonly Action<WindowState> requestWindowState;
+    private readonly Func<Window, Size> getWorkArea;
+    private readonly double defaultMinWidth;
+    private readonly double defaultMinHeight;
+    private DispatcherOperation? layoutRefresh;
 
     public MainWindow(HomePage page, IMessenger messenger, Func<WorkstationPage> createWorkstation,
         HomePageVM viewModel, IAppSettingsService settings)
@@ -46,7 +52,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>, IRe
 
     internal MainWindow(HomePage page, IMessenger messenger, Func<WorkstationPage> createWorkstation,
         HomePageVM viewModel, IAppSettingsService settings, Action<string>? reportError,
-        Action<WindowState>? requestWindowState = null)
+        Action<WindowState>? requestWindowState = null, Func<Window, Size>? getWorkArea = null)
     {
         this.reportError = reportError ?? (error => MessageBox.Show(this, error, "osuHitsounder",
             MessageBoxButton.OK, MessageBoxImage.Error));
@@ -61,7 +67,10 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>, IRe
         this.messenger = messenger;
         this.createWorkstation = createWorkstation;
         this.settings = settings;
+        this.getWorkArea = getWorkArea ?? WindowWorkArea.GetClientSize;
         InitializeComponent();
+        defaultMinWidth = MinWidth;
+        defaultMinHeight = MinHeight;
         placementTimer = new DispatcherTimer(DispatcherPriority.Background, Dispatcher)
         {
             Interval = TimeSpan.FromMilliseconds(200)
@@ -75,6 +84,11 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>, IRe
         messenger.Register<ProjectCreationFailedMessage>(this);
         SizeChanged += OnWindowSizeChanged;
         StateChanged += OnWindowStateChanged;
+        LocationChanged += OnLayoutEnvironmentChanged;
+        SourceInitialized += OnLayoutEnvironmentChanged;
+        LayoutUpdated += OnLayoutEnvironmentChanged;
+        DpiChanged += OnWindowDpiChanged;
+        SystemParameters.StaticPropertyChanged += OnSystemParametersChanged;
     }
 
     public string? FatalError => page.FatalError;
@@ -103,6 +117,8 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>, IRe
             var workstation = createWorkstation();
             page.Deactivate();
             PageHost.Content = workstation;
+            MinWidth = defaultMinWidth;
+            MinHeight = defaultMinHeight;
         }
         catch (Exception error)
         {
@@ -137,6 +153,12 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>, IRe
         placementTimer.Tick -= OnPlacementTimerTick;
         SizeChanged -= OnWindowSizeChanged;
         StateChanged -= OnWindowStateChanged;
+        LocationChanged -= OnLayoutEnvironmentChanged;
+        SourceInitialized -= OnLayoutEnvironmentChanged;
+        LayoutUpdated -= OnLayoutEnvironmentChanged;
+        DpiChanged -= OnWindowDpiChanged;
+        SystemParameters.StaticPropertyChanged -= OnSystemParametersChanged;
+        layoutRefresh?.Abort();
         focusRestore?.Abort();
         viewModel.PropertyChanged -= OnStateChanged;
         ProcessingText.IsVisibleChanged -= OnProcessingVisibilityChanged;
@@ -182,7 +204,34 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>, IRe
         Math.Max(minimum, double.IsFinite(value) && value > 0 ? value : fallback);
 
     private void OnWindowSizeChanged(object sender, SizeChangedEventArgs e)
-        => RecordWindowSize(ActualWidth, ActualHeight);
+    {
+        QueueSongsLayout();
+        RecordWindowSize(ActualWidth, ActualHeight);
+    }
+
+    private void OnLayoutEnvironmentChanged(object? sender, EventArgs e) => QueueSongsLayout();
+    private void OnWindowDpiChanged(object sender, DpiChangedEventArgs e) => QueueSongsLayout();
+    private void OnSystemParametersChanged(object? sender, PropertyChangedEventArgs e) => QueueSongsLayout();
+
+    private void QueueSongsLayout()
+    {
+        if (closed || PageHost.Content != page || layoutRefresh?.Status == DispatcherOperationStatus.Pending) return;
+        layoutRefresh = Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
+        {
+            if (closed || PageHost.Content != page || page.ActualWidth <= 0) return;
+            var size = getWorkArea(this);
+            if (size.IsEmpty || size.Width <= 0 || size.Height <= 0) return;
+            // Named shell content uses a border and a header row. Measure their public layout values.
+            var root = ShellRoot;
+            var grid = (Grid)root.Child;
+            var header = grid.RowDefinitions[0].ActualHeight;
+            page.UpdateSongsLayout(new Size(size.Width, Math.Max(0, size.Height - header)));
+            var width = page.MinWidth + root.BorderThickness.Left + root.BorderThickness.Right;
+            var height = page.MinHeight + header + root.BorderThickness.Top + root.BorderThickness.Bottom;
+            if (Math.Abs(MinWidth - width) > .01) MinWidth = width;
+            if (Math.Abs(MinHeight - height) > .01) MinHeight = height;
+        }));
+    }
 
     internal void RecordWindowSize(double width, double height)
     {
@@ -193,7 +242,10 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>, IRe
     }
 
     private void OnWindowStateChanged(object? sender, EventArgs e)
-        => RecordWindowState(ActualWidth, ActualHeight);
+    {
+        QueueSongsLayout();
+        RecordWindowState(ActualWidth, ActualHeight);
+    }
 
     internal void RecordWindowState(double width, double height)
     {

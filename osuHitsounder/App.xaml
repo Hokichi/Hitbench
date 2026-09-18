@@ -21,6 +21,7 @@
                 <ResourceDictionary Source="Resources/Styles/StackPanel.xaml" />
                 <ResourceDictionary Source="Resources/Styles/TextBlock.xaml" />
                 <ResourceDictionary Source="Resources/Styles/ItemsControl.xaml" />
+                <ResourceDictionary Source="Resources/Styles/Image.xaml" />
                 <ResourceDictionary Source="Resources/Styles/Border.xaml" />
                 <ResourceDictionary Source="Resources/Styles/ContentPresenter.xaml" />
                 <ResourceDictionary Source="Resources/Styles/Button.xaml" />
