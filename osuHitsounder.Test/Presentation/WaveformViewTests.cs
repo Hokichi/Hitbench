@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Media;
+using CommunityToolkit.Mvvm.Input;
 using osuHitsounder.Core.Entities;
 using osuHitsounder.Resources.CustomControls;
 
@@ -44,6 +45,44 @@ public class WaveformViewTests
         view.Measure(new Size(double.PositiveInfinity, 100));
         Assert.That(double.IsFinite(view.DesiredSize.Width), Is.True);
         Assert.DoesNotThrow(() => view.Arrange(new Rect(view.DesiredSize)));
+    }
+
+    [Test]
+    public void MapsContentCoordinatesAndExecutesSeekCommand()
+    {
+        var sought = TimeSpan.MinValue;
+        var view = CreateView();
+        view.ViewportWidth = 400;
+        view.ZoomFactor = 4;
+        view.SeekCommand = new RelayCommand<object?>(value => sought = (TimeSpan)value!);
+        view.Measure(new Size(double.PositiveInfinity, 160));
+        view.Arrange(new Rect(0, 0, 1600, 160));
+        using var source = new InMemoryPresentationSource { RootVisual = view };
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(view.GetPositionAt(800), Is.EqualTo(TimeSpan.FromSeconds(5)));
+            Assert.That(view.GetPositionAt(-10), Is.EqualTo(TimeSpan.Zero));
+            Assert.That(view.GetPositionAt(2000), Is.EqualTo(TimeSpan.FromSeconds(10)));
+            Assert.That(view.SeekAt(400), Is.True);
+            Assert.That(sought, Is.EqualTo(TimeSpan.FromSeconds(2.5)));
+            Assert.That(view.InputHitTest(new Point(300, 80)), Is.Not.Null);
+        });
+    }
+
+    [Test]
+    public void InvalidLayoutOrDisabledCommandDoesNotSeek()
+    {
+        var executions = 0;
+        var view = CreateView();
+        view.SeekCommand = new RelayCommand<object?>(_ => executions++, _ => false);
+        Assert.That(view.GetPositionAt(1), Is.Null);
+        view.Measure(new Size(400, 160));
+        view.Arrange(new Rect(0, 0, 400, 160));
+        Assert.That(view.SeekAt(200), Is.False);
+        Assert.That(executions, Is.Zero);
+        view.Data = null;
+        Assert.That(view.GetPositionAt(200), Is.Null);
     }
 
     private static WaveformView CreateView() => new()

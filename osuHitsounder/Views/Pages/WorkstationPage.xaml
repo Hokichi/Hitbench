@@ -87,7 +87,8 @@
             </Style.Triggers>
         </Style>
         <ControlTemplate x:Key="OHsWorkstationWaveformScrollTemplate" TargetType="ScrollViewer">
-            <Grid Background="{TemplateBinding Background}">
+            <Border x:Name="WaveformBoundary" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8">
+            <Grid>
                 <ScrollContentPresenter
                     x:Name="PART_ScrollContentPresenter"
                     Margin="{TemplateBinding Padding}"
@@ -109,13 +110,24 @@
                     Visibility="{TemplateBinding ComputedHorizontalScrollBarVisibility}"
                     Value="{Binding HorizontalOffset, Mode=OneWay, RelativeSource={RelativeSource TemplatedParent}}" />
             </Grid>
+            </Border>
+            <ControlTemplate.Triggers>
+                <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="WaveformBoundary" Property="BorderBrush" Value="{DynamicResource Brush.Navy.Muted}" /></Trigger>
+                <Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter TargetName="WaveformBoundary" Property="BorderBrush" Value="{DynamicResource Brush.Navy}" /></Trigger>
+            </ControlTemplate.Triggers>
         </ControlTemplate>
         <Style x:Key="OHsWorkstationWaveformScrollStyle" BasedOn="{StaticResource BaseScrollViewerStyle}" TargetType="ScrollViewer">
             <Setter Property="Background" Value="{DynamicResource Brush.Background.Deepened}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Subtle}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Cursor" Value="Hand" />
             <Setter Property="FocusVisualStyle" Value="{StaticResource DefaultFocusVisualStyle}" />
             <Setter Property="HorizontalScrollBarVisibility" Value="Auto" />
             <Setter Property="VerticalScrollBarVisibility" Value="Disabled" />
             <Setter Property="Template" Value="{StaticResource OHsWorkstationWaveformScrollTemplate}" />
+            <Style.Triggers>
+                <Trigger Property="IsEnabled" Value="False"><Setter Property="Cursor" Value="Arrow" /><Setter Property="Opacity" Value="0.4" /></Trigger>
+            </Style.Triggers>
         </Style>
     </UserControl.Resources>
     <Grid Margin="16">
@@ -151,9 +163,10 @@
                     x:Name="WaveformScrollViewer"
                     Grid.Row="3"
                     Margin="0,12,0,0"
-                    AutomationProperties.HelpText="Use Left and Right arrow keys to move through the zoomed waveform."
+                    AutomationProperties.HelpText="Click to seek. Use arrow keys to scroll, or Control plus arrow keys to seek."
                     AutomationProperties.Name="Audio waveform"
                     Focusable="True"
+                    IsEnabled="{Binding CanPlay, Mode=OneWay}"
                     PreviewKeyDown="OnWaveformKeyDown"
                     ScrollChanged="OnWaveformScrollChanged"
                     SizeChanged="OnWaveformViewportSizeChanged"
@@ -164,7 +177,9 @@
                         FontFamily="{DynamicResource Regular}"
                         HorizontalOffset="{Binding ElementName=WaveformScrollViewer, Path=HorizontalOffset, Mode=OneWay}"
                         MarkerBrush="{DynamicResource Brush.Navy}"
+                        MouseLeftButtonDown="OnWaveformMouseLeftButtonDown"
                         Position="{Binding Position, Mode=OneWay}"
+                        SeekCommand="{Binding SeekCommand, Mode=OneWay}"
                         TextBrush="{DynamicResource Brush.Text.Secondary}"
                         ViewportWidth="{Binding ElementName=WaveformScrollViewer, Path=ViewportWidth, Mode=OneWay}"
                         WaveformBrush="{DynamicResource Brush.Navy.Muted}"

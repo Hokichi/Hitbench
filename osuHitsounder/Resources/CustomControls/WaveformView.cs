@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Windows;
+using System.Windows.Input;
 using System.Windows.Media;
 using osuHitsounder.Core.Entities;
 
@@ -25,6 +26,8 @@ public sealed class WaveformView : FrameworkElement
         nameof(TextBrush), typeof(Brush), typeof(WaveformView), new FrameworkPropertyMetadata(SystemColors.WindowTextBrush, FrameworkPropertyMetadataOptions.AffectsRender));
     public static readonly DependencyProperty FontFamilyProperty = DependencyProperty.Register(
         nameof(FontFamily), typeof(FontFamily), typeof(WaveformView), new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
+    public static readonly DependencyProperty SeekCommandProperty = DependencyProperty.Register(
+        nameof(SeekCommand), typeof(ICommand), typeof(WaveformView), new FrameworkPropertyMetadata(null));
 
     public WaveformData? Data { get => (WaveformData?)GetValue(DataProperty); set => SetValue(DataProperty, value); }
     public TimeSpan Position { get => (TimeSpan)GetValue(PositionProperty); set => SetValue(PositionProperty, value); }
@@ -35,6 +38,7 @@ public sealed class WaveformView : FrameworkElement
     public Brush MarkerBrush { get => (Brush)GetValue(MarkerBrushProperty); set => SetValue(MarkerBrushProperty, value); }
     public Brush TextBrush { get => (Brush)GetValue(TextBrushProperty); set => SetValue(TextBrushProperty, value); }
     public FontFamily? FontFamily { get => (FontFamily?)GetValue(FontFamilyProperty); set => SetValue(FontFamilyProperty, value); }
+    public ICommand? SeekCommand { get => (ICommand?)GetValue(SeekCommandProperty); set => SetValue(SeekCommandProperty, value); }
 
     public WaveformView() => FlowDirection = FlowDirection.LeftToRight;
 
@@ -52,12 +56,13 @@ public sealed class WaveformView : FrameworkElement
         var data = Data;
         var width = ActualWidth;
         var height = ActualHeight;
+        if (width > 0 && height > 0) drawingContext.DrawRectangle(Brushes.Transparent, null, new Rect(0, 0, width, height));
         if (data is null || data.Peaks.Count == 0 || data.Duration <= TimeSpan.Zero || width <= 0 || height <= 0) return;
 
         var viewport = IsPositiveFinite(ViewportWidth) ? Math.Min(ViewportWidth, width) : width;
         var offset = double.IsFinite(HorizontalOffset) ? Math.Clamp(HorizontalOffset, 0, Math.Max(0, width - viewport)) : 0;
         var waveformBrush = SystemParameters.HighContrast ? SystemColors.HighlightBrush : WaveformBrush;
-        var markerBrush = SystemParameters.HighContrast ? SystemColors.HighlightTextBrush : MarkerBrush;
+        var markerBrush = SystemParameters.HighContrast ? SystemColors.WindowTextBrush : MarkerBrush;
         var textBrush = SystemParameters.HighContrast ? SystemColors.WindowTextBrush : TextBrush;
         var baselineY = Math.Max(12, (height - 22) / 2);
         var amplitude = Math.Max(0, baselineY - 8);
@@ -81,6 +86,7 @@ public sealed class WaveformView : FrameworkElement
 
         var pixelsPerSecond = width / data.Duration.TotalSeconds;
         var markerX = Math.Clamp(Position.TotalSeconds, 0, data.Duration.TotalSeconds) * pixelsPerSecond;
+        markerX = Math.Clamp(markerX, markerPen.Thickness / 2, Math.Max(markerPen.Thickness / 2, width - markerPen.Thickness / 2));
         drawingContext.DrawLine(markerPen, new Point(markerX, 0), new Point(markerX, Math.Max(0, height - 20)));
         DrawRuler(drawingContext, offset, viewport, height, pixelsPerSecond, data.Duration, textBrush);
         drawingContext.Pop();
@@ -120,4 +126,20 @@ public sealed class WaveformView : FrameworkElement
         $"{(int)(seconds / 60):00}:{(int)(seconds % 60):00}";
 
     private static bool IsPositiveFinite(double value) => double.IsFinite(value) && value > 0;
+
+    public TimeSpan? GetPositionAt(double contentX)
+    {
+        var data = Data;
+        if (data is null || data.Duration <= TimeSpan.Zero || !IsPositiveFinite(ActualWidth) || !double.IsFinite(contentX)) return null;
+        return TimeSpan.FromSeconds(Math.Clamp(contentX / ActualWidth, 0, 1) * data.Duration.TotalSeconds);
+    }
+
+    public bool SeekAt(double contentX)
+    {
+        var position = GetPositionAt(contentX);
+        var command = SeekCommand;
+        if (position is null || command is null || !command.CanExecute(position.Value)) return false;
+        command.Execute(position.Value);
+        return true;
+    }
 }

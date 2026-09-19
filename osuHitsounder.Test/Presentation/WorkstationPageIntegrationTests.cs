@@ -69,6 +69,28 @@ public class WorkstationPageIntegrationTests
         });
     }
 
+    [Test]
+    public void WaveformSeekCommandUpdatesBoundMarkerPosition()
+    {
+        var audio = new StubWorkstationAudioService();
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), audio, new ImmediateUiScheduler());
+        var page = new WorkstationPage(vm);
+        page.SetProjectPath("project.json");
+        var window = new Window { Content = page, Width = 900, Height = 600 };
+        using var view = new InMemoryView(window);
+        UiTestPump.Run(page.LoadCompletion);
+        view.UpdateLayout();
+
+        var waveform = (WaveformView)page.FindName("WaveformDisplay");
+        Assert.That(waveform.SeekAt(waveform.ActualWidth * 0.6), Is.True);
+        Assert.Multiple(() =>
+        {
+            Assert.That(audio.Snapshot.Position, Is.EqualTo(TimeSpan.FromSeconds(6)).Within(TimeSpan.FromMilliseconds(1)));
+            Assert.That(waveform.Position, Is.EqualTo(audio.Snapshot.Position));
+            Assert.That(((ScrollViewer)page.FindName("WaveformScrollViewer")).IsEnabled, Is.True);
+        });
+    }
+
     private static void EnsureResources()
     {
         var app = Application.Current ?? new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };

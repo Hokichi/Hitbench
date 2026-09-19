@@ -80,8 +80,32 @@ public partial class WorkstationPage : UserControl
     private void OnWaveformScrollChanged(object sender, ScrollChangedEventArgs e) => WaveformDisplay.HorizontalOffset = e.HorizontalOffset;
     private void OnFitClicked(object sender, RoutedEventArgs e) => WaveformScrollViewer.ScrollToHorizontalOffset(0);
 
+    private void OnWaveformMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        WaveformScrollViewer.Focus();
+        if (!WaveformDisplay.SeekAt(e.GetPosition(WaveformDisplay).X)) return;
+        e.Handled = true;
+    }
+
     private void OnWaveformKeyDown(object sender, KeyEventArgs e)
     {
+        if (Keyboard.Modifiers == ModifierKeys.Control)
+        {
+            var duration = viewModel.Waveform?.Duration;
+            if (duration is null) return;
+            var target = e.Key switch
+            {
+                Key.Left => viewModel.Position - TimeSpan.FromSeconds(1),
+                Key.Right => viewModel.Position + TimeSpan.FromSeconds(1),
+                Key.Home => TimeSpan.Zero,
+                Key.End => duration.Value,
+                _ => (TimeSpan?)null
+            };
+            if (target is null || !viewModel.SeekCommand.CanExecute(target.Value)) return;
+            viewModel.SeekCommand.Execute(target.Value);
+            e.Handled = true;
+            return;
+        }
         switch (e.Key)
         {
             case Key.Left: WaveformScrollViewer.LineLeft(); break;
