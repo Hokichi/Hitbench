@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
+using System.Windows.Automation;
 using osuHitsounder.Resources.CustomControls;
 using osuHitsounder.ViewModels.Shell;
 using osuHitsounder.Views.Pages;
@@ -91,6 +92,33 @@ public class WorkstationPageIntegrationTests
         });
     }
 
+    [Test]
+    public void SubdivisionSelectorIsTransparentAccessibleAndHasNoPlaybackEffect()
+    {
+        var audio = new StubWorkstationAudioService();
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), audio, new ImmediateUiScheduler());
+        var page = new WorkstationPage(vm);
+        page.SetProjectPath("project.json");
+        var window = new Window { Content = page, Width = 640, Height = 480, FlowDirection = FlowDirection.RightToLeft };
+        using var view = new InMemoryView(window);
+        UiTestPump.Run(page.LoadCompletion);
+        view.UpdateLayout();
+
+        var selector = (ComboBox)page.FindName("SubdivisionSelector");
+        var before = audio.Snapshot;
+        Assert.Multiple(() =>
+        {
+            Assert.That(selector.Items.Cast<ComboBoxItem>().Select(item => item.Content),
+                Is.EqualTo(new[] { "1/1", "1/2", "1/3", "1/4", "1/5", "1/6", "1/8", "1/12", "1/16" }));
+            Assert.That(selector.SelectedIndex, Is.EqualTo(3));
+            Assert.That(selector.Background, Is.EqualTo(Brushes.Transparent));
+            Assert.That(AutomationProperties.GetName(selector), Is.EqualTo("Beat subdivision"));
+            Assert.That(selector.ActualHeight, Is.EqualTo(40));
+        });
+        selector.SelectedIndex = 8;
+        Assert.That(audio.Snapshot, Is.EqualTo(before));
+    }
+
     private static void EnsureResources()
     {
         var app = Application.Current ?? new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
@@ -98,7 +126,7 @@ public class WorkstationPageIntegrationTests
         UiTestPump.EnsureFontResources(app);
         foreach (var resource in new[] { "Themes/Dark.xaml", "Converters/Converters.xaml", "Icons.xaml",
                      "Styles/TextBlock.xaml", "Styles/Grid.xaml", "Styles/Border.xaml", "Styles/ContentPresenter.xaml",
-                     "Styles/Button.xaml", "Styles/ToolTip.xaml", "Styles/ScrollViewer.xaml" })
+                     "Styles/Button.xaml", "Styles/ToolTip.xaml", "Styles/ScrollViewer.xaml", "Styles/ComboBox.xaml" })
             app.Resources.MergedDictionaries.Add(new ResourceDictionary
             {
                 Source = new Uri($"/osuHitsounder;component/Resources/{resource}", UriKind.Relative)

@@ -59,6 +59,21 @@
                 <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True"><Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" /></DataTrigger>
             </Style.Triggers>
         </Style>
+        <Style x:Key="OHsWorkstationSubdivisionLabelStyle" BasedOn="{StaticResource FieldLabelTextStyle}" TargetType="TextBlock">
+            <Setter Property="Margin" Value="0,0,8,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style x:Key="OHsWorkstationSubdivisionStyle" BasedOn="{StaticResource OHsComboBoxStyle}" TargetType="ComboBox">
+            <Setter Property="MinWidth" Value="88" />
+            <Setter Property="Background" Value="Transparent" />
+            <Style.Triggers>
+                <Trigger Property="IsDropDownOpen" Value="True"><Setter Property="Background" Value="{DynamicResource Brush.Background.Hover}" /></Trigger>
+                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
+                    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
         <Style x:Key="OHsWorkstationStatusStyle" BasedOn="{StaticResource BaseTextBlockStyle}" TargetType="TextBlock">
             <Setter Property="Margin" Value="0,8,0,0" />
             <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}" />
@@ -145,7 +160,12 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="160" />
                 </Grid.RowDefinitions>
-                <StackPanel Orientation="Horizontal">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                <WrapPanel x:Name="TransportPanel" VerticalAlignment="Center">
                     <customControls:BalloonButton x:Name="PlayPauseButton" Command="{Binding PlayPauseCommand, Mode=OneWay}" Style="{StaticResource OHsWorkstationPlayPauseStyle}" />
                     <customControls:BalloonButton
                         AutomationProperties.Name="Stop audio"
@@ -156,7 +176,27 @@
                         Style="{StaticResource OHsWorkstationTransportButtonStyle}"
                         ToolTip="Stop audio and return to the beginning" />
                     <TextBlock AutomationProperties.Name="Elapsed audio time" Style="{StaticResource OHsWorkstationElapsedStyle}" Text="{Binding ElapsedText, Mode=OneWay}" />
-                </StackPanel>
+                </WrapPanel>
+                    <StackPanel x:Name="SubdivisionPanel" Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center" Orientation="Horizontal">
+                        <TextBlock Style="{StaticResource OHsWorkstationSubdivisionLabelStyle}" Text="Subdivision" />
+                        <ComboBox
+                            x:Name="SubdivisionSelector"
+                            AutomationProperties.HelpText="Subdivision behavior is not implemented yet."
+                            AutomationProperties.Name="Beat subdivision"
+                            SelectedIndex="3"
+                            Style="{StaticResource OHsWorkstationSubdivisionStyle}">
+                            <ComboBoxItem Content="1/1" />
+                            <ComboBoxItem Content="1/2" />
+                            <ComboBoxItem Content="1/3" />
+                            <ComboBoxItem Content="1/4" />
+                            <ComboBoxItem Content="1/5" />
+                            <ComboBoxItem Content="1/6" />
+                            <ComboBoxItem Content="1/8" />
+                            <ComboBoxItem Content="1/12" />
+                            <ComboBoxItem Content="1/16" />
+                        </ComboBox>
+                    </StackPanel>
+                </Grid>
                 <TextBlock Grid.Row="1" Style="{StaticResource OHsWorkstationStatusStyle}" Text="Loading waveform…" />
                 <TextBlock Grid.Row="2" Style="{StaticResource OHsWorkstationErrorStyle}" Text="{Binding ErrorMessage, Mode=OneWay}" />
                 <ScrollViewer
