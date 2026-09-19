@@ -66,6 +66,7 @@ public partial class HomePageVM(
         OnPropertyChanged(nameof(CanInteract));
         OnPropertyChanged(nameof(HasMoreProjects));
         OnPropertyChanged(nameof(HasMoreSongs));
+        OpenProjectCommand.NotifyCanExecuteChanged();
         CreateProjectCommand.NotifyCanExecuteChanged();
         LoadMoreProjectsCommand.NotifyCanExecuteChanged();
         LoadMoreSongsCommand.NotifyCanExecuteChanged();
@@ -74,11 +75,19 @@ public partial class HomePageVM(
     }
 
     private bool CanCreateProject(FolderEntry? entry) => entry is not null && CanInteract && !IsCreatingProject;
+    private bool CanOpenProject(FolderEntry? entry) => entry is not null && CanInteract && !IsCreatingProject;
     private bool CanLoadMoreProjects() => CanInteract && HasMoreProjects && !IsLoadingProjects && !CanRetryProjects;
     private bool CanLoadMoreSongs(int requestedCount) =>
         requestedCount > 0 && CanInteract && HasMoreSongs && !IsLoadingSongs && !CanRetrySongs;
     private bool CanRestartProjects() => CanInteract && CanRetryProjects && !IsLoadingProjects;
     private bool CanRestartSongs() => CanInteract && CanRetrySongs && !IsLoadingSongs;
+
+    [RelayCommand(CanExecute = nameof(CanOpenProject))]
+    private void OpenProject(FolderEntry? entry)
+    {
+        if (!CanOpenProject(entry)) return;
+        messenger.Send(new ProjectOpenRequestedMessage(Path.Combine(entry!.FullName, "project.json")));
+    }
 
     [RelayCommand(CanExecute = nameof(CanCreateProject))]
     private async Task CreateProjectAsync(FolderEntry? entry, CancellationToken cancellationToken)

@@ -61,48 +61,43 @@
             </Style.Triggers>
         </Style>
         <Style
-            x:Key="HomePageFolderBorderStyle"
-            BasedOn="{StaticResource BaseBorderStyle}"
-            TargetType="Border">
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Padding" Value="8" />
-            <Style.Triggers>
-                <Trigger Property="IsKeyboardFocusWithin" Value="True">
-                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Focus}" />
-                </Trigger>
-                <MultiDataTrigger>
-                    <MultiDataTrigger.Conditions>
-                        <Condition Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True" />
-                        <Condition Binding="{Binding IsKeyboardFocusWithin, RelativeSource={RelativeSource Self}, Mode=OneWay}" Value="True" />
-                    </MultiDataTrigger.Conditions>
-                    <Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
-                </MultiDataTrigger>
-            </Style.Triggers>
+            x:Key="HomePageProjectCardStyle"
+            BasedOn="{StaticResource FolderActionButtonStyle}"
+            TargetType="Button">
+            <Setter Property="Margin" Value="0,0,0,8" />
+            <Setter Property="Padding" Value="16" />
         </Style>
         <Style
-            x:Key="HomePageFolderTextStyle"
+            x:Key="HomePageProjectNameStyle"
             BasedOn="{StaticResource HomePageBodyStyle}"
             TargetType="TextBlock">
-            <Setter Property="Text" Value="{Binding Name, Mode=OneWay}" />
-            <Setter Property="AutomationProperties.Name" Value="{Binding Name, Mode=OneWay}" />
-            <Setter Property="AutomationProperties.HelpText" Value="{Binding FullName, Mode=OneWay}" />
-            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
-            <Setter Property="Focusable" Value="True" />
+            <Setter Property="FontFamily" Value="{DynamicResource Bold}" />
+            <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}, Mode=OneWay}" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+        <Style
+            x:Key="HomePageProjectPathStyle"
+            BasedOn="{StaticResource HomePageBodyStyle}"
+            TargetType="TextBlock">
+            <Setter Property="Margin" Value="0,4,0,0" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}" />
+            <Setter Property="TextWrapping" Value="Wrap" />
             <Style.Triggers>
-                <Trigger Property="IsKeyboardFocused" Value="True">
-                    <Setter Property="Text" Value="{Binding FullName, Mode=OneWay}" />
-                    <Setter Property="TextWrapping" Value="Wrap" />
-                </Trigger>
+                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
+                    <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}, Mode=OneWay}" />
+                </DataTrigger>
             </Style.Triggers>
         </Style>
         <DataTemplate x:Key="HomePageFolderTemplate">
-            <Border Style="{StaticResource HomePageFolderBorderStyle}">
-                <TextBlock Style="{StaticResource HomePageFolderTextStyle}">
-                    <TextBlock.ToolTip>
-                        <ToolTip Content="{Binding FullName, Mode=OneWay}" Style="{StaticResource BaseToolTipStyle}" />
-                    </TextBlock.ToolTip>
-                </TextBlock>
-            </Border>
+            <Button
+                AutomationProperties.HelpText="{Binding FullName, Mode=OneWay}"
+                AutomationProperties.Name="{Binding Name, Mode=OneWay}"
+                Command="{Binding DataContext.OpenProjectCommand, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=OneWay}"
+                CommandParameter="{Binding Mode=OneWay}"
+                Style="{StaticResource HomePageProjectCardStyle}">
+                <TextBlock Style="{StaticResource HomePageProjectNameStyle}" Text="{Binding Name, Mode=OneWay}" />
+            </Button>
         </DataTemplate>
         <DropShadowEffect
             x:Key="HomePageSongTextGlow"

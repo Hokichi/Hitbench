@@ -61,6 +61,26 @@ public class WorkstationPageVMTests
         await vm.LoadAsync("project.json", CancellationToken.None);
         Assert.That(vm.ErrorMessage, Does.Contain("Missing AudioFilename"));
         Assert.That(vm.CanPlay, Is.False);
+        Assert.That(vm.IsLoading, Is.False);
+    }
+
+    [Test]
+    public async Task MissingProjectFileReportsFailureAndEndsLoading()
+    {
+        var source = new StubWorkstationSourceService
+        {
+            Load = (_, _) => throw new FileNotFoundException("Project file was not found")
+        };
+        var vm = new WorkstationPageVM(source, new StubWorkstationAudioService(), new ImmediateUiScheduler());
+
+        await vm.LoadAsync("missing.json", CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(vm.ErrorMessage, Does.Contain("Project file was not found"));
+            Assert.That(vm.IsLoading, Is.False);
+            Assert.That(vm.CanPlay, Is.False);
+        });
     }
 
     [Test]

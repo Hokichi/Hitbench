@@ -7,6 +7,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Automation;
 using System.Windows.Automation.Peers;
+using System.Windows.Automation.Provider;
 using System.Windows.Media;
 using System.Windows.Threading;
 using Microsoft.Extensions.DependencyInjection;
@@ -14,6 +15,7 @@ using osuHitsounder.Core.Entities;
 using osuHitsounder.Resources.DataModels;
 using osuHitsounder.Resources.CustomControls;
 using osuHitsounder.Resources.Messages;
+using osuHitsounder.ViewModels.Shell;
 using osuHitsounder.ViewModels.Shell.HomePage;
 using osuHitsounder.Views.Pages;
 
@@ -331,9 +333,50 @@ public class HomePageIntegrationTests
         }
         finally { window.Close(); }
         Assert.That(messenger.IsRegistered<ProjectCreatedMessage>(window), Is.False);
+        Assert.That(messenger.IsRegistered<ProjectOpenRequestedMessage>(window), Is.False);
         Assert.That(messenger.IsRegistered<ProjectCreationFailedMessage>(window), Is.False);
         messenger.Send(new ProjectCreatedMessage("late.json"));
+        messenger.Send(new ProjectOpenRequestedMessage("late-open.json"));
         Assert.That(creations, Is.EqualTo(1));
+    }
+
+    [Test]
+    public void OpenRequestLoadsSelectedProjectOnlyOnce()
+    {
+        EnsureResources();
+        var messenger = new WeakReferenceMessenger();
+        var vm = CreateVM(new StubHomeFolderService());
+        var source = new StubWorkstationSourceService();
+        string? loadedPath = null;
+        source.Load = (path, _) =>
+        {
+            loadedPath = path;
+            return Task.FromResult(new WorkstationSource("map.osu", "audio.wav"));
+        };
+        var creations = 0;
+        var window = TestShell.Create(new HomePage(vm), messenger, () =>
+        {
+            creations++;
+            return new WorkstationPage(new WorkstationPageVM(
+                source, new StubWorkstationAudioService(), new ImmediateUiScheduler()));
+        }, vm, new StubAppSettingsService());
+        using var view = new InMemoryView(window);
+        try
+        {
+            messenger.Send(new ProjectOpenRequestedMessage(@"C:\App\projects\Existing\project.json"));
+            view.UpdateLayout();
+            var workstation = (WorkstationPage)((ContentControl)window.FindName("PageHost")).Content;
+            UiTestPump.Run(workstation.LoadCompletion);
+
+            messenger.Send(new ProjectOpenRequestedMessage(@"C:\App\projects\Other\project.json"));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(loadedPath, Is.EqualTo(@"C:\App\projects\Existing\project.json"));
+                Assert.That(creations, Is.EqualTo(1));
+            });
+        }
+        finally { window.Close(); }
     }
 
     [Test]
@@ -348,12 +391,18 @@ public class HomePageIntegrationTests
         try
         {
             messenger.Send(new ProjectCreationFailedMessage("Save failed"));
+            messenger.Send(new ProjectOpenRequestedMessage("existing.json"));
             messenger.Send(new ProjectCreatedMessage("saved.json"));
-            Assert.That(errors, Is.EqualTo(new[] { "Save failed", "Unable to open workstation: Navigation failed" }));
+            Assert.That(errors, Is.EqualTo(new[]
+            {
+                "Save failed",
+                "Unable to open workstation: Navigation failed",
+                "Unable to open workstation: Navigation failed"
+            }));
         }
         finally { window.Close(); }
         messenger.Send(new ProjectCreationFailedMessage("Late failure"));
-        Assert.That(errors, Has.Count.EqualTo(2));
+        Assert.That(errors, Has.Count.EqualTo(3));
     }
 
     [Test]
@@ -448,6 +497,66 @@ public class HomePageIntegrationTests
             window.Close();
             Directory.Delete(Path.GetDirectoryName(background)!, true);
         }
+    }
+
+    [Test]
+    public void ProjectCardInvokesSelectedProjectAndPreservesLayoutContracts()
+    {
+        EnsureResources();
+        var row = new FolderEntry(
+            @"C:\App\projects\A project with a long localized folder path that must wrap",
+            "A project with a long localized name that must wrap", DateTimeOffset.MinValue);
+        var folders = new StubHomeFolderService
+        {
+            Projects = _ => Task.FromResult(new FolderSnapshot([row]))
+        };
+        var messenger = new WeakReferenceMessenger();
+        var opened = new List<string>();
+        messenger.Register<ProjectOpenRequestedMessage>(this,
+            (_, message) => opened.Add(message.ProjectPath));
+        var vm = new HomePageVM(folders, new StubAppSettingsService(), new StubInstallationDialogService(),
+            new StubProjectCreationDialogService(), new ImmediateUiScheduler(),
+            new StubProjectFileService((_, _, _) => Task.FromResult("saved.json")), messenger);
+        var page = new HomePage(vm);
+        var window = new Window
+        {
+            Content = page,
+            Width = 720,
+            Height = 520,
+            FlowDirection = FlowDirection.RightToLeft,
+            ShowInTaskbar = false
+        };
+        using var view = new InMemoryView(window);
+        try
+        {
+            UiTestPump.Run(page.LoadAsync(CancellationToken.None));
+            view.UpdateLayout();
+            var projects = (ItemsControl)page.FindName("ProjectsList");
+            var button = Descendants<Button>(projects).Single(value => value.DataContext is FolderEntry);
+            var text = Descendants<TextBlock>(button).ToArray();
+            var peer = new ButtonAutomationPeer(button);
+
+            ((IInvokeProvider)peer.GetPattern(PatternInterface.Invoke)).Invoke();
+            window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+            vm.IsInteractionBlocked = true;
+            window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(AutomationProperties.GetName(button), Is.EqualTo(row.Name));
+                Assert.That(AutomationProperties.GetHelpText(button), Is.EqualTo(row.FullName));
+                Assert.That(button.CommandParameter, Is.SameAs(row));
+                Assert.That(button.IsEnabled, Is.False);
+                Assert.That(opened, Is.EqualTo(new[] { Path.Combine(row.FullName, "project.json") }));
+                Assert.That(button.ActualHeight, Is.GreaterThanOrEqualTo(40));
+                Assert.That(button.ActualWidth, Is.LessThanOrEqualTo(projects.ActualWidth));
+                Assert.That(text.Select(value => value.Text), Is.EqualTo(new[] { row.Name, row.FullName }));
+                Assert.That(text.All(value => value.TextWrapping == TextWrapping.Wrap), Is.True);
+                Assert.That(VirtualizingPanel.GetIsVirtualizing(projects), Is.True);
+                Assert.That(VirtualizingPanel.GetVirtualizationMode(projects), Is.EqualTo(VirtualizationMode.Recycling));
+            });
+        }
+        finally { window.Close(); }
     }
 
     [Test]

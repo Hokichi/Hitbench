@@ -17,7 +17,8 @@ using osuHitsounder.ViewModels.Shell.HomePage;
 
 namespace osuHitsounder;
 
-public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>, IRecipient<ProjectCreationFailedMessage>
+public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
+    IRecipient<ProjectOpenRequestedMessage>, IRecipient<ProjectCreationFailedMessage>
 {
     private readonly HomePage page;
     private readonly IMessenger messenger;
@@ -81,6 +82,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>, IRe
         viewModel.PropertyChanged += OnStateChanged;
         ProcessingText.IsVisibleChanged += OnProcessingVisibilityChanged;
         messenger.Register<ProjectCreatedMessage>(this);
+        messenger.Register<ProjectOpenRequestedMessage>(this);
         messenger.Register<ProjectCreationFailedMessage>(this);
         SizeChanged += OnWindowSizeChanged;
         StateChanged += OnWindowStateChanged;
@@ -108,14 +110,18 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>, IRe
         UpdateMaximizeRestoreButton();
     }
 
-    public void Receive(ProjectCreatedMessage message)
+    public void Receive(ProjectCreatedMessage message) => OpenWorkstation(message.ProjectPath);
+
+    public void Receive(ProjectOpenRequestedMessage message) => OpenWorkstation(message.ProjectPath);
+
+    private void OpenWorkstation(string projectPath)
     {
         if (closed || PageHost.Content != page)
             return;
         try
         {
             var workstation = createWorkstation();
-            workstation.SetProjectPath(message.ProjectPath);
+            workstation.SetProjectPath(projectPath);
             page.Deactivate();
             PageHost.Content = workstation;
             MinWidth = defaultMinWidth;
