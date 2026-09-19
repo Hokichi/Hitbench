@@ -10,6 +10,7 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
     private readonly object sync = new();
     private WaveStream? stream;
     private IWavePlayer? player;
+    private EventHandler<StoppedEventArgs>? playbackStoppedHandler;
     private string? audioPath;
     private string? error;
     private int generation;
@@ -91,7 +92,7 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
         lock (sync)
         {
             var playing = player?.PlaybackState == PlaybackState.Playing;
-            var position = player is IWavePosition wavePosition && stream is not null
+            var position = player is IWavePosition wavePosition && stream is not null && player.PlaybackState != PlaybackState.Stopped
                 ? TimeSpan.FromSeconds(wavePosition.GetPosition() / (double)stream.WaveFormat.AverageBytesPerSecond)
                 : stream?.CurrentTime ?? TimeSpan.Zero;
             if (stream is not null && position > stream.TotalTime) position = stream.TotalTime;
@@ -115,7 +116,8 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
         stream = openDecoder(audioPath!);
         player = createPlayer();
         var currentGeneration = ++generation;
-        player.PlaybackStopped += (_, args) => OnPlaybackStopped(currentGeneration, args);
+        playbackStoppedHandler = (_, args) => OnPlaybackStopped(currentGeneration, args);
+        player.PlaybackStopped += playbackStoppedHandler;
         player.Init(stream);
     }
 
@@ -135,9 +137,11 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
         if (player is not null)
         {
             try { player.Stop(); } catch { }
+            if (playbackStoppedHandler is not null) player.PlaybackStopped -= playbackStoppedHandler;
             player.Dispose();
             player = null;
         }
+        playbackStoppedHandler = null;
         stream?.Dispose();
         stream = null;
     }

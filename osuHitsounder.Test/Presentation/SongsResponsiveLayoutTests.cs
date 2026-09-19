@@ -105,7 +105,7 @@ public class SongsResponsiveLayoutTests
         var vm = CreateVM();
         var page = new HomePage(vm);
         var monitorSize = new Size(1920, 1080);
-        var window = new MainWindow(page, new WeakReferenceMessenger(), () => new WorkstationPage(), vm,
+        var window = new MainWindow(page, new WeakReferenceMessenger(), WorkstationTestPage.Create, vm,
             new StubAppSettingsService(), error => Assert.Fail(error), _ => { }, _ => monitorSize);
         using var view = new InMemoryView(window);
         view.UpdateLayout();

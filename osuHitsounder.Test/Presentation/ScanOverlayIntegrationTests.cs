@@ -58,7 +58,7 @@ public class ScanOverlayIntegrationTests
             new StubProjectCreationDialogService(), new UiScheduler(Dispatcher.CurrentDispatcher),
             new StubProjectFileService((_, _, _) => Task.FromResult("saved.json")),
             new WeakReferenceMessenger());
-        var window = TestShell.Create(new HomePage(vm), new WeakReferenceMessenger(), () => new WorkstationPage(), vm,
+        var window = TestShell.Create(new HomePage(vm), new WeakReferenceMessenger(), WorkstationTestPage.Create, vm,
             new StubAppSettingsService());
         using var view = new InMemoryView(window);
         try
@@ -117,7 +117,7 @@ public class ScanOverlayIntegrationTests
             new StubProjectCreationDialogService(), new UiScheduler(Dispatcher.CurrentDispatcher),
             new StubProjectFileService((_, _, _) => Task.FromResult("saved.json")),
             new WeakReferenceMessenger());
-        var window = TestShell.Create(new HomePage(vm), new WeakReferenceMessenger(), () => new WorkstationPage(), vm,
+        var window = TestShell.Create(new HomePage(vm), new WeakReferenceMessenger(), WorkstationTestPage.Create, vm,
             new StubAppSettingsService());
         using var view = new InMemoryView(window);
         try

@@ -39,7 +39,7 @@ public class HomePageIntegrationTests
         EnsureResources();
         var vm = CreateVM(new StubHomeFolderService());
         var window = TestShell.Create(new HomePage(vm), new WeakReferenceMessenger(),
-            () => new WorkstationPage(), vm, new StubAppSettingsService());
+            WorkstationTestPage.Create, vm, new StubAppSettingsService());
         try
         {
             window.ApplySettings(new AppSettings
@@ -72,7 +72,7 @@ public class HomePageIntegrationTests
         };
         var vm = CreateVM(new StubHomeFolderService());
         var window = TestShell.Create(new HomePage(vm), new WeakReferenceMessenger(),
-            () => new WorkstationPage(), vm, settings);
+            WorkstationTestPage.Create, vm, settings);
         window.ApplySettings(new AppSettings());
         using var view = new InMemoryView(window);
         window.Width = 1024;
@@ -101,7 +101,7 @@ public class HomePageIntegrationTests
         var vm = CreateVM(new StubHomeFolderService());
         var requests = new List<WindowState>();
         var window = TestShell.Create(new HomePage(vm), new WeakReferenceMessenger(),
-            () => new WorkstationPage(), vm, settings, state => requests.Add(state));
+            WorkstationTestPage.Create, vm, settings, state => requests.Add(state));
         window.ApplySettings(new AppSettings { RestoredWidth = 1024, RestoredHeight = 640 });
         using var view = new InMemoryView(window);
         try
@@ -132,7 +132,7 @@ public class HomePageIntegrationTests
         EnsureResources();
         var vm = CreateVM(new StubHomeFolderService());
         var window = TestShell.Create(new HomePage(vm), new WeakReferenceMessenger(),
-            () => new WorkstationPage(), vm, new StubAppSettingsService());
+            WorkstationTestPage.Create, vm, new StubAppSettingsService());
         try
         {
             var minimize = (BalloonButton)window.FindName("MinimizeButton");
@@ -208,7 +208,7 @@ public class HomePageIntegrationTests
             Songs = (_, _) => { songsReady.SetResult(); return Task.FromResult<FolderSnapshot?>(new FolderSnapshot([])); }
         };
         var vm = CreateVM(folders);
-        var window = TestShell.Create(new HomePage(vm), messenger, () => new WorkstationPage(), vm,
+        var window = TestShell.Create(new HomePage(vm), messenger, WorkstationTestPage.Create, vm,
             new StubAppSettingsService());
         using var view = new InMemoryView(window);
         try
@@ -229,7 +229,7 @@ public class HomePageIntegrationTests
         EnsureResources();
         var pending = new TaskCompletionSource<HomeFolderData>();
         var vm = CreateVM(new StubHomeFolderService(token => pending.Task.WaitAsync(token)));
-        var window = TestShell.Create(new HomePage(vm), new WeakReferenceMessenger(), () => new WorkstationPage(), vm,
+        var window = TestShell.Create(new HomePage(vm), new WeakReferenceMessenger(), WorkstationTestPage.Create, vm,
             new StubAppSettingsService());
         using var view = new InMemoryView(window);
         var load = window.LoadAsync();
@@ -315,7 +315,7 @@ public class HomePageIntegrationTests
         var vm = CreateVM(new StubHomeFolderService(_ => Task.FromResult(new HomeFolderData([], [], "C:\\osu", true, false))));
         var page = new HomePage(vm);
         var creations = 0;
-        var window = TestShell.Create(page, messenger, () => { creations++; return new WorkstationPage(); }, vm,
+        var window = TestShell.Create(page, messenger, () => { creations++; return WorkstationTestPage.Create(); }, vm,
             new StubAppSettingsService());
         using var view = new InMemoryView(window);
         try
@@ -400,7 +400,7 @@ public class HomePageIntegrationTests
             new StubProjectCreationDialogService { Result = "Selected" }, new ImmediateUiScheduler(),
             new StubProjectFileService((folder, _, _) => { selected = folder; return pending.Task; }), messenger);
         var page = new HomePage(vm);
-        var window = TestShell.Create(page, messenger, () => new WorkstationPage(), vm,
+        var window = TestShell.Create(page, messenger, WorkstationTestPage.Create, vm,
             new StubAppSettingsService());
         using var view = new InMemoryView(window);
         try

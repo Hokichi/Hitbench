@@ -2,15 +2,23 @@ using NAudio.Wave;
 
 namespace osuHitsounder.Test.Services;
 
-public sealed class StubWavePlayer : IWavePlayer
+public sealed class StubWavePlayer : IWavePlayer, IWavePosition
 {
-    public event EventHandler<StoppedEventArgs>? PlaybackStopped;
+    private EventHandler<StoppedEventArgs>? playbackStopped;
+
+    public event EventHandler<StoppedEventArgs>? PlaybackStopped
+    {
+        add => playbackStopped += value;
+        remove => playbackStopped -= value;
+    }
     public PlaybackState PlaybackState { get; private set; }
     public WaveFormat OutputWaveFormat { get; private set; } = WaveFormat.CreateIeeeFloatWaveFormat(44_100, 2);
     public float Volume { get; set; } = 1;
     public IWaveProvider? Provider { get; private set; }
     public bool IsDisposed { get; private set; }
     public bool FailInitialization { get; set; }
+    public bool HasPlaybackStoppedSubscribers => playbackStopped is not null;
+    public long Position { get; set; }
 
     public void Init(IWaveProvider waveProvider)
     {
@@ -24,14 +32,16 @@ public sealed class StubWavePlayer : IWavePlayer
     public void Stop()
     {
         PlaybackState = PlaybackState.Stopped;
-        PlaybackStopped?.Invoke(this, new StoppedEventArgs());
+        playbackStopped?.Invoke(this, new StoppedEventArgs());
     }
 
     public void RaiseStopped(Exception? error = null)
     {
         PlaybackState = PlaybackState.Stopped;
-        PlaybackStopped?.Invoke(this, new StoppedEventArgs(error));
+        playbackStopped?.Invoke(this, new StoppedEventArgs(error));
     }
+
+    public long GetPosition() => Position;
 
     public void Dispose() => IsDisposed = true;
 }

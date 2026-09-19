@@ -2,9 +2,6 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Threading;
-using osuHitsounder.Services;
-using osuHitsounder.Services.FileSystem;
-using osuHitsounder.Services.Ui;
 using osuHitsounder.ViewModels.Shell;
 
 namespace osuHitsounder.Views.Pages;
@@ -16,9 +13,6 @@ public partial class WorkstationPage : UserControl
     private string? projectPath;
     private bool loadStarted;
     private bool deactivationStarted;
-
-    public WorkstationPage() : this(new WorkstationPageVM(new WorkstationSourceService(),
-        new WorkstationAudioService(), new UiScheduler(Dispatcher.CurrentDispatcher))) { }
 
     public WorkstationPage(WorkstationPageVM viewModel)
     {

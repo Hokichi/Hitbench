@@ -5,6 +5,28 @@ namespace osuHitsounder.Test.Services;
 
 public class WorkstationAudioServiceTests
 {
+    [TestCase("tone.mp3")]
+    [TestCase("tone.ogg")]
+    public async Task RealDecoderExtractsPeaksWithoutCreatingOutputDevice(string fileName)
+    {
+        var createdOutput = false;
+        using var service = new WorkstationAudioService(AudioDecoder.Open, () =>
+        {
+            createdOutput = true;
+            return new StubWavePlayer();
+        });
+        var path = Path.Combine(TestContext.CurrentContext.TestDirectory, "Fixtures", "Audio", fileName);
+
+        var data = await service.AnalyzeAsync(path, CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(data.Duration, Is.GreaterThan(TimeSpan.FromMilliseconds(100)));
+            Assert.That(data.Peaks.Max(), Is.GreaterThan(0));
+            Assert.That(createdOutput, Is.False);
+        });
+    }
+
     [Test]
     public void PlayPauseResumeAndStopPreserveExpectedState()
     {
@@ -17,6 +39,7 @@ public class WorkstationAudioServiceTests
         Assert.That(service.GetSnapshot().IsPlaying, Is.False);
         service.Play();
         Assert.That(service.GetSnapshot().IsPlaying, Is.True);
+        player.Position = player.OutputWaveFormat.AverageBytesPerSecond / 2;
         service.Stop();
         Assert.Multiple(() =>
         {
@@ -48,7 +71,11 @@ public class WorkstationAudioServiceTests
         Assert.That(service.GetSnapshot().Error, Does.Contain("No device"));
         Assert.DoesNotThrow(service.Dispose);
         Assert.DoesNotThrow(service.Dispose);
-        Assert.That(player.IsDisposed, Is.True);
+        Assert.Multiple(() =>
+        {
+            Assert.That(player.IsDisposed, Is.True);
+            Assert.That(player.HasPlaybackStoppedSubscribers, Is.False);
+        });
     }
 
     private static WaveStream CreateStream()

@@ -18,13 +18,13 @@ public sealed class WaveformView : FrameworkElement
     public static readonly DependencyProperty HorizontalOffsetProperty = DependencyProperty.Register(
         nameof(HorizontalOffset), typeof(double), typeof(WaveformView), new FrameworkPropertyMetadata(0d, FrameworkPropertyMetadataOptions.AffectsRender));
     public static readonly DependencyProperty WaveformBrushProperty = DependencyProperty.Register(
-        nameof(WaveformBrush), typeof(Brush), typeof(WaveformView), new FrameworkPropertyMetadata(Brushes.DodgerBlue, FrameworkPropertyMetadataOptions.AffectsRender));
+        nameof(WaveformBrush), typeof(Brush), typeof(WaveformView), new FrameworkPropertyMetadata(SystemColors.HighlightBrush, FrameworkPropertyMetadataOptions.AffectsRender));
     public static readonly DependencyProperty MarkerBrushProperty = DependencyProperty.Register(
-        nameof(MarkerBrush), typeof(Brush), typeof(WaveformView), new FrameworkPropertyMetadata(Brushes.OrangeRed, FrameworkPropertyMetadataOptions.AffectsRender));
+        nameof(MarkerBrush), typeof(Brush), typeof(WaveformView), new FrameworkPropertyMetadata(SystemColors.HighlightTextBrush, FrameworkPropertyMetadataOptions.AffectsRender));
     public static readonly DependencyProperty TextBrushProperty = DependencyProperty.Register(
-        nameof(TextBrush), typeof(Brush), typeof(WaveformView), new FrameworkPropertyMetadata(Brushes.White, FrameworkPropertyMetadataOptions.AffectsRender));
+        nameof(TextBrush), typeof(Brush), typeof(WaveformView), new FrameworkPropertyMetadata(SystemColors.WindowTextBrush, FrameworkPropertyMetadataOptions.AffectsRender));
     public static readonly DependencyProperty FontFamilyProperty = DependencyProperty.Register(
-        nameof(FontFamily), typeof(FontFamily), typeof(WaveformView), new FrameworkPropertyMetadata(SystemFonts.MessageFontFamily, FrameworkPropertyMetadataOptions.AffectsRender));
+        nameof(FontFamily), typeof(FontFamily), typeof(WaveformView), new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
 
     public WaveformData? Data { get => (WaveformData?)GetValue(DataProperty); set => SetValue(DataProperty, value); }
     public TimeSpan Position { get => (TimeSpan)GetValue(PositionProperty); set => SetValue(PositionProperty, value); }
@@ -34,7 +34,7 @@ public sealed class WaveformView : FrameworkElement
     public Brush WaveformBrush { get => (Brush)GetValue(WaveformBrushProperty); set => SetValue(WaveformBrushProperty, value); }
     public Brush MarkerBrush { get => (Brush)GetValue(MarkerBrushProperty); set => SetValue(MarkerBrushProperty, value); }
     public Brush TextBrush { get => (Brush)GetValue(TextBrushProperty); set => SetValue(TextBrushProperty, value); }
-    public FontFamily FontFamily { get => (FontFamily)GetValue(FontFamilyProperty); set => SetValue(FontFamilyProperty, value); }
+    public FontFamily? FontFamily { get => (FontFamily?)GetValue(FontFamilyProperty); set => SetValue(FontFamilyProperty, value); }
 
     public WaveformView() => FlowDirection = FlowDirection.LeftToRight;
 
@@ -89,6 +89,7 @@ public sealed class WaveformView : FrameworkElement
     private void DrawRuler(DrawingContext drawingContext, double offset, double viewport, double height,
         double pixelsPerSecond, TimeSpan duration, Brush textBrush)
     {
+        if (FontFamily is null) return;
         var interval = ChooseTickInterval(pixelsPerSecond);
         var first = Math.Ceiling(offset / pixelsPerSecond / interval) * interval;
         var last = Math.Min(duration.TotalSeconds, (offset + viewport) / pixelsPerSecond);

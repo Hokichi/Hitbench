@@ -88,7 +88,15 @@
         </Style>
         <ControlTemplate x:Key="OHsWorkstationWaveformScrollTemplate" TargetType="ScrollViewer">
             <Grid Background="{TemplateBinding Background}">
-                <ScrollContentPresenter x:Name="PART_ScrollContentPresenter" Margin="{TemplateBinding Padding}" CanContentScroll="{TemplateBinding CanContentScroll}" Content="{TemplateBinding Content}" />
+                <ScrollContentPresenter
+                    x:Name="PART_ScrollContentPresenter"
+                    Margin="{TemplateBinding Padding}"
+                    CanContentScroll="{TemplateBinding CanContentScroll}"
+                    Content="{TemplateBinding Content}"
+                    ContentTemplate="{TemplateBinding ContentTemplate}"
+                    ContentTemplateSelector="{TemplateBinding ContentTemplateSelector}"
+                    HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                    VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
                 <ScrollBar
                     x:Name="PART_HorizontalScrollBar"
                     Height="12"
