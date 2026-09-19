@@ -6,5 +6,10 @@ public sealed class ImmediateUiScheduler : IUiScheduler
 {
     public Func<CancellationToken, Task> Yield { get; set; } = _ => Task.CompletedTask;
     public Task YieldForRenderAsync(CancellationToken token) => Yield(token);
+    public Task InvokeAsync(Action action, CancellationToken token)
+    {
+        token.ThrowIfCancellationRequested();
+        action();
+        return Task.CompletedTask;
+    }
 }
-
