@@ -1,3 +1,4 @@
+using System.IO;
 using NAudio.Wave;
 using osuHitsounder.Core.Entities;
 
@@ -16,6 +17,9 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
     private int generation;
     private bool stopping;
     private bool disposed;
+    private TimeSpan currentPosition;
+    private TimeSpan playbackOrigin;
+    private long deviceOriginBytes;
 
     public WorkstationAudioService() : this(AudioDecoder.Open, () => new WaveOutEvent()) { }
 
@@ -39,6 +43,7 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
             ClosePlayback();
             audioPath = path;
             error = null;
+            currentPosition = TimeSpan.Zero;
         }
     }
 
@@ -50,6 +55,7 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
             if (audioPath is null) return;
             try
             {
+                EnsureStream();
                 EnsurePlayback();
                 player!.Play();
                 error = null;
@@ -67,7 +73,9 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
         lock (sync)
         {
             ThrowIfDisposed();
-            player?.Pause();
+            if (player is null) return;
+            currentPosition = GetCurrentPosition();
+            player.Pause();
         }
     }
 
@@ -76,13 +84,49 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
         lock (sync)
         {
             ThrowIfDisposed();
-            if (player is null) return;
-            stopping = true;
-            try { player.Stop(); }
-            finally
+            if (player is not null)
             {
-                stopping = false;
-                if (stream is not null) stream.Position = 0;
+                stopping = true;
+                try { player.Stop(); }
+                finally { stopping = false; }
+            }
+            if (stream is not null) stream.Position = 0;
+            currentPosition = TimeSpan.Zero;
+            playbackOrigin = TimeSpan.Zero;
+            deviceOriginBytes = player is IWavePosition wavePosition ? wavePosition.GetPosition() : 0;
+        }
+    }
+
+    public void Seek(TimeSpan position)
+    {
+        lock (sync)
+        {
+            ThrowIfDisposed();
+            if (audioPath is null) return;
+            try
+            {
+                EnsureStream();
+                var audioStream = stream!;
+                var wasPlaying = player?.PlaybackState == PlaybackState.Playing;
+                TearDownOutput();
+                var clamped = position < TimeSpan.Zero ? TimeSpan.Zero : position > audioStream.TotalTime ? audioStream.TotalTime : position;
+                var bytes = (long)(clamped.TotalSeconds * audioStream.WaveFormat.AverageBytesPerSecond);
+                bytes -= bytes % audioStream.WaveFormat.BlockAlign;
+                audioStream.Position = Math.Clamp(bytes, 0, audioStream.Length);
+                currentPosition = audioStream.CurrentTime;
+                playbackOrigin = currentPosition;
+                deviceOriginBytes = 0;
+                if (wasPlaying)
+                {
+                    EnsurePlayback();
+                    player!.Play();
+                }
+                error = null;
+            }
+            catch (Exception failure) when (failure is IOException or InvalidOperationException or ArgumentException)
+            {
+                error = $"Unable to seek audio: {failure.Message}";
+                TearDownOutput();
             }
         }
     }
@@ -92,11 +136,7 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
         lock (sync)
         {
             var playing = player?.PlaybackState == PlaybackState.Playing;
-            var position = player is IWavePosition wavePosition && stream is not null && player.PlaybackState != PlaybackState.Stopped
-                ? TimeSpan.FromSeconds(wavePosition.GetPosition() / (double)stream.WaveFormat.AverageBytesPerSecond)
-                : stream?.CurrentTime ?? TimeSpan.Zero;
-            if (stream is not null && position > stream.TotalTime) position = stream.TotalTime;
-            return new AudioPlaybackSnapshot(position, playing, error);
+            return new AudioPlaybackSnapshot(GetCurrentPosition(), playing, error);
         }
     }
 
@@ -113,12 +153,21 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
     private void EnsurePlayback()
     {
         if (player is not null) return;
-        stream = openDecoder(audioPath!);
         player = createPlayer();
         var currentGeneration = ++generation;
         playbackStoppedHandler = (_, args) => OnPlaybackStopped(currentGeneration, args);
         player.PlaybackStopped += playbackStoppedHandler;
         player.Init(stream);
+        playbackOrigin = currentPosition;
+        deviceOriginBytes = player is IWavePosition wavePosition ? wavePosition.GetPosition() : 0;
+    }
+
+    private void EnsureStream()
+    {
+        if (stream is not null) return;
+        stream = openDecoder(audioPath!);
+        stream.Position = 0;
+        currentPosition = TimeSpan.Zero;
     }
 
     private void OnPlaybackStopped(int eventGeneration, StoppedEventArgs args)
@@ -128,22 +177,45 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
             if (eventGeneration != generation || stopping || disposed) return;
             if (args.Exception is not null) error = $"Audio playback failed: {args.Exception.Message}";
             if (stream is not null) stream.Position = 0;
+            currentPosition = TimeSpan.Zero;
+            playbackOrigin = TimeSpan.Zero;
+            deviceOriginBytes = player is IWavePosition wavePosition ? wavePosition.GetPosition() : 0;
         }
     }
 
     private void ClosePlayback()
     {
+        TearDownOutput();
+        stream?.Dispose();
+        stream = null;
+        currentPosition = TimeSpan.Zero;
+        playbackOrigin = TimeSpan.Zero;
+        deviceOriginBytes = 0;
+    }
+
+    private void TearDownOutput()
+    {
         generation++;
         if (player is not null)
         {
-            try { player.Stop(); } catch { }
             if (playbackStoppedHandler is not null) player.PlaybackStopped -= playbackStoppedHandler;
+            try { player.Stop(); } catch { }
             player.Dispose();
             player = null;
         }
         playbackStoppedHandler = null;
-        stream?.Dispose();
-        stream = null;
+    }
+
+    private TimeSpan GetCurrentPosition()
+    {
+        var position = currentPosition;
+        if (player is IWavePosition wavePosition && stream is not null && player.PlaybackState != PlaybackState.Stopped)
+        {
+            var played = Math.Max(0, wavePosition.GetPosition() - deviceOriginBytes);
+            position = playbackOrigin + TimeSpan.FromSeconds(played / (double)stream.WaveFormat.AverageBytesPerSecond);
+        }
+        if (stream is not null && position > stream.TotalTime) position = stream.TotalTime;
+        return position < TimeSpan.Zero ? TimeSpan.Zero : position;
     }
 
     private void ThrowIfDisposed() => ObjectDisposedException.ThrowIf(disposed, this);

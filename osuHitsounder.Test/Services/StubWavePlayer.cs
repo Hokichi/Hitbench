@@ -5,11 +5,16 @@ namespace osuHitsounder.Test.Services;
 public sealed class StubWavePlayer : IWavePlayer, IWavePosition
 {
     private EventHandler<StoppedEventArgs>? playbackStopped;
+    private EventHandler<StoppedEventArgs>? retiredPlaybackStopped;
 
     public event EventHandler<StoppedEventArgs>? PlaybackStopped
     {
         add => playbackStopped += value;
-        remove => playbackStopped -= value;
+        remove
+        {
+            retiredPlaybackStopped += value;
+            playbackStopped -= value;
+        }
     }
     public PlaybackState PlaybackState { get; private set; }
     public WaveFormat OutputWaveFormat { get; private set; } = WaveFormat.CreateIeeeFloatWaveFormat(44_100, 2);
@@ -40,6 +45,9 @@ public sealed class StubWavePlayer : IWavePlayer, IWavePosition
         PlaybackState = PlaybackState.Stopped;
         playbackStopped?.Invoke(this, new StoppedEventArgs(error));
     }
+
+    public void RaiseRetiredStopped(Exception? error = null) =>
+        retiredPlaybackStopped?.Invoke(this, new StoppedEventArgs(error));
 
     public long GetPosition() => Position;
 

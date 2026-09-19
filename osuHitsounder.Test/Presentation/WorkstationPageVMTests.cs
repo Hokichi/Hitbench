@@ -52,6 +52,23 @@ public class WorkstationPageVMTests
     }
 
     [Test]
+    public async Task SeekUpdatesPositionAndElapsedWithoutChangingPlaybackState()
+    {
+        var audio = new StubWorkstationAudioService();
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), audio, new ImmediateUiScheduler());
+        Assert.That(vm.SeekCommand.CanExecute(TimeSpan.FromSeconds(3)), Is.False);
+        await vm.LoadAsync("project.json", CancellationToken.None);
+        vm.PlayPauseCommand.Execute(null);
+        vm.SeekCommand.Execute(TimeSpan.FromSeconds(3.4));
+        Assert.Multiple(() =>
+        {
+            Assert.That(vm.Position, Is.EqualTo(TimeSpan.FromSeconds(3.4)));
+            Assert.That(vm.ElapsedText, Is.EqualTo("00:03.4"));
+            Assert.That(vm.IsPlaying, Is.True);
+        });
+    }
+
+    [Test]
     public async Task LoadFailureIsReadableAndWaveformAnalysisSurvivesPlaybackDeviceFailure()
     {
         var source = new StubWorkstationSourceService

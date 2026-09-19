@@ -9,5 +9,6 @@ public interface IWorkstationAudioService : IDisposable
     void Play();
     void Pause();
     void Stop();
+    void Seek(TimeSpan position);
     AudioPlaybackSnapshot GetSnapshot();
 }

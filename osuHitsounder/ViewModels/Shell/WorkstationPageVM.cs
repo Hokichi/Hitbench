@@ -84,6 +84,14 @@ public partial class WorkstationPageVM(
         RefreshPlayback();
     }
 
+    [RelayCommand(CanExecute = nameof(CanUseTransport))]
+    private void Seek(TimeSpan position)
+    {
+        if (!CanUseTransport()) return;
+        audioService.Seek(position);
+        RefreshPlayback();
+    }
+
     [RelayCommand(CanExecute = nameof(CanZoomIn))]
     private void ZoomIn()
     {
@@ -168,6 +176,7 @@ public partial class WorkstationPageVM(
     {
         PlayPauseCommand.NotifyCanExecuteChanged();
         StopCommand.NotifyCanExecuteChanged();
+        SeekCommand.NotifyCanExecuteChanged();
         ZoomInCommand.NotifyCanExecuteChanged();
         ZoomOutCommand.NotifyCanExecuteChanged();
         FitCommand.NotifyCanExecuteChanged();
