@@ -23,9 +23,7 @@ public sealed class WorkstationSourceService : IWorkstationSourceService
             throw new DirectoryNotFoundException($"Song folder was not found: {songFolder}");
 
         token.ThrowIfCancellationRequested();
-        var beatmapPath = Directory.EnumerateFiles(songFolder, "*.osu", SearchOption.TopDirectoryOnly)
-            .Order(StringComparer.Ordinal)
-            .FirstOrDefault() ?? throw new FileNotFoundException("No .osu beatmap was found in the song folder.");
+        var beatmapPath = BeatmapTimingReader.FindBeatmap(songFolder);
 
         string? audioName = null;
         var inGeneral = false;
@@ -66,7 +64,8 @@ public sealed class WorkstationSourceService : IWorkstationSourceService
         if (!File.Exists(audioPath))
             throw new FileNotFoundException($"Beatmap audio file was not found: {audioName}", audioPath);
         RejectReparsePoints(songFolder, audioPath);
-        return new WorkstationSource(beatmapPath, audioPath);
+        BeatmapTimingReader.Populate(project, beatmapPath, token);
+        return new WorkstationSource(beatmapPath, audioPath, project);
     }
 
     private static void RejectReparsePoints(string root, string path)

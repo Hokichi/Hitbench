@@ -15,13 +15,14 @@ public class ProjectFileServiceTests
         root = Path.Combine(Path.GetTempPath(), "osuHitsounder-project-tests", Guid.NewGuid().ToString("N"));
         applicationDirectory = Path.Combine(root, "App");
         song = Directory.CreateDirectory(Path.Combine(root, "Songs", "Selected"));
+        File.WriteAllText(Path.Combine(song.FullName, "a.osu"), "[TimingPoints]\n125,500,4,1,0,100,1,0\n");
     }
 
     [TearDown]
     public void TearDown() => Directory.Delete(root, true);
 
     [Test]
-    public async Task CreatesProjectWithAbsoluteBeatmapPathAndEmptyLists()
+    public async Task CreatesProjectWithAbsoluteBeatmapPathAndTimingLists()
     {
         var path = await new ProjectFileService(applicationDirectory).CreateAsync(song, "Manual name", CancellationToken.None);
         var json = JObject.Parse(await File.ReadAllTextAsync(path));
@@ -29,13 +30,24 @@ public class ProjectFileServiceTests
         Assert.That((string?)json["BeatmapPath"], Is.EqualTo(song.FullName));
         Assert.That((JArray)json["Samples"]!, Is.Empty);
         Assert.That((JArray)json["ControlPoints"]!, Is.Empty);
+        Assert.That((JArray)json["Offsets"]!, Is.EqualTo(new JArray(125)));
+        Assert.That((JArray)json["BPMs"]!, Is.EqualTo(new JArray(120)));
         Assert.That(Directory.GetFiles(Path.GetDirectoryName(path)!), Has.Length.EqualTo(1));
+    }
+
+    [Test]
+    public void InvalidTimingDoesNotPublishProject()
+    {
+        File.WriteAllText(Path.Combine(song.FullName, "a.osu"), "[TimingPoints]\n0,0,4,1,0,100,1,0\n");
+        Assert.ThrowsAsync<InvalidDataException>(() =>
+            new ProjectFileService(applicationDirectory).CreateAsync(song, "Broken", CancellationToken.None));
+        Assert.That(Directory.Exists(Path.Combine(applicationDirectory, "projects", "Broken")), Is.False);
     }
 
     [Test]
     public void MissingSongDoesNotCreateProject()
     {
-        song.Delete();
+        song.Delete(recursive: true);
         Assert.ThrowsAsync<DirectoryNotFoundException>(() =>
             new ProjectFileService(applicationDirectory).CreateAsync(song, "Manual name", CancellationToken.None));
         Assert.That(Directory.Exists(applicationDirectory), Is.False);

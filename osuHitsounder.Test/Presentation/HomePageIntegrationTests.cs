@@ -351,7 +351,7 @@ public class HomePageIntegrationTests
         source.Load = (path, _) =>
         {
             loadedPath = path;
-            return Task.FromResult(new WorkstationSource("map.osu", "audio.wav"));
+            return Task.FromResult(new WorkstationSource("map.osu", "audio.wav", new ProjectData()));
         };
         var creations = 0;
         var window = TestShell.Create(new HomePage(vm), messenger, () =>

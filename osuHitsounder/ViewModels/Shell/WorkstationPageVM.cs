@@ -18,6 +18,7 @@ public partial class WorkstationPageVM(
     private bool deactivated;
 
     [ObservableProperty] private WaveformData? waveform;
+    [ObservableProperty] private ProjectData? project;
     [ObservableProperty] private TimeSpan position;
     [ObservableProperty] private string elapsedText = "00:00.0";
     [ObservableProperty] private bool isLoading;
@@ -120,6 +121,7 @@ public partial class WorkstationPageVM(
             IsLoading = true;
             ErrorMessage = null;
             Waveform = null;
+            Project = null;
             Position = TimeSpan.Zero;
             IsPlaying = false;
             NotifyCommandState();
@@ -132,6 +134,7 @@ public partial class WorkstationPageVM(
             await CommitAsync(generation, token, () =>
             {
                 audioService.Open(source.AudioPath);
+                Project = source.Project;
                 Waveform = waveform;
             });
         }

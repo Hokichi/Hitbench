@@ -1,6 +1,7 @@
 using System.IO;
 using Newtonsoft.Json;
 using osuHitsounder.Core.Entities;
+using osuHitsounder.Services.FileSystem;
 
 namespace osuHitsounder.Services.ProjectFiles;
 
@@ -33,7 +34,13 @@ public sealed class ProjectFileService(string applicationDirectory) : IProjectFi
         if (!folder.Exists)
             throw new DirectoryNotFoundException($"Song folder no longer exists: {folder.FullName}");
 
-        var json = JsonConvert.SerializeObject(new ProjectData { BeatmapPath = folder.FullName }, Formatting.Indented);
+        var project = new ProjectData { BeatmapPath = folder.FullName };
+        await Task.Run(() =>
+        {
+            var beatmapPath = BeatmapTimingReader.FindBeatmap(folder.FullName);
+            BeatmapTimingReader.Populate(project, beatmapPath, cancellationToken);
+        }, cancellationToken);
+        var json = JsonConvert.SerializeObject(project, Formatting.Indented);
         var directory = Path.GetFullPath(Path.Combine(applicationDirectory, "projects", projectName));
         var target = Path.Combine(directory, "project.json");
         if (Directory.Exists(directory) || File.Exists(directory))

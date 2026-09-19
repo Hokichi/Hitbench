@@ -17,6 +17,7 @@ public class WorkstationPageVMTests
         {
             Assert.That(vm.CanPlay, Is.True);
             Assert.That(vm.Waveform, Is.Not.Null);
+            Assert.That(vm.Project, Is.Not.Null);
             Assert.That(audio.OpenedPath, Is.EqualTo("audio.wav"));
         });
     }
@@ -92,9 +93,10 @@ public class WorkstationPageVMTests
         var vm = new WorkstationPageVM(source, audio, new ImmediateUiScheduler());
         var load = vm.LoadAsync("project.json", CancellationToken.None);
         var deactivate = vm.DeactivateAsync();
-        completion.SetResult(new WorkstationSource("map.osu", "audio.wav"));
+        completion.SetResult(new WorkstationSource("map.osu", "audio.wav", new ProjectData()));
         await Task.WhenAll(load, deactivate);
         Assert.That(vm.Waveform, Is.Null);
+        Assert.That(vm.Project, Is.Null);
         Assert.That(audio.Disposed, Is.True);
     }
 }

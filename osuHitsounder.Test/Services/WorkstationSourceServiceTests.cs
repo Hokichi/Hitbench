@@ -17,7 +17,7 @@ public class WorkstationSourceServiceTests
         songFolder = Directory.CreateDirectory(Path.Combine(root, "Songs", "Selected")).FullName;
         var projectFolder = Directory.CreateDirectory(Path.Combine(root, "projects", "Test"));
         projectPath = Path.Combine(projectFolder.FullName, "project.json");
-        File.WriteAllText(projectPath, JsonConvert.SerializeObject(new ProjectData { BeatmapPath = songFolder }));
+        File.WriteAllText(projectPath, JsonConvert.SerializeObject(new { BeatmapPath = songFolder }));
     }
 
     [TearDown]
@@ -30,10 +30,14 @@ public class WorkstationSourceServiceTests
         File.WriteAllText(Path.Combine(songFolder, "a.osu"), "\uFEFF[General]\nAudioFilename: \"音楽 sample.ogg\"\n[Metadata]\nTitle:x\n");
         File.WriteAllText(Path.Combine(songFolder, "音楽 sample.ogg"), "audio");
         File.WriteAllText(Path.Combine(songFolder, "other.mp3"), "audio");
+        File.AppendAllText(Path.Combine(songFolder, "a.osu"), "[TimingPoints]\n125,500,4,1,0,100,1,0\n");
 
         var result = await new WorkstationSourceService().LoadAsync(projectPath, CancellationToken.None);
 
         Assert.That(result.BeatmapPath, Is.EqualTo(Path.Combine(songFolder, "a.osu")));
+        Assert.That(result.Project.Offsets, Is.EqualTo(new[] { 125 }));
+        Assert.That(result.Project.BPMs, Is.EqualTo(new[] { 120 }));
+        Assert.That(File.ReadAllText(projectPath), Does.Not.Contain("Offsets"));
         Assert.That(result.AudioPath, Is.EqualTo(Path.Combine(songFolder, "音楽 sample.ogg")));
     }
 
