@@ -1,0 +1,85 @@
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Media;
+using osuHitsounder.Resources.CustomControls;
+using osuHitsounder.ViewModels.Shell;
+using osuHitsounder.Views.Pages;
+
+namespace osuHitsounder.Test.Presentation;
+
+[Apartment(ApartmentState.STA)]
+[NonParallelizable]
+public class WorkstationPageIntegrationTests
+{
+    [SetUp]
+    public void SetUp() => EnsureResources();
+
+    [Test]
+    public void LoadsWaveformSwitchesTransportIconAndFitsViewport()
+    {
+        var audio = new StubWorkstationAudioService();
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), audio, new ImmediateUiScheduler());
+        var page = new WorkstationPage(vm);
+        page.SetProjectPath("project.json");
+        var window = new Window { Content = page, Width = 900, Height = 600, ShowInTaskbar = false };
+        using var view = new InMemoryView(window);
+        UiTestPump.Run(page.LoadCompletion);
+        view.UpdateLayout();
+
+        var play = (BalloonButton)page.FindName("PlayPauseButton");
+        Assert.That(play.ButtonIcon, Is.SameAs(Application.Current.FindResource("MediaPlay")));
+        vm.PlayPauseCommand.Execute(null);
+        view.UpdateLayout();
+        Assert.That(play.ButtonIcon, Is.SameAs(Application.Current.FindResource("MediaPause")));
+
+        var scroll = (ScrollViewer)page.FindName("WaveformScrollViewer");
+        var waveform = (WaveformView)page.FindName("WaveformDisplay");
+        vm.ZoomInCommand.Execute(null);
+        view.UpdateLayout();
+        Assert.That(waveform.DesiredSize.Width, Is.GreaterThan(scroll.ViewportWidth));
+        scroll.ScrollToHorizontalOffset(50);
+        var fit = (BalloonButton)page.FindName("FitButton");
+        fit.Command.Execute(null);
+        fit.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
+        Assert.Multiple(() =>
+        {
+            Assert.That(vm.ZoomFactor, Is.EqualTo(1));
+            Assert.That(scroll.HorizontalOffset, Is.Zero);
+        });
+    }
+
+    [Test]
+    public void ExposesDummyActionsFooterAndAccessibleViewport()
+    {
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new StubWorkstationAudioService(), new ImmediateUiScheduler());
+        var page = new WorkstationPage(vm);
+        page.SetProjectPath("project.json");
+        var window = new Window { Content = page, Width = 640, Height = 480, FlowDirection = FlowDirection.RightToLeft };
+        using var view = new InMemoryView(window);
+        UiTestPump.Run(page.LoadCompletion);
+        view.UpdateLayout();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(((BalloonButton)page.FindName("SampleTrackButton")).ButtonText, Is.EqualTo("Sample Track"));
+            Assert.That(((BalloonButton)page.FindName("PianoTrackButton")).ButtonText, Is.EqualTo("Piano Track"));
+            Assert.That(((FrameworkElement)page.FindName("ZoomFooter")).HorizontalAlignment, Is.EqualTo(HorizontalAlignment.Right));
+            Assert.That(((ScrollViewer)page.FindName("WaveformScrollViewer")).Focusable, Is.True);
+        });
+    }
+
+    private static void EnsureResources()
+    {
+        var app = Application.Current ?? new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+        app.Resources.MergedDictionaries.Clear();
+        UiTestPump.EnsureFontResources(app);
+        foreach (var resource in new[] { "Themes/Dark.xaml", "Converters/Converters.xaml", "Icons.xaml",
+                     "Styles/TextBlock.xaml", "Styles/Grid.xaml", "Styles/Border.xaml", "Styles/ContentPresenter.xaml",
+                     "Styles/Button.xaml", "Styles/ToolTip.xaml", "Styles/ScrollViewer.xaml" })
+            app.Resources.MergedDictionaries.Add(new ResourceDictionary
+            {
+                Source = new Uri($"/osuHitsounder;component/Resources/{resource}", UriKind.Relative)
+            });
+    }
+}

@@ -5,6 +5,8 @@ using osuHitsounder.Services.FileSystem;
 using osuHitsounder.Services.ProjectFiles;
 using osuHitsounder.Services.Dialogs;
 using osuHitsounder.Services.Ui;
+using osuHitsounder.Services;
+using osuHitsounder.ViewModels.Shell;
 using osuHitsounder.ViewModels.Shell.HomePage;
 using osuHitsounder.ViewModels.Popups;
 using osuHitsounder.Views.Pages;
@@ -20,8 +22,10 @@ public partial class App : Application
         var registrations = new ServiceCollection();
         registrations.AddSingleton<IMessenger, WeakReferenceMessenger>();
         registrations.AddSingleton<IProjectFileService>(_ => new ProjectFileService(AppContext.BaseDirectory));
-        registrations.AddTransient<WorkstationPage>();
-        registrations.AddSingleton<Func<WorkstationPage>>(provider => () => provider.GetRequiredService<WorkstationPage>());
+        registrations.AddSingleton<IWorkstationSourceService, WorkstationSourceService>();
+        registrations.AddSingleton<Func<WorkstationPage>>(provider => () => new WorkstationPage(
+            new WorkstationPageVM(provider.GetRequiredService<IWorkstationSourceService>(),
+                new WorkstationAudioService(), provider.GetRequiredService<IUiScheduler>())));
         registrations.AddSingleton<IHomeFolderService>(_ => new HomeFolderService(AppContext.BaseDirectory));
         registrations.AddSingleton<IAppSettingsService>(_ => new AppSettingsService(AppContext.BaseDirectory));
         registrations.AddSingleton<IUiScheduler>(_ => new UiScheduler(Current.Dispatcher));

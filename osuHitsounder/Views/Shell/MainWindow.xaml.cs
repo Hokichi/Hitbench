@@ -115,6 +115,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>, IRe
         try
         {
             var workstation = createWorkstation();
+            workstation.SetProjectPath(message.ProjectPath);
             page.Deactivate();
             PageHost.Content = workstation;
             MinWidth = defaultMinWidth;

@@ -91,7 +91,9 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
         lock (sync)
         {
             var playing = player?.PlaybackState == PlaybackState.Playing;
-            var position = stream?.CurrentTime ?? TimeSpan.Zero;
+            var position = player is IWavePosition wavePosition && stream is not null
+                ? TimeSpan.FromSeconds(wavePosition.GetPosition() / (double)stream.WaveFormat.AverageBytesPerSecond)
+                : stream?.CurrentTime ?? TimeSpan.Zero;
             if (stream is not null && position > stream.TotalTime) position = stream.TotalTime;
             return new AudioPlaybackSnapshot(position, playing, error);
         }

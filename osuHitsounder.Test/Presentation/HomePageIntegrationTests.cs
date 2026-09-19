@@ -300,7 +300,7 @@ public class HomePageIntegrationTests
         var app = Application.Current ?? new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
         app.Resources.MergedDictionaries.Clear();
         UiTestPump.EnsureFontResources(app);
-        foreach (var resource in new[] { "Themes/Dark.xaml", "Converters/Converters.xaml", "Icons.xaml", "Styles/TextBlock.xaml", "Styles/ItemsControl.xaml", "Styles/Image.xaml", "Styles/Grid.xaml", "Styles/Border.xaml", "Styles/ContentPresenter.xaml", "Styles/Button.xaml", "Styles/ToolTip.xaml", "Styles/Window.xaml" })
+        foreach (var resource in new[] { "Themes/Dark.xaml", "Converters/Converters.xaml", "Icons.xaml", "Styles/TextBlock.xaml", "Styles/ItemsControl.xaml", "Styles/Image.xaml", "Styles/Grid.xaml", "Styles/Border.xaml", "Styles/ContentPresenter.xaml", "Styles/Button.xaml", "Styles/ToolTip.xaml", "Styles/Window.xaml", "Styles/ScrollViewer.xaml" })
             app.Resources.MergedDictionaries.Add(new ResourceDictionary
             {
                 Source = new Uri($"/osuHitsounder;component/Resources/{resource}", UriKind.Relative)
