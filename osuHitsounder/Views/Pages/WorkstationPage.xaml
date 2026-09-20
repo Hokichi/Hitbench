@@ -256,6 +256,7 @@
                         MouseLeftButtonDown="OnWaveformMouseLeftButtonDown"
                         Position="{Binding Position, Mode=OneWay}"
                         SeekCommand="{Binding SeekCommand, Mode=OneWay}"
+                        SizeChanged="OnWaveformDisplaySizeChanged"
                         TextBrush="{DynamicResource Brush.Text.Secondary}"
                         ViewportWidth="{Binding ElementName=WaveformScrollViewer, Path=ViewportWidth, Mode=OneWay}"
                         WaveformBrush="{DynamicResource Brush.Navy.Muted}"
@@ -312,7 +313,6 @@
                     AutomationProperties.Name="Fit waveform"
                     ButtonIcon="{StaticResource ExpandAlt}"
                     ButtonText="Fit"
-                    Click="OnFitClicked"
                     Command="{Binding FitCommand, Mode=OneWay}"
                     Style="{StaticResource OHsWorkstationFitButtonStyle}"
                     ToolTip="Fit the full waveform" />

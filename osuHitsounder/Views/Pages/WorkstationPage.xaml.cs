@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Threading;
+using System.ComponentModel;
 using osuHitsounder.ViewModels.Shell;
 
 namespace osuHitsounder.Views.Pages;
@@ -13,6 +14,9 @@ public partial class WorkstationPage : UserControl
     private string? projectPath;
     private bool loadStarted;
     private bool deactivationStarted;
+    private bool hasPendingZoomAnchor;
+    private double zoomAnchorFraction;
+    private double zoomAnchorViewportX;
 
     public WorkstationPage(WorkstationPageVM viewModel)
     {
@@ -23,6 +27,8 @@ public partial class WorkstationPage : UserControl
         playbackTimer.Tick += OnPlaybackTick;
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
+        viewModel.PropertyChanging += OnViewModelPropertyChanging;
+        viewModel.PropertyChanged += OnViewModelPropertyChanged;
     }
 
     public Task LoadCompletion { get; private set; } = Task.CompletedTask;
@@ -72,13 +78,59 @@ public partial class WorkstationPage : UserControl
             playbackTimer.Tick -= OnPlaybackTick;
             Loaded -= OnLoaded;
             Unloaded -= OnUnloaded;
+            viewModel.PropertyChanging -= OnViewModelPropertyChanging;
+            viewModel.PropertyChanged -= OnViewModelPropertyChanged;
+            hasPendingZoomAnchor = false;
         }
     }
 
     private void OnPlaybackTick(object? sender, EventArgs e) => viewModel.RefreshPlayback();
     private void OnWaveformViewportSizeChanged(object sender, SizeChangedEventArgs e) => WaveformDisplay.ViewportWidth = Math.Max(0, e.NewSize.Width);
-    private void OnWaveformScrollChanged(object sender, ScrollChangedEventArgs e) => WaveformDisplay.HorizontalOffset = e.HorizontalOffset;
-    private void OnFitClicked(object sender, RoutedEventArgs e) => WaveformScrollViewer.ScrollToHorizontalOffset(0);
+    private void OnWaveformDisplaySizeChanged(object sender, SizeChangedEventArgs e) => ApplyPendingZoomAnchor();
+    private void OnWaveformScrollChanged(object sender, ScrollChangedEventArgs e)
+    {
+        WaveformDisplay.HorizontalOffset = e.HorizontalOffset;
+        ApplyPendingZoomAnchor();
+    }
+
+    private void OnViewModelPropertyChanging(object? sender, PropertyChangingEventArgs e)
+    {
+        if (e.PropertyName != nameof(WorkstationPageVM.ZoomFactor) || hasPendingZoomAnchor) return;
+        var duration = viewModel.Waveform?.Duration.TotalSeconds ?? 0;
+        var extent = WaveformDisplay.ActualWidth;
+        var viewport = WaveformScrollViewer.ViewportWidth;
+        if (!double.IsFinite(duration) || duration <= 0 || !double.IsFinite(extent) || extent <= 0 ||
+            !double.IsFinite(viewport) || viewport <= 0) return;
+
+        zoomAnchorFraction = Math.Clamp(viewModel.Position.TotalSeconds / duration, 0, 1);
+        var markerViewportX = zoomAnchorFraction * extent - WaveformScrollViewer.HorizontalOffset;
+        zoomAnchorViewportX = markerViewportX >= 0 && markerViewportX <= viewport
+            ? markerViewportX
+            : viewport / 2;
+        hasPendingZoomAnchor = true;
+    }
+
+    private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(WorkstationPageVM.ZoomFactor)) ApplyPendingZoomAnchor();
+    }
+
+    private void ApplyPendingZoomAnchor()
+    {
+        if (!hasPendingZoomAnchor || deactivationStarted) return;
+        var extent = WaveformDisplay.ActualWidth;
+        var viewport = WaveformScrollViewer.ViewportWidth;
+        if (!double.IsFinite(extent) || extent <= 0 || !double.IsFinite(viewport) || viewport <= 0) return;
+        var expectedExtent = WaveformDisplay.ViewportWidth * viewModel.ZoomFactor;
+        if (Math.Abs(extent - expectedExtent) > 1 || Math.Abs(WaveformScrollViewer.ExtentWidth - extent) > 1) return;
+
+        var maximum = Math.Max(0, extent - viewport);
+        var offset = viewModel.ZoomFactor <= 1
+            ? 0
+            : Math.Clamp(zoomAnchorFraction * extent - zoomAnchorViewportX, 0, maximum);
+        hasPendingZoomAnchor = false;
+        WaveformScrollViewer.ScrollToHorizontalOffset(offset);
+    }
 
     private void OnZoomEditorMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {

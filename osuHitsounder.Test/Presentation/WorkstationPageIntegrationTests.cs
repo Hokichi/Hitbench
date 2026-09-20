@@ -180,6 +180,92 @@ public class WorkstationPageIntegrationTests
         Assert.That(selector.SelectedIndex, Is.EqualTo(2));
     }
 
+    [Test]
+    public void ZoomKeepsVisiblePlaybackMarkerAtItsViewportPosition()
+    {
+        var audio = new StubWorkstationAudioService();
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), audio, new ImmediateUiScheduler());
+        var page = new WorkstationPage(vm);
+        page.SetProjectPath("project.json");
+        var window = new Window { Content = page, Width = 900, Height = 600 };
+        using var view = new InMemoryView(window);
+        UiTestPump.Run(page.LoadCompletion);
+        view.UpdateLayout();
+        vm.SeekCommand.Execute(TimeSpan.FromSeconds(6));
+        view.UpdateLayout();
+
+        var scroll = (ScrollViewer)page.FindName("WaveformScrollViewer");
+        var waveform = (WaveformView)page.FindName("WaveformDisplay");
+        double ScreenX() => vm.Position.TotalSeconds / vm.Waveform!.Duration.TotalSeconds
+            * waveform.ActualWidth - scroll.HorizontalOffset;
+        var before = ScreenX();
+
+        vm.ZoomInCommand.Execute(null);
+        view.UpdateLayout();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(ScreenX(), Is.EqualTo(before).Within(1));
+            Assert.That(audio.Snapshot.Position, Is.EqualTo(TimeSpan.FromSeconds(6)));
+        });
+
+        vm.ZoomDraft = "4";
+        vm.CommitZoomCommand.Execute(null);
+        view.UpdateLayout();
+        Assert.That(ScreenX(), Is.EqualTo(before).Within(1));
+    }
+
+    [Test]
+    public void ZoomCentersOffscreenMarkerClampsBoundariesAndCoalescesChanges()
+    {
+        var audio = new StubWorkstationAudioService();
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), audio, new ImmediateUiScheduler());
+        var page = new WorkstationPage(vm);
+        page.SetProjectPath("project.json");
+        var window = new Window { Content = page, Width = 900, Height = 600 };
+        using var view = new InMemoryView(window);
+        UiTestPump.Run(page.LoadCompletion);
+        view.UpdateLayout();
+
+        var scroll = (ScrollViewer)page.FindName("WaveformScrollViewer");
+        var waveform = (WaveformView)page.FindName("WaveformDisplay");
+        double ScreenX() => vm.Position.TotalSeconds / vm.Waveform!.Duration.TotalSeconds
+            * waveform.ActualWidth - scroll.HorizontalOffset;
+
+        vm.ZoomDraft = "4";
+        vm.CommitZoomCommand.Execute(null);
+        view.UpdateLayout();
+        scroll.ScrollToLeftEnd();
+        vm.SeekCommand.Execute(TimeSpan.FromSeconds(8));
+        view.UpdateLayout();
+        Assert.That(ScreenX(), Is.GreaterThan(scroll.ViewportWidth));
+
+        vm.ZoomInCommand.Execute(null);
+        view.UpdateLayout();
+        Assert.That(ScreenX(), Is.EqualTo(scroll.ViewportWidth / 2).Within(1));
+
+        vm.SeekCommand.Execute(TimeSpan.Zero);
+        vm.ZoomOutCommand.Execute(null);
+        view.UpdateLayout();
+        Assert.That(scroll.HorizontalOffset, Is.Zero.Within(1));
+
+        vm.SeekCommand.Execute(TimeSpan.FromSeconds(10));
+        vm.ZoomInCommand.Execute(null);
+        view.UpdateLayout();
+        Assert.That(scroll.HorizontalOffset, Is.EqualTo(scroll.ScrollableWidth).Within(1));
+
+        vm.FitCommand.Execute(null);
+        view.UpdateLayout();
+        Assert.That(scroll.HorizontalOffset, Is.Zero.Within(1));
+
+        vm.SeekCommand.Execute(TimeSpan.FromSeconds(6));
+        var before = ScreenX();
+        vm.ZoomInCommand.Execute(null);
+        vm.ZoomInCommand.Execute(null);
+        view.UpdateLayout();
+        Assert.That(ScreenX(), Is.EqualTo(before).Within(1));
+    }
+
     private static KeyEventArgs CreateKeyEvent(PresentationSource source, Key key) => new(
         Keyboard.PrimaryDevice,
         source,
