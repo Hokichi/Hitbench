@@ -312,6 +312,18 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
         if (WindowState == WindowState.Normal) DragMove();
     }
 
+    private void OnWindowMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (HandleWindowMouseWheel(IsActive, Keyboard.Modifiers, e.Delta)) e.Handled = true;
+    }
+
+    internal bool HandleWindowMouseWheel(bool isActive, ModifierKeys modifiers, int delta)
+    {
+        if (!isActive || PageHost.Content is not WorkstationPage workstationPage) return false;
+
+        return workstationPage.HandleWaveformWheel(modifiers, delta);
+    }
+
     private void OnMinimizeClick(object sender, RoutedEventArgs e) => requestWindowState(WindowState.Minimized);
 
     private void OnMaximizeRestoreClick(object sender, RoutedEventArgs e) => ToggleMaximizeRestore();

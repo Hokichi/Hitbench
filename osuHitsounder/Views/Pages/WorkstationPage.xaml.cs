@@ -172,11 +172,6 @@ public partial class WorkstationPage : UserControl
         e.Handled = true;
     }
 
-    private void OnWaveformMouseWheel(object sender, MouseWheelEventArgs e)
-    {
-        if (HandleWaveformWheel(Keyboard.Modifiers, e.Delta)) e.Handled = true;
-    }
-
     internal bool HandleWaveformWheel(ModifierKeys modifiers, int delta)
     {
         if (modifiers is not ModifierKeys.Control and not ModifierKeys.Alt || !viewModel.CanZoom)

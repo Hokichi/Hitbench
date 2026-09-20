@@ -1,10 +1,12 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using CommunityToolkit.Mvvm.Messaging;
 using osuHitsounder.Resources.CustomControls;
 using osuHitsounder.Resources.DataModels;
 using osuHitsounder.ViewModels.Shell.HomePage;
+using osuHitsounder.ViewModels.Shell;
 using osuHitsounder.Views.Pages;
 using osuHitsounder.Core.Entities;
 using osuHitsounder.Resources.Messages;
@@ -124,6 +126,42 @@ public class SongsResponsiveLayoutTests
         Assert.That(window.MinWidth, Is.EqualTo(640));
         Assert.That(window.MinHeight, Is.EqualTo(360));
         window.Close();
+    }
+
+    [Test]
+    public void ActiveShellRoutesModifiedWheelToCurrentWorkstationFromAnywhere()
+    {
+        var homeViewModel = CreateVM();
+        var workstationViewModel = new WorkstationPageVM(new StubWorkstationSourceService(),
+            new StubWorkstationAudioService(), new ImmediateUiScheduler());
+        var workstationPage = new WorkstationPage(workstationViewModel);
+        var window = TestShell.Create(new HomePage(homeViewModel), new WeakReferenceMessenger(),
+            () => workstationPage, homeViewModel, new StubAppSettingsService());
+        using var view = new InMemoryView(window);
+        try
+        {
+            Assert.That(window.HandleWindowMouseWheel(true, ModifierKeys.Control, 120), Is.False);
+
+            window.Receive(new ProjectCreatedMessage("saved.json"));
+            view.UpdateLayout();
+            window.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Loaded);
+            UiTestPump.Run(workstationPage.LoadCompletion);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(window.HandleWindowMouseWheel(false, ModifierKeys.Control, 120), Is.False);
+                Assert.That(workstationViewModel.ZoomFactor, Is.EqualTo(1));
+                Assert.That(window.HandleWindowMouseWheel(true, ModifierKeys.Control, 120), Is.True);
+                Assert.That(workstationViewModel.ZoomFactor, Is.EqualTo(2));
+                Assert.That(window.HandleWindowMouseWheel(true, ModifierKeys.Alt, 120), Is.True);
+                Assert.That(workstationViewModel.SelectedSubdivisionIndex, Is.EqualTo(4));
+                Assert.That(window.HandleWindowMouseWheel(true, ModifierKeys.None, 120), Is.False);
+            });
+        }
+        finally
+        {
+            window.Close();
+        }
     }
 
     [TestCase(1366, 728)]
