@@ -4,6 +4,9 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using System.Windows.Automation;
 using System.Windows.Input;
+using System.Diagnostics;
+using System.Text;
+using osuHitsounder.Core.Entities;
 using osuHitsounder.Resources.CustomControls;
 using osuHitsounder.ViewModels.Shell;
 using osuHitsounder.Views.Pages;
@@ -337,6 +340,85 @@ public class WorkstationPageIntegrationTests
         Assert.That(vm.SelectedSubdivisionIndex, Is.EqualTo(8));
     }
 
+    [TestCase(640, 480, FlowDirection.LeftToRight, "Dark")]
+    [TestCase(640, 480, FlowDirection.RightToLeft, "Dark")]
+    [TestCase(900, 600, FlowDirection.LeftToRight, "Dark")]
+    [TestCase(900, 600, FlowDirection.RightToLeft, "Dark")]
+    [TestCase(640, 480, FlowDirection.LeftToRight, "Light")]
+    [TestCase(640, 480, FlowDirection.RightToLeft, "Light")]
+    [TestCase(900, 600, FlowDirection.LeftToRight, "Light")]
+    [TestCase(900, 600, FlowDirection.RightToLeft, "Light")]
+    public void ZoomEditorStaysReachableAndReadableAcrossLayouts(
+        double width, double height, FlowDirection flowDirection, string theme)
+    {
+        EnsureResources(theme);
+        var trace = new StringBuilder();
+        using var writer = new StringWriter(trace);
+        using var listener = new TextWriterTraceListener(writer);
+        PresentationTraceSources.DataBindingSource.Listeners.Add(listener);
+        PresentationTraceSources.DataBindingSource.Switch.Level = SourceLevels.Error;
+        try
+        {
+            var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new StubWorkstationAudioService(), new ImmediateUiScheduler());
+            var page = new WorkstationPage(vm);
+            page.SetProjectPath("project.json");
+            var window = new Window { Content = page, Width = width, Height = height, FlowDirection = flowDirection };
+            using var view = new InMemoryView(window);
+            UiTestPump.Run(page.LoadCompletion);
+            vm.ZoomDraft = "invalid";
+            vm.CommitZoomCommand.Execute(null);
+            view.UpdateLayout();
+
+            var editor = (TextBox)page.FindName("ZoomEditor");
+            var validation = (TextBlock)page.FindName("ZoomValidationText");
+            var selector = (ComboBox)page.FindName("SubdivisionSelector");
+            var bounds = editor.TransformToAncestor(page).TransformBounds(new Rect(editor.RenderSize));
+            listener.Flush();
+            Assert.Multiple(() =>
+            {
+                Assert.That(AutomationProperties.GetName(editor), Is.EqualTo("Waveform zoom level"));
+                Assert.That(AutomationProperties.GetName(selector), Is.EqualTo("Beat subdivision"));
+                Assert.That(bounds.Left, Is.GreaterThanOrEqualTo(0));
+                Assert.That(bounds.Right, Is.LessThanOrEqualTo(page.ActualWidth));
+                Assert.That(bounds.Top, Is.GreaterThanOrEqualTo(0));
+                Assert.That(bounds.Bottom, Is.LessThanOrEqualTo(page.ActualHeight));
+                Assert.That(validation.Text, Is.EqualTo("Enter a whole number from 1 to 16."));
+                Assert.That(validation.TextWrapping, Is.EqualTo(TextWrapping.Wrap));
+                Assert.That(validation.ActualWidth, Is.LessThanOrEqualTo(240));
+                Assert.That(trace.ToString(), Is.Empty);
+            });
+        }
+        finally
+        {
+            PresentationTraceSources.DataBindingSource.Listeners.Remove(listener);
+        }
+    }
+
+    [Test]
+    public void ZoomEditorIsDisabledWhileWaveformLoads()
+    {
+        var completion = new TaskCompletionSource<WorkstationSource>();
+        var source = new StubWorkstationSourceService { Load = (_, _) => completion.Task };
+        var vm = new WorkstationPageVM(source, new StubWorkstationAudioService(), new ImmediateUiScheduler());
+        var page = new WorkstationPage(vm);
+        page.SetProjectPath("project.json");
+        var window = new Window { Content = page, Width = 640, Height = 480 };
+        using var view = new InMemoryView(window);
+        view.UpdateLayout();
+
+        var editor = (TextBox)page.FindName("ZoomEditor");
+        Assert.Multiple(() =>
+        {
+            Assert.That(vm.IsLoading, Is.True);
+            Assert.That(editor.IsEnabled, Is.False);
+        });
+
+        completion.SetResult(new WorkstationSource("map.osu", "audio.wav", new ProjectData()));
+        UiTestPump.Run(page.LoadCompletion);
+        view.UpdateLayout();
+        Assert.That(editor.IsEnabled, Is.True);
+    }
+
     private static KeyEventArgs CreateKeyEvent(PresentationSource source, Key key) => new(
         Keyboard.PrimaryDevice,
         source,
@@ -346,12 +428,12 @@ public class WorkstationPageIntegrationTests
         RoutedEvent = Keyboard.PreviewKeyDownEvent
     };
 
-    private static void EnsureResources()
+    private static void EnsureResources(string theme = "Dark")
     {
         var app = Application.Current ?? new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
         app.Resources.MergedDictionaries.Clear();
         UiTestPump.EnsureFontResources(app);
-        foreach (var resource in new[] { "Themes/Dark.xaml", "Converters/Converters.xaml", "Icons.xaml",
+        foreach (var resource in new[] { $"Themes/{theme}.xaml", "Converters/Converters.xaml", "Icons.xaml",
                      "Styles/TextBlock.xaml", "Styles/Grid.xaml", "Styles/Border.xaml", "Styles/ContentPresenter.xaml",
                      "Styles/Button.xaml", "Styles/ToolTip.xaml", "Styles/ScrollViewer.xaml", "Styles/TextBox.xaml", "Styles/ComboBox.xaml" })
             app.Resources.MergedDictionaries.Add(new ResourceDictionary
