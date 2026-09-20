@@ -17,6 +17,8 @@ public partial class WorkstationPage : UserControl
     private bool hasPendingZoomAnchor;
     private double zoomAnchorFraction;
     private double zoomAnchorViewportX;
+    private ModifierKeys wheelMode;
+    private int wheelRemainder;
 
     public WorkstationPage(WorkstationPageVM viewModel)
     {
@@ -81,6 +83,8 @@ public partial class WorkstationPage : UserControl
             viewModel.PropertyChanging -= OnViewModelPropertyChanging;
             viewModel.PropertyChanged -= OnViewModelPropertyChanged;
             hasPendingZoomAnchor = false;
+            wheelMode = ModifierKeys.None;
+            wheelRemainder = 0;
         }
     }
 
@@ -166,6 +170,41 @@ public partial class WorkstationPage : UserControl
         WaveformScrollViewer.Focus();
         if (!WaveformDisplay.SeekAt(e.GetPosition(WaveformDisplay).X)) return;
         e.Handled = true;
+    }
+
+    private void OnWaveformMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (HandleWaveformWheel(Keyboard.Modifiers, e.Delta)) e.Handled = true;
+    }
+
+    internal bool HandleWaveformWheel(ModifierKeys modifiers, int delta)
+    {
+        if (modifiers is not ModifierKeys.Control and not ModifierKeys.Alt || !viewModel.CanZoom)
+        {
+            wheelMode = ModifierKeys.None;
+            wheelRemainder = 0;
+            return false;
+        }
+
+        if (wheelMode != modifiers)
+        {
+            wheelMode = modifiers;
+            wheelRemainder = 0;
+        }
+
+        wheelRemainder += delta;
+        var steps = wheelRemainder / Mouse.MouseWheelDeltaForOneLine;
+        wheelRemainder %= Mouse.MouseWheelDeltaForOneLine;
+        var increase = steps > 0;
+        for (var index = 0; index < Math.Abs(steps); index++)
+        {
+            var command = modifiers == ModifierKeys.Control
+                ? increase ? viewModel.ZoomInCommand : viewModel.ZoomOutCommand
+                : increase ? viewModel.IncreaseSubdivisionCommand : viewModel.DecreaseSubdivisionCommand;
+            if (!command.CanExecute(null)) break;
+            command.Execute(null);
+        }
+        return true;
     }
 
     private void OnWaveformKeyDown(object sender, KeyEventArgs e)

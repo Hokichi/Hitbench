@@ -266,6 +266,77 @@ public class WorkstationPageIntegrationTests
         Assert.That(ScreenX(), Is.EqualTo(before).Within(1));
     }
 
+    [Test]
+    public void ModifierWheelStepsZoomAndSubdivisionWithoutSeeking()
+    {
+        var audio = new StubWorkstationAudioService();
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), audio, new ImmediateUiScheduler());
+        var page = new WorkstationPage(vm);
+        page.SetProjectPath("project.json");
+        var window = new Window { Content = page, Width = 900, Height = 600 };
+        using var view = new InMemoryView(window);
+        UiTestPump.Run(page.LoadCompletion);
+        var before = audio.Snapshot;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(page.HandleWaveformWheel(ModifierKeys.Control, 120), Is.True);
+            Assert.That(vm.ZoomFactor, Is.EqualTo(2));
+            Assert.That(page.HandleWaveformWheel(ModifierKeys.Control, 240), Is.True);
+            Assert.That(vm.ZoomFactor, Is.EqualTo(4));
+            Assert.That(page.HandleWaveformWheel(ModifierKeys.Control, -120), Is.True);
+            Assert.That(vm.ZoomFactor, Is.EqualTo(3));
+            Assert.That(page.HandleWaveformWheel(ModifierKeys.Alt, 120), Is.True);
+            Assert.That(vm.SelectedSubdivisionIndex, Is.EqualTo(4));
+            Assert.That(page.HandleWaveformWheel(ModifierKeys.Alt, -120), Is.True);
+            Assert.That(vm.SelectedSubdivisionIndex, Is.EqualTo(3));
+            Assert.That(audio.Snapshot, Is.EqualTo(before));
+        });
+    }
+
+    [Test]
+    public void ModifierWheelAccumulatesPerModeConsumesBoundsAndIgnoresOtherModifiers()
+    {
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new StubWorkstationAudioService(), new ImmediateUiScheduler());
+        var unloadedPage = new WorkstationPage(vm);
+        Assert.That(unloadedPage.HandleWaveformWheel(ModifierKeys.Control, 120), Is.False);
+
+        var page = new WorkstationPage(vm);
+        page.SetProjectPath("project.json");
+        var window = new Window { Content = page, Width = 900, Height = 600 };
+        using var view = new InMemoryView(window);
+        UiTestPump.Run(page.LoadCompletion);
+
+        Assert.That(page.HandleWaveformWheel(ModifierKeys.Control, 60), Is.True);
+        Assert.That(vm.ZoomFactor, Is.EqualTo(1));
+        Assert.That(page.HandleWaveformWheel(ModifierKeys.Control, 60), Is.True);
+        Assert.That(vm.ZoomFactor, Is.EqualTo(2));
+
+        Assert.That(page.HandleWaveformWheel(ModifierKeys.Control, 60), Is.True);
+        Assert.That(page.HandleWaveformWheel(ModifierKeys.Alt, 60), Is.True);
+        Assert.That(page.HandleWaveformWheel(ModifierKeys.Alt, 60), Is.True);
+        Assert.Multiple(() =>
+        {
+            Assert.That(vm.ZoomFactor, Is.EqualTo(2));
+            Assert.That(vm.SelectedSubdivisionIndex, Is.EqualTo(4));
+        });
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(page.HandleWaveformWheel(ModifierKeys.None, 120), Is.False);
+            Assert.That(page.HandleWaveformWheel(ModifierKeys.Control | ModifierKeys.Alt, 120), Is.False);
+            Assert.That(page.HandleWaveformWheel(ModifierKeys.Shift, 120), Is.False);
+        });
+
+        vm.ZoomDraft = "16";
+        vm.CommitZoomCommand.Execute(null);
+        Assert.That(page.HandleWaveformWheel(ModifierKeys.Control, 120), Is.True);
+        Assert.That(vm.ZoomFactor, Is.EqualTo(16));
+        vm.SelectedSubdivisionIndex = 8;
+        Assert.That(page.HandleWaveformWheel(ModifierKeys.Alt, 120), Is.True);
+        Assert.That(vm.SelectedSubdivisionIndex, Is.EqualTo(8));
+    }
+
     private static KeyEventArgs CreateKeyEvent(PresentationSource source, Key key) => new(
         Keyboard.PrimaryDevice,
         source,

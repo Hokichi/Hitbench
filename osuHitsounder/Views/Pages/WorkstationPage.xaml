@@ -244,6 +244,7 @@
                     Focusable="True"
                     IsEnabled="{Binding CanPlay, Mode=OneWay}"
                     PreviewKeyDown="OnWaveformKeyDown"
+                    PreviewMouseWheel="OnWaveformMouseWheel"
                     ScrollChanged="OnWaveformScrollChanged"
                     SizeChanged="OnWaveformViewportSizeChanged"
                     Style="{StaticResource OHsWorkstationWaveformScrollStyle}">
