@@ -4,6 +4,7 @@ using osuHitsounder.Core.Entities;
 using osuHitsounder.Services;
 using osuHitsounder.Services.FileSystem;
 using osuHitsounder.Services.Ui;
+using System.Globalization;
 
 namespace osuHitsounder.ViewModels.Shell;
 
@@ -24,9 +25,27 @@ public partial class WorkstationPageVM(
     [ObservableProperty] private bool isLoading;
     [ObservableProperty] private bool isPlaying;
     [ObservableProperty] private string? errorMessage;
-    [ObservableProperty] private double zoomFactor = 1;
+    private double zoomFactor = 1;
+    private int selectedSubdivisionIndex = 3;
+    [ObservableProperty] private string zoomDraft = "1";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasZoomValidationError))]
+    private string? zoomValidationMessage;
 
+    public double ZoomFactor => zoomFactor;
     public string ZoomText => $"{ZoomFactor:0.#}x";
+    public bool HasZoomValidationError => ZoomValidationMessage is not null;
+    public int SelectedSubdivisionIndex
+    {
+        get => selectedSubdivisionIndex;
+        set
+        {
+            var next = Math.Clamp(value, 0, 8);
+            if (!SetProperty(ref selectedSubdivisionIndex, next)) return;
+            IncreaseSubdivisionCommand.NotifyCanExecuteChanged();
+            DecreaseSubdivisionCommand.NotifyCanExecuteChanged();
+        }
+    }
     public bool CanPlay => Waveform is not null && !IsLoading && !deactivated;
     public bool CanZoom => Waveform is not null && !IsLoading && !deactivated;
 
@@ -95,25 +114,51 @@ public partial class WorkstationPageVM(
     [RelayCommand(CanExecute = nameof(CanZoomIn))]
     private void ZoomIn()
     {
-        ZoomFactor = Math.Min(16, ZoomFactor * 2);
-        OnPropertyChanged(nameof(ZoomText));
-        NotifyCommandState();
+        if (!CanZoomIn()) return;
+        SetZoom((int)ZoomFactor + 1);
     }
 
     [RelayCommand(CanExecute = nameof(CanZoomOut))]
     private void ZoomOut()
     {
-        ZoomFactor = Math.Max(1, ZoomFactor / 2);
-        OnPropertyChanged(nameof(ZoomText));
-        NotifyCommandState();
+        if (!CanZoomOut()) return;
+        SetZoom((int)ZoomFactor - 1);
     }
 
     [RelayCommand(CanExecute = nameof(CanUseZoom))]
     private void Fit()
     {
-        ZoomFactor = 1;
-        OnPropertyChanged(nameof(ZoomText));
-        NotifyCommandState();
+        if (!CanUseZoom()) return;
+        SetZoom(1);
+    }
+
+    [RelayCommand(CanExecute = nameof(CanUseZoom))]
+    private void CommitZoom()
+    {
+        if (!CanUseZoom()) return;
+        if (!int.TryParse(ZoomDraft, NumberStyles.Integer, CultureInfo.CurrentCulture, out var value) || value is < 1 or > 16)
+        {
+            ZoomValidationMessage = "Enter a whole number from 1 to 16.";
+            return;
+        }
+        SetZoom(value);
+    }
+
+    [RelayCommand]
+    private void CancelZoomEdit() => ResetZoomDraft();
+
+    [RelayCommand(CanExecute = nameof(CanIncreaseSubdivision))]
+    private void IncreaseSubdivision()
+    {
+        if (!CanIncreaseSubdivision()) return;
+        SelectedSubdivisionIndex++;
+    }
+
+    [RelayCommand(CanExecute = nameof(CanDecreaseSubdivision))]
+    private void DecreaseSubdivision()
+    {
+        if (!CanDecreaseSubdivision()) return;
+        SelectedSubdivisionIndex--;
     }
 
     [RelayCommand]
@@ -171,6 +216,29 @@ public partial class WorkstationPageVM(
     private bool CanUseZoom() => CanZoom;
     private bool CanZoomIn() => CanZoom && ZoomFactor < 16;
     private bool CanZoomOut() => CanZoom && ZoomFactor > 1;
+    private bool CanIncreaseSubdivision() => SelectedSubdivisionIndex < 8;
+    private bool CanDecreaseSubdivision() => SelectedSubdivisionIndex > 0;
+
+    private void SetZoom(int value)
+    {
+        if (!CanZoom) return;
+        var next = Math.Clamp(value, 1, 16);
+        if (Math.Abs(zoomFactor - next) > double.Epsilon)
+        {
+            OnPropertyChanging(nameof(ZoomFactor));
+            zoomFactor = next;
+            OnPropertyChanged(nameof(ZoomFactor));
+            OnPropertyChanged(nameof(ZoomText));
+        }
+        ResetZoomDraft();
+        NotifyCommandState();
+    }
+
+    private void ResetZoomDraft()
+    {
+        ZoomDraft = ((int)ZoomFactor).ToString(CultureInfo.CurrentCulture);
+        ZoomValidationMessage = null;
+    }
 
     private void NotifyCommandState()
     {
@@ -180,7 +248,9 @@ public partial class WorkstationPageVM(
         ZoomInCommand.NotifyCanExecuteChanged();
         ZoomOutCommand.NotifyCanExecuteChanged();
         FitCommand.NotifyCanExecuteChanged();
+        CommitZoomCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(CanPlay));
         OnPropertyChanged(nameof(CanZoom));
+        if (!CanZoom) ResetZoomDraft();
     }
 }
