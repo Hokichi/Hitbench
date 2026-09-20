@@ -41,12 +41,49 @@
         <Style x:Key="OHsWorkstationFitButtonStyle" BasedOn="{StaticResource OHsWorkstationIconButtonStyle}" TargetType="customControls:BalloonButton">
             <Setter Property="ShouldShowText" Value="True" />
         </Style>
-        <Style x:Key="OHsWorkstationZoomTextStyle" BasedOn="{StaticResource BaseTextBlockStyle}" TargetType="TextBlock">
+        <Style x:Key="OHsWorkstationZoomEditorStyle" BasedOn="{StaticResource RoundedTextInputStyle}" TargetType="TextBox">
             <Setter Property="MinWidth" Value="48" />
-            <Setter Property="VerticalAlignment" Value="Center" />
-            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}" />
-            <Setter Property="TextAlignment" Value="Center" />
+            <Setter Property="TextAlignment" Value="Right" />
+            <Setter Property="Cursor" Value="Hand" />
             <Style.Triggers>
+                <Trigger Property="IsEnabled" Value="False"><Setter Property="Cursor" Value="Arrow" /></Trigger>
+                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
+                    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="OHsWorkstationZoomValidationBoundaryStyle" BasedOn="{StaticResource BaseBorderStyle}" TargetType="Border">
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="2" />
+            <Setter Property="CornerRadius" Value="9" />
+            <Setter Property="Padding" Value="1" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding HasZoomValidationError, Mode=OneWay}" Value="True">
+                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Danger}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
+                    <Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="OHsWorkstationZoomLabelStyle" BasedOn="{StaticResource FieldLabelTextStyle}" TargetType="TextBlock">
+            <Setter Property="Margin" Value="0,0,8,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style x:Key="OHsWorkstationZoomSuffixStyle" BasedOn="{StaticResource BaseTextBlockStyle}" TargetType="TextBlock">
+            <Setter Property="Margin" Value="4,0,0,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+        </Style>
+        <Style x:Key="OHsWorkstationZoomValidationTextStyle" BasedOn="{StaticResource BaseTextBlockStyle}" TargetType="TextBlock">
+            <Setter Property="Margin" Value="0,4,0,0" />
+            <Setter Property="MaxWidth" Value="240" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Danger}" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding ZoomValidationMessage, Mode=OneWay}" Value="{x:Null}"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
                 <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True"><Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" /></DataTrigger>
             </Style.Triggers>
         </Style>
@@ -181,9 +218,8 @@
                         <TextBlock Style="{StaticResource OHsWorkstationSubdivisionLabelStyle}" Text="Subdivision" />
                         <ComboBox
                             x:Name="SubdivisionSelector"
-                            AutomationProperties.HelpText="Subdivision behavior is not implemented yet."
                             AutomationProperties.Name="Beat subdivision"
-                            SelectedIndex="3"
+                            SelectedIndex="{Binding SelectedSubdivisionIndex, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                             Style="{StaticResource OHsWorkstationSubdivisionStyle}">
                             <ComboBoxItem Content="1/1" />
                             <ComboBoxItem Content="1/2" />
@@ -203,7 +239,7 @@
                     x:Name="WaveformScrollViewer"
                     Grid.Row="3"
                     Margin="0,12,0,0"
-                    AutomationProperties.HelpText="Click to seek. Use arrow keys to scroll, or Control plus arrow keys to seek."
+                    AutomationProperties.HelpText="Click to seek. Use arrow keys to scroll, Control plus arrow keys to seek, Control plus wheel to zoom, or Alt plus wheel to change subdivision."
                     AutomationProperties.Name="Audio waveform"
                     Focusable="True"
                     IsEnabled="{Binding CanPlay, Mode=OneWay}"
@@ -250,11 +286,26 @@
                 ToolTip="Piano track creation is coming later" />
         </Grid>
         <Grid x:Name="ZoomFooter" Grid.Row="3" HorizontalAlignment="Right" FlowDirection="LeftToRight">
+            <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
             <StackPanel
                 FlowDirection="{Binding RelativeSource={RelativeSource AncestorType=UserControl}, Path=FlowDirection, Mode=OneWay}"
                 Orientation="Horizontal">
+                <TextBlock x:Name="ZoomLabel" Style="{StaticResource OHsWorkstationZoomLabelStyle}" Text="Zoom" />
                 <customControls:BalloonButton AutomationProperties.Name="Zoom waveform out" ButtonIcon="{StaticResource Minus}" Command="{Binding ZoomOutCommand, Mode=OneWay}" Style="{StaticResource OHsWorkstationIconButtonStyle}" ToolTip="Zoom waveform out" />
-                <TextBlock AutomationProperties.Name="Waveform zoom level" Style="{StaticResource OHsWorkstationZoomTextStyle}" Text="{Binding ZoomText, Mode=OneWay}" />
+                <Border Style="{StaticResource OHsWorkstationZoomValidationBoundaryStyle}">
+                    <TextBox
+                        x:Name="ZoomEditor"
+                        AutomationProperties.HelpText="{Binding ZoomValidationMessage, Mode=OneWay}"
+                        AutomationProperties.Name="Waveform zoom level"
+                        GotKeyboardFocus="OnZoomEditorGotKeyboardFocus"
+                        IsEnabled="{Binding CanZoom, Mode=OneWay}"
+                        LostKeyboardFocus="OnZoomEditorLostKeyboardFocus"
+                        PreviewKeyDown="OnZoomEditorKeyDown"
+                        PreviewMouseLeftButtonDown="OnZoomEditorMouseLeftButtonDown"
+                        Style="{StaticResource OHsWorkstationZoomEditorStyle}"
+                        Text="{Binding ZoomDraft, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                </Border>
+                <TextBlock Style="{StaticResource OHsWorkstationZoomSuffixStyle}" Text="x" />
                 <customControls:BalloonButton AutomationProperties.Name="Zoom waveform in" ButtonIcon="{StaticResource PlusSolid}" Command="{Binding ZoomInCommand, Mode=OneWay}" Style="{StaticResource OHsWorkstationIconButtonStyle}" ToolTip="Zoom waveform in" />
                 <customControls:BalloonButton
                     x:Name="FitButton"
@@ -266,6 +317,12 @@
                     Style="{StaticResource OHsWorkstationFitButtonStyle}"
                     ToolTip="Fit the full waveform" />
             </StackPanel>
+            <TextBlock
+                x:Name="ZoomValidationText"
+                Grid.Row="1"
+                AutomationProperties.LiveSetting="Assertive"
+                Style="{StaticResource OHsWorkstationZoomValidationTextStyle}"
+                Text="{Binding ZoomValidationMessage, Mode=OneWay}" />
         </Grid>
     </Grid>
 </UserControl>

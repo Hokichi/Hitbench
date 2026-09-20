@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using System.Windows.Automation;
+using System.Windows.Input;
 using osuHitsounder.Resources.CustomControls;
 using osuHitsounder.ViewModels.Shell;
 using osuHitsounder.Views.Pages;
@@ -119,6 +120,75 @@ public class WorkstationPageIntegrationTests
         Assert.That(audio.Snapshot, Is.EqualTo(before));
     }
 
+    [Test]
+    public void ZoomEditorCommitsCancelsValidatesAndSelectorSynchronizes()
+    {
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new StubWorkstationAudioService(), new ImmediateUiScheduler());
+        var page = new WorkstationPage(vm);
+        page.SetProjectPath("project.json");
+        var window = new Window { Content = page, Width = 900, Height = 600 };
+        using var view = new InMemoryView(window);
+        using var source = new InMemoryPresentationSource();
+        UiTestPump.Run(page.LoadCompletion);
+        view.UpdateLayout();
+
+        var editor = (TextBox)page.FindName("ZoomEditor");
+        var validation = (TextBlock)page.FindName("ZoomValidationText");
+        var selector = (ComboBox)page.FindName("SubdivisionSelector");
+
+        editor.Text = "5";
+        editor.GetBindingExpression(TextBox.TextProperty)!.UpdateSource();
+        editor.RaiseEvent(CreateKeyEvent(source, Key.Enter));
+        view.UpdateLayout();
+        Assert.Multiple(() =>
+        {
+            Assert.That(vm.ZoomFactor, Is.EqualTo(5));
+            Assert.That(editor.Text, Is.EqualTo("5"));
+            Assert.That(AutomationProperties.GetName(editor), Is.EqualTo("Waveform zoom level"));
+            Assert.That(editor.IsEnabled, Is.True);
+        });
+
+        editor.Text = "bad";
+        editor.GetBindingExpression(TextBox.TextProperty)!.UpdateSource();
+        editor.RaiseEvent(new KeyboardFocusChangedEventArgs(Keyboard.PrimaryDevice, Environment.TickCount, editor, null)
+        {
+            RoutedEvent = Keyboard.LostKeyboardFocusEvent
+        });
+        view.UpdateLayout();
+        Assert.Multiple(() =>
+        {
+            Assert.That(vm.ZoomFactor, Is.EqualTo(5));
+            Assert.That(vm.HasZoomValidationError, Is.True);
+            Assert.That(validation.Text, Is.EqualTo("Enter a whole number from 1 to 16."));
+            Assert.That(validation.Visibility, Is.EqualTo(Visibility.Visible));
+        });
+
+        editor.RaiseEvent(CreateKeyEvent(source, Key.Escape));
+        view.UpdateLayout();
+        Assert.Multiple(() =>
+        {
+            Assert.That(editor.Text, Is.EqualTo("5"));
+            Assert.That(vm.HasZoomValidationError, Is.False);
+            Assert.That(validation.Visibility, Is.EqualTo(Visibility.Collapsed));
+        });
+
+        selector.SelectedIndex = 8;
+        selector.GetBindingExpression(Selector.SelectedIndexProperty)!.UpdateSource();
+        Assert.That(vm.SelectedSubdivisionIndex, Is.EqualTo(8));
+        vm.SelectedSubdivisionIndex = 2;
+        view.UpdateLayout();
+        Assert.That(selector.SelectedIndex, Is.EqualTo(2));
+    }
+
+    private static KeyEventArgs CreateKeyEvent(PresentationSource source, Key key) => new(
+        Keyboard.PrimaryDevice,
+        source,
+        Environment.TickCount,
+        key)
+    {
+        RoutedEvent = Keyboard.PreviewKeyDownEvent
+    };
+
     private static void EnsureResources()
     {
         var app = Application.Current ?? new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
@@ -126,7 +196,7 @@ public class WorkstationPageIntegrationTests
         UiTestPump.EnsureFontResources(app);
         foreach (var resource in new[] { "Themes/Dark.xaml", "Converters/Converters.xaml", "Icons.xaml",
                      "Styles/TextBlock.xaml", "Styles/Grid.xaml", "Styles/Border.xaml", "Styles/ContentPresenter.xaml",
-                     "Styles/Button.xaml", "Styles/ToolTip.xaml", "Styles/ScrollViewer.xaml", "Styles/ComboBox.xaml" })
+                     "Styles/Button.xaml", "Styles/ToolTip.xaml", "Styles/ScrollViewer.xaml", "Styles/TextBox.xaml", "Styles/ComboBox.xaml" })
             app.Resources.MergedDictionaries.Add(new ResourceDictionary
             {
                 Source = new Uri($"/osuHitsounder;component/Resources/{resource}", UriKind.Relative)

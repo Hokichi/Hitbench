@@ -80,6 +80,35 @@ public partial class WorkstationPage : UserControl
     private void OnWaveformScrollChanged(object sender, ScrollChangedEventArgs e) => WaveformDisplay.HorizontalOffset = e.HorizontalOffset;
     private void OnFitClicked(object sender, RoutedEventArgs e) => WaveformScrollViewer.ScrollToHorizontalOffset(0);
 
+    private void OnZoomEditorMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (ZoomEditor.IsKeyboardFocusWithin) return;
+        ZoomEditor.Focus();
+        ZoomEditor.SelectAll();
+        e.Handled = true;
+    }
+
+    private void OnZoomEditorGotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e) => ZoomEditor.SelectAll();
+
+    private void OnZoomEditorLostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+    {
+        if (viewModel.CommitZoomCommand.CanExecute(null)) viewModel.CommitZoomCommand.Execute(null);
+    }
+
+    private void OnZoomEditorKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
+            if (viewModel.CommitZoomCommand.CanExecute(null)) viewModel.CommitZoomCommand.Execute(null);
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Escape)
+        {
+            viewModel.CancelZoomEditCommand.Execute(null);
+            e.Handled = true;
+        }
+    }
+
     private void OnWaveformMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         WaveformScrollViewer.Focus();
