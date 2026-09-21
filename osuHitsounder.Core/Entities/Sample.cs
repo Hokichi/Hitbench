@@ -2,6 +2,7 @@ namespace osuHitsounder.Core.Entities;
 
 public class Sample
 {
-    public string Path { get; set; } = string.Empty;
+    public string FileName { get; set; } = string.Empty;
+    public int Volume { get; set; }
     public List<int> Timestamps { get; set; } = [];
 }
