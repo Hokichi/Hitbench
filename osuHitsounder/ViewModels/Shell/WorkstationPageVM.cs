@@ -4,15 +4,39 @@ using osuHitsounder.Core.Entities;
 using osuHitsounder.Services;
 using osuHitsounder.Services.FileSystem;
 using osuHitsounder.Services.Ui;
+using osuHitsounder.Services.Dialogs;
+using osuHitsounder.Services.ProjectFiles;
+using osuHitsounder.Resources.Messages;
+using CommunityToolkit.Mvvm.Messaging;
+using System.Collections.ObjectModel;
 using System.Globalization;
+using System.IO;
 
 namespace osuHitsounder.ViewModels.Shell;
 
 public partial class WorkstationPageVM(
     IWorkstationSourceService sourceService,
     IWorkstationAudioService audioService,
-    IUiScheduler uiScheduler) : ObservableObject
+    IUiScheduler uiScheduler,
+    ISampleFileService? sampleFiles = null,
+    ISampleFileDialogService? sampleDialog = null,
+    IProjectFileService? projectFiles = null,
+    IMessenger? messenger = null) : ObservableObject
 {
+    private readonly ObservableCollection<Track> tracks = [];
+    private readonly ObservableCollection<string> availableSamples = [];
+    private string? projectPath;
+    private Task saveTail = Task.CompletedTask;
+    private Task<string?>? activeImport;
+    private Exception? lastSaveError;
+    private bool importBusy;
+    public ObservableCollection<Track> Tracks => tracks;
+    public ObservableCollection<string> SampleFiles => availableSamples;
+    public int Subdivision => new[] { 1, 2, 3, 4, 5, 6, 8, 12, 16 }[SelectedSubdivisionIndex];
+    public bool CanEditTracks => Project is not null && !IsLoading && !deactivated;
+    public bool CanImportSample => CanEditTracks && !importBusy;
+    public bool HasPendingSaves => importBusy || !saveTail.IsCompleted || lastSaveError is not null;
+    [ObservableProperty] private string? saveError;
     private CancellationTokenSource? loadCancellation;
     private Task? activeLoad;
     private int loadGeneration;
@@ -44,6 +68,7 @@ public partial class WorkstationPageVM(
             if (!SetProperty(ref selectedSubdivisionIndex, next)) return;
             IncreaseSubdivisionCommand.NotifyCanExecuteChanged();
             DecreaseSubdivisionCommand.NotifyCanExecuteChanged();
+            OnPropertyChanged(nameof(Subdivision));
         }
     }
     public bool CanPlay => Waveform is not null && !IsLoading && !deactivated;
@@ -56,6 +81,7 @@ public partial class WorkstationPageVM(
         loadCancellation?.Dispose();
         loadCancellation = CancellationTokenSource.CreateLinkedTokenSource(token);
         var generation = ++loadGeneration;
+        this.projectPath = projectPath;
         activeLoad = LoadCoreAsync(projectPath, generation, loadCancellation.Token);
         return activeLoad;
     }
@@ -71,11 +97,16 @@ public partial class WorkstationPageVM(
             try { await activeLoad; }
             catch (OperationCanceledException) { }
         }
-        audioService.Stop();
-        audioService.Dispose();
-        loadCancellation?.Dispose();
-        loadCancellation = null;
-        NotifyCommandState();
+        if (messenger is not null) messenger.UnregisterAll(this);
+        try { await FlushSavesAsync(); }
+        finally
+        {
+            audioService.Stop();
+            audioService.Dispose();
+            loadCancellation?.Dispose();
+            loadCancellation = null;
+            NotifyCommandState();
+        }
     }
 
     public void RefreshPlayback()
@@ -162,10 +193,113 @@ public partial class WorkstationPageVM(
     }
 
     [RelayCommand]
-    private static void AddSampleTrack() { }
+    private void AddSampleTrack()
+    {
+        if (!CanEditTracks) return;
+        var track = new Track();
+        if (availableSamples.Count > 0) track.Samples.Add(new Sample { FileName = availableSamples[0] });
+        Project!.Tracks.Add(track);
+        tracks.Add(track);
+        QueueSave();
+    }
 
     [RelayCommand]
     private static void AddPianoTrack() { }
+
+    public void SelectSample(Track track, string fileName)
+    {
+        if (!CanEditTracks || !tracks.Contains(track) || string.IsNullOrWhiteSpace(fileName) ||
+            sampleFiles is not null && !availableSamples.Any(name => string.Equals(name, fileName, StringComparison.OrdinalIgnoreCase))) return;
+        if (track.Samples.Count == 0) track.Samples.Add(new Sample { FileName = fileName });
+        else foreach (var sample in track.Samples) sample.FileName = fileName;
+        QueueSave();
+    }
+
+    public void SetTrackVolume(Track track, int volume)
+    {
+        if (!CanEditTracks || !tracks.Contains(track)) return;
+        var next = Math.Clamp(volume, 5, 100);
+        if (track.Volume == next) return;
+        track.Volume = next;
+        QueueSave();
+    }
+
+    public Task<string?> ImportSampleAsync(Track track)
+    {
+        if (!CanEditTracks || !tracks.Contains(track) || sampleDialog is null || sampleFiles is null || importBusy)
+            return Task.FromResult<string?>(null);
+        importBusy = true;
+        OnPropertyChanged(nameof(CanImportSample));
+        activeImport = ImportSampleCoreAsync(track);
+        return activeImport;
+    }
+
+    private async Task<string?> ImportSampleCoreAsync(Track track)
+    {
+        try
+        {
+            var source = await sampleDialog!.SelectAsync(loadCancellation?.Token ?? CancellationToken.None);
+            if (source is null || !tracks.Contains(track) || deactivated) return null;
+            var name = await sampleFiles!.ImportAsync(projectPath!, source, loadCancellation?.Token ?? CancellationToken.None);
+            var choices = await sampleFiles.ListAsync(projectPath!, loadCancellation?.Token ?? CancellationToken.None);
+            RefreshAvailableSamples(choices);
+            SelectSample(track, name);
+            return name;
+        }
+        catch (OperationCanceledException) { return null; }
+        catch (Exception error) { ErrorMessage = error.Message; return null; }
+        finally
+        {
+            importBusy = false;
+            OnPropertyChanged(nameof(CanImportSample));
+        }
+    }
+
+    public async Task FlushSavesAsync()
+    {
+        if (activeImport is not null) await activeImport;
+        await saveTail;
+        if (lastSaveError is not null) throw new IOException("Could not save project.", lastSaveError);
+    }
+
+    [RelayCommand]
+    private void RetrySave() => QueueSave();
+
+    private void QueueSave()
+    {
+        if (projectFiles is null || projectPath is null || Project is null) return;
+        var json = ProjectDataSerializer.Serialize(Project);
+        var previous = saveTail;
+        saveTail = SaveSnapshotAsync(previous, projectPath, json);
+    }
+
+    private void RefreshAvailableSamples(IReadOnlyList<string> choices)
+    {
+        for (var index = 0; index < choices.Count; index++)
+        {
+            if (index < availableSamples.Count && availableSamples[index] == choices[index]) continue;
+            var existing = availableSamples.IndexOf(choices[index]);
+            if (existing >= 0) availableSamples.Move(existing, index);
+            else availableSamples.Insert(index, choices[index]);
+        }
+        while (availableSamples.Count > choices.Count) availableSamples.RemoveAt(availableSamples.Count - 1);
+    }
+
+    private async Task SaveSnapshotAsync(Task previous, string path, string json)
+    {
+        await previous;
+        try
+        {
+            await projectFiles!.SaveAsync(path, json, CancellationToken.None);
+            lastSaveError = null;
+            SaveError = null;
+        }
+        catch (Exception error)
+        {
+            lastSaveError = error;
+            SaveError = error.Message;
+        }
+    }
 
     private async Task LoadCoreAsync(string projectPath, int generation, CancellationToken token)
     {
@@ -189,7 +323,23 @@ public partial class WorkstationPageVM(
                 audioService.Open(source.AudioPath);
                 Project = source.Project;
                 Waveform = waveform;
+                tracks.Clear();
+                foreach (var track in source.Project.Tracks) tracks.Add(track);
+                if (messenger is not null)
+                {
+                    messenger.UnregisterAll(this);
+                    messenger.Register<AddSampleTrackRequestedMessage>(this, (_, _) => AddSampleTrackCommand.Execute(null));
+                    messenger.Register<AddPianoTrackRequestedMessage>(this, (_, _) => AddPianoTrackCommand.Execute(null));
+                }
             });
+            if (sampleFiles is not null)
+            {
+                var choices = await sampleFiles.ListAsync(projectPath, token);
+                await CommitAsync(generation, token, () =>
+                {
+                    RefreshAvailableSamples(choices);
+                });
+            }
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { }
         catch (Exception error)
@@ -201,6 +351,8 @@ public partial class WorkstationPageVM(
             await CommitAsync(generation, CancellationToken.None, () =>
             {
                 IsLoading = false;
+                OnPropertyChanged(nameof(CanEditTracks));
+                OnPropertyChanged(nameof(CanImportSample));
                 NotifyCommandState();
             });
         }
