@@ -1,0 +1,46 @@
+using osuHitsounder.Core.Entities;
+
+namespace osuHitsounder.Services;
+
+public static class BeatGridCalculator
+{
+    private static readonly HashSet<int> Supported = [1, 2, 3, 4, 5, 6, 8, 12, 16];
+
+    public static IReadOnlyList<BeatGridLine> GetLines(IReadOnlyList<int> offsets, IReadOnlyList<int> bpms,
+        int subdivision, double visibleStartMs, double visibleEndMs)
+    {
+        if (offsets.Count == 0 || offsets.Count != bpms.Count || !Supported.Contains(subdivision) ||
+            !double.IsFinite(visibleStartMs) || !double.IsFinite(visibleEndMs) || visibleEndMs < visibleStartMs ||
+            bpms.Any(bpm => bpm <= 0)) return [];
+
+        var segments = offsets.Select((offset, index) => (Offset: offset, Bpm: bpms[index], Index: index))
+            .OrderBy(item => item.Offset).ThenBy(item => item.Index)
+            .GroupBy(item => item.Offset).Select(group => group.Last()).ToArray();
+        var result = new List<BeatGridLine>();
+        for (var index = 0; index < segments.Length; index++)
+        {
+            var segment = segments[index];
+            var end = index + 1 < segments.Length ? Math.Min(visibleEndMs, segments[index + 1].Offset - 0.000001) : visibleEndMs;
+            var start = Math.Max(visibleStartMs, segment.Offset);
+            if (start > end) continue;
+            var interval = 60000d / segment.Bpm / subdivision;
+            if ((end - start) / interval > 100000)
+                return subdivision == 1 ? [] : GetLines(offsets, bpms, 1, visibleStartMs, visibleEndMs);
+            var firstTick = Math.Max(0L, (long)Math.Ceiling((start - segment.Offset) / interval - 1e-9));
+            var lastTick = (long)Math.Floor((end - segment.Offset) / interval + 1e-9);
+            for (var tick = firstTick; tick <= lastTick; tick++)
+            {
+                var time = segment.Offset + tick * interval;
+                if (time < start - 1e-6 || time > end + 1e-6) continue;
+                result.Add(new BeatGridLine(time, subdivision / GreatestCommonDivisor((int)(tick % subdivision), subdivision)));
+            }
+        }
+        return result;
+    }
+
+    private static int GreatestCommonDivisor(int left, int right)
+    {
+        while (right != 0) (left, right) = (right, left % right);
+        return left;
+    }
+}
