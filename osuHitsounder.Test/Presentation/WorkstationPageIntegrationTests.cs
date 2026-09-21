@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
+using System.Windows.Threading;
 using System.Windows.Automation;
 using System.Windows.Input;
 using System.Diagnostics;
@@ -10,6 +11,10 @@ using osuHitsounder.Core.Entities;
 using osuHitsounder.Resources.CustomControls;
 using osuHitsounder.ViewModels.Shell;
 using osuHitsounder.Views.Pages;
+using osuHitsounder.Services.FileSystem;
+using osuHitsounder.Services.ProjectFiles;
+using CommunityToolkit.Mvvm.Messaging;
+using osuHitsounder.Services.Ui;
 
 namespace osuHitsounder.Test.Presentation;
 
@@ -55,7 +60,7 @@ public class WorkstationPageIntegrationTests
     }
 
     [Test]
-    public void ExposesDummyActionsFooterAndAccessibleViewport()
+    public void ExposesTrackListFooterAndAccessibleViewport()
     {
         var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new StubWorkstationAudioService(), new ImmediateUiScheduler());
         var page = new WorkstationPage(vm);
@@ -67,11 +72,181 @@ public class WorkstationPageIntegrationTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(((BalloonButton)page.FindName("SampleTrackButton")).ButtonText, Is.EqualTo("Sample Track"));
-            Assert.That(((BalloonButton)page.FindName("PianoTrackButton")).ButtonText, Is.EqualTo("Piano Track"));
+            Assert.That(((ListBox)page.FindName("TrackList")).ItemsSource, Is.SameAs(vm.Tracks));
             Assert.That(((FrameworkElement)page.FindName("ZoomFooter")).HorizontalAlignment, Is.EqualTo(HorizontalAlignment.Stretch));
             Assert.That(((ScrollViewer)page.FindName("WaveformScrollViewer")).Focusable, Is.True);
         });
+    }
+
+    [TestCase(FlowDirection.LeftToRight)]
+    [TestCase(FlowDirection.RightToLeft)]
+    public void AddedTrackCardUsesWaveformViewportAndOffset(FlowDirection direction)
+    {
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new StubWorkstationAudioService(), new ImmediateUiScheduler());
+        var page = new WorkstationPage(vm);
+        page.SetProjectPath("project.json");
+        var window = new Window { Content = page, Width = 880, Height = 600, FlowDirection = direction };
+        using var view = new InMemoryView(window);
+        UiTestPump.Run(page.LoadCompletion);
+        vm.AddSampleTrackCommand.Execute(null);
+        view.UpdateLayout();
+        var list = (ListBox)page.FindName("TrackList");
+        Assert.That(list.Items, Has.Count.EqualTo(1));
+        var card = (ListBoxItem)list.ItemContainerGenerator.ContainerFromIndex(0)!;
+        var grid = FindBeatGrid(card)!;
+        Assert.Multiple(() =>
+        {
+            Assert.That(grid.ContentWidth, Is.EqualTo(page.TimelineContentWidth));
+            Assert.That(grid.ViewportWidth, Is.EqualTo(page.TimelineViewportWidth));
+            Assert.That(grid.HorizontalOffset, Is.EqualTo(page.TimelineHorizontalOffset));
+            Assert.That(grid.Subdivision, Is.EqualTo(4));
+            Assert.That(grid.FlowDirection, Is.EqualTo(FlowDirection.LeftToRight));
+        });
+    }
+
+    [Test]
+    public void ReusedCardControlsReadCurrentTrackWithoutEditingPreviousTrack()
+    {
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new StubWorkstationAudioService(), new ImmediateUiScheduler());
+        var page = new WorkstationPage(vm);
+        page.SetProjectPath("project.json");
+        var window = new Window { Content = page, Width = 880, Height = 600 };
+        using var view = new InMemoryView(window);
+        UiTestPump.Run(page.LoadCompletion);
+        vm.AddSampleTrackCommand.Execute(null);
+        vm.AddSampleTrackCommand.Execute(null);
+        var first = vm.Tracks[0];
+        var second = vm.Tracks[1];
+        vm.SetTrackVolume(first, 20);
+        vm.SetTrackVolume(second, 80);
+        view.UpdateLayout();
+        var list = (ListBox)page.FindName("TrackList");
+        var card = (ListBoxItem)list.ItemContainerGenerator.ContainerFromIndex(0)!;
+        var slider = FindVisualChild<Slider>(card)!;
+        slider.DataContext = second;
+        Assert.Multiple(() =>
+        {
+            Assert.That(slider.Value, Is.EqualTo(80));
+            Assert.That(first.Volume, Is.EqualTo(20));
+            Assert.That(second.Volume, Is.EqualTo(80));
+        });
+    }
+
+    [Test]
+    public void ImportRefreshPreservesOtherCardSelection()
+    {
+        var root = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N")));
+        try
+        {
+            var projectPath = Path.Combine(root.FullName, "project.json");
+            File.WriteAllText(projectPath, "{}");
+            var samples = Directory.CreateDirectory(Path.Combine(root.FullName, "Samples"));
+            File.WriteAllBytes(Path.Combine(samples.FullName, "a.wav"), [1]);
+            var sourcePath = Path.Combine(root.FullName, "b.mp3");
+            File.WriteAllBytes(sourcePath, [2]);
+            var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new StubWorkstationAudioService(),
+                new UiScheduler(Dispatcher.CurrentDispatcher), new SampleFileService(), new StubSampleFileDialogService(sourcePath),
+                new ProjectFileService(root.FullName), new WeakReferenceMessenger());
+            var page = new WorkstationPage(vm);
+            page.SetProjectPath(projectPath);
+            var window = new Window { Content = page, Width = 880, Height = 700 };
+            using var view = new InMemoryView(window);
+            UiTestPump.Run(page.LoadCompletion);
+            vm.AddSampleTrackCommand.Execute(null);
+            vm.AddSampleTrackCommand.Execute(null);
+            view.UpdateLayout();
+            var list = (ListBox)page.FindName("TrackList");
+            var otherCard = (ListBoxItem)list.ItemContainerGenerator.ContainerFromIndex(1)!;
+            var selector = FindVisualChild<ComboBox>(otherCard)!;
+            Assert.That(selector.SelectedItem, Is.EqualTo("a.wav"));
+            UiTestPump.Run(vm.ImportSampleAsync(vm.Tracks[0]));
+            view.UpdateLayout();
+            Assert.That(selector.SelectedItem, Is.EqualTo("a.wav"));
+            UiTestPump.Run(vm.FlushSavesAsync());
+        }
+        finally { Directory.Delete(root.FullName, true); }
+    }
+
+    [Test]
+    public void ManyTracksKeepOnlyViewportCardsRealized()
+    {
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new StubWorkstationAudioService(), new ImmediateUiScheduler());
+        var page = new WorkstationPage(vm);
+        page.SetProjectPath("project.json");
+        var window = new Window { Content = page, Width = 880, Height = 600 };
+        using var view = new InMemoryView(window);
+        UiTestPump.Run(page.LoadCompletion);
+        for (var index = 0; index < 80; index++) vm.AddSampleTrackCommand.Execute(null);
+        view.UpdateLayout();
+        var list = (ListBox)page.FindName("TrackList");
+        Assert.That(list.Items, Has.Count.EqualTo(80));
+        Assert.That(FindVisualChildren<ListBoxItem>(list).Count(), Is.LessThan(80));
+    }
+
+    [Test]
+    public void MissingSavedSampleIsShownWithoutChangingItsFilename()
+    {
+        var track = new osuHitsounder.Core.Entities.Track { Samples = [new Sample { FileName = "missing.wav" }] };
+        var source = new StubWorkstationSourceService
+        {
+            Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav", new ProjectData { Tracks = [track] }))
+        };
+        var vm = new WorkstationPageVM(source, new StubWorkstationAudioService(), new ImmediateUiScheduler());
+        var page = new WorkstationPage(vm);
+        page.SetProjectPath("project.json");
+        var window = new Window { Content = page, Width = 880, Height = 600 };
+        using var view = new InMemoryView(window);
+        UiTestPump.Run(page.LoadCompletion);
+        view.UpdateLayout();
+        var list = (ListBox)page.FindName("TrackList");
+        var card = (ListBoxItem)list.ItemContainerGenerator.ContainerFromIndex(0)!;
+        var cue = FindVisualChildren<TextBlock>(card).Single(block => block.Name == "MissingSampleText");
+        Assert.That(cue.Text, Does.Contain("missing.wav"));
+        Assert.That(track.Samples.Single().FileName, Is.EqualTo("missing.wav"));
+    }
+
+    [Test]
+    public void TrackGridFollowsWaveformZoomAndScroll()
+    {
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new StubWorkstationAudioService(), new ImmediateUiScheduler());
+        var page = new WorkstationPage(vm);
+        page.SetProjectPath("project.json");
+        var window = new Window { Content = page, Width = 880, Height = 600 };
+        using var view = new InMemoryView(window);
+        UiTestPump.Run(page.LoadCompletion);
+        vm.AddSampleTrackCommand.Execute(null);
+        view.UpdateLayout();
+        var list = (ListBox)page.FindName("TrackList");
+        var card = (ListBoxItem)list.ItemContainerGenerator.ContainerFromIndex(0)!;
+        var grid = FindVisualChild<BeatGridView>(card)!;
+        for (var index = 0; index < 3; index++) vm.ZoomInCommand.Execute(null);
+        view.UpdateLayout();
+        var waveform = (WaveformView)page.FindName("WaveformDisplay");
+        Assert.That(grid.ContentWidth, Is.EqualTo(waveform.ActualWidth));
+        var scroll = (ScrollViewer)page.FindName("WaveformScrollViewer");
+        scroll.ScrollToHorizontalOffset(100);
+        view.UpdateLayout();
+        Assert.That(grid.HorizontalOffset, Is.EqualTo(scroll.HorizontalOffset));
+    }
+
+    private static IEnumerable<T> FindVisualChildren<T>(DependencyObject root) where T : DependencyObject
+    {
+        if (root is T match) yield return match;
+        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(root); index++)
+            foreach (var child in FindVisualChildren<T>(VisualTreeHelper.GetChild(root, index))) yield return child;
+    }
+
+    private static BeatGridView? FindBeatGrid(DependencyObject root) => FindVisualChild<BeatGridView>(root);
+
+    private static T? FindVisualChild<T>(DependencyObject root) where T : DependencyObject
+    {
+        if (root is T match) return match;
+        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(root); index++)
+        {
+            var found = FindVisualChild<T>(VisualTreeHelper.GetChild(root, index));
+            if (found is not null) return found;
+        }
+        return null;
     }
 
     [Test]
@@ -97,7 +272,7 @@ public class WorkstationPageIntegrationTests
         });
 
         bar.ApplyTemplate();
-        var track = (Track)bar.Template.FindName("PART_Track", bar);
+        var track = (System.Windows.Controls.Primitives.Track)bar.Template.FindName("PART_Track", bar);
         Assert.That(track.IncreaseRepeatButton.IsHitTestVisible, Is.True);
         ((RoutedCommand)((RepeatButton)track.IncreaseRepeatButton).Command).Execute(null, bar);
         view.UpdateLayout();
@@ -590,7 +765,7 @@ public class WorkstationPageIntegrationTests
         UiTestPump.EnsureFontResources(app);
         foreach (var resource in new[] { $"Themes/{theme}.xaml", "Converters/Converters.xaml", "Icons.xaml",
                      "Styles/TextBlock.xaml", "Styles/Grid.xaml", "Styles/Border.xaml", "Styles/ContentPresenter.xaml",
-                     "Styles/Button.xaml", "Styles/ToolTip.xaml", "Styles/ScrollViewer.xaml", "Styles/TextBox.xaml", "Styles/ComboBox.xaml" })
+                     "Styles/Button.xaml", "Styles/ToolTip.xaml", "Styles/ScrollViewer.xaml", "Styles/TextBox.xaml", "Styles/ComboBox.xaml", "Styles/ListBox.xaml", "Styles/Slider.xaml", "BeatGrid.xaml" })
             app.Resources.MergedDictionaries.Add(new ResourceDictionary
             {
                 Source = new Uri($"/osuHitsounder;component/Resources/{resource}", UriKind.Relative)
