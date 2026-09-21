@@ -130,8 +130,51 @@
                 <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True"><Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" /></DataTrigger>
             </Style.Triggers>
         </Style>
-        <Style x:Key="OHsWorkstationWaveformScrollBarStyle" BasedOn="{StaticResource {x:Type ScrollBar}}" TargetType="ScrollBar">
+        <Style x:Key="OHsWorkstationScrollTrackButtonStyle" BasedOn="{StaticResource BaseRepeatButtonStyle}" TargetType="RepeatButton">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Opacity" Value="0" />
+        </Style>
+        <Style x:Key="OHsWorkstationWaveformScrollThumbStyle" BasedOn="{StaticResource RoundedHorizontalScrollThumbStyle}" TargetType="Thumb">
             <Style.Triggers>
+                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <ControlTemplate x:Key="OHsWorkstationWaveformScrollBarTemplate" TargetType="ScrollBar">
+            <Grid x:Name="Root" Background="Transparent">
+                <Border x:Name="TrackBackground" Height="8" Margin="0,2" Background="{TemplateBinding Background}" CornerRadius="4" Opacity="0" />
+                <Track x:Name="PART_Track" Orientation="Horizontal">
+                    <Track.DecreaseRepeatButton>
+                        <RepeatButton Command="ScrollBar.PageLeftCommand" CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}" Style="{StaticResource OHsWorkstationScrollTrackButtonStyle}" />
+                    </Track.DecreaseRepeatButton>
+                    <Track.Thumb><Thumb Style="{StaticResource OHsWorkstationWaveformScrollThumbStyle}" /></Track.Thumb>
+                    <Track.IncreaseRepeatButton>
+                        <RepeatButton Command="ScrollBar.PageRightCommand" CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}" Style="{StaticResource OHsWorkstationScrollTrackButtonStyle}" />
+                    </Track.IncreaseRepeatButton>
+                </Track>
+            </Grid>
+            <ControlTemplate.Triggers>
+                <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="TrackBackground" Property="Opacity" Value="1" /></Trigger>
+                <Trigger SourceName="PART_Track" Property="IsMouseCaptureWithin" Value="True"><Setter TargetName="TrackBackground" Property="Opacity" Value="1" /></Trigger>
+                <Trigger Property="IsEnabled" Value="False"><Setter TargetName="Root" Property="Opacity" Value="0.4" /></Trigger>
+            </ControlTemplate.Triggers>
+        </ControlTemplate>
+        <Style x:Key="OHsWorkstationWaveformScrollBarStyle" BasedOn="{StaticResource {x:Type ScrollBar}}" TargetType="ScrollBar">
+            <Setter Property="Height" Value="12" />
+            <Setter Property="Margin" Value="0,0,12,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Background" Value="{DynamicResource Brush.Background.Deepened}" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Focusable" Value="True" />
+            <Setter Property="FocusVisualStyle" Value="{StaticResource DefaultFocusVisualStyle}" />
+            <Setter Property="Template" Value="{StaticResource OHsWorkstationWaveformScrollBarTemplate}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding CanPlay, Mode=OneWay}" Value="False"><Setter Property="IsEnabled" Value="False" /></DataTrigger>
+                <DataTrigger Binding="{Binding ZoomFactor, Mode=OneWay}" Value="1"><Setter Property="IsEnabled" Value="False" /></DataTrigger>
+                <Trigger Property="IsEnabled" Value="False"><Setter Property="Cursor" Value="Arrow" /></Trigger>
                 <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
                     <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
                     <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
@@ -140,7 +183,6 @@
         </Style>
         <ControlTemplate x:Key="OHsWorkstationWaveformScrollTemplate" TargetType="ScrollViewer">
             <Border x:Name="WaveformBoundary" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8">
-            <Grid>
                 <ScrollContentPresenter
                     x:Name="PART_ScrollContentPresenter"
                     Margin="{TemplateBinding Padding}"
@@ -150,18 +192,6 @@
                     ContentTemplateSelector="{TemplateBinding ContentTemplateSelector}"
                     HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                     VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
-                <ScrollBar
-                    x:Name="PART_HorizontalScrollBar"
-                    Height="12"
-                    VerticalAlignment="Bottom"
-                    AutomationProperties.Name="Waveform horizontal position"
-                    Maximum="{TemplateBinding ScrollableWidth}"
-                    Orientation="Horizontal"
-                    Style="{StaticResource OHsWorkstationWaveformScrollBarStyle}"
-                    ViewportSize="{TemplateBinding ViewportWidth}"
-                    Visibility="{TemplateBinding ComputedHorizontalScrollBarVisibility}"
-                    Value="{Binding HorizontalOffset, Mode=OneWay, RelativeSource={RelativeSource TemplatedParent}}" />
-            </Grid>
             </Border>
             <ControlTemplate.Triggers>
                 <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="WaveformBoundary" Property="BorderBrush" Value="{DynamicResource Brush.Navy.Muted}" /></Trigger>
@@ -174,7 +204,7 @@
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="FocusVisualStyle" Value="{StaticResource DefaultFocusVisualStyle}" />
-            <Setter Property="HorizontalScrollBarVisibility" Value="Auto" />
+            <Setter Property="HorizontalScrollBarVisibility" Value="Hidden" />
             <Setter Property="VerticalScrollBarVisibility" Value="Disabled" />
             <Setter Property="Template" Value="{StaticResource OHsWorkstationWaveformScrollTemplate}" />
             <Style.Triggers>
@@ -286,9 +316,23 @@
                 Style="{StaticResource OHsWorkstationDummyTrackStyle}"
                 ToolTip="Piano track creation is coming later" />
         </Grid>
-        <Grid x:Name="ZoomFooter" Grid.Row="3" HorizontalAlignment="Right" FlowDirection="LeftToRight">
+        <Grid x:Name="ZoomFooter" Grid.Row="3" HorizontalAlignment="Stretch" FlowDirection="LeftToRight">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
             <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+            <ScrollBar
+                x:Name="WaveformScrollBar"
+                AutomationProperties.HelpText="Use arrow keys, Page Up, Page Down, Home, or End to move through the waveform."
+                AutomationProperties.Name="Waveform horizontal position"
+                LargeChange="{Binding ViewportWidth, ElementName=WaveformScrollViewer, Mode=OneWay}"
+                Maximum="{Binding ScrollableWidth, ElementName=WaveformScrollViewer, Mode=OneWay}"
+                Orientation="Horizontal"
+                Scroll="OnWaveformScrollBarScroll"
+                SmallChange="16"
+                Style="{StaticResource OHsWorkstationWaveformScrollBarStyle}"
+                ViewportSize="{Binding ViewportWidth, ElementName=WaveformScrollViewer, Mode=OneWay}" />
             <StackPanel
+                x:Name="ZoomControls"
+                Grid.Column="1"
                 FlowDirection="{Binding RelativeSource={RelativeSource AncestorType=UserControl}, Path=FlowDirection, Mode=OneWay}"
                 Orientation="Horizontal">
                 <TextBlock x:Name="ZoomLabel" Style="{StaticResource OHsWorkstationZoomLabelStyle}" Text="Zoom" />
@@ -319,6 +363,7 @@
             </StackPanel>
             <TextBlock
                 x:Name="ZoomValidationText"
+                Grid.Column="1"
                 Grid.Row="1"
                 AutomationProperties.LiveSetting="Assertive"
                 Style="{StaticResource OHsWorkstationZoomValidationTextStyle}"

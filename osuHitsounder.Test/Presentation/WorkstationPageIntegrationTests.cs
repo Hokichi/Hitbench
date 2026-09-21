@@ -69,8 +69,69 @@ public class WorkstationPageIntegrationTests
         {
             Assert.That(((BalloonButton)page.FindName("SampleTrackButton")).ButtonText, Is.EqualTo("Sample Track"));
             Assert.That(((BalloonButton)page.FindName("PianoTrackButton")).ButtonText, Is.EqualTo("Piano Track"));
-            Assert.That(((FrameworkElement)page.FindName("ZoomFooter")).HorizontalAlignment, Is.EqualTo(HorizontalAlignment.Right));
+            Assert.That(((FrameworkElement)page.FindName("ZoomFooter")).HorizontalAlignment, Is.EqualTo(HorizontalAlignment.Stretch));
             Assert.That(((ScrollViewer)page.FindName("WaveformScrollViewer")).Focusable, Is.True);
+        });
+    }
+
+    [Test]
+    public void FooterScrollBarTracksAndControlsWaveformViewport()
+    {
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new StubWorkstationAudioService(), new ImmediateUiScheduler());
+        var page = new WorkstationPage(vm);
+        page.SetProjectPath("project.json");
+        using var view = new InMemoryView(new Window { Content = page, Width = 900, Height = 600 });
+        UiTestPump.Run(page.LoadCompletion);
+        vm.ZoomDraft = "4";
+        vm.CommitZoomCommand.Execute(null);
+        view.UpdateLayout();
+
+        Assert.That(page.FindName("WaveformScrollBar"), Is.TypeOf<ScrollBar>());
+        var bar = (ScrollBar)page.FindName("WaveformScrollBar");
+        var scroll = (ScrollViewer)page.FindName("WaveformScrollViewer");
+        Assert.Multiple(() =>
+        {
+            Assert.That(bar.Maximum, Is.EqualTo(scroll.ScrollableWidth).Within(1));
+            Assert.That(bar.ViewportSize, Is.EqualTo(scroll.ViewportWidth).Within(1));
+            Assert.That(bar.IsEnabled, Is.True);
+        });
+
+        bar.ApplyTemplate();
+        var track = (Track)bar.Template.FindName("PART_Track", bar);
+        Assert.That(track.IncreaseRepeatButton.IsHitTestVisible, Is.True);
+        ((RoutedCommand)((RepeatButton)track.IncreaseRepeatButton).Command).Execute(null, bar);
+        view.UpdateLayout();
+        Assert.That(scroll.HorizontalOffset, Is.GreaterThan(0));
+
+        bar.RaiseEvent(new ScrollEventArgs(ScrollEventType.ThumbTrack, 100)
+            { RoutedEvent = ScrollBar.ScrollEvent });
+        view.UpdateLayout();
+        Assert.Multiple(() =>
+        {
+            Assert.That(scroll.HorizontalOffset, Is.EqualTo(100).Within(1));
+            Assert.That(bar.Value, Is.EqualTo(scroll.HorizontalOffset).Within(1));
+        });
+
+        scroll.ScrollToHorizontalOffset(150);
+        view.UpdateLayout();
+        Assert.That(bar.Value, Is.EqualTo(150).Within(1));
+
+        using (var source = new InMemoryPresentationSource())
+        {
+            var home = CreateKeyEvent(source, Key.Home);
+            home.RoutedEvent = Keyboard.KeyDownEvent;
+            bar.RaiseEvent(home);
+        }
+        view.UpdateLayout();
+        Assert.That(scroll.HorizontalOffset, Is.Zero.Within(1));
+
+        vm.FitCommand.Execute(null);
+        view.UpdateLayout();
+        Assert.Multiple(() =>
+        {
+            Assert.That(bar.Visibility, Is.EqualTo(Visibility.Visible));
+            Assert.That(bar.IsEnabled, Is.False);
+            Assert.That(bar.Value, Is.Zero.Within(1));
         });
     }
 
@@ -455,7 +516,11 @@ public class WorkstationPageIntegrationTests
             var editor = (TextBox)page.FindName("ZoomEditor");
             var validation = (TextBlock)page.FindName("ZoomValidationText");
             var selector = (ComboBox)page.FindName("SubdivisionSelector");
+            var bar = (ScrollBar)page.FindName("WaveformScrollBar");
+            var zoomControls = (FrameworkElement)page.FindName("ZoomControls");
             var bounds = editor.TransformToAncestor(page).TransformBounds(new Rect(editor.RenderSize));
+            var barBounds = bar.TransformToAncestor(page).TransformBounds(new Rect(bar.RenderSize));
+            var zoomBounds = zoomControls.TransformToAncestor(page).TransformBounds(new Rect(zoomControls.RenderSize));
             listener.Flush();
             Assert.Multiple(() =>
             {
@@ -465,6 +530,11 @@ public class WorkstationPageIntegrationTests
                 Assert.That(bounds.Right, Is.LessThanOrEqualTo(page.ActualWidth));
                 Assert.That(bounds.Top, Is.GreaterThanOrEqualTo(0));
                 Assert.That(bounds.Bottom, Is.LessThanOrEqualTo(page.ActualHeight));
+                Assert.That(barBounds.Left, Is.GreaterThanOrEqualTo(0));
+                Assert.That(Grid.GetColumn(bar), Is.EqualTo(0));
+                Assert.That(Grid.GetColumn(zoomControls), Is.EqualTo(1));
+                Assert.That(flowDirection == FlowDirection.RightToLeft || barBounds.Right <= zoomBounds.Left, Is.True);
+                Assert.That(bar.Visibility, Is.EqualTo(Visibility.Visible));
                 Assert.That(validation.Text, Is.EqualTo("Enter a whole number from 1 to 16."));
                 Assert.That(validation.TextWrapping, Is.EqualTo(TextWrapping.Wrap));
                 Assert.That(validation.ActualWidth, Is.LessThanOrEqualTo(240));
@@ -490,10 +560,12 @@ public class WorkstationPageIntegrationTests
         view.UpdateLayout();
 
         var editor = (TextBox)page.FindName("ZoomEditor");
+        var scrollBar = (ScrollBar)page.FindName("WaveformScrollBar");
         Assert.Multiple(() =>
         {
             Assert.That(vm.IsLoading, Is.True);
             Assert.That(editor.IsEnabled, Is.False);
+            Assert.That(scrollBar.IsEnabled, Is.False);
         });
 
         completion.SetResult(new WorkstationSource("map.osu", "audio.wav", new ProjectData()));

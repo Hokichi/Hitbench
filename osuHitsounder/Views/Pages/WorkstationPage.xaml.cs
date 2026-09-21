@@ -97,7 +97,14 @@ public partial class WorkstationPage : UserControl
     private void OnWaveformScrollChanged(object sender, ScrollChangedEventArgs e)
     {
         WaveformDisplay.HorizontalOffset = e.HorizontalOffset;
+        WaveformScrollBar.Value = e.HorizontalOffset;
         ApplyPendingZoomAnchor();
+    }
+
+    private void OnWaveformScrollBarScroll(object sender, ScrollEventArgs e)
+    {
+        if (!viewModel.CanPlay || deactivationStarted) return;
+        WaveformScrollViewer.ScrollToHorizontalOffset(e.NewValue);
     }
 
     private void OnViewModelPropertyChanging(object? sender, PropertyChangingEventArgs e)
