@@ -5,6 +5,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:customControls="clr-namespace:osuHitsounder.Resources.CustomControls"
+    xmlns:pages="clr-namespace:osuHitsounder.Views.Pages"
     d:DesignHeight="600"
     d:DesignWidth="1100"
     mc:Ignorable="d">
@@ -29,10 +30,6 @@
                     <Setter Property="ToolTip" Value="Pause audio (Space)" />
                 </DataTrigger>
             </Style.Triggers>
-        </Style>
-        <Style x:Key="OHsWorkstationDummyTrackStyle" BasedOn="{StaticResource OHsBalloonNeutralActionStyle}" TargetType="customControls:BalloonButton">
-            <Setter Property="HorizontalAlignment" Value="Stretch" />
-            <Setter Property="ShouldShowText" Value="True" />
         </Style>
         <Style x:Key="OHsWorkstationIconButtonStyle" BasedOn="{StaticResource OHsBalloonNeutralActionStyle}" TargetType="customControls:BalloonButton">
             <Setter Property="Margin" Value="4,0,0,0" />
@@ -211,6 +208,85 @@
                 <Trigger Property="IsEnabled" Value="False"><Setter Property="Cursor" Value="Arrow" /><Setter Property="Opacity" Value="0.4" /></Trigger>
             </Style.Triggers>
         </Style>
+        <Style x:Key="OHsWorkstationVolumeStyle" BasedOn="{StaticResource BaseSliderStyle}" TargetType="Slider">
+            <Setter Property="Minimum" Value="5" />
+            <Setter Property="Maximum" Value="100" />
+            <Setter Property="TickFrequency" Value="1" />
+            <Setter Property="IsSnapToTickEnabled" Value="True" />
+            <Setter Property="SmallChange" Value="1" />
+            <Setter Property="LargeChange" Value="5" />
+            <Setter Property="Width" Value="120" />
+        </Style>
+        <Style x:Key="OHsWorkstationTrackListStyle" BasedOn="{StaticResource BaseListBoxStyle}" TargetType="ListBox">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="ItemContainerStyle" Value="{StaticResource PlainListBoxItemStyle}" />
+            <Setter Property="ScrollViewer.CanContentScroll" Value="True" />
+            <Setter Property="VirtualizingStackPanel.IsVirtualizing" Value="True" />
+            <Setter Property="VirtualizingStackPanel.VirtualizationMode" Value="Recycling" />
+        </Style>
+        <Style x:Key="OHsWorkstationTimelineStyle" BasedOn="{StaticResource BaseBorderStyle}" TargetType="Border">
+            <Setter Property="Background" Value="{DynamicResource Brush.Background.Deepened}" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="OHsWorkstationSaveErrorStyle" BasedOn="{StaticResource BaseTextBlockStyle}" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Danger}" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding SaveError, Mode=OneWay}" Value="{x:Null}"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True"><Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" /></DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="OHsWorkstationRetrySaveStyle" BasedOn="{StaticResource OHsBalloonNeutralActionStyle}" TargetType="customControls:BalloonButton">
+            <Setter Property="Visibility" Value="Visible" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding SaveError, Mode=OneWay}" Value="{x:Null}"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+                <DataTrigger Binding="{Binding SaveError, Mode=OneWay}" Value=""><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <DataTemplate x:Key="OHsWorkstationSampleTrackTemplate">
+            <Border Margin="0,0,0,12" Style="{StaticResource CardBorderStyle}">
+                <Grid>
+                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="72" /></Grid.RowDefinitions>
+                    <WrapPanel Margin="0,0,0,8" VerticalAlignment="Center">
+                        <customControls:BalloonButton AutomationProperties.Name="Load sample" ButtonIcon="{StaticResource PlusSolid}"
+                            ButtonText="Load Sample" Click="OnLoadSampleClick" ShouldShowText="True"
+                            IsEnabled="{Binding DataContext.CanImportSample, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
+                            Style="{StaticResource OHsBalloonNeutralActionStyle}" />
+                        <TextBlock Margin="12,0,8,0" VerticalAlignment="Center" Style="{StaticResource FieldLabelTextStyle}" Text="Sample" />
+                        <ComboBox Width="220" AutomationProperties.Name="Track sample" Loaded="OnSampleSelectorLoaded"
+                            DataContextChanged="OnTrackControlDataContextChanged"
+                            SelectionChanged="OnSampleSelectionChanged" Style="{StaticResource OHsComboBoxStyle}"
+                            IsEnabled="{Binding DataContext.CanImportSample, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
+                            ItemsSource="{Binding DataContext.SampleFiles, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}" />
+                        <TextBlock x:Name="MissingSampleText" Margin="8,0,0,0" VerticalAlignment="Center"
+                            Style="{StaticResource BaseTextBlockStyle}" Visibility="Collapsed" />
+                        <TextBlock Margin="12,0,8,0" VerticalAlignment="Center" Style="{StaticResource FieldLabelTextStyle}" Text="Volume" />
+                        <Slider x:Name="VolumeSlider" AutomationProperties.Name="Track volume percent" Loaded="OnVolumeSliderLoaded"
+                            DataContextChanged="OnTrackControlDataContextChanged"
+                            IsEnabled="{Binding DataContext.CanImportSample, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
+                            ValueChanged="OnVolumeValueChanged" Style="{StaticResource OHsWorkstationVolumeStyle}" />
+                        <TextBlock Margin="8,0,0,0" VerticalAlignment="Center" Style="{StaticResource BaseTextBlockStyle}"
+                            Text="{Binding ElementName=VolumeSlider, Path=Value, Mode=OneWay, StringFormat={}{0:0}%}" />
+                    </WrapPanel>
+                    <Border Grid.Row="1" Style="{StaticResource OHsWorkstationTimelineStyle}">
+                        <customControls:BeatGridView
+                            Offsets="{Binding DataContext.Project.Offsets, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
+                            Bpms="{Binding DataContext.Project.BPMs, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
+                            Subdivision="{Binding DataContext.Subdivision, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
+                            Duration="{Binding DataContext.Waveform.Duration, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
+                            ContentWidth="{Binding TimelineContentWidth, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
+                            HorizontalOffset="{Binding TimelineHorizontalOffset, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
+                            ViewportWidth="{Binding TimelineViewportWidth, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}" />
+                    </Border>
+                </Grid>
+            </Border>
+        </DataTemplate>
     </UserControl.Resources>
     <Grid Margin="16">
         <Grid.RowDefinitions>
@@ -280,6 +356,9 @@
                     <customControls:WaveformView
                         x:Name="WaveformDisplay"
                         Data="{Binding Waveform, Mode=OneWay}"
+                        Offsets="{Binding Project.Offsets, Mode=OneWay}"
+                        Bpms="{Binding Project.BPMs, Mode=OneWay}"
+                        Subdivision="{Binding Subdivision, Mode=OneWay}"
                         FontFamily="{DynamicResource Regular}"
                         HorizontalOffset="{Binding ElementName=WaveformScrollViewer, Path=HorizontalOffset, Mode=OneWay}"
                         MarkerBrush="{DynamicResource Brush.Navy}"
@@ -294,28 +373,15 @@
                 </ScrollViewer>
             </Grid>
         </Border>
-        <Grid Grid.Row="1" Margin="0,0,0,12">
-            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-            <customControls:BalloonButton
-                x:Name="SampleTrackButton"
-                AutomationProperties.HelpText="Track creation is not implemented yet."
-                AutomationProperties.Name="Add sample track"
-                ButtonIcon="{StaticResource PlusSolid}"
-                ButtonText="Sample Track"
-                Command="{Binding AddSampleTrackCommand, Mode=OneWay}"
-                Style="{StaticResource OHsWorkstationDummyTrackStyle}"
-                ToolTip="Sample track creation is coming later" />
-            <customControls:BalloonButton
-                x:Name="PianoTrackButton"
-                Grid.Column="2"
-                AutomationProperties.HelpText="Track creation is not implemented yet."
-                AutomationProperties.Name="Add piano track"
-                ButtonIcon="{StaticResource PlusSolid}"
-                ButtonText="Piano Track"
-                Command="{Binding AddPianoTrackCommand, Mode=OneWay}"
-                Style="{StaticResource OHsWorkstationDummyTrackStyle}"
-                ToolTip="Piano track creation is coming later" />
-        </Grid>
+        <StackPanel Grid.Row="1" Orientation="Horizontal">
+            <TextBlock AutomationProperties.LiveSetting="Assertive" Style="{StaticResource OHsWorkstationSaveErrorStyle}"
+                Text="{Binding SaveError, Mode=OneWay}" />
+            <customControls:BalloonButton AutomationProperties.Name="Retry project save" ButtonIcon="{StaticResource RegularRepeat}"
+                ButtonText="Retry save" Command="{Binding RetrySaveCommand, Mode=OneWay}" ShouldShowText="True"
+                Style="{StaticResource OHsWorkstationRetrySaveStyle}" />
+        </StackPanel>
+        <ListBox x:Name="TrackList" Grid.Row="2" AutomationProperties.Name="Sample tracks" ItemsSource="{Binding Tracks, Mode=OneWay}"
+            ItemTemplate="{StaticResource OHsWorkstationSampleTrackTemplate}" Style="{StaticResource OHsWorkstationTrackListStyle}" />
         <Grid x:Name="ZoomFooter" Grid.Row="3" HorizontalAlignment="Stretch" FlowDirection="LeftToRight">
             <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
             <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>

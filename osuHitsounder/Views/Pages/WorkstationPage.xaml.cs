@@ -7,11 +7,18 @@ using System.Windows.Media.Media3D;
 using System.Windows.Threading;
 using System.ComponentModel;
 using osuHitsounder.ViewModels.Shell;
+using Track = osuHitsounder.Core.Entities.Track;
 
 namespace osuHitsounder.Views.Pages;
 
 public partial class WorkstationPage : UserControl
 {
+    public static readonly DependencyProperty TimelineContentWidthProperty = DependencyProperty.Register(nameof(TimelineContentWidth), typeof(double), typeof(WorkstationPage));
+    public static readonly DependencyProperty TimelineViewportWidthProperty = DependencyProperty.Register(nameof(TimelineViewportWidth), typeof(double), typeof(WorkstationPage));
+    public static readonly DependencyProperty TimelineHorizontalOffsetProperty = DependencyProperty.Register(nameof(TimelineHorizontalOffset), typeof(double), typeof(WorkstationPage));
+    public double TimelineContentWidth { get => (double)GetValue(TimelineContentWidthProperty); set => SetValue(TimelineContentWidthProperty, value); }
+    public double TimelineViewportWidth { get => (double)GetValue(TimelineViewportWidthProperty); set => SetValue(TimelineViewportWidthProperty, value); }
+    public double TimelineHorizontalOffset { get => (double)GetValue(TimelineHorizontalOffsetProperty); set => SetValue(TimelineHorizontalOffsetProperty, value); }
     private readonly WorkstationPageVM viewModel;
     private readonly DispatcherTimer playbackTimer;
     private string? projectPath;
@@ -73,6 +80,7 @@ public partial class WorkstationPage : UserControl
     {
         try { await DeactivateAsync(); }
         catch (OperationCanceledException) { }
+        catch (Exception error) { System.Diagnostics.Trace.TraceError("Workstation deactivation failed: {0}", error); }
     }
 
     private async Task DeactivateCoreAsync()
@@ -92,14 +100,110 @@ public partial class WorkstationPage : UserControl
     }
 
     private void OnPlaybackTick(object? sender, EventArgs e) => viewModel.RefreshPlayback();
-    private void OnWaveformViewportSizeChanged(object sender, SizeChangedEventArgs e) => WaveformDisplay.ViewportWidth = Math.Max(0, e.NewSize.Width);
-    private void OnWaveformDisplaySizeChanged(object sender, SizeChangedEventArgs e) => ApplyPendingZoomAnchor();
+    private void OnWaveformViewportSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        WaveformDisplay.ViewportWidth = Math.Max(0, e.NewSize.Width);
+        TimelineViewportWidth = WaveformScrollViewer.ViewportWidth;
+    }
+    private void OnWaveformDisplaySizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        TimelineContentWidth = e.NewSize.Width;
+        ApplyPendingZoomAnchor();
+    }
     private void OnWaveformScrollChanged(object sender, ScrollChangedEventArgs e)
     {
         WaveformDisplay.HorizontalOffset = e.HorizontalOffset;
+        TimelineHorizontalOffset = e.HorizontalOffset;
+        TimelineViewportWidth = e.ViewportWidth;
         WaveformScrollBar.Value = e.HorizontalOffset;
         ApplyPendingZoomAnchor();
     }
+
+    private void OnSampleSelectorLoaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is ComboBox selector && selector.DataContext is Track track)
+        {
+            selector.Tag = true;
+            var saved = track.Samples.FirstOrDefault()?.FileName;
+            selector.SelectedItem = viewModel.SampleFiles.FirstOrDefault(name =>
+                string.Equals(name, saved, StringComparison.OrdinalIgnoreCase));
+            selector.Tag = false;
+            UpdateMissingSampleCue(selector, track);
+        }
+    }
+
+    private void OnTrackControlDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        if (sender is ComboBox selector) OnSampleSelectorLoaded(selector, new RoutedEventArgs());
+        else if (sender is Slider slider) OnVolumeSliderLoaded(slider, new RoutedEventArgs());
+    }
+
+    private void OnSampleSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (sender is ComboBox selector && selector.IsLoaded && selector.Tag is not true && selector.DataContext is Track track)
+        {
+            if (selector.SelectedItem is string fileName && track.Samples.Any(sample => sample.FileName != fileName))
+                viewModel.SelectSample(track, fileName);
+            UpdateMissingSampleCue(selector, track);
+        }
+    }
+
+    private void OnVolumeSliderLoaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is Slider slider && slider.DataContext is Track track)
+        {
+            slider.Tag = true;
+            slider.Value = track.Volume;
+            slider.Tag = false;
+        }
+    }
+
+    private void OnVolumeValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (sender is Slider slider && slider.IsLoaded && slider.Tag is not true && slider.DataContext is Track track)
+            viewModel.SetTrackVolume(track, (int)Math.Round(e.NewValue));
+    }
+
+    private async void OnLoadSampleClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: Track track }) return;
+        var name = await viewModel.ImportSampleAsync(track);
+        if (name is null || !IsLoaded || !viewModel.Tracks.Contains(track)) return;
+        var container = ItemsControl.ContainerFromElement(TrackList, (DependencyObject)sender) as ListBoxItem;
+        if (container?.DataContext != track) return;
+        var selector = FindVisualChild<ComboBox>(container);
+        if (selector is not null)
+        {
+            selector.SelectedItem = name;
+            UpdateMissingSampleCue(selector, track);
+        }
+    }
+
+    private void UpdateMissingSampleCue(ComboBox selector, Track track)
+    {
+        var container = ItemsControl.ContainerFromElement(TrackList, selector) as ListBoxItem;
+        var cue = container is null ? null : FindVisualChild<TextBlock>(container, "MissingSampleText");
+        if (cue is null) return;
+        var selected = track.Samples.FirstOrDefault()?.FileName;
+        cue.Text = selected is null ? "No sample selected. Use Load Sample."
+            : viewModel.SampleFiles.Any(name => string.Equals(name, selected, StringComparison.OrdinalIgnoreCase))
+                ? string.Empty : $"Missing sample: {selected}";
+        cue.Visibility = cue.Text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    private static T? FindVisualChild<T>(DependencyObject root, string? name = null) where T : DependencyObject
+    {
+        if (root is T match && (name is null || root is FrameworkElement element && element.Name == name)) return match;
+        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(root); index++)
+        {
+            var found = FindVisualChild<T>(VisualTreeHelper.GetChild(root, index), name);
+            if (found is not null) return found;
+        }
+        return null;
+    }
+
+    public Task FlushSavesAsync() => viewModel.FlushSavesAsync();
+    public bool HasPendingSaves => viewModel.HasPendingSaves;
 
     private void OnWaveformScrollBarScroll(object sender, ScrollEventArgs e)
     {

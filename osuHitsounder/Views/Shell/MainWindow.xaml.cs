@@ -124,6 +124,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
             workstation.SetProjectPath(projectPath);
             page.Deactivate();
             PageHost.Content = workstation;
+            WorkstationActions.Visibility = Visibility.Visible;
             MinWidth = defaultMinWidth;
             MinHeight = defaultMinHeight;
         }
@@ -180,11 +181,25 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
     protected override async void OnClosing(CancelEventArgs e)
     {
         base.OnClosing(e);
-        if (e.Cancel || closingAfterSave || (!placementDirty && placementSave.IsCompleted)) return;
+        if (e.Cancel || closingAfterSave ||
+            (!placementDirty && placementSave.IsCompleted &&
+             (PageHost.Content is not WorkstationPage workstationPage || !workstationPage.HasPendingSaves))) return;
         e.Cancel = true;
         if (closingForSave) return;
         closingForSave = true;
         placementTimer.Stop();
+        try
+        {
+            if (PageHost.Content is WorkstationPage workstation)
+                await workstation.FlushSavesAsync();
+        }
+        catch (Exception error)
+        {
+            Trace.TraceError("Project save failed during close: {0}", error);
+            closingForSave = false;
+            reportError($"Unable to save project: {error.Message}");
+            return;
+        }
         try
         {
             await placementSave;
@@ -304,6 +319,8 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
 
     private void OnHeaderMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
+        for (var element = e.OriginalSource as DependencyObject; element is not null; element = VisualTreeHelper.GetParent(element))
+            if (element is System.Windows.Controls.Primitives.ButtonBase) return;
         if (e.ClickCount == 2)
         {
             ToggleMaximizeRestore();
@@ -311,6 +328,9 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
         }
         if (WindowState == WindowState.Normal) DragMove();
     }
+
+    private void OnAddSampleTrackClick(object sender, RoutedEventArgs e) => messenger.Send(new AddSampleTrackRequestedMessage());
+    private void OnAddPianoTrackClick(object sender, RoutedEventArgs e) => messenger.Send(new AddPianoTrackRequestedMessage());
 
     private void OnWindowMouseWheel(object sender, MouseWheelEventArgs e)
     {

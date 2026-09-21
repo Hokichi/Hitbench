@@ -137,12 +137,24 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <TextBlock
                     Margin="12,0"
                     Style="{StaticResource MainWindowTitleStyle}"
                     Text="osuHitsounder" />
-                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                <StackPanel x:Name="WorkstationActions" Grid.Column="1" Orientation="Horizontal" Visibility="Collapsed">
+                    <customControls:BalloonButton AutomationProperties.Name="Add sample track" ButtonIcon="{StaticResource PlusSolid}"
+                        ButtonText="Sample Track" Click="OnAddSampleTrackClick" ShouldShowText="True"
+                        IsEnabled="{Binding ElementName=PageHost, Path=Content.DataContext.CanEditTracks, Mode=OneWay}"
+                        Style="{StaticResource OHsBalloonNeutralActionStyle}" />
+                    <customControls:BalloonButton Margin="8,0,0,0" AutomationProperties.Name="Add piano track" ButtonIcon="{StaticResource PlusSolid}"
+                        ButtonText="Piano Track" Click="OnAddPianoTrackClick" ShouldShowText="True"
+                        ToolTip="Piano track creation is coming later"
+                        AutomationProperties.HelpText="Track creation is not implemented yet."
+                        Style="{StaticResource OHsBalloonNeutralActionStyle}" />
+                </StackPanel>
+                <StackPanel Grid.Column="2" Orientation="Horizontal">
                     <customControls:BalloonButton
                         x:Name="MinimizeButton"
                         AutomationProperties.Name="Minimize"

@@ -16,6 +16,7 @@
                 <ResourceDictionary Source="Resources/Themes/Dark.xaml" />
                 <ResourceDictionary Source="Resources/Converters/Converters.xaml" />
                 <ResourceDictionary Source="Resources/Icons.xaml" />
+                <ResourceDictionary Source="Resources/BeatGrid.xaml" />
                 <ResourceDictionary Source="Resources/Styles/ColumnDefinition.xaml" />
                 <ResourceDictionary Source="Resources/Styles/Grid.xaml" />
                 <ResourceDictionary Source="Resources/Styles/StackPanel.xaml" />
@@ -32,6 +33,7 @@
                 <ResourceDictionary Source="Resources/Styles/ComboBox.xaml" />
                 <ResourceDictionary Source="Resources/Styles/TextBox.xaml" />
                 <ResourceDictionary Source="Resources/Styles/ProgressBar.xaml" />
+                <ResourceDictionary Source="Resources/Styles/Slider.xaml" />
                 <ResourceDictionary Source="Resources/Styles/ScrollViewer.xaml" />
                 <ResourceDictionary Source="Resources/Styles/StepNavigator.xaml" />
                 <ResourceDictionary Source="Resources/Styles/Popup.xaml" />
