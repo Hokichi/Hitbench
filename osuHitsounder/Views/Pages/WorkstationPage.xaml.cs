@@ -1,6 +1,9 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Media3D;
 using System.Windows.Threading;
 using System.ComponentModel;
 using osuHitsounder.ViewModels.Shell;
@@ -171,6 +174,31 @@ public partial class WorkstationPage : UserControl
         if (!WaveformDisplay.SeekAt(e.GetPosition(WaveformDisplay).X)) return;
         e.Handled = true;
     }
+
+    internal bool HandlePlaybackKey(Key key, ModifierKeys modifiers, bool isRepeat, DependencyObject? origin)
+    {
+        if (key != Key.Space || modifiers != ModifierKeys.None || deactivationStarted ||
+            IsEditingInput(origin) || !viewModel.PlayPauseCommand.CanExecute(null))
+            return false;
+
+        if (!isRepeat) viewModel.PlayPauseCommand.Execute(null);
+        return true;
+    }
+
+    private static bool IsEditingInput(DependencyObject? origin)
+    {
+        for (var current = origin; current is not null; current = GetInputParent(current))
+        {
+            if (current is TextBoxBase or PasswordBox) return true;
+            if (current is ComboBox) return true;
+        }
+        return false;
+    }
+
+    private static DependencyObject? GetInputParent(DependencyObject current) =>
+        current is Visual or Visual3D
+            ? VisualTreeHelper.GetParent(current)
+            : LogicalTreeHelper.GetParent(current);
 
     internal bool HandleWaveformWheel(ModifierKeys modifiers, int delta)
     {

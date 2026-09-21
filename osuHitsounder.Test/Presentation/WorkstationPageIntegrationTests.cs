@@ -298,6 +298,49 @@ public class WorkstationPageIntegrationTests
     }
 
     [Test]
+    public void SpaceTogglesPlaybackOncePerPressAndPreservesEditingInputs()
+    {
+        var audio = new StubWorkstationAudioService();
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), audio, new ImmediateUiScheduler());
+        var page = new WorkstationPage(vm);
+        page.SetProjectPath("project.json");
+        using var view = new InMemoryView(new Window { Content = page, Width = 900, Height = 600 });
+        UiTestPump.Run(page.LoadCompletion);
+
+        Assert.That(page.HandlePlaybackKey(Key.Space, ModifierKeys.None, false, page), Is.True);
+        Assert.That(vm.IsPlaying, Is.True);
+        Assert.That(page.HandlePlaybackKey(Key.Space, ModifierKeys.None, true, page), Is.True);
+        Assert.That(vm.IsPlaying, Is.True);
+        Assert.That(page.HandlePlaybackKey(Key.Space, ModifierKeys.None, false, page), Is.True);
+        Assert.That(vm.IsPlaying, Is.False);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(page.HandlePlaybackKey(Key.Space, ModifierKeys.Control, false, page), Is.False);
+            Assert.That(page.HandlePlaybackKey(Key.Enter, ModifierKeys.None, false, page), Is.False);
+            Assert.That(page.HandlePlaybackKey(Key.Space, ModifierKeys.None, false, new TextBox()), Is.False);
+            Assert.That(page.HandlePlaybackKey(Key.Space, ModifierKeys.None, false, new PasswordBox()), Is.False);
+        });
+
+        var selector = new ComboBox { IsDropDownOpen = true };
+        Assert.That(page.HandlePlaybackKey(Key.Space, ModifierKeys.None, false, selector), Is.False);
+    }
+
+    [Test]
+    public void SpaceIsRejectedUntilLoadedAndAfterDeactivation()
+    {
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new StubWorkstationAudioService(), new ImmediateUiScheduler());
+        var page = new WorkstationPage(vm);
+        Assert.That(page.HandlePlaybackKey(Key.Space, ModifierKeys.None, false, page), Is.False);
+
+        page.SetProjectPath("project.json");
+        using var view = new InMemoryView(new Window { Content = page, Width = 900, Height = 600 });
+        UiTestPump.Run(page.LoadCompletion);
+        UiTestPump.Run(page.DeactivateAsync());
+        Assert.That(page.HandlePlaybackKey(Key.Space, ModifierKeys.None, false, page), Is.False);
+    }
+
+    [Test]
     public void ModifierWheelAccumulatesPerModeConsumesBoundsAndIgnoresOtherModifiers()
     {
         var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new StubWorkstationAudioService(), new ImmediateUiScheduler());

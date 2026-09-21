@@ -20,13 +20,13 @@
             <Setter Property="AutomationProperties.Name" Value="Play audio" />
             <Setter Property="ButtonIcon" Value="{StaticResource MediaPlay}" />
             <Setter Property="ButtonText" Value="Play" />
-            <Setter Property="ToolTip" Value="Play audio" />
+            <Setter Property="ToolTip" Value="Play audio (Space)" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsPlaying, Mode=OneWay}" Value="True">
                     <Setter Property="AutomationProperties.Name" Value="Pause audio" />
                     <Setter Property="ButtonIcon" Value="{StaticResource MediaPause}" />
                     <Setter Property="ButtonText" Value="Pause" />
-                    <Setter Property="ToolTip" Value="Pause audio" />
+                    <Setter Property="ToolTip" Value="Pause audio (Space)" />
                 </DataTrigger>
             </Style.Triggers>
         </Style>

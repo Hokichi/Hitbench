@@ -317,6 +317,21 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
         if (HandleWindowMouseWheel(IsActive, Keyboard.Modifiers, e.Delta)) e.Handled = true;
     }
 
+    private void OnWindowKeyDown(object sender, KeyEventArgs e)
+    {
+        if (HandleWindowKeyDown(IsActive, e.Key, Keyboard.Modifiers, e.IsRepeat,
+                e.OriginalSource as DependencyObject))
+            e.Handled = true;
+    }
+
+    internal bool HandleWindowKeyDown(bool isActive, Key key, ModifierKeys modifiers, bool isRepeat,
+        DependencyObject? origin)
+    {
+        if (!isActive || PageHost.Content is not WorkstationPage workstationPage) return false;
+
+        return workstationPage.HandlePlaybackKey(key, modifiers, isRepeat, origin);
+    }
+
     internal bool HandleWindowMouseWheel(bool isActive, ModifierKeys modifiers, int delta)
     {
         if (!isActive || PageHost.Content is not WorkstationPage workstationPage) return false;

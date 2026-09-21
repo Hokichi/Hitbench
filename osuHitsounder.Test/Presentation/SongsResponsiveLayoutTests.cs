@@ -164,6 +164,36 @@ public class SongsResponsiveLayoutTests
         }
     }
 
+    [Test]
+    public void ActiveShellRoutesSpaceOnlyToCurrentWorkstation()
+    {
+        var homeViewModel = CreateVM();
+        var workstationViewModel = new WorkstationPageVM(new StubWorkstationSourceService(),
+            new StubWorkstationAudioService(), new ImmediateUiScheduler());
+        var workstationPage = new WorkstationPage(workstationViewModel);
+        var window = TestShell.Create(new HomePage(homeViewModel), new WeakReferenceMessenger(),
+            () => workstationPage, homeViewModel, new StubAppSettingsService());
+        using var view = new InMemoryView(window);
+        try
+        {
+            Assert.That(window.HandleWindowKeyDown(true, Key.Space, ModifierKeys.None, false, window), Is.False);
+            window.Receive(new ProjectCreatedMessage("saved.json"));
+            view.UpdateLayout();
+            window.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Loaded);
+            UiTestPump.Run(workstationPage.LoadCompletion);
+
+            Assert.That(window.HandleWindowKeyDown(false, Key.Space, ModifierKeys.None, false, window), Is.False);
+            Assert.That(window.HandleWindowKeyDown(true, Key.Space, ModifierKeys.None, false, window), Is.True);
+            Assert.That(workstationViewModel.IsPlaying, Is.True);
+            Assert.That(window.HandleWindowKeyDown(true, Key.Space, ModifierKeys.None, true, window), Is.True);
+            Assert.That(workstationViewModel.IsPlaying, Is.True);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
     [TestCase(1366, 728)]
     [TestCase(1536, 824)]
     [TestCase(1920, 1031.333333)]

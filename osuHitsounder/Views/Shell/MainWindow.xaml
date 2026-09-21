@@ -9,6 +9,7 @@
     Height="720"
     MinWidth="640"
     MinHeight="360"
+    PreviewKeyDown="OnWindowKeyDown"
     ResizeMode="CanResize"
     PreviewMouseWheel="OnWindowMouseWheel"
     WindowStartupLocation="CenterScreen"
