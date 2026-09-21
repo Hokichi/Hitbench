@@ -6,6 +6,7 @@ public sealed class StubProjectFileService(
     Func<DirectoryInfo, string, CancellationToken, Task<string>> create,
     IReadOnlySet<string>? existingNames = null) : IProjectFileService
 {
+    public Task SaveAsync(string projectPath, string json, CancellationToken cancellationToken) => Task.CompletedTask;
     public Task<IReadOnlySet<string>> GetExistingNamesAsync(CancellationToken cancellationToken) =>
         Task.FromResult(existingNames ?? (IReadOnlySet<string>)new HashSet<string>(StringComparer.OrdinalIgnoreCase));
 

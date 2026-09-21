@@ -1,5 +1,4 @@
 using System.IO;
-using Newtonsoft.Json;
 using osuHitsounder.Core.Entities;
 using osuHitsounder.Services.FileSystem;
 
@@ -7,6 +6,18 @@ namespace osuHitsounder.Services.ProjectFiles;
 
 public sealed class ProjectFileService(string applicationDirectory) : IProjectFileService
 {
+    public async Task SaveAsync(string projectPath, string json, CancellationToken cancellationToken)
+    {
+        var target = Path.GetFullPath(projectPath);
+        var temporary = Path.Combine(Path.GetDirectoryName(target)!, $".{Guid.NewGuid():N}.tmp");
+        try
+        {
+            await File.WriteAllTextAsync(temporary, json, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            File.Move(temporary, target, overwrite: true);
+        }
+        finally { if (File.Exists(temporary)) File.Delete(temporary); }
+    }
     public Task<IReadOnlySet<string>> GetExistingNamesAsync(CancellationToken cancellationToken) =>
         Task.Run<IReadOnlySet<string>>(() =>
         {
@@ -40,7 +51,7 @@ public sealed class ProjectFileService(string applicationDirectory) : IProjectFi
             var beatmapPath = BeatmapTimingReader.FindBeatmap(folder.FullName);
             BeatmapTimingReader.Populate(project, beatmapPath, cancellationToken);
         }, cancellationToken);
-        var json = JsonConvert.SerializeObject(project, Formatting.Indented);
+        var json = ProjectDataSerializer.Serialize(project);
         var directory = Path.GetFullPath(Path.Combine(applicationDirectory, "projects", projectName));
         var target = Path.Combine(directory, "project.json");
         if (Directory.Exists(directory) || File.Exists(directory))

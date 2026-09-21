@@ -6,4 +6,5 @@ public interface IProjectFileService
 {
     Task<IReadOnlySet<string>> GetExistingNamesAsync(CancellationToken cancellationToken);
     Task<string> CreateAsync(DirectoryInfo folder, string projectName, CancellationToken cancellationToken);
+    Task SaveAsync(string projectPath, string json, CancellationToken cancellationToken);
 }

@@ -1,6 +1,6 @@
 using System.IO;
-using Newtonsoft.Json;
 using osuHitsounder.Core.Entities;
+using osuHitsounder.Services.ProjectFiles;
 
 namespace osuHitsounder.Services.FileSystem;
 
@@ -13,8 +13,7 @@ public sealed class WorkstationSourceService : IWorkstationSourceService
     {
         token.ThrowIfCancellationRequested();
         var projectJson = File.ReadAllText(projectPath);
-        var project = JsonConvert.DeserializeObject<ProjectData>(projectJson)
-            ?? throw new InvalidDataException("Project file is empty.");
+        var project = ProjectDataSerializer.Deserialize(projectJson);
         if (string.IsNullOrWhiteSpace(project.BeatmapPath))
             throw new InvalidDataException("Project does not identify a song folder.");
 
@@ -65,6 +64,7 @@ public sealed class WorkstationSourceService : IWorkstationSourceService
             throw new FileNotFoundException($"Beatmap audio file was not found: {audioName}", audioPath);
         RejectReparsePoints(songFolder, audioPath);
         BeatmapTimingReader.Populate(project, beatmapPath, token);
+        Directory.CreateDirectory(Path.Combine(Path.GetDirectoryName(Path.GetFullPath(projectPath))!, "Samples"));
         return new WorkstationSource(beatmapPath, audioPath, project);
     }
 

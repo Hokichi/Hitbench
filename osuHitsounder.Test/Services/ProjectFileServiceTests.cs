@@ -28,7 +28,7 @@ public class ProjectFileServiceTests
         var json = JObject.Parse(await File.ReadAllTextAsync(path));
         Assert.That(path, Is.EqualTo(Path.Combine(applicationDirectory, "projects", "Manual name", "project.json")));
         Assert.That((string?)json["BeatmapPath"], Is.EqualTo(song.FullName));
-        Assert.That((JArray)json["Samples"]!, Is.Empty);
+        Assert.That((JArray)json["Tracks"]!, Is.Empty);
         Assert.That((JArray)json["ControlPoints"]!, Is.Empty);
         Assert.That((JArray)json["Offsets"]!, Is.EqualTo(new JArray(125)));
         Assert.That((JArray)json["BPMs"]!, Is.EqualTo(new JArray(120)));
@@ -63,6 +63,18 @@ public class ProjectFileServiceTests
             new ProjectFileService(applicationDirectory).CreateAsync(song, "Selected", CancellationToken.None));
         Assert.That(await File.ReadAllTextAsync(path), Is.EqualTo("existing project"));
         Assert.That(destination.GetFiles(), Has.Length.EqualTo(1));
+    }
+
+    [Test]
+    public async Task CancelledSavePreservesExistingProjectJson()
+    {
+        var projectFolder = Directory.CreateDirectory(Path.Combine(applicationDirectory, "projects", "Existing"));
+        var path = Path.Combine(projectFolder.FullName, "project.json");
+        await File.WriteAllTextAsync(path, "old");
+        Assert.CatchAsync<OperationCanceledException>(() =>
+            new ProjectFileService(applicationDirectory).SaveAsync(path, "new", new CancellationToken(true)));
+        Assert.That(await File.ReadAllTextAsync(path), Is.EqualTo("old"));
+        Assert.That(Directory.GetFiles(projectFolder.FullName), Has.Length.EqualTo(1));
     }
 
     [Test]

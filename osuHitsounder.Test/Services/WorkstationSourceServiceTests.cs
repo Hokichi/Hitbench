@@ -38,6 +38,7 @@ public class WorkstationSourceServiceTests
         Assert.That(result.Project.Offsets, Is.EqualTo(new[] { 125 }));
         Assert.That(result.Project.BPMs, Is.EqualTo(new[] { 120 }));
         Assert.That(File.ReadAllText(projectPath), Does.Not.Contain("Offsets"));
+        Assert.That(Directory.Exists(Path.Combine(Path.GetDirectoryName(projectPath)!, "Samples")), Is.True);
         Assert.That(result.AudioPath, Is.EqualTo(Path.Combine(songFolder, "音楽 sample.ogg")));
     }
 
@@ -83,7 +84,7 @@ public class WorkstationSourceServiceTests
     public void InvalidProjectAndCancellationAreObserved()
     {
         File.WriteAllText(projectPath, "broken");
-        Assert.CatchAsync<JsonException>(() =>
+        Assert.CatchAsync<InvalidDataException>(() =>
             new WorkstationSourceService().LoadAsync(projectPath, CancellationToken.None));
         Assert.ThrowsAsync<TaskCanceledException>(() =>
             new WorkstationSourceService().LoadAsync(projectPath, new CancellationToken(true)));
