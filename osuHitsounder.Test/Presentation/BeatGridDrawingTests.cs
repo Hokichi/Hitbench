@@ -10,14 +10,16 @@ namespace osuHitsounder.Test.Presentation;
 public class BeatGridDrawingTests
 {
     [Test]
-    public void WaveformUsesFiftyPixelWholeBarsAndThirtyFivePixelOtherBars()
+    public void WaveformBottomAlignsFiftyPixelWholeBarsAndThirtyFivePixelOtherBars()
     {
         var drawings = DrawGrid(isWaveform: true);
 
         Assert.Multiple(() =>
         {
-            Assert.That(((LineGeometry)LineAt(drawings, 0).Geometry).EndPoint.Y, Is.EqualTo(50));
-            Assert.That(((LineGeometry)LineAt(drawings, 50).Geometry).EndPoint.Y, Is.EqualTo(35));
+            Assert.That(((LineGeometry)LineAt(drawings, 0).Geometry).StartPoint.Y, Is.EqualTo(22));
+            Assert.That(((LineGeometry)LineAt(drawings, 50).Geometry).StartPoint.Y, Is.EqualTo(37));
+            Assert.That(((LineGeometry)LineAt(drawings, 0).Geometry).EndPoint.Y, Is.EqualTo(72));
+            Assert.That(((LineGeometry)LineAt(drawings, 50).Geometry).EndPoint.Y, Is.EqualTo(72));
         });
     }
 

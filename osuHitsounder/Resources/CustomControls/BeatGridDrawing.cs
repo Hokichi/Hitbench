@@ -28,7 +28,8 @@ public static class BeatGridDrawing
             var brush = highContrast ? SystemColors.WindowTextBrush : owner.TryFindResource(key) as Brush ?? Brushes.White;
             var x = line.Milliseconds / durationMs * contentWidth - (isWaveform ? 0 : horizontalOffset);
             var barHeight = isWaveform ? Math.Min(height, line.Division == 1 ? 50 : 35) : height;
-            context.DrawLine(new Pen(brush, line.Division == 1 ? 1 : 0.5), new Point(x, 0), new Point(x, barHeight));
+            var startY = isWaveform ? height - barHeight : 0;
+            context.DrawLine(new Pen(brush, line.Division == 1 ? 1 : 0.5), new Point(x, startY), new Point(x, height));
         }
     }
 }
