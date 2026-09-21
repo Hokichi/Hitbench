@@ -202,7 +202,8 @@ public partial class WorkstationPage : UserControl
 
     internal bool HandleWaveformWheel(ModifierKeys modifiers, int delta)
     {
-        if (modifiers is not ModifierKeys.Control and not ModifierKeys.Alt || !viewModel.CanZoom)
+        if (modifiers is not ModifierKeys.Control and not ModifierKeys.Alt and not ModifierKeys.Shift ||
+            !viewModel.CanZoom)
         {
             wheelMode = ModifierKeys.None;
             wheelRemainder = 0;
@@ -218,6 +219,16 @@ public partial class WorkstationPage : UserControl
         wheelRemainder += delta;
         var steps = wheelRemainder / Mouse.MouseWheelDeltaForOneLine;
         wheelRemainder %= Mouse.MouseWheelDeltaForOneLine;
+        if (modifiers == ModifierKeys.Shift)
+        {
+            for (var index = 0; index < Math.Abs(steps); index++)
+            {
+                if (steps > 0) WaveformScrollViewer.LineLeft();
+                else WaveformScrollViewer.LineRight();
+            }
+            return true;
+        }
+
         var increase = steps > 0;
         for (var index = 0; index < Math.Abs(steps); index++)
         {

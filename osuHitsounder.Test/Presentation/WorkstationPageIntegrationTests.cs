@@ -371,7 +371,6 @@ public class WorkstationPageIntegrationTests
         {
             Assert.That(page.HandleWaveformWheel(ModifierKeys.None, 120), Is.False);
             Assert.That(page.HandleWaveformWheel(ModifierKeys.Control | ModifierKeys.Alt, 120), Is.False);
-            Assert.That(page.HandleWaveformWheel(ModifierKeys.Shift, 120), Is.False);
         });
 
         vm.ZoomDraft = "16";
@@ -381,6 +380,47 @@ public class WorkstationPageIntegrationTests
         vm.SelectedSubdivisionIndex = 8;
         Assert.That(page.HandleWaveformWheel(ModifierKeys.Alt, 120), Is.True);
         Assert.That(vm.SelectedSubdivisionIndex, Is.EqualTo(8));
+    }
+
+    [Test]
+    public void ShiftWheelPansWaveformWithoutSeekingAndConsumesBounds()
+    {
+        var audio = new StubWorkstationAudioService();
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), audio, new ImmediateUiScheduler());
+        var page = new WorkstationPage(vm);
+        page.SetProjectPath("project.json");
+        using var view = new InMemoryView(new Window { Content = page, Width = 900, Height = 600 });
+        UiTestPump.Run(page.LoadCompletion);
+        vm.ZoomDraft = "4";
+        vm.CommitZoomCommand.Execute(null);
+        view.UpdateLayout();
+
+        var scroll = (ScrollViewer)page.FindName("WaveformScrollViewer");
+        scroll.ScrollToHorizontalOffset(100);
+        view.UpdateLayout();
+        var before = audio.Snapshot;
+
+        Assert.That(page.HandleWaveformWheel(ModifierKeys.Shift, 60), Is.True);
+        view.UpdateLayout();
+        Assert.That(scroll.HorizontalOffset, Is.EqualTo(100).Within(1));
+        Assert.That(page.HandleWaveformWheel(ModifierKeys.Shift, 60), Is.True);
+        view.UpdateLayout();
+        Assert.That(scroll.HorizontalOffset, Is.LessThan(100));
+
+        var left = scroll.HorizontalOffset;
+        Assert.That(page.HandleWaveformWheel(ModifierKeys.Shift, -120), Is.True);
+        view.UpdateLayout();
+        Assert.That(scroll.HorizontalOffset, Is.GreaterThan(left));
+        Assert.That(audio.Snapshot, Is.EqualTo(before));
+
+        scroll.ScrollToLeftEnd();
+        Assert.That(page.HandleWaveformWheel(ModifierKeys.Shift, 120), Is.True);
+        view.UpdateLayout();
+        Assert.That(scroll.HorizontalOffset, Is.Zero);
+        scroll.ScrollToRightEnd();
+        Assert.That(page.HandleWaveformWheel(ModifierKeys.Shift, -120), Is.True);
+        view.UpdateLayout();
+        Assert.That(scroll.HorizontalOffset, Is.EqualTo(scroll.ScrollableWidth).Within(1));
     }
 
     [TestCase(640, 480, FlowDirection.LeftToRight, "Dark")]
