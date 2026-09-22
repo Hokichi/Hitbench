@@ -87,6 +87,7 @@ public partial class WorkstationPageVM(
     {
         if (deactivated) return;
         deactivated = true;
+        OnPropertyChanged(nameof(CanRemoveTrack));
         loadGeneration++;
         loadCancellation?.Cancel();
         if (activeLoad is not null)

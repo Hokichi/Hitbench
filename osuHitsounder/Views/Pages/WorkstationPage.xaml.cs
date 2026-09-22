@@ -284,12 +284,45 @@ public partial class WorkstationPage : UserControl
 
     internal bool HandlePlaybackKey(Key key, ModifierKeys modifiers, bool isRepeat, DependencyObject? origin)
     {
-        if (key != Key.Space || modifiers != ModifierKeys.None || deactivationStarted ||
-            IsEditingInput(origin) || !viewModel.PlayPauseCommand.CanExecute(null))
-            return false;
-
-        if (!isRepeat) viewModel.PlayPauseCommand.Execute(null);
+        if (modifiers != ModifierKeys.None || deactivationStarted || IsEditingInput(origin)) return false;
+        if (key == Key.Space)
+        {
+            if (!viewModel.PlayPauseCommand.CanExecute(null)) return false;
+            if (!isRepeat) viewModel.PlayPauseCommand.Execute(null);
+            return true;
+        }
+        if (key is not (Key.Left or Key.Right) || IsNativeArrowInput(origin)) return false;
+        var command = key == Key.Left ? viewModel.PreviousGridLineCommand : viewModel.NextGridLineCommand;
+        if (!command.CanExecute(null)) return false;
+        command.Execute(null);
+        RevealPlaybackPosition();
         return true;
+    }
+
+    private static bool IsNativeArrowInput(DependencyObject? origin)
+    {
+        var actionFocused = false;
+        for (var current = origin; current is not null; current = GetInputParent(current))
+        {
+            if (current is ComboBox or RangeBase) return true;
+            if (current is ButtonBase) actionFocused = true;
+            if (current is Selector or ListBoxItem) return !actionFocused;
+        }
+        return false;
+    }
+
+    private void RevealPlaybackPosition()
+    {
+        var duration = viewModel.Waveform?.Duration.TotalSeconds ?? 0;
+        var extent = WaveformDisplay.ActualWidth;
+        var viewport = WaveformScrollViewer.ViewportWidth;
+        if (duration <= 0 || !double.IsFinite(extent) || extent <= 0 ||
+            !double.IsFinite(viewport) || viewport <= 0) return;
+        var x = Math.Clamp(viewModel.Position.TotalSeconds / duration * extent, 0, extent);
+        var offset = WaveformScrollViewer.HorizontalOffset;
+        if (x < offset) WaveformScrollViewer.ScrollToHorizontalOffset(x);
+        else if (x > offset + viewport)
+            WaveformScrollViewer.ScrollToHorizontalOffset(Math.Min(WaveformScrollViewer.ScrollableWidth, x - viewport));
     }
 
     private static bool IsEditingInput(DependencyObject? origin)
@@ -350,6 +383,7 @@ public partial class WorkstationPage : UserControl
 
     private void OnWaveformKeyDown(object sender, KeyEventArgs e)
     {
+        if (e.Handled) return;
         if (Keyboard.Modifiers == ModifierKeys.Control)
         {
             var duration = viewModel.Waveform?.Duration;
@@ -367,10 +401,14 @@ public partial class WorkstationPage : UserControl
             e.Handled = true;
             return;
         }
+        if (e.Key is Key.Left or Key.Right)
+        {
+            e.Handled = HandlePlaybackKey(e.Key, ModifierKeys.None, e.IsRepeat,
+                e.OriginalSource as DependencyObject);
+            return;
+        }
         switch (e.Key)
         {
-            case Key.Left: WaveformScrollViewer.LineLeft(); break;
-            case Key.Right: WaveformScrollViewer.LineRight(); break;
             case Key.Home: WaveformScrollViewer.ScrollToLeftEnd(); break;
             case Key.End: WaveformScrollViewer.ScrollToRightEnd(); break;
             default: return;

@@ -99,6 +99,18 @@ public class WorkstationTrackTests
         Assert.That(vm.Tracks, Is.EqualTo(new[] { replacement }));
         await vm.DeactivateAsync();
     }
+
+    [Test]
+    public async Task RemovalDisablesWhenWorkstationDeactivates()
+    {
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(),
+            new StubWorkstationAudioService(), new ImmediateUiScheduler(),
+            trackRemovalDialog: new StubTrackRemovalDialogService());
+        await vm.LoadAsync("project.json", CancellationToken.None);
+        Assert.That(vm.CanRemoveTrack, Is.True);
+        await vm.DeactivateAsync();
+        Assert.That(vm.CanRemoveTrack, Is.False);
+    }
     [Test]
     public async Task SelectionUpdatesEverySampleAndPreservesItsData()
     {

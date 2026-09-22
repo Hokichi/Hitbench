@@ -22,6 +22,10 @@ public static class BeatGridCalculator
             var interval = 60000d / segment.Bpm / subdivision;
             var relative = (position.TotalMilliseconds - segment.Offset) / interval;
             var tick = forward ? Math.Max(0, Math.Floor(relative) + 1) : Math.Ceiling(relative) - 1;
+            var nextRepresentableMs = (position.Ticks + (forward ? 1d : -1d)) / TimeSpan.TicksPerMillisecond;
+            var representableTick = (nextRepresentableMs - segment.Offset) / interval;
+            tick = forward ? Math.Max(tick, Math.Ceiling(representableTick))
+                : Math.Min(tick, Math.Floor(representableTick));
             if (!forward && tick < 0) continue;
             for (var adjustment = 0; adjustment < 3 && tick >= 0; adjustment++, tick += forward ? 1 : -1)
             {

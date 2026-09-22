@@ -310,7 +310,7 @@
                     x:Name="WaveformScrollViewer"
                     Grid.Row="3"
                     Margin="0,12,0,0"
-                    AutomationProperties.HelpText="Click to seek. Use arrow keys or Shift plus wheel to scroll, Control plus arrow keys to seek, Control plus wheel to zoom, or Alt plus wheel to change subdivision."
+                    AutomationProperties.HelpText="Click to seek. Left and Right move between subdivision lines. Use Shift plus wheel to scroll, Control plus arrow keys to seek one second, Control plus wheel to zoom, or Alt plus wheel to change subdivision."
                     AutomationProperties.Name="Audio waveform"
                     Focusable="True"
                     IsEnabled="{Binding CanPlay, Mode=OneWay}"

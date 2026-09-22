@@ -48,6 +48,30 @@ public class WorkstationPageIntegrationTests
         view.UpdateLayout();
         Assert.That(((TextBlock)page.FindName("EmptyTracksText")).Visibility, Is.EqualTo(Visibility.Visible));
     }
+
+    [Test]
+    public void RemovalActionDisablesAfterDeactivation()
+    {
+        var track = new osuHitsounder.Core.Entities.Track();
+        var source = new StubWorkstationSourceService
+        {
+            Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav",
+                new ProjectData { Tracks = [track] }))
+        };
+        var vm = new WorkstationPageVM(source, new StubWorkstationAudioService(),
+            new ImmediateUiScheduler(), trackRemovalDialog: new StubTrackRemovalDialogService());
+        var page = new WorkstationPage(vm);
+        page.SetProjectPath("project.json");
+        using var view = new InMemoryView(new Window { Content = page, Width = 640, Height = 480 });
+        UiTestPump.Run(page.LoadCompletion);
+        view.UpdateLayout();
+        var button = FindVisualChildren<BalloonButton>(page)
+            .Single(action => action.ButtonText == "Remove Track");
+        Assert.That(button.IsEnabled, Is.True);
+        UiTestPump.Run(page.DeactivateAsync());
+        view.UpdateLayout();
+        Assert.That(button.IsEnabled, Is.False);
+    }
     [SetUp]
     public void SetUp() => EnsureResources();
 
@@ -550,6 +574,68 @@ public class WorkstationPageIntegrationTests
 
         var selector = new ComboBox { IsDropDownOpen = true };
         Assert.That(page.HandlePlaybackKey(Key.Space, ModifierKeys.None, false, selector), Is.False);
+    }
+
+    [Test]
+    public void ArrowsSeekSubdivisionLinesAndRespectNativeEditors()
+    {
+        var audio = new StubWorkstationAudioService();
+        var source = new StubWorkstationSourceService
+        {
+            Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav",
+                new ProjectData { Offsets = [0], BPMs = [120] }))
+        };
+        var vm = new WorkstationPageVM(source, audio, new ImmediateUiScheduler());
+        var page = new WorkstationPage(vm);
+        page.SetProjectPath("project.json");
+        using var view = new InMemoryView(new Window { Content = page, Width = 900, Height = 600 });
+        UiTestPump.Run(page.LoadCompletion);
+        Assert.That(page.HandlePlaybackKey(Key.Right, ModifierKeys.None, false, page), Is.True);
+        Assert.That(audio.Snapshot.Position, Is.EqualTo(TimeSpan.FromMilliseconds(125)));
+        Assert.That(page.HandlePlaybackKey(Key.Right, ModifierKeys.None, true, page), Is.True);
+        Assert.That(audio.Snapshot.Position, Is.EqualTo(TimeSpan.FromMilliseconds(250)));
+        Assert.That(page.HandlePlaybackKey(Key.Left, ModifierKeys.None, false, page), Is.True);
+        Assert.That(audio.Snapshot.Position, Is.EqualTo(TimeSpan.FromMilliseconds(125)));
+        Assert.Multiple(() =>
+        {
+            Assert.That(page.HandlePlaybackKey(Key.Left, ModifierKeys.None, false, new TextBox()), Is.False);
+            Assert.That(page.HandlePlaybackKey(Key.Left, ModifierKeys.None, false, new ComboBox()), Is.False);
+            Assert.That(page.HandlePlaybackKey(Key.Left, ModifierKeys.None, false, new Slider()), Is.False);
+            Assert.That(page.HandlePlaybackKey(Key.Left, ModifierKeys.None, false, new ListBoxItem()), Is.False);
+            Assert.That(page.HandlePlaybackKey(Key.Right, ModifierKeys.Control, false, page), Is.False);
+        });
+        Assert.That(audio.Snapshot.Position, Is.EqualTo(TimeSpan.FromMilliseconds(125)));
+    }
+
+    [Test]
+    public void ArrowNavigationRevealsOffscreenPositionWithoutMovingVisibleView()
+    {
+        var audio = new StubWorkstationAudioService
+        {
+            Snapshot = new AudioPlaybackSnapshot(TimeSpan.FromSeconds(8), false, null)
+        };
+        var source = new StubWorkstationSourceService
+        {
+            Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav",
+                new ProjectData { Offsets = [0], BPMs = [120] }))
+        };
+        var vm = new WorkstationPageVM(source, audio, new ImmediateUiScheduler());
+        var page = new WorkstationPage(vm);
+        page.SetProjectPath("project.json");
+        using var view = new InMemoryView(new Window { Content = page, Width = 900, Height = 600 });
+        UiTestPump.Run(page.LoadCompletion);
+        view.UpdateLayout();
+        var scroll = (ScrollViewer)page.FindName("WaveformScrollViewer");
+        scroll.ScrollToLeftEnd();
+        view.UpdateLayout();
+        Assert.That(page.HandlePlaybackKey(Key.Right, ModifierKeys.None, false, page), Is.True);
+        Assert.That(audio.Snapshot.Position, Is.EqualTo(TimeSpan.FromMilliseconds(8125)));
+        view.UpdateLayout();
+        Assert.That(scroll.HorizontalOffset, Is.GreaterThan(0));
+        var before = scroll.HorizontalOffset;
+        Assert.That(page.HandlePlaybackKey(Key.Left, ModifierKeys.None, false, page), Is.True);
+        view.UpdateLayout();
+        Assert.That(scroll.HorizontalOffset, Is.EqualTo(before).Within(1));
     }
 
     [Test]

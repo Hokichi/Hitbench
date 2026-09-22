@@ -71,6 +71,14 @@ public class BeatGridCalculatorTests
         }
         Assert.That(current.TotalMilliseconds, Is.EqualTo(2737.226).Within(0.001));
     }
+
+    [Test]
+    public void ExtremelyDenseSubdivisionStillAdvancesByRepresentableTime()
+    {
+        var next = BeatGridCalculator.GetAdjacentPosition([0], [2_000_000_000], 16,
+            TimeSpan.Zero, TimeSpan.FromMilliseconds(1), true);
+        Assert.That(next, Is.GreaterThan(TimeSpan.Zero));
+    }
     [Test]
     public void GridStartsAtOffsetAndKeepsLargerBeatDivisions()
     {
