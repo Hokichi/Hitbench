@@ -10,6 +10,7 @@
     d:DesignWidth="1100"
     mc:Ignorable="d">
     <UserControl.Resources>
+        <SolidColorBrush x:Key="OHsWorkstationPlaybackMarkerBrush" Color="White" />
         <Style x:Key="OHsWorkstationPanelStyle" BasedOn="{StaticResource CardBorderStyle}" TargetType="Border">
             <Setter Property="Margin" Value="0,0,0,12" />
         </Style>
@@ -326,7 +327,7 @@
                         Subdivision="{Binding Subdivision, Mode=OneWay}"
                         FontFamily="{DynamicResource Regular}"
                         HorizontalOffset="{Binding ElementName=WaveformScrollViewer, Path=HorizontalOffset, Mode=OneWay}"
-                        MarkerBrush="{DynamicResource Brush.Navy}"
+                        MarkerBrush="{StaticResource OHsWorkstationPlaybackMarkerBrush}"
                         MouseLeftButtonDown="OnWaveformMouseLeftButtonDown"
                         Position="{Binding Position, Mode=OneWay}"
                         SeekCommand="{Binding SeekCommand, Mode=OneWay}"

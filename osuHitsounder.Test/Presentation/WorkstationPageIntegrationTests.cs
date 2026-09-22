@@ -104,6 +104,17 @@ public class WorkstationPageIntegrationTests
     public void SetUp() => EnsureResources();
 
     [Test]
+    public void PlaybackMarkerIsWhite()
+    {
+        var page = new WorkstationPage(new WorkstationPageVM(new StubWorkstationSourceService(),
+            new StubWorkstationAudioService(), new ImmediateUiScheduler()));
+        using var view = new InMemoryView(new Window { Content = page, Width = 900, Height = 600 });
+        view.UpdateLayout();
+        var waveform = (WaveformView)page.FindName("WaveformDisplay");
+        Assert.That(((SolidColorBrush)waveform.MarkerBrush).Color, Is.EqualTo(Colors.White));
+    }
+
+    [Test]
     public void LoadsWaveformSwitchesTransportIconAndKeepsMinimumZoomScrollable()
     {
         var audio = new StubWorkstationAudioService();

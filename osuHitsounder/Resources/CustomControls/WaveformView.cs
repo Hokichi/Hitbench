@@ -74,6 +74,7 @@ public sealed class WaveformView : FrameworkElement
         var amplitude = Math.Max(0, baselineY - 8);
         var waveformPen = new Pen(waveformBrush, 1);
         var markerPen = new Pen(markerBrush, 1.5);
+        var markerOutlinePen = SystemParameters.HighContrast ? null : new Pen(waveformBrush, 3.5);
         var baselinePen = new Pen(textBrush, 1) { DashStyle = DashStyles.Dot };
 
         drawingContext.PushClip(new RectangleGeometry(new Rect(offset, 0, viewport, height)));
@@ -95,6 +96,8 @@ public sealed class WaveformView : FrameworkElement
         var pixelsPerSecond = width / data.Duration.TotalSeconds;
         var markerX = Math.Clamp(Position.TotalSeconds, 0, data.Duration.TotalSeconds) * pixelsPerSecond;
         markerX = Math.Clamp(markerX, markerPen.Thickness / 2, Math.Max(markerPen.Thickness / 2, width - markerPen.Thickness / 2));
+        if (markerOutlinePen is not null)
+            drawingContext.DrawLine(markerOutlinePen, new Point(markerX, 0), new Point(markerX, Math.Max(0, height - 20)));
         drawingContext.DrawLine(markerPen, new Point(markerX, 0), new Point(markerX, Math.Max(0, height - 20)));
         DrawRuler(drawingContext, offset, viewport, height, pixelsPerSecond, data.Duration, textBrush);
         drawingContext.Pop();
