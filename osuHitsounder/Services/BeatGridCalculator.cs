@@ -6,6 +6,37 @@ public static class BeatGridCalculator
 {
     private static readonly HashSet<int> Supported = [1, 2, 3, 4, 5, 6, 8, 12, 16];
 
+    public static TimeSpan? GetAdjacentPosition(IReadOnlyList<int> offsets, IReadOnlyList<int> bpms,
+        int subdivision, TimeSpan position, TimeSpan duration, bool forward)
+    {
+        if (offsets.Count == 0 || offsets.Count != bpms.Count || !Supported.Contains(subdivision) ||
+            bpms.Any(bpm => bpm <= 0) || duration <= TimeSpan.Zero) return null;
+
+        var segments = offsets.Select((offset, index) => (Offset: offset, Bpm: bpms[index], Index: index))
+            .OrderBy(item => item.Offset).ThenBy(item => item.Index)
+            .GroupBy(item => item.Offset).Select(group => group.Last()).ToArray();
+        TimeSpan? best = null;
+        for (var index = 0; index < segments.Length; index++)
+        {
+            var segment = segments[index];
+            var interval = 60000d / segment.Bpm / subdivision;
+            var relative = (position.TotalMilliseconds - segment.Offset) / interval;
+            var tick = forward ? Math.Max(0, Math.Floor(relative) + 1) : Math.Ceiling(relative) - 1;
+            if (!forward && tick < 0) continue;
+            for (var adjustment = 0; adjustment < 3 && tick >= 0; adjustment++, tick += forward ? 1 : -1)
+            {
+                var milliseconds = segment.Offset + tick * interval;
+                if (!double.IsFinite(milliseconds) || milliseconds < 0 || milliseconds > duration.TotalMilliseconds ||
+                    index + 1 < segments.Length && milliseconds >= segments[index + 1].Offset) break;
+                var candidate = TimeSpan.FromMilliseconds(milliseconds);
+                if (forward ? candidate <= position : candidate >= position) continue;
+                if (best is null || (forward ? candidate < best : candidate > best)) best = candidate;
+                break;
+            }
+        }
+        return best;
+    }
+
     public static IReadOnlyList<BeatGridLine> GetLines(IReadOnlyList<int> offsets, IReadOnlyList<int> bpms,
         int subdivision, double visibleStartMs, double visibleEndMs)
     {

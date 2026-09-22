@@ -135,6 +135,21 @@ public partial class WorkstationPageVM(
         RefreshPlayback();
     }
 
+    [RelayCommand(CanExecute = nameof(CanUseTransport))]
+    private void NextGridLine() => SeekAdjacentGridLine(true);
+
+    [RelayCommand(CanExecute = nameof(CanUseTransport))]
+    private void PreviousGridLine() => SeekAdjacentGridLine(false);
+
+    private void SeekAdjacentGridLine(bool forward)
+    {
+        if (!CanUseTransport() || Project is null || Waveform is null) return;
+        var position = audioService.GetSnapshot().Position;
+        var target = BeatGridCalculator.GetAdjacentPosition(Project.Offsets, Project.BPMs,
+            Subdivision, position, Waveform.Duration, forward);
+        if (target is not null) Seek(target.Value);
+    }
+
     [RelayCommand(CanExecute = nameof(CanZoomIn))]
     private void ZoomIn()
     {
@@ -359,6 +374,8 @@ public partial class WorkstationPageVM(
         PlayPauseCommand.NotifyCanExecuteChanged();
         StopCommand.NotifyCanExecuteChanged();
         SeekCommand.NotifyCanExecuteChanged();
+        NextGridLineCommand.NotifyCanExecuteChanged();
+        PreviousGridLineCommand.NotifyCanExecuteChanged();
         ZoomInCommand.NotifyCanExecuteChanged();
         ZoomOutCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(CanPlay));

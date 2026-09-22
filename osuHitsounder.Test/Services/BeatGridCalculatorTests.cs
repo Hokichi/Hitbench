@@ -4,6 +4,73 @@ namespace osuHitsounder.Test.Services;
 
 public class BeatGridCalculatorTests
 {
+    [TestCase(200, false, 125)]
+    [TestCase(200, true, 250)]
+    [TestCase(250, false, 125)]
+    [TestCase(250, true, 375)]
+    public void FindsStrictAdjacentSubdivision(int start, bool forward, int expected)
+    {
+        var result = BeatGridCalculator.GetAdjacentPosition([0], [120], 4,
+            TimeSpan.FromMilliseconds(start), TimeSpan.FromSeconds(10), forward);
+        Assert.That(result, Is.EqualTo(TimeSpan.FromMilliseconds(expected)));
+    }
+
+    [TestCase(250, true, 300)]
+    [TestCase(300, true, 550)]
+    [TestCase(300, false, 250)]
+    public void RespectsTimingSegmentBoundary(int start, bool forward, int expected)
+    {
+        var result = BeatGridCalculator.GetAdjacentPosition([0, 300], [120, 60], 4,
+            TimeSpan.FromMilliseconds(start), TimeSpan.FromSeconds(2), forward);
+        Assert.That(result, Is.EqualTo(TimeSpan.FromMilliseconds(expected)));
+    }
+
+    [Test]
+    public void StopsAtDurationAndRejectsInvalidGrid()
+    {
+        Assert.That(BeatGridCalculator.GetAdjacentPosition([0], [120], 4,
+            TimeSpan.FromMilliseconds(250), TimeSpan.FromMilliseconds(300), true), Is.Null);
+        Assert.That(BeatGridCalculator.GetAdjacentPosition([], [], 4,
+            TimeSpan.Zero, TimeSpan.FromSeconds(1), true), Is.Null);
+    }
+
+    [Test]
+    public void NegativeOffsetSkipsTicksBeforeAudioStart()
+    {
+        var next = BeatGridCalculator.GetAdjacentPosition([-500], [120], 4,
+            TimeSpan.Zero, TimeSpan.FromSeconds(1), true);
+        Assert.That(next, Is.EqualTo(TimeSpan.FromMilliseconds(125)));
+    }
+
+    [TestCase(1, 500)]
+    [TestCase(2, 250)]
+    [TestCase(3, 166.6667)]
+    [TestCase(4, 125)]
+    [TestCase(5, 100)]
+    [TestCase(6, 83.3333)]
+    [TestCase(8, 62.5)]
+    [TestCase(12, 41.6667)]
+    [TestCase(16, 31.25)]
+    public void SupportsEverySubdivision(int subdivision, double expectedMilliseconds)
+    {
+        var next = BeatGridCalculator.GetAdjacentPosition([0], [120], subdivision,
+            TimeSpan.Zero, TimeSpan.FromSeconds(1), true);
+        Assert.That(next!.Value.TotalMilliseconds, Is.EqualTo(expectedMilliseconds).Within(0.001));
+    }
+
+    [Test]
+    public void RoundedFractionalTicksAlwaysAdvance()
+    {
+        var current = TimeSpan.Zero;
+        for (var i = 0; i < 100; i++)
+        {
+            var next = BeatGridCalculator.GetAdjacentPosition([0], [137], 16,
+                current, TimeSpan.FromSeconds(10), true);
+            Assert.That(next, Is.GreaterThan(current));
+            current = next!.Value;
+        }
+        Assert.That(current.TotalMilliseconds, Is.EqualTo(2737.226).Within(0.001));
+    }
     [Test]
     public void GridStartsAtOffsetAndKeepsLargerBeatDivisions()
     {

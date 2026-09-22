@@ -6,6 +6,27 @@ namespace osuHitsounder.Test.Presentation;
 public class WorkstationPageVMTests
 {
     [Test]
+    public async Task GridCommandsSeekFromCurrentAudioPositionAndPreservePlayback()
+    {
+        var audio = new StubWorkstationAudioService
+        {
+            Snapshot = new AudioPlaybackSnapshot(TimeSpan.FromMilliseconds(200), true, null)
+        };
+        var source = new StubWorkstationSourceService
+        {
+            Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav",
+                new ProjectData { Offsets = [0], BPMs = [120] }))
+        };
+        var vm = new WorkstationPageVM(source, audio, new ImmediateUiScheduler());
+        await vm.LoadAsync("project.json", CancellationToken.None);
+        vm.NextGridLineCommand.Execute(null);
+        Assert.That(audio.Snapshot.Position, Is.EqualTo(TimeSpan.FromMilliseconds(250)));
+        Assert.That(audio.Snapshot.IsPlaying, Is.True);
+        vm.PreviousGridLineCommand.Execute(null);
+        Assert.That(audio.Snapshot.Position, Is.EqualTo(TimeSpan.FromMilliseconds(125)));
+        await vm.DeactivateAsync();
+    }
+    [Test]
     public async Task ZoomButtonsUseEightToThirtyTwoBounds()
     {
         var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new StubWorkstationAudioService(), new ImmediateUiScheduler());
