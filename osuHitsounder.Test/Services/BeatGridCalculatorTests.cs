@@ -42,6 +42,14 @@ public class BeatGridCalculatorTests
         Assert.That(next, Is.EqualTo(TimeSpan.FromMilliseconds(125)));
     }
 
+    [Test]
+    public void RightFromStartFindsFirstPositiveBeatAfterNegativeOffset()
+    {
+        var next = BeatGridCalculator.GetAdjacentPosition([-125, 1700], [120, 180], 1,
+            TimeSpan.Zero, TimeSpan.FromSeconds(10), true);
+        Assert.That(next, Is.EqualTo(TimeSpan.FromMilliseconds(375)));
+    }
+
     [TestCase(1, 500)]
     [TestCase(2, 250)]
     [TestCase(3, 166.6667)]
@@ -79,6 +87,43 @@ public class BeatGridCalculatorTests
             TimeSpan.Zero, TimeSpan.FromMilliseconds(1), true);
         Assert.That(next, Is.GreaterThan(TimeSpan.Zero));
     }
+
+    [Test]
+    public void PreviousTargetDoesNotSkipLineJustBeforeExactPosition()
+    {
+        var previous = BeatGridCalculator.GetAdjacentPosition([-125, 1700, 4300, 6800],
+            [120, 180, 95, 137], 5, TimeSpan.FromMilliseconds(3900),
+            TimeSpan.FromSeconds(10), false);
+        Assert.That(previous, Is.EqualTo(TimeSpan.FromTicks(38_999_999)));
+    }
+
+    [Test]
+    public void AdjacentTargetsFollowDisplayedTimingGrid()
+    {
+        int[] offsets = [-125, 1700, 4300, 6800];
+        int[] bpms = [120, 180, 95, 137];
+        var duration = TimeSpan.FromSeconds(10);
+        foreach (var subdivision in new[] { 1, 2, 3, 4, 5, 6, 8, 12, 16 })
+        {
+            var lines = BeatGridCalculator.GetLines(offsets, bpms, subdivision, 0, 10_000)
+                .Select(line => TimeSpan.FromMilliseconds(line.Milliseconds)).Distinct().Order().ToArray();
+            foreach (var milliseconds in Enumerable.Range(0, 1000).Select(index => index * 10))
+            {
+                var position = TimeSpan.FromMilliseconds(milliseconds);
+                TimeSpan? expectedRight = lines.FirstOrDefault(line => line > position, TimeSpan.MinValue);
+                TimeSpan? expectedLeft = lines.LastOrDefault(line => line < position, TimeSpan.MinValue);
+                if (expectedRight == TimeSpan.MinValue) expectedRight = null;
+                if (expectedLeft == TimeSpan.MinValue) expectedLeft = null;
+                Assert.That(BeatGridCalculator.GetAdjacentPosition(offsets, bpms, subdivision,
+                    position, duration, true), Is.EqualTo(expectedRight),
+                    $"Right at {milliseconds} ms, subdivision {subdivision}");
+                Assert.That(BeatGridCalculator.GetAdjacentPosition(offsets, bpms, subdivision,
+                    position, duration, false), Is.EqualTo(expectedLeft),
+                    $"Left at {milliseconds} ms, subdivision {subdivision}");
+            }
+        }
+    }
+
     [Test]
     public void GridStartsAtOffsetAndKeepsLargerBeatDivisions()
     {

@@ -30,6 +30,8 @@ public partial class WorkstationPageVM(
     private Task<string?>? activeImport;
     private Exception? lastSaveError;
     private bool importBusy;
+    private TimeSpan? lastGridTarget;
+    private TimeSpan? lastGridAudioPosition;
     private bool removalBusy;
     private Task? activeRemoval;
     public ObservableCollection<Track> Tracks => tracks;
@@ -74,6 +76,8 @@ public partial class WorkstationPageVM(
     public Task LoadAsync(string projectPath, CancellationToken token)
     {
         if (deactivated) return Task.CompletedTask;
+        lastGridTarget = null;
+        lastGridAudioPosition = null;
         loadCancellation?.Cancel();
         loadCancellation?.Dispose();
         loadCancellation = CancellationTokenSource.CreateLinkedTokenSource(token);
@@ -129,6 +133,8 @@ public partial class WorkstationPageVM(
     [RelayCommand(CanExecute = nameof(CanUseTransport))]
     private void Stop()
     {
+        lastGridTarget = null;
+        lastGridAudioPosition = null;
         audioService.Stop();
         RefreshPlayback();
     }
@@ -137,6 +143,8 @@ public partial class WorkstationPageVM(
     private void Seek(TimeSpan position)
     {
         if (!CanUseTransport()) return;
+        lastGridTarget = null;
+        lastGridAudioPosition = null;
         audioService.Seek(position);
         RefreshPlayback();
     }
@@ -151,9 +159,20 @@ public partial class WorkstationPageVM(
     {
         if (!CanUseTransport() || Project is null || Waveform is null) return;
         var position = audioService.GetSnapshot().Position;
+        if (lastGridTarget is { } lastTarget && lastGridAudioPosition is { } lastAudioPosition &&
+            position >= lastAudioPosition && position <= lastTarget)
+            position = lastTarget;
         var target = BeatGridCalculator.GetAdjacentPosition(Project.Offsets, Project.BPMs,
             Subdivision, position, Waveform.Duration, forward);
-        if (target is not null) Seek(target.Value);
+        if (target is not null)
+        {
+            Seek(target.Value);
+            if (audioService.GetSnapshot().Error is null)
+            {
+                lastGridTarget = target.Value;
+                lastGridAudioPosition = Position;
+            }
+        }
     }
 
     [RelayCommand(CanExecute = nameof(CanZoomIn))]

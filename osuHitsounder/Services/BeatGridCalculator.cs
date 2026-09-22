@@ -21,17 +21,37 @@ public static class BeatGridCalculator
             var segment = segments[index];
             var interval = 60000d / segment.Bpm / subdivision;
             var relative = (position.TotalMilliseconds - segment.Offset) / interval;
-            var tick = forward ? Math.Max(0, Math.Floor(relative) + 1) : Math.Ceiling(relative) - 1;
-            var nextRepresentableMs = (position.Ticks + (forward ? 1d : -1d)) / TimeSpan.TicksPerMillisecond;
-            var representableTick = (nextRepresentableMs - segment.Offset) / interval;
-            tick = forward ? Math.Max(tick, Math.Ceiling(representableTick))
-                : Math.Min(tick, Math.Floor(representableTick));
+            var tick = forward ? Math.Max(0, Math.Floor(relative)) : Math.Ceiling(relative);
+            if (interval < 1d / TimeSpan.TicksPerMillisecond)
+            {
+                var nextRepresentableMs = (position.Ticks + (forward ? 1d : -1d)) / TimeSpan.TicksPerMillisecond;
+                var representableTick = (nextRepresentableMs - segment.Offset) / interval;
+                tick = forward ? Math.Max(tick, Math.Ceiling(representableTick))
+                    : Math.Min(tick, Math.Floor(representableTick));
+            }
+            if (!forward)
+            {
+                if (index + 1 < segments.Length)
+                {
+                    var nextOffset = segments[index + 1].Offset;
+                    var lastTick = Math.Floor((nextOffset - segment.Offset) / interval);
+                    for (var repair = 0; repair < 3 &&
+                         segment.Offset + lastTick * interval >= nextOffset; repair++) lastTick--;
+                    tick = Math.Min(tick, lastTick);
+                }
+                tick = Math.Min(tick, Math.Floor((duration.TotalMilliseconds - segment.Offset) / interval));
+            }
             if (!forward && tick < 0) continue;
             for (var adjustment = 0; adjustment < 3 && tick >= 0; adjustment++, tick += forward ? 1 : -1)
             {
                 var milliseconds = segment.Offset + tick * interval;
-                if (!double.IsFinite(milliseconds) || milliseconds < 0 || milliseconds > duration.TotalMilliseconds ||
+                if (!double.IsFinite(milliseconds) || milliseconds > duration.TotalMilliseconds ||
                     index + 1 < segments.Length && milliseconds >= segments[index + 1].Offset) break;
+                if (milliseconds < 0)
+                {
+                    if (forward) continue;
+                    break;
+                }
                 var candidate = TimeSpan.FromMilliseconds(milliseconds);
                 if (forward ? candidate <= position : candidate >= position) continue;
                 if (best is null || (forward ? candidate < best : candidate > best)) best = candidate;

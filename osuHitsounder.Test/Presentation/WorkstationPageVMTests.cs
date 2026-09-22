@@ -1,10 +1,39 @@
 using osuHitsounder.Core.Entities;
 using osuHitsounder.ViewModels.Shell;
+using NAudio.Wave;
+using osuHitsounder.Services;
+using osuHitsounder.Test.Services;
 
 namespace osuHitsounder.Test.Presentation;
 
 public class WorkstationPageVMTests
 {
+    [Test]
+    public async Task RepeatedRightNavigationAdvancesAfterAudioFrameQuantization()
+    {
+        var format = WaveFormat.CreateIeeeFloatWaveFormat(100, 1);
+        using var audio = new WorkstationAudioService(
+            _ => new RawSourceWaveStream(new MemoryStream(new byte[format.BlockAlign * 1000]), format),
+            () => new StubWavePlayer());
+        var source = new StubWorkstationSourceService
+        {
+            Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav",
+                new ProjectData { Offsets = [0], BPMs = [120] }))
+        };
+        var vm = new WorkstationPageVM(source, audio, new ImmediateUiScheduler());
+        await vm.LoadAsync("project.json", CancellationToken.None);
+        vm.NextGridLineCommand.Execute(null);
+        var first = vm.Position;
+        vm.NextGridLineCommand.Execute(null);
+        Assert.That(first, Is.EqualTo(TimeSpan.FromMilliseconds(120)));
+        Assert.That(vm.Position, Is.GreaterThan(first));
+        Assert.That(vm.Position, Is.EqualTo(TimeSpan.FromMilliseconds(250)));
+        vm.PreviousGridLineCommand.Execute(null);
+        Assert.That(vm.Position, Is.EqualTo(first));
+        vm.NextGridLineCommand.Execute(null);
+        Assert.That(vm.Position, Is.EqualTo(TimeSpan.FromMilliseconds(250)));
+        await vm.DeactivateAsync();
+    }
     [Test]
     public async Task GridCommandsSeekFromCurrentAudioPositionAndPreservePlayback()
     {
