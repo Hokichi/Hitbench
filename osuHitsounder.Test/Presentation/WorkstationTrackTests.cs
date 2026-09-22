@@ -111,6 +111,105 @@ public class WorkstationTrackTests
         await vm.DeactivateAsync();
         Assert.That(vm.CanRemoveTrack, Is.False);
     }
+
+    [Test]
+    public async Task ConfirmationPendingBlocksImportAndDeactivationPreventsRemoval()
+    {
+        var track = new Track();
+        var source = new StubWorkstationSourceService
+        {
+            Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav",
+                new ProjectData { Tracks = [track] }))
+        };
+        var response = new TaskCompletionSource<bool>();
+        var dialog = new StubTrackRemovalDialogService { Confirm = _ => response.Task };
+        var vm = new WorkstationPageVM(source, new StubWorkstationAudioService(),
+            new ImmediateUiScheduler(), trackRemovalDialog: dialog);
+        await vm.LoadAsync("project.json", CancellationToken.None);
+        var removal = vm.RemoveTrackCommand.ExecuteAsync(track);
+        Assert.That(vm.CanImportSample, Is.False);
+        var deactivate = vm.DeactivateAsync();
+        response.SetResult(true);
+        await Task.WhenAll(removal, deactivate);
+        Assert.That(vm.Project!.Tracks, Is.EqualTo(new[] { track }));
+    }
+
+    [Test]
+    public async Task RemovalSaveFailureCanBeRetriedWithDeletedTrackSnapshot()
+    {
+        var track = new Track();
+        var source = new StubWorkstationSourceService
+        {
+            Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav",
+                new ProjectData { Tracks = [track] }))
+        };
+        var saves = new FailOnceProjectFileService();
+        var dialog = new StubTrackRemovalDialogService { Confirm = _ => Task.FromResult(true) };
+        var vm = new WorkstationPageVM(source, new StubWorkstationAudioService(),
+            new ImmediateUiScheduler(), null, null, saves, null, dialog);
+        await vm.LoadAsync("project.json", CancellationToken.None);
+        await vm.RemoveTrackCommand.ExecuteAsync(track);
+        Assert.CatchAsync<IOException>(() => vm.FlushSavesAsync());
+        Assert.That(vm.SaveError, Does.Contain("Disk full"));
+        vm.RetrySaveCommand.Execute(null);
+        await vm.FlushSavesAsync();
+        Assert.That(ProjectDataSerializer.Deserialize(saves.SavedJson!).Tracks, Is.Empty);
+        await vm.DeactivateAsync();
+    }
+
+    [Test]
+    public async Task DialogFailurePreservesTrackAndRestoresRemovalAvailability()
+    {
+        var track = new Track();
+        var source = new StubWorkstationSourceService
+        {
+            Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav",
+                new ProjectData { Tracks = [track] }))
+        };
+        var dialog = new StubTrackRemovalDialogService
+        {
+            Confirm = _ => Task.FromException<bool>(new IOException("Dialog unavailable"))
+        };
+        var vm = new WorkstationPageVM(source, new StubWorkstationAudioService(),
+            new ImmediateUiScheduler(), trackRemovalDialog: dialog);
+        await vm.LoadAsync("project.json", CancellationToken.None);
+        await vm.RemoveTrackCommand.ExecuteAsync(track);
+        Assert.That(vm.Tracks, Is.EqualTo(new[] { track }));
+        Assert.That(vm.CanRemoveTrack, Is.True);
+        Assert.That(vm.ErrorMessage, Does.Contain("Dialog unavailable"));
+        await vm.DeactivateAsync();
+    }
+
+    [Test]
+    public async Task RemovingTrackKeepsSampleFileAvailable()
+    {
+        var root = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N")));
+        try
+        {
+            var path = Path.Combine(root.FullName, "project.json");
+            await File.WriteAllTextAsync(path, "{}");
+            var samples = Directory.CreateDirectory(Path.Combine(root.FullName, "Samples"));
+            var samplePath = Path.Combine(samples.FullName, "a.wav");
+            await File.WriteAllBytesAsync(samplePath, [1, 2, 3]);
+            var track = new Track { Samples = [new Sample { FileName = "a.wav" }] };
+            var source = new StubWorkstationSourceService
+            {
+                Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav",
+                    new ProjectData { Tracks = [track] }))
+            };
+            var dialog = new StubTrackRemovalDialogService { Confirm = _ => Task.FromResult(true) };
+            var vm = new WorkstationPageVM(source, new StubWorkstationAudioService(),
+                new ImmediateUiScheduler(), new SampleFileService(), null,
+                new ProjectFileService(root.FullName), null, dialog);
+            await vm.LoadAsync(path, CancellationToken.None);
+            await vm.RemoveTrackCommand.ExecuteAsync(track);
+            await vm.FlushSavesAsync();
+            Assert.That(await File.ReadAllBytesAsync(samplePath), Is.EqualTo(new byte[] { 1, 2, 3 }));
+            Assert.That(vm.SampleFiles, Does.Contain("a.wav"));
+            await vm.DeactivateAsync();
+        }
+        finally { Directory.Delete(root.FullName, true); }
+    }
     [Test]
     public async Task SelectionUpdatesEverySampleAndPreservesItsData()
     {

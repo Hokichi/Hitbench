@@ -72,6 +72,34 @@ public class WorkstationPageIntegrationTests
         view.UpdateLayout();
         Assert.That(button.IsEnabled, Is.False);
     }
+
+    [Test]
+    public void RemovalFocusFallsToNextTrackThenWaveform()
+    {
+        var first = new osuHitsounder.Core.Entities.Track();
+        var second = new osuHitsounder.Core.Entities.Track();
+        var source = new StubWorkstationSourceService
+        {
+            Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav",
+                new ProjectData { Tracks = [first, second] }))
+        };
+        var dialog = new StubTrackRemovalDialogService { Confirm = _ => Task.FromResult(true) };
+        var vm = new WorkstationPageVM(source, new StubWorkstationAudioService(),
+            new ImmediateUiScheduler(), trackRemovalDialog: dialog);
+        var page = new WorkstationPage(vm);
+        page.SetProjectPath("project.json");
+        using var view = new InMemoryView(new Window { Content = page, Width = 900, Height = 600 });
+        UiTestPump.Run(page.LoadCompletion);
+        UiTestPump.Run(vm.RemoveTrackCommand.ExecuteAsync(first));
+        view.UpdateLayout();
+        var next = page.FindRemovalFocusTarget(0);
+        Assert.That(next, Is.TypeOf<BalloonButton>());
+        Assert.That(((FrameworkElement)next).DataContext, Is.SameAs(second));
+        UiTestPump.Run(vm.RemoveTrackCommand.ExecuteAsync(second));
+        view.UpdateLayout();
+        Assert.That(page.FindRemovalFocusTarget(0),
+            Is.SameAs(page.FindName("WaveformScrollViewer")));
+    }
     [SetUp]
     public void SetUp() => EnsureResources();
 
@@ -607,8 +635,9 @@ public class WorkstationPageIntegrationTests
         Assert.That(audio.Snapshot.Position, Is.EqualTo(TimeSpan.FromMilliseconds(125)));
     }
 
-    [Test]
-    public void ArrowNavigationRevealsOffscreenPositionWithoutMovingVisibleView()
+    [TestCase(FlowDirection.LeftToRight)]
+    [TestCase(FlowDirection.RightToLeft)]
+    public void ArrowNavigationRevealsOffscreenPositionWithoutMovingVisibleView(FlowDirection direction)
     {
         var audio = new StubWorkstationAudioService
         {
@@ -622,7 +651,8 @@ public class WorkstationPageIntegrationTests
         var vm = new WorkstationPageVM(source, audio, new ImmediateUiScheduler());
         var page = new WorkstationPage(vm);
         page.SetProjectPath("project.json");
-        using var view = new InMemoryView(new Window { Content = page, Width = 900, Height = 600 });
+        using var view = new InMemoryView(new Window { Content = page, Width = 900, Height = 600,
+            FlowDirection = direction });
         UiTestPump.Run(page.LoadCompletion);
         view.UpdateLayout();
         var scroll = (ScrollViewer)page.FindName("WaveformScrollViewer");

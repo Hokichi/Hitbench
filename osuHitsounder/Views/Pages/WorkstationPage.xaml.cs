@@ -250,14 +250,20 @@ public partial class WorkstationPage : UserControl
                 Dispatcher.BeginInvoke(DispatcherPriority.Input, () =>
                 {
                     if (deactivationStarted) return;
-                    TrackList.UpdateLayout();
-                    var container = TrackList.ItemContainerGenerator.ContainerFromIndex(index) as ListBoxItem;
-                    var next = container is null ? null : FindVisualChild<BalloonButton>(container);
-                    if (next?.Focus() != true) WaveformScrollViewer.Focus();
+                    if (FindRemovalFocusTarget(index) is not UIElement target || !target.Focus())
+                        WaveformScrollViewer.Focus();
                 });
                 break;
             }
         }
+    }
+
+    internal IInputElement FindRemovalFocusTarget(int index)
+    {
+        TrackList.UpdateLayout();
+        var container = TrackList.ItemContainerGenerator.ContainerFromIndex(index) as ListBoxItem;
+        return container is null ? WaveformScrollViewer
+            : FindVisualChild<BalloonButton>(container) ?? (IInputElement)WaveformScrollViewer;
     }
 
     private void ApplyPendingZoomAnchor()
