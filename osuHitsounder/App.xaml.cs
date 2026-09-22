@@ -26,11 +26,14 @@ public partial class App : Application
         registrations.AddSingleton<ISampleFileService, SampleFileService>();
         registrations.AddSingleton<ISampleFileDialogService>(_ =>
             new SampleFileDialogService(() => Current.MainWindow, Current.Dispatcher));
+        registrations.AddSingleton<ITrackRemovalDialogService>(_ =>
+            new TrackRemovalDialogService(() => Current.MainWindow, Current.Dispatcher));
         registrations.AddSingleton<Func<WorkstationPage>>(provider => () => new WorkstationPage(
             new WorkstationPageVM(provider.GetRequiredService<IWorkstationSourceService>(),
                 new WorkstationAudioService(), provider.GetRequiredService<IUiScheduler>(),
                 provider.GetRequiredService<ISampleFileService>(), provider.GetRequiredService<ISampleFileDialogService>(),
-                provider.GetRequiredService<IProjectFileService>(), provider.GetRequiredService<IMessenger>())));
+                provider.GetRequiredService<IProjectFileService>(), provider.GetRequiredService<IMessenger>(),
+                provider.GetRequiredService<ITrackRemovalDialogService>())));
         registrations.AddSingleton<IHomeFolderService>(_ => new HomeFolderService(AppContext.BaseDirectory));
         registrations.AddSingleton<IAppSettingsService>(_ => new AppSettingsService(AppContext.BaseDirectory));
         registrations.AddSingleton<IUiScheduler>(_ => new UiScheduler(Current.Dispatcher));

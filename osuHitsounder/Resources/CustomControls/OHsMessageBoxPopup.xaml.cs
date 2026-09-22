@@ -9,18 +9,31 @@ public partial class OHsMessageBoxPopup : BasePopup
 {
     private MessageBoxButton _buttons;
     private BalloonButton? defaultButton;
+    private readonly bool destructiveConfirmation;
 
     protected override bool ShouldBubbleApplicationClose => false;
 
     public OHsMessageBoxPopup(string message, string title, MessageBoxButton buttons = MessageBoxButton.OK,
-        MessageBoxImage icon = MessageBoxImage.None)
+        MessageBoxImage icon = MessageBoxImage.None, bool destructiveConfirmation = false)
     {
         InitializeComponent();
+        this.destructiveConfirmation = destructiveConfirmation && buttons == MessageBoxButton.OKCancel;
 
         PopupTitle = string.IsNullOrWhiteSpace(title) ? "Message" : title;
         SetFormattedMessage(message);
 
         ConfigureButtons(buttons);
+        if (this.destructiveConfirmation)
+        {
+            PrimaryButton.ButtonText = "Remove Track";
+            PrimaryButton.ButtonIcon = FindResource("Close");
+            PrimaryButton.Style = (Style)FindResource("OHsBalloonDestructiveActionStyle");
+            AutomationProperties.SetName(PrimaryButton, "Remove track");
+            SecondaryButton.Style = (Style)FindResource("OHsBalloonNeutralActionStyle");
+            defaultButton = SecondaryButton;
+            Loaded += (_, _) => Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Input,
+                () => SecondaryButton.Focus());
+        }
         ConfigureIcon(icon);
     }
 
@@ -80,7 +93,8 @@ public partial class OHsMessageBoxPopup : BasePopup
             defaultButton is { IsEnabled: true } button)
         {
             e.Handled = true;
-            SetResultFrom(button);
+            SetResultFrom(destructiveConfirmation && ReferenceEquals(Keyboard.FocusedElement, PrimaryButton)
+                ? PrimaryButton : button);
             return;
         }
 

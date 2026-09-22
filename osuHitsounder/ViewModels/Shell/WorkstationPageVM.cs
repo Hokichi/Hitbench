@@ -20,7 +20,8 @@ public partial class WorkstationPageVM(
     ISampleFileService? sampleFiles = null,
     ISampleFileDialogService? sampleDialog = null,
     IProjectFileService? projectFiles = null,
-    IMessenger? messenger = null) : ObservableObject
+    IMessenger? messenger = null,
+    ITrackRemovalDialogService? trackRemovalDialog = null) : ObservableObject
 {
     private readonly ObservableCollection<Track> tracks = [];
     private readonly ObservableCollection<string> availableSamples = [];
@@ -29,12 +30,15 @@ public partial class WorkstationPageVM(
     private Task<string?>? activeImport;
     private Exception? lastSaveError;
     private bool importBusy;
+    private bool removalBusy;
+    private Task? activeRemoval;
     public ObservableCollection<Track> Tracks => tracks;
     public ObservableCollection<string> SampleFiles => availableSamples;
     public int Subdivision => new[] { 1, 2, 3, 4, 5, 6, 8, 12, 16 }[SelectedSubdivisionIndex];
     public bool CanEditTracks => Project is not null && !IsLoading && !deactivated;
-    public bool CanImportSample => CanEditTracks && !importBusy;
-    public bool HasPendingSaves => importBusy || !saveTail.IsCompleted || lastSaveError is not null;
+    public bool CanImportSample => CanEditTracks && !importBusy && !removalBusy;
+    public bool CanRemoveTrack => CanEditTracks && !importBusy && !removalBusy && trackRemovalDialog is not null;
+    public bool HasPendingSaves => importBusy || removalBusy || !saveTail.IsCompleted || lastSaveError is not null;
     [ObservableProperty] private string? saveError;
     private CancellationTokenSource? loadCancellation;
     private Task? activeLoad;
@@ -90,6 +94,7 @@ public partial class WorkstationPageVM(
             try { await activeLoad; }
             catch (OperationCanceledException) { }
         }
+        if (activeRemoval is not null) await activeRemoval;
         if (messenger is not null) messenger.UnregisterAll(this);
         try { await FlushSavesAsync(); }
         finally
@@ -192,6 +197,40 @@ public partial class WorkstationPageVM(
     [RelayCommand]
     private static void AddPianoTrack() { }
 
+    [RelayCommand]
+    private Task RemoveTrackAsync(Track track)
+    {
+        if (!CanRemoveTrack || !tracks.Contains(track)) return Task.CompletedTask;
+        activeRemoval = RemoveTrackCoreAsync(track);
+        return activeRemoval;
+    }
+
+    private async Task RemoveTrackCoreAsync(Track track)
+    {
+        var project = Project;
+        var generation = loadGeneration;
+        removalBusy = true;
+        OnPropertyChanged(nameof(CanRemoveTrack));
+        OnPropertyChanged(nameof(CanImportSample));
+        try
+        {
+            if (!await trackRemovalDialog!.ConfirmAsync(loadCancellation?.Token ?? CancellationToken.None)) return;
+            if (deactivated || generation != loadGeneration || !ReferenceEquals(Project, project) ||
+                project is null || !tracks.Contains(track)) return;
+            project.Tracks.Remove(track);
+            tracks.Remove(track);
+            QueueSave();
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception error) { ErrorMessage = error.Message; }
+        finally
+        {
+            removalBusy = false;
+            OnPropertyChanged(nameof(CanRemoveTrack));
+            OnPropertyChanged(nameof(CanImportSample));
+        }
+    }
+
     public void SelectSample(Track track, string fileName)
     {
         if (!CanEditTracks || !tracks.Contains(track) || string.IsNullOrWhiteSpace(fileName) ||
@@ -212,10 +251,11 @@ public partial class WorkstationPageVM(
 
     public Task<string?> ImportSampleAsync(Track track)
     {
-        if (!CanEditTracks || !tracks.Contains(track) || sampleDialog is null || sampleFiles is null || importBusy)
+        if (!CanImportSample || !tracks.Contains(track) || sampleDialog is null || sampleFiles is null)
             return Task.FromResult<string?>(null);
         importBusy = true;
         OnPropertyChanged(nameof(CanImportSample));
+        OnPropertyChanged(nameof(CanRemoveTrack));
         activeImport = ImportSampleCoreAsync(track);
         return activeImport;
     }
@@ -238,6 +278,7 @@ public partial class WorkstationPageVM(
         {
             importBusy = false;
             OnPropertyChanged(nameof(CanImportSample));
+            OnPropertyChanged(nameof(CanRemoveTrack));
         }
     }
 
@@ -339,6 +380,7 @@ public partial class WorkstationPageVM(
                 IsLoading = false;
                 OnPropertyChanged(nameof(CanEditTracks));
                 OnPropertyChanged(nameof(CanImportSample));
+                OnPropertyChanged(nameof(CanRemoveTrack));
                 NotifyCommandState();
             });
         }

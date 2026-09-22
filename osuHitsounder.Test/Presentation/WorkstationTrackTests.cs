@@ -10,6 +10,96 @@ namespace osuHitsounder.Test.Presentation;
 public class WorkstationTrackTests
 {
     [Test]
+    public async Task ConfirmedRemovalDeletesOnlyChosenTrackAndPersistsSnapshot()
+    {
+        var first = new Track { Samples = [new Sample { FileName = "a.wav", Timestamps = [125] }] };
+        var second = new Track { Samples = [new Sample { FileName = "b.wav" }] };
+        var source = new StubWorkstationSourceService
+        {
+            Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav",
+                new ProjectData { Tracks = [first, second] }))
+        };
+        var saves = new DelayedProjectFileService();
+        saves.Release();
+        var dialog = new StubTrackRemovalDialogService { Confirm = _ => Task.FromResult(true) };
+        var vm = new WorkstationPageVM(source, new StubWorkstationAudioService(),
+            new ImmediateUiScheduler(), null, null, saves, null, dialog);
+        await vm.LoadAsync("project.json", CancellationToken.None);
+        await vm.RemoveTrackCommand.ExecuteAsync(first);
+        await vm.FlushSavesAsync();
+        Assert.That(vm.Tracks, Is.EqualTo(new[] { second }));
+        Assert.That(vm.Project!.Tracks, Is.EqualTo(new[] { second }));
+        Assert.That(ProjectDataSerializer.Deserialize(saves.LatestJson!).Tracks.Single().Samples.Single().FileName,
+            Is.EqualTo("b.wav"));
+        await vm.DeactivateAsync();
+    }
+
+    [Test]
+    public async Task CancelledRemovalKeepsTrackAndDoesNotSave()
+    {
+        var track = new Track { Samples = [new Sample { FileName = "a.wav" }] };
+        var source = new StubWorkstationSourceService
+        {
+            Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav",
+                new ProjectData { Tracks = [track] }))
+        };
+        var dialog = new StubTrackRemovalDialogService();
+        var vm = new WorkstationPageVM(source, new StubWorkstationAudioService(),
+            new ImmediateUiScheduler(), trackRemovalDialog: dialog);
+        await vm.LoadAsync("project.json", CancellationToken.None);
+        await vm.RemoveTrackCommand.ExecuteAsync(track);
+        Assert.That(vm.Tracks, Is.EqualTo(new[] { track }));
+        Assert.That(dialog.Calls, Is.EqualTo(1));
+        await vm.DeactivateAsync();
+    }
+
+    [Test]
+    public async Task DuplicateRequestWhileConfirmationPendingIsIgnored()
+    {
+        var track = new Track();
+        var source = new StubWorkstationSourceService
+        {
+            Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav",
+                new ProjectData { Tracks = [track] }))
+        };
+        var response = new TaskCompletionSource<bool>();
+        var dialog = new StubTrackRemovalDialogService { Confirm = _ => response.Task };
+        var vm = new WorkstationPageVM(source, new StubWorkstationAudioService(),
+            new ImmediateUiScheduler(), trackRemovalDialog: dialog);
+        await vm.LoadAsync("project.json", CancellationToken.None);
+        var first = vm.RemoveTrackCommand.ExecuteAsync(track);
+        await vm.RemoveTrackCommand.ExecuteAsync(track);
+        Assert.That(dialog.Calls, Is.EqualTo(1));
+        Assert.That(vm.CanRemoveTrack, Is.False);
+        response.SetResult(false);
+        await first;
+        Assert.That(vm.CanRemoveTrack, Is.True);
+        await vm.DeactivateAsync();
+    }
+
+    [Test]
+    public async Task OldConfirmationCannotRemoveTrackAfterReload()
+    {
+        var original = new Track();
+        var replacement = new Track();
+        var source = new StubWorkstationSourceService
+        {
+            Load = (path, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav",
+                new ProjectData { Tracks = [path == "old.json" ? original : replacement] }))
+        };
+        var response = new TaskCompletionSource<bool>();
+        var dialog = new StubTrackRemovalDialogService { Confirm = _ => response.Task };
+        var vm = new WorkstationPageVM(source, new StubWorkstationAudioService(),
+            new ImmediateUiScheduler(), trackRemovalDialog: dialog);
+        await vm.LoadAsync("old.json", CancellationToken.None);
+        var pending = vm.RemoveTrackCommand.ExecuteAsync(original);
+        await vm.LoadAsync("new.json", CancellationToken.None);
+        response.SetResult(true);
+        await pending;
+        Assert.That(vm.Tracks, Is.EqualTo(new[] { replacement }));
+        await vm.DeactivateAsync();
+    }
+    [Test]
     public async Task SelectionUpdatesEverySampleAndPreservesItsData()
     {
         var one = new Sample { FileName = "old.wav", Volume = 12, Timestamps = [125] };

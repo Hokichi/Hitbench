@@ -50,6 +50,26 @@ public sealed class OHsMessageBoxPopupIntegrationTests
         }
     }
 
+    [Test]
+    public void DestructiveConfirmationUsesSafeDefaultAndDangerousAffirmative()
+    {
+        EnsureResources();
+        var popup = new OHsMessageBoxPopup("Delete data?", "Remove track?",
+            MessageBoxButton.OKCancel, MessageBoxImage.Warning, destructiveConfirmation: true);
+        try
+        {
+            var remove = (BalloonButton)popup.FindName("PrimaryButton");
+            var cancel = (BalloonButton)popup.FindName("SecondaryButton");
+            Assert.That(remove.ButtonText, Is.EqualTo("Remove Track"));
+            Assert.That(remove.Style, Is.SameAs(popup.FindResource("OHsBalloonDestructiveActionStyle")));
+            Assert.That(cancel.Style, Is.SameAs(popup.FindResource("OHsBalloonNeutralActionStyle")));
+            using var source = new InMemoryPresentationSource();
+            popup.RaiseEvent(CreateKeyEvent(source, Key.Enter));
+            Assert.That(popup.Result, Is.EqualTo(MessageBoxResult.Cancel));
+        }
+        finally { popup.Close(); }
+    }
+
     [TestCase(MessageBoxButton.OK, MessageBoxResult.OK)]
     [TestCase(MessageBoxButton.OKCancel, MessageBoxResult.Cancel)]
     [TestCase(MessageBoxButton.YesNo, MessageBoxResult.No)]
