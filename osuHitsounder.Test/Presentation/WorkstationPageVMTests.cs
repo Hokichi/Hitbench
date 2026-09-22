@@ -9,6 +9,58 @@ namespace osuHitsounder.Test.Presentation;
 public class WorkstationPageVMTests
 {
     [Test]
+    public async Task WholeBeatCommandsAdvanceAcrossFrameRoundingAndTimingChange()
+    {
+        var format = WaveFormat.CreateIeeeFloatWaveFormat(100, 1);
+        using var audio = new WorkstationAudioService(
+            _ => new RawSourceWaveStream(new MemoryStream(new byte[format.BlockAlign * 1000]), format),
+            () => new StubWavePlayer());
+        var source = new StubWorkstationSourceService
+        {
+            Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav",
+                new ProjectData { Offsets = [0, 800], BPMs = [120, 60] }))
+        };
+        var vm = new WorkstationPageVM(source, audio, new ImmediateUiScheduler());
+        await vm.LoadAsync("project.json", CancellationToken.None);
+        Assert.That(vm.Subdivision, Is.EqualTo(4));
+        vm.NextWholeBeatCommand.Execute(null);
+        Assert.That(vm.Position, Is.EqualTo(TimeSpan.FromMilliseconds(500)));
+        vm.NextWholeBeatCommand.Execute(null);
+        Assert.That(vm.Position, Is.EqualTo(TimeSpan.FromMilliseconds(800)));
+        vm.NextWholeBeatCommand.Execute(null);
+        Assert.That(vm.Position, Is.EqualTo(TimeSpan.FromMilliseconds(1800)));
+        vm.PreviousWholeBeatCommand.Execute(null);
+        Assert.That(vm.Position, Is.EqualTo(TimeSpan.FromMilliseconds(800)));
+        vm.NextWholeBeatCommand.Execute(null);
+        Assert.That(vm.Position, Is.EqualTo(TimeSpan.FromMilliseconds(1800)));
+        Assert.That(vm.Subdivision, Is.EqualTo(4));
+        await vm.DeactivateAsync();
+    }
+
+    [Test]
+    public async Task WholeBeatCommandsAdvanceAfterAudioFrameQuantization()
+    {
+        var format = WaveFormat.CreateIeeeFloatWaveFormat(100, 1);
+        using var audio = new WorkstationAudioService(
+            _ => new RawSourceWaveStream(new MemoryStream(new byte[format.BlockAlign * 1000]), format),
+            () => new StubWavePlayer());
+        var source = new StubWorkstationSourceService
+        {
+            Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav",
+                new ProjectData { Offsets = [0], BPMs = [137] }))
+        };
+        var vm = new WorkstationPageVM(source, audio, new ImmediateUiScheduler());
+        await vm.LoadAsync("project.json", CancellationToken.None);
+        vm.NextWholeBeatCommand.Execute(null);
+        Assert.That(vm.Position, Is.EqualTo(TimeSpan.FromMilliseconds(430)));
+        vm.NextWholeBeatCommand.Execute(null);
+        Assert.That(vm.Position, Is.EqualTo(TimeSpan.FromMilliseconds(870)));
+        vm.PreviousWholeBeatCommand.Execute(null);
+        Assert.That(vm.Position, Is.EqualTo(TimeSpan.FromMilliseconds(430)));
+        await vm.DeactivateAsync();
+    }
+
+    [Test]
     public async Task RepeatedRightNavigationAdvancesAfterAudioFrameQuantization()
     {
         var format = WaveFormat.CreateIeeeFloatWaveFormat(100, 1);

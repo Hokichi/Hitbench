@@ -290,15 +290,19 @@ public partial class WorkstationPage : UserControl
 
     internal bool HandlePlaybackKey(Key key, ModifierKeys modifiers, bool isRepeat, DependencyObject? origin)
     {
-        if (modifiers != ModifierKeys.None || deactivationStarted || IsEditingInput(origin)) return false;
+        if (modifiers is not (ModifierKeys.None or ModifierKeys.Control) ||
+            deactivationStarted || IsEditingInput(origin)) return false;
         if (key == Key.Space)
         {
+            if (modifiers != ModifierKeys.None) return false;
             if (!viewModel.PlayPauseCommand.CanExecute(null)) return false;
             if (!isRepeat) viewModel.PlayPauseCommand.Execute(null);
             return true;
         }
         if (key is not (Key.Left or Key.Right) || IsNativeArrowInput(origin)) return false;
-        var command = key == Key.Left ? viewModel.PreviousGridLineCommand : viewModel.NextGridLineCommand;
+        var command = modifiers == ModifierKeys.Control
+            ? key == Key.Left ? viewModel.PreviousWholeBeatCommand : viewModel.NextWholeBeatCommand
+            : key == Key.Left ? viewModel.PreviousGridLineCommand : viewModel.NextGridLineCommand;
         if (!command.CanExecute(null)) return false;
         command.Execute(null);
         RevealPlaybackPosition();
@@ -390,14 +394,18 @@ public partial class WorkstationPage : UserControl
     private void OnWaveformKeyDown(object sender, KeyEventArgs e)
     {
         if (e.Handled) return;
+        if (e.Key is Key.Left or Key.Right)
+        {
+            e.Handled = HandlePlaybackKey(e.Key, Keyboard.Modifiers, e.IsRepeat,
+                e.OriginalSource as DependencyObject);
+            return;
+        }
         if (Keyboard.Modifiers == ModifierKeys.Control)
         {
             var duration = viewModel.Waveform?.Duration;
             if (duration is null) return;
             var target = e.Key switch
             {
-                Key.Left => viewModel.Position - TimeSpan.FromSeconds(1),
-                Key.Right => viewModel.Position + TimeSpan.FromSeconds(1),
                 Key.Home => TimeSpan.Zero,
                 Key.End => duration.Value,
                 _ => (TimeSpan?)null
@@ -405,12 +413,6 @@ public partial class WorkstationPage : UserControl
             if (target is null || !viewModel.SeekCommand.CanExecute(target.Value)) return;
             viewModel.SeekCommand.Execute(target.Value);
             e.Handled = true;
-            return;
-        }
-        if (e.Key is Key.Left or Key.Right)
-        {
-            e.Handled = HandlePlaybackKey(e.Key, ModifierKeys.None, e.IsRepeat,
-                e.OriginalSource as DependencyObject);
             return;
         }
         switch (e.Key)

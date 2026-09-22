@@ -150,12 +150,18 @@ public partial class WorkstationPageVM(
     }
 
     [RelayCommand(CanExecute = nameof(CanUseTransport))]
-    private void NextGridLine() => SeekAdjacentGridLine(true);
+    private void NextGridLine() => SeekAdjacentGridLine(true, Subdivision);
 
     [RelayCommand(CanExecute = nameof(CanUseTransport))]
-    private void PreviousGridLine() => SeekAdjacentGridLine(false);
+    private void PreviousGridLine() => SeekAdjacentGridLine(false, Subdivision);
 
-    private void SeekAdjacentGridLine(bool forward)
+    [RelayCommand(CanExecute = nameof(CanUseTransport))]
+    private void NextWholeBeat() => SeekAdjacentGridLine(true, 1);
+
+    [RelayCommand(CanExecute = nameof(CanUseTransport))]
+    private void PreviousWholeBeat() => SeekAdjacentGridLine(false, 1);
+
+    private void SeekAdjacentGridLine(bool forward, int subdivision)
     {
         if (!CanUseTransport() || Project is null || Waveform is null) return;
         var position = audioService.GetSnapshot().Position;
@@ -163,7 +169,7 @@ public partial class WorkstationPageVM(
             position >= lastAudioPosition && position <= lastTarget)
             position = lastTarget;
         var target = BeatGridCalculator.GetAdjacentPosition(Project.Offsets, Project.BPMs,
-            Subdivision, position, Waveform.Duration, forward);
+            subdivision, position, Waveform.Duration, forward);
         if (target is not null)
         {
             Seek(target.Value);
@@ -438,6 +444,8 @@ public partial class WorkstationPageVM(
         SeekCommand.NotifyCanExecuteChanged();
         NextGridLineCommand.NotifyCanExecuteChanged();
         PreviousGridLineCommand.NotifyCanExecuteChanged();
+        NextWholeBeatCommand.NotifyCanExecuteChanged();
+        PreviousWholeBeatCommand.NotifyCanExecuteChanged();
         ZoomInCommand.NotifyCanExecuteChanged();
         ZoomOutCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(CanPlay));
