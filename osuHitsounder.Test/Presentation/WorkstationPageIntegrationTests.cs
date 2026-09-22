@@ -22,6 +22,32 @@ namespace osuHitsounder.Test.Presentation;
 [NonParallelizable]
 public class WorkstationPageIntegrationTests
 {
+    [Test]
+    public void RemovalActionUsesTrackParameterAndFinalRemovalExplainsEmptyState()
+    {
+        var track = new osuHitsounder.Core.Entities.Track();
+        var source = new StubWorkstationSourceService
+        {
+            Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav",
+                new ProjectData { Tracks = [track] }))
+        };
+        var dialog = new StubTrackRemovalDialogService { Confirm = _ => Task.FromResult(true) };
+        var vm = new WorkstationPageVM(source, new StubWorkstationAudioService(),
+            new ImmediateUiScheduler(), trackRemovalDialog: dialog);
+        var page = new WorkstationPage(vm);
+        page.SetProjectPath("project.json");
+        using var view = new InMemoryView(new Window { Content = page, Width = 640, Height = 480 });
+        UiTestPump.Run(page.LoadCompletion);
+        view.UpdateLayout();
+        var button = FindVisualChildren<BalloonButton>(page)
+            .Single(action => action.ButtonText == "Remove Track");
+        Assert.That(button.CommandParameter, Is.SameAs(track));
+        Assert.That(button.Style, Is.SameAs(page.FindResource("OHsBalloonDestructiveActionStyle")));
+        Assert.That(AutomationProperties.GetName(button), Is.EqualTo("Remove track"));
+        UiTestPump.Run(vm.RemoveTrackCommand.ExecuteAsync(button.CommandParameter));
+        view.UpdateLayout();
+        Assert.That(((TextBlock)page.FindName("EmptyTracksText")).Visibility, Is.EqualTo(Visibility.Visible));
+    }
     [SetUp]
     public void SetUp() => EnsureResources();
 

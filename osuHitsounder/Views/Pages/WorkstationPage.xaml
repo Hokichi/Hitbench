@@ -199,6 +199,15 @@
                 <DataTrigger Binding="{Binding SaveError, Mode=OneWay}" Value=""><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
             </Style.Triggers>
         </Style>
+        <Style x:Key="OHsWorkstationEmptyTracksStyle" BasedOn="{StaticResource BaseTextBlockStyle}" TargetType="TextBlock">
+            <Setter Property="Visibility" Value="Collapsed" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Tracks.Count, Mode=OneWay}" Value="0">
+                    <Setter Property="Visibility" Value="Visible" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
         <DataTemplate x:Key="OHsWorkstationSampleTrackTemplate">
             <Border Margin="0,0,0,12" Style="{StaticResource CardBorderStyle}">
                 <Grid>
@@ -208,6 +217,12 @@
                             ButtonText="Load Sample" Click="OnLoadSampleClick" ShouldShowText="True"
                             IsEnabled="{Binding DataContext.CanImportSample, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
                             Style="{StaticResource OHsBalloonNeutralActionStyle}" />
+                        <customControls:BalloonButton Margin="8,0,0,0" AutomationProperties.Name="Remove track"
+                            ButtonIcon="{StaticResource Close}" ButtonText="Remove Track" ShouldShowText="True"
+                            Style="{StaticResource OHsBalloonDestructiveActionStyle}"
+                            Command="{Binding DataContext.RemoveTrackCommand, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
+                            CommandParameter="{Binding Mode=OneWay}"
+                            IsEnabled="{Binding DataContext.CanRemoveTrack, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}" />
                         <TextBlock Margin="12,0,8,0" VerticalAlignment="Center" Style="{StaticResource FieldLabelTextStyle}" Text="Sample" />
                         <ComboBox Width="220" AutomationProperties.Name="Track sample" Loaded="OnSampleSelectorLoaded"
                             DataContextChanged="OnTrackControlDataContextChanged"
@@ -330,8 +345,13 @@
                 ButtonText="Retry save" Command="{Binding RetrySaveCommand, Mode=OneWay}" ShouldShowText="True"
                 Style="{StaticResource OHsWorkstationRetrySaveStyle}" />
         </StackPanel>
-        <ListBox x:Name="TrackList" Grid.Row="2" AutomationProperties.Name="Sample tracks" ItemsSource="{Binding Tracks, Mode=OneWay}"
-            ItemTemplate="{StaticResource OHsWorkstationSampleTrackTemplate}" Style="{StaticResource OHsWorkstationTrackListStyle}" />
+        <Grid Grid.Row="2">
+            <ListBox x:Name="TrackList" AutomationProperties.Name="Sample tracks" ItemsSource="{Binding Tracks, Mode=OneWay}"
+                ItemTemplate="{StaticResource OHsWorkstationSampleTrackTemplate}" Style="{StaticResource OHsWorkstationTrackListStyle}" />
+            <TextBlock x:Name="EmptyTracksText" Margin="12" AutomationProperties.LiveSetting="Polite"
+                Style="{StaticResource OHsWorkstationEmptyTracksStyle}"
+                Text="No tracks. Use + Sample Track to create one." />
+        </Grid>
         <Grid x:Name="ZoomFooter" Grid.Row="3" HorizontalAlignment="Stretch" FlowDirection="LeftToRight">
             <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
             <ScrollBar

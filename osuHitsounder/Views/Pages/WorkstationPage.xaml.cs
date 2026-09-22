@@ -6,7 +6,9 @@ using System.Windows.Media;
 using System.Windows.Media.Media3D;
 using System.Windows.Threading;
 using System.ComponentModel;
+using System.Collections.Specialized;
 using osuHitsounder.ViewModels.Shell;
+using osuHitsounder.Resources.CustomControls;
 using Track = osuHitsounder.Core.Entities.Track;
 
 namespace osuHitsounder.Views.Pages;
@@ -41,6 +43,7 @@ public partial class WorkstationPage : UserControl
         Unloaded += OnUnloaded;
         viewModel.PropertyChanging += OnViewModelPropertyChanging;
         viewModel.PropertyChanged += OnViewModelPropertyChanged;
+        viewModel.Tracks.CollectionChanged += OnTracksCollectionChanged;
     }
 
     public Task LoadCompletion { get; private set; } = Task.CompletedTask;
@@ -93,6 +96,7 @@ public partial class WorkstationPage : UserControl
             Unloaded -= OnUnloaded;
             viewModel.PropertyChanging -= OnViewModelPropertyChanging;
             viewModel.PropertyChanged -= OnViewModelPropertyChanged;
+            viewModel.Tracks.CollectionChanged -= OnTracksCollectionChanged;
             hasPendingZoomAnchor = false;
             wheelMode = ModifierKeys.None;
             wheelRemainder = 0;
@@ -231,6 +235,29 @@ public partial class WorkstationPage : UserControl
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(WorkstationPageVM.ZoomFactor)) ApplyPendingZoomAnchor();
+    }
+
+    private void OnTracksCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.Action != NotifyCollectionChangedAction.Remove || e.OldItems is null || deactivationStarted)
+            return;
+        var focus = Keyboard.FocusedElement as DependencyObject;
+        for (var current = focus; current is not null; current = GetInputParent(current))
+        {
+            if (current is FrameworkElement element && e.OldItems.Contains(element.DataContext))
+            {
+                var index = Math.Clamp(e.OldStartingIndex, 0, Math.Max(0, viewModel.Tracks.Count - 1));
+                Dispatcher.BeginInvoke(DispatcherPriority.Input, () =>
+                {
+                    if (deactivationStarted) return;
+                    TrackList.UpdateLayout();
+                    var container = TrackList.ItemContainerGenerator.ContainerFromIndex(index) as ListBoxItem;
+                    var next = container is null ? null : FindVisualChild<BalloonButton>(container);
+                    if (next?.Focus() != true) WaveformScrollViewer.Focus();
+                });
+                break;
+            }
+        }
     }
 
     private void ApplyPendingZoomAnchor()
