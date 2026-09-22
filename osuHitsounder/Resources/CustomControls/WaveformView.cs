@@ -13,7 +13,7 @@ public sealed class WaveformView : FrameworkElement
     public static readonly DependencyProperty PositionProperty = DependencyProperty.Register(
         nameof(Position), typeof(TimeSpan), typeof(WaveformView), new FrameworkPropertyMetadata(TimeSpan.Zero, FrameworkPropertyMetadataOptions.AffectsRender));
     public static readonly DependencyProperty ZoomFactorProperty = DependencyProperty.Register(
-        nameof(ZoomFactor), typeof(double), typeof(WaveformView), new FrameworkPropertyMetadata(1d, FrameworkPropertyMetadataOptions.AffectsMeasure | FrameworkPropertyMetadataOptions.AffectsRender));
+        nameof(ZoomFactor), typeof(double), typeof(WaveformView), new FrameworkPropertyMetadata(8d, FrameworkPropertyMetadataOptions.AffectsMeasure | FrameworkPropertyMetadataOptions.AffectsRender));
     public static readonly DependencyProperty ViewportWidthProperty = DependencyProperty.Register(
         nameof(ViewportWidth), typeof(double), typeof(WaveformView), new FrameworkPropertyMetadata(0d, FrameworkPropertyMetadataOptions.AffectsMeasure | FrameworkPropertyMetadataOptions.AffectsRender));
     public static readonly DependencyProperty HorizontalOffsetProperty = DependencyProperty.Register(
@@ -51,7 +51,7 @@ public sealed class WaveformView : FrameworkElement
     protected override Size MeasureOverride(Size availableSize)
     {
         var viewport = IsPositiveFinite(ViewportWidth) ? ViewportWidth : 0;
-        var zoom = IsPositiveFinite(ZoomFactor) ? Math.Clamp(ZoomFactor, 1, 16) : 1;
+        var zoom = IsPositiveFinite(ZoomFactor) ? Math.Clamp(ZoomFactor, 8, 32) : 8;
         var height = double.IsFinite(availableSize.Height) ? Math.Max(0, availableSize.Height) : 160;
         return new Size(viewport * zoom, height);
     }

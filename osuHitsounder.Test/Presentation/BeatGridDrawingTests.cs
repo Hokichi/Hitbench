@@ -10,14 +10,36 @@ namespace osuHitsounder.Test.Presentation;
 public class BeatGridDrawingTests
 {
     [Test]
-    public void WaveformBottomAlignsFiftyPixelWholeBarsAndThirtyFivePixelOtherBars()
+    public void WaveformUsesThirtyAndTwentyUnitBars()
+    {
+        var drawings = DrawGrid(isWaveform: true);
+        Assert.That(((LineGeometry)LineAt(drawings, 0).Geometry).StartPoint.Y, Is.EqualTo(42));
+        Assert.That(((LineGeometry)LineAt(drawings, 50).Geometry).StartPoint.Y, Is.EqualTo(52));
+    }
+
+    [TestCase(true, 10d, 0d, 0d)]
+    [TestCase(true, 25d, 0d, 5d)]
+    [TestCase(false, 72d, 0d, 0d)]
+    public void BarsClipOrFillAvailableHeight(bool waveform, double height, double wholeStart, double otherStart)
+    {
+        var drawings = DrawGrid(waveform, height);
+        var whole = (LineGeometry)LineAt(drawings, 0).Geometry;
+        var other = (LineGeometry)LineAt(drawings, 50).Geometry;
+        Assert.That(whole.StartPoint.Y, Is.EqualTo(wholeStart));
+        Assert.That(other.StartPoint.Y, Is.EqualTo(otherStart));
+        Assert.That(whole.EndPoint.Y, Is.EqualTo(height));
+        Assert.That(other.EndPoint.Y, Is.EqualTo(height));
+    }
+
+    [Test]
+    public void WaveformBottomAlignsThirtyUnitWholeBarsAndTwentyUnitOtherBars()
     {
         var drawings = DrawGrid(isWaveform: true);
 
         Assert.Multiple(() =>
         {
-            Assert.That(((LineGeometry)LineAt(drawings, 0).Geometry).StartPoint.Y, Is.EqualTo(22));
-            Assert.That(((LineGeometry)LineAt(drawings, 50).Geometry).StartPoint.Y, Is.EqualTo(37));
+            Assert.That(((LineGeometry)LineAt(drawings, 0).Geometry).StartPoint.Y, Is.EqualTo(42));
+            Assert.That(((LineGeometry)LineAt(drawings, 50).Geometry).StartPoint.Y, Is.EqualTo(52));
             Assert.That(((LineGeometry)LineAt(drawings, 0).Geometry).EndPoint.Y, Is.EqualTo(72));
             Assert.That(((LineGeometry)LineAt(drawings, 50).Geometry).EndPoint.Y, Is.EqualTo(72));
         });
@@ -35,7 +57,7 @@ public class BeatGridDrawingTests
         });
     }
 
-    private static IReadOnlyList<GeometryDrawing> DrawGrid(bool isWaveform)
+    private static IReadOnlyList<GeometryDrawing> DrawGrid(bool isWaveform, double height = 72)
     {
         var owner = new Border();
         owner.Resources.Add("Brush.Beat.Whole", Brushes.White);
@@ -46,7 +68,7 @@ public class BeatGridDrawingTests
         owner.Resources.Add("Brush.Beat.Sixteenth", Brushes.LightGray);
         var drawing = new DrawingGroup();
         using (var context = drawing.Open())
-            BeatGridDrawing.Draw(context, owner, [0], [60], 2, 2000, 200, 0, 200, 72, isWaveform);
+            BeatGridDrawing.Draw(context, owner, [0], [60], 2, 2000, 200, 0, 200, height, isWaveform);
         return drawing.Children.OfType<GeometryDrawing>().ToArray();
     }
 

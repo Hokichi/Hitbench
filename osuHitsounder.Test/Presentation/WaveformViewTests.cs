@@ -10,14 +10,28 @@ namespace osuHitsounder.Test.Presentation;
 [NonParallelizable]
 public class WaveformViewTests
 {
+    [TestCase(8d, 3200d)]
+    [TestCase(32d, 12800d)]
+    [TestCase(1d, 3200d)]
+    [TestCase(64d, 12800d)]
+    [TestCase(-2d, 3200d)]
+    public void MeasurementUsesEightToThirtyTwoBounds(double zoom, double width)
+    {
+        var view = CreateView();
+        view.ViewportWidth = 400;
+        view.ZoomFactor = zoom;
+        view.Measure(new Size(double.PositiveInfinity, 160));
+        Assert.That(view.DesiredSize.Width, Is.EqualTo(width));
+    }
+
     [Test]
     public void DesiredWidthTracksViewportAndZoom()
     {
         var view = CreateView();
         view.ViewportWidth = 400;
-        view.ZoomFactor = 4;
+        view.ZoomFactor = 8;
         view.Measure(new Size(double.PositiveInfinity, 160));
-        Assert.That(view.DesiredSize.Width, Is.EqualTo(1600));
+        Assert.That(view.DesiredSize.Width, Is.EqualTo(3200));
         Assert.That(view.DesiredSize.Height, Is.EqualTo(160));
     }
 
@@ -53,18 +67,18 @@ public class WaveformViewTests
         var sought = TimeSpan.MinValue;
         var view = CreateView();
         view.ViewportWidth = 400;
-        view.ZoomFactor = 4;
+        view.ZoomFactor = 8;
         view.SeekCommand = new RelayCommand<object?>(value => sought = (TimeSpan)value!);
         view.Measure(new Size(double.PositiveInfinity, 160));
-        view.Arrange(new Rect(0, 0, 1600, 160));
+        view.Arrange(new Rect(0, 0, 3200, 160));
         using var source = new InMemoryPresentationSource { RootVisual = view };
 
         Assert.Multiple(() =>
         {
-            Assert.That(view.GetPositionAt(800), Is.EqualTo(TimeSpan.FromSeconds(5)));
+            Assert.That(view.GetPositionAt(1600), Is.EqualTo(TimeSpan.FromSeconds(5)));
             Assert.That(view.GetPositionAt(-10), Is.EqualTo(TimeSpan.Zero));
-            Assert.That(view.GetPositionAt(2000), Is.EqualTo(TimeSpan.FromSeconds(10)));
-            Assert.That(view.SeekAt(400), Is.True);
+            Assert.That(view.GetPositionAt(4000), Is.EqualTo(TimeSpan.FromSeconds(10)));
+            Assert.That(view.SeekAt(800), Is.True);
             Assert.That(sought, Is.EqualTo(TimeSpan.FromSeconds(2.5)));
             Assert.That(view.InputHitTest(new Point(300, 80)), Is.Not.Null);
         });

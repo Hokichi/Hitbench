@@ -150,9 +150,9 @@ public class SongsResponsiveLayoutTests
             Assert.Multiple(() =>
             {
                 Assert.That(window.HandleWindowMouseWheel(false, ModifierKeys.Control, 120), Is.False);
-                Assert.That(workstationViewModel.ZoomFactor, Is.EqualTo(1));
+                Assert.That(workstationViewModel.ZoomFactor, Is.EqualTo(8));
                 Assert.That(window.HandleWindowMouseWheel(true, ModifierKeys.Control, 120), Is.True);
-                Assert.That(workstationViewModel.ZoomFactor, Is.EqualTo(2));
+                Assert.That(workstationViewModel.ZoomFactor, Is.EqualTo(9));
                 Assert.That(window.HandleWindowMouseWheel(true, ModifierKeys.Alt, 120), Is.True);
                 Assert.That(workstationViewModel.SelectedSubdivisionIndex, Is.EqualTo(4));
                 Assert.That(window.HandleWindowMouseWheel(true, ModifierKeys.Shift, 120), Is.True);

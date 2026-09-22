@@ -26,7 +26,7 @@ public class WorkstationPageIntegrationTests
     public void SetUp() => EnsureResources();
 
     [Test]
-    public void LoadsWaveformSwitchesTransportIconAndFitsViewport()
+    public void LoadsWaveformSwitchesTransportIconAndKeepsMinimumZoomScrollable()
     {
         var audio = new StubWorkstationAudioService();
         var vm = new WorkstationPageVM(new StubWorkstationSourceService(), audio, new ImmediateUiScheduler());
@@ -45,17 +45,13 @@ public class WorkstationPageIntegrationTests
 
         var scroll = (ScrollViewer)page.FindName("WaveformScrollViewer");
         var waveform = (WaveformView)page.FindName("WaveformDisplay");
-        vm.ZoomInCommand.Execute(null);
-        view.UpdateLayout();
         Assert.That(waveform.DesiredSize.Width, Is.GreaterThan(scroll.ViewportWidth));
         scroll.ScrollToHorizontalOffset(50);
-        var fit = (BalloonButton)page.FindName("FitButton");
-        fit.Command.Execute(null);
-        fit.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
+        view.UpdateLayout();
         Assert.Multiple(() =>
         {
-            Assert.That(vm.ZoomFactor, Is.EqualTo(1));
-            Assert.That(scroll.HorizontalOffset, Is.Zero);
+            Assert.That(vm.ZoomFactor, Is.EqualTo(8));
+            Assert.That(scroll.HorizontalOffset, Is.EqualTo(50).Within(1));
         });
     }
 
@@ -257,8 +253,6 @@ public class WorkstationPageIntegrationTests
         page.SetProjectPath("project.json");
         using var view = new InMemoryView(new Window { Content = page, Width = 900, Height = 600 });
         UiTestPump.Run(page.LoadCompletion);
-        vm.ZoomDraft = "4";
-        vm.CommitZoomCommand.Execute(null);
         view.UpdateLayout();
 
         Assert.That(page.FindName("WaveformScrollBar"), Is.TypeOf<ScrollBar>());
@@ -300,12 +294,10 @@ public class WorkstationPageIntegrationTests
         view.UpdateLayout();
         Assert.That(scroll.HorizontalOffset, Is.Zero.Within(1));
 
-        vm.FitCommand.Execute(null);
-        view.UpdateLayout();
         Assert.Multiple(() =>
         {
             Assert.That(bar.Visibility, Is.EqualTo(Visibility.Visible));
-            Assert.That(bar.IsEnabled, Is.False);
+            Assert.That(bar.IsEnabled, Is.True);
             Assert.That(bar.Value, Is.Zero.Within(1));
         });
     }
@@ -360,56 +352,27 @@ public class WorkstationPageIntegrationTests
     }
 
     [Test]
-    public void ZoomEditorCommitsCancelsValidatesAndSelectorSynchronizes()
+    public void ZoomButtonsAndSelectorSynchronize()
     {
         var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new StubWorkstationAudioService(), new ImmediateUiScheduler());
         var page = new WorkstationPage(vm);
         page.SetProjectPath("project.json");
         var window = new Window { Content = page, Width = 900, Height = 600 };
         using var view = new InMemoryView(window);
-        using var source = new InMemoryPresentationSource();
         UiTestPump.Run(page.LoadCompletion);
         view.UpdateLayout();
 
-        var editor = (TextBox)page.FindName("ZoomEditor");
-        var validation = (TextBlock)page.FindName("ZoomValidationText");
+        var controls = (StackPanel)page.FindName("ZoomControls");
         var selector = (ComboBox)page.FindName("SubdivisionSelector");
-
-        editor.Text = "5";
-        editor.GetBindingExpression(TextBox.TextProperty)!.UpdateSource();
-        editor.RaiseEvent(CreateKeyEvent(source, Key.Enter));
+        var buttons = controls.Children.OfType<BalloonButton>().ToArray();
+        Assert.That(buttons.Length, Is.EqualTo(2));
+        Assert.That(AutomationProperties.GetName(buttons[0]), Is.EqualTo("Zoom waveform out"));
+        Assert.That(AutomationProperties.GetName(buttons[1]), Is.EqualTo("Zoom waveform in"));
+        Assert.That(buttons[0].IsEnabled, Is.False);
+        buttons[1].Command.Execute(null);
         view.UpdateLayout();
-        Assert.Multiple(() =>
-        {
-            Assert.That(vm.ZoomFactor, Is.EqualTo(5));
-            Assert.That(editor.Text, Is.EqualTo("5"));
-            Assert.That(AutomationProperties.GetName(editor), Is.EqualTo("Waveform zoom level"));
-            Assert.That(editor.IsEnabled, Is.True);
-        });
-
-        editor.Text = "bad";
-        editor.GetBindingExpression(TextBox.TextProperty)!.UpdateSource();
-        editor.RaiseEvent(new KeyboardFocusChangedEventArgs(Keyboard.PrimaryDevice, Environment.TickCount, editor, null)
-        {
-            RoutedEvent = Keyboard.LostKeyboardFocusEvent
-        });
-        view.UpdateLayout();
-        Assert.Multiple(() =>
-        {
-            Assert.That(vm.ZoomFactor, Is.EqualTo(5));
-            Assert.That(vm.HasZoomValidationError, Is.True);
-            Assert.That(validation.Text, Is.EqualTo("Enter a whole number from 1 to 16."));
-            Assert.That(validation.Visibility, Is.EqualTo(Visibility.Visible));
-        });
-
-        editor.RaiseEvent(CreateKeyEvent(source, Key.Escape));
-        view.UpdateLayout();
-        Assert.Multiple(() =>
-        {
-            Assert.That(editor.Text, Is.EqualTo("5"));
-            Assert.That(vm.HasZoomValidationError, Is.False);
-            Assert.That(validation.Visibility, Is.EqualTo(Visibility.Collapsed));
-        });
+        Assert.That(vm.ZoomFactor, Is.EqualTo(9));
+        Assert.That(buttons[0].IsEnabled, Is.True);
 
         selector.SelectedIndex = 8;
         selector.GetBindingExpression(Selector.SelectedIndexProperty)!.UpdateSource();
@@ -437,6 +400,9 @@ public class WorkstationPageIntegrationTests
         var waveform = (WaveformView)page.FindName("WaveformDisplay");
         double ScreenX() => vm.Position.TotalSeconds / vm.Waveform!.Duration.TotalSeconds
             * waveform.ActualWidth - scroll.HorizontalOffset;
+        scroll.ScrollToHorizontalOffset(vm.Position.TotalSeconds / vm.Waveform!.Duration.TotalSeconds
+            * waveform.ActualWidth - scroll.ViewportWidth / 2);
+        view.UpdateLayout();
         var before = ScreenX();
 
         vm.ZoomInCommand.Execute(null);
@@ -448,10 +414,6 @@ public class WorkstationPageIntegrationTests
             Assert.That(audio.Snapshot.Position, Is.EqualTo(TimeSpan.FromSeconds(6)));
         });
 
-        vm.ZoomDraft = "4";
-        vm.CommitZoomCommand.Execute(null);
-        view.UpdateLayout();
-        Assert.That(ScreenX(), Is.EqualTo(before).Within(1));
     }
 
     [Test]
@@ -471,8 +433,6 @@ public class WorkstationPageIntegrationTests
         double ScreenX() => vm.Position.TotalSeconds / vm.Waveform!.Duration.TotalSeconds
             * waveform.ActualWidth - scroll.HorizontalOffset;
 
-        vm.ZoomDraft = "4";
-        vm.CommitZoomCommand.Execute(null);
         view.UpdateLayout();
         scroll.ScrollToLeftEnd();
         vm.SeekCommand.Execute(TimeSpan.FromSeconds(8));
@@ -493,11 +453,15 @@ public class WorkstationPageIntegrationTests
         view.UpdateLayout();
         Assert.That(scroll.HorizontalOffset, Is.EqualTo(scroll.ScrollableWidth).Within(1));
 
-        vm.FitCommand.Execute(null);
+        for (var index = 0; index < 40; index++) vm.ZoomOutCommand.Execute(null);
         view.UpdateLayout();
-        Assert.That(scroll.HorizontalOffset, Is.Zero.Within(1));
+        Assert.That(vm.ZoomFactor, Is.EqualTo(8));
+        Assert.That(scroll.HorizontalOffset, Is.EqualTo(scroll.ScrollableWidth).Within(1));
 
         vm.SeekCommand.Execute(TimeSpan.FromSeconds(6));
+        scroll.ScrollToHorizontalOffset(vm.Position.TotalSeconds / vm.Waveform!.Duration.TotalSeconds
+            * waveform.ActualWidth - scroll.ViewportWidth / 2);
+        view.UpdateLayout();
         var before = ScreenX();
         vm.ZoomInCommand.Execute(null);
         vm.ZoomInCommand.Execute(null);
@@ -520,11 +484,11 @@ public class WorkstationPageIntegrationTests
         Assert.Multiple(() =>
         {
             Assert.That(page.HandleWaveformWheel(ModifierKeys.Control, 120), Is.True);
-            Assert.That(vm.ZoomFactor, Is.EqualTo(2));
+            Assert.That(vm.ZoomFactor, Is.EqualTo(9));
             Assert.That(page.HandleWaveformWheel(ModifierKeys.Control, 240), Is.True);
-            Assert.That(vm.ZoomFactor, Is.EqualTo(4));
+            Assert.That(vm.ZoomFactor, Is.EqualTo(11));
             Assert.That(page.HandleWaveformWheel(ModifierKeys.Control, -120), Is.True);
-            Assert.That(vm.ZoomFactor, Is.EqualTo(3));
+            Assert.That(vm.ZoomFactor, Is.EqualTo(10));
             Assert.That(page.HandleWaveformWheel(ModifierKeys.Alt, 120), Is.True);
             Assert.That(vm.SelectedSubdivisionIndex, Is.EqualTo(4));
             Assert.That(page.HandleWaveformWheel(ModifierKeys.Alt, -120), Is.True);
@@ -590,16 +554,16 @@ public class WorkstationPageIntegrationTests
         UiTestPump.Run(page.LoadCompletion);
 
         Assert.That(page.HandleWaveformWheel(ModifierKeys.Control, 60), Is.True);
-        Assert.That(vm.ZoomFactor, Is.EqualTo(1));
+        Assert.That(vm.ZoomFactor, Is.EqualTo(8));
         Assert.That(page.HandleWaveformWheel(ModifierKeys.Control, 60), Is.True);
-        Assert.That(vm.ZoomFactor, Is.EqualTo(2));
+        Assert.That(vm.ZoomFactor, Is.EqualTo(9));
 
         Assert.That(page.HandleWaveformWheel(ModifierKeys.Control, 60), Is.True);
         Assert.That(page.HandleWaveformWheel(ModifierKeys.Alt, 60), Is.True);
         Assert.That(page.HandleWaveformWheel(ModifierKeys.Alt, 60), Is.True);
         Assert.Multiple(() =>
         {
-            Assert.That(vm.ZoomFactor, Is.EqualTo(2));
+            Assert.That(vm.ZoomFactor, Is.EqualTo(9));
             Assert.That(vm.SelectedSubdivisionIndex, Is.EqualTo(4));
         });
 
@@ -609,10 +573,9 @@ public class WorkstationPageIntegrationTests
             Assert.That(page.HandleWaveformWheel(ModifierKeys.Control | ModifierKeys.Alt, 120), Is.False);
         });
 
-        vm.ZoomDraft = "16";
-        vm.CommitZoomCommand.Execute(null);
+        for (var index = 0; index < 40; index++) vm.ZoomInCommand.Execute(null);
         Assert.That(page.HandleWaveformWheel(ModifierKeys.Control, 120), Is.True);
-        Assert.That(vm.ZoomFactor, Is.EqualTo(16));
+        Assert.That(vm.ZoomFactor, Is.EqualTo(32));
         vm.SelectedSubdivisionIndex = 8;
         Assert.That(page.HandleWaveformWheel(ModifierKeys.Alt, 120), Is.True);
         Assert.That(vm.SelectedSubdivisionIndex, Is.EqualTo(8));
@@ -627,8 +590,6 @@ public class WorkstationPageIntegrationTests
         page.SetProjectPath("project.json");
         using var view = new InMemoryView(new Window { Content = page, Width = 900, Height = 600 });
         UiTestPump.Run(page.LoadCompletion);
-        vm.ZoomDraft = "4";
-        vm.CommitZoomCommand.Execute(null);
         view.UpdateLayout();
 
         var scroll = (ScrollViewer)page.FindName("WaveformScrollViewer");
@@ -667,7 +628,7 @@ public class WorkstationPageIntegrationTests
     [TestCase(640, 480, FlowDirection.RightToLeft, "Light")]
     [TestCase(900, 600, FlowDirection.LeftToRight, "Light")]
     [TestCase(900, 600, FlowDirection.RightToLeft, "Light")]
-    public void ZoomEditorStaysReachableAndReadableAcrossLayouts(
+    public void ZoomButtonsStayReachableAcrossLayouts(
         double width, double height, FlowDirection flowDirection, string theme)
     {
         EnsureResources(theme);
@@ -684,35 +645,33 @@ public class WorkstationPageIntegrationTests
             var window = new Window { Content = page, Width = width, Height = height, FlowDirection = flowDirection };
             using var view = new InMemoryView(window);
             UiTestPump.Run(page.LoadCompletion);
-            vm.ZoomDraft = "invalid";
-            vm.CommitZoomCommand.Execute(null);
             view.UpdateLayout();
 
-            var editor = (TextBox)page.FindName("ZoomEditor");
-            var validation = (TextBlock)page.FindName("ZoomValidationText");
             var selector = (ComboBox)page.FindName("SubdivisionSelector");
             var bar = (ScrollBar)page.FindName("WaveformScrollBar");
-            var zoomControls = (FrameworkElement)page.FindName("ZoomControls");
-            var bounds = editor.TransformToAncestor(page).TransformBounds(new Rect(editor.RenderSize));
+            var zoomControls = (StackPanel)page.FindName("ZoomControls");
+            var buttons = zoomControls.Children.OfType<BalloonButton>().ToArray();
             var barBounds = bar.TransformToAncestor(page).TransformBounds(new Rect(bar.RenderSize));
             var zoomBounds = zoomControls.TransformToAncestor(page).TransformBounds(new Rect(zoomControls.RenderSize));
             listener.Flush();
             Assert.Multiple(() =>
             {
-                Assert.That(AutomationProperties.GetName(editor), Is.EqualTo("Waveform zoom level"));
+                Assert.That(buttons.Length, Is.EqualTo(2));
                 Assert.That(AutomationProperties.GetName(selector), Is.EqualTo("Beat subdivision"));
-                Assert.That(bounds.Left, Is.GreaterThanOrEqualTo(0));
-                Assert.That(bounds.Right, Is.LessThanOrEqualTo(page.ActualWidth));
-                Assert.That(bounds.Top, Is.GreaterThanOrEqualTo(0));
-                Assert.That(bounds.Bottom, Is.LessThanOrEqualTo(page.ActualHeight));
+                foreach (var button in buttons)
+                {
+                    var bounds = button.TransformToAncestor(page).TransformBounds(new Rect(button.RenderSize));
+                    Assert.That(bounds.Left, Is.GreaterThanOrEqualTo(0));
+                    Assert.That(bounds.Right, Is.LessThanOrEqualTo(page.ActualWidth));
+                    Assert.That(bounds.Top, Is.GreaterThanOrEqualTo(0));
+                    Assert.That(bounds.Bottom, Is.LessThanOrEqualTo(page.ActualHeight));
+                    Assert.That(AutomationProperties.GetName(button), Is.Not.Empty);
+                }
                 Assert.That(barBounds.Left, Is.GreaterThanOrEqualTo(0));
                 Assert.That(Grid.GetColumn(bar), Is.EqualTo(0));
                 Assert.That(Grid.GetColumn(zoomControls), Is.EqualTo(1));
                 Assert.That(flowDirection == FlowDirection.RightToLeft || barBounds.Right <= zoomBounds.Left, Is.True);
                 Assert.That(bar.Visibility, Is.EqualTo(Visibility.Visible));
-                Assert.That(validation.Text, Is.EqualTo("Enter a whole number from 1 to 16."));
-                Assert.That(validation.TextWrapping, Is.EqualTo(TextWrapping.Wrap));
-                Assert.That(validation.ActualWidth, Is.LessThanOrEqualTo(240));
                 Assert.That(trace.ToString(), Is.Empty);
             });
         }
@@ -723,7 +682,7 @@ public class WorkstationPageIntegrationTests
     }
 
     [Test]
-    public void ZoomEditorIsDisabledWhileWaveformLoads()
+    public void ZoomButtonsAreDisabledWhileWaveformLoads()
     {
         var completion = new TaskCompletionSource<WorkstationSource>();
         var source = new StubWorkstationSourceService { Load = (_, _) => completion.Task };
@@ -734,19 +693,19 @@ public class WorkstationPageIntegrationTests
         using var view = new InMemoryView(window);
         view.UpdateLayout();
 
-        var editor = (TextBox)page.FindName("ZoomEditor");
+        var buttons = ((StackPanel)page.FindName("ZoomControls")).Children.OfType<BalloonButton>().ToArray();
         var scrollBar = (ScrollBar)page.FindName("WaveformScrollBar");
         Assert.Multiple(() =>
         {
             Assert.That(vm.IsLoading, Is.True);
-            Assert.That(editor.IsEnabled, Is.False);
+            Assert.That(buttons.All(button => !button.IsEnabled), Is.True);
             Assert.That(scrollBar.IsEnabled, Is.False);
         });
 
         completion.SetResult(new WorkstationSource("map.osu", "audio.wav", new ProjectData()));
         UiTestPump.Run(page.LoadCompletion);
         view.UpdateLayout();
-        Assert.That(editor.IsEnabled, Is.True);
+        Assert.That(buttons[1].IsEnabled, Is.True);
     }
 
     private static KeyEventArgs CreateKeyEvent(PresentationSource source, Key key) => new(
