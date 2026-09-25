@@ -1,9 +1,36 @@
 using osuHitsounder.Services;
+using osuHitsounder.Core.Entities;
 
 namespace osuHitsounder.Test.Services;
 
 public class BeatGridCalculatorTests
 {
+    [TestCase(300, 250, 500)]
+    [TestCase(500, 500, 750)]
+    [TestCase(999.9, 750, 1000)]
+    public void FindsContainingSubdivisionInterval(double position, double start, double end)
+    {
+        Assert.That(BeatGridCalculator.GetContainingInterval([0], [60], 4, position, 1000),
+            Is.EqualTo(new BeatInterval(start, end)));
+    }
+
+    [Test]
+    public void ContainingIntervalEndsAtTimingSegmentBoundary()
+    {
+        Assert.That(BeatGridCalculator.GetContainingInterval([0, 400], [60, 120], 4, 399, 2000),
+            Is.EqualTo(new BeatInterval(250, 400)));
+        Assert.That(BeatGridCalculator.GetContainingInterval([0, 400], [60, 120], 4, 400, 2000),
+            Is.EqualTo(new BeatInterval(400, 525)));
+    }
+
+    [TestCase(99)]
+    [TestCase(1000)]
+    [TestCase(double.NaN)]
+    public void RejectsPositionWithoutValidContainingInterval(double position)
+    {
+        Assert.That(BeatGridCalculator.GetContainingInterval([100], [60], 4, position, 1000), Is.Null);
+    }
+
     [TestCase(200, false, 125)]
     [TestCase(200, true, 250)]
     [TestCase(250, false, 125)]

@@ -6,6 +6,35 @@ public static class BeatGridCalculator
 {
     private static readonly HashSet<int> Supported = [1, 2, 3, 4, 5, 6, 8, 12, 16];
 
+    public static BeatInterval? GetContainingInterval(IReadOnlyList<int> offsets, IReadOnlyList<int> bpms,
+        int subdivision, double positionMilliseconds, double durationMilliseconds)
+    {
+        if (offsets.Count == 0 || offsets.Count != bpms.Count || !Supported.Contains(subdivision) ||
+            bpms.Any(bpm => bpm <= 0) || !double.IsFinite(positionMilliseconds) ||
+            !double.IsFinite(durationMilliseconds) || durationMilliseconds <= 0 ||
+            positionMilliseconds < 0 || positionMilliseconds >= durationMilliseconds) return null;
+
+        var segments = offsets.Select((offset, index) => (Offset: offset, Bpm: bpms[index], Index: index))
+            .OrderBy(item => item.Offset).ThenBy(item => item.Index)
+            .GroupBy(item => item.Offset).Select(group => group.Last()).ToArray();
+        var segmentIndex = Array.FindLastIndex(segments, segment => segment.Offset <= positionMilliseconds);
+        if (segmentIndex < 0) return null;
+        var segment = segments[segmentIndex];
+        var interval = 60000d / segment.Bpm / subdivision;
+        if (!double.IsFinite(interval) || interval <= 0) return null;
+        var relative = (positionMilliseconds - segment.Offset) / interval;
+        var nearest = Math.Round(relative);
+        var tick = Math.Abs(relative - nearest) < 1e-9 ? nearest : Math.Floor(relative);
+        var start = segment.Offset + tick * interval;
+        var segmentEnd = segmentIndex + 1 < segments.Length
+            ? Math.Min(durationMilliseconds, segments[segmentIndex + 1].Offset)
+            : durationMilliseconds;
+        var end = Math.Min(segment.Offset + (tick + 1) * interval, segmentEnd);
+        if (!double.IsFinite(start) || !double.IsFinite(end) || start < 0 || end <= start ||
+            positionMilliseconds < start || positionMilliseconds >= end) return null;
+        return new BeatInterval(start, end);
+    }
+
     public static TimeSpan? GetAdjacentPosition(IReadOnlyList<int> offsets, IReadOnlyList<int> bpms,
         int subdivision, TimeSpan position, TimeSpan duration, bool forward)
     {
