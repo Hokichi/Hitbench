@@ -4,5 +4,5 @@ public class Sample
 {
     public string FileName { get; set; } = string.Empty;
     public int Volume { get; set; }
-    public List<int> Timestamps { get; set; } = [];
+    public int Timestamp { get; set; }
 }
