@@ -168,28 +168,13 @@ public partial class WorkstationPage : UserControl
             viewModel.SetTrackVolume(track, (int)Math.Round(e.NewValue));
     }
 
-    private async void OnLoadSampleClick(object sender, RoutedEventArgs e)
-    {
-        if (sender is not FrameworkElement { DataContext: Track track }) return;
-        var name = await viewModel.ImportSampleAsync(track);
-        if (name is null || !IsLoaded || !viewModel.Tracks.Contains(track)) return;
-        var container = ItemsControl.ContainerFromElement(TrackList, (DependencyObject)sender) as ListBoxItem;
-        if (container?.DataContext != track) return;
-        var selector = FindVisualChild<ComboBox>(container);
-        if (selector is not null)
-        {
-            selector.SelectedItem = name;
-            UpdateMissingSampleCue(selector, track);
-        }
-    }
-
     private void UpdateMissingSampleCue(ComboBox selector, Track track)
     {
         var container = ItemsControl.ContainerFromElement(TrackList, selector) as ListBoxItem;
         var cue = container is null ? null : FindVisualChild<TextBlock>(container, "MissingSampleText");
         if (cue is null) return;
         var selected = track.Samples.FirstOrDefault()?.FileName;
-        cue.Text = selected is null ? "No sample selected. Use Load Sample."
+        cue.Text = selected is null ? "No sample selected. Use Load Sample in the header."
             : viewModel.SampleFiles.Any(name => string.Equals(name, selected, StringComparison.OrdinalIgnoreCase))
                 ? string.Empty : $"Missing sample: {selected}";
         cue.Visibility = cue.Text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;

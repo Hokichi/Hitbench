@@ -144,14 +144,19 @@
                     Style="{StaticResource MainWindowTitleStyle}"
                     Text="osuHitsounder" />
                 <StackPanel x:Name="WorkstationActions" Grid.Column="1" Orientation="Horizontal" Visibility="Collapsed">
-                    <customControls:BalloonButton AutomationProperties.Name="Add sample track" ButtonIcon="{StaticResource PlusSolid}"
-                        ButtonText="Sample Track" Click="OnAddSampleTrackClick" ShouldShowText="True"
-                        IsEnabled="{Binding ElementName=PageHost, Path=Content.DataContext.CanEditTracks, Mode=OneWay}"
+                    <customControls:BalloonButton AutomationProperties.Name="Load sample" ButtonIcon="{StaticResource PlusSolid}"
+                        ButtonText="Load Sample" Click="OnLoadSampleClick" ShouldShowText="True"
+                        IsEnabled="{Binding ElementName=PageHost, Path=Content.DataContext.CanImportSample, Mode=OneWay}"
                         Style="{StaticResource OHsBalloonNeutralActionStyle}" />
-                    <customControls:BalloonButton Margin="8,0,0,0" AutomationProperties.Name="Add piano track" ButtonIcon="{StaticResource PlusSolid}"
-                        ButtonText="Piano Track" Click="OnAddPianoTrackClick" ShouldShowText="True"
-                        ToolTip="Piano track creation is coming later"
-                        AutomationProperties.HelpText="Track creation is not implemented yet."
+                    <customControls:BalloonButton Margin="8,0,0,0" AutomationProperties.Name="Add sample track" ButtonIcon="{StaticResource PlusSolid}"
+                        ButtonText="Sample Track" Click="OnAddSampleTrackClick" ShouldShowText="True"
+                        IsEnabled="{Binding ElementName=PageHost, Path=Content.DataContext.CanAddTrack, Mode=OneWay}"
+                        Style="{StaticResource OHsBalloonNeutralActionStyle}" />
+                    <customControls:BalloonButton Margin="8,0,0,0" AutomationProperties.Name="Add instrumental track" ButtonIcon="{StaticResource PlusSolid}"
+                        ButtonText="Instrumental Track" Click="OnAddPianoTrackClick" ShouldShowText="True"
+                        IsEnabled="{Binding ElementName=PageHost, Path=Content.DataContext.CanAddTrack, Mode=OneWay}"
+                        ToolTip="Instrumental track creation is coming later"
+                        AutomationProperties.HelpText="Instrumental track creation is not implemented yet."
                         Style="{StaticResource OHsBalloonNeutralActionStyle}" />
                 </StackPanel>
                 <StackPanel Grid.Column="2" Orientation="Horizontal">

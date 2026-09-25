@@ -329,6 +329,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
         if (WindowState == WindowState.Normal) DragMove();
     }
 
+    private void OnLoadSampleClick(object sender, RoutedEventArgs e) => messenger.Send(new LoadSampleRequestedMessage());
     private void OnAddSampleTrackClick(object sender, RoutedEventArgs e) => messenger.Send(new AddSampleTrackRequestedMessage());
     private void OnAddPianoTrackClick(object sender, RoutedEventArgs e) => messenger.Send(new AddPianoTrackRequestedMessage());
 

@@ -38,7 +38,9 @@ public partial class WorkstationPageVM(
     public ObservableCollection<string> SampleFiles => availableSamples;
     public int Subdivision => new[] { 1, 2, 3, 4, 5, 6, 8, 12, 16 }[SelectedSubdivisionIndex];
     public bool CanEditTracks => Project is not null && !IsLoading && !deactivated;
-    public bool CanImportSample => CanEditTracks && !importBusy && !removalBusy;
+    public bool CanImportSample => CanEditTracks && !importBusy && !removalBusy &&
+        sampleFiles is not null && sampleDialog is not null && projectPath is not null;
+    public bool CanAddTrack => CanEditTracks && availableSamples.Count > 0;
     public bool CanRemoveTrack => CanEditTracks && !importBusy && !removalBusy && trackRemovalDialog is not null;
     public bool HasPendingSaves => importBusy || removalBusy || !saveTail.IsCompleted || lastSaveError is not null;
     [ObservableProperty] private string? saveError;
@@ -209,10 +211,10 @@ public partial class WorkstationPageVM(
         SelectedSubdivisionIndex--;
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanAddTrack))]
     private void AddSampleTrack()
     {
-        if (!CanEditTracks) return;
+        if (!CanAddTrack) return;
         var track = new Track();
         if (availableSamples.Count > 0) track.Samples.Add(new Sample { FileName = availableSamples[0] });
         Project!.Tracks.Add(track);
@@ -220,7 +222,7 @@ public partial class WorkstationPageVM(
         QueueSave();
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanAddTrack))]
     private static void AddPianoTrack() { }
 
     [RelayCommand]
@@ -275,27 +277,35 @@ public partial class WorkstationPageVM(
         QueueSave();
     }
 
-    public Task<string?> ImportSampleAsync(Track track)
+    [RelayCommand(CanExecute = nameof(CanImportSample))]
+    private Task LoadSampleAsync() => ImportSampleAsync();
+
+    public Task<string?> ImportSampleAsync()
     {
-        if (!CanImportSample || !tracks.Contains(track) || sampleDialog is null || sampleFiles is null)
+        if (!CanImportSample || sampleDialog is null || sampleFiles is null || projectPath is null)
             return Task.FromResult<string?>(null);
+        var generation = loadGeneration;
+        var project = Project;
+        var path = projectPath;
+        var token = loadCancellation?.Token ?? CancellationToken.None;
         importBusy = true;
-        OnPropertyChanged(nameof(CanImportSample));
-        OnPropertyChanged(nameof(CanRemoveTrack));
-        activeImport = ImportSampleCoreAsync(track);
+        NotifyEditingState();
+        activeImport = ImportSampleCoreAsync(path, project, generation, token);
         return activeImport;
     }
 
-    private async Task<string?> ImportSampleCoreAsync(Track track)
+    private async Task<string?> ImportSampleCoreAsync(string path, ProjectData? project, int generation,
+        CancellationToken token)
     {
         try
         {
-            var source = await sampleDialog!.SelectAsync(loadCancellation?.Token ?? CancellationToken.None);
-            if (source is null || !tracks.Contains(track) || deactivated) return null;
-            var name = await sampleFiles!.ImportAsync(projectPath!, source, loadCancellation?.Token ?? CancellationToken.None);
-            var choices = await sampleFiles.ListAsync(projectPath!, loadCancellation?.Token ?? CancellationToken.None);
-            RefreshAvailableSamples(choices);
-            SelectSample(track, name);
+            var source = await sampleDialog!.SelectAsync(token);
+            if (source is null || !IsCurrentProject(path, project, generation)) return null;
+            var name = await sampleFiles!.ImportAsync(path, source, token);
+            if (!IsCurrentProject(path, project, generation)) return null;
+            var choices = await sampleFiles.ListAsync(path, token);
+            if (!IsCurrentProject(path, project, generation)) return null;
+            await CommitAsync(generation, token, () => RefreshAvailableSamples(choices));
             return name;
         }
         catch (OperationCanceledException) { return null; }
@@ -303,10 +313,12 @@ public partial class WorkstationPageVM(
         finally
         {
             importBusy = false;
-            OnPropertyChanged(nameof(CanImportSample));
-            OnPropertyChanged(nameof(CanRemoveTrack));
+            NotifyEditingState();
         }
     }
+
+    private bool IsCurrentProject(string path, ProjectData? project, int generation) =>
+        !deactivated && generation == loadGeneration && projectPath == path && ReferenceEquals(Project, project);
 
     public async Task FlushSavesAsync()
     {
@@ -336,6 +348,9 @@ public partial class WorkstationPageVM(
             else availableSamples.Insert(index, choices[index]);
         }
         while (availableSamples.Count > choices.Count) availableSamples.RemoveAt(availableSamples.Count - 1);
+        OnPropertyChanged(nameof(CanAddTrack));
+        AddSampleTrackCommand.NotifyCanExecuteChanged();
+        AddPianoTrackCommand.NotifyCanExecuteChanged();
     }
 
     private async Task SaveSnapshotAsync(Task previous, string path, string json)
@@ -383,6 +398,7 @@ public partial class WorkstationPageVM(
                     messenger.UnregisterAll(this);
                     messenger.Register<AddSampleTrackRequestedMessage>(this, (_, _) => AddSampleTrackCommand.Execute(null));
                     messenger.Register<AddPianoTrackRequestedMessage>(this, (_, _) => AddPianoTrackCommand.Execute(null));
+                    messenger.Register<LoadSampleRequestedMessage>(this, (_, _) => LoadSampleCommand.Execute(null));
                 }
             });
             if (sampleFiles is not null)
@@ -405,8 +421,7 @@ public partial class WorkstationPageVM(
             {
                 IsLoading = false;
                 OnPropertyChanged(nameof(CanEditTracks));
-                OnPropertyChanged(nameof(CanImportSample));
-                OnPropertyChanged(nameof(CanRemoveTrack));
+                NotifyEditingState();
                 NotifyCommandState();
             });
         }
@@ -448,7 +463,19 @@ public partial class WorkstationPageVM(
         PreviousWholeBeatCommand.NotifyCanExecuteChanged();
         ZoomInCommand.NotifyCanExecuteChanged();
         ZoomOutCommand.NotifyCanExecuteChanged();
+        AddSampleTrackCommand.NotifyCanExecuteChanged();
+        AddPianoTrackCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(CanPlay));
         OnPropertyChanged(nameof(CanZoom));
+    }
+
+    private void NotifyEditingState()
+    {
+        OnPropertyChanged(nameof(CanImportSample));
+        OnPropertyChanged(nameof(CanAddTrack));
+        OnPropertyChanged(nameof(CanRemoveTrack));
+        LoadSampleCommand.NotifyCanExecuteChanged();
+        AddSampleTrackCommand.NotifyCanExecuteChanged();
+        AddPianoTrackCommand.NotifyCanExecuteChanged();
     }
 }

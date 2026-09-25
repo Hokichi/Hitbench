@@ -147,7 +147,8 @@ public class WorkstationPageIntegrationTests
     [Test]
     public void ExposesTrackListFooterAndAccessibleViewport()
     {
-        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new StubWorkstationAudioService(), new ImmediateUiScheduler());
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new StubWorkstationAudioService(),
+            new ImmediateUiScheduler(), new StubSampleFileService(["a.wav"]));
         var page = new WorkstationPage(vm);
         page.SetProjectPath("project.json");
         var window = new Window { Content = page, Width = 640, Height = 480, FlowDirection = FlowDirection.RightToLeft };
@@ -167,7 +168,8 @@ public class WorkstationPageIntegrationTests
     [TestCase(FlowDirection.RightToLeft)]
     public void AddedTrackCardUsesWaveformViewportAndOffset(FlowDirection direction)
     {
-        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new StubWorkstationAudioService(), new ImmediateUiScheduler());
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new StubWorkstationAudioService(),
+            new ImmediateUiScheduler(), new StubSampleFileService(["a.wav"]));
         var page = new WorkstationPage(vm);
         page.SetProjectPath("project.json");
         var window = new Window { Content = page, Width = 880, Height = 600, FlowDirection = direction };
@@ -192,7 +194,8 @@ public class WorkstationPageIntegrationTests
     [Test]
     public void ReusedCardControlsReadCurrentTrackWithoutEditingPreviousTrack()
     {
-        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new StubWorkstationAudioService(), new ImmediateUiScheduler());
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new StubWorkstationAudioService(),
+            new ImmediateUiScheduler(), new StubSampleFileService(["a.wav"]));
         var page = new WorkstationPage(vm);
         page.SetProjectPath("project.json");
         var window = new Window { Content = page, Width = 880, Height = 600 };
@@ -244,7 +247,7 @@ public class WorkstationPageIntegrationTests
             var otherCard = (ListBoxItem)list.ItemContainerGenerator.ContainerFromIndex(1)!;
             var selector = FindVisualChild<ComboBox>(otherCard)!;
             Assert.That(selector.SelectedItem, Is.EqualTo("a.wav"));
-            UiTestPump.Run(vm.ImportSampleAsync(vm.Tracks[0]));
+            UiTestPump.Run(vm.ImportSampleAsync());
             view.UpdateLayout();
             Assert.That(selector.SelectedItem, Is.EqualTo("a.wav"));
             UiTestPump.Run(vm.FlushSavesAsync());
@@ -255,7 +258,8 @@ public class WorkstationPageIntegrationTests
     [Test]
     public void ManyTracksKeepOnlyViewportCardsRealized()
     {
-        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new StubWorkstationAudioService(), new ImmediateUiScheduler());
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new StubWorkstationAudioService(),
+            new ImmediateUiScheduler(), new StubSampleFileService(["a.wav"]));
         var page = new WorkstationPage(vm);
         page.SetProjectPath("project.json");
         var window = new Window { Content = page, Width = 880, Height = 600 };
@@ -293,7 +297,8 @@ public class WorkstationPageIntegrationTests
     [Test]
     public void TrackGridFollowsWaveformZoomAndScroll()
     {
-        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new StubWorkstationAudioService(), new ImmediateUiScheduler());
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new StubWorkstationAudioService(),
+            new ImmediateUiScheduler(), new StubSampleFileService(["a.wav"]));
         var page = new WorkstationPage(vm);
         page.SetProjectPath("project.json");
         var window = new Window { Content = page, Width = 880, Height = 600 };

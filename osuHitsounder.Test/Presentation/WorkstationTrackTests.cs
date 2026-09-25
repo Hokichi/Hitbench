@@ -10,6 +10,49 @@ namespace osuHitsounder.Test.Presentation;
 public class WorkstationTrackTests
 {
     [Test]
+    public async Task ImportIsUnavailableWithoutRequiredServices()
+    {
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(),
+            new StubWorkstationAudioService(), new ImmediateUiScheduler());
+
+        await vm.LoadAsync("project.json", CancellationToken.None);
+
+        Assert.That(vm.CanImportSample, Is.False);
+        Assert.That(vm.LoadSampleCommand.CanExecute(null), Is.False);
+        await vm.DeactivateAsync();
+    }
+
+    [Test]
+    public async Task EmptyProjectCanImportFirstSampleBeforeAddingTrack()
+    {
+        var root = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N")));
+        try
+        {
+            var projectPath = Path.Combine(root.FullName, "project.json");
+            await File.WriteAllTextAsync(projectPath, "{}");
+            var sourcePath = Path.Combine(root.FullName, "kick.wav");
+            await File.WriteAllBytesAsync(sourcePath, [1, 2, 3]);
+            var vm = new WorkstationPageVM(new StubWorkstationSourceService(),
+                new StubWorkstationAudioService(), new ImmediateUiScheduler(), new SampleFileService(),
+                new StubSampleFileDialogService(sourcePath));
+
+            await vm.LoadAsync(projectPath, CancellationToken.None);
+            Assert.That(vm.CanAddTrack, Is.False);
+            Assert.That(vm.AddSampleTrackCommand.CanExecute(null), Is.False);
+
+            Assert.That(await vm.ImportSampleAsync(), Is.EqualTo("kick.wav"));
+            Assert.That(vm.SampleFiles, Is.EqualTo(new[] { "kick.wav" }));
+            Assert.That(vm.Tracks, Is.Empty);
+            Assert.That(vm.CanAddTrack, Is.True);
+
+            vm.AddSampleTrackCommand.Execute(null);
+            Assert.That(vm.Tracks.Single().Samples.Single().FileName, Is.EqualTo("kick.wav"));
+            await vm.DeactivateAsync();
+        }
+        finally { Directory.Delete(root.FullName, true); }
+    }
+
+    [Test]
     public async Task ConfirmedRemovalDeletesOnlyChosenTrackAndPersistsSnapshot()
     {
         var first = new Track { Samples = [new Sample { FileName = "a.wav", Timestamps = [125] }] };
@@ -249,7 +292,8 @@ public class WorkstationTrackTests
             vm.AddSampleTrackCommand.Execute(null);
             var track = vm.Tracks.Single();
             Assert.That(track.Samples.Single().FileName, Is.EqualTo("a.wav"));
-            Assert.That(await vm.ImportSampleAsync(track), Is.EqualTo("b.mp3"));
+            Assert.That(await vm.ImportSampleAsync(), Is.EqualTo("b.mp3"));
+            vm.SelectSample(track, "b.mp3");
             vm.SetTrackVolume(track, 70);
             await vm.FlushSavesAsync();
             var restored = ProjectDataSerializer.Deserialize(await File.ReadAllTextAsync(projectPath));
@@ -266,7 +310,8 @@ public class WorkstationTrackTests
     {
         var saves = new DelayedProjectFileService();
         var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new StubWorkstationAudioService(),
-            new ImmediateUiScheduler(), null, null, saves, new WeakReferenceMessenger());
+            new ImmediateUiScheduler(), new StubSampleFileService(["a.wav"]), null, saves,
+            new WeakReferenceMessenger());
         await vm.LoadAsync("project.json", CancellationToken.None);
         vm.AddSampleTrackCommand.Execute(null);
         Assert.That(saves.FirstWriteStarted, Is.True);
@@ -286,7 +331,7 @@ public class WorkstationTrackTests
     {
         var messenger = new WeakReferenceMessenger();
         var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new StubWorkstationAudioService(),
-            new ImmediateUiScheduler(), null, null, null, messenger);
+            new ImmediateUiScheduler(), new StubSampleFileService(["a.wav"]), null, null, messenger);
         await vm.LoadAsync("project.json", CancellationToken.None);
         messenger.Send(new AddSampleTrackRequestedMessage());
         Assert.That(vm.Tracks, Has.Count.EqualTo(1));
@@ -300,7 +345,8 @@ public class WorkstationTrackTests
     {
         var saves = new FailOnceProjectFileService();
         var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new StubWorkstationAudioService(),
-            new ImmediateUiScheduler(), null, null, saves, new WeakReferenceMessenger());
+            new ImmediateUiScheduler(), new StubSampleFileService(["a.wav"]), null, saves,
+            new WeakReferenceMessenger());
         await vm.LoadAsync("project.json", CancellationToken.None);
         vm.AddSampleTrackCommand.Execute(null);
         Assert.CatchAsync<IOException>(() => vm.FlushSavesAsync());
