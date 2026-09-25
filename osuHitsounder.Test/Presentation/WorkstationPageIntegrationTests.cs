@@ -320,6 +320,34 @@ public class WorkstationPageIntegrationTests
         Assert.That(grid.HorizontalOffset, Is.EqualTo(scroll.HorizontalOffset));
     }
 
+    [Test]
+    public void TrackGridPlacementAddsSampleFromCurrentTrackControls()
+    {
+        var project = new ProjectData { Offsets = [0], BPMs = [60] };
+        var source = new StubWorkstationSourceService
+        {
+            Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav", project))
+        };
+        var vm = new WorkstationPageVM(source, new StubWorkstationAudioService(),
+            new ImmediateUiScheduler(), new StubSampleFileService(["kick.wav"]));
+        var page = new WorkstationPage(vm);
+        page.SetProjectPath("project.json");
+        using var view = new InMemoryView(new Window { Content = page, Width = 880, Height = 600 });
+        UiTestPump.Run(page.LoadCompletion);
+        vm.AddSampleTrackCommand.Execute(null);
+        view.UpdateLayout();
+        var list = (ItemsControl)page.FindName("TrackList");
+        var card = (FrameworkElement)list.ItemContainerGenerator.ContainerFromIndex(0)!;
+        var grid = FindVisualChild<BeatGridView>(card)!;
+
+        grid.UpdatePointerPosition(10);
+        Assert.That(grid.RequestSamplePlacement(), Is.True);
+
+        Assert.That(vm.Tracks.Single().Samples, Has.Count.EqualTo(1));
+        Assert.That(vm.Tracks.Single().Samples.Single().FileName, Is.EqualTo("kick.wav"));
+        Assert.That(vm.Tracks.Single().Samples.Single().Timestamp, Is.EqualTo(0));
+    }
+
     private static IEnumerable<T> FindVisualChildren<T>(DependencyObject root) where T : DependencyObject
     {
         if (root is T match) yield return match;

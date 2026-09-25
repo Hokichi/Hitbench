@@ -237,7 +237,17 @@
                     </WrapPanel>
                     <Border Grid.Row="1" Style="{StaticResource OHsWorkstationTimelineStyle}">
                         <customControls:BeatGridView
+                            AutomationProperties.Name="Track sample placement timeline"
+                            AutomationProperties.HelpText="Use Left and Right to choose a beat interval, then Enter to place the selected sample."
                             Height="{Binding DataContext.TrackHeight, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
+                            CanPlaceSamples="{Binding DataContext.CanPlaceSamples, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
+                            FocusBrush="{DynamicResource Brush.Border.Focus}"
+                            HoverBrush="{DynamicResource Brush.Background.Hover}"
+                            MarkerBrush="{DynamicResource Brush.Border.Strong}"
+                            PressedBrush="{DynamicResource Brush.Navy}"
+                            Samples="{Binding Samples, Mode=OneWay}"
+                            SamplesRevision="{Binding DataContext.SamplesRevision, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
+                            SamplePlacementRequested="OnSamplePlacementRequested"
                             Offsets="{Binding DataContext.Project.Offsets, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
                             Bpms="{Binding DataContext.Project.BPMs, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
                             Subdivision="{Binding DataContext.Subdivision, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"

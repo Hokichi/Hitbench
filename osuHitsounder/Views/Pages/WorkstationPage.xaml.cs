@@ -169,6 +169,13 @@ public partial class WorkstationPage : UserControl
             viewModel.SetTrackVolume(track, (int)Math.Round(e.NewValue));
     }
 
+    private void OnSamplePlacementRequested(object sender, SamplePlacementRequestedEventArgs e)
+    {
+        if (sender is BeatGridView { DataContext: Track track })
+            viewModel.PlaceSample(track, e.LeftBoundaryMilliseconds);
+        e.Handled = true;
+    }
+
     private void UpdateMissingSampleCue(ComboBox selector, Track track)
     {
         var container = ItemsControl.ContainerFromElement(TrackList, selector) as FrameworkElement;
@@ -300,7 +307,7 @@ public partial class WorkstationPage : UserControl
         var actionFocused = false;
         for (var current = origin; current is not null; current = GetInputParent(current))
         {
-            if (current is ComboBox or RangeBase) return true;
+            if (current is ComboBox or RangeBase or BeatGridView) return true;
             if (current is ButtonBase) actionFocused = true;
             if (current is Selector or ListBoxItem) return !actionFocused;
         }
