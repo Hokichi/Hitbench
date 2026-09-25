@@ -1,4 +1,7 @@
-<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:customControls="clr-namespace:osuHitsounder.Resources.CustomControls">
     <Style x:Key="BaseSliderStyle" TargetType="Slider">
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="FocusVisualStyle" Value="{StaticResource DefaultFocusVisualStyle}" />
@@ -8,5 +11,97 @@
                 <Setter Property="Opacity" Value="0.4" />
             </Trigger>
         </Style.Triggers>
+    </Style>
+
+    <ControlTemplate x:Key="OHsValueSliderDecreaseTemplate" TargetType="RepeatButton">
+        <Border Height="6" VerticalAlignment="Center" Background="{TemplateBinding Background}" CornerRadius="3" />
+    </ControlTemplate>
+    <ControlTemplate x:Key="OHsValueSliderIncreaseTemplate" TargetType="RepeatButton">
+        <Border Height="6" VerticalAlignment="Center" Background="{TemplateBinding Background}" CornerRadius="3" />
+    </ControlTemplate>
+    <ControlTemplate x:Key="OHsValueSliderThumbTemplate" TargetType="Thumb">
+        <Ellipse
+            Fill="{TemplateBinding Background}"
+            Stroke="{TemplateBinding BorderBrush}"
+            StrokeThickness="{TemplateBinding BorderThickness}" />
+    </ControlTemplate>
+    <Style x:Key="OHsValueSliderDecreaseStyle" BasedOn="{StaticResource BaseRepeatButtonStyle}" TargetType="RepeatButton">
+        <Setter Property="Background" Value="{DynamicResource Brush.Navy}" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="Template" Value="{StaticResource OHsValueSliderDecreaseTemplate}" />
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True"><Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" /></DataTrigger>
+        </Style.Triggers>
+    </Style>
+    <Style x:Key="OHsValueSliderIncreaseStyle" BasedOn="{StaticResource BaseRepeatButtonStyle}" TargetType="RepeatButton">
+        <Setter Property="Background" Value="{DynamicResource Brush.Background.Deepened}" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="Template" Value="{StaticResource OHsValueSliderIncreaseTemplate}" />
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True"><Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" /></DataTrigger>
+        </Style.Triggers>
+    </Style>
+    <Style x:Key="OHsValueSliderThumbStyle" BasedOn="{StaticResource BaseThumbStyle}" TargetType="Thumb">
+        <Setter Property="Width" Value="16" />
+        <Setter Property="Height" Value="16" />
+        <Setter Property="Background" Value="{DynamicResource Brush.Navy}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Default}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template" Value="{StaticResource OHsValueSliderThumbTemplate}" />
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{DynamicResource Brush.Navy.Muted}" /></Trigger>
+            <Trigger Property="IsDragging" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Focus}" /><Setter Property="BorderThickness" Value="2" /></Trigger>
+            <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True"><Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" /><Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" /></DataTrigger>
+        </Style.Triggers>
+    </Style>
+    <ControlTemplate x:Key="OHsValueSliderTemplate" TargetType="customControls:ValueSlider">
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <Border x:Name="FocusBorder" Margin="1" Padding="3" BorderBrush="Transparent" BorderThickness="1" CornerRadius="10">
+                <Track
+                    x:Name="PART_Track"
+                    IsDirectionReversed="{TemplateBinding IsDirectionReversed}"
+                    Maximum="{TemplateBinding Maximum}"
+                    Minimum="{TemplateBinding Minimum}"
+                    Orientation="Horizontal"
+                    Value="{TemplateBinding Value}">
+                    <Track.DecreaseRepeatButton>
+                        <RepeatButton Command="Slider.DecreaseLarge" Style="{StaticResource OHsValueSliderDecreaseStyle}" />
+                    </Track.DecreaseRepeatButton>
+                    <Track.IncreaseRepeatButton>
+                        <RepeatButton Command="Slider.IncreaseLarge" Style="{StaticResource OHsValueSliderIncreaseStyle}" />
+                    </Track.IncreaseRepeatButton>
+                    <Track.Thumb>
+                        <Thumb Style="{StaticResource OHsValueSliderThumbStyle}" />
+                    </Track.Thumb>
+                </Track>
+            </Border>
+            <TextBlock x:Name="DisplayText"
+                Grid.Column="1"
+                MinWidth="24"
+                Margin="8,0,0,0"
+                VerticalAlignment="Center"
+                Focusable="False"
+                Foreground="{DynamicResource Brush.Text.Primary}"
+                Style="{StaticResource BaseTextBlockStyle}"
+                Text="{TemplateBinding DisplayText}"
+                TextAlignment="Right" />
+        </Grid>
+        <ControlTemplate.Triggers>
+            <Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter TargetName="FocusBorder" Property="BorderBrush" Value="{DynamicResource Brush.Border.Focus}" /></Trigger>
+            <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True"><Setter TargetName="DisplayText" Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" /></DataTrigger>
+            <MultiDataTrigger>
+                <MultiDataTrigger.Conditions><Condition Binding="{Binding IsKeyboardFocusWithin, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}" Value="True" /><Condition Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True" /></MultiDataTrigger.Conditions>
+                <Setter TargetName="FocusBorder" Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
+            </MultiDataTrigger>
+        </ControlTemplate.Triggers>
+    </ControlTemplate>
+    <Style x:Key="OHsValueSliderStyle" BasedOn="{StaticResource BaseSliderStyle}" TargetType="customControls:ValueSlider">
+        <Setter Property="MinHeight" Value="28" />
+        <Setter Property="Template" Value="{StaticResource OHsValueSliderTemplate}" />
     </Style>
 </ResourceDictionary>
