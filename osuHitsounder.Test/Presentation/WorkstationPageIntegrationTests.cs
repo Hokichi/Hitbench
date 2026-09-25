@@ -139,7 +139,7 @@ public class WorkstationPageIntegrationTests
         view.UpdateLayout();
         Assert.Multiple(() =>
         {
-            Assert.That(vm.ZoomFactor, Is.EqualTo(8));
+            Assert.That(vm.ZoomFactor, Is.EqualTo(16));
             Assert.That(scroll.HorizontalOffset, Is.EqualTo(50).Within(1));
         });
     }
@@ -210,11 +210,12 @@ public class WorkstationPageIntegrationTests
         view.UpdateLayout();
         var list = (ListBox)page.FindName("TrackList");
         var card = (ListBoxItem)list.ItemContainerGenerator.ContainerFromIndex(0)!;
-        var slider = FindVisualChild<Slider>(card)!;
+        var slider = FindVisualChild<ValueSlider>(card)!;
         slider.DataContext = second;
         Assert.Multiple(() =>
         {
             Assert.That(slider.Value, Is.EqualTo(80));
+            Assert.That(slider.DisplayText, Is.EqualTo("80"));
             Assert.That(first.Volume, Is.EqualTo(20));
             Assert.That(second.Volume, Is.EqualTo(80));
         });
@@ -419,7 +420,7 @@ public class WorkstationPageIntegrationTests
     }
 
     [Test]
-    public void SubdivisionSelectorIsTransparentAccessibleAndHasNoPlaybackEffect()
+    public void SubdivisionSliderIsAccessibleAndHasNoPlaybackEffect()
     {
         var audio = new StubWorkstationAudioService();
         var vm = new WorkstationPageVM(new StubWorkstationSourceService(), audio, new ImmediateUiScheduler());
@@ -430,18 +431,18 @@ public class WorkstationPageIntegrationTests
         UiTestPump.Run(page.LoadCompletion);
         view.UpdateLayout();
 
-        var selector = (ComboBox)page.FindName("SubdivisionSelector");
+        var selector = (ValueSlider)page.FindName("SubdivisionSelector");
         var before = audio.Snapshot;
         Assert.Multiple(() =>
         {
-            Assert.That(selector.Items.Cast<ComboBoxItem>().Select(item => item.Content),
-                Is.EqualTo(new[] { "1/1", "1/2", "1/3", "1/4", "1/5", "1/6", "1/8", "1/12", "1/16" }));
-            Assert.That(selector.SelectedIndex, Is.EqualTo(3));
-            Assert.That(selector.Background, Is.EqualTo(Brushes.Transparent));
+            Assert.That(selector.Minimum, Is.Zero);
+            Assert.That(selector.Maximum, Is.EqualTo(8));
+            Assert.That(selector.Value, Is.EqualTo(3));
+            Assert.That(selector.DisplayText, Is.EqualTo("4"));
             Assert.That(AutomationProperties.GetName(selector), Is.EqualTo("Beat subdivision"));
-            Assert.That(selector.ActualHeight, Is.EqualTo(40));
+            Assert.That(selector.ActualHeight, Is.GreaterThanOrEqualTo(28));
         });
-        selector.SelectedIndex = 8;
+        selector.Value = 8;
         Assert.That(audio.Snapshot, Is.EqualTo(before));
     }
 
@@ -457,7 +458,7 @@ public class WorkstationPageIntegrationTests
         view.UpdateLayout();
 
         var controls = (StackPanel)page.FindName("ZoomControls");
-        var selector = (ComboBox)page.FindName("SubdivisionSelector");
+        var selector = (ValueSlider)page.FindName("SubdivisionSelector");
         var buttons = controls.Children.OfType<BalloonButton>().ToArray();
         Assert.That(buttons.Length, Is.EqualTo(2));
         Assert.That(AutomationProperties.GetName(buttons[0]), Is.EqualTo("Zoom waveform out"));
@@ -465,15 +466,15 @@ public class WorkstationPageIntegrationTests
         Assert.That(buttons[0].IsEnabled, Is.False);
         buttons[1].Command.Execute(null);
         view.UpdateLayout();
-        Assert.That(vm.ZoomFactor, Is.EqualTo(9));
+        Assert.That(vm.ZoomFactor, Is.EqualTo(17));
         Assert.That(buttons[0].IsEnabled, Is.True);
 
-        selector.SelectedIndex = 8;
-        selector.GetBindingExpression(Selector.SelectedIndexProperty)!.UpdateSource();
+        selector.Value = 8;
+        selector.GetBindingExpression(RangeBase.ValueProperty)!.UpdateSource();
         Assert.That(vm.SelectedSubdivisionIndex, Is.EqualTo(8));
         vm.SelectedSubdivisionIndex = 2;
         view.UpdateLayout();
-        Assert.That(selector.SelectedIndex, Is.EqualTo(2));
+        Assert.That(selector.Value, Is.EqualTo(2));
     }
 
     [Test]
@@ -549,7 +550,7 @@ public class WorkstationPageIntegrationTests
 
         for (var index = 0; index < 40; index++) vm.ZoomOutCommand.Execute(null);
         view.UpdateLayout();
-        Assert.That(vm.ZoomFactor, Is.EqualTo(8));
+        Assert.That(vm.ZoomFactor, Is.EqualTo(16));
         Assert.That(scroll.HorizontalOffset, Is.EqualTo(scroll.ScrollableWidth).Within(1));
 
         vm.SeekCommand.Execute(TimeSpan.FromSeconds(6));
@@ -578,11 +579,11 @@ public class WorkstationPageIntegrationTests
         Assert.Multiple(() =>
         {
             Assert.That(page.HandleWaveformWheel(ModifierKeys.Control, 120), Is.True);
-            Assert.That(vm.ZoomFactor, Is.EqualTo(9));
+            Assert.That(vm.ZoomFactor, Is.EqualTo(17));
             Assert.That(page.HandleWaveformWheel(ModifierKeys.Control, 240), Is.True);
-            Assert.That(vm.ZoomFactor, Is.EqualTo(11));
+            Assert.That(vm.ZoomFactor, Is.EqualTo(19));
             Assert.That(page.HandleWaveformWheel(ModifierKeys.Control, -120), Is.True);
-            Assert.That(vm.ZoomFactor, Is.EqualTo(10));
+            Assert.That(vm.ZoomFactor, Is.EqualTo(18));
             Assert.That(page.HandleWaveformWheel(ModifierKeys.Alt, 120), Is.True);
             Assert.That(vm.SelectedSubdivisionIndex, Is.EqualTo(4));
             Assert.That(page.HandleWaveformWheel(ModifierKeys.Alt, -120), Is.True);
@@ -747,16 +748,16 @@ public class WorkstationPageIntegrationTests
         UiTestPump.Run(page.LoadCompletion);
 
         Assert.That(page.HandleWaveformWheel(ModifierKeys.Control, 60), Is.True);
-        Assert.That(vm.ZoomFactor, Is.EqualTo(8));
+        Assert.That(vm.ZoomFactor, Is.EqualTo(16));
         Assert.That(page.HandleWaveformWheel(ModifierKeys.Control, 60), Is.True);
-        Assert.That(vm.ZoomFactor, Is.EqualTo(9));
+        Assert.That(vm.ZoomFactor, Is.EqualTo(17));
 
         Assert.That(page.HandleWaveformWheel(ModifierKeys.Control, 60), Is.True);
         Assert.That(page.HandleWaveformWheel(ModifierKeys.Alt, 60), Is.True);
         Assert.That(page.HandleWaveformWheel(ModifierKeys.Alt, 60), Is.True);
         Assert.Multiple(() =>
         {
-            Assert.That(vm.ZoomFactor, Is.EqualTo(9));
+            Assert.That(vm.ZoomFactor, Is.EqualTo(17));
             Assert.That(vm.SelectedSubdivisionIndex, Is.EqualTo(4));
         });
 
@@ -840,7 +841,7 @@ public class WorkstationPageIntegrationTests
             UiTestPump.Run(page.LoadCompletion);
             view.UpdateLayout();
 
-            var selector = (ComboBox)page.FindName("SubdivisionSelector");
+            var selector = (ValueSlider)page.FindName("SubdivisionSelector");
             var bar = (ScrollBar)page.FindName("WaveformScrollBar");
             var zoomControls = (StackPanel)page.FindName("ZoomControls");
             var buttons = zoomControls.Children.OfType<BalloonButton>().ToArray();

@@ -111,16 +111,16 @@ public class WorkstationPageVMTests
     public async Task ZoomButtonsUseEightToThirtyTwoBounds()
     {
         var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new StubWorkstationAudioService(), new ImmediateUiScheduler());
-        Assert.That(vm.ZoomFactor, Is.EqualTo(8));
+        Assert.That(vm.ZoomFactor, Is.EqualTo(16));
         await vm.LoadAsync("project.json", CancellationToken.None);
         Assert.That(vm.ZoomOutCommand.CanExecute(null), Is.False);
         vm.ZoomInCommand.Execute(null);
-        Assert.That(vm.ZoomFactor, Is.EqualTo(9));
+        Assert.That(vm.ZoomFactor, Is.EqualTo(17));
         for (var index = 0; index < 40; index++) vm.ZoomInCommand.Execute(null);
         Assert.That(vm.ZoomFactor, Is.EqualTo(32));
         Assert.That(vm.ZoomInCommand.CanExecute(null), Is.False);
         for (var index = 0; index < 40; index++) vm.ZoomOutCommand.Execute(null);
-        Assert.That(vm.ZoomFactor, Is.EqualTo(8));
+        Assert.That(vm.ZoomFactor, Is.EqualTo(16));
         Assert.That(vm.ZoomOutCommand.CanExecute(null), Is.False);
     }
 

@@ -56,7 +56,7 @@ public partial class WorkstationPageVM(
     [ObservableProperty] private bool isLoading;
     [ObservableProperty] private bool isPlaying;
     [ObservableProperty] private string? errorMessage;
-    private double zoomFactor = 8;
+    private double zoomFactor = 16;
     private int selectedSubdivisionIndex = 3;
 
     public double ZoomFactor => zoomFactor;
@@ -435,14 +435,14 @@ public partial class WorkstationPageVM(
 
     private bool CanUseTransport() => CanPlay;
     private bool CanZoomIn() => CanZoom && ZoomFactor < 32;
-    private bool CanZoomOut() => CanZoom && ZoomFactor > 8;
+    private bool CanZoomOut() => CanZoom && ZoomFactor > 16;
     private bool CanIncreaseSubdivision() => SelectedSubdivisionIndex < 8;
     private bool CanDecreaseSubdivision() => SelectedSubdivisionIndex > 0;
 
     private void SetZoom(int value)
     {
         if (!CanZoom) return;
-        var next = Math.Clamp(value, 8, 32);
+        var next = Math.Clamp(value, 16, 32);
         if (Math.Abs(zoomFactor - next) > double.Epsilon)
         {
             OnPropertyChanging(nameof(ZoomFactor));
