@@ -34,14 +34,17 @@ public partial class WorkstationPageVM(
     private TimeSpan? lastGridAudioPosition;
     private bool removalBusy;
     private Task? activeRemoval;
+    private int samplesRevision;
     public ObservableCollection<Track> Tracks => tracks;
     public ObservableCollection<string> SampleFiles => availableSamples;
+    public int SamplesRevision => samplesRevision;
     public int Subdivision => new[] { 1, 2, 3, 4, 5, 6, 8, 12, 16 }[SelectedSubdivisionIndex];
     public bool CanEditTracks => Project is not null && !IsLoading && !deactivated;
     public bool CanImportSample => CanEditTracks && !importBusy && !removalBusy &&
         sampleFiles is not null && sampleDialog is not null && projectPath is not null;
     public bool CanAddTrack => CanEditTracks && availableSamples.Count > 0;
     public bool CanRemoveTrack => CanEditTracks && !importBusy && !removalBusy && trackRemovalDialog is not null;
+    public bool CanPlaceSamples => CanEditTracks && Waveform is not null && !importBusy && !removalBusy;
     public bool HasPendingSaves => importBusy || removalBusy || !saveTail.IsCompleted || lastSaveError is not null;
     [ObservableProperty] private string? saveError;
     private CancellationTokenSource? loadCancellation;
@@ -215,8 +218,7 @@ public partial class WorkstationPageVM(
     private void AddSampleTrack()
     {
         if (!CanAddTrack) return;
-        var track = new Track();
-        if (availableSamples.Count > 0) track.Samples.Add(new Sample { FileName = availableSamples[0] });
+        var track = new Track { SelectedSampleFileName = availableSamples[0] };
         Project!.Tracks.Add(track);
         tracks.Add(track);
         QueueSave();
@@ -240,6 +242,7 @@ public partial class WorkstationPageVM(
         removalBusy = true;
         OnPropertyChanged(nameof(CanRemoveTrack));
         OnPropertyChanged(nameof(CanImportSample));
+        OnPropertyChanged(nameof(CanPlaceSamples));
         try
         {
             if (!await trackRemovalDialog!.ConfirmAsync(loadCancellation?.Token ?? CancellationToken.None)) return;
@@ -256,6 +259,7 @@ public partial class WorkstationPageVM(
             removalBusy = false;
             OnPropertyChanged(nameof(CanRemoveTrack));
             OnPropertyChanged(nameof(CanImportSample));
+            OnPropertyChanged(nameof(CanPlaceSamples));
         }
     }
 
@@ -263,9 +267,30 @@ public partial class WorkstationPageVM(
     {
         if (!CanEditTracks || !tracks.Contains(track) || string.IsNullOrWhiteSpace(fileName) ||
             sampleFiles is not null && !availableSamples.Any(name => string.Equals(name, fileName, StringComparison.OrdinalIgnoreCase))) return;
-        if (track.Samples.Count == 0) track.Samples.Add(new Sample { FileName = fileName });
-        else foreach (var sample in track.Samples) sample.FileName = fileName;
+        if (string.Equals(track.SelectedSampleFileName, fileName, StringComparison.OrdinalIgnoreCase)) return;
+        track.SelectedSampleFileName = availableSamples.FirstOrDefault(name =>
+            string.Equals(name, fileName, StringComparison.OrdinalIgnoreCase)) ?? fileName;
         QueueSave();
+    }
+
+    public bool PlaceSample(Track track, double leftBoundaryMilliseconds)
+    {
+        if (!CanPlaceSamples || !tracks.Contains(track) || !double.IsFinite(leftBoundaryMilliseconds) ||
+            leftBoundaryMilliseconds < 0 || leftBoundaryMilliseconds >= Waveform!.Duration.TotalMilliseconds ||
+            leftBoundaryMilliseconds > int.MaxValue) return false;
+        var fileName = availableSamples.FirstOrDefault(name =>
+            string.Equals(name, track.SelectedSampleFileName, StringComparison.OrdinalIgnoreCase));
+        if (fileName is null) return false;
+        track.Samples.Add(new Sample
+        {
+            FileName = fileName,
+            Volume = track.Volume,
+            Timestamp = (int)Math.Round(leftBoundaryMilliseconds, MidpointRounding.AwayFromZero)
+        });
+        samplesRevision++;
+        OnPropertyChanged(nameof(SamplesRevision));
+        QueueSave();
+        return true;
     }
 
     public void SetTrackVolume(Track track, int volume)
@@ -348,6 +373,8 @@ public partial class WorkstationPageVM(
             else availableSamples.Insert(index, choices[index]);
         }
         while (availableSamples.Count > choices.Count) availableSamples.RemoveAt(availableSamples.Count - 1);
+        foreach (var track in tracks)
+            track.SelectedSampleFileName ??= track.Samples.FirstOrDefault()?.FileName ?? availableSamples.FirstOrDefault();
         OnPropertyChanged(nameof(CanAddTrack));
         AddSampleTrackCommand.NotifyCanExecuteChanged();
         AddPianoTrackCommand.NotifyCanExecuteChanged();
@@ -392,7 +419,11 @@ public partial class WorkstationPageVM(
                 Project = source.Project;
                 Waveform = waveform;
                 tracks.Clear();
-                foreach (var track in source.Project.Tracks) tracks.Add(track);
+                foreach (var track in source.Project.Tracks)
+                {
+                    track.SelectedSampleFileName ??= track.Samples.FirstOrDefault()?.FileName;
+                    tracks.Add(track);
+                }
                 if (messenger is not null)
                 {
                     messenger.UnregisterAll(this);
@@ -467,6 +498,7 @@ public partial class WorkstationPageVM(
         AddPianoTrackCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(CanPlay));
         OnPropertyChanged(nameof(CanZoom));
+        OnPropertyChanged(nameof(CanPlaceSamples));
     }
 
     private void NotifyEditingState()
@@ -474,6 +506,7 @@ public partial class WorkstationPageVM(
         OnPropertyChanged(nameof(CanImportSample));
         OnPropertyChanged(nameof(CanAddTrack));
         OnPropertyChanged(nameof(CanRemoveTrack));
+        OnPropertyChanged(nameof(CanPlaceSamples));
         LoadSampleCommand.NotifyCanExecuteChanged();
         AddSampleTrackCommand.NotifyCanExecuteChanged();
         AddPianoTrackCommand.NotifyCanExecuteChanged();

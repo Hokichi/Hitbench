@@ -46,7 +46,8 @@ public class WorkstationTrackTests
             Assert.That(vm.CanAddTrack, Is.True);
 
             vm.AddSampleTrackCommand.Execute(null);
-            Assert.That(vm.Tracks.Single().Samples.Single().FileName, Is.EqualTo("kick.wav"));
+            Assert.That(vm.Tracks.Single().SelectedSampleFileName, Is.EqualTo("kick.wav"));
+            Assert.That(vm.Tracks.Single().Samples, Is.Empty);
             await vm.DeactivateAsync();
         }
         finally { Directory.Delete(root.FullName, true); }
@@ -55,7 +56,7 @@ public class WorkstationTrackTests
     [Test]
     public async Task ConfirmedRemovalDeletesOnlyChosenTrackAndPersistsSnapshot()
     {
-        var first = new Track { Samples = [new Sample { FileName = "a.wav", Timestamps = [125] }] };
+        var first = new Track { Samples = [new Sample { FileName = "a.wav", Timestamp = 125 }] };
         var second = new Track { Samples = [new Sample { FileName = "b.wav" }] };
         var source = new StubWorkstationSourceService
         {
@@ -254,11 +255,11 @@ public class WorkstationTrackTests
         finally { Directory.Delete(root.FullName, true); }
     }
     [Test]
-    public async Task SelectionUpdatesEverySampleAndPreservesItsData()
+    public async Task SelectionChangesFutureSampleWithoutMutatingPlacedSamples()
     {
-        var one = new Sample { FileName = "old.wav", Volume = 12, Timestamps = [125] };
-        var two = new Sample { FileName = "old.wav", Volume = 25, Timestamps = [375] };
-        var track = new Track { Samples = [one, two] };
+        var one = new Sample { FileName = "old.wav", Volume = 12, Timestamp = 125 };
+        var two = new Sample { FileName = "old.wav", Volume = 25, Timestamp = 375 };
+        var track = new Track { SelectedSampleFileName = "old.wav", Samples = [one, two] };
         var source = new StubWorkstationSourceService
         {
             Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav", new ProjectData { Tracks = [track] }))
@@ -267,9 +268,60 @@ public class WorkstationTrackTests
         await vm.LoadAsync("project.json", CancellationToken.None);
         vm.SelectSample(track, "new.wav");
         Assert.That(track.Samples, Is.EqualTo(new[] { one, two }));
-        Assert.That(track.Samples.Select(sample => sample.FileName), Is.All.EqualTo("new.wav"));
+        Assert.That(track.SelectedSampleFileName, Is.EqualTo("new.wav"));
+        Assert.That(track.Samples.Select(sample => sample.FileName), Is.All.EqualTo("old.wav"));
         Assert.That(track.Samples.Select(sample => sample.Volume), Is.EqualTo(new[] { 12, 25 }));
-        Assert.That(track.Samples.Select(sample => sample.Timestamps.Single()), Is.EqualTo(new[] { 125, 375 }));
+        Assert.That(track.Samples.Select(sample => sample.Timestamp), Is.EqualTo(new[] { 125, 375 }));
+    }
+
+    [Test]
+    public async Task PlacementCapturesCurrentSelectionVolumeAndRoundedTimestamp()
+    {
+        var project = new ProjectData { Offsets = [0], BPMs = [60] };
+        var source = new StubWorkstationSourceService
+        {
+            Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav", project))
+        };
+        var vm = new WorkstationPageVM(source, new StubWorkstationAudioService(),
+            new ImmediateUiScheduler(), new StubSampleFileService(["a.wav", "b.wav"]));
+        await vm.LoadAsync("project.json", CancellationToken.None);
+
+        vm.AddSampleTrackCommand.Execute(null);
+        var track = vm.Tracks.Single();
+        Assert.That(track.Samples, Is.Empty);
+        Assert.That(track.SelectedSampleFileName, Is.EqualTo("a.wav"));
+
+        vm.SetTrackVolume(track, 70);
+        Assert.That(vm.PlaceSample(track, 125.5), Is.True);
+        vm.SelectSample(track, "b.wav");
+        vm.SetTrackVolume(track, 40);
+        Assert.That(vm.PlaceSample(track, 125.5), Is.True);
+
+        Assert.That(track.Samples.Select(sample => sample.FileName), Is.EqualTo(new[] { "a.wav", "b.wav" }));
+        Assert.That(track.Samples.Select(sample => sample.Volume), Is.EqualTo(new[] { 70, 40 }));
+        Assert.That(track.Samples.Select(sample => sample.Timestamp), Is.EqualTo(new[] { 126, 126 }));
+        Assert.That(vm.SamplesRevision, Is.EqualTo(2));
+    }
+
+    [TestCase(double.NaN)]
+    [TestCase(double.PositiveInfinity)]
+    [TestCase(-1d)]
+    [TestCase(10001d)]
+    public async Task InvalidPlacementDoesNotMutateTrack(double timestamp)
+    {
+        var project = new ProjectData();
+        var source = new StubWorkstationSourceService
+        {
+            Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav", project))
+        };
+        var vm = new WorkstationPageVM(source, new StubWorkstationAudioService(),
+            new ImmediateUiScheduler(), new StubSampleFileService(["a.wav"]));
+        await vm.LoadAsync("project.json", CancellationToken.None);
+        vm.AddSampleTrackCommand.Execute(null);
+
+        Assert.That(vm.PlaceSample(vm.Tracks.Single(), timestamp), Is.False);
+        Assert.That(vm.Tracks.Single().Samples, Is.Empty);
+        Assert.That(vm.SamplesRevision, Is.Zero);
     }
 
     [Test]
@@ -291,10 +343,12 @@ public class WorkstationTrackTests
             await vm.LoadAsync(projectPath, CancellationToken.None);
             vm.AddSampleTrackCommand.Execute(null);
             var track = vm.Tracks.Single();
-            Assert.That(track.Samples.Single().FileName, Is.EqualTo("a.wav"));
+            Assert.That(track.SelectedSampleFileName, Is.EqualTo("a.wav"));
+            Assert.That(track.Samples, Is.Empty);
             Assert.That(await vm.ImportSampleAsync(), Is.EqualTo("b.mp3"));
             vm.SelectSample(track, "b.mp3");
             vm.SetTrackVolume(track, 70);
+            Assert.That(vm.PlaceSample(track, 0), Is.True);
             await vm.FlushSavesAsync();
             var restored = ProjectDataSerializer.Deserialize(await File.ReadAllTextAsync(projectPath));
             Assert.That(restored.Tracks.Single().Samples.Single().FileName, Is.EqualTo("b.mp3"));
