@@ -60,9 +60,11 @@ public partial class WorkstationPageVM(
     [ObservableProperty] private bool isPlaying;
     [ObservableProperty] private string? errorMessage;
     private double zoomFactor = 16;
+    private double trackHeight = 72;
     private int selectedSubdivisionIndex = 3;
 
     public double ZoomFactor => zoomFactor;
+    public double TrackHeight => trackHeight;
     public int SelectedSubdivisionIndex
     {
         get => selectedSubdivisionIndex;
@@ -199,6 +201,12 @@ public partial class WorkstationPageVM(
         if (!CanZoomOut()) return;
         SetZoom((int)ZoomFactor - 1);
     }
+
+    [RelayCommand(CanExecute = nameof(CanIncreaseTrackHeight))]
+    private void IncreaseTrackHeight() => SetTrackHeight(trackHeight + 12);
+
+    [RelayCommand(CanExecute = nameof(CanDecreaseTrackHeight))]
+    private void DecreaseTrackHeight() => SetTrackHeight(trackHeight - 12);
 
     [RelayCommand(CanExecute = nameof(CanIncreaseSubdivision))]
     private void IncreaseSubdivision()
@@ -467,6 +475,8 @@ public partial class WorkstationPageVM(
     private bool CanUseTransport() => CanPlay;
     private bool CanZoomIn() => CanZoom && ZoomFactor < 32;
     private bool CanZoomOut() => CanZoom && ZoomFactor > 16;
+    private bool CanIncreaseTrackHeight() => CanZoom && TrackHeight < 288;
+    private bool CanDecreaseTrackHeight() => CanZoom && TrackHeight > 36;
     private bool CanIncreaseSubdivision() => SelectedSubdivisionIndex < 8;
     private bool CanDecreaseSubdivision() => SelectedSubdivisionIndex > 0;
 
@@ -483,6 +493,13 @@ public partial class WorkstationPageVM(
         NotifyCommandState();
     }
 
+    private void SetTrackHeight(double value)
+    {
+        if (!CanZoom) return;
+        if (SetProperty(ref trackHeight, Math.Clamp(value, 36, 288), nameof(TrackHeight)))
+            NotifyCommandState();
+    }
+
     private void NotifyCommandState()
     {
         PlayPauseCommand.NotifyCanExecuteChanged();
@@ -494,6 +511,8 @@ public partial class WorkstationPageVM(
         PreviousWholeBeatCommand.NotifyCanExecuteChanged();
         ZoomInCommand.NotifyCanExecuteChanged();
         ZoomOutCommand.NotifyCanExecuteChanged();
+        IncreaseTrackHeightCommand.NotifyCanExecuteChanged();
+        DecreaseTrackHeightCommand.NotifyCanExecuteChanged();
         AddSampleTrackCommand.NotifyCanExecuteChanged();
         AddPianoTrackCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(CanPlay));

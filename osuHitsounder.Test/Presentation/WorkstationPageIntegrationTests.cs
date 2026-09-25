@@ -158,7 +158,7 @@ public class WorkstationPageIntegrationTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(((ListBox)page.FindName("TrackList")).ItemsSource, Is.SameAs(vm.Tracks));
+            Assert.That(((ItemsControl)page.FindName("TrackList")).ItemsSource, Is.SameAs(vm.Tracks));
             Assert.That(((FrameworkElement)page.FindName("ZoomFooter")).HorizontalAlignment, Is.EqualTo(HorizontalAlignment.Stretch));
             Assert.That(((ScrollViewer)page.FindName("WaveformScrollViewer")).Focusable, Is.True);
         });
@@ -177,9 +177,9 @@ public class WorkstationPageIntegrationTests
         UiTestPump.Run(page.LoadCompletion);
         vm.AddSampleTrackCommand.Execute(null);
         view.UpdateLayout();
-        var list = (ListBox)page.FindName("TrackList");
+        var list = (ItemsControl)page.FindName("TrackList");
         Assert.That(list.Items, Has.Count.EqualTo(1));
-        var card = (ListBoxItem)list.ItemContainerGenerator.ContainerFromIndex(0)!;
+        var card = (FrameworkElement)list.ItemContainerGenerator.ContainerFromIndex(0)!;
         var grid = FindBeatGrid(card)!;
         Assert.Multiple(() =>
         {
@@ -208,8 +208,8 @@ public class WorkstationPageIntegrationTests
         vm.SetTrackVolume(first, 20);
         vm.SetTrackVolume(second, 80);
         view.UpdateLayout();
-        var list = (ListBox)page.FindName("TrackList");
-        var card = (ListBoxItem)list.ItemContainerGenerator.ContainerFromIndex(0)!;
+        var list = (ItemsControl)page.FindName("TrackList");
+        var card = (FrameworkElement)list.ItemContainerGenerator.ContainerFromIndex(0)!;
         var slider = FindVisualChild<ValueSlider>(card)!;
         slider.DataContext = second;
         Assert.Multiple(() =>
@@ -244,8 +244,8 @@ public class WorkstationPageIntegrationTests
             vm.AddSampleTrackCommand.Execute(null);
             vm.AddSampleTrackCommand.Execute(null);
             view.UpdateLayout();
-            var list = (ListBox)page.FindName("TrackList");
-            var otherCard = (ListBoxItem)list.ItemContainerGenerator.ContainerFromIndex(1)!;
+            var list = (ItemsControl)page.FindName("TrackList");
+            var otherCard = (FrameworkElement)list.ItemContainerGenerator.ContainerFromIndex(1)!;
             var selector = FindVisualChild<ComboBox>(otherCard)!;
             Assert.That(selector.SelectedItem, Is.EqualTo("a.wav"));
             UiTestPump.Run(vm.ImportSampleAsync());
@@ -268,9 +268,9 @@ public class WorkstationPageIntegrationTests
         UiTestPump.Run(page.LoadCompletion);
         for (var index = 0; index < 80; index++) vm.AddSampleTrackCommand.Execute(null);
         view.UpdateLayout();
-        var list = (ListBox)page.FindName("TrackList");
+        var list = (ItemsControl)page.FindName("TrackList");
         Assert.That(list.Items, Has.Count.EqualTo(80));
-        Assert.That(FindVisualChildren<ListBoxItem>(list).Count(), Is.LessThan(80));
+        Assert.That(FindVisualChildren<ContentPresenter>(list).Count(), Is.LessThan(80));
     }
 
     [Test]
@@ -288,8 +288,8 @@ public class WorkstationPageIntegrationTests
         using var view = new InMemoryView(window);
         UiTestPump.Run(page.LoadCompletion);
         view.UpdateLayout();
-        var list = (ListBox)page.FindName("TrackList");
-        var card = (ListBoxItem)list.ItemContainerGenerator.ContainerFromIndex(0)!;
+        var list = (ItemsControl)page.FindName("TrackList");
+        var card = (FrameworkElement)list.ItemContainerGenerator.ContainerFromIndex(0)!;
         var cue = FindVisualChildren<TextBlock>(card).Single(block => block.Name == "MissingSampleText");
         Assert.That(cue.Text, Does.Contain("missing.wav"));
         Assert.That(track.Samples.Single().FileName, Is.EqualTo("missing.wav"));
@@ -307,8 +307,8 @@ public class WorkstationPageIntegrationTests
         UiTestPump.Run(page.LoadCompletion);
         vm.AddSampleTrackCommand.Execute(null);
         view.UpdateLayout();
-        var list = (ListBox)page.FindName("TrackList");
-        var card = (ListBoxItem)list.ItemContainerGenerator.ContainerFromIndex(0)!;
+        var list = (ItemsControl)page.FindName("TrackList");
+        var card = (FrameworkElement)list.ItemContainerGenerator.ContainerFromIndex(0)!;
         var grid = FindVisualChild<BeatGridView>(card)!;
         for (var index = 0; index < 3; index++) vm.ZoomInCommand.Execute(null);
         view.UpdateLayout();
@@ -776,6 +776,31 @@ public class WorkstationPageIntegrationTests
     }
 
     [Test]
+    public void ControlShiftWheelChangesOnlyTrackLaneHeight()
+    {
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new StubWorkstationAudioService(),
+            new ImmediateUiScheduler());
+        var page = new WorkstationPage(vm);
+        page.SetProjectPath("project.json");
+        using var view = new InMemoryView(new Window { Content = page, Width = 900, Height = 600 });
+        UiTestPump.Run(page.LoadCompletion);
+        var zoom = vm.ZoomFactor;
+        var waveformHeight = ((FrameworkElement)page.FindName("WaveformDisplay")).ActualHeight;
+
+        Assert.That(page.HandleWaveformWheel(ModifierKeys.Control | ModifierKeys.Shift, 60), Is.True);
+        Assert.That(vm.TrackHeight, Is.EqualTo(72));
+        Assert.That(page.HandleWaveformWheel(ModifierKeys.Control | ModifierKeys.Shift, 60), Is.True);
+        view.UpdateLayout();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(vm.TrackHeight, Is.EqualTo(84));
+            Assert.That(vm.ZoomFactor, Is.EqualTo(zoom));
+            Assert.That(((FrameworkElement)page.FindName("WaveformDisplay")).ActualHeight, Is.EqualTo(waveformHeight));
+        });
+    }
+
+    [Test]
     public void ShiftWheelPansWaveformWithoutSeekingAndConsumesBounds()
     {
         var audio = new StubWorkstationAudioService();
@@ -917,7 +942,7 @@ public class WorkstationPageIntegrationTests
         app.Resources.MergedDictionaries.Clear();
         UiTestPump.EnsureFontResources(app);
         foreach (var resource in new[] { $"Themes/{theme}.xaml", "Converters/Converters.xaml", "Icons.xaml",
-                     "Styles/TextBlock.xaml", "Styles/Grid.xaml", "Styles/Border.xaml", "Styles/ContentPresenter.xaml",
+                     "Styles/TextBlock.xaml", "Styles/ItemsControl.xaml", "Styles/Grid.xaml", "Styles/Border.xaml", "Styles/ContentPresenter.xaml",
                      "Styles/Button.xaml", "Styles/ToolTip.xaml", "Styles/ScrollViewer.xaml", "Styles/TextBox.xaml", "Styles/ComboBox.xaml", "Styles/ListBox.xaml", "Styles/Slider.xaml", "BeatGrid.xaml" })
             app.Resources.MergedDictionaries.Add(new ResourceDictionary
             {

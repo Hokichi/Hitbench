@@ -128,7 +128,7 @@ public partial class WorkstationPage : UserControl
         if (sender is ComboBox selector && selector.DataContext is Track track)
         {
             selector.Tag = true;
-            var saved = track.Samples.FirstOrDefault()?.FileName;
+            var saved = track.SelectedSampleFileName;
             selector.SelectedItem = viewModel.SampleFiles.FirstOrDefault(name =>
                 string.Equals(name, saved, StringComparison.OrdinalIgnoreCase));
             selector.Tag = false;
@@ -146,7 +146,8 @@ public partial class WorkstationPage : UserControl
     {
         if (sender is ComboBox selector && selector.IsLoaded && selector.Tag is not true && selector.DataContext is Track track)
         {
-            if (selector.SelectedItem is string fileName && track.Samples.Any(sample => sample.FileName != fileName))
+            if (selector.SelectedItem is string fileName &&
+                !string.Equals(track.SelectedSampleFileName, fileName, StringComparison.OrdinalIgnoreCase))
                 viewModel.SelectSample(track, fileName);
             UpdateMissingSampleCue(selector, track);
         }
@@ -170,10 +171,10 @@ public partial class WorkstationPage : UserControl
 
     private void UpdateMissingSampleCue(ComboBox selector, Track track)
     {
-        var container = ItemsControl.ContainerFromElement(TrackList, selector) as ListBoxItem;
+        var container = ItemsControl.ContainerFromElement(TrackList, selector) as FrameworkElement;
         var cue = container is null ? null : FindVisualChild<TextBlock>(container, "MissingSampleText");
         if (cue is null) return;
-        var selected = track.Samples.FirstOrDefault()?.FileName;
+        var selected = track.SelectedSampleFileName;
         cue.Text = selected is null ? "No sample selected. Use Load Sample in the header."
             : viewModel.SampleFiles.Any(name => string.Equals(name, selected, StringComparison.OrdinalIgnoreCase))
                 ? string.Empty : $"Missing sample: {selected}";
@@ -246,7 +247,7 @@ public partial class WorkstationPage : UserControl
     internal IInputElement FindRemovalFocusTarget(int index)
     {
         TrackList.UpdateLayout();
-        var container = TrackList.ItemContainerGenerator.ContainerFromIndex(index) as ListBoxItem;
+        var container = TrackList.ItemContainerGenerator.ContainerFromIndex(index) as FrameworkElement;
         return container is null ? WaveformScrollViewer
             : FindVisualChild<BalloonButton>(container) ?? (IInputElement)WaveformScrollViewer;
     }
@@ -337,7 +338,8 @@ public partial class WorkstationPage : UserControl
 
     internal bool HandleWaveformWheel(ModifierKeys modifiers, int delta)
     {
-        if (modifiers is not ModifierKeys.Control and not ModifierKeys.Alt and not ModifierKeys.Shift ||
+        if (modifiers is not ModifierKeys.Control and not ModifierKeys.Alt and not ModifierKeys.Shift and
+            not (ModifierKeys.Control | ModifierKeys.Shift) ||
             !viewModel.CanZoom)
         {
             wheelMode = ModifierKeys.None;
@@ -367,9 +369,12 @@ public partial class WorkstationPage : UserControl
         var increase = steps > 0;
         for (var index = 0; index < Math.Abs(steps); index++)
         {
-            var command = modifiers == ModifierKeys.Control
-                ? increase ? viewModel.ZoomInCommand : viewModel.ZoomOutCommand
-                : increase ? viewModel.IncreaseSubdivisionCommand : viewModel.DecreaseSubdivisionCommand;
+            var command = modifiers switch
+            {
+                ModifierKeys.Control => increase ? viewModel.ZoomInCommand : viewModel.ZoomOutCommand,
+                ModifierKeys.Alt => increase ? viewModel.IncreaseSubdivisionCommand : viewModel.DecreaseSubdivisionCommand,
+                _ => increase ? viewModel.IncreaseTrackHeightCommand : viewModel.DecreaseTrackHeightCommand
+            };
             if (!command.CanExecute(null)) break;
             command.Execute(null);
         }
