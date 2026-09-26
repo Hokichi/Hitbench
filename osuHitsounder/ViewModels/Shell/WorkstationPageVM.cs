@@ -301,6 +301,15 @@ public partial class WorkstationPageVM(
         return true;
     }
 
+    public bool RemoveSample(Track track, Sample sample)
+    {
+        if (!CanPlaceSamples || !tracks.Contains(track) || !track.Samples.Remove(sample)) return false;
+        samplesRevision++;
+        OnPropertyChanged(nameof(SamplesRevision));
+        QueueSave();
+        return true;
+    }
+
     public void SetTrackVolume(Track track, int volume)
     {
         if (!CanEditTracks || !tracks.Contains(track)) return;

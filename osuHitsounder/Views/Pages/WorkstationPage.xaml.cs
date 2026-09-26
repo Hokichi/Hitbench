@@ -176,6 +176,13 @@ public partial class WorkstationPage : UserControl
         e.Handled = true;
     }
 
+    private void OnSampleRemovalRequested(object sender, SampleRemovalRequestedEventArgs e)
+    {
+        if (sender is BeatGridView { DataContext: Track track })
+            viewModel.RemoveSample(track, e.Sample);
+        e.Handled = true;
+    }
+
     private void UpdateMissingSampleCue(ComboBox selector, Track track)
     {
         var container = ItemsControl.ContainerFromElement(TrackList, selector) as FrameworkElement;

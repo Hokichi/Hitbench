@@ -27,6 +27,7 @@ public sealed class BeatGridView : FrameworkElement
     public static readonly DependencyProperty FocusBrushProperty = DependencyProperty.Register(nameof(FocusBrush), typeof(Brush), typeof(BeatGridView), RenderMetadata());
     public static readonly DependencyProperty PressedBrushProperty = DependencyProperty.Register(nameof(PressedBrush), typeof(Brush), typeof(BeatGridView), RenderMetadata());
     public static readonly RoutedEvent SamplePlacementRequestedEvent = EventManager.RegisterRoutedEvent(nameof(SamplePlacementRequested), RoutingStrategy.Bubble, typeof(EventHandler<SamplePlacementRequestedEventArgs>), typeof(BeatGridView));
+    public static readonly RoutedEvent SampleRemovalRequestedEvent = EventManager.RegisterRoutedEvent(nameof(SampleRemovalRequested), RoutingStrategy.Bubble, typeof(EventHandler<SampleRemovalRequestedEventArgs>), typeof(BeatGridView));
 
     public IReadOnlyList<int>? Offsets { get => (IReadOnlyList<int>?)GetValue(OffsetsProperty); set => SetValue(OffsetsProperty, value); }
     public IReadOnlyList<int>? Bpms { get => (IReadOnlyList<int>?)GetValue(BpmsProperty); set => SetValue(BpmsProperty, value); }
@@ -48,6 +49,12 @@ public sealed class BeatGridView : FrameworkElement
     {
         add => AddHandler(SamplePlacementRequestedEvent, value);
         remove => RemoveHandler(SamplePlacementRequestedEvent, value);
+    }
+
+    public event EventHandler<SampleRemovalRequestedEventArgs> SampleRemovalRequested
+    {
+        add => AddHandler(SampleRemovalRequestedEvent, value);
+        remove => RemoveHandler(SampleRemovalRequestedEvent, value);
     }
 
     private double? pointerX;
@@ -74,6 +81,31 @@ public sealed class BeatGridView : FrameworkElement
         if (!CanPlaceSamples || ActiveInterval is not { } interval) return false;
         RaiseEvent(new SamplePlacementRequestedEventArgs(SamplePlacementRequestedEvent, interval.StartMilliseconds));
         return true;
+    }
+
+    public bool RequestSampleRemoval(double viewportX)
+    {
+        if (!CanPlaceSamples || Samples is null) return false;
+        for (var index = Samples.Count - 1; index >= 0; index--)
+        {
+            var sample = Samples[index];
+            var bounds = GetSampleBounds(sample.Timestamp);
+            if (bounds.IsEmpty || viewportX < bounds.Left || viewportX >= bounds.Right) continue;
+            return RequestSampleRemoval(sample);
+        }
+        return false;
+    }
+
+    public bool RequestActiveSampleRemoval()
+    {
+        if (!CanPlaceSamples || Samples is null || ActiveInterval is not { } interval) return false;
+        for (var index = Samples.Count - 1; index >= 0; index--)
+        {
+            var sample = Samples[index];
+            if (sample.Timestamp < interval.StartMilliseconds || sample.Timestamp >= interval.EndMilliseconds) continue;
+            return RequestSampleRemoval(sample);
+        }
+        return false;
     }
 
     public bool MoveActiveInterval(bool forward)
@@ -148,11 +180,20 @@ public sealed class BeatGridView : FrameworkElement
         e.Handled = place;
     }
 
+    protected override void OnMouseRightButtonDown(MouseButtonEventArgs e)
+    {
+        base.OnMouseRightButtonDown(e);
+        if (!RequestSampleRemoval(e.GetPosition(this).X)) return;
+        Focus();
+        e.Handled = true;
+    }
+
     protected override void OnKeyDown(KeyEventArgs e)
     {
         base.OnKeyDown(e);
         if (e.Key is Key.Left or Key.Right) e.Handled = MoveActiveInterval(e.Key == Key.Right);
         else if (e.Key == Key.Enter && !e.IsRepeat) e.Handled = RequestSamplePlacement();
+        else if (e.Key == Key.Delete && !e.IsRepeat) e.Handled = RequestActiveSampleRemoval();
     }
 
     protected override void OnRender(DrawingContext context)
@@ -190,6 +231,12 @@ public sealed class BeatGridView : FrameworkElement
             ContentWidth <= 0 || Offsets is null || Bpms is null) return null;
         var time = (x + HorizontalOffset) / ContentWidth * Duration.TotalMilliseconds;
         return BeatGridCalculator.GetContainingInterval(Offsets, Bpms, Subdivision, time, Duration.TotalMilliseconds);
+    }
+
+    private bool RequestSampleRemoval(Sample sample)
+    {
+        RaiseEvent(new SampleRemovalRequestedEventArgs(SampleRemovalRequestedEvent, sample));
+        return true;
     }
 
     private Rect IntervalBounds(BeatInterval interval)

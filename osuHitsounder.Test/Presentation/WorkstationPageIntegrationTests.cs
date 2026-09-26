@@ -346,6 +346,8 @@ public class WorkstationPageIntegrationTests
         Assert.That(vm.Tracks.Single().Samples, Has.Count.EqualTo(1));
         Assert.That(vm.Tracks.Single().Samples.Single().FileName, Is.EqualTo("kick.wav"));
         Assert.That(vm.Tracks.Single().Samples.Single().Timestamp, Is.EqualTo(0));
+        Assert.That(grid.RequestSampleRemoval(10), Is.True);
+        Assert.That(vm.Tracks.Single().Samples, Is.Empty);
     }
 
     private static IEnumerable<T> FindVisualChildren<T>(DependencyObject root) where T : DependencyObject

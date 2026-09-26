@@ -36,6 +36,28 @@ public class BeatGridViewTests
     }
 
     [Test]
+    public void RemovalRequestTargetsTopmostNodeUnderPointerAndHonorsGate()
+    {
+        var first = new Sample { Timestamp = 250 };
+        var second = new Sample { Timestamp = 250 };
+        var grid = CreateGrid();
+        grid.Samples = [first, second];
+        Sample? requested = null;
+        grid.SampleRemovalRequested += (_, args) => requested = args.Sample;
+
+        Assert.That(grid.RequestSampleRemoval(20), Is.True);
+        Assert.That(requested, Is.SameAs(second));
+        Assert.That(grid.RequestSampleRemoval(31), Is.False);
+        grid.UpdatePointerPosition(30);
+        requested = null;
+        Assert.That(grid.RequestActiveSampleRemoval(), Is.True);
+        Assert.That(requested, Is.SameAs(second));
+        grid.CanPlaceSamples = false;
+        Assert.That(grid.RequestSampleRemoval(20), Is.False);
+        Assert.That(grid.RequestActiveSampleRemoval(), Is.False);
+    }
+
+    [Test]
     public void PointerExitAndInvalidGeometryClearActiveInterval()
     {
         var grid = CreateGrid();

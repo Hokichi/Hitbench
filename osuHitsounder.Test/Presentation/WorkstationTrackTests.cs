@@ -303,6 +303,29 @@ public class WorkstationTrackTests
         Assert.That(vm.SamplesRevision, Is.EqualTo(2));
     }
 
+    [Test]
+    public async Task RemovalDeletesExactSampleAndUpdatesRevision()
+    {
+        var project = new ProjectData { Offsets = [0], BPMs = [60] };
+        var source = new StubWorkstationSourceService
+        {
+            Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav", project))
+        };
+        var vm = new WorkstationPageVM(source, new StubWorkstationAudioService(),
+            new ImmediateUiScheduler(), new StubSampleFileService(["a.wav"]));
+        await vm.LoadAsync("project.json", CancellationToken.None);
+        vm.AddSampleTrackCommand.Execute(null);
+        var track = vm.Tracks.Single();
+        Assert.That(vm.PlaceSample(track, 125), Is.True);
+        var sample = track.Samples.Single();
+
+        Assert.That(vm.RemoveSample(track, sample), Is.True);
+
+        Assert.That(track.Samples, Is.Empty);
+        Assert.That(vm.SamplesRevision, Is.EqualTo(2));
+        Assert.That(vm.RemoveSample(track, sample), Is.False);
+    }
+
     [TestCase(double.NaN)]
     [TestCase(double.PositiveInfinity)]
     [TestCase(-1d)]
