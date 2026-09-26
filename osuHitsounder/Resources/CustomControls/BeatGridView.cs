@@ -178,7 +178,7 @@ public sealed class BeatGridView : FrameworkElement
             foreach (var sample in Samples)
             {
                 var rect = GetSampleBounds(sample.Timestamp);
-                if (!rect.IsEmpty) context.DrawRoundedRectangle(null, new Pen(marker, 1), Inset(rect), 4, 4);
+                if (!rect.IsEmpty) context.DrawRoundedRectangle(marker, null, Inset(rect), 4, 4);
             }
         if (IsKeyboardFocused && focus is not null) context.DrawRectangle(null, new Pen(focus, 1), Inset(new Rect(RenderSize)));
         context.Pop();
