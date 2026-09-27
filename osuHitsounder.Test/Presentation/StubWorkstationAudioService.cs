@@ -16,6 +16,9 @@ public sealed class StubWorkstationAudioService : IWorkstationAudioService
     public void Pause() => Snapshot = Snapshot with { IsPlaying = false };
     public void Stop() => Snapshot = Snapshot with { Position = TimeSpan.Zero, IsPlaying = false };
     public void Seek(TimeSpan position) => Snapshot = Snapshot with { Position = position };
+    public void SetSongVolume(int volume) { }
+    public Task UpdateSamplesAsync(string projectPath, IReadOnlyList<SamplePlaybackEvent> events, CancellationToken token) =>
+        Task.CompletedTask;
     public AudioPlaybackSnapshot GetSnapshot() => Snapshot;
     public void Dispose() => Disposed = true;
 }

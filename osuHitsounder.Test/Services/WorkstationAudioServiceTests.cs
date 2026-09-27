@@ -1,10 +1,143 @@
 using NAudio.Wave;
+using osuHitsounder.Core.Entities;
 using osuHitsounder.Services;
 
 namespace osuHitsounder.Test.Services;
 
 public class WorkstationAudioServiceTests
 {
+    [Test]
+    public async Task PreparedPlaybackAppliesSongAndSampleGainIndependently()
+    {
+        using var project = new TestProjectFolder("hit.wav");
+        var player = new StubWavePlayer();
+        using var service = new WorkstationAudioService(path =>
+            path.EndsWith("hit.wav", StringComparison.OrdinalIgnoreCase)
+                ? CreateStream(Enumerable.Repeat(0.4f, 8).ToArray(), 44_100, 2)
+                : CreateStream(Enumerable.Repeat(0.2f, 16).ToArray(), 44_100, 2), () => player);
+        service.Open("song.wav");
+        service.SetSongVolume(50);
+
+        await service.UpdateSamplesAsync(project.ProjectPath,
+            [new SamplePlaybackEvent(1, "hit.wav", 0, 50, 50)], CancellationToken.None);
+        service.Play();
+        var output = new float[2];
+        player.Provider!.ToSampleProvider().Read(output, 0, output.Length);
+
+        Assert.That(output, Is.EqualTo(new[] { 0.2f, 0.2f }).Within(0.0001));
+    }
+
+    [Test]
+    public async Task MutingSongLeavesPreparedSampleAudible()
+    {
+        using var project = new TestProjectFolder("hit.wav");
+        var player = new StubWavePlayer();
+        using var service = new WorkstationAudioService(path =>
+            path.EndsWith("hit.wav", StringComparison.OrdinalIgnoreCase)
+                ? CreateStream(Enumerable.Repeat(0.4f, 8).ToArray(), 44_100, 2)
+                : CreateStream(Enumerable.Repeat(0.2f, 16).ToArray(), 44_100, 2), () => player);
+        service.Open("song.wav");
+        service.SetSongVolume(0);
+
+        await service.UpdateSamplesAsync(project.ProjectPath,
+            [new SamplePlaybackEvent(1, "hit.wav", 0, 50, 50)], CancellationToken.None);
+        service.Play();
+        var output = new float[2];
+        player.Provider!.ToSampleProvider().Read(output, 0, output.Length);
+
+        Assert.That(output, Is.EqualTo(new[] { 0.1f, 0.1f }).Within(0.0001));
+    }
+
+    [Test]
+    public async Task MissingSampleReportsErrorButKeepsSongPlayable()
+    {
+        using var project = new TestProjectFolder();
+        var player = new StubWavePlayer();
+        using var service = new WorkstationAudioService(_ => CreateStream(), () => player);
+        service.Open("song.wav");
+
+        await service.UpdateSamplesAsync(project.ProjectPath,
+            [new SamplePlaybackEvent(1, "missing.wav", 0, 100, 100)], CancellationToken.None);
+        service.Play();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(service.GetSnapshot().IsPlaying, Is.True);
+            Assert.That(service.GetSnapshot().Error, Does.Contain("missing.wav"));
+        });
+    }
+
+    [Test]
+    public async Task OutputPositionUsesPreparedFormatInsteadOfSourceByteRate()
+    {
+        var player = new StubWavePlayer();
+        using var project = new TestProjectFolder();
+        using var service = new WorkstationAudioService(_ => CreateStream(new float[2_000], 1_000, 1), () => player);
+        service.Open("song.wav");
+        await service.UpdateSamplesAsync(project.ProjectPath, [], CancellationToken.None);
+        service.Play();
+        player.Position = 44_100 * 2 * sizeof(float);
+
+        Assert.That(service.GetSnapshot().Position, Is.EqualTo(TimeSpan.FromSeconds(1)));
+    }
+
+    [Test]
+    public void PlayBeforePreparationReportsError()
+    {
+        using var service = new WorkstationAudioService(_ => CreateStream(), () => new StubWavePlayer());
+        service.Open("song.wav");
+
+        service.Play();
+
+        Assert.That(service.GetSnapshot().Error, Does.Contain("prepared"));
+    }
+
+    [Test]
+    public async Task RepeatedSampleReferencesDecodeFileOnce()
+    {
+        using var project = new TestProjectFolder("hit.wav");
+        var sampleDecodes = 0;
+        using var service = new WorkstationAudioService(path =>
+        {
+            if (path.EndsWith("hit.wav", StringComparison.OrdinalIgnoreCase)) sampleDecodes++;
+            return path.EndsWith("hit.wav", StringComparison.OrdinalIgnoreCase)
+                ? CreateStream([0.4f, 0.4f], 44_100, 2)
+                : CreateStream([0.2f, 0.2f], 44_100, 2);
+        }, () => new StubWavePlayer());
+        service.Open("song.wav");
+
+        await service.UpdateSamplesAsync(project.ProjectPath,
+        [
+            new SamplePlaybackEvent(1, "hit.wav", 0, 100, 100),
+            new SamplePlaybackEvent(2, "hit.wav", 10, 100, 100)
+        ], CancellationToken.None);
+
+        Assert.That(sampleDecodes, Is.EqualTo(1));
+    }
+
+    [TestCase("../hit.wav")]
+    [TestCase("folder/hit.wav")]
+    public async Task UnsafeSampleNameIsRejectedWithoutDecoderAccess(string fileName)
+    {
+        using var project = new TestProjectFolder();
+        var unsafeDecode = false;
+        using var service = new WorkstationAudioService(path =>
+        {
+            if (!path.EndsWith("song.wav", StringComparison.OrdinalIgnoreCase)) unsafeDecode = true;
+            return CreateStream([0.2f, 0.2f], 44_100, 2);
+        }, () => new StubWavePlayer());
+        service.Open("song.wav");
+
+        await service.UpdateSamplesAsync(project.ProjectPath,
+            [new SamplePlaybackEvent(1, fileName, 0, 100, 100)], CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(unsafeDecode, Is.False);
+            Assert.That(service.GetSnapshot().Error, Does.Contain("invalid file name"));
+        });
+    }
+
     [TestCase("tone.mp3")]
     [TestCase("tone.ogg")]
     public async Task RealDecoderExtractsPeaksWithoutCreatingOutputDevice(string fileName)
@@ -28,11 +161,12 @@ public class WorkstationAudioServiceTests
     }
 
     [Test]
-    public void PlayPauseResumeAndStopPreserveExpectedState()
+    public async Task PlayPauseResumeAndStopPreserveExpectedState()
     {
         var player = new StubWavePlayer();
         using var service = new WorkstationAudioService(_ => CreateStream(), () => player);
         service.Open("test.wav");
+        await PrepareAsync(service);
         service.Play();
         Assert.That(service.GetSnapshot().IsPlaying, Is.True);
         service.Pause();
@@ -49,11 +183,12 @@ public class WorkstationAudioServiceTests
     }
 
     [Test]
-    public void NaturalEndAndPlaybackErrorResetPosition()
+    public async Task NaturalEndAndPlaybackErrorResetPosition()
     {
         var player = new StubWavePlayer();
         using var service = new WorkstationAudioService(_ => CreateStream(), () => player);
         service.Open("test.wav");
+        await PrepareAsync(service);
         service.Play();
         player.RaiseStopped(new IOException("device lost"));
         var snapshot = service.GetSnapshot();
@@ -62,11 +197,12 @@ public class WorkstationAudioServiceTests
     }
 
     [Test]
-    public void DeviceFailureDoesNotThrowAndDisposeIsIdempotent()
+    public async Task DeviceFailureDoesNotThrowAndDisposeIsIdempotent()
     {
         var player = new StubWavePlayer { FailInitialization = true };
         var service = new WorkstationAudioService(_ => CreateStream(), () => player);
         service.Open("test.wav");
+        await PrepareAsync(service);
         Assert.DoesNotThrow(service.Play);
         Assert.That(service.GetSnapshot().Error, Does.Contain("No device"));
         Assert.DoesNotThrow(service.Dispose);
@@ -79,7 +215,7 @@ public class WorkstationAudioServiceTests
     }
 
     [Test]
-    public void SeekBeforePlayUsesAbsoluteOriginAndClamps()
+    public async Task SeekBeforePlayUsesAbsoluteOriginAndClamps()
     {
         var players = new List<StubWavePlayer>();
         using var service = new WorkstationAudioService(_ => CreateStream(), () =>
@@ -89,6 +225,7 @@ public class WorkstationAudioServiceTests
             return player;
         });
         service.Open("test.wav");
+        await PrepareAsync(service);
         service.Seek(TimeSpan.FromSeconds(4));
         Assert.That(service.GetSnapshot().Position, Is.EqualTo(TimeSpan.FromSeconds(4)));
         Assert.That(service.GetSnapshot().IsPlaying, Is.False);
@@ -102,7 +239,7 @@ public class WorkstationAudioServiceTests
     }
 
     [Test]
-    public void SeekPreservesPlayingButLeavesPausedInactive()
+    public async Task SeekPreservesPlayingButLeavesPausedInactive()
     {
         var players = new List<StubWavePlayer>();
         using var service = new WorkstationAudioService(_ => CreateStream(), () =>
@@ -112,6 +249,7 @@ public class WorkstationAudioServiceTests
             return player;
         });
         service.Open("test.wav");
+        await PrepareAsync(service);
         service.Play();
         service.Seek(TimeSpan.FromSeconds(3));
         Assert.That(service.GetSnapshot().IsPlaying, Is.True);
@@ -129,11 +267,12 @@ public class WorkstationAudioServiceTests
     }
 
     [Test]
-    public void ReopenResetsSeekAndDecoderReadAheadDoesNotChangeSnapshot()
+    public async Task ReopenResetsSeekAndDecoderReadAheadDoesNotChangeSnapshot()
     {
         var player = new StubWavePlayer();
         using var service = new WorkstationAudioService(_ => CreateStream(), () => player);
         service.Open("first.wav");
+        await PrepareAsync(service);
         service.Seek(TimeSpan.FromSeconds(4));
         service.Play();
         player.Position = 0;
@@ -143,7 +282,7 @@ public class WorkstationAudioServiceTests
     }
 
     [Test]
-    public void DelayedStoppedCallbackFromReplacedOutputCannotResetSeek()
+    public async Task DelayedStoppedCallbackFromReplacedOutputCannotResetSeek()
     {
         var players = new List<StubWavePlayer>();
         using var service = new WorkstationAudioService(_ => CreateStream(), () =>
@@ -153,6 +292,7 @@ public class WorkstationAudioServiceTests
             return player;
         });
         service.Open("test.wav");
+        await PrepareAsync(service);
         service.Play();
         var retired = players[0];
         service.Seek(TimeSpan.FromSeconds(6));
@@ -166,4 +306,19 @@ public class WorkstationAudioServiceTests
         var format = WaveFormat.CreateIeeeFloatWaveFormat(10, 1);
         return new RawSourceWaveStream(new MemoryStream(new byte[format.BlockAlign * 100]), format);
     }
+
+    private static WaveStream CreateStream(float[] samples, int sampleRate, int channels)
+    {
+        var format = WaveFormat.CreateIeeeFloatWaveFormat(sampleRate, channels);
+        var bytes = new byte[samples.Length * sizeof(float)];
+        Buffer.BlockCopy(samples, 0, bytes, 0, bytes.Length);
+        return new RawSourceWaveStream(new MemoryStream(bytes), format);
+    }
+
+    private static async Task PrepareAsync(WorkstationAudioService service)
+    {
+        using var project = new TestProjectFolder();
+        await service.UpdateSamplesAsync(project.ProjectPath, [], CancellationToken.None);
+    }
+
 }
