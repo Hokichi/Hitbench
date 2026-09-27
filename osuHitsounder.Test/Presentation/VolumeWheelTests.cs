@@ -61,6 +61,7 @@ public class VolumeWheelTests
                    UIElementAutomationPeer.CreatePeerForElement(wheel);
         var provider = (IRangeValueProvider)peer!.GetPattern(PatternInterface.RangeValue)!;
 
+        Assert.That(provider.IsReadOnly, Is.True);
         provider.SetValue(25);
         Assert.That(wheel.Value, Is.EqualTo(50));
         wheel.IsActive = true;
@@ -68,6 +69,7 @@ public class VolumeWheelTests
         provider.SetValue(25);
         Assert.That(wheel.Value, Is.EqualTo(50));
         wheel.IsEnabled = true;
+        Assert.That(provider.IsReadOnly, Is.False);
         provider.SetValue(25);
         Assert.That(wheel.Value, Is.EqualTo(25));
     }
@@ -127,6 +129,25 @@ public class VolumeWheelTests
     }
 
     [Test]
+    public void CardAndOverlayContextsDoNotSharePartialWheelDeltas()
+    {
+        var (page, vm, view) = CreateLoadedPage();
+        using (view)
+        {
+            var card = (Border)page.FindName("SongAudioCard");
+            page.HandleContextWheel(ModifierKeys.Alt, 60, card);
+            page.HandleContextWheel(ModifierKeys.Alt, 120, page);
+            page.HandleContextWheel(ModifierKeys.Alt, 60, card);
+            Assert.That(vm.SelectedSubdivisionIndex, Is.EqualTo(3));
+
+            page.HandleContextWheel(ModifierKeys.Alt, -60, page);
+            page.HandleContextWheel(ModifierKeys.Alt, 60, card);
+            page.HandleContextWheel(ModifierKeys.Alt, -60, page);
+            Assert.That(vm.ApplicationVolume, Is.EqualTo(100));
+        }
+    }
+
+    [Test]
     public void SongCardKeepsSubdivisionPriorityAndKeyboardOverlayRestoresFocusIntent()
     {
         var (page, vm, view) = CreateLoadedPage();
@@ -145,6 +166,17 @@ public class VolumeWheelTests
             Assert.That(vm.SongVolume, Is.EqualTo(95));
             Assert.That(page.HandleVolumeOverlayKey(Key.Escape, ModifierKeys.None), Is.True);
             Assert.That(page.IsVolumeOverlayOpen, Is.False);
+        }
+    }
+
+    [Test]
+    public void AltVOpensOverlayFromNativeEditors()
+    {
+        var (page, _, view) = CreateLoadedPage();
+        using (view)
+        {
+            Assert.That(page.HandleVolumeShortcut(Key.V, ModifierKeys.Alt, new TextBox()), Is.True);
+            Assert.That(page.IsVolumeOverlayOpen, Is.True);
         }
     }
 

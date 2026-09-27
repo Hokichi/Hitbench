@@ -56,9 +56,19 @@ public partial class WorkstationPage
 
     internal bool HandleContextWheel(ModifierKeys modifiers, int delta, DependencyObject? origin)
     {
-        if (modifiers != ModifierKeys.Alt) return HandleWaveformWheel(modifiers, delta);
-        if (!IsVolumeOverlayElement(origin) && IsSongAudioCardElement(origin))
+        if (modifiers != ModifierKeys.Alt)
+        {
+            volumeWheelRemainder = 0;
             return HandleWaveformWheel(modifiers, delta);
+        }
+        if (!IsVolumeOverlayElement(origin) && IsSongAudioCardElement(origin))
+        {
+            volumeWheelRemainder = 0;
+            return HandleWaveformWheel(modifiers, delta);
+        }
+
+        wheelMode = ModifierKeys.None;
+        wheelRemainder = 0;
 
         if (!IsVolumeOverlayOpen)
         {
@@ -80,7 +90,7 @@ public partial class WorkstationPage
     internal bool HandleVolumeShortcut(Key key, ModifierKeys modifiers, DependencyObject? origin)
     {
         if (IsVolumeOverlayOpen && HandleVolumeOverlayKey(key, modifiers)) return true;
-        if (key != Key.V || modifiers != ModifierKeys.Alt || deactivationStarted || IsEditingInput(origin)) return false;
+        if (key != Key.V || modifiers != ModifierKeys.Alt || deactivationStarted) return false;
         ShowVolumeOverlay(true, new Point(Math.Max(0, ActualWidth / 2 - 140), 16));
         return true;
     }
