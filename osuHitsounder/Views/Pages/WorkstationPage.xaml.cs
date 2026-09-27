@@ -88,6 +88,7 @@ public partial class WorkstationPage : UserControl
 
     private async Task DeactivateCoreAsync()
     {
+        DismissVolumeOverlay();
         try { await viewModel.DeactivateAsync(); }
         finally
         {

@@ -335,12 +335,14 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
 
     private void OnWindowMouseWheel(object sender, MouseWheelEventArgs e)
     {
-        if (HandleWindowMouseWheel(IsActive, Keyboard.Modifiers, e.Delta)) e.Handled = true;
+        if (HandleWindowMouseWheel(IsActive, Keyboard.Modifiers, e.Delta,
+                e.OriginalSource as DependencyObject)) e.Handled = true;
     }
 
     private void OnWindowKeyDown(object sender, KeyEventArgs e)
     {
-        if (HandleWindowKeyDown(IsActive, e.Key, Keyboard.Modifiers, e.IsRepeat,
+        var key = e.Key == Key.System ? e.SystemKey : e.Key;
+        if (HandleWindowKeyDown(IsActive, key, Keyboard.Modifiers, e.IsRepeat,
                 e.OriginalSource as DependencyObject))
             e.Handled = true;
     }
@@ -350,14 +352,27 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
     {
         if (!isActive || PageHost.Content is not WorkstationPage workstationPage) return false;
 
-        return workstationPage.HandlePlaybackKey(key, modifiers, isRepeat, origin);
+        return workstationPage.HandleVolumeShortcut(key, modifiers, origin) ||
+               workstationPage.HandlePlaybackKey(key, modifiers, isRepeat, origin);
     }
 
-    internal bool HandleWindowMouseWheel(bool isActive, ModifierKeys modifiers, int delta)
+    internal bool HandleWindowMouseWheel(bool isActive, ModifierKeys modifiers, int delta,
+        DependencyObject? origin = null)
     {
         if (!isActive || PageHost.Content is not WorkstationPage workstationPage) return false;
 
-        return workstationPage.HandleWaveformWheel(modifiers, delta);
+        return workstationPage.HandleContextWheel(modifiers, delta, origin);
+    }
+
+    private void OnWindowKeyUp(object sender, KeyEventArgs e)
+    {
+        if (e.Key is Key.LeftAlt or Key.RightAlt && PageHost.Content is WorkstationPage workstation)
+            workstation.DismissPointerVolumeOverlay();
+    }
+
+    private void OnWindowDeactivated(object? sender, EventArgs e)
+    {
+        if (PageHost.Content is WorkstationPage workstation) workstation.DismissVolumeOverlay();
     }
 
     private void OnMinimizeClick(object sender, RoutedEventArgs e) => requestWindowState(WindowState.Minimized);

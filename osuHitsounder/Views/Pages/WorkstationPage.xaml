@@ -257,6 +257,22 @@
             <Setter Property="Width" Value="160" />
         </Style>
         <Style
+            x:Key="OHsWorkstationVolumeOverlayStyle"
+            BasedOn="{StaticResource CardBorderStyle}"
+            TargetType="Border">
+            <Setter Property="Padding" Value="8" />
+            <Setter Property="Background" Value="{DynamicResource Brush.Background.Popup}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Default}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="16" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style
             x:Key="OHsWorkstationSongVolumeLabelStyle"
             BasedOn="{StaticResource FieldLabelTextStyle}"
             TargetType="TextBlock">
@@ -425,14 +441,14 @@
             </Border>
         </DataTemplate>
     </UserControl.Resources>
-    <Grid Margin="16">
+    <Grid x:Name="WorkstationRoot" Margin="16">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
-        <Border Style="{StaticResource OHsWorkstationPanelStyle}">
+        <Border x:Name="SongAudioCard" Style="{StaticResource OHsWorkstationPanelStyle}">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -512,7 +528,7 @@
                     x:Name="WaveformScrollViewer"
                     Grid.Row="3"
                     Margin="0,12,0,0"
-                    AutomationProperties.HelpText="Click to seek. Left and Right move between subdivision lines. Control plus Left or Right moves between whole beats. Use Shift plus wheel to scroll, Control plus wheel to zoom, or Alt plus wheel to change subdivision."
+                    AutomationProperties.HelpText="Click to seek. Left and Right move between subdivision lines. Control plus Left or Right moves between whole beats. Use Shift plus wheel to scroll, Control plus wheel to zoom, or Alt plus wheel over this song card to change subdivision."
                     AutomationProperties.Name="Audio waveform"
                     Focusable="True"
                     IsEnabled="{Binding CanPlay, Mode=OneWay}"
@@ -606,5 +622,38 @@
                     ToolTip="Zoom waveform in" />
             </StackPanel>
         </Grid>
+        <Border
+            x:Name="VolumeOverlay"
+            Grid.RowSpan="4"
+            Panel.ZIndex="10"
+            Width="280"
+            HorizontalAlignment="Left"
+            VerticalAlignment="Top"
+            Style="{StaticResource OHsWorkstationVolumeOverlayStyle}"
+            Visibility="Collapsed">
+            <WrapPanel x:Name="VolumeWheelPanel">
+                <customControls:VolumeWheel
+                    x:Name="ApplicationVolumeWheel"
+                    IsEnabled="{Binding CanPlay, Mode=OneWay}"
+                    Label="Application"
+                    MouseMove="OnVolumeWheelMouseMove"
+                    Style="{StaticResource OHsVolumeWheelStyle}"
+                    Value="{Binding ApplicationVolume, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                <customControls:VolumeWheel
+                    x:Name="SongVolumeWheel"
+                    IsEnabled="{Binding CanPlay, Mode=OneWay}"
+                    Label="Song"
+                    MouseMove="OnVolumeWheelMouseMove"
+                    Style="{StaticResource OHsVolumeWheelStyle}"
+                    Value="{Binding SongVolume, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                <customControls:VolumeWheel
+                    x:Name="SamplesVolumeWheel"
+                    IsEnabled="{Binding CanPlay, Mode=OneWay}"
+                    Label="Samples"
+                    MouseMove="OnVolumeWheelMouseMove"
+                    Style="{StaticResource OHsVolumeWheelStyle}"
+                    Value="{Binding SamplesVolume, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+            </WrapPanel>
+        </Border>
     </Grid>
 </UserControl>
