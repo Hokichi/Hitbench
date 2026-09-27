@@ -34,6 +34,10 @@ public partial class WorkstationPageVM(
     private TimeSpan? lastGridAudioPosition;
     private bool removalBusy;
     private Task? activeRemoval;
+    private readonly Dictionary<Sample, long> sampleEventIds = new(ReferenceEqualityComparer.Instance);
+    private CancellationTokenSource? playbackUpdateCancellation;
+    private Task playbackUpdates = Task.CompletedTask;
+    private long nextSampleEventId = 1;
     private int samplesRevision;
     public ObservableCollection<Track> Tracks => tracks;
     public ObservableCollection<string> SampleFiles => availableSamples;
@@ -59,12 +63,23 @@ public partial class WorkstationPageVM(
     [ObservableProperty] private bool isLoading;
     [ObservableProperty] private bool isPlaying;
     [ObservableProperty] private string? errorMessage;
+    private int songVolume = 100;
     private double zoomFactor = 16;
     private double trackHeight = 72;
     private int selectedSubdivisionIndex = 3;
 
     public double ZoomFactor => zoomFactor;
     public double TrackHeight => trackHeight;
+    public int SongVolume
+    {
+        get => songVolume;
+        set
+        {
+            var next = Math.Clamp(value, 0, 100);
+            if (!SetProperty(ref songVolume, next)) return;
+            audioService.SetSongVolume(next);
+        }
+    }
     public int SelectedSubdivisionIndex
     {
         get => selectedSubdivisionIndex;
@@ -85,6 +100,7 @@ public partial class WorkstationPageVM(
         if (deactivated) return Task.CompletedTask;
         lastGridTarget = null;
         lastGridAudioPosition = null;
+        playbackUpdateCancellation?.Cancel();
         loadCancellation?.Cancel();
         loadCancellation?.Dispose();
         loadCancellation = CancellationTokenSource.CreateLinkedTokenSource(token);
@@ -101,12 +117,14 @@ public partial class WorkstationPageVM(
         OnPropertyChanged(nameof(CanRemoveTrack));
         loadGeneration++;
         loadCancellation?.Cancel();
+        playbackUpdateCancellation?.Cancel();
         if (activeLoad is not null)
         {
             try { await activeLoad; }
             catch (OperationCanceledException) { }
         }
         if (activeRemoval is not null) await activeRemoval;
+        await playbackUpdates;
         if (messenger is not null) messenger.UnregisterAll(this);
         try { await FlushSavesAsync(); }
         finally
@@ -115,6 +133,8 @@ public partial class WorkstationPageVM(
             audioService.Dispose();
             loadCancellation?.Dispose();
             loadCancellation = null;
+            playbackUpdateCancellation?.Dispose();
+            playbackUpdateCancellation = null;
             NotifyCommandState();
         }
     }
@@ -173,7 +193,8 @@ public partial class WorkstationPageVM(
         if (!CanUseTransport() || Project is null || Waveform is null) return;
         var position = audioService.GetSnapshot().Position;
         if (lastGridTarget is { } lastTarget && lastGridAudioPosition is { } lastAudioPosition &&
-            position >= lastAudioPosition && position <= lastTarget)
+            position >= TimeSpan.FromTicks(Math.Min(lastAudioPosition.Ticks, lastTarget.Ticks)) &&
+            position <= TimeSpan.FromTicks(Math.Max(lastAudioPosition.Ticks, lastTarget.Ticks)))
             position = lastTarget;
         var target = BeatGridCalculator.GetAdjacentPosition(Project.Offsets, Project.BPMs,
             subdivision, position, Waveform.Duration, forward);
@@ -258,6 +279,7 @@ public partial class WorkstationPageVM(
                 project is null || !tracks.Contains(track)) return;
             project.Tracks.Remove(track);
             tracks.Remove(track);
+            QueuePlaybackUpdate();
             QueueSave();
         }
         catch (OperationCanceledException) { }
@@ -292,11 +314,12 @@ public partial class WorkstationPageVM(
         track.Samples.Add(new Sample
         {
             FileName = fileName,
-            Volume = track.Volume,
+            Volume = 100,
             Timestamp = (int)Math.Round(leftBoundaryMilliseconds, MidpointRounding.AwayFromZero)
         });
         samplesRevision++;
         OnPropertyChanged(nameof(SamplesRevision));
+        QueuePlaybackUpdate();
         QueueSave();
         return true;
     }
@@ -306,6 +329,7 @@ public partial class WorkstationPageVM(
         if (!CanPlaceSamples || !tracks.Contains(track) || !track.Samples.Remove(sample)) return false;
         samplesRevision++;
         OnPropertyChanged(nameof(SamplesRevision));
+        QueuePlaybackUpdate();
         QueueSave();
         return true;
     }
@@ -316,6 +340,7 @@ public partial class WorkstationPageVM(
         var next = Math.Clamp(volume, 5, 100);
         if (track.Volume == next) return;
         track.Volume = next;
+        QueuePlaybackUpdate();
         QueueSave();
     }
 
@@ -367,6 +392,61 @@ public partial class WorkstationPageVM(
         if (activeImport is not null) await activeImport;
         await saveTail;
         if (lastSaveError is not null) throw new IOException("Could not save project.", lastSaveError);
+    }
+
+    public Task FlushPlaybackUpdatesAsync() => playbackUpdates;
+
+    private void QueuePlaybackUpdate()
+    {
+        if (Project is null || projectPath is null || deactivated) return;
+        playbackUpdateCancellation?.Cancel();
+        playbackUpdateCancellation?.Dispose();
+        playbackUpdateCancellation = CancellationTokenSource.CreateLinkedTokenSource(
+            loadCancellation?.Token ?? CancellationToken.None);
+        var update = UpdatePlaybackAsync(projectPath, loadGeneration, playbackUpdateCancellation.Token);
+        playbackUpdates = AwaitPlaybackUpdatesAsync(playbackUpdates, update);
+    }
+
+    private async Task UpdatePlaybackAsync(string path, int generation, CancellationToken token)
+    {
+        var events = CreatePlaybackEvents();
+        try
+        {
+            await audioService.UpdateSamplesAsync(path, events, token);
+            var playbackError = audioService.GetSnapshot().Error;
+            if (!string.IsNullOrWhiteSpace(playbackError))
+                await CommitAsync(generation, CancellationToken.None, () => ErrorMessage = playbackError);
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested) { }
+        catch (Exception failure)
+        {
+            await CommitAsync(generation, CancellationToken.None, () => ErrorMessage = failure.Message);
+        }
+    }
+
+    private IReadOnlyList<SamplePlaybackEvent> CreatePlaybackEvents()
+    {
+        var currentSamples = tracks.SelectMany(track => track.Samples).ToHashSet(ReferenceEqualityComparer.Instance);
+        foreach (var removed in sampleEventIds.Keys.Where(sample => !currentSamples.Contains(sample)).ToArray())
+            sampleEventIds.Remove(removed);
+        var events = new List<SamplePlaybackEvent>(currentSamples.Count);
+        foreach (var track in tracks)
+        foreach (var sample in track.Samples)
+        {
+            if (!sampleEventIds.TryGetValue(sample, out var id))
+            {
+                id = nextSampleEventId++;
+                sampleEventIds.Add(sample, id);
+            }
+            events.Add(new SamplePlaybackEvent(id, sample.FileName, sample.Timestamp, sample.Volume, track.Volume));
+        }
+        return events;
+    }
+
+    private static async Task AwaitPlaybackUpdatesAsync(Task previous, Task current)
+    {
+        try { await previous; } catch (OperationCanceledException) { }
+        await current;
     }
 
     [RelayCommand]
@@ -423,6 +503,8 @@ public partial class WorkstationPageVM(
             Project = null;
             Position = TimeSpan.Zero;
             IsPlaying = false;
+            sampleEventIds.Clear();
+            nextSampleEventId = 1;
             NotifyCommandState();
         });
         try
@@ -433,6 +515,7 @@ public partial class WorkstationPageVM(
             await CommitAsync(generation, token, () =>
             {
                 audioService.Open(source.AudioPath);
+                audioService.SetSongVolume(SongVolume);
                 Project = source.Project;
                 Waveform = waveform;
                 tracks.Clear();
@@ -449,6 +532,9 @@ public partial class WorkstationPageVM(
                     messenger.Register<LoadSampleRequestedMessage>(this, (_, _) => LoadSampleCommand.Execute(null));
                 }
             });
+            await UpdatePlaybackAsync(projectPath, generation, token);
+            if (audioService.GetSnapshot().Error?.StartsWith("Unable to prepare audio:", StringComparison.Ordinal) == true)
+                await CommitAsync(generation, CancellationToken.None, () => Waveform = null);
             if (sampleFiles is not null)
             {
                 var choices = await sampleFiles.ListAsync(projectPath, token);

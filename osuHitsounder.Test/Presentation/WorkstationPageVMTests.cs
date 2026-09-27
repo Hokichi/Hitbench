@@ -52,11 +52,13 @@ public class WorkstationPageVMTests
         var vm = new WorkstationPageVM(source, audio, new ImmediateUiScheduler());
         await vm.LoadAsync("project.json", CancellationToken.None);
         vm.NextWholeBeatCommand.Execute(null);
-        Assert.That(vm.Position, Is.EqualTo(TimeSpan.FromMilliseconds(430)));
+        var firstBeat = TimeSpan.FromSeconds(19_314d / 44_100);
+        var secondBeat = TimeSpan.FromSeconds(38_628d / 44_100);
+        Assert.That(vm.Position, Is.EqualTo(firstBeat).Within(TimeSpan.FromTicks(1)));
         vm.NextWholeBeatCommand.Execute(null);
-        Assert.That(vm.Position, Is.EqualTo(TimeSpan.FromMilliseconds(870)));
+        Assert.That(vm.Position, Is.EqualTo(secondBeat).Within(TimeSpan.FromTicks(1)));
         vm.PreviousWholeBeatCommand.Execute(null);
-        Assert.That(vm.Position, Is.EqualTo(TimeSpan.FromMilliseconds(430)));
+        Assert.That(vm.Position, Is.EqualTo(firstBeat).Within(TimeSpan.FromTicks(1)));
         await vm.DeactivateAsync();
     }
 
@@ -77,7 +79,7 @@ public class WorkstationPageVMTests
         vm.NextGridLineCommand.Execute(null);
         var first = vm.Position;
         vm.NextGridLineCommand.Execute(null);
-        Assert.That(first, Is.EqualTo(TimeSpan.FromMilliseconds(120)));
+        Assert.That(first, Is.EqualTo(TimeSpan.FromSeconds(5_513d / 44_100)).Within(TimeSpan.FromTicks(1)));
         Assert.That(vm.Position, Is.GreaterThan(first));
         Assert.That(vm.Position, Is.EqualTo(TimeSpan.FromMilliseconds(250)));
         vm.PreviousGridLineCommand.Execute(null);

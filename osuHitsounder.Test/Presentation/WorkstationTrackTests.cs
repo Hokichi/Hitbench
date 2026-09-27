@@ -275,7 +275,7 @@ public class WorkstationTrackTests
     }
 
     [Test]
-    public async Task PlacementCapturesCurrentSelectionVolumeAndRoundedTimestamp()
+    public async Task PlacementUsesDefaultBeatVolumeAndRoundedTimestamp()
     {
         var project = new ProjectData { Offsets = [0], BPMs = [60] };
         var source = new StubWorkstationSourceService
@@ -298,9 +298,64 @@ public class WorkstationTrackTests
         Assert.That(vm.PlaceSample(track, 125.5), Is.True);
 
         Assert.That(track.Samples.Select(sample => sample.FileName), Is.EqualTo(new[] { "a.wav", "b.wav" }));
-        Assert.That(track.Samples.Select(sample => sample.Volume), Is.EqualTo(new[] { 70, 40 }));
+        Assert.That(track.Samples.Select(sample => sample.Volume), Is.EqualTo(new[] { 100, 100 }));
         Assert.That(track.Samples.Select(sample => sample.Timestamp), Is.EqualTo(new[] { 126, 126 }));
         Assert.That(vm.SamplesRevision, Is.EqualTo(2));
+    }
+
+    [Test]
+    public async Task PlaybackScheduleCombinesStoredBeatAndCurrentTrackVolumes()
+    {
+        var sample = new Sample { FileName = "hit.wav", Timestamp = 250, Volume = 40 };
+        var track = new Track { Volume = 50, Samples = [sample] };
+        var source = new StubWorkstationSourceService
+        {
+            Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav",
+                new ProjectData { Tracks = [track] }))
+        };
+        var audio = new StubWorkstationAudioService();
+        var vm = new WorkstationPageVM(source, audio, new ImmediateUiScheduler());
+
+        await vm.LoadAsync("project.json", CancellationToken.None);
+
+        var scheduled = audio.SampleUpdates.Last().Single();
+        Assert.Multiple(() =>
+        {
+            Assert.That(scheduled.FileName, Is.EqualTo("hit.wav"));
+            Assert.That(scheduled.Timestamp, Is.EqualTo(250));
+            Assert.That(scheduled.BeatVolume, Is.EqualTo(40));
+            Assert.That(scheduled.TrackVolume, Is.EqualTo(50));
+        });
+        await vm.DeactivateAsync();
+    }
+
+    [Test]
+    public async Task SongVolumeIsSessionOnlyAndClamped()
+    {
+        var audio = new StubWorkstationAudioService();
+        var saves = new DelayedProjectFileService();
+        saves.Release();
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), audio,
+            new ImmediateUiScheduler(), projectFiles: saves);
+        await vm.LoadAsync("project.json", CancellationToken.None);
+
+        vm.SongVolume = -10;
+        Assert.That(vm.SongVolume, Is.Zero);
+        vm.SongVolume = 120;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(vm.SongVolume, Is.EqualTo(100));
+            Assert.That(audio.SongVolume, Is.EqualTo(100));
+            Assert.That(saves.Writes, Is.Zero);
+        });
+        await vm.DeactivateAsync();
+    }
+
+    [Test]
+    public void NewSampleDefaultsToFullVolume()
+    {
+        Assert.That(new Sample().Volume, Is.EqualTo(100));
     }
 
     [Test]
