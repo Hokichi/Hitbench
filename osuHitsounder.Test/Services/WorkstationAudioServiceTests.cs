@@ -197,6 +197,31 @@ public class WorkstationAudioServiceTests
     }
 
     [Test]
+    public async Task NaturalEndBuildsFreshOutputWhenPlaybackRestarts()
+    {
+        var players = new List<StubWavePlayer>();
+        using var service = new WorkstationAudioService(_ => CreateStream(), () =>
+        {
+            var player = new StubWavePlayer();
+            players.Add(player);
+            return player;
+        });
+        service.Open("test.wav");
+        await PrepareAsync(service);
+        service.Play();
+
+        players[0].RaiseStopped();
+        service.Play();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(players, Has.Count.EqualTo(2));
+            Assert.That(players[0].IsDisposed, Is.True);
+            Assert.That(service.GetSnapshot().IsPlaying, Is.True);
+        });
+    }
+
+    [Test]
     public async Task DeviceFailureDoesNotThrowAndDisposeIsIdempotent()
     {
         var player = new StubWavePlayer { FailInitialization = true };

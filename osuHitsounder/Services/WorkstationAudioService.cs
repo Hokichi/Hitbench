@@ -266,6 +266,13 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
         {
             if (eventGeneration != generation || stopping || disposed) return;
             if (args.Exception is not null) error = $"Audio playback failed: {args.Exception.Message}";
+            generation++;
+            var completedPlayer = player;
+            if (completedPlayer is not null && playbackStoppedHandler is not null)
+                completedPlayer.PlaybackStopped -= playbackStoppedHandler;
+            player = null;
+            playbackStoppedHandler = null;
+            completedPlayer?.Dispose();
             currentPosition = TimeSpan.Zero;
             playbackOrigin = TimeSpan.Zero;
             deviceOriginBytes = 0;
