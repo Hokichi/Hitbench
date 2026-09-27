@@ -78,6 +78,54 @@ public class BeatGridViewTests
         Assert.That(grid.ActiveInterval, Is.EqualTo(new BeatInterval(250, 500)));
     }
 
+    [Test]
+    public void PlaybackMarkerUsesSameScrolledTimeScaleAsWaveform()
+    {
+        var grid = CreateGrid();
+        grid.Duration = TimeSpan.FromSeconds(10);
+        grid.ContentWidth = 1_000;
+        grid.HorizontalOffset = 100;
+        grid.Position = TimeSpan.FromSeconds(2);
+
+        Assert.That(grid.GetPlaybackMarkerX(), Is.EqualTo(100).Within(0.001));
+
+        grid.Width = 400;
+        grid.ViewportWidth = 400;
+        grid.Measure(new Size(400, 72));
+        grid.Arrange(new Rect(0, 0, 400, 72));
+        grid.ContentWidth = 2_000;
+        Assert.That(grid.GetPlaybackMarkerX(), Is.EqualTo(300).Within(0.001));
+    }
+
+    [Test]
+    public void PlaybackMarkerHidesOutsideViewportAndHandlesInvalidGeometry()
+    {
+        var grid = CreateGrid();
+        grid.Duration = TimeSpan.FromSeconds(10);
+        grid.ContentWidth = 1_000;
+        grid.HorizontalOffset = 500;
+        grid.Position = TimeSpan.FromSeconds(2);
+        Assert.That(grid.GetPlaybackMarkerX(), Is.Null);
+
+        grid.Duration = TimeSpan.Zero;
+        Assert.That(grid.GetPlaybackMarkerX(), Is.Null);
+        grid.Duration = TimeSpan.FromSeconds(10);
+        grid.ContentWidth = double.NaN;
+        Assert.That(grid.GetPlaybackMarkerX(), Is.Null);
+    }
+
+    [Test]
+    public void PlaybackPositionChangeDoesNotAlterPlacementSelection()
+    {
+        var grid = CreateGrid();
+        grid.UpdatePointerPosition(30);
+        var selected = grid.ActiveInterval;
+
+        grid.Position = TimeSpan.FromSeconds(1);
+
+        Assert.That(grid.ActiveInterval, Is.EqualTo(selected));
+    }
+
     private static BeatGridView CreateGrid()
     {
         var grid = new BeatGridView

@@ -23,6 +23,59 @@ namespace osuHitsounder.Test.Presentation;
 public class WorkstationPageIntegrationTests
 {
     [Test]
+    public void SongVolumeSliderUpdatesSongOnlyAndExposesAccessibleBounds()
+    {
+        var track = new osuHitsounder.Core.Entities.Track { Volume = 70 };
+        var source = new StubWorkstationSourceService
+        {
+            Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav",
+                new ProjectData { Tracks = [track] }))
+        };
+        var audio = new StubWorkstationAudioService();
+        var vm = new WorkstationPageVM(source, audio, new ImmediateUiScheduler());
+        var page = new WorkstationPage(vm);
+        page.SetProjectPath("project.json");
+        using var view = new InMemoryView(new Window { Content = page, Width = 640, Height = 480 });
+        UiTestPump.Run(page.LoadCompletion);
+        view.UpdateLayout();
+
+        var slider = (ValueSlider)page.FindName("SongVolumeSlider");
+        slider.Value = 50;
+        slider.GetBindingExpression(RangeBase.ValueProperty)!.UpdateSource();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(vm.SongVolume, Is.EqualTo(50));
+            Assert.That(audio.SongVolume, Is.EqualTo(50));
+            Assert.That(track.Volume, Is.EqualTo(70));
+            Assert.That(slider.Minimum, Is.Zero);
+            Assert.That(slider.Maximum, Is.EqualTo(100));
+            Assert.That(slider.SmallChange, Is.EqualTo(1));
+            Assert.That(slider.IsEnabled, Is.True);
+            Assert.That(AutomationProperties.GetName(slider), Is.EqualTo("Song volume"));
+        });
+    }
+
+    [Test]
+    public void SongVolumeSliderIsDisabledWhileLoading()
+    {
+        var completion = new TaskCompletionSource<WorkstationSource>();
+        var vm = new WorkstationPageVM(
+            new StubWorkstationSourceService { Load = (_, _) => completion.Task },
+            new StubWorkstationAudioService(), new ImmediateUiScheduler());
+        var page = new WorkstationPage(vm);
+        page.SetProjectPath("project.json");
+        using var view = new InMemoryView(new Window { Content = page, Width = 640, Height = 480 });
+        view.UpdateLayout();
+
+        var slider = (ValueSlider)page.FindName("SongVolumeSlider");
+        Assert.That(slider.IsEnabled, Is.False);
+
+        completion.SetResult(new WorkstationSource("map.osu", "audio.wav", new ProjectData()));
+        UiTestPump.Run(page.LoadCompletion);
+    }
+
+    [Test]
     public void RemovalActionUsesTrackParameterAndFinalRemovalExplainsEmptyState()
     {
         var track = new osuHitsounder.Core.Entities.Track();

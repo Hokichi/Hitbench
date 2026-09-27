@@ -248,6 +248,27 @@
             <Setter Property="LargeChange" Value="5" />
             <Setter Property="Width" Value="120" />
         </Style>
+        <Style
+            x:Key="OHsWorkstationSongVolumeStyle"
+            BasedOn="{StaticResource OHsWorkstationVolumeStyle}"
+            TargetType="customControls:ValueSlider">
+            <Setter Property="Minimum" Value="0" />
+            <Setter Property="MinHeight" Value="40" />
+            <Setter Property="Width" Value="160" />
+        </Style>
+        <Style
+            x:Key="OHsWorkstationSongVolumeLabelStyle"
+            BasedOn="{StaticResource FieldLabelTextStyle}"
+            TargetType="TextBlock">
+            <Setter Property="Margin" Value="0,0,8,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
+                    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
         <ItemsPanelTemplate x:Key="OHsWorkstationTrackItemsPanel">
             <VirtualizingStackPanel />
         </ItemsPanelTemplate>
@@ -388,6 +409,9 @@
                             HoverBrush="{DynamicResource Brush.Background.Hover}"
                             MarkerBrush="{DynamicResource Brush.Navy}"
                             Offsets="{Binding DataContext.Project.Offsets, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
+                            PlaybackMarkerBrush="{StaticResource OHsWorkstationPlaybackMarkerBrush}"
+                            PlaybackMarkerOutlineBrush="{DynamicResource Brush.Navy.Muted}"
+                            Position="{Binding DataContext.Position, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
                             PressedBrush="{DynamicResource Brush.Navy}"
                             SamplePlacementRequested="OnSamplePlacementRequested"
                             SampleRemovalRequested="OnSampleRemovalRequested"
@@ -438,6 +462,22 @@
                             AutomationProperties.Name="Elapsed audio time"
                             Style="{StaticResource OHsWorkstationElapsedStyle}"
                             Text="{Binding ElapsedText, Mode=OneWay}" />
+                        <StackPanel
+                            Margin="16,0,0,0"
+                            VerticalAlignment="Center"
+                            Orientation="Horizontal">
+                            <TextBlock
+                                Style="{StaticResource OHsWorkstationSongVolumeLabelStyle}"
+                                Text="Song volume" />
+                            <customControls:ValueSlider
+                                x:Name="SongVolumeSlider"
+                                AutomationProperties.HelpText="Changes song volume only; track samples keep their own volume."
+                                AutomationProperties.Name="Song volume"
+                                DisplayText="{Binding SongVolume, Mode=OneWay, StringFormat={}{0:0}%}"
+                                IsEnabled="{Binding CanPlay, Mode=OneWay}"
+                                Style="{StaticResource OHsWorkstationSongVolumeStyle}"
+                                Value="{Binding SongVolume, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
                     </WrapPanel>
                     <StackPanel
                         x:Name="SubdivisionPanel"

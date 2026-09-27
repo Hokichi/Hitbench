@@ -24,6 +24,12 @@ public sealed class BeatGridView : FrameworkElement
     public static readonly DependencyProperty CanPlaceSamplesProperty = DependencyProperty.Register(nameof(CanPlaceSamples), typeof(bool), typeof(BeatGridView), new FrameworkPropertyMetadata(false, OnCanPlaceChanged));
     public static readonly DependencyProperty HoverBrushProperty = DependencyProperty.Register(nameof(HoverBrush), typeof(Brush), typeof(BeatGridView), RenderMetadata());
     public static readonly DependencyProperty MarkerBrushProperty = DependencyProperty.Register(nameof(MarkerBrush), typeof(Brush), typeof(BeatGridView), RenderMetadata());
+    public static readonly DependencyProperty PositionProperty = DependencyProperty.Register(nameof(Position), typeof(TimeSpan), typeof(BeatGridView),
+        new FrameworkPropertyMetadata(TimeSpan.Zero, FrameworkPropertyMetadataOptions.AffectsRender));
+    public static readonly DependencyProperty PlaybackMarkerBrushProperty = DependencyProperty.Register(nameof(PlaybackMarkerBrush), typeof(Brush), typeof(BeatGridView),
+        new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
+    public static readonly DependencyProperty PlaybackMarkerOutlineBrushProperty = DependencyProperty.Register(nameof(PlaybackMarkerOutlineBrush), typeof(Brush), typeof(BeatGridView),
+        new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
     public static readonly DependencyProperty FocusBrushProperty = DependencyProperty.Register(nameof(FocusBrush), typeof(Brush), typeof(BeatGridView), RenderMetadata());
     public static readonly DependencyProperty PressedBrushProperty = DependencyProperty.Register(nameof(PressedBrush), typeof(Brush), typeof(BeatGridView), RenderMetadata());
     public static readonly RoutedEvent SamplePlacementRequestedEvent = EventManager.RegisterRoutedEvent(nameof(SamplePlacementRequested), RoutingStrategy.Bubble, typeof(EventHandler<SamplePlacementRequestedEventArgs>), typeof(BeatGridView));
@@ -41,6 +47,9 @@ public sealed class BeatGridView : FrameworkElement
     public bool CanPlaceSamples { get => (bool)GetValue(CanPlaceSamplesProperty); set => SetValue(CanPlaceSamplesProperty, value); }
     public Brush? HoverBrush { get => (Brush?)GetValue(HoverBrushProperty); set => SetValue(HoverBrushProperty, value); }
     public Brush? MarkerBrush { get => (Brush?)GetValue(MarkerBrushProperty); set => SetValue(MarkerBrushProperty, value); }
+    public TimeSpan Position { get => (TimeSpan)GetValue(PositionProperty); set => SetValue(PositionProperty, value); }
+    public Brush? PlaybackMarkerBrush { get => (Brush?)GetValue(PlaybackMarkerBrushProperty); set => SetValue(PlaybackMarkerBrushProperty, value); }
+    public Brush? PlaybackMarkerOutlineBrush { get => (Brush?)GetValue(PlaybackMarkerOutlineBrushProperty); set => SetValue(PlaybackMarkerOutlineBrushProperty, value); }
     public Brush? FocusBrush { get => (Brush?)GetValue(FocusBrushProperty); set => SetValue(FocusBrushProperty, value); }
     public Brush? PressedBrush { get => (Brush?)GetValue(PressedBrushProperty); set => SetValue(PressedBrushProperty, value); }
     public BeatInterval? ActiveInterval { get; private set; }
@@ -129,6 +138,17 @@ public sealed class BeatGridView : FrameworkElement
     {
         if (Duration <= TimeSpan.Zero || ContentWidth <= 0 || ActualHeight <= 0) return Rect.Empty;
         return new Rect(timestampMilliseconds / Duration.TotalMilliseconds * ContentWidth - HorizontalOffset, 0, 20, ActualHeight);
+    }
+
+    public double? GetPlaybackMarkerX()
+    {
+        var viewport = Math.Min(ActualWidth, ViewportWidth);
+        if (Duration <= TimeSpan.Zero || !double.IsFinite(ContentWidth) || ContentWidth <= 0 ||
+            !double.IsFinite(HorizontalOffset) || !double.IsFinite(viewport) || viewport <= 0) return null;
+        var time = Math.Clamp(Position.TotalMilliseconds, 0, Duration.TotalMilliseconds);
+        var x = time / Duration.TotalMilliseconds * ContentWidth - HorizontalOffset;
+        if (x < 0 || x > viewport) return null;
+        return Math.Clamp(x, 0.75, Math.Max(0.75, viewport - 0.75));
     }
 
     protected override Size MeasureOverride(Size availableSize) => new(
@@ -221,6 +241,15 @@ public sealed class BeatGridView : FrameworkElement
                 var rect = GetSampleBounds(sample.Timestamp);
                 if (!rect.IsEmpty) context.DrawRoundedRectangle(marker, null, Inset(rect), 4, 4);
             }
+        var playbackX = GetPlaybackMarkerX();
+        var playback = highContrast ? SystemColors.WindowTextBrush : PlaybackMarkerBrush;
+        var playbackOutline = highContrast ? null : PlaybackMarkerOutlineBrush;
+        if (playbackX is { } x && playback is not null)
+        {
+            if (playbackOutline is not null)
+                context.DrawLine(new Pen(playbackOutline, 3.5), new Point(x, 0), new Point(x, ActualHeight));
+            context.DrawLine(new Pen(playback, 1.5), new Point(x, 0), new Point(x, ActualHeight));
+        }
         if (IsKeyboardFocused && focus is not null) context.DrawRectangle(null, new Pen(focus, 1), Inset(new Rect(RenderSize)));
         context.Pop();
     }
