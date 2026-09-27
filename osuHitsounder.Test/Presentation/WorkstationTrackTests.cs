@@ -32,8 +32,9 @@ public class WorkstationTrackTests
             await File.WriteAllTextAsync(projectPath, "{}");
             var sourcePath = Path.Combine(root.FullName, "kick.wav");
             await File.WriteAllBytesAsync(sourcePath, [1, 2, 3]);
+            var audio = new StubWorkstationAudioService();
             var vm = new WorkstationPageVM(new StubWorkstationSourceService(),
-                new StubWorkstationAudioService(), new ImmediateUiScheduler(), new SampleFileService(),
+                audio, new ImmediateUiScheduler(), new SampleFileService(),
                 new StubSampleFileDialogService(sourcePath));
 
             await vm.LoadAsync(projectPath, CancellationToken.None);
@@ -41,7 +42,9 @@ public class WorkstationTrackTests
             Assert.That(vm.AddSampleTrackCommand.CanExecute(null), Is.False);
 
             Assert.That(await vm.ImportSampleAsync(), Is.EqualTo("kick.wav"));
+            await vm.FlushPlaybackUpdatesAsync();
             Assert.That(vm.SampleFiles, Is.EqualTo(new[] { "kick.wav" }));
+            Assert.That(audio.SampleUpdates, Has.Count.EqualTo(2));
             Assert.That(vm.Tracks, Is.Empty);
             Assert.That(vm.CanAddTrack, Is.True);
 
@@ -51,6 +54,31 @@ public class WorkstationTrackTests
             await vm.DeactivateAsync();
         }
         finally { Directory.Delete(root.FullName, true); }
+    }
+
+    [Test]
+    public async Task SuccessfulPlaybackRefreshClearsItsResolvedError()
+    {
+        var track = new Track { Volume = 50, Samples = [new Sample { FileName = "missing.wav" }] };
+        var source = new StubWorkstationSourceService
+        {
+            Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav",
+                new ProjectData { Tracks = [track] }))
+        };
+        var audio = new StubWorkstationAudioService
+        {
+            Snapshot = new AudioPlaybackSnapshot(TimeSpan.Zero, false, "Unable to load sample 'missing.wav'.")
+        };
+        var vm = new WorkstationPageVM(source, audio, new ImmediateUiScheduler());
+        await vm.LoadAsync("project.json", CancellationToken.None);
+        Assert.That(vm.ErrorMessage, Does.Contain("missing.wav"));
+
+        audio.Snapshot = audio.Snapshot with { Error = null };
+        vm.SetTrackVolume(track, 60);
+        await vm.FlushPlaybackUpdatesAsync();
+
+        Assert.That(vm.ErrorMessage, Is.Null);
+        await vm.DeactivateAsync();
     }
 
     [Test]

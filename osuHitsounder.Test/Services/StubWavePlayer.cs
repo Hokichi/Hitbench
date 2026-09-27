@@ -22,6 +22,7 @@ public sealed class StubWavePlayer : IWavePlayer, IWavePosition
     public IWaveProvider? Provider { get; private set; }
     public bool IsDisposed { get; private set; }
     public bool FailInitialization { get; set; }
+    public Action? Disposing { get; set; }
     public bool HasPlaybackStoppedSubscribers => playbackStopped is not null;
     public long Position { get; set; }
 
@@ -51,5 +52,9 @@ public sealed class StubWavePlayer : IWavePlayer, IWavePosition
 
     public long GetPosition() => Position;
 
-    public void Dispose() => IsDisposed = true;
+    public void Dispose()
+    {
+        Disposing?.Invoke();
+        IsDisposed = true;
+    }
 }

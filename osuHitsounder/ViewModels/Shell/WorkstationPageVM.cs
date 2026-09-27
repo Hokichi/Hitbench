@@ -39,6 +39,7 @@ public partial class WorkstationPageVM(
     private Task playbackUpdates = Task.CompletedTask;
     private long nextSampleEventId = 1;
     private int samplesRevision;
+    private string? playbackErrorMessage;
     public ObservableCollection<Track> Tracks => tracks;
     public ObservableCollection<string> SampleFiles => availableSamples;
     public int SamplesRevision => samplesRevision;
@@ -373,6 +374,7 @@ public partial class WorkstationPageVM(
             var choices = await sampleFiles.ListAsync(path, token);
             if (!IsCurrentProject(path, project, generation)) return null;
             await CommitAsync(generation, token, () => RefreshAvailableSamples(choices));
+            QueuePlaybackUpdate();
             return name;
         }
         catch (OperationCanceledException) { return null; }
@@ -414,13 +416,28 @@ public partial class WorkstationPageVM(
         {
             await audioService.UpdateSamplesAsync(path, events, token);
             var playbackError = audioService.GetSnapshot().Error;
-            if (!string.IsNullOrWhiteSpace(playbackError))
-                await CommitAsync(generation, CancellationToken.None, () => ErrorMessage = playbackError);
+            await CommitAsync(generation, CancellationToken.None, () =>
+            {
+                if (!string.IsNullOrWhiteSpace(playbackError))
+                {
+                    playbackErrorMessage = playbackError;
+                    ErrorMessage = playbackError;
+                }
+                else if (ErrorMessage == playbackErrorMessage)
+                {
+                    playbackErrorMessage = null;
+                    ErrorMessage = null;
+                }
+            });
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { }
         catch (Exception failure)
         {
-            await CommitAsync(generation, CancellationToken.None, () => ErrorMessage = failure.Message);
+            await CommitAsync(generation, CancellationToken.None, () =>
+            {
+                playbackErrorMessage = failure.Message;
+                ErrorMessage = failure.Message;
+            });
         }
     }
 
@@ -499,6 +516,7 @@ public partial class WorkstationPageVM(
         {
             IsLoading = true;
             ErrorMessage = null;
+            playbackErrorMessage = null;
             Waveform = null;
             Project = null;
             Position = TimeSpan.Zero;

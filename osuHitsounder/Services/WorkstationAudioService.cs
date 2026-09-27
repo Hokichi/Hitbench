@@ -25,7 +25,6 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
     private string? error;
     private int generation;
     private int preparationGeneration;
-    private bool stopping;
     private bool disposed;
     private float songVolume = 1;
     private TimeSpan currentPosition;
@@ -48,10 +47,11 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
 
     public void Open(string path)
     {
+        IWavePlayer? retired;
         lock (sync)
         {
             ThrowIfDisposed();
-            ClosePlayback();
+            retired = DetachPlayback();
             audioPath = path;
             preparedSong = null;
             preparedEvents = [];
@@ -60,6 +60,7 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
             error = null;
             currentPosition = TimeSpan.Zero;
         }
+        DisposeOutput(retired);
     }
 
     public async Task UpdateSamplesAsync(string projectPath, IReadOnlyList<SamplePlaybackEvent> events,
@@ -156,6 +157,7 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
 
     public void Play()
     {
+        IWavePlayer? retired = null;
         lock (sync)
         {
             ThrowIfDisposed();
@@ -173,9 +175,11 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
             catch (Exception failure)
             {
                 error = $"Unable to play audio: {failure.Message}";
-                ClosePlayback();
+                retired = DetachPlayback();
+                ResetPosition();
             }
         }
+        DisposeOutput(retired);
     }
 
     public void Pause()
@@ -191,33 +195,44 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
 
     public void Stop()
     {
+        IWavePlayer? retired;
         lock (sync)
         {
             ThrowIfDisposed();
-            TearDownOutput();
-            currentPosition = TimeSpan.Zero;
-            playbackOrigin = TimeSpan.Zero;
-            deviceOriginBytes = 0;
+            retired = DetachPlayback();
+            ResetPosition();
         }
+        DisposeOutput(retired);
     }
 
     public void Seek(TimeSpan position)
     {
+        IWavePlayer? retired;
+        bool resume;
+        int detachedGeneration;
         lock (sync)
         {
             ThrowIfDisposed();
             if (audioPath is null || preparedSong is null) return;
-            var wasPlaying = player?.PlaybackState == PlaybackState.Playing;
+            resume = player?.PlaybackState == PlaybackState.Playing;
             var duration = GetDuration();
             var clamped = position < TimeSpan.Zero ? TimeSpan.Zero : position > duration ? duration : position;
-            TearDownOutput();
+            retired = DetachPlayback();
+            detachedGeneration = generation;
             currentPosition = FrameToTime(TimeToFrame(clamped));
             playbackOrigin = currentPosition;
             deviceOriginBytes = 0;
-            if (wasPlaying)
+        }
+        DisposeOutput(retired);
+        if (resume)
+        {
+            lock (sync)
             {
-                EnsurePlayback();
-                player!.Play();
+                if (!disposed && generation == detachedGeneration)
+                {
+                    EnsurePlayback();
+                    player!.Play();
+                }
             }
         }
     }
@@ -233,16 +248,19 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
 
     public void Dispose()
     {
+        IWavePlayer? retired;
         lock (sync)
         {
             if (disposed) return;
             disposed = true;
             preparationGeneration++;
-            ClosePlayback();
+            retired = DetachPlayback();
+            ResetPosition();
             preparedSong = null;
             preparedEvents = [];
             sampleCache.Clear();
         }
+        DisposeOutput(retired);
     }
 
     private void EnsurePlayback()
@@ -262,46 +280,41 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
 
     private void OnPlaybackStopped(int eventGeneration, StoppedEventArgs args)
     {
+        IWavePlayer? completedPlayer;
         lock (sync)
         {
-            if (eventGeneration != generation || stopping || disposed) return;
+            if (eventGeneration != generation || disposed) return;
             if (args.Exception is not null) error = $"Audio playback failed: {args.Exception.Message}";
-            generation++;
-            var completedPlayer = player;
-            if (completedPlayer is not null && playbackStoppedHandler is not null)
-                completedPlayer.PlaybackStopped -= playbackStoppedHandler;
-            player = null;
-            playbackStoppedHandler = null;
-            completedPlayer?.Dispose();
-            currentPosition = TimeSpan.Zero;
-            playbackOrigin = TimeSpan.Zero;
-            deviceOriginBytes = 0;
-            mixer = null;
+            completedPlayer = DetachPlayback();
+            ResetPosition();
         }
+        completedPlayer?.Dispose();
     }
 
-    private void ClosePlayback()
+    private IWavePlayer? DetachPlayback()
     {
-        TearDownOutput();
+        generation++;
+        var retired = player;
+        if (retired is not null && playbackStoppedHandler is not null)
+            retired.PlaybackStopped -= playbackStoppedHandler;
+        player = null;
+        playbackStoppedHandler = null;
+        mixer = null;
+        return retired;
+    }
+
+    private void ResetPosition()
+    {
         currentPosition = TimeSpan.Zero;
         playbackOrigin = TimeSpan.Zero;
         deviceOriginBytes = 0;
     }
 
-    private void TearDownOutput()
+    private static void DisposeOutput(IWavePlayer? retired)
     {
-        generation++;
-        if (player is not null)
-        {
-            if (playbackStoppedHandler is not null) player.PlaybackStopped -= playbackStoppedHandler;
-            stopping = true;
-            try { player.Stop(); } catch { }
-            finally { stopping = false; }
-            player.Dispose();
-            player = null;
-        }
-        playbackStoppedHandler = null;
-        mixer = null;
+        if (retired is null) return;
+        try { retired.Stop(); } catch { }
+        retired.Dispose();
     }
 
     private TimeSpan GetCurrentPosition()

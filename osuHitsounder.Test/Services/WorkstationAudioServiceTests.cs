@@ -222,6 +222,23 @@ public class WorkstationAudioServiceTests
     }
 
     [Test]
+    public async Task NaturalEndDisposesOutputWithoutHoldingServiceLock()
+    {
+        var player = new StubWavePlayer();
+        using var service = new WorkstationAudioService(_ => CreateStream(), () => player);
+        service.Open("test.wav");
+        await PrepareAsync(service);
+        service.Play();
+        player.Disposing = () => Assert.That(
+            Task.Run(service.GetSnapshot).Wait(TimeSpan.FromSeconds(1)), Is.True,
+            "Device disposal must not hold the service lock needed by callbacks.");
+
+        player.RaiseStopped();
+
+        Assert.That(player.IsDisposed, Is.True);
+    }
+
+    [Test]
     public async Task DeviceFailureDoesNotThrowAndDisposeIsIdempotent()
     {
         var player = new StubWavePlayer { FailInitialization = true };
