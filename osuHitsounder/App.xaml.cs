@@ -23,6 +23,7 @@ public partial class App : Application
         registrations.AddSingleton<IMessenger, WeakReferenceMessenger>();
         registrations.AddSingleton<IProjectFileService>(_ => new ProjectFileService(AppContext.BaseDirectory));
         registrations.AddSingleton<IWorkstationSourceService, WorkstationSourceService>();
+        registrations.AddSingleton<PlaybackVolumeSettings>();
         registrations.AddSingleton<ISampleFileService, SampleFileService>();
         registrations.AddSingleton<ISampleFileDialogService>(_ =>
             new SampleFileDialogService(() => Current.MainWindow, Current.Dispatcher));
@@ -33,7 +34,8 @@ public partial class App : Application
                 new WorkstationAudioService(), provider.GetRequiredService<IUiScheduler>(),
                 provider.GetRequiredService<ISampleFileService>(), provider.GetRequiredService<ISampleFileDialogService>(),
                 provider.GetRequiredService<IProjectFileService>(), provider.GetRequiredService<IMessenger>(),
-                provider.GetRequiredService<ITrackRemovalDialogService>())));
+                provider.GetRequiredService<ITrackRemovalDialogService>(),
+                provider.GetRequiredService<PlaybackVolumeSettings>())));
         registrations.AddSingleton<IHomeFolderService>(_ => new HomeFolderService(AppContext.BaseDirectory));
         registrations.AddSingleton<IAppSettingsService>(_ => new AppSettingsService(AppContext.BaseDirectory));
         registrations.AddSingleton<IUiScheduler>(_ => new UiScheduler(Current.Dispatcher));

@@ -9,6 +9,40 @@ namespace osuHitsounder.Test.Presentation;
 public class WorkstationPageVMTests
 {
     [Test]
+    public async Task MasterVolumesPersistAcrossWorkstationsAndClampWithoutChangingProjectMix()
+    {
+        var settings = new PlaybackVolumeSettings();
+        var firstAudio = new StubWorkstationAudioService();
+        var first = new WorkstationPageVM(new StubWorkstationSourceService(), firstAudio,
+            new ImmediateUiScheduler(), playbackVolumes: settings);
+        await first.LoadAsync("project.json", CancellationToken.None);
+        var trackVolumes = first.Tracks.Select(track => track.Volume).ToArray();
+
+        first.ApplicationVolume = 140;
+        first.SamplesVolume = -20;
+        first.ApplicationVolume = 40;
+        first.SamplesVolume = 60;
+        await first.DeactivateAsync();
+
+        var secondAudio = new StubWorkstationAudioService();
+        var second = new WorkstationPageVM(new StubWorkstationSourceService(), secondAudio,
+            new ImmediateUiScheduler(), playbackVolumes: settings);
+        await second.LoadAsync("project.json", CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(second.ApplicationVolume, Is.EqualTo(40));
+            Assert.That(second.SamplesVolume, Is.EqualTo(60));
+            Assert.That(secondAudio.ApplicationVolume, Is.EqualTo(40));
+            Assert.That(secondAudio.SamplesVolume, Is.EqualTo(60));
+            Assert.That(first.Tracks.Select(track => track.Volume), Is.EqualTo(trackVolumes));
+            Assert.That(settings.ApplicationVolume, Is.EqualTo(40));
+            Assert.That(settings.SamplesVolume, Is.EqualTo(60));
+        });
+        await second.DeactivateAsync();
+    }
+
+    [Test]
     public async Task WholeBeatCommandsAdvanceAcrossFrameRoundingAndTimingChange()
     {
         var format = WaveFormat.CreateIeeeFloatWaveFormat(100, 1);

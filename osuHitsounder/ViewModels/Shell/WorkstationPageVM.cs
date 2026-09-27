@@ -21,8 +21,10 @@ public partial class WorkstationPageVM(
     ISampleFileDialogService? sampleDialog = null,
     IProjectFileService? projectFiles = null,
     IMessenger? messenger = null,
-    ITrackRemovalDialogService? trackRemovalDialog = null) : ObservableObject
+    ITrackRemovalDialogService? trackRemovalDialog = null,
+    PlaybackVolumeSettings? playbackVolumes = null) : ObservableObject
 {
+    private readonly PlaybackVolumeSettings playbackVolumes = playbackVolumes ?? new PlaybackVolumeSettings();
     private readonly ObservableCollection<Track> tracks = [];
     private readonly ObservableCollection<string> availableSamples = [];
     private string? projectPath;
@@ -79,6 +81,30 @@ public partial class WorkstationPageVM(
             var next = Math.Clamp(value, 0, 100);
             if (!SetProperty(ref songVolume, next)) return;
             audioService.SetSongVolume(next);
+        }
+    }
+    public int ApplicationVolume
+    {
+        get => playbackVolumes.ApplicationVolume;
+        set
+        {
+            var previous = playbackVolumes.ApplicationVolume;
+            playbackVolumes.ApplicationVolume = value;
+            if (previous == playbackVolumes.ApplicationVolume) return;
+            OnPropertyChanged();
+            audioService.SetApplicationVolume(playbackVolumes.ApplicationVolume);
+        }
+    }
+    public int SamplesVolume
+    {
+        get => playbackVolumes.SamplesVolume;
+        set
+        {
+            var previous = playbackVolumes.SamplesVolume;
+            playbackVolumes.SamplesVolume = value;
+            if (previous == playbackVolumes.SamplesVolume) return;
+            OnPropertyChanged();
+            audioService.SetSamplesVolume(playbackVolumes.SamplesVolume);
         }
     }
     public int SelectedSubdivisionIndex
@@ -534,6 +560,8 @@ public partial class WorkstationPageVM(
             {
                 audioService.Open(source.AudioPath);
                 audioService.SetSongVolume(SongVolume);
+                audioService.SetApplicationVolume(ApplicationVolume);
+                audioService.SetSamplesVolume(SamplesVolume);
                 Project = source.Project;
                 Waveform = waveform;
                 tracks.Clear();
