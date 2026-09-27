@@ -28,6 +28,46 @@ public class WorkstationAudioServiceTests
     }
 
     [Test]
+    public async Task MasterVolumesUpdateLiveAndSurvivePlaybackRecreation()
+    {
+        using var project = new TestProjectFolder("hit.wav");
+        var players = new List<StubWavePlayer>();
+        using var service = new WorkstationAudioService(path =>
+            path.EndsWith("hit.wav", StringComparison.OrdinalIgnoreCase)
+                ? CreateStream(Enumerable.Repeat(0.4f, 16).ToArray(), 44_100, 2)
+                : CreateStream(Enumerable.Repeat(0.2f, 32).ToArray(), 44_100, 2), () =>
+            {
+                var player = new StubWavePlayer();
+                players.Add(player);
+                return player;
+            });
+        service.Open("song.wav");
+        service.SetSongVolume(50);
+        service.SetSamplesVolume(50);
+        service.SetApplicationVolume(50);
+        await service.UpdateSamplesAsync(project.ProjectPath,
+            [new SamplePlaybackEvent(1, "hit.wav", 0, 50, 100)], CancellationToken.None);
+
+        service.Play();
+        var first = new float[2];
+        players[^1].Provider!.ToSampleProvider().Read(first, 0, first.Length);
+        service.SetSamplesVolume(0);
+        var muted = new float[2];
+        players[^1].Provider!.ToSampleProvider().Read(muted, 0, muted.Length);
+        service.Seek(TimeSpan.Zero);
+        var recreated = new float[2];
+        players[^1].Provider!.ToSampleProvider().Read(recreated, 0, recreated.Length);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(first, Is.EqualTo(new[] { 0.1f, 0.1f }).Within(0.0001));
+            Assert.That(muted, Is.EqualTo(new[] { 0.05f, 0.05f }).Within(0.0001));
+            Assert.That(recreated, Is.EqualTo(new[] { 0.05f, 0.05f }).Within(0.0001));
+            Assert.That(players, Has.Count.EqualTo(2));
+        });
+    }
+
+    [Test]
     public async Task MutingSongLeavesPreparedSampleAudible()
     {
         using var project = new TestProjectFolder("hit.wav");

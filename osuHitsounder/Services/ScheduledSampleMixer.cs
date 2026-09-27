@@ -11,6 +11,8 @@ public sealed class ScheduledSampleMixer : ISampleProvider
     private long samplePosition;
     private int nextEvent;
     private float songVolume = 1;
+    private float samplesVolume = 1;
+    private float applicationVolume = 1;
 
     public ScheduledSampleMixer(ReadOnlyMemory<float> song, WaveFormat format, long startFrame)
     {
@@ -28,6 +30,18 @@ public sealed class ScheduledSampleMixer : ISampleProvider
     {
         get { lock (sync) return songVolume; }
         set { lock (sync) songVolume = Math.Clamp(float.IsFinite(value) ? value : 0, 0, 1); }
+    }
+
+    public float SamplesVolume
+    {
+        get { lock (sync) return samplesVolume; }
+        set { lock (sync) samplesVolume = NormalizeVolume(value); }
+    }
+
+    public float ApplicationVolume
+    {
+        get { lock (sync) return applicationVolume; }
+        set { lock (sync) applicationVolume = NormalizeVolume(value); }
     }
 
     public void ReplaceSchedule(IReadOnlyList<PreparedSampleEvent> events)
@@ -76,12 +90,12 @@ public sealed class ScheduledSampleMixer : ISampleProvider
                         continue;
                     }
                     mixed += FiniteOrZero(voice.Event.Samples.Span[voice.Position]) *
-                        Math.Clamp(FiniteOrZero(voice.Event.Gain), 0, 1);
+                        Math.Clamp(FiniteOrZero(voice.Event.Gain), 0, 1) * samplesVolume;
                     voice.Position++;
                     if (voice.Position >= voice.Event.Samples.Length) active.Remove(id);
                     else active[id] = voice;
                 }
-                buffer[offset + outputIndex] = Math.Clamp(FiniteOrZero(mixed), -1, 1);
+                buffer[offset + outputIndex] = Math.Clamp(FiniteOrZero(mixed) * applicationVolume, -1, 1);
                 samplePosition++;
             }
             return available;
@@ -99,4 +113,5 @@ public sealed class ScheduledSampleMixer : ISampleProvider
     }
 
     private static float FiniteOrZero(float value) => float.IsFinite(value) ? value : 0;
+    private static float NormalizeVolume(float value) => Math.Clamp(FiniteOrZero(value), 0, 1);
 }

@@ -11,6 +11,8 @@ public sealed class StubWorkstationAudioService : IWorkstationAudioService
     public string? OpenedPath { get; private set; }
     public bool Disposed { get; private set; }
     public int SongVolume { get; private set; } = 100;
+    public int SamplesVolume { get; private set; } = 100;
+    public int ApplicationVolume { get; private set; } = 100;
     public List<IReadOnlyList<SamplePlaybackEvent>> SampleUpdates { get; } = [];
     public Task<WaveformData> AnalyzeAsync(string audioPath, CancellationToken token) => Analyze(audioPath, token);
     public void Open(string audioPath) => OpenedPath = audioPath;
@@ -19,6 +21,8 @@ public sealed class StubWorkstationAudioService : IWorkstationAudioService
     public void Stop() => Snapshot = Snapshot with { Position = TimeSpan.Zero, IsPlaying = false };
     public void Seek(TimeSpan position) => Snapshot = Snapshot with { Position = position };
     public void SetSongVolume(int volume) => SongVolume = volume;
+    public void SetSamplesVolume(int volume) => SamplesVolume = volume;
+    public void SetApplicationVolume(int volume) => ApplicationVolume = volume;
     public Task UpdateSamplesAsync(string projectPath, IReadOnlyList<SamplePlaybackEvent> events, CancellationToken token)
     {
         SampleUpdates.Add(events.ToArray());

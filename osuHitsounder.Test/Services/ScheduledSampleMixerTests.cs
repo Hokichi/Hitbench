@@ -49,6 +49,68 @@ public class ScheduledSampleMixerTests
     }
 
     [Test]
+    public void MasterVolumesMultiplyTheirOwnBusesBeforeApplicationGain()
+    {
+        var mixer = CreateMixer([0.2f, 0.2f]);
+        mixer.SongVolume = 0.5f;
+        mixer.SamplesVolume = 0.5f;
+        mixer.ApplicationVolume = 0.5f;
+        mixer.ReplaceSchedule([Event(1, 0, [0.4f, 0.4f], 0.5f)]);
+        var output = new float[2];
+
+        mixer.Read(output, 0, output.Length);
+
+        Assert.That(output, Is.EqualTo(new[] { 0.1f, 0.1f }).Within(0.0001));
+    }
+
+    [Test]
+    public void ApplicationGainIsAppliedBeforeFinalClipping()
+    {
+        var mixer = CreateMixer([0f, 0f]);
+        mixer.ApplicationVolume = 0.5f;
+        mixer.ReplaceSchedule([
+            Event(1, 0, [0.8f, 0.8f]),
+            Event(2, 0, [0.8f, 0.8f])
+        ]);
+        var output = new float[2];
+
+        mixer.Read(output, 0, output.Length);
+
+        Assert.That(output, Is.EqualTo(new[] { 0.8f, 0.8f }).Within(0.0001));
+    }
+
+    [Test]
+    public void ChangingSamplesVolumeUpdatesAnActiveVoiceWithoutLosingItsPosition()
+    {
+        var mixer = CreateMixer(new float[6]);
+        mixer.ReplaceSchedule([Event(1, 0, Enumerable.Repeat(0.4f, 6).ToArray())]);
+        var output = new float[6];
+
+        mixer.Read(output, 0, 2);
+        mixer.SamplesVolume = 0;
+        mixer.Read(output, 2, 2);
+        mixer.SamplesVolume = 0.5f;
+        mixer.Read(output, 4, 2);
+
+        Assert.That(output, Is.EqualTo(new[] { 0.4f, 0.4f, 0f, 0f, 0.2f, 0.2f }).Within(0.0001));
+    }
+
+    [Test]
+    public void MasterVolumesClampAndRejectNonFiniteValues()
+    {
+        var mixer = CreateMixer([1f, 1f]);
+
+        mixer.SamplesVolume = 4;
+        mixer.ApplicationVolume = float.NaN;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(mixer.SamplesVolume, Is.EqualTo(1));
+            Assert.That(mixer.ApplicationVolume, Is.Zero);
+        });
+    }
+
+    [Test]
     public void SimultaneousOverlappingEventsClampFiniteOutput()
     {
         var mixer = CreateMixer([0.8f, float.NaN, 0, 0]);

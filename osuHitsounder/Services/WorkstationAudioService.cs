@@ -27,6 +27,8 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
     private int preparationGeneration;
     private bool disposed;
     private float songVolume = 1;
+    private float samplesVolume = 1;
+    private float applicationVolume = 1;
     private TimeSpan currentPosition;
     private TimeSpan playbackOrigin;
     private long deviceOriginBytes;
@@ -155,6 +157,26 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
         }
     }
 
+    public void SetSamplesVolume(int volume)
+    {
+        lock (sync)
+        {
+            ThrowIfDisposed();
+            samplesVolume = Math.Clamp(volume, 0, 100) / 100f;
+            if (mixer is not null) mixer.SamplesVolume = samplesVolume;
+        }
+    }
+
+    public void SetApplicationVolume(int volume)
+    {
+        lock (sync)
+        {
+            ThrowIfDisposed();
+            applicationVolume = Math.Clamp(volume, 0, 100) / 100f;
+            if (mixer is not null) mixer.ApplicationVolume = applicationVolume;
+        }
+    }
+
     public void Play()
     {
         IWavePlayer? retired = null;
@@ -267,7 +289,12 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
     {
         if (player is not null) return;
         var startFrame = TimeToFrame(currentPosition);
-        mixer = new ScheduledSampleMixer(preparedSong!, OutputFormat, startFrame) { SongVolume = songVolume };
+        mixer = new ScheduledSampleMixer(preparedSong!, OutputFormat, startFrame)
+        {
+            SongVolume = songVolume,
+            SamplesVolume = samplesVolume,
+            ApplicationVolume = applicationVolume
+        };
         mixer.ReplaceSchedule(preparedEvents);
         player = createPlayer();
         var currentGeneration = ++generation;
