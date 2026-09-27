@@ -187,7 +187,7 @@ public class WorkstationPageVMTests
         Assert.That(vm.IsPlaying, Is.True);
         audio.Snapshot = new AudioPlaybackSnapshot(TimeSpan.FromMinutes(65.25), true, null);
         vm.RefreshPlayback();
-        Assert.That(vm.ElapsedText, Is.EqualTo("65:15.0"));
+        Assert.That(vm.ElapsedText, Is.EqualTo("65:15.000"));
         vm.StopCommand.Execute(null);
         Assert.That(vm.Position, Is.EqualTo(TimeSpan.Zero));
     }
@@ -245,7 +245,7 @@ public class WorkstationPageVMTests
         Assert.Multiple(() =>
         {
             Assert.That(vm.Position, Is.EqualTo(TimeSpan.FromSeconds(3.4)));
-            Assert.That(vm.ElapsedText, Is.EqualTo("00:03.4"));
+            Assert.That(vm.ElapsedText, Is.EqualTo("00:03.400"));
             Assert.That(vm.IsPlaying, Is.True);
         });
     }

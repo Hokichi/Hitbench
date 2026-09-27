@@ -172,7 +172,7 @@ public partial class WorkstationPageVM(
         var snapshot = audioService.GetSnapshot();
         Position = snapshot.Position;
         IsPlaying = snapshot.IsPlaying;
-        ElapsedText = $"{(int)snapshot.Position.TotalMinutes:00}:{snapshot.Position.Seconds:00}.{snapshot.Position.Milliseconds / 100}";
+        ElapsedText = $"{(int)snapshot.Position.TotalMinutes:00}:{snapshot.Position.Seconds:00}.{snapshot.Position.Milliseconds:000}";
         if (!string.IsNullOrWhiteSpace(snapshot.Error)) ErrorMessage = snapshot.Error;
     }
 
