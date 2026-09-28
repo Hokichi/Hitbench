@@ -1,0 +1,112 @@
+using NAudio.Wave;
+using osuHitsounder.Core.Entities;
+using osuHitsounder.Services;
+using osuHitsounder.Test.Presentation;
+using osuHitsounder.ViewModels.Shell;
+
+namespace osuHitsounder.Test.Services;
+
+public class MarkerAudioIntegrationTests
+{
+    [Test]
+    public async Task MarkerCrossingStartsPreparedSoundAndSeekCanReplayIt()
+    {
+        using var project = new TestProjectFolder("hit.wav");
+        var players = new List<StubWavePlayer>();
+        using var audio = new WorkstationAudioService(path => Signal(path.EndsWith("hit.wav") ? .4f : .2f),
+            () => { var player = new StubWavePlayer(); players.Add(player); return player; });
+        var source = new StubWorkstationSourceService
+        {
+            Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song.wav", new ProjectData
+            {
+                Offsets = [0], BPMs = [120], Tracks = [new Track
+                {
+                    Samples = [new Sample { FileName = "hit.wav", Timestamp = 10 }]
+                }]
+            }))
+        };
+        var vm = new WorkstationPageVM(source, audio, new ImmediateUiScheduler());
+        try
+        {
+            await vm.LoadAsync(project.ProjectPath, CancellationToken.None);
+            vm.PlayPauseCommand.Execute(null);
+            players[^1].Position = 441 * 8;
+            vm.RefreshPlayback();
+            Assert.That(ReadFrame(players[^1]), Is.EqualTo(new[] { .2f, .2f }).Within(.0001));
+            players[^1].Position = 552 * 8;
+            vm.RefreshPlayback();
+            Assert.That(ReadFrame(players[^1]), Is.EqualTo(new[] { .6f, .6f }).Within(.0001));
+            vm.SeekCommand.Execute(TimeSpan.Zero);
+            Assert.That(ReadFrame(players[^1]), Is.EqualTo(new[] { .2f, .2f }).Within(.0001));
+            players[^1].Position = 552 * 8;
+            vm.RefreshPlayback();
+            Assert.That(ReadFrame(players[^1]), Is.EqualTo(new[] { .6f, .6f }).Within(.0001));
+        }
+        finally { await vm.DeactivateAsync(); }
+    }
+
+    [Test]
+    public async Task PreparationReplacedBeforeCompletionCannotRestoreOldPlacements()
+    {
+        using var project = new TestProjectFolder("hit.wav");
+        using var release = new ManualResetEventSlim();
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var player = new StubWavePlayer();
+        using var audio = new WorkstationAudioService(path =>
+        {
+            if (path.EndsWith("hit.wav"))
+            {
+                entered.TrySetResult();
+                if (!release.Wait(TimeSpan.FromSeconds(5))) throw new TimeoutException("Test decode release missing");
+                return Signal(.4f);
+            }
+            return Signal(.2f);
+        }, () => player);
+        audio.Open("song.wav");
+        var first = audio.UpdateSamplesAsync(project.ProjectPath, [new SamplePlaybackEvent(1, "hit.wav", 0, 100, 100)], CancellationToken.None);
+        try
+        {
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            var replacement = audio.UpdateSamplesAsync(project.ProjectPath, [new SamplePlaybackEvent(2, "hit.wav", 0, 100, 100)], CancellationToken.None);
+            release.Set();
+            await Task.WhenAll(first, replacement);
+            audio.Play();
+            audio.TriggerSamples([1]);
+            Assert.That(ReadFrame(player), Is.EqualTo(new[] { .2f, .2f }).Within(.0001));
+            audio.TriggerSamples([2]);
+            Assert.That(ReadFrame(player), Is.EqualTo(new[] { .6f, .6f }).Within(.0001));
+        }
+        finally { release.Set(); await first; }
+    }
+
+    [Test]
+    public async Task UnpreparedTriggerIsNotQueuedForLateReplay()
+    {
+        using var project = new TestProjectFolder("hit.wav");
+        var player = new StubWavePlayer();
+        using var audio = new WorkstationAudioService(path => Signal(path.EndsWith("hit.wav") ? .4f : .2f), () => player);
+        audio.Open("song.wav");
+        await audio.UpdateSamplesAsync(project.ProjectPath, [], CancellationToken.None);
+        audio.Play();
+        audio.TriggerSamples([1]);
+        await audio.UpdateSamplesAsync(project.ProjectPath, [new SamplePlaybackEvent(1, "hit.wav", 0, 100, 100)], CancellationToken.None);
+        Assert.That(ReadFrame(player), Is.EqualTo(new[] { .2f, .2f }).Within(.0001));
+        audio.TriggerSamples([1]);
+        Assert.That(ReadFrame(player), Is.EqualTo(new[] { .6f, .6f }).Within(.0001));
+    }
+
+    private static WaveStream Signal(float value)
+    {
+        var samples = Enumerable.Repeat(value, 44100 * 2).ToArray();
+        var bytes = new byte[samples.Length * sizeof(float)];
+        Buffer.BlockCopy(samples, 0, bytes, 0, bytes.Length);
+        return new RawSourceWaveStream(new MemoryStream(bytes), WaveFormat.CreateIeeeFloatWaveFormat(44100, 2));
+    }
+
+    private static float[] ReadFrame(StubWavePlayer player)
+    {
+        var frame = new float[2];
+        Assert.That(player.Provider!.ToSampleProvider().Read(frame, 0, 2), Is.EqualTo(2));
+        return frame;
+    }
+}
