@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Windows;
 using osuHitsounder.Core.Entities;
 using osuHitsounder.Resources.CustomControls;
@@ -21,7 +20,15 @@ public class WorkstationPlaybackRefreshTests
     {
         new WorkstationPageIntegrationTests().SetUp();
         audio = new StubWorkstationAudioService();
-        vm = new WorkstationPageVM(new StubWorkstationSourceService(), audio, new ImmediateUiScheduler());
+        var source = new StubWorkstationSourceService
+        {
+            Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData
+            {
+                Offsets = [0, 1000], BPMs = [120, 240],
+                Tracks = [new Track { Samples = [new Sample { FileName = "hit.wav", Timestamp = 10 }] }]
+            }))
+        };
+        vm = new WorkstationPageVM(source, audio, new ImmediateUiScheduler());
         page = new WorkstationPage(vm);
         page.SetProjectPath("project.json");
         view = new InMemoryView(new Window { Content = page, Width = 900, Height = 600 });
@@ -37,118 +44,78 @@ public class WorkstationPlaybackRefreshTests
         audio.Dispose();
     }
 
-    private void Play()
+    [Test]
+    public void TimerUsesBeatIntervalAndUpdatesAtTimingTransition()
     {
-        if (!vm.IsPlaying) vm.PlayPauseCommand.Execute(null);
-        page.UpdatePlaybackRefreshSubscription(true);
-    }
-
-    [TestCase(60)]
-    [TestCase(120)]
-    [TestCase(144)]
-    public void DistinctFramesFollowDevicePositionAndDuplicateFramesDoNotPoll(int fps)
-    {
-        Play();
-        var reads = audio.SnapshotReads;
-        for (var i = 0; i < 8; i++)
-        {
-            audio.Snapshot = new AudioPlaybackSnapshot(TimeSpan.FromMilliseconds(1234 + i), true, null);
-            var frame = TimeSpan.FromSeconds(i / (double)fps);
-            page.RefreshPlaybackFrame(frame);
-            audio.Snapshot = audio.Snapshot with { Position = TimeSpan.FromSeconds(9) };
-            page.RefreshPlaybackFrame(frame);
-            Assert.That(vm.Position, Is.EqualTo(TimeSpan.FromMilliseconds(1234 + i)));
-        }
-        Assert.That(audio.SnapshotReads - reads, Is.EqualTo(8));
-        Assert.That(((WaveformView)page.FindName("WaveformDisplay")).Position, Is.EqualTo(vm.Position));
+        Assert.That(page.IsPlaybackTimerEnabled, Is.False);
+        vm.PlayPauseCommand.Execute(null);
+        Assert.That(page.IsPlaybackTimerEnabled, Is.True);
+        Assert.That(page.PlaybackTimerInterval.TotalMilliseconds, Is.EqualTo(4.1667).Within(.0001));
+        audio.Snapshot = audio.Snapshot with { Position = TimeSpan.FromMilliseconds(1001) };
+        page.OnPlaybackTick(null, EventArgs.Empty);
+        Assert.That(page.PlaybackTimerInterval.TotalMilliseconds, Is.EqualTo(2.0833).Within(.0001));
+        Assert.That(vm.Position, Is.EqualTo(TimeSpan.FromSeconds(1)));
     }
 
     [Test]
-    public void PauseSeekResumeAndStopKeepImmediatePositionsAndResetFrameDeduplication()
+    public void TickUpdatesBoundMarkerAndTriggersCrossedSampleOnce()
     {
-        Play();
-        page.RefreshPlaybackFrame(TimeSpan.Zero);
+        vm.PlayPauseCommand.Execute(null);
+        audio.Snapshot = audio.Snapshot with { Position = TimeSpan.FromMilliseconds(12.5) };
+        page.OnPlaybackTick(null, EventArgs.Empty);
+        page.OnPlaybackTick(null, EventArgs.Empty);
+        Assert.That(vm.Position.TotalMilliseconds, Is.EqualTo(12.5));
+        Assert.That(((WaveformView)page.FindName("WaveformDisplay")).Position, Is.EqualTo(vm.Position));
+        Assert.That(audio.TriggerBatches.SelectMany(batch => batch), Is.EqualTo(new long[] { 1 }));
+    }
+
+    [TestCase(Visibility.Hidden)]
+    [TestCase(Visibility.Collapsed)]
+    public void HiddenPageKeepsFunctionalTimerWithoutAnimationRefreshPath(Visibility visibility)
+    {
+        vm.PlayPauseCommand.Execute(null);
+        page.Visibility = visibility;
+        page.UpdatePlaybackRefreshSubscription();
+        Assert.That(page.IsPlaybackTimerEnabled, Is.True);
+        audio.Snapshot = audio.Snapshot with { Position = TimeSpan.FromMilliseconds(12.5) };
+        page.OnPlaybackTick(null, EventArgs.Empty);
+        Assert.That(audio.TriggerBatches, Has.Count.EqualTo(1));
+        page.Visibility = Visibility.Visible;
+        Assert.That(audio.TriggerBatches, Has.Count.EqualTo(1));
+    }
+
+    [Test]
+    public void PauseSeekStopAndDeactivationStopTimerWork()
+    {
+        vm.PlayPauseCommand.Execute(null);
         vm.PlayPauseCommand.Execute(null);
         vm.SeekCommand.Execute(TimeSpan.FromMilliseconds(250));
         var reads = audio.SnapshotReads;
-        page.RefreshPlaybackFrame(TimeSpan.FromSeconds(1));
         page.OnPlaybackTick(null, EventArgs.Empty);
         Assert.That(audio.SnapshotReads, Is.EqualTo(reads));
-        Assert.That(vm.Position, Is.EqualTo(TimeSpan.FromMilliseconds(250)));
-        Play();
-        page.RefreshPlaybackFrame(TimeSpan.Zero);
-        Assert.That(audio.SnapshotReads, Is.GreaterThan(reads));
+        Assert.That(vm.Position.TotalMilliseconds, Is.EqualTo(250));
+        vm.PlayPauseCommand.Execute(null);
+        Assert.That(page.IsPlaybackTimerEnabled, Is.True);
         vm.StopCommand.Execute(null);
+        Assert.That(page.IsPlaybackTimerEnabled, Is.False);
+        vm.PlayPauseCommand.Execute(null);
+        UiTestPump.Run(page.DeactivateAsync());
         reads = audio.SnapshotReads;
-        page.RefreshPlaybackFrame(TimeSpan.FromSeconds(2));
+        page.UpdatePlaybackRefreshSubscription();
+        page.OnPlaybackTick(null, EventArgs.Empty);
+        Assert.That(page.IsPlaybackTimerEnabled, Is.False);
         Assert.That(audio.SnapshotReads, Is.EqualTo(reads));
-        Assert.That(vm.Position, Is.EqualTo(TimeSpan.Zero));
     }
 
     [TestCase(null)]
     [TestCase("device lost")]
-    public void FinalSnapshotStopsPollingAndRetainsError(string? error)
+    public void FinalSnapshotStopsTimerAndRetainsError(string? error)
     {
-        Play();
-        audio.Snapshot = new AudioPlaybackSnapshot(TimeSpan.Zero, false, error);
-        page.RefreshPlaybackFrame(TimeSpan.Zero);
-        var reads = audio.SnapshotReads;
-        page.RefreshPlaybackFrame(TimeSpan.FromSeconds(1));
+        vm.PlayPauseCommand.Execute(null);
+        audio.Snapshot = new AudioPlaybackSnapshot(error is null ? TimeSpan.FromSeconds(10) : TimeSpan.Zero, false, error);
         page.OnPlaybackTick(null, EventArgs.Empty);
-        Assert.That(audio.SnapshotReads, Is.EqualTo(reads));
-        Assert.That(vm.IsPlaying, Is.False);
+        Assert.That(page.IsPlaybackTimerEnabled, Is.False);
         if (error is not null) Assert.That(vm.ErrorMessage, Is.EqualTo(error));
-    }
-
-    [Test]
-    public void HiddenPageUsesFallbackAndRevealImmediatelyRefreshesPosition()
-    {
-        Play();
-        page.Visibility = Visibility.Hidden;
-        var reads = audio.SnapshotReads;
-        audio.Snapshot = audio.Snapshot with { Position = TimeSpan.FromSeconds(2) };
-        page.RefreshPlaybackFrame(TimeSpan.Zero);
-        Assert.That(audio.SnapshotReads, Is.EqualTo(reads));
-        page.OnPlaybackTick(null, EventArgs.Empty);
-        Assert.That(vm.Position, Is.EqualTo(TimeSpan.FromSeconds(2)));
-        audio.Snapshot = audio.Snapshot with { Position = TimeSpan.FromSeconds(3) };
-        page.Visibility = Visibility.Visible;
-        Assert.That(vm.Position, Is.EqualTo(TimeSpan.FromSeconds(3)));
-        page.UpdatePlaybackRefreshSubscription(true);
-        reads = audio.SnapshotReads;
-        page.OnPlaybackTick(null, EventArgs.Empty);
-        Assert.That(audio.SnapshotReads, Is.EqualTo(reads));
-    }
-
-    [Test]
-    public void ReducedMotionSwitchesBetweenTimerAndRenderingWithoutDuplicateWork()
-    {
-        Play();
-        page.UpdatePlaybackRefreshSubscription(false);
-        page.UpdatePlaybackRefreshSubscription(false);
-        var reads = audio.SnapshotReads;
-        page.RefreshPlaybackFrame(TimeSpan.Zero);
-        Assert.That(audio.SnapshotReads, Is.EqualTo(reads));
-        page.OnPlaybackTick(null, EventArgs.Empty);
-        Assert.That(audio.SnapshotReads, Is.EqualTo(reads + 1));
-        page.UpdatePlaybackRefreshSubscription(true);
-        page.UpdatePlaybackRefreshSubscription(true);
-        page.RefreshPlaybackFrame(TimeSpan.Zero);
-        page.OnPlaybackTick(null, EventArgs.Empty);
-        Assert.That(audio.SnapshotReads, Is.EqualTo(reads + 2));
-    }
-
-    [Test]
-    public void DeactivationStopsBothRefreshPaths()
-    {
-        Play();
-        UiTestPump.Run(page.DeactivateAsync());
-        var reads = audio.SnapshotReads;
-        page.UpdatePlaybackRefreshSubscription(true);
-        page.UpdatePlaybackRefreshSubscription(false);
-        page.RefreshPlaybackFrame(TimeSpan.Zero);
-        page.OnPlaybackTick(null, EventArgs.Empty);
-        Assert.That(audio.SnapshotReads, Is.EqualTo(reads));
     }
 
     [TestCase(false)]
@@ -164,50 +131,14 @@ public class WorkstationPlaybackRefreshTests
         using var loadingView = new InMemoryView(new Window { Content = loadingPage, Width = 640, Height = 480 });
         try
         {
-            loadingAudio.Snapshot = loadingAudio.Snapshot with { IsPlaying = true };
-            loadingVm.RefreshPlayback();
-            loadingPage.UpdatePlaybackRefreshSubscription(true);
-            var reads = loadingAudio.SnapshotReads;
-            loadingPage.RefreshPlaybackFrame(TimeSpan.Zero);
-            loadingPage.OnPlaybackTick(null, EventArgs.Empty);
-            Assert.That(loadingAudio.SnapshotReads, Is.EqualTo(reads));
+            loadingPage.UpdatePlaybackRefreshSubscription();
+            Assert.That(loadingPage.IsPlaybackTimerEnabled, Is.False);
             if (fail) completion.SetException(new IOException("Cannot load song"));
             else completion.SetCanceled();
-            try { UiTestPump.Run(loadingPage.LoadCompletion); }
-            catch (OperationCanceledException) { }
-            loadingPage.UpdatePlaybackRefreshSubscription(true);
-            reads = loadingAudio.SnapshotReads;
-            loadingPage.RefreshPlaybackFrame(TimeSpan.FromSeconds(1));
-            loadingPage.OnPlaybackTick(null, EventArgs.Empty);
-            Assert.That(loadingAudio.SnapshotReads, Is.EqualTo(reads));
+            UiTestPump.Run(loadingPage.LoadCompletion);
+            loadingPage.UpdatePlaybackRefreshSubscription();
+            Assert.That(loadingPage.IsPlaybackTimerEnabled, Is.False);
         }
         finally { UiTestPump.Run(loadingPage.DeactivateAsync()); }
-    }
-
-    [TestCase(1)]
-    [TestCase(16)]
-    [TestCase(64)]
-    public void RefreshCostProbe(int trackCount)
-    {
-        for (var i = 0; i < trackCount; i++) vm.Tracks.Add(new Track());
-        view.UpdateLayout();
-        Play();
-        var notifications = 0;
-        vm.PropertyChanged += (_, _) => notifications++;
-        for (var i = 0; i < 100; i++) page.RefreshPlaybackFrame(TimeSpan.FromTicks(i));
-        var reads = audio.SnapshotReads;
-        notifications = 0;
-        var allocated = GC.GetAllocatedBytesForCurrentThread();
-        var watch = Stopwatch.StartNew();
-        for (var i = 100; i < 1100; i++)
-        {
-            audio.Snapshot = audio.Snapshot with { Position = TimeSpan.FromMilliseconds(i) };
-            page.RefreshPlaybackFrame(TimeSpan.FromTicks(i));
-            page.RefreshPlaybackFrame(TimeSpan.FromTicks(i));
-        }
-        watch.Stop();
-        var bytes = GC.GetAllocatedBytesForCurrentThread() - allocated;
-        Assert.That(audio.SnapshotReads - reads, Is.EqualTo(1000));
-        TestContext.Out.WriteLine($"tracks={trackCount}; 1000 distinct+1000 duplicate callbacks; ms={watch.Elapsed.TotalMilliseconds:F3}; bytes={bytes}; notifications={notifications}; snapshotReads={audio.SnapshotReads - reads}. Includes test input allocations; excludes rendered/GPU work.");
     }
 }
