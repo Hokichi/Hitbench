@@ -58,6 +58,12 @@ public partial class WorkstationPageVM(
     private Task? activeLoad;
     private int loadGeneration;
     private bool deactivated;
+    private PlaybackMarkerClock markerClock = new([], []);
+    private TimeSpan processedMarker;
+    private bool includeMarkerStart = true;
+    private TimeSpan playbackInterval;
+    public TimeSpan PlaybackInterval => playbackInterval;
+
 
     [ObservableProperty] private WaveformData? waveform;
     [ObservableProperty] private ProjectData? project;
@@ -170,17 +176,60 @@ public partial class WorkstationPageVM(
     {
         if (deactivated) return;
         var snapshot = audioService.GetSnapshot();
-        Position = snapshot.Position;
+        var marker = snapshot.Position;
+        var duration = Waveform?.Duration ?? TimeSpan.Zero;
+        var terminal = IsPlaying && !snapshot.IsPlaying && snapshot.Position >= duration && duration > TimeSpan.Zero;
+        if (markerClock.IsValid && (snapshot.IsPlaying || terminal))
+        {
+            marker = markerClock.GetPosition(snapshot.Position, duration);
+            // A seek can land between grid boundaries; never step back behind its baseline.
+            if (marker < processedMarker) marker = processedMarker;
+            var ids = new List<long>();
+            foreach (var track in tracks)
+            foreach (var sample in track.Samples)
+            {
+                var timestamp = TimeSpan.FromMilliseconds(sample.Timestamp);
+                if ((timestamp > processedMarker || includeMarkerStart && timestamp == processedMarker) &&
+                    timestamp <= marker && sampleEventIds.TryGetValue(sample, out var id)) ids.Add(id);
+            }
+            if (ids.Count > 0) audioService.TriggerSamples(ids);
+            processedMarker = marker;
+            includeMarkerStart = false;
+        }
+        if (markerClock.IsValid)
+            SetProperty(ref playbackInterval, markerClock.GetInterval(snapshot.Position), nameof(PlaybackInterval));
+        Position = marker;
         IsPlaying = snapshot.IsPlaying;
-        ElapsedText = $"{(int)snapshot.Position.TotalMinutes:00}:{snapshot.Position.Seconds:00}.{snapshot.Position.Milliseconds:000}";
+        ElapsedText = $"{(int)marker.TotalMinutes:00}:{marker.Seconds:00}.{marker.Milliseconds:000}";
         if (!string.IsNullOrWhiteSpace(snapshot.Error)) ErrorMessage = snapshot.Error;
+    }
+
+    private void ResetMarker(TimeSpan position)
+    {
+        processedMarker = position;
+        includeMarkerStart = true;
     }
 
     [RelayCommand(CanExecute = nameof(CanUseTransport))]
     private void PlayPause()
     {
         if (audioService.GetSnapshot().IsPlaying) audioService.Pause();
-        else audioService.Play();
+        else
+        {
+            if (!markerClock.IsValid)
+            {
+                ErrorMessage = "Playback requires valid BPM timing data. Reload a beatmap with timing points.";
+                return;
+            }
+            if (Waveform is not null && audioService.GetSnapshot().Position >= Waveform.Duration)
+            {
+                audioService.Stop();
+                ResetMarker(TimeSpan.Zero);
+            }
+            var start = audioService.GetSnapshot().Position;
+            if (start < processedMarker) ResetMarker(start);
+            audioService.Play();
+        }
         RefreshPlayback();
     }
 
@@ -190,6 +239,7 @@ public partial class WorkstationPageVM(
         lastGridTarget = null;
         lastGridAudioPosition = null;
         audioService.Stop();
+        ResetMarker(TimeSpan.Zero);
         RefreshPlayback();
     }
 
@@ -200,6 +250,7 @@ public partial class WorkstationPageVM(
         lastGridTarget = null;
         lastGridAudioPosition = null;
         audioService.Seek(position);
+        ResetMarker(audioService.GetSnapshot().Position);
         RefreshPlayback();
     }
 
@@ -545,6 +596,8 @@ public partial class WorkstationPageVM(
             playbackErrorMessage = null;
             Waveform = null;
             Project = null;
+            markerClock = new([], []);
+            ResetMarker(TimeSpan.Zero);
             Position = TimeSpan.Zero;
             IsPlaying = false;
             sampleEventIds.Clear();
@@ -563,6 +616,11 @@ public partial class WorkstationPageVM(
                 audioService.SetApplicationVolume(ApplicationVolume);
                 audioService.SetSamplesVolume(SamplesVolume);
                 Project = source.Project;
+                markerClock = new PlaybackMarkerClock(Project.Offsets, Project.BPMs);
+                SetProperty(ref playbackInterval, markerClock.IsValid ? markerClock.GetInterval(TimeSpan.Zero) : TimeSpan.Zero,
+                    nameof(PlaybackInterval));
+                if (!markerClock.IsValid)
+                    ErrorMessage = "Playback requires valid BPM timing data. Reload a beatmap with timing points.";
                 Waveform = waveform;
                 tracks.Clear();
                 foreach (var track in source.Project.Tracks)

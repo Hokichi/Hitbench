@@ -180,7 +180,10 @@ public class WorkstationPageVMTests
     [Test]
     public async Task TransportReflectsPlaybackSnapshotAndFormatsLongElapsedTime()
     {
-        var audio = new StubWorkstationAudioService();
+        var audio = new StubWorkstationAudioService
+        {
+            Analyze = (_, _) => Task.FromResult(new WaveformData(TimeSpan.FromMinutes(70), [.5f]))
+        };
         var vm = new WorkstationPageVM(new StubWorkstationSourceService(), audio, new ImmediateUiScheduler());
         await vm.LoadAsync("project.json", CancellationToken.None);
         vm.PlayPauseCommand.Execute(null);
