@@ -50,9 +50,9 @@ public class WorkstationAudioTimingTests
         TestContext.Out.WriteLine($"SOURCE song={songFrame}/{songRate}, sample={sampleFrame}/{sampleRate}; CONVERTED song={Peak(songAlone, 0)}, sample={Peak(sampleAlone, 1)}");
         Assert.Multiple(() =>
         {
-            Assert.That(Peak(output, 1), Is.EqualTo(44100 + Peak(sampleAlone, 1)), "Scheduling after conversion");
+            Assert.That(Peak(output, 1), Is.EqualTo(44100 + Peak(sampleAlone, 1)), "Explicit trigger after conversion");
             Assert.That(Peak(output, 0), Is.EqualTo(Peak(songAlone, 0)));
-            Assert.That(Math.Abs(Peak(output, 1) - Peak(output, 0)), Is.LessThanOrEqualTo(1), "Measured resampling alignment hypothesis");
+            Assert.That(Onset(output, 1), Is.EqualTo(44100 + Onset(sampleAlone, 1)), "Explicit trigger preserves converted onset including resampler delay");
         });
     }
 
@@ -99,7 +99,7 @@ public class WorkstationAudioTimingTests
             Assert.That(Onset(output, 1), Is.EqualTo(44100 + Onset(sampleAlone, 1)));
             Assert.That(Peak(output, 0), Is.EqualTo(Peak(songAlone, 0)));
         });
-        // Compare the whole scheduled signal, including silence and codec padding, against its independent conversion.
+        // Compare the whole triggered signal, including silence and codec padding, against its independent conversion.
         var expected = new float[output.Length];
         for (var i = 0; i < output.Length; i += 2)
         {
@@ -176,13 +176,36 @@ public class WorkstationAudioTimingTests
         var provider = player.Provider!.ToSampleProvider();
         Assert.That(provider.WaveFormat.SampleRate, Is.EqualTo(44100));
         Assert.That(provider.WaveFormat.Channels, Is.EqualTo(2));
-        if (!pause) return ReadAll(provider, chunk);
-        var prefix = new float[44100];
-        Assert.That(provider.Read(prefix, 0, prefix.Length), Is.EqualTo(prefix.Length));
-        player.Position = prefix.Length * sizeof(float);
-        service.Pause();
-        service.Play();
-        return [.. prefix, .. ReadAll(provider, chunk)];
+        // The test controls explicit trigger time; decoding must not shift the rendered sound.
+        var output = new List<float>();
+        var buffer = new float[chunk];
+        var triggerAt = (int)Math.Round(timestamp * 44100m / 1000, MidpointRounding.AwayFromZero) * 2;
+        var position = (int)Math.Round((seek ?? 0) / 1000d * 44100) * 2;
+        var triggered = sample is null;
+        var paused = false;
+        while (true)
+        {
+            if (!triggered && position >= triggerAt)
+            {
+                service.TriggerSamples([1]);
+                triggered = true;
+            }
+            if (pause && !paused && position >= 44100)
+            {
+                player.Position = position * sizeof(float);
+                service.Pause();
+                service.Play();
+                paused = true;
+            }
+            var count = !triggered ? Math.Min(chunk, triggerAt - position) : chunk;
+            var read = provider.Read(buffer, 0, count);
+            if (read == 0) break;
+            output.AddRange(buffer.AsSpan(0, read).ToArray());
+            position += read;
+        }
+        Assert.That(output, Is.Not.Empty);
+        Assert.That(output.All(float.IsFinite), Is.True);
+        return output.ToArray();
     }
 
     private static WaveStream Signal(int rate, int frame, int channel, bool song)

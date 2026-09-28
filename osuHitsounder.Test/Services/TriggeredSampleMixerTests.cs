@@ -3,7 +3,7 @@ using osuHitsounder.Services;
 
 namespace osuHitsounder.Test.Services;
 
-public class ScheduledSampleMixerTests
+public class TriggeredSampleMixerTests
 {
     private static readonly WaveFormat Format = WaveFormat.CreateIeeeFloatWaveFormat(1_000, 2);
 
@@ -11,13 +11,14 @@ public class ScheduledSampleMixerTests
     public void EventAtBufferBoundaryStartsInFollowingBufferOnce()
     {
         var mixer = CreateMixer(new float[48]);
-        mixer.ReplaceSchedule([Event(1, 10, [0.4f, 0.4f])]);
+        mixer.ReplaceSamples([Event(1, 10, [0.4f, 0.4f])]);
 
         var first = new float[20];
         var second = new float[4];
 
         Assert.That(mixer.Read(first, 0, first.Length), Is.EqualTo(20));
         Assert.That(first, Is.All.EqualTo(0f));
+        mixer.TriggerSamples([1]);
         Assert.That(mixer.Read(second, 0, second.Length), Is.EqualTo(4));
         Assert.That(second, Is.EqualTo(new[] { 0.4f, 0.4f, 0f, 0f }));
     }
@@ -27,9 +28,10 @@ public class ScheduledSampleMixerTests
     {
         var mixer = CreateMixer([0.2f, 0.2f]);
         mixer.SongVolume = 0.5f;
-        mixer.ReplaceSchedule([Event(1, 0, [0.4f, 0.4f], 0.25f)]);
+        mixer.ReplaceSamples([Event(1, 0, [0.4f, 0.4f], 0.25f)]);
         var output = new float[2];
 
+        mixer.TriggerSamples([1, 2]);
         mixer.Read(output, 0, output.Length);
 
         Assert.That(output, Is.EqualTo(new[] { 0.2f, 0.2f }).Within(0.0001));
@@ -40,9 +42,10 @@ public class ScheduledSampleMixerTests
     {
         var mixer = CreateMixer([0.2f, 0.2f]);
         mixer.SongVolume = 0;
-        mixer.ReplaceSchedule([Event(1, 0, [0.4f, 0.4f], 0.25f)]);
+        mixer.ReplaceSamples([Event(1, 0, [0.4f, 0.4f], 0.25f)]);
         var output = new float[2];
 
+        mixer.TriggerSamples([1, 2]);
         mixer.Read(output, 0, output.Length);
 
         Assert.That(output, Is.EqualTo(new[] { 0.1f, 0.1f }).Within(0.0001));
@@ -55,9 +58,10 @@ public class ScheduledSampleMixerTests
         mixer.SongVolume = 0.5f;
         mixer.SamplesVolume = 0.5f;
         mixer.ApplicationVolume = 0.5f;
-        mixer.ReplaceSchedule([Event(1, 0, [0.4f, 0.4f], 0.5f)]);
+        mixer.ReplaceSamples([Event(1, 0, [0.4f, 0.4f], 0.5f)]);
         var output = new float[2];
 
+        mixer.TriggerSamples([1, 2]);
         mixer.Read(output, 0, output.Length);
 
         Assert.That(output, Is.EqualTo(new[] { 0.1f, 0.1f }).Within(0.0001));
@@ -68,12 +72,13 @@ public class ScheduledSampleMixerTests
     {
         var mixer = CreateMixer([0f, 0f]);
         mixer.ApplicationVolume = 0.5f;
-        mixer.ReplaceSchedule([
+        mixer.ReplaceSamples([
             Event(1, 0, [0.8f, 0.8f]),
             Event(2, 0, [0.8f, 0.8f])
         ]);
         var output = new float[2];
 
+        mixer.TriggerSamples([1, 2]);
         mixer.Read(output, 0, output.Length);
 
         Assert.That(output, Is.EqualTo(new[] { 0.8f, 0.8f }).Within(0.0001));
@@ -83,9 +88,10 @@ public class ScheduledSampleMixerTests
     public void ChangingSamplesVolumeUpdatesAnActiveVoiceWithoutLosingItsPosition()
     {
         var mixer = CreateMixer(new float[6]);
-        mixer.ReplaceSchedule([Event(1, 0, Enumerable.Repeat(0.4f, 6).ToArray())]);
+        mixer.ReplaceSamples([Event(1, 0, Enumerable.Repeat(0.4f, 6).ToArray())]);
         var output = new float[6];
 
+        mixer.TriggerSamples([1, 2]);
         mixer.Read(output, 0, 2);
         mixer.SamplesVolume = 0;
         mixer.Read(output, 2, 2);
@@ -114,12 +120,13 @@ public class ScheduledSampleMixerTests
     public void SimultaneousOverlappingEventsClampFiniteOutput()
     {
         var mixer = CreateMixer([0.8f, float.NaN, 0, 0]);
-        mixer.ReplaceSchedule([
+        mixer.ReplaceSamples([
             Event(1, 0, [0.8f, 0.8f, 0.8f, 0.8f]),
             Event(2, 0, [0.8f, 0.8f, float.PositiveInfinity, -4f])
         ]);
         var output = new float[4];
 
+        mixer.TriggerSamples([1, 2]);
         mixer.Read(output, 0, output.Length);
 
         Assert.That(output, Is.EqualTo(new[] { 1f, 1f, 0.8f, -1f }));
@@ -129,10 +136,12 @@ public class ScheduledSampleMixerTests
     public void ReadHonorsDestinationOffsetAndCutsTailsAtSongEnd()
     {
         var mixer = CreateMixer(new float[4]);
-        mixer.ReplaceSchedule([Event(1, 1, [0.5f, 0.5f, 0.5f, 0.5f])]);
+        mixer.ReplaceSamples([Event(1, 1, [0.5f, 0.5f, 0.5f, 0.5f])]);
         var output = Enumerable.Repeat(-9f, 8).ToArray();
 
-        var read = mixer.Read(output, 2, 6);
+        var read = mixer.Read(output, 2, 2);
+        mixer.TriggerSamples([1]);
+        read += mixer.Read(output, 4, 4);
 
         Assert.Multiple(() =>
         {
@@ -144,20 +153,21 @@ public class ScheduledSampleMixerTests
     }
 
     [Test]
-    public void ReplacingScheduleUpdatesActiveGainRemovesVoicesAndIgnoresPastStarts()
+    public void ReplacingSamplesUpdatesActiveGainRemovesVoicesWithoutStartingNewOnes()
     {
         var mixer = CreateMixer(new float[12]);
-        mixer.ReplaceSchedule([Event(1, 0, Enumerable.Repeat(0.5f, 12).ToArray())]);
+        mixer.ReplaceSamples([Event(1, 0, Enumerable.Repeat(0.5f, 12).ToArray())]);
         var first = new float[2];
+        mixer.TriggerSamples([1, 2]);
         mixer.Read(first, 0, first.Length);
 
-        mixer.ReplaceSchedule([
+        mixer.ReplaceSamples([
             Event(1, 0, Enumerable.Repeat(0.5f, 12).ToArray(), 0.2f),
             Event(2, 0, [1f, 1f])
         ]);
         var second = new float[2];
         mixer.Read(second, 0, second.Length);
-        mixer.ReplaceSchedule([]);
+        mixer.ReplaceSamples([]);
         var third = new float[2];
         mixer.Read(third, 0, third.Length);
 
@@ -175,11 +185,13 @@ public class ScheduledSampleMixerTests
         var oneRead = CreateMixer(new float[12]);
         var chunked = CreateMixer(new float[12]);
         var schedule = new[] { Event(1, 1, [0.1f, 0.2f, 0.3f, 0.4f]), Event(2, 2, [0.5f, 0.6f]) };
-        oneRead.ReplaceSchedule(schedule);
-        chunked.ReplaceSchedule(schedule);
+        oneRead.ReplaceSamples(schedule);
+        chunked.ReplaceSamples(schedule);
         var expected = new float[12];
         var actual = new float[12];
 
+        oneRead.TriggerSamples([1, 2]);
+        chunked.TriggerSamples([1, 2]);
         oneRead.Read(expected, 0, 12);
         chunked.Read(actual, 0, 4);
         chunked.Read(actual, 4, 2);
@@ -188,9 +200,9 @@ public class ScheduledSampleMixerTests
         Assert.That(actual, Is.EqualTo(expected).Within(0.0001));
     }
 
-    private static ScheduledSampleMixer CreateMixer(float[] song, long startFrame = 0) =>
+    private static TriggeredSampleMixer CreateMixer(float[] song, long startFrame = 0) =>
         new(song, Format, startFrame);
 
     private static PreparedSampleEvent Event(long id, long frame, float[] samples, float gain = 1) =>
-        new(id, frame, samples, gain);
+        new(id, samples, gain);
 }

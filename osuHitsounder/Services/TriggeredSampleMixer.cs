@@ -2,19 +2,18 @@ using NAudio.Wave;
 
 namespace osuHitsounder.Services;
 
-public sealed class ScheduledSampleMixer : ISampleProvider
+public sealed class TriggeredSampleMixer : ISampleProvider
 {
     private readonly object sync = new();
     private readonly ReadOnlyMemory<float> song;
     private readonly Dictionary<long, (PreparedSampleEvent Event, int Position)> active = [];
-    private PreparedSampleEvent[] schedule = [];
+    private Dictionary<long, PreparedSampleEvent> samples = [];
     private long samplePosition;
-    private int nextEvent;
     private float songVolume = 1;
     private float samplesVolume = 1;
     private float applicationVolume = 1;
 
-    public ScheduledSampleMixer(ReadOnlyMemory<float> song, WaveFormat format, long startFrame)
+    public TriggeredSampleMixer(ReadOnlyMemory<float> song, WaveFormat format, long startFrame)
     {
         if (format.Encoding != WaveFormatEncoding.IeeeFloat)
             throw new ArgumentException("Mixer format must use IEEE float samples.", nameof(format));
@@ -44,22 +43,18 @@ public sealed class ScheduledSampleMixer : ISampleProvider
         set { lock (sync) applicationVolume = NormalizeVolume(value); }
     }
 
-    public void ReplaceSchedule(IReadOnlyList<PreparedSampleEvent> events)
+    public void ReplaceSamples(IReadOnlyList<PreparedSampleEvent> events)
     {
         ArgumentNullException.ThrowIfNull(events);
         lock (sync)
         {
-            var replacement = events.OrderBy(item => item.StartFrame).ThenBy(item => item.Id).ToArray();
-            var byId = replacement.ToDictionary(item => item.Id);
+            var byId = events.ToDictionary(item => item.Id);
             foreach (var id in active.Keys.ToArray())
             {
                 if (!byId.TryGetValue(id, out var updated)) active.Remove(id);
                 else active[id] = (updated, active[id].Position);
             }
-            schedule = replacement;
-            var currentFrame = samplePosition / WaveFormat.Channels;
-            nextEvent = Array.FindIndex(schedule, item => item.StartFrame >= currentFrame);
-            if (nextEvent < 0) nextEvent = schedule.Length;
+            samples = byId;
         }
     }
 
@@ -73,13 +68,8 @@ public sealed class ScheduledSampleMixer : ISampleProvider
         {
             var available = (int)Math.Min(count, song.Length - samplePosition);
             if (available <= 0) return 0;
-            var channels = WaveFormat.Channels;
             for (var outputIndex = 0; outputIndex < available; outputIndex++)
             {
-                var channel = (int)(samplePosition % channels);
-                var frame = samplePosition / channels;
-                if (channel == 0) ActivateEvents(frame);
-
                 var mixed = FiniteOrZero(song.Span[(int)samplePosition]) * songVolume;
                 foreach (var id in active.Keys.ToArray())
                 {
@@ -102,13 +92,14 @@ public sealed class ScheduledSampleMixer : ISampleProvider
         }
     }
 
-    private void ActivateEvents(long frame)
+    public void TriggerSamples(IReadOnlyList<long> placementIds)
     {
-        while (nextEvent < schedule.Length && schedule[nextEvent].StartFrame <= frame)
+        ArgumentNullException.ThrowIfNull(placementIds);
+        lock (sync)
         {
-            var item = schedule[nextEvent++];
-            if (item.StartFrame == frame && item.Samples.Length > 0 && !active.ContainsKey(item.Id))
-                active.Add(item.Id, (item, 0));
+            foreach (var id in placementIds)
+                if (samples.TryGetValue(id, out var sample) && sample.Samples.Length > 0 && !active.ContainsKey(id))
+                    active.Add(id, (sample, 0));
         }
     }
 

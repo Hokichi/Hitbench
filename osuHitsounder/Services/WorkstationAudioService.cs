@@ -17,7 +17,7 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
     private readonly Dictionary<string, (long Length, DateTime LastWrite, float[] Samples)> sampleCache =
         new(StringComparer.OrdinalIgnoreCase);
     private IWavePlayer? player;
-    private ScheduledSampleMixer? mixer;
+    private TriggeredSampleMixer? mixer;
     private EventHandler<StoppedEventArgs>? playbackStoppedHandler;
     private PreparedSampleEvent[] preparedEvents = [];
     private float[]? preparedSong;
@@ -33,7 +33,9 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
     private TimeSpan playbackOrigin;
     private long deviceOriginBytes;
 
-    public WorkstationAudioService() : this(AudioDecoder.Open, () => new WaveOutEvent()) { }
+    public WorkstationAudioService() : this(AudioDecoder.Open, CreateOutput) { }
+
+    internal static IWavePlayer CreateOutput() => new WaveOutEvent { DesiredLatency = 10, NumberOfBuffers = 2 };
 
     public WorkstationAudioService(Func<string, WaveStream> openDecoder, Func<IWavePlayer> createPlayer)
     {
@@ -109,11 +111,9 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
                             await Task.Run(() => Decode(samplePath, token), token));
                         sampleCache[samplePath] = cached;
                     }
-                    var startFrame = (long)Math.Round(item.Timestamp / 1000d * OutputSampleRate,
-                        MidpointRounding.AwayFromZero);
                     var gain = Math.Clamp(item.BeatVolume, 0, 100) / 100f *
                         (Math.Clamp(item.TrackVolume, 0, 100) / 100f);
-                    prepared.Add(new PreparedSampleEvent(item.Id, startFrame, cached.Samples, gain));
+                    prepared.Add(new PreparedSampleEvent(item.Id, cached.Samples, gain));
                 }
                 catch (OperationCanceledException) { throw; }
                 catch (Exception failure)
@@ -131,7 +131,7 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
                 // ponytail: full-song PCM is ~20 MiB/minute; replace with bounded background decoding only if measured memory use requires it.
                 preparedSong = song;
                 preparedEvents = prepared.ToArray();
-                mixer?.ReplaceSchedule(preparedEvents);
+                mixer?.ReplaceSamples(preparedEvents);
                 error = errors.Count == 0 ? null : string.Join(Environment.NewLine, errors.Distinct());
             }
         }
@@ -191,6 +191,7 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
             }
             try
             {
+                if (currentPosition >= GetDuration()) ResetPosition();
                 EnsurePlayback();
                 player!.Play();
             }
@@ -202,6 +203,15 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
             }
         }
         DisposeOutput(retired);
+    }
+
+    public void TriggerSamples(IReadOnlyList<long> placementIds)
+    {
+        lock (sync)
+        {
+            ThrowIfDisposed();
+            if (player?.PlaybackState == PlaybackState.Playing) mixer?.TriggerSamples(placementIds);
+        }
     }
 
     public void Pause()
@@ -289,13 +299,13 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
     {
         if (player is not null) return;
         var startFrame = TimeToFrame(currentPosition);
-        mixer = new ScheduledSampleMixer(preparedSong!, OutputFormat, startFrame)
+        mixer = new TriggeredSampleMixer(preparedSong!, OutputFormat, startFrame)
         {
             SongVolume = songVolume,
             SamplesVolume = samplesVolume,
             ApplicationVolume = applicationVolume
         };
-        mixer.ReplaceSchedule(preparedEvents);
+        mixer.ReplaceSamples(preparedEvents);
         player = createPlayer();
         var currentGeneration = ++generation;
         playbackStoppedHandler = (_, args) => OnPlaybackStopped(currentGeneration, args);
@@ -314,6 +324,7 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
             if (args.Exception is not null) error = $"Audio playback failed: {args.Exception.Message}";
             completedPlayer = DetachPlayback();
             ResetPosition();
+            if (args.Exception is null) currentPosition = GetDuration();
         }
         completedPlayer?.Dispose();
     }

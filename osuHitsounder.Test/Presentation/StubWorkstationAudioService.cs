@@ -16,6 +16,8 @@ public sealed class StubWorkstationAudioService : IWorkstationAudioService
     public List<IReadOnlyList<SamplePlaybackEvent>> SampleUpdates { get; } = [];
     public Task<WaveformData> AnalyzeAsync(string audioPath, CancellationToken token) => Analyze(audioPath, token);
     public void Open(string audioPath) => OpenedPath = audioPath;
+    public List<long[]> TriggerBatches { get; } = [];
+    public void TriggerSamples(IReadOnlyList<long> placementIds) => TriggerBatches.Add(placementIds.ToArray());
     public void Play() => Snapshot = Snapshot with { IsPlaying = true };
     public void Pause() => Snapshot = Snapshot with { IsPlaying = false };
     public void Stop() => Snapshot = Snapshot with { Position = TimeSpan.Zero, IsPlaying = false };
