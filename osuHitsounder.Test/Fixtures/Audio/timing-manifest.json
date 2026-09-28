@@ -1,0 +1,1122 @@
+﻿[
+    {
+        "File":  "timing-8000-song0.wav",
+        "Rate":  8000,
+        "Frame":  8000,
+        "Channel":  0,
+        "Role":  "song0"
+    },
+    {
+        "File":  "timing-8000-song0.ogg",
+        "Rate":  8000,
+        "Frame":  8000,
+        "Channel":  0,
+        "Role":  "song0"
+    },
+    {
+        "File":  "timing-8000-song0.mp3",
+        "Rate":  8000,
+        "Frame":  8000,
+        "Channel":  0,
+        "Role":  "song0"
+    },
+    {
+        "File":  "timing-8000-song0-no-xing.mp3",
+        "Rate":  8000,
+        "Frame":  8000,
+        "Channel":  0,
+        "Role":  "song0"
+    },
+    {
+        "File":  "timing-8000-song100.wav",
+        "Rate":  8000,
+        "Frame":  8800,
+        "Channel":  0,
+        "Role":  "song100"
+    },
+    {
+        "File":  "timing-8000-song100.ogg",
+        "Rate":  8000,
+        "Frame":  8800,
+        "Channel":  0,
+        "Role":  "song100"
+    },
+    {
+        "File":  "timing-8000-song100.mp3",
+        "Rate":  8000,
+        "Frame":  8800,
+        "Channel":  0,
+        "Role":  "song100"
+    },
+    {
+        "File":  "timing-8000-song100-no-xing.mp3",
+        "Rate":  8000,
+        "Frame":  8800,
+        "Channel":  0,
+        "Role":  "song100"
+    },
+    {
+        "File":  "timing-8000-sample0.wav",
+        "Rate":  8000,
+        "Frame":  0,
+        "Channel":  1,
+        "Role":  "sample0"
+    },
+    {
+        "File":  "timing-8000-sample0.ogg",
+        "Rate":  8000,
+        "Frame":  0,
+        "Channel":  1,
+        "Role":  "sample0"
+    },
+    {
+        "File":  "timing-8000-sample0.mp3",
+        "Rate":  8000,
+        "Frame":  0,
+        "Channel":  1,
+        "Role":  "sample0"
+    },
+    {
+        "File":  "timing-8000-sample0-no-xing.mp3",
+        "Rate":  8000,
+        "Frame":  0,
+        "Channel":  1,
+        "Role":  "sample0"
+    },
+    {
+        "File":  "timing-8000-sample100.wav",
+        "Rate":  8000,
+        "Frame":  800,
+        "Channel":  1,
+        "Role":  "sample100"
+    },
+    {
+        "File":  "timing-8000-sample100.ogg",
+        "Rate":  8000,
+        "Frame":  800,
+        "Channel":  1,
+        "Role":  "sample100"
+    },
+    {
+        "File":  "timing-8000-sample100.mp3",
+        "Rate":  8000,
+        "Frame":  800,
+        "Channel":  1,
+        "Role":  "sample100"
+    },
+    {
+        "File":  "timing-8000-sample100-no-xing.mp3",
+        "Rate":  8000,
+        "Frame":  800,
+        "Channel":  1,
+        "Role":  "sample100"
+    },
+    {
+        "File":  "timing-11025-song0.wav",
+        "Rate":  11025,
+        "Frame":  11025,
+        "Channel":  0,
+        "Role":  "song0"
+    },
+    {
+        "File":  "timing-11025-song0.ogg",
+        "Rate":  11025,
+        "Frame":  11025,
+        "Channel":  0,
+        "Role":  "song0"
+    },
+    {
+        "File":  "timing-11025-song0.mp3",
+        "Rate":  11025,
+        "Frame":  11025,
+        "Channel":  0,
+        "Role":  "song0"
+    },
+    {
+        "File":  "timing-11025-song0-no-xing.mp3",
+        "Rate":  11025,
+        "Frame":  11025,
+        "Channel":  0,
+        "Role":  "song0"
+    },
+    {
+        "File":  "timing-11025-song100.wav",
+        "Rate":  11025,
+        "Frame":  12128,
+        "Channel":  0,
+        "Role":  "song100"
+    },
+    {
+        "File":  "timing-11025-song100.ogg",
+        "Rate":  11025,
+        "Frame":  12128,
+        "Channel":  0,
+        "Role":  "song100"
+    },
+    {
+        "File":  "timing-11025-song100.mp3",
+        "Rate":  11025,
+        "Frame":  12128,
+        "Channel":  0,
+        "Role":  "song100"
+    },
+    {
+        "File":  "timing-11025-song100-no-xing.mp3",
+        "Rate":  11025,
+        "Frame":  12128,
+        "Channel":  0,
+        "Role":  "song100"
+    },
+    {
+        "File":  "timing-11025-sample0.wav",
+        "Rate":  11025,
+        "Frame":  0,
+        "Channel":  1,
+        "Role":  "sample0"
+    },
+    {
+        "File":  "timing-11025-sample0.ogg",
+        "Rate":  11025,
+        "Frame":  0,
+        "Channel":  1,
+        "Role":  "sample0"
+    },
+    {
+        "File":  "timing-11025-sample0.mp3",
+        "Rate":  11025,
+        "Frame":  0,
+        "Channel":  1,
+        "Role":  "sample0"
+    },
+    {
+        "File":  "timing-11025-sample0-no-xing.mp3",
+        "Rate":  11025,
+        "Frame":  0,
+        "Channel":  1,
+        "Role":  "sample0"
+    },
+    {
+        "File":  "timing-11025-sample100.wav",
+        "Rate":  11025,
+        "Frame":  1103,
+        "Channel":  1,
+        "Role":  "sample100"
+    },
+    {
+        "File":  "timing-11025-sample100.ogg",
+        "Rate":  11025,
+        "Frame":  1103,
+        "Channel":  1,
+        "Role":  "sample100"
+    },
+    {
+        "File":  "timing-11025-sample100.mp3",
+        "Rate":  11025,
+        "Frame":  1103,
+        "Channel":  1,
+        "Role":  "sample100"
+    },
+    {
+        "File":  "timing-11025-sample100-no-xing.mp3",
+        "Rate":  11025,
+        "Frame":  1103,
+        "Channel":  1,
+        "Role":  "sample100"
+    },
+    {
+        "File":  "timing-12000-song0.wav",
+        "Rate":  12000,
+        "Frame":  12000,
+        "Channel":  0,
+        "Role":  "song0"
+    },
+    {
+        "File":  "timing-12000-song0.ogg",
+        "Rate":  12000,
+        "Frame":  12000,
+        "Channel":  0,
+        "Role":  "song0"
+    },
+    {
+        "File":  "timing-12000-song0.mp3",
+        "Rate":  12000,
+        "Frame":  12000,
+        "Channel":  0,
+        "Role":  "song0"
+    },
+    {
+        "File":  "timing-12000-song0-no-xing.mp3",
+        "Rate":  12000,
+        "Frame":  12000,
+        "Channel":  0,
+        "Role":  "song0"
+    },
+    {
+        "File":  "timing-12000-song100.wav",
+        "Rate":  12000,
+        "Frame":  13200,
+        "Channel":  0,
+        "Role":  "song100"
+    },
+    {
+        "File":  "timing-12000-song100.ogg",
+        "Rate":  12000,
+        "Frame":  13200,
+        "Channel":  0,
+        "Role":  "song100"
+    },
+    {
+        "File":  "timing-12000-song100.mp3",
+        "Rate":  12000,
+        "Frame":  13200,
+        "Channel":  0,
+        "Role":  "song100"
+    },
+    {
+        "File":  "timing-12000-song100-no-xing.mp3",
+        "Rate":  12000,
+        "Frame":  13200,
+        "Channel":  0,
+        "Role":  "song100"
+    },
+    {
+        "File":  "timing-12000-sample0.wav",
+        "Rate":  12000,
+        "Frame":  0,
+        "Channel":  1,
+        "Role":  "sample0"
+    },
+    {
+        "File":  "timing-12000-sample0.ogg",
+        "Rate":  12000,
+        "Frame":  0,
+        "Channel":  1,
+        "Role":  "sample0"
+    },
+    {
+        "File":  "timing-12000-sample0.mp3",
+        "Rate":  12000,
+        "Frame":  0,
+        "Channel":  1,
+        "Role":  "sample0"
+    },
+    {
+        "File":  "timing-12000-sample0-no-xing.mp3",
+        "Rate":  12000,
+        "Frame":  0,
+        "Channel":  1,
+        "Role":  "sample0"
+    },
+    {
+        "File":  "timing-12000-sample100.wav",
+        "Rate":  12000,
+        "Frame":  1200,
+        "Channel":  1,
+        "Role":  "sample100"
+    },
+    {
+        "File":  "timing-12000-sample100.ogg",
+        "Rate":  12000,
+        "Frame":  1200,
+        "Channel":  1,
+        "Role":  "sample100"
+    },
+    {
+        "File":  "timing-12000-sample100.mp3",
+        "Rate":  12000,
+        "Frame":  1200,
+        "Channel":  1,
+        "Role":  "sample100"
+    },
+    {
+        "File":  "timing-12000-sample100-no-xing.mp3",
+        "Rate":  12000,
+        "Frame":  1200,
+        "Channel":  1,
+        "Role":  "sample100"
+    },
+    {
+        "File":  "timing-16000-song0.wav",
+        "Rate":  16000,
+        "Frame":  16000,
+        "Channel":  0,
+        "Role":  "song0"
+    },
+    {
+        "File":  "timing-16000-song0.ogg",
+        "Rate":  16000,
+        "Frame":  16000,
+        "Channel":  0,
+        "Role":  "song0"
+    },
+    {
+        "File":  "timing-16000-song0.mp3",
+        "Rate":  16000,
+        "Frame":  16000,
+        "Channel":  0,
+        "Role":  "song0"
+    },
+    {
+        "File":  "timing-16000-song0-no-xing.mp3",
+        "Rate":  16000,
+        "Frame":  16000,
+        "Channel":  0,
+        "Role":  "song0"
+    },
+    {
+        "File":  "timing-16000-song100.wav",
+        "Rate":  16000,
+        "Frame":  17600,
+        "Channel":  0,
+        "Role":  "song100"
+    },
+    {
+        "File":  "timing-16000-song100.ogg",
+        "Rate":  16000,
+        "Frame":  17600,
+        "Channel":  0,
+        "Role":  "song100"
+    },
+    {
+        "File":  "timing-16000-song100.mp3",
+        "Rate":  16000,
+        "Frame":  17600,
+        "Channel":  0,
+        "Role":  "song100"
+    },
+    {
+        "File":  "timing-16000-song100-no-xing.mp3",
+        "Rate":  16000,
+        "Frame":  17600,
+        "Channel":  0,
+        "Role":  "song100"
+    },
+    {
+        "File":  "timing-16000-sample0.wav",
+        "Rate":  16000,
+        "Frame":  0,
+        "Channel":  1,
+        "Role":  "sample0"
+    },
+    {
+        "File":  "timing-16000-sample0.ogg",
+        "Rate":  16000,
+        "Frame":  0,
+        "Channel":  1,
+        "Role":  "sample0"
+    },
+    {
+        "File":  "timing-16000-sample0.mp3",
+        "Rate":  16000,
+        "Frame":  0,
+        "Channel":  1,
+        "Role":  "sample0"
+    },
+    {
+        "File":  "timing-16000-sample0-no-xing.mp3",
+        "Rate":  16000,
+        "Frame":  0,
+        "Channel":  1,
+        "Role":  "sample0"
+    },
+    {
+        "File":  "timing-16000-sample100.wav",
+        "Rate":  16000,
+        "Frame":  1600,
+        "Channel":  1,
+        "Role":  "sample100"
+    },
+    {
+        "File":  "timing-16000-sample100.ogg",
+        "Rate":  16000,
+        "Frame":  1600,
+        "Channel":  1,
+        "Role":  "sample100"
+    },
+    {
+        "File":  "timing-16000-sample100.mp3",
+        "Rate":  16000,
+        "Frame":  1600,
+        "Channel":  1,
+        "Role":  "sample100"
+    },
+    {
+        "File":  "timing-16000-sample100-no-xing.mp3",
+        "Rate":  16000,
+        "Frame":  1600,
+        "Channel":  1,
+        "Role":  "sample100"
+    },
+    {
+        "File":  "timing-22050-song0.wav",
+        "Rate":  22050,
+        "Frame":  22050,
+        "Channel":  0,
+        "Role":  "song0"
+    },
+    {
+        "File":  "timing-22050-song0.ogg",
+        "Rate":  22050,
+        "Frame":  22050,
+        "Channel":  0,
+        "Role":  "song0"
+    },
+    {
+        "File":  "timing-22050-song0.mp3",
+        "Rate":  22050,
+        "Frame":  22050,
+        "Channel":  0,
+        "Role":  "song0"
+    },
+    {
+        "File":  "timing-22050-song0-no-xing.mp3",
+        "Rate":  22050,
+        "Frame":  22050,
+        "Channel":  0,
+        "Role":  "song0"
+    },
+    {
+        "File":  "timing-22050-song100.wav",
+        "Rate":  22050,
+        "Frame":  24255,
+        "Channel":  0,
+        "Role":  "song100"
+    },
+    {
+        "File":  "timing-22050-song100.ogg",
+        "Rate":  22050,
+        "Frame":  24255,
+        "Channel":  0,
+        "Role":  "song100"
+    },
+    {
+        "File":  "timing-22050-song100.mp3",
+        "Rate":  22050,
+        "Frame":  24255,
+        "Channel":  0,
+        "Role":  "song100"
+    },
+    {
+        "File":  "timing-22050-song100-no-xing.mp3",
+        "Rate":  22050,
+        "Frame":  24255,
+        "Channel":  0,
+        "Role":  "song100"
+    },
+    {
+        "File":  "timing-22050-sample0.wav",
+        "Rate":  22050,
+        "Frame":  0,
+        "Channel":  1,
+        "Role":  "sample0"
+    },
+    {
+        "File":  "timing-22050-sample0.ogg",
+        "Rate":  22050,
+        "Frame":  0,
+        "Channel":  1,
+        "Role":  "sample0"
+    },
+    {
+        "File":  "timing-22050-sample0.mp3",
+        "Rate":  22050,
+        "Frame":  0,
+        "Channel":  1,
+        "Role":  "sample0"
+    },
+    {
+        "File":  "timing-22050-sample0-no-xing.mp3",
+        "Rate":  22050,
+        "Frame":  0,
+        "Channel":  1,
+        "Role":  "sample0"
+    },
+    {
+        "File":  "timing-22050-sample100.wav",
+        "Rate":  22050,
+        "Frame":  2205,
+        "Channel":  1,
+        "Role":  "sample100"
+    },
+    {
+        "File":  "timing-22050-sample100.ogg",
+        "Rate":  22050,
+        "Frame":  2205,
+        "Channel":  1,
+        "Role":  "sample100"
+    },
+    {
+        "File":  "timing-22050-sample100.mp3",
+        "Rate":  22050,
+        "Frame":  2205,
+        "Channel":  1,
+        "Role":  "sample100"
+    },
+    {
+        "File":  "timing-22050-sample100-no-xing.mp3",
+        "Rate":  22050,
+        "Frame":  2205,
+        "Channel":  1,
+        "Role":  "sample100"
+    },
+    {
+        "File":  "timing-24000-song0.wav",
+        "Rate":  24000,
+        "Frame":  24000,
+        "Channel":  0,
+        "Role":  "song0"
+    },
+    {
+        "File":  "timing-24000-song0.ogg",
+        "Rate":  24000,
+        "Frame":  24000,
+        "Channel":  0,
+        "Role":  "song0"
+    },
+    {
+        "File":  "timing-24000-song0.mp3",
+        "Rate":  24000,
+        "Frame":  24000,
+        "Channel":  0,
+        "Role":  "song0"
+    },
+    {
+        "File":  "timing-24000-song0-no-xing.mp3",
+        "Rate":  24000,
+        "Frame":  24000,
+        "Channel":  0,
+        "Role":  "song0"
+    },
+    {
+        "File":  "timing-24000-song100.wav",
+        "Rate":  24000,
+        "Frame":  26400,
+        "Channel":  0,
+        "Role":  "song100"
+    },
+    {
+        "File":  "timing-24000-song100.ogg",
+        "Rate":  24000,
+        "Frame":  26400,
+        "Channel":  0,
+        "Role":  "song100"
+    },
+    {
+        "File":  "timing-24000-song100.mp3",
+        "Rate":  24000,
+        "Frame":  26400,
+        "Channel":  0,
+        "Role":  "song100"
+    },
+    {
+        "File":  "timing-24000-song100-no-xing.mp3",
+        "Rate":  24000,
+        "Frame":  26400,
+        "Channel":  0,
+        "Role":  "song100"
+    },
+    {
+        "File":  "timing-24000-sample0.wav",
+        "Rate":  24000,
+        "Frame":  0,
+        "Channel":  1,
+        "Role":  "sample0"
+    },
+    {
+        "File":  "timing-24000-sample0.ogg",
+        "Rate":  24000,
+        "Frame":  0,
+        "Channel":  1,
+        "Role":  "sample0"
+    },
+    {
+        "File":  "timing-24000-sample0.mp3",
+        "Rate":  24000,
+        "Frame":  0,
+        "Channel":  1,
+        "Role":  "sample0"
+    },
+    {
+        "File":  "timing-24000-sample0-no-xing.mp3",
+        "Rate":  24000,
+        "Frame":  0,
+        "Channel":  1,
+        "Role":  "sample0"
+    },
+    {
+        "File":  "timing-24000-sample100.wav",
+        "Rate":  24000,
+        "Frame":  2400,
+        "Channel":  1,
+        "Role":  "sample100"
+    },
+    {
+        "File":  "timing-24000-sample100.ogg",
+        "Rate":  24000,
+        "Frame":  2400,
+        "Channel":  1,
+        "Role":  "sample100"
+    },
+    {
+        "File":  "timing-24000-sample100.mp3",
+        "Rate":  24000,
+        "Frame":  2400,
+        "Channel":  1,
+        "Role":  "sample100"
+    },
+    {
+        "File":  "timing-24000-sample100-no-xing.mp3",
+        "Rate":  24000,
+        "Frame":  2400,
+        "Channel":  1,
+        "Role":  "sample100"
+    },
+    {
+        "File":  "timing-32000-song0.wav",
+        "Rate":  32000,
+        "Frame":  32000,
+        "Channel":  0,
+        "Role":  "song0"
+    },
+    {
+        "File":  "timing-32000-song0.ogg",
+        "Rate":  32000,
+        "Frame":  32000,
+        "Channel":  0,
+        "Role":  "song0"
+    },
+    {
+        "File":  "timing-32000-song0.mp3",
+        "Rate":  32000,
+        "Frame":  32000,
+        "Channel":  0,
+        "Role":  "song0"
+    },
+    {
+        "File":  "timing-32000-song0-no-xing.mp3",
+        "Rate":  32000,
+        "Frame":  32000,
+        "Channel":  0,
+        "Role":  "song0"
+    },
+    {
+        "File":  "timing-32000-song100.wav",
+        "Rate":  32000,
+        "Frame":  35200,
+        "Channel":  0,
+        "Role":  "song100"
+    },
+    {
+        "File":  "timing-32000-song100.ogg",
+        "Rate":  32000,
+        "Frame":  35200,
+        "Channel":  0,
+        "Role":  "song100"
+    },
+    {
+        "File":  "timing-32000-song100.mp3",
+        "Rate":  32000,
+        "Frame":  35200,
+        "Channel":  0,
+        "Role":  "song100"
+    },
+    {
+        "File":  "timing-32000-song100-no-xing.mp3",
+        "Rate":  32000,
+        "Frame":  35200,
+        "Channel":  0,
+        "Role":  "song100"
+    },
+    {
+        "File":  "timing-32000-sample0.wav",
+        "Rate":  32000,
+        "Frame":  0,
+        "Channel":  1,
+        "Role":  "sample0"
+    },
+    {
+        "File":  "timing-32000-sample0.ogg",
+        "Rate":  32000,
+        "Frame":  0,
+        "Channel":  1,
+        "Role":  "sample0"
+    },
+    {
+        "File":  "timing-32000-sample0.mp3",
+        "Rate":  32000,
+        "Frame":  0,
+        "Channel":  1,
+        "Role":  "sample0"
+    },
+    {
+        "File":  "timing-32000-sample0-no-xing.mp3",
+        "Rate":  32000,
+        "Frame":  0,
+        "Channel":  1,
+        "Role":  "sample0"
+    },
+    {
+        "File":  "timing-32000-sample100.wav",
+        "Rate":  32000,
+        "Frame":  3200,
+        "Channel":  1,
+        "Role":  "sample100"
+    },
+    {
+        "File":  "timing-32000-sample100.ogg",
+        "Rate":  32000,
+        "Frame":  3200,
+        "Channel":  1,
+        "Role":  "sample100"
+    },
+    {
+        "File":  "timing-32000-sample100.mp3",
+        "Rate":  32000,
+        "Frame":  3200,
+        "Channel":  1,
+        "Role":  "sample100"
+    },
+    {
+        "File":  "timing-32000-sample100-no-xing.mp3",
+        "Rate":  32000,
+        "Frame":  3200,
+        "Channel":  1,
+        "Role":  "sample100"
+    },
+    {
+        "File":  "timing-44100-song0.wav",
+        "Rate":  44100,
+        "Frame":  44100,
+        "Channel":  0,
+        "Role":  "song0"
+    },
+    {
+        "File":  "timing-44100-song0.ogg",
+        "Rate":  44100,
+        "Frame":  44100,
+        "Channel":  0,
+        "Role":  "song0"
+    },
+    {
+        "File":  "timing-44100-song0.mp3",
+        "Rate":  44100,
+        "Frame":  44100,
+        "Channel":  0,
+        "Role":  "song0"
+    },
+    {
+        "File":  "timing-44100-song0-no-xing.mp3",
+        "Rate":  44100,
+        "Frame":  44100,
+        "Channel":  0,
+        "Role":  "song0"
+    },
+    {
+        "File":  "timing-44100-song100.wav",
+        "Rate":  44100,
+        "Frame":  48510,
+        "Channel":  0,
+        "Role":  "song100"
+    },
+    {
+        "File":  "timing-44100-song100.ogg",
+        "Rate":  44100,
+        "Frame":  48510,
+        "Channel":  0,
+        "Role":  "song100"
+    },
+    {
+        "File":  "timing-44100-song100.mp3",
+        "Rate":  44100,
+        "Frame":  48510,
+        "Channel":  0,
+        "Role":  "song100"
+    },
+    {
+        "File":  "timing-44100-song100-no-xing.mp3",
+        "Rate":  44100,
+        "Frame":  48510,
+        "Channel":  0,
+        "Role":  "song100"
+    },
+    {
+        "File":  "timing-44100-sample0.wav",
+        "Rate":  44100,
+        "Frame":  0,
+        "Channel":  1,
+        "Role":  "sample0"
+    },
+    {
+        "File":  "timing-44100-sample0.ogg",
+        "Rate":  44100,
+        "Frame":  0,
+        "Channel":  1,
+        "Role":  "sample0"
+    },
+    {
+        "File":  "timing-44100-sample0.mp3",
+        "Rate":  44100,
+        "Frame":  0,
+        "Channel":  1,
+        "Role":  "sample0"
+    },
+    {
+        "File":  "timing-44100-sample0-no-xing.mp3",
+        "Rate":  44100,
+        "Frame":  0,
+        "Channel":  1,
+        "Role":  "sample0"
+    },
+    {
+        "File":  "timing-44100-sample100.wav",
+        "Rate":  44100,
+        "Frame":  4410,
+        "Channel":  1,
+        "Role":  "sample100"
+    },
+    {
+        "File":  "timing-44100-sample100.ogg",
+        "Rate":  44100,
+        "Frame":  4410,
+        "Channel":  1,
+        "Role":  "sample100"
+    },
+    {
+        "File":  "timing-44100-sample100.mp3",
+        "Rate":  44100,
+        "Frame":  4410,
+        "Channel":  1,
+        "Role":  "sample100"
+    },
+    {
+        "File":  "timing-44100-sample100-no-xing.mp3",
+        "Rate":  44100,
+        "Frame":  4410,
+        "Channel":  1,
+        "Role":  "sample100"
+    },
+    {
+        "File":  "timing-48000-song0.wav",
+        "Rate":  48000,
+        "Frame":  48000,
+        "Channel":  0,
+        "Role":  "song0"
+    },
+    {
+        "File":  "timing-48000-song0.ogg",
+        "Rate":  48000,
+        "Frame":  48000,
+        "Channel":  0,
+        "Role":  "song0"
+    },
+    {
+        "File":  "timing-48000-song0.mp3",
+        "Rate":  48000,
+        "Frame":  48000,
+        "Channel":  0,
+        "Role":  "song0"
+    },
+    {
+        "File":  "timing-48000-song0-no-xing.mp3",
+        "Rate":  48000,
+        "Frame":  48000,
+        "Channel":  0,
+        "Role":  "song0"
+    },
+    {
+        "File":  "timing-48000-song100.wav",
+        "Rate":  48000,
+        "Frame":  52800,
+        "Channel":  0,
+        "Role":  "song100"
+    },
+    {
+        "File":  "timing-48000-song100.ogg",
+        "Rate":  48000,
+        "Frame":  52800,
+        "Channel":  0,
+        "Role":  "song100"
+    },
+    {
+        "File":  "timing-48000-song100.mp3",
+        "Rate":  48000,
+        "Frame":  52800,
+        "Channel":  0,
+        "Role":  "song100"
+    },
+    {
+        "File":  "timing-48000-song100-no-xing.mp3",
+        "Rate":  48000,
+        "Frame":  52800,
+        "Channel":  0,
+        "Role":  "song100"
+    },
+    {
+        "File":  "timing-48000-sample0.wav",
+        "Rate":  48000,
+        "Frame":  0,
+        "Channel":  1,
+        "Role":  "sample0"
+    },
+    {
+        "File":  "timing-48000-sample0.ogg",
+        "Rate":  48000,
+        "Frame":  0,
+        "Channel":  1,
+        "Role":  "sample0"
+    },
+    {
+        "File":  "timing-48000-sample0.mp3",
+        "Rate":  48000,
+        "Frame":  0,
+        "Channel":  1,
+        "Role":  "sample0"
+    },
+    {
+        "File":  "timing-48000-sample0-no-xing.mp3",
+        "Rate":  48000,
+        "Frame":  0,
+        "Channel":  1,
+        "Role":  "sample0"
+    },
+    {
+        "File":  "timing-48000-sample100.wav",
+        "Rate":  48000,
+        "Frame":  4800,
+        "Channel":  1,
+        "Role":  "sample100"
+    },
+    {
+        "File":  "timing-48000-sample100.ogg",
+        "Rate":  48000,
+        "Frame":  4800,
+        "Channel":  1,
+        "Role":  "sample100"
+    },
+    {
+        "File":  "timing-48000-sample100.mp3",
+        "Rate":  48000,
+        "Frame":  4800,
+        "Channel":  1,
+        "Role":  "sample100"
+    },
+    {
+        "File":  "timing-48000-sample100-no-xing.mp3",
+        "Rate":  48000,
+        "Frame":  4800,
+        "Channel":  1,
+        "Role":  "sample100"
+    },
+    {
+        "File":  "timing-88200-song0.wav",
+        "Rate":  88200,
+        "Frame":  88200,
+        "Channel":  0,
+        "Role":  "song0"
+    },
+    {
+        "File":  "timing-88200-song0.ogg",
+        "Rate":  88200,
+        "Frame":  88200,
+        "Channel":  0,
+        "Role":  "song0"
+    },
+    {
+        "File":  "timing-88200-song100.wav",
+        "Rate":  88200,
+        "Frame":  97020,
+        "Channel":  0,
+        "Role":  "song100"
+    },
+    {
+        "File":  "timing-88200-song100.ogg",
+        "Rate":  88200,
+        "Frame":  97020,
+        "Channel":  0,
+        "Role":  "song100"
+    },
+    {
+        "File":  "timing-88200-sample0.wav",
+        "Rate":  88200,
+        "Frame":  0,
+        "Channel":  1,
+        "Role":  "sample0"
+    },
+    {
+        "File":  "timing-88200-sample0.ogg",
+        "Rate":  88200,
+        "Frame":  0,
+        "Channel":  1,
+        "Role":  "sample0"
+    },
+    {
+        "File":  "timing-88200-sample100.wav",
+        "Rate":  88200,
+        "Frame":  8820,
+        "Channel":  1,
+        "Role":  "sample100"
+    },
+    {
+        "File":  "timing-88200-sample100.ogg",
+        "Rate":  88200,
+        "Frame":  8820,
+        "Channel":  1,
+        "Role":  "sample100"
+    },
+    {
+        "File":  "timing-96000-song0.wav",
+        "Rate":  96000,
+        "Frame":  96000,
+        "Channel":  0,
+        "Role":  "song0"
+    },
+    {
+        "File":  "timing-96000-song0.ogg",
+        "Rate":  96000,
+        "Frame":  96000,
+        "Channel":  0,
+        "Role":  "song0"
+    },
+    {
+        "File":  "timing-96000-song100.wav",
+        "Rate":  96000,
+        "Frame":  105600,
+        "Channel":  0,
+        "Role":  "song100"
+    },
+    {
+        "File":  "timing-96000-song100.ogg",
+        "Rate":  96000,
+        "Frame":  105600,
+        "Channel":  0,
+        "Role":  "song100"
+    },
+    {
+        "File":  "timing-96000-sample0.wav",
+        "Rate":  96000,
+        "Frame":  0,
+        "Channel":  1,
+        "Role":  "sample0"
+    },
+    {
+        "File":  "timing-96000-sample0.ogg",
+        "Rate":  96000,
+        "Frame":  0,
+        "Channel":  1,
+        "Role":  "sample0"
+    },
+    {
+        "File":  "timing-96000-sample100.wav",
+        "Rate":  96000,
+        "Frame":  9600,
+        "Channel":  1,
+        "Role":  "sample100"
+    },
+    {
+        "File":  "timing-96000-sample100.ogg",
+        "Rate":  96000,
+        "Frame":  9600,
+        "Channel":  1,
+        "Role":  "sample100"
+    }
+]

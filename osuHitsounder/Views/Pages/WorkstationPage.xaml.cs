@@ -23,6 +23,9 @@ public partial class WorkstationPage : UserControl
     public double TimelineHorizontalOffset { get => (double)GetValue(TimelineHorizontalOffsetProperty); set => SetValue(TimelineHorizontalOffsetProperty, value); }
     private readonly WorkstationPageVM viewModel;
     private readonly DispatcherTimer playbackTimer;
+    private bool playbackReady;
+    private bool renderingSubscribed;
+    private TimeSpan? lastRenderingTime;
     private string? projectPath;
     private bool loadStarted;
     private bool deactivationStarted;
@@ -41,6 +44,7 @@ public partial class WorkstationPage : UserControl
         playbackTimer.Tick += OnPlaybackTick;
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
+        IsVisibleChanged += OnPlaybackVisibilityChanged;
         viewModel.PropertyChanging += OnViewModelPropertyChanging;
         viewModel.PropertyChanged += OnViewModelPropertyChanged;
         viewModel.Tracks.CollectionChanged += OnTracksCollectionChanged;
@@ -59,7 +63,7 @@ public partial class WorkstationPage : UserControl
     {
         if (deactivationStarted) return LoadCompletion;
         deactivationStarted = true;
-        playbackTimer.Stop();
+        UpdatePlaybackRefreshSubscription(SystemParameters.ClientAreaAnimation);
         LoadCompletion = DeactivateCoreAsync();
         return LoadCompletion;
     }
@@ -76,7 +80,12 @@ public partial class WorkstationPage : UserControl
     private async Task LoadCoreAsync(string path)
     {
         await viewModel.LoadAsync(path, CancellationToken.None);
-        if (!deactivationStarted) playbackTimer.Start();
+        if (!deactivationStarted && viewModel.Waveform is not null)
+        {
+            playbackReady = true;
+            SystemParameters.StaticPropertyChanged += OnPlaybackSystemSettingsChanged;
+            UpdatePlaybackRefreshSubscription(SystemParameters.ClientAreaAnimation);
+        }
     }
 
     private async void OnUnloaded(object sender, RoutedEventArgs e)
@@ -95,6 +104,8 @@ public partial class WorkstationPage : UserControl
             playbackTimer.Tick -= OnPlaybackTick;
             Loaded -= OnLoaded;
             Unloaded -= OnUnloaded;
+            IsVisibleChanged -= OnPlaybackVisibilityChanged;
+            SystemParameters.StaticPropertyChanged -= OnPlaybackSystemSettingsChanged;
             viewModel.PropertyChanging -= OnViewModelPropertyChanging;
             viewModel.PropertyChanged -= OnViewModelPropertyChanged;
             viewModel.Tracks.CollectionChanged -= OnTracksCollectionChanged;
@@ -104,7 +115,53 @@ public partial class WorkstationPage : UserControl
         }
     }
 
-    private void OnPlaybackTick(object? sender, EventArgs e) => viewModel.RefreshPlayback();
+    internal void OnPlaybackTick(object? sender, EventArgs e)
+    {
+        if (playbackTimer.IsEnabled && playbackReady && !deactivationStarted && viewModel.IsPlaying)
+            viewModel.RefreshPlayback();
+    }
+
+    internal void UpdatePlaybackRefreshSubscription(bool animationsEnabled)
+    {
+        var playing = playbackReady && !deactivationStarted && viewModel.IsPlaying;
+        var render = playing && IsVisible && animationsEnabled;
+        if (render != renderingSubscribed)
+        {
+            if (render) CompositionTarget.Rendering += OnPlaybackRendering;
+            else CompositionTarget.Rendering -= OnPlaybackRendering;
+            renderingSubscribed = render;
+            lastRenderingTime = null;
+        }
+        playbackTimer.IsEnabled = playing && !render;
+    }
+
+    private void OnPlaybackRendering(object? sender, EventArgs e)
+    {
+        if (e is RenderingEventArgs rendering) RefreshPlaybackFrame(rendering.RenderingTime);
+    }
+
+    internal void RefreshPlaybackFrame(TimeSpan renderingTime)
+    {
+        if (!renderingSubscribed || !IsVisible || deactivationStarted || !viewModel.IsPlaying ||
+            lastRenderingTime == renderingTime) return;
+        lastRenderingTime = renderingTime;
+        viewModel.RefreshPlayback();
+    }
+
+    private void OnPlaybackVisibilityChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        if (playbackReady && !deactivationStarted && IsVisible) viewModel.RefreshPlayback();
+        UpdatePlaybackRefreshSubscription(SystemParameters.ClientAreaAnimation);
+    }
+
+    private void OnPlaybackSystemSettingsChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is null or "" or nameof(SystemParameters.ClientAreaAnimation))
+        {
+            if (Dispatcher.CheckAccess()) UpdatePlaybackRefreshSubscription(SystemParameters.ClientAreaAnimation);
+            else Dispatcher.BeginInvoke(() => UpdatePlaybackRefreshSubscription(SystemParameters.ClientAreaAnimation));
+        }
+    }
     private void OnWaveformViewportSizeChanged(object sender, SizeChangedEventArgs e)
     {
         WaveformDisplay.ViewportWidth = Math.Max(0, e.NewSize.Width);
@@ -235,6 +292,8 @@ public partial class WorkstationPage : UserControl
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(WorkstationPageVM.IsPlaying))
+            UpdatePlaybackRefreshSubscription(SystemParameters.ClientAreaAnimation);
         if (e.PropertyName == nameof(WorkstationPageVM.ZoomFactor)) ApplyPendingZoomAnchor();
     }
 

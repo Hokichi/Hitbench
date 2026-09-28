@@ -28,6 +28,11 @@ public sealed class StubWorkstationAudioService : IWorkstationAudioService
         SampleUpdates.Add(events.ToArray());
         return Task.CompletedTask;
     }
-    public AudioPlaybackSnapshot GetSnapshot() => Snapshot;
+    public int SnapshotReads { get; private set; }
+    public AudioPlaybackSnapshot GetSnapshot()
+    {
+        SnapshotReads++;
+        return Snapshot;
+    }
     public void Dispose() => Disposed = true;
 }
