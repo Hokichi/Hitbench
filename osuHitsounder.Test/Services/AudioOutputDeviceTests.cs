@@ -5,6 +5,45 @@ namespace osuHitsounder.Test.Services;
 public class AudioOutputDeviceTests
 {
     [Test]
+    public void EstimatedPositionDrainsFinalBufferAndResetIsDeferred()
+    {
+        long now = 0, produced = 1000;
+        var ended = false;
+        var reset = false;
+        var player = new StubWavePlayer();
+        using var output = new AudioOutputDevice(() => player, getLatencyFrames: () => 100,
+            resetRequested: () => reset, getTimestamp: () => now, timestampFrequency: 44100);
+        output.Init(new ScheduledSampleMixer(DecodedAudio.CopyFrom(new float[2000]),0),()=>produced,()=>ended);
+        output.Play();
+        Assert.That(output.GetPlayedFrames(), Is.EqualTo(900));
+        ended = true;
+        output.Poll();
+        Assert.That(output.PlaybackState, Is.EqualTo(NAudio.Wave.PlaybackState.Playing));
+        now = 100;
+        output.Poll();
+        Assert.That(output.GetPlayedFrames(), Is.EqualTo(1000));
+        Assert.That(output.PlaybackState, Is.EqualTo(NAudio.Wave.PlaybackState.Stopped));
+        Assert.That(player.IsDisposed, Is.False);
+    }
+
+    [Test]
+    public void ResetAndRendererFaultStopOnlyDuringControlPoll()
+    {
+        var reset = false;
+        var player = new StubWavePlayer();
+        using var output = new AudioOutputDevice(()=>player, resetRequested:()=>reset);
+        output.Init(new ScheduledSampleMixer(DecodedAudio.CopyFrom(new float[20]),0));
+        Exception? error = null;
+        output.PlaybackStopped += (_,args)=>error=args.Exception;
+        output.Play();
+        reset = true;
+        Assert.That(output.PlaybackState, Is.EqualTo(NAudio.Wave.PlaybackState.Playing));
+        output.Poll();
+        Assert.That(error, Is.Not.Null);
+        Assert.That(output.PlaybackState, Is.EqualTo(NAudio.Wave.PlaybackState.Stopped));
+    }
+
+    [Test]
     public void PlayedCursorExcludesOriginAndNeverMovesBackward()
     {
         var player = new StubWavePlayer { Position = 800 };

@@ -12,6 +12,10 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
     private static readonly WaveFormat OutputFormat = WaveFormat.CreateIeeeFloatWaveFormat(OutputSampleRate, OutputChannels);
     private readonly Func<string, WaveStream> openDecoder;
     private readonly Func<IAudioOutput> createPlayer;
+    private readonly Func<IAudioOutput>? createFallback;
+    private bool useFallback;
+    private string? warning;
+    private string? playbackError;
     private readonly object sync = new();
     private readonly SemaphoreSlim preparationGate = new(1, 1);
     private readonly Dictionary<string, (long Length, DateTime LastWrite, DecodedAudio Samples)> sampleCache =
@@ -39,10 +43,11 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
     public WorkstationAudioService(Func<string, WaveStream> openDecoder, Func<IWavePlayer> createPlayer)
         : this(openDecoder, () => new AudioOutputDevice(createPlayer)) { }
 
-    public WorkstationAudioService(Func<string, WaveStream> openDecoder, Func<IAudioOutput> createPlayer)
+    public WorkstationAudioService(Func<string, WaveStream> openDecoder, Func<IAudioOutput> createPlayer, Func<IAudioOutput>? createFallback = null)
     {
         this.openDecoder = openDecoder;
         this.createPlayer = createPlayer;
+        this.createFallback = createFallback;
     }
 
     public Task<WaveformData> AnalyzeAsync(string path, CancellationToken token) => Task.Run(() =>
@@ -64,6 +69,9 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
             sampleCache.Clear();
             preparationGeneration++;
             error = null;
+            playbackError = null;
+            warning = null;
+            useFallback = false;
             currentPosition = TimeSpan.Zero;
         }
         DisposeOutput(retired);
@@ -189,33 +197,47 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
         }
     }
 
-    public void Play()
+    public void Play() => PlayCore(true);
+
+    private void PlayCore(bool restartAtEnd)
     {
         player?.Poll();
-        IAudioOutput? retired = null;
-        lock (sync)
+        var fallbackAttempt = useFallback && createFallback is not null;
+        useFallback = false;
+        for (var attempt = 0; attempt < 2; attempt++)
         {
-            ThrowIfDisposed();
-            if (audioPath is null) return;
-            if (preparedSong is null)
+            IAudioOutput? retired;
+            lock (sync)
             {
-                error = "Audio must be prepared before playback.";
-                return;
+                ThrowIfDisposed();
+                if (audioPath is null) return;
+                if (preparedSong is null)
+                {
+                    playbackError = "Audio must be prepared before playback.";
+                    return;
+                }
+                try
+                {
+                    if (restartAtEnd && currentPosition >= GetDuration()) ResetPosition();
+                    EnsurePlayback(fallbackAttempt);
+                    player!.Play();
+                    playbackError = null;
+                    if (!fallbackAttempt) warning = null;
+                    else warning ??= "ASIO unavailable; using WaveOut.";
+                    return;
+                }
+                catch (Exception failure)
+                {
+                    playbackError = $"Unable to play audio{(fallbackAttempt ? " using WaveOut" : "")}: {failure.Message}";
+                    retired = DetachPlayback();
+                    if (!fallbackAttempt && createFallback is not null)
+                        warning = $"ASIO unavailable; using WaveOut. {failure.Message}";
+                }
             }
-            try
-            {
-                if (currentPosition >= GetDuration()) ResetPosition();
-                EnsurePlayback();
-                player!.Play();
-            }
-            catch (Exception failure)
-            {
-                error = $"Unable to play audio: {failure.Message}";
-                retired = DetachPlayback();
-                ResetPosition();
-            }
+            DisposeOutput(retired);
+            if (fallbackAttempt || createFallback is null) return;
+            fallbackAttempt = true;
         }
-        DisposeOutput(retired);
     }
 
     public void Pause()
@@ -263,14 +285,9 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
         DisposeOutput(retired);
         if (resume)
         {
-            lock (sync)
-            {
-                if (!disposed && generation == detachedGeneration)
-                {
-                    EnsurePlayback();
-                    player!.Play();
-                }
-            }
+            bool restart;
+            lock (sync) restart = !disposed && generation == detachedGeneration;
+            if (restart) PlayCore(false);
         }
     }
 
@@ -280,7 +297,7 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
         lock (sync)
         {
             var playing = player?.PlaybackState == PlaybackState.Playing;
-            return new AudioPlaybackSnapshot(GetCurrentPosition(), playing, error);
+            return new AudioPlaybackSnapshot(GetCurrentPosition(), playing, playbackError ?? error, warning);
         }
     }
 
@@ -301,14 +318,14 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
         DisposeOutput(retired);
     }
 
-    private void EnsurePlayback()
+    private void EnsurePlayback(bool fallback = false)
     {
         if (player is not null) return;
         var startFrame = TimeToFrame(currentPosition);
         mixer = new ScheduledSampleMixer(preparedSong!, startFrame);
         mixer.SetVolumes(songVolume, samplesVolume, applicationVolume);
         mixer.Publish(preparedEvents);
-        player = createPlayer();
+        player = fallback ? createFallback!() : createPlayer();
         var currentGeneration = ++generation;
         playbackStoppedHandler = (_, args) => OnPlaybackStopped(currentGeneration, args);
         player.PlaybackStopped += playbackStoppedHandler;
@@ -324,7 +341,11 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
         lock (sync)
         {
             if (eventGeneration != generation || disposed) return;
-            if (args.Exception is not null) error = $"Audio playback failed: {args.Exception.Message}";
+            if (args.Exception is not null)
+            {
+                playbackError = $"Audio playback failed: {args.Exception.Message}";
+                useFallback = createFallback is not null;
+            }
             completedPlayer = DetachPlayback();
             ResetPosition();
             if (args.Exception is null) currentPosition = GetDuration();
