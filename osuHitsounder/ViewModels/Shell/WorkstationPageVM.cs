@@ -71,6 +71,7 @@ public partial class WorkstationPageVM(
     [ObservableProperty] private bool isLoading;
     [ObservableProperty] private bool isPlaying;
     [ObservableProperty] private string? errorMessage;
+    [ObservableProperty] private string? playbackWarning;
     private int songVolume = 100;
     private double zoomFactor = 16;
     private double trackHeight = 72;
@@ -175,6 +176,7 @@ public partial class WorkstationPageVM(
     {
         if (deactivated) return;
         var snapshot = audioService.GetSnapshot();
+        PlaybackWarning = snapshot.Warning;
         var marker = snapshot.Position;
         var duration = Waveform?.Duration ?? TimeSpan.Zero;
         var terminal = IsPlaying && !snapshot.IsPlaying && snapshot.Position >= duration && duration > TimeSpan.Zero;

@@ -10,10 +10,42 @@ namespace osuHitsounder.Test.Presentation;
 [NonParallelizable]
 public class WorkstationPlaybackRefreshTests
 {
+    [TestCase(640, FlowDirection.LeftToRight)]
+    [TestCase(900, FlowDirection.RightToLeft)]
+    public void FallbackWarningBindsWrapsAndClearsWithoutDisablingTransport(int width, FlowDirection direction)
+    {
+        host.Width = width;
+        host.FlowDirection = direction;
+        var warning = "ASIO unavailable; using WaveOut. " + new string('x', 240);
+        audio.Snapshot = audio.Snapshot with { Warning = warning };
+        vm.RefreshPlayback();
+        view.UpdateLayout();
+        var status = (System.Windows.Controls.TextBlock)page.FindName("PlaybackWarningText");
+        Assert.That(status, Is.Not.Null);
+        Assert.That(status.Text, Is.EqualTo(warning));
+        Assert.That(System.Windows.Automation.AutomationProperties.GetName(status), Is.EqualTo(warning));
+        Assert.That(status.Visibility, Is.EqualTo(Visibility.Visible));
+        Assert.That(status.TextWrapping, Is.EqualTo(TextWrapping.Wrap));
+        Assert.That(status.ActualHeight, Is.GreaterThan(13));
+        Assert.That(status.FlowDirection, Is.EqualTo(direction));
+        Assert.That(vm.CanPlay, Is.True);
+        Assert.That(vm.ErrorMessage, Is.Null);
+        audio.Snapshot = audio.Snapshot with { Warning = null, Error = "Output failed" };
+        vm.RefreshPlayback();
+        view.UpdateLayout();
+        Assert.That(status.Visibility, Is.EqualTo(Visibility.Collapsed));
+        Assert.That(vm.ErrorMessage, Is.EqualTo("Output failed"));
+        audio.Snapshot = audio.Snapshot with { Warning = "" };
+        vm.RefreshPlayback();
+        view.UpdateLayout();
+        Assert.That(status.Visibility, Is.EqualTo(Visibility.Collapsed));
+    }
+
     private StubWorkstationAudioService audio = null!;
     private WorkstationPageVM vm = null!;
     private WorkstationPage page = null!;
     private InMemoryView view = null!;
+    private Window host = null!;
 
     [SetUp]
     public void SetUp()
@@ -31,7 +63,8 @@ public class WorkstationPlaybackRefreshTests
         vm = new WorkstationPageVM(source, audio, new ImmediateUiScheduler());
         page = new WorkstationPage(vm);
         page.SetProjectPath("project.json");
-        view = new InMemoryView(new Window { Content = page, Width = 900, Height = 600 });
+        host = new Window { Content = page, Width = 900, Height = 600 };
+        view = new InMemoryView(host);
         UiTestPump.Run(page.LoadCompletion);
         view.UpdateLayout();
     }
