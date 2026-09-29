@@ -1,0 +1,99 @@
+using osuHitsounder.Services;
+
+namespace osuHitsounder.Test.Services;
+
+public class ScheduledSampleMixerTests
+{
+    [TestCase(1)]
+    [TestCase(37)]
+    [TestCase(64)]
+    [TestCase(512)]
+    [TestCase(1024)]
+    public void ImpulseStartsAtExactFrameWithoutExternalTrigger(int chunk)
+    {
+        var mixer = new ScheduledSampleMixer(DecodedAudio.CopyFrom(new float[4096]), 0);
+        mixer.Publish(new PreparedPlaybackSchedule([Event(1, 1000, [.5f, .5f])]));
+        var output = new float[4096];
+        for (var i = 0; i < output.Length;)
+            i += mixer.Read(output, i, Math.Min(chunk * 2, output.Length - i));
+        var expected = new float[4096];
+        expected[2000] = expected[2001] = .5f;
+        Assert.That(output, Is.EqualTo(expected));
+        Assert.That(mixer.EndOfStream, Is.True);
+        Assert.That(mixer.Read(output, 0, 2), Is.Zero);
+    }
+
+    [Test]
+    public void PartialFrameKeepsOriginalRightChannel()
+    {
+        var mixer = new ScheduledSampleMixer(DecodedAudio.CopyFrom(new float[4]), 0);
+        mixer.Publish(new PreparedPlaybackSchedule([Event(1, 0, [.2f, .3f, .4f, .5f])]));
+        var output = new float[4];
+        mixer.Read(output, 0, 1);
+        Assert.That(mixer.RenderedFrames, Is.Zero);
+        mixer.Publish(new PreparedPlaybackSchedule([Event(2, 0, [.8f, .8f, .7f, .6f])]));
+        mixer.Read(output, 1, 3);
+        Assert.That(output, Is.EqualTo(new[] { .2f, .3f, .7f, .6f }));
+        Assert.That(mixer.RenderedFrames, Is.EqualTo(2));
+    }
+
+    [Test]
+    public void SeekAndNegativeTailsRespectSourceOffsetAndSongEnd()
+    {
+        var mixer = new ScheduledSampleMixer(DecodedAudio.CopyFrom(new float[6]), 1);
+        mixer.Publish(new PreparedPlaybackSchedule([Event(1, -1, [.1f,.1f,.2f,.2f,.3f,.3f,.4f,.4f,.5f,.5f])]));
+        var output = Enumerable.Repeat(-9f, 8).ToArray();
+        Assert.That(mixer.Read(output, 2, 6), Is.EqualTo(4));
+        Assert.That(output, Is.EqualTo(new[] {-9f,-9f,.3f,.3f,.4f,.4f,-9f,-9f}));
+    }
+
+    [Test]
+    public void OverlappingSamplesHaveNoVoiceLimitAndGainPrecedesClipping()
+    {
+        var mixer = new ScheduledSampleMixer(DecodedAudio.CopyFrom([float.NaN, float.PositiveInfinity]), 0);
+        mixer.Publish(new PreparedPlaybackSchedule(Enumerable.Range(1, 64).Select(id => Event(id, 0, [.4f,.4f], .5f)).ToArray()));
+        mixer.SetVolumes(1, .5f, .05f);
+        var output = new float[2];
+        mixer.Read(output, 0, 2);
+        Assert.That(output, Is.EqualTo(new[] { .32f,.32f }).Within(.00001));
+    }
+
+    [Test]
+    public void ScheduleAndAudioOwnTheirInputAndRejectInvalidData()
+    {
+        float[] data = [.5f,.5f];
+        var audio = DecodedAudio.CopyFrom(data);
+        data[0] = 9;
+        var events = new[] { new PreparedSampleEvent(1, audio, 1) };
+        var schedule = new PreparedPlaybackSchedule(events);
+        events[0] = Event(2, 0, [0,0]);
+        var mixer = new ScheduledSampleMixer(DecodedAudio.CopyFrom(new float[2]), 0);
+        mixer.Publish(schedule);
+        var output = new float[2];
+        mixer.Read(output,0,2);
+        Assert.That(output, Is.EqualTo(new[] {.5f,.5f}));
+        Assert.Throws<ArgumentException>(() => new PreparedPlaybackSchedule([Event(1,0,[0,0]),Event(1,1,[0,0])]));
+        Assert.Throws<ArgumentException>(() => DecodedAudio.CopyFrom([1]));
+        Assert.Throws<ArgumentException>(() => new PreparedPlaybackSchedule([Event(1,0,[0,0],float.NaN)]));
+        Assert.Throws<OverflowException>(() => new PreparedPlaybackSchedule([Event(1,long.MaxValue,[0,0])]));
+    }
+
+    [Test]
+    public void NormalReadAllocatesNothingAndChecksBounds()
+    {
+        var mixer = new ScheduledSampleMixer(DecodedAudio.CopyFrom(new float[200_100]),0);
+        mixer.Publish(new PreparedPlaybackSchedule([Event(1,0,new float[200_100])]));
+        var output = new float[16];
+        for(var i=0;i<100;i++) mixer.Read(output,0,16);
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        for(var i=0;i<10_000;i++) mixer.Read(output,0,16);
+        var allocated = GC.GetAllocatedBytesForCurrentThread()-before;
+        Assert.That(allocated, Is.Zero);
+        Assert.That(mixer.EndOfStream, Is.False);
+        Assert.That(mixer.Read(output,0,0), Is.Zero);
+        Assert.Throws<ArgumentOutOfRangeException>(()=>mixer.Read(output,1,16));
+    }
+
+    private static PreparedSampleEvent Event(long id,long start,float[] values,float gain=1) =>
+        new(id,DecodedAudio.CopyFrom(values),gain,start);
+}
