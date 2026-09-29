@@ -60,7 +60,6 @@ public partial class WorkstationPageVM(
     private bool deactivated;
     private PlaybackMarkerClock markerClock = new([], []);
     private TimeSpan processedMarker;
-    private bool includeMarkerStart = true;
     private TimeSpan playbackInterval;
     public TimeSpan PlaybackInterval => playbackInterval;
 
@@ -184,17 +183,7 @@ public partial class WorkstationPageVM(
             marker = markerClock.GetPosition(snapshot.Position, duration);
             // A seek can land between grid boundaries; never step back behind its baseline.
             if (marker < processedMarker) marker = processedMarker;
-            var ids = new List<long>();
-            foreach (var track in tracks)
-            foreach (var sample in track.Samples)
-            {
-                var timestamp = TimeSpan.FromMilliseconds(sample.Timestamp);
-                if ((timestamp > processedMarker || includeMarkerStart && timestamp == processedMarker) &&
-                    timestamp <= marker && sampleEventIds.TryGetValue(sample, out var id)) ids.Add(id);
-            }
-            if (ids.Count > 0) audioService.TriggerSamples(ids);
             processedMarker = marker;
-            includeMarkerStart = false;
         }
         if (markerClock.IsValid)
             SetProperty(ref playbackInterval, markerClock.GetInterval(snapshot.Position), nameof(PlaybackInterval));
@@ -207,7 +196,6 @@ public partial class WorkstationPageVM(
     private void ResetMarker(TimeSpan position)
     {
         processedMarker = position;
-        includeMarkerStart = true;
     }
 
     [RelayCommand(CanExecute = nameof(CanUseTransport))]

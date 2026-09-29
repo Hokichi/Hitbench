@@ -3,21 +3,8 @@ using osuHitsounder.Services;
 
 namespace osuHitsounder.Test.Services;
 
-public class ExplicitSampleTriggerTests
+public class PlaybackOutputLifecycleTests
 {
-    [Test]
-    public void ReadingAudioCannotStartPreparedSample()
-    {
-        var mixer = new TriggeredSampleMixer(new float[20], WaveFormat.CreateIeeeFloatWaveFormat(1000, 2), 0);
-        mixer.ReplaceSamples([new PreparedSampleEvent(1, new float[] { .4f, .4f }, 1)]);
-        var output = new float[4];
-        mixer.Read(output, 0, 4);
-        Assert.That(output, Is.All.Zero);
-        mixer.TriggerSamples([99, 1]);
-        mixer.Read(output, 0, 4);
-        Assert.That(output, Is.EqualTo(new[] { .4f, .4f, 0f, 0f }));
-    }
-
     [Test]
     public void OutputUsesSmallQueueWithoutOpeningDevice()
     {
@@ -29,7 +16,7 @@ public class ExplicitSampleTriggerTests
     }
 
     [Test]
-    public async Task CompletedOutputRetainsEndpointAndTriggerDoesNotRestartIt()
+    public async Task CompletedOutputRetainsEndpointUntilExplicitRestart()
     {
         var player = new StubWavePlayer();
         var created = 0;
@@ -41,7 +28,6 @@ public class ExplicitSampleTriggerTests
         service.Play();
         player.RaiseStopped();
         Assert.That(service.GetSnapshot().Position.TotalSeconds, Is.EqualTo(1).Within(.001));
-        service.TriggerSamples([1]);
         Assert.That(created, Is.EqualTo(1));
         service.Stop();
         Assert.That(service.GetSnapshot().Position, Is.EqualTo(TimeSpan.Zero));

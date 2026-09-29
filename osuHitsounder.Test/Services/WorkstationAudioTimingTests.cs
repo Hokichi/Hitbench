@@ -50,9 +50,9 @@ public class WorkstationAudioTimingTests
         TestContext.Out.WriteLine($"SOURCE song={songFrame}/{songRate}, sample={sampleFrame}/{sampleRate}; CONVERTED song={Peak(songAlone, 0)}, sample={Peak(sampleAlone, 1)}");
         Assert.Multiple(() =>
         {
-            Assert.That(Peak(output, 1), Is.EqualTo(44100 + Peak(sampleAlone, 1)), "Explicit trigger after conversion");
+            Assert.That(Peak(output, 1), Is.EqualTo(44100 + Peak(sampleAlone, 1)), "Scheduled placement after conversion");
             Assert.That(Peak(output, 0), Is.EqualTo(Peak(songAlone, 0)));
-            Assert.That(Onset(output, 1), Is.EqualTo(44100 + Onset(sampleAlone, 1)), "Explicit trigger preserves converted onset including resampler delay");
+            Assert.That(Onset(output, 1), Is.EqualTo(44100 + Onset(sampleAlone, 1)), "Scheduled placement preserves converted onset including resampler delay");
         });
     }
 
@@ -176,28 +176,22 @@ public class WorkstationAudioTimingTests
         var provider = player.Provider!.ToSampleProvider();
         Assert.That(provider.WaveFormat.SampleRate, Is.EqualTo(44100));
         Assert.That(provider.WaveFormat.Channels, Is.EqualTo(2));
-        // The test controls explicit trigger time; decoding must not shift the rendered sound.
+        // Pull natural chunks across placements: the renderer owns event timing.
         var output = new List<float>();
         var buffer = new float[chunk];
-        var triggerAt = (int)Math.Round(timestamp * 44100m / 1000, MidpointRounding.AwayFromZero) * 2;
         var position = (int)Math.Round((seek ?? 0) / 1000d * 44100) * 2;
-        var triggered = sample is null;
         var paused = false;
         while (true)
         {
-            if (!triggered && position >= triggerAt)
-            {
-                service.TriggerSamples([1]);
-                triggered = true;
-            }
             if (pause && !paused && position >= 44100)
             {
                 player.Position = position * sizeof(float);
                 service.Pause();
                 service.Play();
+                provider = player.Provider!.ToSampleProvider();
                 paused = true;
             }
-            var count = !triggered ? Math.Min(chunk, triggerAt - position) : chunk;
+            var count = chunk;
             var read = provider.Read(buffer, 0, count);
             if (read == 0) break;
             output.AddRange(buffer.AsSpan(0, read).ToArray());

@@ -21,7 +21,7 @@ public class WorkstationAudioServiceTests
         await service.UpdateSamplesAsync(project.ProjectPath,
             [new SamplePlaybackEvent(1, "hit.wav", 0, 50, 50)], CancellationToken.None);
         service.Play();
-        service.TriggerSamples([1]);
+
         var output = new float[2];
         player.Provider!.ToSampleProvider().Read(output, 0, output.Length);
 
@@ -50,7 +50,7 @@ public class WorkstationAudioServiceTests
             [new SamplePlaybackEvent(1, "hit.wav", 0, 50, 100)], CancellationToken.None);
 
         service.Play();
-        service.TriggerSamples([1]);
+
         var first = new float[2];
         players[^1].Provider!.ToSampleProvider().Read(first, 0, first.Length);
         service.SetSamplesVolume(0);
@@ -84,7 +84,7 @@ public class WorkstationAudioServiceTests
         await service.UpdateSamplesAsync(project.ProjectPath,
             [new SamplePlaybackEvent(1, "hit.wav", 0, 50, 50)], CancellationToken.None);
         service.Play();
-        service.TriggerSamples([1]);
+
         var output = new float[2];
         player.Provider!.ToSampleProvider().Read(output, 0, output.Length);
 
@@ -102,7 +102,7 @@ public class WorkstationAudioServiceTests
         await service.UpdateSamplesAsync(project.ProjectPath,
             [new SamplePlaybackEvent(1, "missing.wav", 0, 100, 100)], CancellationToken.None);
         service.Play();
-        service.TriggerSamples([1]);
+
 
         Assert.Multiple(() =>
         {
@@ -120,7 +120,7 @@ public class WorkstationAudioServiceTests
         service.Open("song.wav");
         await service.UpdateSamplesAsync(project.ProjectPath, [], CancellationToken.None);
         service.Play();
-        service.TriggerSamples([1]);
+
         player.Position = 44_100 * 2 * sizeof(float);
 
         Assert.That(service.GetSnapshot().Position, Is.EqualTo(TimeSpan.FromSeconds(1)));
@@ -133,7 +133,7 @@ public class WorkstationAudioServiceTests
         service.Open("song.wav");
 
         service.Play();
-        service.TriggerSamples([1]);
+
 
         Assert.That(service.GetSnapshot().Error, Does.Contain("prepared"));
     }
@@ -214,12 +214,12 @@ public class WorkstationAudioServiceTests
         service.Open("test.wav");
         await PrepareAsync(service);
         service.Play();
-        service.TriggerSamples([1]);
+
         Assert.That(service.GetSnapshot().IsPlaying, Is.True);
         service.Pause();
         Assert.That(service.GetSnapshot().IsPlaying, Is.False);
         service.Play();
-        service.TriggerSamples([1]);
+
         Assert.That(service.GetSnapshot().IsPlaying, Is.True);
         player.Position = player.OutputWaveFormat.AverageBytesPerSecond / 2;
         service.Stop();
@@ -238,7 +238,7 @@ public class WorkstationAudioServiceTests
         service.Open("test.wav");
         await PrepareAsync(service);
         service.Play();
-        service.TriggerSamples([1]);
+
         player.RaiseStopped(new IOException("device lost"));
         var snapshot = service.GetSnapshot();
         Assert.That(snapshot.Position, Is.EqualTo(TimeSpan.Zero));
@@ -258,11 +258,11 @@ public class WorkstationAudioServiceTests
         service.Open("test.wav");
         await PrepareAsync(service);
         service.Play();
-        service.TriggerSamples([1]);
+
 
         players[0].RaiseStopped();
         service.Play();
-        service.TriggerSamples([1]);
+
 
         Assert.Multiple(() =>
         {
@@ -280,12 +280,13 @@ public class WorkstationAudioServiceTests
         service.Open("test.wav");
         await PrepareAsync(service);
         service.Play();
-        service.TriggerSamples([1]);
+
         player.Disposing = () => Assert.That(
             Task.Run(service.GetSnapshot).Wait(TimeSpan.FromSeconds(1)), Is.True,
             "Device disposal must not hold the service lock needed by callbacks.");
 
         player.RaiseStopped();
+        service.GetSnapshot();
 
         Assert.That(player.IsDisposed, Is.True);
     }
@@ -324,7 +325,7 @@ public class WorkstationAudioServiceTests
         Assert.That(service.GetSnapshot().Position, Is.EqualTo(TimeSpan.FromSeconds(4)));
         Assert.That(service.GetSnapshot().IsPlaying, Is.False);
         service.Play();
-        service.TriggerSamples([1]);
+
         players[^1].Position = players[^1].OutputWaveFormat.AverageBytesPerSecond;
         Assert.That(service.GetSnapshot().Position, Is.EqualTo(TimeSpan.FromSeconds(5)));
         service.Seek(TimeSpan.FromSeconds(20));
@@ -346,7 +347,7 @@ public class WorkstationAudioServiceTests
         service.Open("test.wav");
         await PrepareAsync(service);
         service.Play();
-        service.TriggerSamples([1]);
+
         service.Seek(TimeSpan.FromSeconds(3));
         Assert.That(service.GetSnapshot().IsPlaying, Is.True);
         Assert.That(players, Has.Count.EqualTo(2));
@@ -371,7 +372,7 @@ public class WorkstationAudioServiceTests
         await PrepareAsync(service);
         service.Seek(TimeSpan.FromSeconds(4));
         service.Play();
-        service.TriggerSamples([1]);
+
         player.Position = 0;
         Assert.That(service.GetSnapshot().Position, Is.EqualTo(TimeSpan.FromSeconds(4)));
         service.Open("second.wav");
@@ -391,7 +392,7 @@ public class WorkstationAudioServiceTests
         service.Open("test.wav");
         await PrepareAsync(service);
         service.Play();
-        service.TriggerSamples([1]);
+
         var retired = players[0];
         service.Seek(TimeSpan.FromSeconds(6));
         retired.RaiseRetiredStopped();

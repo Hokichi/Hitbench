@@ -9,7 +9,7 @@ namespace osuHitsounder.Test.Services;
 public class MarkerAudioIntegrationTests
 {
     [Test]
-    public async Task MarkerCrossingStartsPreparedSoundAndSeekCanReplayIt()
+    public async Task AudioRendersIndependentlyOfMarkerAndSeekResetsPosition()
     {
         using var project = new TestProjectFolder("hit.wav");
         var players = new List<StubWavePlayer>();
@@ -30,17 +30,14 @@ public class MarkerAudioIntegrationTests
         {
             await vm.LoadAsync(project.ProjectPath, CancellationToken.None);
             vm.PlayPauseCommand.Execute(null);
-            players[^1].Position = 441 * 8;
+            var output = new float[1200];
+            players[^1].Provider!.ToSampleProvider().Read(output, 0, output.Length);
+            Assert.That(output[880..886], Is.EqualTo(new[] { .2f,.2f,.6f,.6f,.6f,.6f }).Within(.0001));
+            players[^1].Position = 600 * 8;
             vm.RefreshPlayback();
-            Assert.That(ReadFrame(players[^1]), Is.EqualTo(new[] { .2f, .2f }).Within(.0001));
-            players[^1].Position = 552 * 8;
             vm.RefreshPlayback();
-            Assert.That(ReadFrame(players[^1]), Is.EqualTo(new[] { .6f, .6f }).Within(.0001));
             vm.SeekCommand.Execute(TimeSpan.Zero);
-            Assert.That(ReadFrame(players[^1]), Is.EqualTo(new[] { .2f, .2f }).Within(.0001));
-            players[^1].Position = 552 * 8;
-            vm.RefreshPlayback();
-            Assert.That(ReadFrame(players[^1]), Is.EqualTo(new[] { .6f, .6f }).Within(.0001));
+            Assert.That(ReadFrame(players[^1]), Is.EqualTo(new[] { .2f,.2f }).Within(.0001));
         }
         finally { await vm.DeactivateAsync(); }
     }
@@ -63,7 +60,7 @@ public class MarkerAudioIntegrationTests
             return Signal(.2f);
         }, () => player);
         audio.Open("song.wav");
-        var first = audio.UpdateSamplesAsync(project.ProjectPath, [new SamplePlaybackEvent(1, "hit.wav", 0, 100, 100)], CancellationToken.None);
+        var first = audio.UpdateSamplesAsync(project.ProjectPath, [new SamplePlaybackEvent(1, "hit.wav", 0, 0, 100)], CancellationToken.None);
         try
         {
             await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
@@ -71,16 +68,14 @@ public class MarkerAudioIntegrationTests
             release.Set();
             await Task.WhenAll(first, replacement);
             audio.Play();
-            audio.TriggerSamples([1]);
-            Assert.That(ReadFrame(player), Is.EqualTo(new[] { .2f, .2f }).Within(.0001));
-            audio.TriggerSamples([2]);
+
             Assert.That(ReadFrame(player), Is.EqualTo(new[] { .6f, .6f }).Within(.0001));
         }
         finally { release.Set(); await first; }
     }
 
     [Test]
-    public async Task UnpreparedTriggerIsNotQueuedForLateReplay()
+    public async Task NewScheduleAppliesAtCurrentPositionWithoutRestarting()
     {
         using var project = new TestProjectFolder("hit.wav");
         var player = new StubWavePlayer();
@@ -88,10 +83,7 @@ public class MarkerAudioIntegrationTests
         audio.Open("song.wav");
         await audio.UpdateSamplesAsync(project.ProjectPath, [], CancellationToken.None);
         audio.Play();
-        audio.TriggerSamples([1]);
         await audio.UpdateSamplesAsync(project.ProjectPath, [new SamplePlaybackEvent(1, "hit.wav", 0, 100, 100)], CancellationToken.None);
-        Assert.That(ReadFrame(player), Is.EqualTo(new[] { .2f, .2f }).Within(.0001));
-        audio.TriggerSamples([1]);
         Assert.That(ReadFrame(player), Is.EqualTo(new[] { .6f, .6f }).Within(.0001));
     }
 

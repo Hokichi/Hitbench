@@ -33,37 +33,36 @@ public class WorkstationMarkerPlaybackTests
     public async Task Cleanup() { if (vm is not null) await vm.DeactivateAsync(); audio.Dispose(); }
 
     [Test]
-    public async Task StartCrossedRangeAndDuplicateTicksTriggerEachPlacementOnce()
+    public async Task MarkerQuantizesDuplicateTicksAndTimingTransitions()
     {
         await Load(0, 10, 10, 31);
         vm.PlayPauseCommand.Execute(null);
-        Assert.That(audio.TriggerBatches.SelectMany(batch => batch), Is.EqualTo(new long[] { 1 }));
         Tick(10);
         Assert.That(vm.Position.TotalMilliseconds, Is.EqualTo(8.3333).Within(.0001));
         Tick(12.5);
         Tick(12.5);
         Tick(90);
-        Assert.That(audio.TriggerBatches.SelectMany(batch => batch), Is.EqualTo(new long[] { 1, 2, 3, 4 }));
+        Assert.That(vm.Position.TotalMilliseconds, Is.EqualTo(87.5));
         Tick(100);
         Assert.That(vm.PlaybackInterval.TotalMilliseconds, Is.EqualTo(2.0833).Within(.0001));
     }
 
     [Test]
-    public async Task PauseBetweenTicksRetainsPendingRangeWithoutDuplicateStart()
+    public async Task PauseAndResumeRetainMarkerPosition()
     {
         await Load(0, 3, 6);
         vm.PlayPauseCommand.Execute(null);
         audio.Snapshot = audio.Snapshot with { Position = TimeSpan.FromMilliseconds(3.5) };
         vm.PlayPauseCommand.Execute(null);
         Tick(3.5);
-        Assert.That(audio.TriggerBatches.SelectMany(batch => batch), Is.EqualTo(new long[] { 1 }));
+        Assert.That(vm.Position.TotalMilliseconds, Is.EqualTo(3.5));
         vm.PlayPauseCommand.Execute(null);
         Tick(8.5);
-        Assert.That(audio.TriggerBatches.SelectMany(batch => batch), Is.EqualTo(new long[] { 1, 2, 3 }));
+        Assert.That(vm.Position.TotalMilliseconds, Is.EqualTo(8.3333).Within(.0001));
     }
 
     [Test]
-    public async Task SeekingResetsHistoryWithoutPlayingSkippedSamplesOrMovingBackwards()
+    public async Task SeekingResetsMarkerWithoutMovingBackwards()
     {
         await Load(0, 5, 10, 11, 50);
         vm.PlayPauseCommand.Execute(null);
@@ -74,16 +73,13 @@ public class WorkstationMarkerPlaybackTests
         Tick(12.5);
         vm.PlayPauseCommand.Execute(null);
         vm.SeekCommand.Execute(TimeSpan.FromMilliseconds(5));
-        Assert.That(audio.TriggerBatches.SelectMany(batch => batch), Is.EqualTo(new long[] { 1, 3, 4 }));
         vm.PlayPauseCommand.Execute(null);
-        Assert.That(audio.TriggerBatches.SelectMany(batch => batch), Is.EqualTo(new long[] { 1, 3, 4, 2 }));
         vm.StopCommand.Execute(null);
         vm.PlayPauseCommand.Execute(null);
-        Assert.That(audio.TriggerBatches.SelectMany(batch => batch).Last(), Is.EqualTo(1));
     }
 
     [Test]
-    public async Task RemovalAndVolumeRefreshDoNotReplayPlacements()
+    public async Task RemovalAndVolumeRefreshPublishUpdatedSchedule()
     {
         await Load(0, 10, 20);
         vm.PlayPauseCommand.Execute(null);
@@ -92,25 +88,25 @@ public class WorkstationMarkerPlaybackTests
         vm.SetTrackVolume(track, 50);
         await vm.FlushPlaybackUpdatesAsync();
         Tick(25);
-        Assert.That(audio.TriggerBatches.SelectMany(batch => batch), Is.EqualTo(new long[] { 1, 3 }));
+        Assert.That(audio.SampleUpdates[^1].Select(x => x.Timestamp), Is.EqualTo(new[]{0,20}));
+        Assert.That(audio.SampleUpdates[^1].Select(x => x.TrackVolume), Is.All.EqualTo(50));
     }
 
     [Test]
-    public async Task NaturalEndConsumesFinalPartialIntervalAndDeactivationStopsTriggers()
+    public async Task NaturalEndShowsEndpointAndDeactivationStopsRefresh()
     {
         await Load(9999);
         vm.PlayPauseCommand.Execute(null);
         audio.Snapshot = new AudioPlaybackSnapshot(TimeSpan.FromSeconds(10), false, null);
         vm.RefreshPlayback();
-        Assert.That(audio.TriggerBatches.SelectMany(batch => batch), Is.EqualTo(new long[] { 1 }));
         Assert.That(vm.IsPlaying, Is.False);
         await vm.DeactivateAsync();
         Tick(10);
-        Assert.That(audio.TriggerBatches.Count, Is.EqualTo(1));
+        Assert.That(vm.Position, Is.EqualTo(TimeSpan.FromSeconds(10)));
     }
 
     [Test]
-    public async Task FutureEditsParticipateButPastEditsDoNotReplay()
+    public async Task EditsPublishPastAndFuturePlacements()
     {
         await Load(0);
         vm.PlayPauseCommand.Execute(null);
@@ -120,11 +116,11 @@ public class WorkstationMarkerPlaybackTests
         vm.SetTrackVolume(vm.Tracks[0], 50);
         await vm.FlushPlaybackUpdatesAsync();
         Tick(75);
-        Assert.That(audio.TriggerBatches.SelectMany(batch => batch), Is.EqualTo(new long[] { 1, 3 }));
+        Assert.That(audio.SampleUpdates[^1].Select(x => x.Timestamp), Is.EquivalentTo(new[]{0,10,50}));
     }
 
     [Test]
-    public async Task DeviceErrorDoesNotCatchUpAndRestartCanTriggerFromBeginning()
+    public async Task DeviceErrorIsPresentedAndRestartResetsMarker()
     {
         await Load(0, 10);
         vm.PlayPauseCommand.Execute(null);
@@ -132,9 +128,7 @@ public class WorkstationMarkerPlaybackTests
         audio.Snapshot = new AudioPlaybackSnapshot(TimeSpan.Zero, false, "device lost");
         vm.RefreshPlayback();
         Assert.That(vm.ErrorMessage, Is.EqualTo("device lost"));
-        Assert.That(audio.TriggerBatches.SelectMany(batch => batch), Is.EqualTo(new long[] { 1, 2 }));
         vm.PlayPauseCommand.Execute(null);
-        Assert.That(audio.TriggerBatches.SelectMany(batch => batch), Is.EqualTo(new long[] { 1, 2, 1 }));
     }
 
     [Test]

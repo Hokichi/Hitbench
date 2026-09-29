@@ -58,7 +58,7 @@ public class WorkstationPlaybackRefreshTests
     }
 
     [Test]
-    public void TickUpdatesBoundMarkerAndTriggersCrossedSampleOnce()
+    public void TickUpdatesBoundMarkerWithoutSchedulingAudio()
     {
         vm.PlayPauseCommand.Execute(null);
         audio.Snapshot = audio.Snapshot with { Position = TimeSpan.FromMilliseconds(12.5) };
@@ -66,7 +66,7 @@ public class WorkstationPlaybackRefreshTests
         page.OnPlaybackTick(null, EventArgs.Empty);
         Assert.That(vm.Position.TotalMilliseconds, Is.EqualTo(12.5));
         Assert.That(((WaveformView)page.FindName("WaveformDisplay")).Position, Is.EqualTo(vm.Position));
-        Assert.That(audio.TriggerBatches.SelectMany(batch => batch), Is.EqualTo(new long[] { 1 }));
+        Assert.That(vm.Position.TotalMilliseconds, Is.EqualTo(12.5));
     }
 
     [TestCase(Visibility.Hidden)]
@@ -79,9 +79,9 @@ public class WorkstationPlaybackRefreshTests
         Assert.That(page.IsPlaybackTimerEnabled, Is.True);
         audio.Snapshot = audio.Snapshot with { Position = TimeSpan.FromMilliseconds(12.5) };
         page.OnPlaybackTick(null, EventArgs.Empty);
-        Assert.That(audio.TriggerBatches, Has.Count.EqualTo(1));
+        Assert.That(vm.Position.TotalMilliseconds, Is.EqualTo(12.5));
         page.Visibility = Visibility.Visible;
-        Assert.That(audio.TriggerBatches, Has.Count.EqualTo(1));
+        Assert.That(vm.Position.TotalMilliseconds, Is.EqualTo(12.5));
     }
 
     [Test]
