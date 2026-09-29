@@ -44,6 +44,7 @@ public sealed class AppSettingsService(string applicationDirectory) : IAppSettin
                 ContractResolver = new CamelCasePropertyNamesContractResolver()
             }))!;
             settings.OsuPath = string.IsNullOrWhiteSpace(settings.OsuPath) ? "" : settings.OsuPath;
+            if (string.IsNullOrWhiteSpace(settings.AsioDriverName)) settings.AsioDriverName = null;
             if (json["isMaximized"]?.Type == JTokenType.Null) settings.IsMaximized = false;
             if (json["restoredWidth"]?.Type == JTokenType.Null) settings.RestoredWidth = 1280;
             if (json["restoredHeight"]?.Type == JTokenType.Null) settings.RestoredHeight = 720;
@@ -90,6 +91,8 @@ public sealed class AppSettingsService(string applicationDirectory) : IAppSettin
         try
         {
             var json = JObject.Parse(await File.ReadAllTextAsync(path, token));
+            if (json.TryGetValue("asioDriverName", out var driver) && driver.Type is not (JTokenType.String or JTokenType.Null))
+                throw new JsonSerializationException("asioDriverName must be a string or null.");
             if (json.TryGetValue("osuPath", out var value) &&
                 value.Type is not (JTokenType.String or JTokenType.Null))
                 throw new JsonSerializationException("osuPath must be a string or null.");

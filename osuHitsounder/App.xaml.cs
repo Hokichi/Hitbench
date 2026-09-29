@@ -17,9 +17,13 @@ public partial class App : Application
 {
     private ServiceProvider? services;
 
-    public static ServiceProvider CreateServices()
+    public static ServiceProvider CreateServices(string? asioDriverName = null, AudioOutputFactory? audioOutputs = null)
     {
+        audioOutputs ??= new AudioOutputFactory();
         var registrations = new ServiceCollection();
+        registrations.AddSingleton<Func<IWorkstationAudioService>>(_ => () => new WorkstationAudioService(
+            AudioDecoder.Open, () => audioOutputs.Create(asioDriverName),
+            string.IsNullOrWhiteSpace(asioDriverName) ? null : () => audioOutputs.Create(null)));
         registrations.AddSingleton<IMessenger, WeakReferenceMessenger>();
         registrations.AddSingleton<IProjectFileService>(_ => new ProjectFileService(AppContext.BaseDirectory));
         registrations.AddSingleton<IWorkstationSourceService, WorkstationSourceService>();
@@ -31,7 +35,7 @@ public partial class App : Application
             new TrackRemovalDialogService(() => Current.MainWindow, Current.Dispatcher));
         registrations.AddSingleton<Func<WorkstationPage>>(provider => () => new WorkstationPage(
             new WorkstationPageVM(provider.GetRequiredService<IWorkstationSourceService>(),
-                new WorkstationAudioService(), provider.GetRequiredService<IUiScheduler>(),
+                provider.GetRequiredService<Func<IWorkstationAudioService>>()(), provider.GetRequiredService<IUiScheduler>(),
                 provider.GetRequiredService<ISampleFileService>(), provider.GetRequiredService<ISampleFileDialogService>(),
                 provider.GetRequiredService<IProjectFileService>(), provider.GetRequiredService<IMessenger>(),
                 provider.GetRequiredService<ITrackRemovalDialogService>(),
@@ -62,9 +66,9 @@ public partial class App : Application
         MainWindow? window = null;
         try
         {
-            services = CreateServices();
-            var settings = await services.GetRequiredService<IAppSettingsService>()
-                .LoadAsync(CancellationToken.None);
+            using var startupSettings = new AppSettingsService(AppContext.BaseDirectory);
+            var settings = await startupSettings.LoadAsync(CancellationToken.None);
+            services = CreateServices(settings.AsioDriverName);
             window = services.GetRequiredService<MainWindow>();
             window.ApplySettings(settings);
             MainWindow = window;

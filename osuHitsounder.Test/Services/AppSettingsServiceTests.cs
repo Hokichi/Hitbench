@@ -5,6 +5,39 @@ namespace osuHitsounder.Test.Services;
 
 public class AppSettingsServiceTests
 {
+    [TestCase("{}", null)]
+    [TestCase("{\"asioDriverName\":null}", null)]
+    [TestCase("{\"asioDriverName\":\"\"}", null)]
+    [TestCase("{\"asioDriverName\":\"  \"}", null)]
+    [TestCase("{\"asioDriverName\":\" Studio ASIO \"}", " Studio ASIO ")]
+    public async Task OptionalDriverSelectionPreservesExactNonblankName(string json, string? expected)
+    {
+        await File.WriteAllTextAsync(FilePath,json);
+        using var service = new AppSettingsService(root.FullName);
+        Assert.That((await service.LoadAsync(CancellationToken.None)).AsioDriverName,Is.EqualTo(expected));
+    }
+
+    [Test]
+    public async Task SavingOtherSettingsPreservesDriverAndUnknownFields()
+    {
+        await File.WriteAllTextAsync(FilePath,"{\"asioDriverName\":\"Studio ASIO\",\"keep\":17}");
+        using var service = new AppSettingsService(root.FullName);
+        await service.SaveWindowPlacementAsync(false,1280,720,CancellationToken.None);
+        await service.SaveOsuPathAsync(root.FullName,CancellationToken.None);
+        Assert.That((await service.LoadAsync(CancellationToken.None)).AsioDriverName,Is.EqualTo("Studio ASIO"));
+        Assert.That(JObject.Parse(await File.ReadAllTextAsync(FilePath))["keep"]!.Value<int>(),Is.EqualTo(17));
+    }
+
+    [TestCase("12")]
+    [TestCase("[]")]
+    [TestCase("true")]
+    public async Task DriverSettingRejectsNonStringValues(string value)
+    {
+        await File.WriteAllTextAsync(FilePath,"{\"asioDriverName\":"+value+"}");
+        using var service = new AppSettingsService(root.FullName);
+        Assert.That(async()=>await service.LoadAsync(CancellationToken.None),Throws.TypeOf<IOException>().With.Message.Contains("asioDriverName"));
+    }
+
     private DirectoryInfo root = null!;
     private string FilePath => Path.Combine(root.FullName, "appsettings.json");
     [SetUp] public void SetUp() => root = Directory.CreateTempSubdirectory("osu-settings-");
