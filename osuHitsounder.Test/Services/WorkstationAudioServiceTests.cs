@@ -121,7 +121,9 @@ public class WorkstationAudioServiceTests
         await service.UpdateSamplesAsync(project.ProjectPath, [], CancellationToken.None);
         service.Play();
 
-        player.Position = 44_100 * 2 * sizeof(float);
+        var rendered = new byte[44_100 * 2 * sizeof(float)];
+        Assert.That(player.Provider!.Read(rendered, 0, rendered.Length), Is.EqualTo(rendered.Length));
+        player.Position = rendered.Length;
 
         Assert.That(service.GetSnapshot().Position, Is.EqualTo(TimeSpan.FromSeconds(1)));
     }
@@ -326,7 +328,9 @@ public class WorkstationAudioServiceTests
         Assert.That(service.GetSnapshot().IsPlaying, Is.False);
         service.Play();
 
-        players[^1].Position = players[^1].OutputWaveFormat.AverageBytesPerSecond;
+        var rendered = new byte[players[^1].OutputWaveFormat.AverageBytesPerSecond];
+        Assert.That(players[^1].Provider!.Read(rendered, 0, rendered.Length), Is.EqualTo(rendered.Length));
+        players[^1].Position = rendered.Length;
         Assert.That(service.GetSnapshot().Position, Is.EqualTo(TimeSpan.FromSeconds(5)));
         service.Seek(TimeSpan.FromSeconds(20));
         Assert.That(service.GetSnapshot().Position, Is.EqualTo(TimeSpan.FromSeconds(10)));

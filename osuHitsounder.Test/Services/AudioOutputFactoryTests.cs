@@ -92,11 +92,12 @@ public class AudioOutputFactoryTests
     {
         string? selected = null;
         var factory = new AudioOutputFactory(driver => { selected=driver; return new StubWavePlayer(); },
+            () => { selected="wasapi"; return new StubWavePlayer(); },
             () => { selected="wave"; return new StubWavePlayer(); });
-        using var output = factory.Create(name);
+        using var output = factory.CreateCandidates(name)[0].Create();
         Assert.That(selected, Is.Null);
         output.Init(new ScheduledSampleMixer(DecodedAudio.CopyFrom([0,0]),0));
-        Assert.That(selected, Is.EqualTo(string.IsNullOrWhiteSpace(name)?"wave":name));
+        Assert.That(selected, Is.EqualTo(string.IsNullOrWhiteSpace(name)?"wasapi":name));
     }
 
     [TestCase(false)]
@@ -114,11 +115,11 @@ public class AudioOutputFactoryTests
         var snapshot = service.GetSnapshot();
         Assert.That(preferred.IsDisposed, Is.True);
         Assert.That(snapshot.IsPlaying, Is.EqualTo(!failFallback));
-        if (failFallback) Assert.That(snapshot.Error, Does.Contain("WaveOut"));
+        if (failFallback) Assert.That(snapshot.Error, Does.Contain("Fallback"));
         else
         {
             Assert.That(snapshot.Error, Is.Null);
-            Assert.That(snapshot.Warning, Does.Contain("WaveOut"));
+            Assert.That(snapshot.Warning, Does.Contain("Fallback"));
             Assert.That(ScheduledPlaybackTests.Read(fallback),Is.EqualTo(new[]{.2f,.2f}));
         }
     }

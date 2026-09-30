@@ -22,8 +22,7 @@ public partial class App : Application
         audioOutputs ??= new AudioOutputFactory();
         var registrations = new ServiceCollection();
         registrations.AddSingleton<Func<IWorkstationAudioService>>(_ => () => new WorkstationAudioService(
-            AudioDecoder.Open, () => audioOutputs.Create(asioDriverName),
-            string.IsNullOrWhiteSpace(asioDriverName) ? null : () => audioOutputs.Create(null)));
+            AudioDecoder.Open, audioOutputs.CreateCandidates(asioDriverName)));
         registrations.AddSingleton<IMessenger, WeakReferenceMessenger>();
         registrations.AddSingleton<IProjectFileService>(_ => new ProjectFileService(AppContext.BaseDirectory));
         registrations.AddSingleton<IWorkstationSourceService, WorkstationSourceService>();

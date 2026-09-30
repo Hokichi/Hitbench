@@ -9,7 +9,8 @@ public class AudioOutputCompositionTests
     public void WorkstationsOwnDistinctAudioServicesWithoutOpeningDevicesDuringComposition()
     {
         var opens = 0;
-        var outputs = new AudioOutputFactory(_=>{opens++;return new StubWavePlayer();},()=>{opens++;return new StubWavePlayer();});
+        var outputs = new AudioOutputFactory(_=>{opens++;return new StubWavePlayer();},
+            ()=>{opens++;return new StubWavePlayer();},()=>{opens++;return new StubWavePlayer();});
         using var services = App.CreateServices("Studio ASIO",outputs);
         var factory = services.GetRequiredService<Func<IWorkstationAudioService>>();
         using var first = factory();

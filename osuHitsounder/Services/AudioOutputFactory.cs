@@ -15,10 +15,6 @@ public sealed class AudioOutputFactory
         () => new WasapiOut(AudioClientShareMode.Shared, true, 60), WorkstationAudioService.CreateOutput,
         poll => new AudioOutputMonitor(poll)) { }
 
-    public AudioOutputFactory(Func<string, IWavePlayer> createAsio, Func<IWavePlayer> createWave,
-        Func<Action, IDisposable>? startMonitor = null)
-        : this(createAsio, createWave, createWave, startMonitor) { }
-
     public AudioOutputFactory(Func<string, IWavePlayer> createAsio, Func<IWavePlayer> createWasapi,
         Func<IWavePlayer> createWave, Func<Action, IDisposable>? startMonitor = null)
     {
@@ -27,9 +23,6 @@ public sealed class AudioOutputFactory
         this.createWave = createWave;
         this.startMonitor = startMonitor;
     }
-
-    public IAudioOutput Create(string? asioDriverName) => new AudioOutputDevice(
-        string.IsNullOrWhiteSpace(asioDriverName) ? createWave : () => createAsio(asioDriverName), startMonitor);
 
     public IReadOnlyList<AudioOutputCandidate> CreateCandidates(string? asioDriverName)
     {
