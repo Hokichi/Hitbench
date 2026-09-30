@@ -5,6 +5,45 @@ namespace osuHitsounder.Test.Services;
 public class AudioOutputDeviceTests
 {
     [Test]
+    public void ProviderFailureSilencesHardwareReadsAndDefersErrorUntilPoll()
+    {
+        var source = new TestSampleProvider([.5f,.5f], 44100, 2) { FailRead = true };
+        var player = new StubWavePlayer();
+        using var output = new AudioOutputDevice(() => player);
+        output.Init(source);
+        output.Play();
+        Exception? failure = null;
+        output.PlaybackStopped += (_, args) => failure = args.Exception;
+        var bytes = Enumerable.Repeat((byte)255, 8).ToArray();
+        Assert.That(player.Provider!.Read(bytes, 0, bytes.Length), Is.EqualTo(8));
+        Assert.That(bytes, Is.All.Zero);
+        Assert.That(failure, Is.Null);
+        Assert.That(output.PlaybackState, Is.EqualTo(NAudio.Wave.PlaybackState.Playing));
+        source.FailRead = false;
+        player.Provider.Read(bytes, 0, bytes.Length);
+        Assert.That(bytes, Is.All.Zero);
+        output.Poll();
+        Assert.That(failure?.Message, Does.Contain("rendering failed"));
+        Assert.That(output.PlaybackState, Is.EqualTo(NAudio.Wave.PlaybackState.Stopped));
+    }
+
+    [Test]
+    public void FailedPositionReadBecomesStoppedErrorInsteadOfEscapingToUi()
+    {
+        var player = new StubWavePlayer();
+        using var output = new AudioOutputDevice(()=>player);
+        output.Init(new ScheduledSampleMixer(DecodedAudio.CopyFrom(new float[20]),0));
+        output.Play();
+        player.FailPosition = true;
+        Exception? failure = null;
+        output.PlaybackStopped += (_,args)=>failure=args.Exception;
+        Assert.DoesNotThrow(()=>output.GetPlayedFrames());
+        output.Poll();
+        Assert.That(failure, Is.TypeOf<IOException>());
+        Assert.That(output.PlaybackState, Is.EqualTo(NAudio.Wave.PlaybackState.Stopped));
+    }
+
+    [Test]
     public void EstimatedPositionDrainsFinalBufferAndResetIsDeferred()
     {
         long now = 0, produced = 1000;

@@ -5,6 +5,60 @@ namespace osuHitsounder.Test.Services;
 
 public class AudioOutputFactoryTests
 {
+    [Test]
+    public async Task InitializationCleanupNeverHoldsServiceLock()
+    {
+        using var project = new TestProjectFolder();
+        var player = new StubWavePlayer { FailInitialization=true };
+        using var service = new WorkstationAudioService(_=>ScheduledPlaybackTests.Stream(.2f),()=>player);
+        service.Open("song.wav");
+        await service.UpdateSamplesAsync(project.ProjectPath,[],CancellationToken.None);
+        var lockWasAvailable = false;
+        player.Disposing=()=> lockWasAvailable=Task.Run(service.GetSnapshot).Wait(TimeSpan.FromSeconds(1));
+        service.Play();
+        Assert.That(lockWasAvailable, Is.True);
+    }
+
+    [Test]
+    public async Task ResetWaitsForExplicitPlayThenUsesFreshFallbackSession()
+    {
+        using var project = new TestProjectFolder();
+        var preferred = new StubWavePlayer();
+        var fallback = new StubWavePlayer();
+        var reset = false;
+        var fallbacks = 0;
+        using var service = new WorkstationAudioService(_=>ScheduledPlaybackTests.Stream(.2f),
+            ()=>new AudioOutputDevice(()=>preferred,resetRequested:()=>reset),
+            ()=>{fallbacks++;return new AudioOutputDevice(()=>fallback);});
+        service.Open("song.wav");
+        await service.UpdateSamplesAsync(project.ProjectPath,[],CancellationToken.None);
+        service.Play();
+        reset=true;
+        Assert.That(service.GetSnapshot().IsPlaying,Is.False);
+        Assert.That(fallbacks,Is.Zero);
+        service.Play();
+        Assert.That(service.GetSnapshot().IsPlaying,Is.True);
+        Assert.That(fallbacks,Is.EqualTo(1));
+        Assert.That(ScheduledPlaybackTests.Read(fallback),Is.EqualTo(new[]{.2f,.2f}));
+    }
+
+    [Test]
+    public async Task StartFailureFallsBackWithoutLosingSongOrigin()
+    {
+        using var project = new TestProjectFolder();
+        var preferred = new StubWavePlayer {FailPlayback=true};
+        var fallback = new StubWavePlayer();
+        using var service = new WorkstationAudioService(_=>ScheduledPlaybackTests.Stream(.2f),
+            ()=>new AudioOutputDevice(()=>preferred),()=>new AudioOutputDevice(()=>fallback));
+        service.Open("song.wav");
+        await service.UpdateSamplesAsync(project.ProjectPath,[],CancellationToken.None);
+        service.Seek(TimeSpan.FromMilliseconds(250));
+        service.Play();
+        Assert.That(service.GetSnapshot().Position,Is.EqualTo(TimeSpan.FromMilliseconds(250)));
+        Assert.That(service.GetSnapshot().IsPlaying,Is.True);
+        Assert.That(preferred.IsDisposed,Is.True);
+    }
+
     [TestCase(null)]
     [TestCase("")]
     [TestCase("  ")]

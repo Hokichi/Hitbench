@@ -8,8 +8,6 @@ namespace osuHitsounder.Services;
 public sealed class WorkstationAudioService : IWorkstationAudioService
 {
     private const int OutputSampleRate = 44_100;
-    private const int OutputChannels = 2;
-    private static readonly WaveFormat OutputFormat = WaveFormat.CreateIeeeFloatWaveFormat(OutputSampleRate, OutputChannels);
     private readonly Func<string, WaveStream> openDecoder;
     private readonly Func<IAudioOutput> createPlayer;
     private readonly Func<IAudioOutput>? createFallback;
@@ -206,7 +204,6 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
         useFallback = false;
         for (var attempt = 0; attempt < 2; attempt++)
         {
-            IAudioOutput? retired;
             lock (sync)
             {
                 ThrowIfDisposed();
@@ -216,17 +213,26 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
                     playbackError = "Audio must be prepared before playback.";
                     return;
                 }
-                try
+                if (restartAtEnd && currentPosition >= GetDuration()) ResetPosition();
+            }
+            IAudioOutput? retired;
+            try
+            {
+                var active = EnsurePlayback(fallbackAttempt);
+                if (active is null) return;
+                active.Play();
+                lock (sync)
                 {
-                    if (restartAtEnd && currentPosition >= GetDuration()) ResetPosition();
-                    EnsurePlayback(fallbackAttempt);
-                    player!.Play();
+                    if (!ReferenceEquals(active, player)) return;
                     playbackError = null;
                     if (!fallbackAttempt) warning = null;
                     else warning ??= "ASIO unavailable; using WaveOut.";
-                    return;
                 }
-                catch (Exception failure)
+                return;
+            }
+            catch (Exception failure)
+            {
+                lock (sync)
                 {
                     playbackError = $"Unable to play audio{(fallbackAttempt ? " using WaveOut" : "")}: {failure.Message}";
                     retired = DetachPlayback();
@@ -318,21 +324,51 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
         DisposeOutput(retired);
     }
 
-    private void EnsurePlayback(bool fallback = false)
+    private IAudioOutput? EnsurePlayback(bool fallback)
     {
-        if (player is not null) return;
-        var startFrame = TimeToFrame(currentPosition);
-        mixer = new ScheduledSampleMixer(preparedSong!, startFrame);
-        mixer.SetVolumes(songVolume, samplesVolume, applicationVolume);
-        mixer.Publish(preparedEvents);
-        player = fallback ? createFallback!() : createPlayer();
-        var currentGeneration = ++generation;
-        playbackStoppedHandler = (_, args) => OnPlaybackStopped(currentGeneration, args);
-        player.PlaybackStopped += playbackStoppedHandler;
-        var sessionMixer = mixer;
-        player.Init(mixer, () => sessionMixer.RenderedFrames - startFrame,
-            () => sessionMixer.EndOfStream, () => sessionMixer.Faulted);
-        playbackOrigin = FrameToTime(startFrame);
+        ScheduledSampleMixer sessionMixer;
+        long startFrame;
+        int sessionGeneration;
+        lock (sync)
+        {
+            if (player is not null) return player;
+            ThrowIfDisposed();
+            startFrame = TimeToFrame(currentPosition);
+            sessionMixer = new ScheduledSampleMixer(preparedSong!, startFrame);
+            sessionMixer.SetVolumes(songVolume, samplesVolume, applicationVolume);
+            sessionMixer.Publish(preparedEvents);
+            sessionGeneration = ++generation;
+        }
+        var output = fallback ? createFallback!() : createPlayer();
+        EventHandler<StoppedEventArgs> stopped = (_, args) => OnPlaybackStopped(sessionGeneration, args);
+        output.PlaybackStopped += stopped;
+        try
+        {
+            output.Init(sessionMixer, () => sessionMixer.RenderedFrames - startFrame,
+                () => sessionMixer.EndOfStream, () => sessionMixer.Faulted);
+        }
+        catch
+        {
+            output.PlaybackStopped -= stopped;
+            output.Dispose();
+            throw;
+        }
+        lock (sync)
+        {
+            if (!disposed && generation == sessionGeneration)
+            {
+                sessionMixer.SetVolumes(songVolume, samplesVolume, applicationVolume);
+                sessionMixer.Publish(preparedEvents);
+                mixer = sessionMixer;
+                player = output;
+                playbackStoppedHandler = stopped;
+                playbackOrigin = FrameToTime(startFrame);
+                return output;
+            }
+        }
+        output.PlaybackStopped -= stopped;
+        output.Dispose();
+        return null;
     }
 
     private void OnPlaybackStopped(int eventGeneration, StoppedEventArgs args)

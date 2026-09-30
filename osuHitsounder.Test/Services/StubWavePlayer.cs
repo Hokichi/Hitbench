@@ -22,6 +22,8 @@ public sealed class StubWavePlayer : IWavePlayer, IWavePosition
     public IWaveProvider? Provider { get; private set; }
     public bool IsDisposed { get; private set; }
     public bool FailInitialization { get; set; }
+    public bool FailPlayback { get; set; }
+    public bool FailPosition { get; set; }
     public Action? Disposing { get; set; }
     public bool HasPlaybackStoppedSubscribers => playbackStopped is not null;
     public long Position { get; set; }
@@ -33,7 +35,11 @@ public sealed class StubWavePlayer : IWavePlayer, IWavePosition
         OutputWaveFormat = waveProvider.WaveFormat;
     }
 
-    public void Play() => PlaybackState = PlaybackState.Playing;
+    public void Play()
+    {
+        if (FailPlayback) throw new InvalidOperationException("Cannot start device");
+        PlaybackState = PlaybackState.Playing;
+    }
     public void Pause() => PlaybackState = PlaybackState.Paused;
     public void Stop()
     {
@@ -50,7 +56,7 @@ public sealed class StubWavePlayer : IWavePlayer, IWavePosition
     public void RaiseRetiredStopped(Exception? error = null) =>
         retiredPlaybackStopped?.Invoke(this, new StoppedEventArgs(error));
 
-    public long GetPosition() => Position;
+    public long GetPosition() => FailPosition ? throw new IOException("Position unavailable") : Position;
 
     public void Dispose()
     {

@@ -6,7 +6,6 @@ public sealed class DecodedAudio
     private DecodedAudio(float[] samples) => this.samples = samples;
     public int FrameCount => samples.Length / 2;
     public ReadOnlySpan<float> Samples => samples;
-    internal ReadOnlyMemory<float> Memory => samples;
 
     public static DecodedAudio CopyFrom(ReadOnlySpan<float> samples)
     {

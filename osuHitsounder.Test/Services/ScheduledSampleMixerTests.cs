@@ -4,6 +4,30 @@ namespace osuHitsounder.Test.Services;
 
 public class ScheduledSampleMixerTests
 {
+    [Test]
+    public async Task ConcurrentPublicationNeverMixesVersionsWithinRead()
+    {
+        var mixer = new ScheduledSampleMixer(DecodedAudio.CopyFrom(new float[200000]),0);
+        var first = new PreparedPlaybackSchedule([Event(1,0,Enumerable.Repeat(.2f,200000).ToArray())]);
+        var second = new PreparedPlaybackSchedule([Event(1,0,Enumerable.Repeat(.4f,200000).ToArray())]);
+        mixer.Publish(first);
+        using var started = new ManualResetEventSlim();
+        var publisher = Task.Run(()=>
+        {
+            started.Set();
+            for(var i=0;i<10000;i++) mixer.Publish(i%2==0?first:second);
+        });
+        started.Wait();
+        var buffer = new float[1024];
+        for(var i=0;i<100;i++)
+        {
+            Assert.That(mixer.Read(buffer,0,buffer.Length),Is.EqualTo(buffer.Length));
+            Assert.That(buffer[0],Is.EqualTo(.2f).Or.EqualTo(.4f));
+            Assert.That(buffer,Is.All.EqualTo(buffer[0]));
+        }
+        await publisher;
+    }
+
     [TestCase(1)]
     [TestCase(37)]
     [TestCase(64)]
@@ -81,13 +105,11 @@ public class ScheduledSampleMixerTests
     [Test]
     public void NormalReadAllocatesNothingAndChecksBounds()
     {
-        var mixer = new ScheduledSampleMixer(DecodedAudio.CopyFrom(new float[200_100]),0);
-        mixer.Publish(new PreparedPlaybackSchedule([Event(1,0,new float[200_100])]));
+        var mixer = new ScheduledSampleMixer(DecodedAudio.CopyFrom(new float[400_100]),0);
+        mixer.Publish(new PreparedPlaybackSchedule([Event(1,0,new float[400_100])]));
         var output = new float[16];
-        for(var i=0;i<100;i++) mixer.Read(output,0,16);
-        var before = GC.GetAllocatedBytesForCurrentThread();
-        for(var i=0;i<10_000;i++) mixer.Read(output,0,16);
-        var allocated = GC.GetAllocatedBytesForCurrentThread()-before;
+        _ = MeasureReads(mixer, output);
+        var allocated = MeasureReads(mixer, output);
         Assert.That(allocated, Is.Zero);
         Assert.That(mixer.EndOfStream, Is.False);
         Assert.That(mixer.Read(output,0,0), Is.Zero);
@@ -96,4 +118,12 @@ public class ScheduledSampleMixerTests
 
     private static PreparedSampleEvent Event(long id,long start,float[] values,float gain=1) =>
         new(id,DecodedAudio.CopyFrom(values),gain,start);
+
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+    private static long MeasureReads(ScheduledSampleMixer mixer, float[] output)
+    {
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        for (var i = 0; i < 10_000; i++) mixer.Read(output, 0, output.Length);
+        return GC.GetAllocatedBytesForCurrentThread() - before;
+    }
 }

@@ -6,6 +6,53 @@ namespace osuHitsounder.Test.Services;
 
 public class ScheduledPlaybackTests
 {
+    [TestCase("cancel")]
+    [TestCase("open")]
+    [TestCase("dispose")]
+    public async Task RetiredPreparationCannotPublishAfterLifecycleChange(string change)
+    {
+        using var project = new TestProjectFolder("hit.wav", "slow.wav");
+        using var release = new ManualResetEventSlim();
+        using var cancellation = new CancellationTokenSource();
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var player = new StubWavePlayer();
+        using var audio = new WorkstationAudioService(path=>
+        {
+            if(path.EndsWith("slow.wav"))
+            {
+                entered.TrySetResult();
+                if(!release.Wait(TimeSpan.FromSeconds(5))) throw new TimeoutException("Decoder release missing");
+                return Stream(.8f);
+            }
+            return Stream(path.EndsWith("hit.wav") ? .4f : .2f);
+        },()=>player);
+        audio.Open("song.wav");
+        await audio.UpdateSamplesAsync(project.ProjectPath,[new SamplePlaybackEvent(1,"hit.wav",0,100,100)],CancellationToken.None);
+        var updating = audio.UpdateSamplesAsync(project.ProjectPath,[new SamplePlaybackEvent(2,"slow.wav",0,100,100)],cancellation.Token);
+        try
+        {
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            if(change=="cancel") cancellation.Cancel();
+            else if(change=="open") audio.Open("other.wav");
+            else audio.Dispose();
+            release.Set();
+            try { await updating; }
+            catch(OperationCanceledException) when(change=="cancel") { }
+            if(change=="dispose")
+            {
+                Assert.That(audio.GetSnapshot().IsPlaying,Is.False);
+                Assert.Throws<ObjectDisposedException>(audio.Play);
+            }
+            else
+            {
+                if(change=="open") await audio.UpdateSamplesAsync(project.ProjectPath,[],CancellationToken.None);
+                audio.Play();
+                Assert.That(Read(player),Is.EqualTo(change=="cancel" ? new[]{.6f,.6f}:new[]{.2f,.2f}).Within(.0001));
+            }
+        }
+        finally { release.Set(); try { await updating; } catch(OperationCanceledException) { } }
+    }
+
     [Test]
     public async Task PlaybackWithoutUiRefreshIncludesTailOnSeekAndResumesConsumedFrames()
     {

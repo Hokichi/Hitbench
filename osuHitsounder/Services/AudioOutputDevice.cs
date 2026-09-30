@@ -97,6 +97,16 @@ public sealed class AudioOutputDevice : IAudioOutput
     public long GetPlayedFrames()
     {
         CheckOwner();
+        try { return ReadPlayedFrames(); }
+        catch (Exception failure)
+        {
+            Interlocked.Exchange(ref pendingStop, new StoppedEventArgs(failure));
+            return playedFrames;
+        }
+    }
+
+    private long ReadPlayedFrames()
+    {
         if (estimated && !disposed)
         {
             var produced = Math.Max(0, renderedFrames?.Invoke() ?? 0);
