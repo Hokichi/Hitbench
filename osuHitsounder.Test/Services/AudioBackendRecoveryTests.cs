@@ -5,6 +5,46 @@ namespace osuHitsounder.Test.Services;
 
 public class AudioBackendRecoveryTests
 {
+    [Test]
+    public async Task AsynchronousStartupFailureDoesNotStartFallbackUntilExplicitPlay()
+    {
+        using var project = new TestProjectFolder();
+        var failed = new StubWavePlayer();
+        failed.Playing = () => failed.RaiseStopped(new IOException("startup failed"));
+        var fallbacks = 0;
+        using var service = new WorkstationAudioService(_ => Signal(),
+            [Candidate("WASAPI", () => failed), Candidate("WaveOut", () => { fallbacks++; return new StubWavePlayer(); })]);
+        service.Open("song.wav");
+        await service.UpdateSamplesAsync(project.ProjectPath, [], CancellationToken.None);
+        service.Play();
+        var snapshot = service.GetSnapshot();
+        Assert.That(snapshot.IsPlaying, Is.False);
+        Assert.That(snapshot.Error, Does.Contain("WASAPI").And.Contain("startup failed"));
+        Assert.That(fallbacks, Is.Zero);
+        service.Play();
+        Assert.That(fallbacks, Is.EqualTo(1));
+        Assert.That(service.GetSnapshot().IsPlaying, Is.True);
+        failed.RaiseRetiredStopped(new IOException("late"));
+        Assert.That(service.GetSnapshot().Error, Is.Null);
+    }
+
+    [Test]
+    public async Task CandidateInputsAreValidatedAndCopied()
+    {
+        Assert.Throws<ArgumentException>(() => new WorkstationAudioService(_ => Signal(), Array.Empty<AudioOutputCandidate>()));
+        Assert.Throws<ArgumentException>(() => new WorkstationAudioService(_ => Signal(), [new("", () => new AudioOutputDevice(() => new StubWavePlayer()))]));
+        using var project = new TestProjectFolder();
+        var player = new StubWavePlayer();
+        var candidates = new[] { Candidate("WASAPI", () => player) };
+        using var service = new WorkstationAudioService(_ => Signal(), candidates);
+        candidates[0] = new("changed", () => throw new IOException("mutated input"));
+        service.Open("song.wav");
+        await service.UpdateSamplesAsync(project.ProjectPath, [], CancellationToken.None);
+        service.Play();
+        Assert.That(service.GetSnapshot().IsPlaying, Is.True);
+        Assert.That(player.Provider, Is.Not.Null);
+    }
+
     [TestCase(false, 0, "create")]
     [TestCase(false, 1, "init")]
     [TestCase(false, 2, "play")]

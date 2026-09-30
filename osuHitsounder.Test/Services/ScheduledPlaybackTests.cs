@@ -6,6 +6,44 @@ namespace osuHitsounder.Test.Services;
 
 public class ScheduledPlaybackTests
 {
+    [TestCase(442)]
+    [TestCase(1764)]
+    [TestCase(3528)]
+    [TestCase(37)]
+    public async Task OutputChunksPreserveStereoSequenceAndShortFinalBuffer(int chunkSamples)
+    {
+        using var project = new TestProjectFolder();
+        var expected = Enumerable.Range(0, 10006).Select(i => (i % 997 - 498) / 1000f).ToArray();
+        var bytes = new byte[expected.Length * sizeof(float)];
+        Buffer.BlockCopy(expected, 0, bytes, 0, bytes.Length);
+        var player = new StubWavePlayer();
+        using var service = new WorkstationAudioService(_ => new RawSourceWaveStream(
+            new MemoryStream(bytes), WaveFormat.CreateIeeeFloatWaveFormat(44100, 2)), () => player);
+        service.Open("song.wav");
+        await service.UpdateSamplesAsync(project.ProjectPath, [], CancellationToken.None);
+        service.Play();
+        var provider = player.Provider!.ToSampleProvider();
+        var actual = new List<float>();
+        var buffer = new float[chunkSamples + 4];
+        int read;
+        do
+        {
+            Array.Fill(buffer, -9f);
+            read = provider.Read(buffer, 2, chunkSamples);
+            Assert.That(buffer.Take(2), Is.All.EqualTo(-9f));
+            Assert.That(buffer.Skip(2 + read), Is.All.EqualTo(-9f));
+            actual.AddRange(buffer.AsSpan(2, read).ToArray());
+            Assert.That(actual.Count, Is.LessThanOrEqualTo(expected.Length));
+        } while (read > 0);
+        Assert.That(actual, Is.EqualTo(expected));
+        player.Position = bytes.Length;
+        Assert.That(service.GetSnapshot().IsPlaying, Is.True, "EOF must leave the device time to drain.");
+        Assert.That(service.GetSnapshot().Position.TotalSeconds, Is.EqualTo(5003d / 44100).Within(.000001));
+        player.RaiseStopped();
+        Assert.That(service.GetSnapshot().IsPlaying, Is.False);
+        Assert.That(provider.Read(buffer, 2, chunkSamples), Is.Zero);
+    }
+
     [TestCase("cancel")]
     [TestCase("open")]
     [TestCase("dispose")]

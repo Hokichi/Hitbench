@@ -10,13 +10,16 @@ namespace osuHitsounder.Test.Presentation;
 [NonParallelizable]
 public class WorkstationPlaybackRefreshTests
 {
-    [TestCase(640, FlowDirection.LeftToRight)]
-    [TestCase(900, FlowDirection.RightToLeft)]
-    public void FallbackWarningBindsWrapsAndClearsWithoutDisablingTransport(int width, FlowDirection direction)
+    [TestCase(640, FlowDirection.LeftToRight, "WASAPI")]
+    [TestCase(900, FlowDirection.RightToLeft, "WASAPI")]
+    [TestCase(640, FlowDirection.LeftToRight, "WaveOut")]
+    [TestCase(900, FlowDirection.RightToLeft, "WaveOut")]
+    public void FallbackWarningBindsWrapsAndClearsWithoutDisablingTransport(int width, FlowDirection direction, string backend)
     {
         host.Width = width;
         host.FlowDirection = direction;
-        var warning = "ASIO unavailable; using WaveOut. " + new string('x', 240);
+        var warning = $"Using {backend} because preferred audio output failed. ASIO: unavailable. " +
+            (backend == "WaveOut" ? "WASAPI: unavailable. " : "") + new string('x', 240);
         audio.Snapshot = audio.Snapshot with { Warning = warning };
         vm.RefreshPlayback();
         view.UpdateLayout();
