@@ -9,7 +9,7 @@ namespace osuHitsounder.Test.Services;
 public class MarkerAudioIntegrationTests
 {
     [Test]
-    public async Task AudioRendersIndependentlyOfMarkerAndSeekResetsPosition()
+    public async Task MarkerCrossingStartsAudioAndSeekResetsPosition()
     {
         using var project = new TestProjectFolder("hit.wav");
         var players = new List<StubWavePlayer>();
@@ -29,12 +29,13 @@ public class MarkerAudioIntegrationTests
         try
         {
             await vm.LoadAsync(project.ProjectPath, CancellationToken.None);
-            vm.PlayPauseCommand.Execute(null);
+            await vm.PlayPauseCommand.ExecuteAsync(null);
             var output = new float[1200];
             players[^1].Provider!.ToSampleProvider().Read(output, 0, output.Length);
-            Assert.That(output[880..886], Is.EqualTo(new[] { .2f,.2f,.6f,.6f,.6f,.6f }).Within(.0001));
+            Assert.That(output, Is.All.EqualTo(.2f));
             players[^1].Position = 600 * 8;
             vm.RefreshPlayback();
+            Assert.That(ReadFrame(players[^1]), Is.EqualTo(new[] { .6f, .6f }).Within(.0001));
             vm.RefreshPlayback();
             vm.SeekCommand.Execute(TimeSpan.Zero);
             Assert.That(ReadFrame(players[^1]), Is.EqualTo(new[] { .2f,.2f }).Within(.0001));
@@ -68,6 +69,7 @@ public class MarkerAudioIntegrationTests
             release.Set();
             await Task.WhenAll(first, replacement);
             audio.Play();
+            audio.TriggerSamples([2]);
 
             Assert.That(ReadFrame(player), Is.EqualTo(new[] { .6f, .6f }).Within(.0001));
         }
@@ -75,7 +77,7 @@ public class MarkerAudioIntegrationTests
     }
 
     [Test]
-    public async Task NewScheduleAppliesAtCurrentPositionWithoutRestarting()
+    public async Task NewScheduleDoesNotStartPastPlacementWithoutTrigger()
     {
         using var project = new TestProjectFolder("hit.wav");
         var player = new StubWavePlayer();
@@ -84,6 +86,8 @@ public class MarkerAudioIntegrationTests
         await audio.UpdateSamplesAsync(project.ProjectPath, [], CancellationToken.None);
         audio.Play();
         await audio.UpdateSamplesAsync(project.ProjectPath, [new SamplePlaybackEvent(1, "hit.wav", 0, 100, 100)], CancellationToken.None);
+        Assert.That(ReadFrame(player), Is.EqualTo(new[] { .2f, .2f }).Within(.0001));
+        audio.TriggerSamples([1]);
         Assert.That(ReadFrame(player), Is.EqualTo(new[] { .6f, .6f }).Within(.0001));
     }
 

@@ -39,6 +39,8 @@ public partial class WorkstationPageVM(
     private readonly Dictionary<Sample, long> sampleEventIds = new(ReferenceEqualityComparer.Instance);
     private CancellationTokenSource? playbackUpdateCancellation;
     private Task playbackUpdates = Task.CompletedTask;
+    private CancellationTokenSource? pendingPlayCancellation;
+    private bool playbackPreparationFailed;
     private long nextSampleEventId = 1;
     private int samplesRevision;
     private string? playbackErrorMessage;
@@ -60,6 +62,7 @@ public partial class WorkstationPageVM(
     private bool deactivated;
     private PlaybackMarkerClock markerClock = new([], []);
     private TimeSpan processedMarker;
+    private bool includeMarkerStart = true;
     private TimeSpan playbackInterval;
     public TimeSpan PlaybackInterval => playbackInterval;
 
@@ -131,6 +134,7 @@ public partial class WorkstationPageVM(
     public Task LoadAsync(string projectPath, CancellationToken token)
     {
         if (deactivated) return Task.CompletedTask;
+        pendingPlayCancellation?.Cancel();
         lastGridTarget = null;
         lastGridAudioPosition = null;
         playbackUpdateCancellation?.Cancel();
@@ -147,6 +151,7 @@ public partial class WorkstationPageVM(
     {
         if (deactivated) return;
         deactivated = true;
+        pendingPlayCancellation?.Cancel();
         OnPropertyChanged(nameof(CanRemoveTrack));
         loadGeneration++;
         loadCancellation?.Cancel();
@@ -180,11 +185,26 @@ public partial class WorkstationPageVM(
         var marker = snapshot.Position;
         var duration = Waveform?.Duration ?? TimeSpan.Zero;
         var terminal = IsPlaying && !snapshot.IsPlaying && snapshot.Position >= duration && duration > TimeSpan.Zero;
+        if (IsPlaying && !snapshot.IsPlaying && !terminal && snapshot.Error is not null)
+            ResetMarker(snapshot.Position);
         if (markerClock.IsValid && (snapshot.IsPlaying || terminal))
         {
             marker = markerClock.GetPosition(snapshot.Position, duration);
             // A seek can land between grid boundaries; never step back behind its baseline.
             if (marker < processedMarker) marker = processedMarker;
+            if (snapshot.IsPlaying)
+            {
+                var ids = new List<long>();
+                foreach (var track in tracks)
+                foreach (var sample in track.Samples)
+                {
+                    var timestamp = TimeSpan.FromMilliseconds(sample.Timestamp);
+                    if ((timestamp > processedMarker || includeMarkerStart && timestamp == processedMarker) &&
+                        timestamp <= marker && sampleEventIds.TryGetValue(sample, out var id)) ids.Add(id);
+                }
+                if (ids.Count > 0) audioService.TriggerSamples(ids);
+                includeMarkerStart = false;
+            }
             processedMarker = marker;
         }
         if (markerClock.IsValid)
@@ -198,12 +218,18 @@ public partial class WorkstationPageVM(
     private void ResetMarker(TimeSpan position)
     {
         processedMarker = position;
+        includeMarkerStart = true;
     }
 
     [RelayCommand(CanExecute = nameof(CanUseTransport))]
-    private void PlayPause()
+    private async Task PlayPauseAsync()
     {
-        if (audioService.GetSnapshot().IsPlaying) audioService.Pause();
+        if (audioService.GetSnapshot().IsPlaying)
+        {
+            audioService.Pause();
+            // Intentional pause preserves traversal, unlike a device-stopped session.
+            IsPlaying = false;
+        }
         else
         {
             if (!markerClock.IsValid)
@@ -211,14 +237,35 @@ public partial class WorkstationPageVM(
                 ErrorMessage = "Playback requires valid BPM timing data. Reload a beatmap with timing points.";
                 return;
             }
-            if (Waveform is not null && audioService.GetSnapshot().Position >= Waveform.Duration)
+            pendingPlayCancellation?.Cancel();
+            using var cancellation = new CancellationTokenSource();
+            pendingPlayCancellation = cancellation;
+            var generation = loadGeneration;
+            try
             {
-                audioService.Stop();
-                ResetMarker(TimeSpan.Zero);
+                Task pending;
+                do
+                {
+                    pending = playbackUpdates;
+                    await pending.WaitAsync(cancellation.Token);
+                } while (!ReferenceEquals(pending, playbackUpdates));
+                if (cancellation.IsCancellationRequested || deactivated || generation != loadGeneration ||
+                    !CanPlay || playbackPreparationFailed) return;
+                if (Waveform is not null && audioService.GetSnapshot().Position >= Waveform.Duration)
+                {
+                    audioService.Stop();
+                    ResetMarker(TimeSpan.Zero);
+                }
+                var start = audioService.GetSnapshot().Position;
+                if (start < processedMarker) ResetMarker(start);
+                audioService.Play();
             }
-            var start = audioService.GetSnapshot().Position;
-            if (start < processedMarker) ResetMarker(start);
-            audioService.Play();
+            catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { return; }
+            catch (Exception error) { ErrorMessage = error.Message; return; }
+            finally
+            {
+                if (ReferenceEquals(pendingPlayCancellation, cancellation)) pendingPlayCancellation = null;
+            }
         }
         RefreshPlayback();
     }
@@ -226,6 +273,7 @@ public partial class WorkstationPageVM(
     [RelayCommand(CanExecute = nameof(CanUseTransport))]
     private void Stop()
     {
+        pendingPlayCancellation?.Cancel();
         lastGridTarget = null;
         lastGridAudioPosition = null;
         audioService.Stop();
@@ -237,6 +285,7 @@ public partial class WorkstationPageVM(
     private void Seek(TimeSpan position)
     {
         if (!CanUseTransport()) return;
+        pendingPlayCancellation?.Cancel();
         lastGridTarget = null;
         lastGridAudioPosition = null;
         audioService.Seek(position);
@@ -485,6 +534,8 @@ public partial class WorkstationPageVM(
             var playbackError = audioService.GetSnapshot().Error;
             await CommitAsync(generation, CancellationToken.None, () =>
             {
+                if (token.IsCancellationRequested) return;
+                playbackPreparationFailed = playbackError?.StartsWith("Unable to prepare audio:", StringComparison.Ordinal) == true;
                 if (!string.IsNullOrWhiteSpace(playbackError))
                 {
                     playbackErrorMessage = playbackError;
@@ -502,6 +553,8 @@ public partial class WorkstationPageVM(
         {
             await CommitAsync(generation, CancellationToken.None, () =>
             {
+                if (token.IsCancellationRequested) return;
+                playbackPreparationFailed = true;
                 playbackErrorMessage = failure.Message;
                 ErrorMessage = failure.Message;
             });

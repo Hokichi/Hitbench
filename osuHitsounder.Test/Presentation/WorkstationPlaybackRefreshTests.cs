@@ -94,7 +94,7 @@ public class WorkstationPlaybackRefreshTests
     }
 
     [Test]
-    public void TickUpdatesBoundMarkerWithoutSchedulingAudio()
+    public void TickUpdatesBoundMarkerAndTriggersCrossedPlacementOnce()
     {
         vm.PlayPauseCommand.Execute(null);
         audio.Snapshot = audio.Snapshot with { Position = TimeSpan.FromMilliseconds(12.5) };
@@ -102,6 +102,7 @@ public class WorkstationPlaybackRefreshTests
         page.OnPlaybackTick(null, EventArgs.Empty);
         Assert.That(vm.Position.TotalMilliseconds, Is.EqualTo(12.5));
         Assert.That(((WaveformView)page.FindName("WaveformDisplay")).Position, Is.EqualTo(vm.Position));
+        Assert.That(audio.TriggeredSamples.SelectMany(ids => ids), Is.EqualTo(new long[] { 1 }));
         Assert.That(vm.Position.TotalMilliseconds, Is.EqualTo(12.5));
     }
 

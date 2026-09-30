@@ -5,6 +5,8 @@ namespace osuHitsounder.Services;
 public sealed class ScheduledSampleMixer : ISampleProvider
 {
     private readonly DecodedAudio song;
+    private readonly object sync = new();
+    private readonly Dictionary<long, long> activations = [];
     private PreparedPlaybackSchedule schedule = PreparedPlaybackSchedule.Empty;
     private PlaybackGains gains = new(1, 1, 1);
     private long frame;
@@ -27,7 +29,52 @@ public sealed class ScheduledSampleMixer : ISampleProvider
     public void Publish(PreparedPlaybackSchedule value)
     {
         ArgumentNullException.ThrowIfNull(value);
-        Volatile.Write(ref schedule, value);
+        lock (sync)
+        {
+            schedule = value;
+            var ids = value.Events.ToArray().Select(item => item.Id).ToHashSet();
+            foreach (var id in activations.Keys.Where(id => !ids.Contains(id)).ToArray())
+                activations.Remove(id);
+        }
+    }
+
+    public void TriggerSamples(IReadOnlyList<long> placementIds)
+    {
+        ArgumentNullException.ThrowIfNull(placementIds);
+        lock (sync)
+        {
+            var start = frame + (pending ? 1 : 0);
+            foreach (var item in schedule.Events)
+                if (placementIds.Contains(item.Id)) activations.TryAdd(item.Id, start);
+        }
+    }
+
+    public SampleVoiceActivation[] CaptureVoices(long consumedFrame)
+    {
+        lock (sync)
+        {
+            var voices = new List<SampleVoiceActivation>();
+            foreach (var item in schedule.Events)
+                if (activations.TryGetValue(item.Id, out var start) && start + item.Audio.FrameCount > consumedFrame)
+                    voices.Add(new SampleVoiceActivation(item.Id, start));
+            return voices.ToArray();
+        }
+    }
+
+    public void RestoreVoices(IReadOnlyList<SampleVoiceActivation> voices)
+    {
+        ArgumentNullException.ThrowIfNull(voices);
+        lock (sync)
+        {
+            foreach (var voice in voices)
+                foreach (var item in schedule.Events)
+                    if (item.Id == voice.Id)
+                    {
+                        _ = checked(voice.StartFrame + item.Audio.FrameCount);
+                        activations.TryAdd(voice.Id, voice.StartFrame);
+                        break;
+                    }
+        }
     }
 
     public void SetVolumes(float song, float samples, float application) =>
@@ -35,11 +82,16 @@ public sealed class ScheduledSampleMixer : ISampleProvider
 
     public int Read(float[] buffer, int offset, int count)
     {
+        lock (sync) return ReadCore(buffer, offset, count);
+    }
+
+    private int ReadCore(float[] buffer, int offset, int count)
+    {
         ArgumentNullException.ThrowIfNull(buffer);
         if (offset < 0 || count < 0 || offset > buffer.Length - count) throw new ArgumentOutOfRangeException(nameof(offset));
         var destination = buffer.AsSpan(offset, count);
         if (Faulted) { destination.Clear(); return count; }
-        var current = Volatile.Read(ref schedule);
+        var current = schedule;
         var volume = Volatile.Read(ref gains);
         try
         {
@@ -79,12 +131,13 @@ public sealed class ScheduledSampleMixer : ISampleProvider
         var end = start + output.Length / 2;
         foreach (var item in current.Events)
         {
-            if (item.StartFrame >= end) break;
-            if (item.EndFrame <= start) continue;
-            var overlap = Math.Max(start, item.StartFrame);
-            var length = checked((int)((Math.Min(end, item.EndFrame) - overlap) * 2));
+            if (!activations.TryGetValue(item.Id, out var voiceStart)) continue;
+            var voiceEnd = checked(voiceStart + item.Audio.FrameCount);
+            if (voiceStart >= end || voiceEnd <= start) continue;
+            var overlap = Math.Max(start, voiceStart);
+            var length = checked((int)((Math.Min(end, voiceEnd) - overlap) * 2));
             var target = checked((int)((overlap - start) * 2));
-            var input = item.Audio.Samples.Slice(checked((int)((overlap - item.StartFrame) * 2)), length);
+            var input = item.Audio.Samples.Slice(checked((int)((overlap - voiceStart) * 2)), length);
             var gain = item.Gain * volume.Samples;
             for (var i = 0; i < length; i++) output[target + i] += Finite(input[i]) * gain;
         }

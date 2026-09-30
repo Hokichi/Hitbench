@@ -21,6 +21,7 @@ public class WorkstationAudioServiceTests
         await service.UpdateSamplesAsync(project.ProjectPath,
             [new SamplePlaybackEvent(1, "hit.wav", 0, 50, 50)], CancellationToken.None);
         service.Play();
+        service.TriggerSamples([1]);
 
         var output = new float[2];
         player.Provider!.ToSampleProvider().Read(output, 0, output.Length);
@@ -50,6 +51,7 @@ public class WorkstationAudioServiceTests
             [new SamplePlaybackEvent(1, "hit.wav", 0, 50, 100)], CancellationToken.None);
 
         service.Play();
+        service.TriggerSamples([1]);
 
         var first = new float[2];
         players[^1].Provider!.ToSampleProvider().Read(first, 0, first.Length);
@@ -84,6 +86,7 @@ public class WorkstationAudioServiceTests
         await service.UpdateSamplesAsync(project.ProjectPath,
             [new SamplePlaybackEvent(1, "hit.wav", 0, 50, 50)], CancellationToken.None);
         service.Play();
+        service.TriggerSamples([1]);
 
         var output = new float[2];
         player.Provider!.ToSampleProvider().Read(output, 0, output.Length);

@@ -176,11 +176,13 @@ public class WorkstationAudioTimingTests
         var provider = player.Provider!.ToSampleProvider();
         Assert.That(provider.WaveFormat.SampleRate, Is.EqualTo(44100));
         Assert.That(provider.WaveFormat.Channels, Is.EqualTo(2));
-        // Pull natural chunks across placements: the renderer owns event timing.
+        // Explicit trigger at the chosen frame; decoder/PCM regression coverage stays independent of UI cadence.
         var output = new List<float>();
         var buffer = new float[chunk];
         var position = (int)Math.Round((seek ?? 0) / 1000d * 44100) * 2;
         var paused = false;
+        var triggerPosition = (int)Math.Round(timestamp * 44.1, MidpointRounding.AwayFromZero) * 2;
+        var triggered = sample is null || position > triggerPosition;
         while (true)
         {
             if (pause && !paused && position >= 44100)
@@ -191,7 +193,12 @@ public class WorkstationAudioTimingTests
                 provider = player.Provider!.ToSampleProvider();
                 paused = true;
             }
-            var count = chunk;
+            if (!triggered && position == triggerPosition)
+            {
+                service.TriggerSamples([1]);
+                triggered = true;
+            }
+            var count = !triggered && position < triggerPosition ? Math.Min(chunk, triggerPosition - position) : chunk;
             var read = provider.Read(buffer, 0, count);
             if (read == 0) break;
             output.AddRange(buffer.AsSpan(0, read).ToArray());
