@@ -5,6 +5,31 @@ namespace osuHitsounder.Test.Services;
 
 public class AudioOutputFactoryTests
 {
+    [TestCase(null)]
+    [TestCase("")]
+    [TestCase("  ")]
+    [TestCase("Studio ASIO")]
+    public void CandidatesAreOrderedAndDeferred(string? driver)
+    {
+        var opened = new List<string>();
+        var factory = new AudioOutputFactory(
+            name => { opened.Add(name); return new StubWavePlayer(); },
+            () => { opened.Add("WASAPI"); return new StubWavePlayer(); },
+            () => { opened.Add("WaveOut"); return new StubWavePlayer(); });
+        var candidates = factory.CreateCandidates(driver);
+        var hasAsio = !string.IsNullOrWhiteSpace(driver);
+        Assert.That(candidates.Select(x => x.Name), Is.EqualTo(hasAsio
+            ? new[] { "ASIO", "WASAPI", "WaveOut" } : new[] { "WASAPI", "WaveOut" }));
+        Assert.That(opened, Is.Empty);
+        foreach (var candidate in candidates)
+        {
+            using var output = candidate.Create();
+            output.Init(new ScheduledSampleMixer(DecodedAudio.CopyFrom([0, 0]), 0));
+        }
+        Assert.That(opened, Is.EqualTo(hasAsio
+            ? new[] { driver!, "WASAPI", "WaveOut" } : new[] { "WASAPI", "WaveOut" }));
+    }
+
     [Test]
     public async Task InitializationCleanupNeverHoldsServiceLock()
     {

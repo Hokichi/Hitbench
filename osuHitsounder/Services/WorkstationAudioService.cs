@@ -36,7 +36,7 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
 
     public WorkstationAudioService() : this(AudioDecoder.Open, () => new AudioOutputDevice(CreateOutput, poll => new Ui.AudioOutputMonitor(poll))) { }
 
-    internal static IWavePlayer CreateOutput() => new WaveOutEvent { DesiredLatency = 10, NumberOfBuffers = 2 };
+    internal static IWavePlayer CreateOutput() => new WaveOutEvent { DesiredLatency = 60, NumberOfBuffers = 3 };
 
     public WorkstationAudioService(Func<string, WaveStream> openDecoder, Func<IWavePlayer> createPlayer)
         : this(openDecoder, () => new AudioOutputDevice(createPlayer)) { }

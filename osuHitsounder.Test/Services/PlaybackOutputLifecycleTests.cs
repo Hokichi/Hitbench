@@ -6,13 +6,13 @@ namespace osuHitsounder.Test.Services;
 public class PlaybackOutputLifecycleTests
 {
     [Test]
-    public void OutputUsesSmallQueueWithoutOpeningDevice()
+    public void CompatibilityOutputUsesStableQueueWithoutOpeningDevice()
     {
         using var player = WorkstationAudioService.CreateOutput();
         Assert.That(player, Is.TypeOf<WaveOutEvent>());
         var wave = (WaveOutEvent)player;
-        Assert.That(wave.DesiredLatency, Is.EqualTo(10));
-        Assert.That(wave.NumberOfBuffers, Is.EqualTo(2));
+        Assert.That(wave.DesiredLatency, Is.EqualTo(60));
+        Assert.That(wave.NumberOfBuffers, Is.EqualTo(3));
     }
 
     [Test]
