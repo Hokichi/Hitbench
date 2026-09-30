@@ -35,7 +35,8 @@ public sealed class AudioOutputFactory
     {
         var candidates = new List<AudioOutputCandidate>();
         if (!string.IsNullOrWhiteSpace(asioDriverName))
-            candidates.Add(new("ASIO", () => new AudioOutputDevice(() => createAsio(asioDriverName), startMonitor)));
+            candidates.Add(new("ASIO", () => new AudioOutputDevice(() => createAsio(asioDriverName), startMonitor,
+                completeFromRenderedFrames: true)));
         candidates.Add(new("WASAPI", () => new AudioOutputDevice(createWasapi, startMonitor)));
         candidates.Add(new("WaveOut", () => new AudioOutputDevice(createWave, startMonitor)));
         return candidates.AsReadOnly();

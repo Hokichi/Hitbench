@@ -4,6 +4,46 @@ namespace osuHitsounder.Test.Services;
 
 public class AudioOutputDeviceTests
 {
+    [TestCase(48000, 16)]
+    [TestCase(96000, 32)]
+    public void PositionUsesOutputByteRateAndCannotExceedProducedFrames(int rate, int bits)
+    {
+        var player = new StubWavePlayer
+        {
+            Position = 800,
+            ConfiguredOutputFormat = new NAudio.Wave.WaveFormat(rate, bits, 2)
+        };
+        using var output = new AudioOutputDevice(() => player);
+        output.Init(new TestSampleProvider([0, 0], 44100, 2), () => 88200);
+        output.Play();
+        player.Position = 800 + player.OutputWaveFormat.AverageBytesPerSecond;
+        Assert.That(output.GetPlayedFrames(), Is.EqualTo(44100));
+        player.Position = 0;
+        Assert.That(output.GetPlayedFrames(), Is.EqualTo(44100));
+        player.Position = long.MaxValue;
+        Assert.That(output.GetPlayedFrames(), Is.EqualTo(88200));
+    }
+
+    [Test]
+    public void BackendCompletionWaitsForQueuedTail()
+    {
+        var player = new StubWavePlayer();
+        using var output = new AudioOutputDevice(() => player);
+        output.Init(new TestSampleProvider([.2f, .3f], 44100, 2), () => 1, () => true);
+        var completions = 0;
+        output.PlaybackStopped += (_, _) => completions++;
+        output.Play();
+        player.Position = 8000;
+        output.Poll();
+        Assert.That(output.PlaybackState, Is.EqualTo(NAudio.Wave.PlaybackState.Playing));
+        Assert.That(completions, Is.Zero);
+        player.RaiseStopped();
+        output.Poll();
+        output.Poll();
+        Assert.That(completions, Is.EqualTo(1));
+        Assert.That(output.PlaybackState, Is.EqualTo(NAudio.Wave.PlaybackState.Stopped));
+    }
+
     [Test]
     public void ProviderFailureSilencesHardwareReadsAndDefersErrorUntilPoll()
     {
@@ -51,7 +91,8 @@ public class AudioOutputDeviceTests
         var reset = false;
         var player = new StubWavePlayer();
         using var output = new AudioOutputDevice(() => player, getLatencyFrames: () => 100,
-            resetRequested: () => reset, getTimestamp: () => now, timestampFrequency: 44100);
+            resetRequested: () => reset, getTimestamp: () => now, timestampFrequency: 44100,
+            completeFromRenderedFrames: true);
         output.Init(new ScheduledSampleMixer(DecodedAudio.CopyFrom(new float[2000]),0),()=>produced,()=>ended);
         output.Play();
         Assert.That(output.GetPlayedFrames(), Is.EqualTo(900));

@@ -12,7 +12,8 @@ public sealed class AudioOutputDevice : IAudioOutput
     private StoppedEventArgs? pendingStop;
     private long originBytes;
     private long playedFrames;
-    private int bytesPerFrame;
+    private int outputByteRate;
+    private readonly bool completeFromRenderedFrames;
     private bool disposed;
     private int ownerThread;
     private readonly Func<int>? getLatencyFrames;
@@ -33,9 +34,10 @@ public sealed class AudioOutputDevice : IAudioOutput
 
     public AudioOutputDevice(Func<IWavePlayer> createPlayer, Func<Action, IDisposable>? startMonitor = null,
         Func<int>? getLatencyFrames = null, Func<bool>? resetRequested = null,
-        Func<long>? getTimestamp = null, long timestampFrequency = 0)
+        Func<long>? getTimestamp = null, long timestampFrequency = 0, bool completeFromRenderedFrames = false)
     {
         this.createPlayer = createPlayer;
+        this.completeFromRenderedFrames = completeFromRenderedFrames;
         this.startMonitor = startMonitor;
         this.getLatencyFrames = getLatencyFrames;
         this.resetRequested = resetRequested;
@@ -67,11 +69,12 @@ public sealed class AudioOutputDevice : IAudioOutput
                 if (!asio.IsSampleRateSupported(sampleRate))
                     throw new NotSupportedException("ASIO driver does not support 44,100 Hz.");
             }
-            bytesPerFrame = source.WaveFormat.Channels * sizeof(float);
             player.Init(new GuardedSampleProvider(source,
                 () => Volatile.Read(ref reset) != 0 || Volatile.Read(ref renderFault) != 0 || (this.faulted?.Invoke() ?? false),
                 () => Volatile.Write(ref renderFault, 1)).ToWaveProvider());
             originBytes = player is IWavePosition position ? position.GetPosition() : 0;
+            outputByteRate = player is IWavePosition outputPosition
+                ? outputPosition.OutputWaveFormat.AverageBytesPerSecond : source.WaveFormat.AverageBytesPerSecond;
             estimated = player is not IWavePosition || getLatencyFrames is not null;
             latencyFrames = Math.Max(0, getLatencyFrames?.Invoke() ?? (player is AsioOut initialized ? initialized.PlaybackLatency : 0));
             monitor = startMonitor?.Invoke(Poll);
@@ -121,7 +124,12 @@ public sealed class AudioOutputDevice : IAudioOutput
             playedFrames = Math.Max(playedFrames, Math.Min(produced, positionAnchor + (long)(elapsed * sampleRate)));
         }
         else if (player is IWavePosition position && !disposed)
-            playedFrames = Math.Max(playedFrames, Math.Max(0, position.GetPosition() - originBytes) / bytesPerFrame);
+        {
+            var delta = Math.Max(0m, (decimal)position.GetPosition() - originBytes);
+            var converted = Math.Min(long.MaxValue, decimal.Floor(delta * sampleRate / outputByteRate));
+            var limit = renderedFrames is null ? long.MaxValue : Math.Max(0, renderedFrames());
+            playedFrames = Math.Max(playedFrames, Math.Min(limit, (long)converted));
+        }
         return playedFrames;
     }
 
@@ -138,7 +146,7 @@ public sealed class AudioOutputDevice : IAudioOutput
                     stopped = new StoppedEventArgs(new InvalidOperationException("Audio driver reset; press Play to reopen output."));
                 else if (Volatile.Read(ref renderFault) != 0 || (faulted?.Invoke() ?? false))
                     stopped = new StoppedEventArgs(new InvalidOperationException("Audio rendering failed."));
-                else if ((endOfStream?.Invoke() ?? false) && GetPlayedFrames() >= (renderedFrames?.Invoke() ?? long.MaxValue))
+                else if (completeFromRenderedFrames && (endOfStream?.Invoke() ?? false) && GetPlayedFrames() >= (renderedFrames?.Invoke() ?? long.MaxValue))
                     stopped = new StoppedEventArgs();
             }
             if (stopped is null) return;

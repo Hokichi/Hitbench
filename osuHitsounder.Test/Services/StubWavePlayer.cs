@@ -27,16 +27,21 @@ public sealed class StubWavePlayer : IWavePlayer, IWavePosition
     public Action? Disposing { get; set; }
     public bool HasPlaybackStoppedSubscribers => playbackStopped is not null;
     public long Position { get; set; }
+    public WaveFormat? ConfiguredOutputFormat { get; set; }
+    public Action<IWaveProvider>? Initializing { get; set; }
+    public Action? Playing { get; set; }
 
     public void Init(IWaveProvider waveProvider)
     {
         if (FailInitialization) throw new InvalidOperationException("No device");
         Provider = waveProvider;
-        OutputWaveFormat = waveProvider.WaveFormat;
+        OutputWaveFormat = ConfiguredOutputFormat ?? waveProvider.WaveFormat;
+        Initializing?.Invoke(waveProvider);
     }
 
     public void Play()
     {
+        Playing?.Invoke();
         if (FailPlayback) throw new InvalidOperationException("Cannot start device");
         PlaybackState = PlaybackState.Playing;
     }
