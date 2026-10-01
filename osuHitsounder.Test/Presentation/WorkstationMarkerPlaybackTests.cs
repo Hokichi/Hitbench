@@ -8,6 +8,7 @@ public class WorkstationMarkerPlaybackTests
     private StubWorkstationAudioService audio = null!;
     [SetUp]
     public void Setup() => audio = new StubWorkstationAudioService();
+    private osuHitsounder.Services.MarkerPlaybackCoordinator playback = null!;
     private WorkstationPageVM vm = null!;
 
     private async Task Load(params int[] timestamps)
@@ -19,13 +20,19 @@ public class WorkstationMarkerPlaybackTests
         vm = new WorkstationPageVM(new StubWorkstationSourceService
         {
             Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "song.wav", project))
-        }, audio, new ImmediateUiScheduler());
+        }, playback = new osuHitsounder.Services.MarkerPlaybackCoordinator(audio, (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
         await vm.LoadAsync("project.json", CancellationToken.None);
     }
 
-    private void Tick(double milliseconds)
+    private async Task Tick(double milliseconds)
     {
         audio.Snapshot = audio.Snapshot with { Position = TimeSpan.FromMilliseconds(milliseconds) };
+        if (audio.Snapshot.IsPlaying && !audio.Disposed)
+        {
+            var expected = new osuHitsounder.Services.PlaybackMarkerClock([0,100],[120,240])
+                .GetPosition(audio.Snapshot.Position, TimeSpan.FromSeconds(10));
+            await StubWorkstationAudioService.WaitUntilAsync(() => playback.Latest.Playback.Position >= expected);
+        }
         vm.RefreshPlayback();
     }
 
@@ -36,22 +43,22 @@ public class WorkstationMarkerPlaybackTests
     public async Task CrossingsTriggerEachPlacementOnceAndNeverWhilePausedOrEnded()
     {
         await Load(0, 10, 10, 31);
-        vm.PlayPauseCommand.Execute(null);
+        await vm.PlayPauseCommand.ExecuteAsync(null);
         Assert.That(audio.TriggeredSamples.SelectMany(ids => ids), Is.EqualTo(new long[] { 1 }));
-        Tick(10);
+        await Tick(10);
         Assert.That(audio.TriggeredSamples, Has.Count.EqualTo(1));
-        Tick(12.5);
-        Tick(12.5);
-        Tick(90);
+        await Tick(12.5);
+        await Tick(12.5);
+        await Tick(90);
         Assert.That(audio.TriggeredSamples.SelectMany(ids => ids), Is.EqualTo(new long[] { 1,2,3,4 }));
-        vm.PlayPauseCommand.Execute(null);
-        Tick(100);
+        await vm.PlayPauseCommand.ExecuteAsync(null);
+        await Tick(100);
         audio.Snapshot = new AudioPlaybackSnapshot(TimeSpan.FromSeconds(10), false, null);
         vm.RefreshPlayback();
         Assert.That(audio.TriggeredSamples.SelectMany(ids => ids), Is.EqualTo(new long[] { 1,2,3,4 }));
-        vm.SeekCommand.Execute(TimeSpan.FromMilliseconds(10));
-        vm.PlayPauseCommand.Execute(null);
-        Tick(12.5);
+        await vm.SeekCommand.ExecuteAsync(TimeSpan.FromMilliseconds(10));
+        await vm.PlayPauseCommand.ExecuteAsync(null);
+        await Tick(12.5);
         Assert.That(audio.TriggeredSamples.SelectMany(ids => ids), Is.EqualTo(new long[] { 1,2,3,4,2,3 }));
     }
 
@@ -112,8 +119,8 @@ public class WorkstationMarkerPlaybackTests
         Task? changing = null;
         try
         {
-            if (action == "stop") vm.StopCommand.Execute(null);
-            if (action == "seek") vm.SeekCommand.Execute(TimeSpan.FromMilliseconds(5));
+            if (action == "stop") await vm.StopCommand.ExecuteAsync(null);
+            if (action == "seek") await vm.SeekCommand.ExecuteAsync(TimeSpan.FromMilliseconds(5));
             if (action == "deactivate") changing = vm.DeactivateAsync();
             if (action == "reload") { audio.PrepareSamplesAsync = null; changing = vm.LoadAsync("other.json", CancellationToken.None); }
             if (action == "failure") prepared.SetException(new IOException("Preparation failed"));
@@ -152,14 +159,14 @@ public class WorkstationMarkerPlaybackTests
     public async Task MarkerQuantizesDuplicateTicksAndTimingTransitions()
     {
         await Load(0, 10, 10, 31);
-        vm.PlayPauseCommand.Execute(null);
-        Tick(10);
+        await vm.PlayPauseCommand.ExecuteAsync(null);
+        await Tick(10);
         Assert.That(vm.Position.TotalMilliseconds, Is.EqualTo(8.3333).Within(.0001));
-        Tick(12.5);
-        Tick(12.5);
-        Tick(90);
+        await Tick(12.5);
+        await Tick(12.5);
+        await Tick(90);
         Assert.That(vm.Position.TotalMilliseconds, Is.EqualTo(87.5));
-        Tick(100);
+        await Tick(100);
         Assert.That(vm.PlaybackInterval.TotalMilliseconds, Is.EqualTo(2.0833).Within(.0001));
     }
 
@@ -167,13 +174,13 @@ public class WorkstationMarkerPlaybackTests
     public async Task PauseAndResumeRetainMarkerPosition()
     {
         await Load(0, 3, 6);
-        vm.PlayPauseCommand.Execute(null);
+        await vm.PlayPauseCommand.ExecuteAsync(null);
         audio.Snapshot = audio.Snapshot with { Position = TimeSpan.FromMilliseconds(3.5) };
-        vm.PlayPauseCommand.Execute(null);
-        Tick(3.5);
+        await vm.PlayPauseCommand.ExecuteAsync(null);
+        await Tick(3.5);
         Assert.That(vm.Position.TotalMilliseconds, Is.EqualTo(3.5));
-        vm.PlayPauseCommand.Execute(null);
-        Tick(8.5);
+        await vm.PlayPauseCommand.ExecuteAsync(null);
+        await Tick(8.5);
         Assert.That(vm.Position.TotalMilliseconds, Is.EqualTo(8.3333).Within(.0001));
     }
 
@@ -181,29 +188,29 @@ public class WorkstationMarkerPlaybackTests
     public async Task SeekingResetsMarkerWithoutMovingBackwards()
     {
         await Load(0, 5, 10, 11, 50);
-        vm.PlayPauseCommand.Execute(null);
-        vm.SeekCommand.Execute(TimeSpan.FromMilliseconds(10));
+        await vm.PlayPauseCommand.ExecuteAsync(null);
+        await vm.SeekCommand.ExecuteAsync(TimeSpan.FromMilliseconds(10));
         Assert.That(vm.Position.TotalMilliseconds, Is.EqualTo(10));
-        Tick(11);
+        await Tick(11);
         Assert.That(vm.Position.TotalMilliseconds, Is.EqualTo(10));
-        Tick(12.5);
-        vm.PlayPauseCommand.Execute(null);
-        vm.SeekCommand.Execute(TimeSpan.FromMilliseconds(5));
-        vm.PlayPauseCommand.Execute(null);
-        vm.StopCommand.Execute(null);
-        vm.PlayPauseCommand.Execute(null);
+        await Tick(12.5);
+        await vm.PlayPauseCommand.ExecuteAsync(null);
+        await vm.SeekCommand.ExecuteAsync(TimeSpan.FromMilliseconds(5));
+        await vm.PlayPauseCommand.ExecuteAsync(null);
+        await vm.StopCommand.ExecuteAsync(null);
+        await vm.PlayPauseCommand.ExecuteAsync(null);
     }
 
     [Test]
     public async Task RemovalAndVolumeRefreshPublishUpdatedSchedule()
     {
         await Load(0, 10, 20);
-        vm.PlayPauseCommand.Execute(null);
+        await vm.PlayPauseCommand.ExecuteAsync(null);
         var track = vm.Tracks[0];
         vm.RemoveSample(track, track.Samples[1]);
         vm.SetTrackVolume(track, 50);
         await vm.FlushPlaybackUpdatesAsync();
-        Tick(25);
+        await Tick(25);
         Assert.That(audio.SampleUpdates[^1].Select(x => x.Timestamp), Is.EqualTo(new[]{0,20}));
         Assert.That(audio.SampleUpdates[^1].Select(x => x.TrackVolume), Is.All.EqualTo(50));
     }
@@ -212,12 +219,13 @@ public class WorkstationMarkerPlaybackTests
     public async Task NaturalEndShowsEndpointAndDeactivationStopsRefresh()
     {
         await Load(9999);
-        vm.PlayPauseCommand.Execute(null);
+        await vm.PlayPauseCommand.ExecuteAsync(null);
         audio.Snapshot = new AudioPlaybackSnapshot(TimeSpan.FromSeconds(10), false, null);
+        await StubWorkstationAudioService.WaitUntilAsync(() => !playback.Latest.Playback.IsPlaying);
         vm.RefreshPlayback();
         Assert.That(vm.IsPlaying, Is.False);
         await vm.DeactivateAsync();
-        Tick(10);
+        await Tick(10);
         Assert.That(vm.Position, Is.EqualTo(TimeSpan.FromSeconds(10)));
     }
 
@@ -225,13 +233,13 @@ public class WorkstationMarkerPlaybackTests
     public async Task EditsPublishPastAndFuturePlacements()
     {
         await Load(0);
-        vm.PlayPauseCommand.Execute(null);
-        Tick(25);
+        await vm.PlayPauseCommand.ExecuteAsync(null);
+        await Tick(25);
         vm.Tracks[0].Samples.Add(new Sample { FileName = "hit.wav", Timestamp = 10 });
         vm.Tracks[0].Samples.Add(new Sample { FileName = "hit.wav", Timestamp = 50 });
         vm.SetTrackVolume(vm.Tracks[0], 50);
         await vm.FlushPlaybackUpdatesAsync();
-        Tick(75);
+        await Tick(75);
         Assert.That(audio.SampleUpdates[^1].Select(x => x.Timestamp), Is.EquivalentTo(new[]{0,10,50}));
     }
 
@@ -239,12 +247,13 @@ public class WorkstationMarkerPlaybackTests
     public async Task DeviceErrorIsPresentedAndRestartResetsMarker()
     {
         await Load(0, 10);
-        vm.PlayPauseCommand.Execute(null);
-        Tick(25);
+        await vm.PlayPauseCommand.ExecuteAsync(null);
+        await Tick(25);
         audio.Snapshot = new AudioPlaybackSnapshot(TimeSpan.Zero, false, "device lost");
+        await StubWorkstationAudioService.WaitUntilAsync(() => playback.Latest.Playback.Error is not null);
         vm.RefreshPlayback();
         Assert.That(vm.ErrorMessage, Is.EqualTo("device lost"));
-        vm.PlayPauseCommand.Execute(null);
+        await vm.PlayPauseCommand.ExecuteAsync(null);
     }
 
     [Test]
@@ -253,9 +262,9 @@ public class WorkstationMarkerPlaybackTests
         vm = new WorkstationPageVM(new StubWorkstationSourceService
         {
             Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData()))
-        }, audio, new ImmediateUiScheduler());
+        }, playback = new osuHitsounder.Services.MarkerPlaybackCoordinator(audio, (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
         await vm.LoadAsync("project.json", CancellationToken.None);
-        vm.PlayPauseCommand.Execute(null);
+        await vm.PlayPauseCommand.ExecuteAsync(null);
         Assert.That(vm.IsPlaying, Is.False);
         Assert.That(vm.ErrorMessage, Does.Contain("timing"));
     }

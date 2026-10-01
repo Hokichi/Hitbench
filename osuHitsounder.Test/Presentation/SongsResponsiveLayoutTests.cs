@@ -132,8 +132,7 @@ public class SongsResponsiveLayoutTests
     public void ActiveShellRoutesModifiedWheelToCurrentWorkstationFromAnywhere()
     {
         var homeViewModel = CreateVM();
-        var workstationViewModel = new WorkstationPageVM(new StubWorkstationSourceService(),
-            new StubWorkstationAudioService(), new ImmediateUiScheduler());
+        var workstationViewModel = new WorkstationPageVM(new StubWorkstationSourceService(), new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
         var workstationPage = new WorkstationPage(workstationViewModel);
         var window = TestShell.Create(new HomePage(homeViewModel), new WeakReferenceMessenger(),
             () => workstationPage, homeViewModel, new StubAppSettingsService());
@@ -169,8 +168,7 @@ public class SongsResponsiveLayoutTests
     public void ActiveShellRoutesSpaceOnlyToCurrentWorkstation()
     {
         var homeViewModel = CreateVM();
-        var workstationViewModel = new WorkstationPageVM(new StubWorkstationSourceService(),
-            new StubWorkstationAudioService(), new ImmediateUiScheduler());
+        var workstationViewModel = new WorkstationPageVM(new StubWorkstationSourceService(), new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
         var workstationPage = new WorkstationPage(workstationViewModel);
         var window = TestShell.Create(new HomePage(homeViewModel), new WeakReferenceMessenger(),
             () => workstationPage, homeViewModel, new StubAppSettingsService());

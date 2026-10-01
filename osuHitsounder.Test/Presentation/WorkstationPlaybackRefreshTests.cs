@@ -63,7 +63,7 @@ public class WorkstationPlaybackRefreshTests
                 Tracks = [new Track { Samples = [new Sample { FileName = "hit.wav", Timestamp = 10 }] }]
             }))
         };
-        vm = new WorkstationPageVM(source, audio, new ImmediateUiScheduler());
+        vm = new WorkstationPageVM(source, new osuHitsounder.Services.MarkerPlaybackCoordinator(audio, (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
         page = new WorkstationPage(vm);
         page.SetProjectPath("project.json");
         host = new Window { Content = page, Width = 900, Height = 600 };
@@ -84,7 +84,7 @@ public class WorkstationPlaybackRefreshTests
     public void TimerUsesBeatIntervalAndUpdatesAtTimingTransition()
     {
         Assert.That(page.IsPlaybackTimerEnabled, Is.False);
-        vm.PlayPauseCommand.Execute(null);
+        osuHitsounder.Test.Presentation.UiTestPump.Run(vm.PlayPauseCommand.ExecuteAsync(null));
         Assert.That(page.IsPlaybackTimerEnabled, Is.True);
         Assert.That(page.PlaybackTimerInterval.TotalMilliseconds, Is.EqualTo(4.1667).Within(.0001));
         audio.Snapshot = audio.Snapshot with { Position = TimeSpan.FromMilliseconds(1001) };
@@ -96,7 +96,7 @@ public class WorkstationPlaybackRefreshTests
     [Test]
     public void TickUpdatesBoundMarkerAndTriggersCrossedPlacementOnce()
     {
-        vm.PlayPauseCommand.Execute(null);
+        osuHitsounder.Test.Presentation.UiTestPump.Run(vm.PlayPauseCommand.ExecuteAsync(null));
         audio.Snapshot = audio.Snapshot with { Position = TimeSpan.FromMilliseconds(12.5) };
         page.OnPlaybackTick(null, EventArgs.Empty);
         page.OnPlaybackTick(null, EventArgs.Empty);
@@ -110,7 +110,7 @@ public class WorkstationPlaybackRefreshTests
     [TestCase(Visibility.Collapsed)]
     public void HiddenPageKeepsFunctionalTimerWithoutAnimationRefreshPath(Visibility visibility)
     {
-        vm.PlayPauseCommand.Execute(null);
+        osuHitsounder.Test.Presentation.UiTestPump.Run(vm.PlayPauseCommand.ExecuteAsync(null));
         page.Visibility = visibility;
         page.UpdatePlaybackRefreshSubscription();
         Assert.That(page.IsPlaybackTimerEnabled, Is.True);
@@ -124,18 +124,18 @@ public class WorkstationPlaybackRefreshTests
     [Test]
     public void PauseSeekStopAndDeactivationStopTimerWork()
     {
-        vm.PlayPauseCommand.Execute(null);
-        vm.PlayPauseCommand.Execute(null);
-        vm.SeekCommand.Execute(TimeSpan.FromMilliseconds(250));
+        osuHitsounder.Test.Presentation.UiTestPump.Run(vm.PlayPauseCommand.ExecuteAsync(null));
+        osuHitsounder.Test.Presentation.UiTestPump.Run(vm.PlayPauseCommand.ExecuteAsync(null));
+        osuHitsounder.Test.Presentation.UiTestPump.Run(vm.SeekCommand.ExecuteAsync(TimeSpan.FromMilliseconds(250)));
         var reads = audio.SnapshotReads;
         page.OnPlaybackTick(null, EventArgs.Empty);
         Assert.That(audio.SnapshotReads, Is.EqualTo(reads));
         Assert.That(vm.Position.TotalMilliseconds, Is.EqualTo(250));
-        vm.PlayPauseCommand.Execute(null);
+        osuHitsounder.Test.Presentation.UiTestPump.Run(vm.PlayPauseCommand.ExecuteAsync(null));
         Assert.That(page.IsPlaybackTimerEnabled, Is.True);
-        vm.StopCommand.Execute(null);
+        osuHitsounder.Test.Presentation.UiTestPump.Run(vm.StopCommand.ExecuteAsync(null));
         Assert.That(page.IsPlaybackTimerEnabled, Is.False);
-        vm.PlayPauseCommand.Execute(null);
+        osuHitsounder.Test.Presentation.UiTestPump.Run(vm.PlayPauseCommand.ExecuteAsync(null));
         UiTestPump.Run(page.DeactivateAsync());
         reads = audio.SnapshotReads;
         page.UpdatePlaybackRefreshSubscription();
@@ -148,7 +148,7 @@ public class WorkstationPlaybackRefreshTests
     [TestCase("device lost")]
     public void FinalSnapshotStopsTimerAndRetainsError(string? error)
     {
-        vm.PlayPauseCommand.Execute(null);
+        osuHitsounder.Test.Presentation.UiTestPump.Run(vm.PlayPauseCommand.ExecuteAsync(null));
         audio.Snapshot = new AudioPlaybackSnapshot(error is null ? TimeSpan.FromSeconds(10) : TimeSpan.Zero, false, error);
         page.OnPlaybackTick(null, EventArgs.Empty);
         Assert.That(page.IsPlaybackTimerEnabled, Is.False);
@@ -161,8 +161,7 @@ public class WorkstationPlaybackRefreshTests
     {
         var completion = new TaskCompletionSource<WorkstationSource>();
         using var loadingAudio = new StubWorkstationAudioService();
-        var loadingVm = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => completion.Task },
-            loadingAudio, new ImmediateUiScheduler());
+        var loadingVm = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => completion.Task }, new osuHitsounder.Services.MarkerPlaybackCoordinator(loadingAudio, (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
         var loadingPage = new WorkstationPage(loadingVm);
         loadingPage.SetProjectPath("loading.json");
         using var loadingView = new InMemoryView(new Window { Content = loadingPage, Width = 640, Height = 480 });

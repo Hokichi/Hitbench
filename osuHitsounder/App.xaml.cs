@@ -33,8 +33,7 @@ public partial class App : Application
         registrations.AddSingleton<ITrackRemovalDialogService>(_ =>
             new TrackRemovalDialogService(() => Current.MainWindow, Current.Dispatcher));
         registrations.AddSingleton<Func<WorkstationPage>>(provider => () => new WorkstationPage(
-            new WorkstationPageVM(provider.GetRequiredService<IWorkstationSourceService>(),
-                provider.GetRequiredService<Func<IWorkstationAudioService>>()(), provider.GetRequiredService<IUiScheduler>(),
+            new WorkstationPageVM(provider.GetRequiredService<IWorkstationSourceService>(), new osuHitsounder.Services.MarkerPlaybackCoordinator(provider.GetRequiredService<Func<IWorkstationAudioService>>()(), (duration, token) => Task.Delay(duration, token)), provider.GetRequiredService<IUiScheduler>(),
                 provider.GetRequiredService<ISampleFileService>(), provider.GetRequiredService<ISampleFileDialogService>(),
                 provider.GetRequiredService<IProjectFileService>(), provider.GetRequiredService<IMessenger>(),
                 provider.GetRequiredService<ITrackRemovalDialogService>(),

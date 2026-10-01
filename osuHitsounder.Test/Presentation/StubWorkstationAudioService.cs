@@ -7,16 +7,25 @@ public sealed class StubWorkstationAudioService : IWorkstationAudioService
 {
     public Func<string, CancellationToken, Task<WaveformData>> Analyze { get; set; } =
         (_, _) => Task.FromResult(new WaveformData(TimeSpan.FromSeconds(10), [0.5f]));
-    public AudioPlaybackSnapshot Snapshot { get; set; } = new(TimeSpan.Zero, false, null);
+    private readonly object sync = new();
+    private AudioPlaybackSnapshot snapshot = new(TimeSpan.Zero, false, null);
+    public AudioPlaybackSnapshot Snapshot { get { lock(sync) return snapshot; } set { lock(sync) snapshot = value; } }
+    public static async Task WaitUntilAsync(Func<bool> ready)
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+        while (!ready()) await Task.Delay(1, timeout.Token);
+    }
     public string? OpenedPath { get; private set; }
     public bool Disposed { get; private set; }
     public int SongVolume { get; private set; } = 100;
     public int SamplesVolume { get; private set; } = 100;
     public int ApplicationVolume { get; private set; } = 100;
-    public List<IReadOnlyList<SamplePlaybackEvent>> SampleUpdates { get; } = [];
-    public List<IReadOnlyList<long>> TriggeredSamples { get; } = [];
+    private readonly List<IReadOnlyList<SamplePlaybackEvent>> sampleUpdates = [];
+    public IReadOnlyList<IReadOnlyList<SamplePlaybackEvent>> SampleUpdates { get { lock(sync) return sampleUpdates.ToArray(); } }
+    private readonly List<IReadOnlyList<long>> triggeredSamples = [];
+    public IReadOnlyList<IReadOnlyList<long>> TriggeredSamples { get { lock(sync) return triggeredSamples.ToArray(); } }
     public Func<CancellationToken, Task>? PrepareSamplesAsync { get; set; }
-    public void TriggerSamples(IReadOnlyList<long> placementIds) => TriggeredSamples.Add(placementIds.ToArray());
+    public void TriggerSamples(IReadOnlyList<long> placementIds) { lock(sync) triggeredSamples.Add(placementIds.ToArray()); }
     public Task<WaveformData> AnalyzeAsync(string audioPath, CancellationToken token) => Analyze(audioPath, token);
     public void Open(string audioPath) => OpenedPath = audioPath;
     public void Play() => Snapshot = Snapshot with { IsPlaying = true };
@@ -28,13 +37,14 @@ public sealed class StubWorkstationAudioService : IWorkstationAudioService
     public void SetApplicationVolume(int volume) => ApplicationVolume = volume;
     public Task UpdateSamplesAsync(string projectPath, IReadOnlyList<SamplePlaybackEvent> events, CancellationToken token)
     {
-        SampleUpdates.Add(events.ToArray());
+        lock(sync) sampleUpdates.Add(events.ToArray());
         return PrepareSamplesAsync?.Invoke(token) ?? Task.CompletedTask;
     }
-    public int SnapshotReads { get; private set; }
+    private int snapshotReads;
+    public int SnapshotReads => Volatile.Read(ref snapshotReads);
     public AudioPlaybackSnapshot GetSnapshot()
     {
-        SnapshotReads++;
+        Interlocked.Increment(ref snapshotReads);
         return Snapshot;
     }
     public void Dispose() => Disposed = true;

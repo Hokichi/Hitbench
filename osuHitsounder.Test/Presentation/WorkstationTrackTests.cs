@@ -12,8 +12,7 @@ public class WorkstationTrackTests
     [Test]
     public async Task ImportIsUnavailableWithoutRequiredServices()
     {
-        var vm = new WorkstationPageVM(new StubWorkstationSourceService(),
-            new StubWorkstationAudioService(), new ImmediateUiScheduler());
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
 
         await vm.LoadAsync("project.json", CancellationToken.None);
 
@@ -33,8 +32,7 @@ public class WorkstationTrackTests
             var sourcePath = Path.Combine(root.FullName, "kick.wav");
             await File.WriteAllBytesAsync(sourcePath, [1, 2, 3]);
             var audio = new StubWorkstationAudioService();
-            var vm = new WorkstationPageVM(new StubWorkstationSourceService(),
-                audio, new ImmediateUiScheduler(), new SampleFileService(),
+            var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new osuHitsounder.Services.MarkerPlaybackCoordinator(audio, (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler(), new SampleFileService(),
                 new StubSampleFileDialogService(sourcePath));
 
             await vm.LoadAsync(projectPath, CancellationToken.None);
@@ -69,7 +67,7 @@ public class WorkstationTrackTests
         {
             Snapshot = new AudioPlaybackSnapshot(TimeSpan.Zero, false, "Unable to load sample 'missing.wav'.")
         };
-        var vm = new WorkstationPageVM(source, audio, new ImmediateUiScheduler());
+        var vm = new WorkstationPageVM(source, new osuHitsounder.Services.MarkerPlaybackCoordinator(audio, (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
         await vm.LoadAsync("project.json", CancellationToken.None);
         Assert.That(vm.ErrorMessage, Does.Contain("missing.wav"));
 
@@ -94,7 +92,7 @@ public class WorkstationTrackTests
         var saves = new DelayedProjectFileService();
         saves.Release();
         var dialog = new StubTrackRemovalDialogService { Confirm = _ => Task.FromResult(true) };
-        var vm = new WorkstationPageVM(source, new StubWorkstationAudioService(),
+        var vm = new WorkstationPageVM(source, new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)),
             new ImmediateUiScheduler(), null, null, saves, null, dialog);
         await vm.LoadAsync("project.json", CancellationToken.None);
         await vm.RemoveTrackCommand.ExecuteAsync(first);
@@ -116,7 +114,7 @@ public class WorkstationTrackTests
                 new ProjectData { Tracks = [track] }))
         };
         var dialog = new StubTrackRemovalDialogService();
-        var vm = new WorkstationPageVM(source, new StubWorkstationAudioService(),
+        var vm = new WorkstationPageVM(source, new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)),
             new ImmediateUiScheduler(), trackRemovalDialog: dialog);
         await vm.LoadAsync("project.json", CancellationToken.None);
         await vm.RemoveTrackCommand.ExecuteAsync(track);
@@ -136,7 +134,7 @@ public class WorkstationTrackTests
         };
         var response = new TaskCompletionSource<bool>();
         var dialog = new StubTrackRemovalDialogService { Confirm = _ => response.Task };
-        var vm = new WorkstationPageVM(source, new StubWorkstationAudioService(),
+        var vm = new WorkstationPageVM(source, new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)),
             new ImmediateUiScheduler(), trackRemovalDialog: dialog);
         await vm.LoadAsync("project.json", CancellationToken.None);
         var first = vm.RemoveTrackCommand.ExecuteAsync(track);
@@ -161,7 +159,7 @@ public class WorkstationTrackTests
         };
         var response = new TaskCompletionSource<bool>();
         var dialog = new StubTrackRemovalDialogService { Confirm = _ => response.Task };
-        var vm = new WorkstationPageVM(source, new StubWorkstationAudioService(),
+        var vm = new WorkstationPageVM(source, new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)),
             new ImmediateUiScheduler(), trackRemovalDialog: dialog);
         await vm.LoadAsync("old.json", CancellationToken.None);
         var pending = vm.RemoveTrackCommand.ExecuteAsync(original);
@@ -175,8 +173,7 @@ public class WorkstationTrackTests
     [Test]
     public async Task RemovalDisablesWhenWorkstationDeactivates()
     {
-        var vm = new WorkstationPageVM(new StubWorkstationSourceService(),
-            new StubWorkstationAudioService(), new ImmediateUiScheduler(),
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler(),
             trackRemovalDialog: new StubTrackRemovalDialogService());
         await vm.LoadAsync("project.json", CancellationToken.None);
         Assert.That(vm.CanRemoveTrack, Is.True);
@@ -195,7 +192,7 @@ public class WorkstationTrackTests
         };
         var response = new TaskCompletionSource<bool>();
         var dialog = new StubTrackRemovalDialogService { Confirm = _ => response.Task };
-        var vm = new WorkstationPageVM(source, new StubWorkstationAudioService(),
+        var vm = new WorkstationPageVM(source, new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)),
             new ImmediateUiScheduler(), trackRemovalDialog: dialog);
         await vm.LoadAsync("project.json", CancellationToken.None);
         var removal = vm.RemoveTrackCommand.ExecuteAsync(track);
@@ -217,7 +214,7 @@ public class WorkstationTrackTests
         };
         var saves = new FailOnceProjectFileService();
         var dialog = new StubTrackRemovalDialogService { Confirm = _ => Task.FromResult(true) };
-        var vm = new WorkstationPageVM(source, new StubWorkstationAudioService(),
+        var vm = new WorkstationPageVM(source, new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)),
             new ImmediateUiScheduler(), null, null, saves, null, dialog);
         await vm.LoadAsync("project.json", CancellationToken.None);
         await vm.RemoveTrackCommand.ExecuteAsync(track);
@@ -242,7 +239,7 @@ public class WorkstationTrackTests
         {
             Confirm = _ => Task.FromException<bool>(new IOException("Dialog unavailable"))
         };
-        var vm = new WorkstationPageVM(source, new StubWorkstationAudioService(),
+        var vm = new WorkstationPageVM(source, new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)),
             new ImmediateUiScheduler(), trackRemovalDialog: dialog);
         await vm.LoadAsync("project.json", CancellationToken.None);
         await vm.RemoveTrackCommand.ExecuteAsync(track);
@@ -270,7 +267,7 @@ public class WorkstationTrackTests
                     new ProjectData { Tracks = [track] }))
             };
             var dialog = new StubTrackRemovalDialogService { Confirm = _ => Task.FromResult(true) };
-            var vm = new WorkstationPageVM(source, new StubWorkstationAudioService(),
+            var vm = new WorkstationPageVM(source, new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)),
                 new ImmediateUiScheduler(), new SampleFileService(), null,
                 new ProjectFileService(root.FullName), null, dialog);
             await vm.LoadAsync(path, CancellationToken.None);
@@ -292,7 +289,7 @@ public class WorkstationTrackTests
         {
             Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav", new ProjectData { Tracks = [track] }))
         };
-        var vm = new WorkstationPageVM(source, new StubWorkstationAudioService(), new ImmediateUiScheduler());
+        var vm = new WorkstationPageVM(source, new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
         await vm.LoadAsync("project.json", CancellationToken.None);
         vm.SelectSample(track, "new.wav");
         Assert.That(track.Samples, Is.EqualTo(new[] { one, two }));
@@ -310,7 +307,7 @@ public class WorkstationTrackTests
         {
             Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav", project))
         };
-        var vm = new WorkstationPageVM(source, new StubWorkstationAudioService(),
+        var vm = new WorkstationPageVM(source, new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)),
             new ImmediateUiScheduler(), new StubSampleFileService(["a.wav", "b.wav"]));
         await vm.LoadAsync("project.json", CancellationToken.None);
 
@@ -342,7 +339,7 @@ public class WorkstationTrackTests
                 new ProjectData { Tracks = [track] }))
         };
         var audio = new StubWorkstationAudioService();
-        var vm = new WorkstationPageVM(source, audio, new ImmediateUiScheduler());
+        var vm = new WorkstationPageVM(source, new osuHitsounder.Services.MarkerPlaybackCoordinator(audio, (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
 
         await vm.LoadAsync("project.json", CancellationToken.None);
 
@@ -363,7 +360,7 @@ public class WorkstationTrackTests
         var audio = new StubWorkstationAudioService();
         var saves = new DelayedProjectFileService();
         saves.Release();
-        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), audio,
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new osuHitsounder.Services.MarkerPlaybackCoordinator(audio, (duration, token) => Task.Delay(duration, token)),
             new ImmediateUiScheduler(), projectFiles: saves);
         await vm.LoadAsync("project.json", CancellationToken.None);
 
@@ -394,7 +391,7 @@ public class WorkstationTrackTests
         {
             Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav", project))
         };
-        var vm = new WorkstationPageVM(source, new StubWorkstationAudioService(),
+        var vm = new WorkstationPageVM(source, new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)),
             new ImmediateUiScheduler(), new StubSampleFileService(["a.wav"]));
         await vm.LoadAsync("project.json", CancellationToken.None);
         vm.AddSampleTrackCommand.Execute(null);
@@ -420,7 +417,7 @@ public class WorkstationTrackTests
         {
             Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav", project))
         };
-        var vm = new WorkstationPageVM(source, new StubWorkstationAudioService(),
+        var vm = new WorkstationPageVM(source, new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)),
             new ImmediateUiScheduler(), new StubSampleFileService(["a.wav"]));
         await vm.LoadAsync("project.json", CancellationToken.None);
         vm.AddSampleTrackCommand.Execute(null);
@@ -443,7 +440,7 @@ public class WorkstationTrackTests
             var sourcePath = Path.Combine(root.FullName, "b.mp3");
             await File.WriteAllBytesAsync(sourcePath, [2]);
             var source = new StubWorkstationSourceService();
-            var vm = new WorkstationPageVM(source, new StubWorkstationAudioService(), new ImmediateUiScheduler(),
+            var vm = new WorkstationPageVM(source, new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler(),
                 new SampleFileService(), new StubSampleFileDialogService(sourcePath),
                 new ProjectFileService(root.FullName), new WeakReferenceMessenger());
             await vm.LoadAsync(projectPath, CancellationToken.None);
@@ -469,7 +466,7 @@ public class WorkstationTrackTests
     public async Task PendingOlderSaveCannotReplaceLatestVolume()
     {
         var saves = new DelayedProjectFileService();
-        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new StubWorkstationAudioService(),
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)),
             new ImmediateUiScheduler(), new StubSampleFileService(["a.wav"]), null, saves,
             new WeakReferenceMessenger());
         await vm.LoadAsync("project.json", CancellationToken.None);
@@ -490,7 +487,7 @@ public class WorkstationTrackTests
     public async Task HeaderMessageAddsTrackOnlyWhileWorkstationActive()
     {
         var messenger = new WeakReferenceMessenger();
-        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new StubWorkstationAudioService(),
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)),
             new ImmediateUiScheduler(), new StubSampleFileService(["a.wav"]), null, null, messenger);
         await vm.LoadAsync("project.json", CancellationToken.None);
         messenger.Send(new AddSampleTrackRequestedMessage());
@@ -504,7 +501,7 @@ public class WorkstationTrackTests
     public async Task FailedSaveIsReportedAndRetryPersistsLatestState()
     {
         var saves = new FailOnceProjectFileService();
-        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new StubWorkstationAudioService(),
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)),
             new ImmediateUiScheduler(), new StubSampleFileService(["a.wav"]), null, saves,
             new WeakReferenceMessenger());
         await vm.LoadAsync("project.json", CancellationToken.None);

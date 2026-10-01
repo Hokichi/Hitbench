@@ -15,7 +15,7 @@ namespace osuHitsounder.ViewModels.Shell;
 
 public partial class WorkstationPageVM(
     IWorkstationSourceService sourceService,
-    IWorkstationAudioService audioService,
+    MarkerPlaybackCoordinator playback,
     IUiScheduler uiScheduler,
     ISampleFileService? sampleFiles = null,
     ISampleFileDialogService? sampleDialog = null,
@@ -24,6 +24,10 @@ public partial class WorkstationPageVM(
     ITrackRemovalDialogService? trackRemovalDialog = null,
     PlaybackVolumeSettings? playbackVolumes = null) : ObservableObject
 {
+    private readonly IWorkstationAudioService audioService = playback.Audio;
+    private bool subscribedToPlayback;
+    private readonly object notificationLock = new();
+    private Task notifications = Task.CompletedTask;
     private readonly PlaybackVolumeSettings playbackVolumes = playbackVolumes ?? new PlaybackVolumeSettings();
     private readonly ObservableCollection<Track> tracks = [];
     private readonly ObservableCollection<string> availableSamples = [];
@@ -61,8 +65,6 @@ public partial class WorkstationPageVM(
     private int loadGeneration;
     private bool deactivated;
     private PlaybackMarkerClock markerClock = new([], []);
-    private TimeSpan processedMarker;
-    private bool includeMarkerStart = true;
     private TimeSpan playbackInterval;
     public TimeSpan PlaybackInterval => playbackInterval;
 
@@ -156,6 +158,10 @@ public partial class WorkstationPageVM(
         loadGeneration++;
         loadCancellation?.Cancel();
         playbackUpdateCancellation?.Cancel();
+        playback.StateChanged -= OnPlaybackStateChanged;
+        Task pendingNotifications;
+        lock (notificationLock) pendingNotifications = notifications;
+        await pendingNotifications;
         if (activeLoad is not null)
         {
             try { await activeLoad; }
@@ -167,6 +173,7 @@ public partial class WorkstationPageVM(
         try { await FlushSavesAsync(); }
         finally
         {
+            await playback.DisposeAsync();
             audioService.Stop();
             audioService.Dispose();
             loadCancellation?.Dispose();
@@ -180,45 +187,25 @@ public partial class WorkstationPageVM(
     public void RefreshPlayback()
     {
         if (deactivated) return;
-        var snapshot = audioService.GetSnapshot();
+        var snapshot = playback.Latest.Playback;
         PlaybackWarning = snapshot.Warning;
-        var marker = snapshot.Position;
-        var duration = Waveform?.Duration ?? TimeSpan.Zero;
-        var terminal = IsPlaying && !snapshot.IsPlaying && snapshot.Position >= duration && duration > TimeSpan.Zero;
-        if (IsPlaying && !snapshot.IsPlaying && !terminal && snapshot.Error is not null)
-            ResetMarker(snapshot.Position);
-        if (markerClock.IsValid && (snapshot.IsPlaying || terminal))
-        {
-            marker = markerClock.GetPosition(snapshot.Position, duration);
-            // A seek can land between grid boundaries; never step back behind its baseline.
-            if (marker < processedMarker) marker = processedMarker;
-            if (snapshot.IsPlaying)
-            {
-                var ids = new List<long>();
-                foreach (var track in tracks)
-                foreach (var sample in track.Samples)
-                {
-                    var timestamp = TimeSpan.FromMilliseconds(sample.Timestamp);
-                    if ((timestamp > processedMarker || includeMarkerStart && timestamp == processedMarker) &&
-                        timestamp <= marker && sampleEventIds.TryGetValue(sample, out var id)) ids.Add(id);
-                }
-                if (ids.Count > 0) audioService.TriggerSamples(ids);
-                includeMarkerStart = false;
-            }
-            processedMarker = marker;
-        }
         if (markerClock.IsValid)
             SetProperty(ref playbackInterval, markerClock.GetInterval(snapshot.Position), nameof(PlaybackInterval));
-        Position = marker;
+        Position = snapshot.Position;
         IsPlaying = snapshot.IsPlaying;
-        ElapsedText = $"{(int)marker.TotalMinutes:00}:{marker.Seconds:00}.{marker.Milliseconds:000}";
+        ElapsedText = $"{(int)Position.TotalMinutes:00}:{Position.Seconds:00}.{Position.Milliseconds:000}";
         if (!string.IsNullOrWhiteSpace(snapshot.Error)) ErrorMessage = snapshot.Error;
     }
 
-    private void ResetMarker(TimeSpan position)
+    private void OnPlaybackStateChanged()
     {
-        processedMarker = position;
-        includeMarkerStart = true;
+        lock (notificationLock) notifications = Task.WhenAll(notifications, ApplyPlaybackStateAsync());
+    }
+
+    private async Task ApplyPlaybackStateAsync()
+    {
+        try { await uiScheduler.InvokeAsync(() => { if (!deactivated) RefreshPlayback(); }, CancellationToken.None); }
+        catch (Exception error) { System.Diagnostics.Trace.TraceError("Playback presentation failed: {0}", error); }
     }
 
     [RelayCommand(CanExecute = nameof(CanUseTransport))]
@@ -226,7 +213,7 @@ public partial class WorkstationPageVM(
     {
         if (audioService.GetSnapshot().IsPlaying)
         {
-            audioService.Pause();
+            await playback.PauseAsync(CancellationToken.None);
             // Intentional pause preserves traversal, unlike a device-stopped session.
             IsPlaying = false;
         }
@@ -253,12 +240,9 @@ public partial class WorkstationPageVM(
                     !CanPlay || playbackPreparationFailed) return;
                 if (Waveform is not null && audioService.GetSnapshot().Position >= Waveform.Duration)
                 {
-                    audioService.Stop();
-                    ResetMarker(TimeSpan.Zero);
+                    await playback.StopAsync(cancellation.Token);
                 }
-                var start = audioService.GetSnapshot().Position;
-                if (start < processedMarker) ResetMarker(start);
-                audioService.Play();
+                await playback.PlayAsync(cancellation.Token);
             }
             catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { return; }
             catch (Exception error) { ErrorMessage = error.Message; return; }
@@ -271,41 +255,39 @@ public partial class WorkstationPageVM(
     }
 
     [RelayCommand(CanExecute = nameof(CanUseTransport))]
-    private void Stop()
+    private async Task StopAsync()
     {
         pendingPlayCancellation?.Cancel();
         lastGridTarget = null;
         lastGridAudioPosition = null;
-        audioService.Stop();
-        ResetMarker(TimeSpan.Zero);
+        await playback.StopAsync(CancellationToken.None);
         RefreshPlayback();
     }
 
     [RelayCommand(CanExecute = nameof(CanUseTransport))]
-    private void Seek(TimeSpan position)
+    private async Task SeekAsync(TimeSpan position)
     {
         if (!CanUseTransport()) return;
         pendingPlayCancellation?.Cancel();
         lastGridTarget = null;
         lastGridAudioPosition = null;
-        audioService.Seek(position);
-        ResetMarker(audioService.GetSnapshot().Position);
+        await playback.SeekAsync(position, CancellationToken.None);
         RefreshPlayback();
     }
 
     [RelayCommand(CanExecute = nameof(CanUseTransport))]
-    private void NextGridLine() => SeekAdjacentGridLine(true, Subdivision);
+    private Task NextGridLineAsync() => SeekAdjacentGridLineAsync(true, Subdivision);
 
     [RelayCommand(CanExecute = nameof(CanUseTransport))]
-    private void PreviousGridLine() => SeekAdjacentGridLine(false, Subdivision);
+    private Task PreviousGridLineAsync() => SeekAdjacentGridLineAsync(false, Subdivision);
 
     [RelayCommand(CanExecute = nameof(CanUseTransport))]
-    private void NextWholeBeat() => SeekAdjacentGridLine(true, 1);
+    private Task NextWholeBeatAsync() => SeekAdjacentGridLineAsync(true, 1);
 
     [RelayCommand(CanExecute = nameof(CanUseTransport))]
-    private void PreviousWholeBeat() => SeekAdjacentGridLine(false, 1);
+    private Task PreviousWholeBeatAsync() => SeekAdjacentGridLineAsync(false, 1);
 
-    private void SeekAdjacentGridLine(bool forward, int subdivision)
+    private async Task SeekAdjacentGridLineAsync(bool forward, int subdivision)
     {
         if (!CanUseTransport() || Project is null || Waveform is null) return;
         var position = audioService.GetSnapshot().Position;
@@ -317,7 +299,7 @@ public partial class WorkstationPageVM(
             subdivision, position, Waveform.Duration, forward);
         if (target is not null)
         {
-            Seek(target.Value);
+            await SeekAsync(target.Value);
             if (audioService.GetSnapshot().Error is null)
             {
                 lastGridTarget = target.Value;
@@ -530,7 +512,7 @@ public partial class WorkstationPageVM(
         var events = CreatePlaybackEvents();
         try
         {
-            await audioService.UpdateSamplesAsync(path, events, token);
+            await playback.UpdateSamplesAsync(path, events, token);
             var playbackError = audioService.GetSnapshot().Error;
             await CommitAsync(generation, CancellationToken.None, () =>
             {
@@ -640,7 +622,7 @@ public partial class WorkstationPageVM(
             Waveform = null;
             Project = null;
             markerClock = new([], []);
-            ResetMarker(TimeSpan.Zero);
+
             Position = TimeSpan.Zero;
             IsPlaying = false;
             sampleEventIds.Clear();
@@ -649,6 +631,8 @@ public partial class WorkstationPageVM(
         });
         try
         {
+            if (!subscribedToPlayback) { playback.StateChanged += OnPlaybackStateChanged; subscribedToPlayback = true; }
+            await playback.StopAsync(token);
             var source = await sourceService.LoadAsync(projectPath, token);
             var waveform = await audioService.AnalyzeAsync(source.AudioPath, token);
             token.ThrowIfCancellationRequested();
@@ -679,6 +663,7 @@ public partial class WorkstationPageVM(
                     messenger.Register<LoadSampleRequestedMessage>(this, (_, _) => LoadSampleCommand.Execute(null));
                 }
             });
+            await playback.ConfigureAsync(markerClock, waveform.Duration, CreatePlaybackEvents(), token);
             await UpdatePlaybackAsync(projectPath, generation, token);
             if (audioService.GetSnapshot().Error?.StartsWith("Unable to prepare audio:", StringComparison.Ordinal) == true)
                 await CommitAsync(generation, CancellationToken.None, () => Waveform = null);

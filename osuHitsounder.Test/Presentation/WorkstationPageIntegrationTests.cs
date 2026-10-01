@@ -32,7 +32,7 @@ public class WorkstationPageIntegrationTests
                 new ProjectData { Tracks = [track] }))
         };
         var audio = new StubWorkstationAudioService();
-        var vm = new WorkstationPageVM(source, audio, new ImmediateUiScheduler());
+        var vm = new WorkstationPageVM(source, new osuHitsounder.Services.MarkerPlaybackCoordinator(audio, (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
         var page = new WorkstationPage(vm);
         page.SetProjectPath("project.json");
         using var view = new InMemoryView(new Window { Content = page, Width = 640, Height = 480 });
@@ -61,8 +61,7 @@ public class WorkstationPageIntegrationTests
     {
         var completion = new TaskCompletionSource<WorkstationSource>();
         var vm = new WorkstationPageVM(
-            new StubWorkstationSourceService { Load = (_, _) => completion.Task },
-            new StubWorkstationAudioService(), new ImmediateUiScheduler());
+            new StubWorkstationSourceService { Load = (_, _) => completion.Task }, new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
         var page = new WorkstationPage(vm);
         page.SetProjectPath("project.json");
         using var view = new InMemoryView(new Window { Content = page, Width = 640, Height = 480 });
@@ -85,7 +84,7 @@ public class WorkstationPageIntegrationTests
                 new ProjectData { Tracks = [track] }))
         };
         var dialog = new StubTrackRemovalDialogService { Confirm = _ => Task.FromResult(true) };
-        var vm = new WorkstationPageVM(source, new StubWorkstationAudioService(),
+        var vm = new WorkstationPageVM(source, new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)),
             new ImmediateUiScheduler(), trackRemovalDialog: dialog);
         var page = new WorkstationPage(vm);
         page.SetProjectPath("project.json");
@@ -111,7 +110,7 @@ public class WorkstationPageIntegrationTests
             Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav",
                 new ProjectData { Tracks = [track] }))
         };
-        var vm = new WorkstationPageVM(source, new StubWorkstationAudioService(),
+        var vm = new WorkstationPageVM(source, new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)),
             new ImmediateUiScheduler(), trackRemovalDialog: new StubTrackRemovalDialogService());
         var page = new WorkstationPage(vm);
         page.SetProjectPath("project.json");
@@ -137,7 +136,7 @@ public class WorkstationPageIntegrationTests
                 new ProjectData { Tracks = [first, second] }))
         };
         var dialog = new StubTrackRemovalDialogService { Confirm = _ => Task.FromResult(true) };
-        var vm = new WorkstationPageVM(source, new StubWorkstationAudioService(),
+        var vm = new WorkstationPageVM(source, new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)),
             new ImmediateUiScheduler(), trackRemovalDialog: dialog);
         var page = new WorkstationPage(vm);
         page.SetProjectPath("project.json");
@@ -159,8 +158,7 @@ public class WorkstationPageIntegrationTests
     [Test]
     public void PlaybackMarkerIsWhite()
     {
-        var page = new WorkstationPage(new WorkstationPageVM(new StubWorkstationSourceService(),
-            new StubWorkstationAudioService(), new ImmediateUiScheduler()));
+        var page = new WorkstationPage(new WorkstationPageVM(new StubWorkstationSourceService(), new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler()));
         using var view = new InMemoryView(new Window { Content = page, Width = 900, Height = 600 });
         view.UpdateLayout();
         var waveform = (WaveformView)page.FindName("WaveformDisplay");
@@ -171,7 +169,7 @@ public class WorkstationPageIntegrationTests
     public void LoadsWaveformSwitchesTransportIconAndKeepsMinimumZoomScrollable()
     {
         var audio = new StubWorkstationAudioService();
-        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), audio, new ImmediateUiScheduler());
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new osuHitsounder.Services.MarkerPlaybackCoordinator(audio, (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
         var page = new WorkstationPage(vm);
         page.SetProjectPath("project.json");
         var window = new Window { Content = page, Width = 900, Height = 600, ShowInTaskbar = false };
@@ -181,7 +179,7 @@ public class WorkstationPageIntegrationTests
 
         var play = (BalloonButton)page.FindName("PlayPauseButton");
         Assert.That(play.ButtonIcon, Is.SameAs(Application.Current.FindResource("MediaPlay")));
-        vm.PlayPauseCommand.Execute(null);
+        osuHitsounder.Test.Presentation.UiTestPump.Run(vm.PlayPauseCommand.ExecuteAsync(null));
         view.UpdateLayout();
         Assert.That(play.ButtonIcon, Is.SameAs(Application.Current.FindResource("MediaPause")));
 
@@ -200,7 +198,7 @@ public class WorkstationPageIntegrationTests
     [Test]
     public void ExposesTrackListFooterAndAccessibleViewport()
     {
-        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new StubWorkstationAudioService(),
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)),
             new ImmediateUiScheduler(), new StubSampleFileService(["a.wav"]));
         var page = new WorkstationPage(vm);
         page.SetProjectPath("project.json");
@@ -221,7 +219,7 @@ public class WorkstationPageIntegrationTests
     [TestCase(FlowDirection.RightToLeft)]
     public void AddedTrackCardUsesWaveformViewportAndOffset(FlowDirection direction)
     {
-        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new StubWorkstationAudioService(),
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)),
             new ImmediateUiScheduler(), new StubSampleFileService(["a.wav"]));
         var page = new WorkstationPage(vm);
         page.SetProjectPath("project.json");
@@ -247,7 +245,7 @@ public class WorkstationPageIntegrationTests
     [Test]
     public void ReusedCardControlsReadCurrentTrackWithoutEditingPreviousTrack()
     {
-        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new StubWorkstationAudioService(),
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)),
             new ImmediateUiScheduler(), new StubSampleFileService(["a.wav"]));
         var page = new WorkstationPage(vm);
         page.SetProjectPath("project.json");
@@ -286,7 +284,7 @@ public class WorkstationPageIntegrationTests
             File.WriteAllBytes(Path.Combine(samples.FullName, "a.wav"), [1]);
             var sourcePath = Path.Combine(root.FullName, "b.mp3");
             File.WriteAllBytes(sourcePath, [2]);
-            var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new StubWorkstationAudioService(),
+            var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)),
                 new UiScheduler(Dispatcher.CurrentDispatcher), new SampleFileService(), new StubSampleFileDialogService(sourcePath),
                 new ProjectFileService(root.FullName), new WeakReferenceMessenger());
             var page = new WorkstationPage(vm);
@@ -312,7 +310,7 @@ public class WorkstationPageIntegrationTests
     [Test]
     public void ManyTracksKeepOnlyViewportCardsRealized()
     {
-        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new StubWorkstationAudioService(),
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)),
             new ImmediateUiScheduler(), new StubSampleFileService(["a.wav"]));
         var page = new WorkstationPage(vm);
         page.SetProjectPath("project.json");
@@ -334,7 +332,7 @@ public class WorkstationPageIntegrationTests
         {
             Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav", new ProjectData { Tracks = [track] }))
         };
-        var vm = new WorkstationPageVM(source, new StubWorkstationAudioService(), new ImmediateUiScheduler());
+        var vm = new WorkstationPageVM(source, new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
         var page = new WorkstationPage(vm);
         page.SetProjectPath("project.json");
         var window = new Window { Content = page, Width = 880, Height = 600 };
@@ -351,7 +349,7 @@ public class WorkstationPageIntegrationTests
     [Test]
     public void TrackGridFollowsWaveformZoomAndScroll()
     {
-        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new StubWorkstationAudioService(),
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)),
             new ImmediateUiScheduler(), new StubSampleFileService(["a.wav"]));
         var page = new WorkstationPage(vm);
         page.SetProjectPath("project.json");
@@ -381,7 +379,7 @@ public class WorkstationPageIntegrationTests
         {
             Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav", project))
         };
-        var vm = new WorkstationPageVM(source, new StubWorkstationAudioService(),
+        var vm = new WorkstationPageVM(source, new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)),
             new ImmediateUiScheduler(), new StubSampleFileService(["kick.wav"]));
         var page = new WorkstationPage(vm);
         page.SetProjectPath("project.json");
@@ -426,7 +424,7 @@ public class WorkstationPageIntegrationTests
     [Test]
     public void FooterScrollBarTracksAndControlsWaveformViewport()
     {
-        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new StubWorkstationAudioService(), new ImmediateUiScheduler());
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
         var page = new WorkstationPage(vm);
         page.SetProjectPath("project.json");
         using var view = new InMemoryView(new Window { Content = page, Width = 900, Height = 600 });
@@ -484,7 +482,7 @@ public class WorkstationPageIntegrationTests
     public void WaveformSeekCommandUpdatesBoundMarkerPosition()
     {
         var audio = new StubWorkstationAudioService();
-        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), audio, new ImmediateUiScheduler());
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new osuHitsounder.Services.MarkerPlaybackCoordinator(audio, (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
         var page = new WorkstationPage(vm);
         page.SetProjectPath("project.json");
         var window = new Window { Content = page, Width = 900, Height = 600 };
@@ -506,7 +504,7 @@ public class WorkstationPageIntegrationTests
     public void SubdivisionSliderIsAccessibleAndHasNoPlaybackEffect()
     {
         var audio = new StubWorkstationAudioService();
-        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), audio, new ImmediateUiScheduler());
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new osuHitsounder.Services.MarkerPlaybackCoordinator(audio, (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
         var page = new WorkstationPage(vm);
         page.SetProjectPath("project.json");
         var window = new Window { Content = page, Width = 640, Height = 480, FlowDirection = FlowDirection.RightToLeft };
@@ -532,7 +530,7 @@ public class WorkstationPageIntegrationTests
     [Test]
     public void ZoomButtonsAndSelectorSynchronize()
     {
-        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new StubWorkstationAudioService(), new ImmediateUiScheduler());
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
         var page = new WorkstationPage(vm);
         page.SetProjectPath("project.json");
         var window = new Window { Content = page, Width = 900, Height = 600 };
@@ -564,14 +562,14 @@ public class WorkstationPageIntegrationTests
     public void ZoomKeepsVisiblePlaybackMarkerAtItsViewportPosition()
     {
         var audio = new StubWorkstationAudioService();
-        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), audio, new ImmediateUiScheduler());
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new osuHitsounder.Services.MarkerPlaybackCoordinator(audio, (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
         var page = new WorkstationPage(vm);
         page.SetProjectPath("project.json");
         var window = new Window { Content = page, Width = 900, Height = 600 };
         using var view = new InMemoryView(window);
         UiTestPump.Run(page.LoadCompletion);
         view.UpdateLayout();
-        vm.SeekCommand.Execute(TimeSpan.FromSeconds(6));
+        osuHitsounder.Test.Presentation.UiTestPump.Run(vm.SeekCommand.ExecuteAsync(TimeSpan.FromSeconds(6)));
         view.UpdateLayout();
 
         var scroll = (ScrollViewer)page.FindName("WaveformScrollViewer");
@@ -598,7 +596,7 @@ public class WorkstationPageIntegrationTests
     public void ZoomCentersOffscreenMarkerClampsBoundariesAndCoalescesChanges()
     {
         var audio = new StubWorkstationAudioService();
-        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), audio, new ImmediateUiScheduler());
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new osuHitsounder.Services.MarkerPlaybackCoordinator(audio, (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
         var page = new WorkstationPage(vm);
         page.SetProjectPath("project.json");
         var window = new Window { Content = page, Width = 900, Height = 600 };
@@ -613,7 +611,7 @@ public class WorkstationPageIntegrationTests
 
         view.UpdateLayout();
         scroll.ScrollToLeftEnd();
-        vm.SeekCommand.Execute(TimeSpan.FromSeconds(8));
+        osuHitsounder.Test.Presentation.UiTestPump.Run(vm.SeekCommand.ExecuteAsync(TimeSpan.FromSeconds(8)));
         view.UpdateLayout();
         Assert.That(ScreenX(), Is.GreaterThan(scroll.ViewportWidth));
 
@@ -621,12 +619,12 @@ public class WorkstationPageIntegrationTests
         view.UpdateLayout();
         Assert.That(ScreenX(), Is.EqualTo(scroll.ViewportWidth / 2).Within(1));
 
-        vm.SeekCommand.Execute(TimeSpan.Zero);
+        osuHitsounder.Test.Presentation.UiTestPump.Run(vm.SeekCommand.ExecuteAsync(TimeSpan.Zero));
         vm.ZoomOutCommand.Execute(null);
         view.UpdateLayout();
         Assert.That(scroll.HorizontalOffset, Is.Zero.Within(1));
 
-        vm.SeekCommand.Execute(TimeSpan.FromSeconds(10));
+        osuHitsounder.Test.Presentation.UiTestPump.Run(vm.SeekCommand.ExecuteAsync(TimeSpan.FromSeconds(10)));
         vm.ZoomInCommand.Execute(null);
         view.UpdateLayout();
         Assert.That(scroll.HorizontalOffset, Is.EqualTo(scroll.ScrollableWidth).Within(1));
@@ -636,7 +634,7 @@ public class WorkstationPageIntegrationTests
         Assert.That(vm.ZoomFactor, Is.EqualTo(16));
         Assert.That(scroll.HorizontalOffset, Is.EqualTo(scroll.ScrollableWidth).Within(1));
 
-        vm.SeekCommand.Execute(TimeSpan.FromSeconds(6));
+        osuHitsounder.Test.Presentation.UiTestPump.Run(vm.SeekCommand.ExecuteAsync(TimeSpan.FromSeconds(6)));
         scroll.ScrollToHorizontalOffset(vm.Position.TotalSeconds / vm.Waveform!.Duration.TotalSeconds
             * waveform.ActualWidth - scroll.ViewportWidth / 2);
         view.UpdateLayout();
@@ -651,7 +649,7 @@ public class WorkstationPageIntegrationTests
     public void ModifierWheelStepsZoomAndSubdivisionWithoutSeeking()
     {
         var audio = new StubWorkstationAudioService();
-        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), audio, new ImmediateUiScheduler());
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new osuHitsounder.Services.MarkerPlaybackCoordinator(audio, (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
         var page = new WorkstationPage(vm);
         page.SetProjectPath("project.json");
         var window = new Window { Content = page, Width = 900, Height = 600 };
@@ -679,7 +677,7 @@ public class WorkstationPageIntegrationTests
     public void SpaceTogglesPlaybackOncePerPressAndPreservesEditingInputs()
     {
         var audio = new StubWorkstationAudioService();
-        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), audio, new ImmediateUiScheduler());
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new osuHitsounder.Services.MarkerPlaybackCoordinator(audio, (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
         var page = new WorkstationPage(vm);
         page.SetProjectPath("project.json");
         using var view = new InMemoryView(new Window { Content = page, Width = 900, Height = 600 });
@@ -713,7 +711,7 @@ public class WorkstationPageIntegrationTests
             Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav",
                 new ProjectData { Offsets = [0], BPMs = [120] }))
         };
-        var vm = new WorkstationPageVM(source, audio, new ImmediateUiScheduler());
+        var vm = new WorkstationPageVM(source, new osuHitsounder.Services.MarkerPlaybackCoordinator(audio, (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
         var page = new WorkstationPage(vm);
         page.SetProjectPath("project.json");
         using var view = new InMemoryView(new Window { Content = page, Width = 900, Height = 600 });
@@ -744,7 +742,7 @@ public class WorkstationPageIntegrationTests
             Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav",
                 new ProjectData { Offsets = [0, 800], BPMs = [120, 60] }))
         };
-        var vm = new WorkstationPageVM(source, audio, new ImmediateUiScheduler());
+        var vm = new WorkstationPageVM(source, new osuHitsounder.Services.MarkerPlaybackCoordinator(audio, (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
         var page = new WorkstationPage(vm);
         page.SetProjectPath("project.json");
         using var view = new InMemoryView(new Window { Content = page, Width = 900, Height = 600 });
@@ -783,7 +781,7 @@ public class WorkstationPageIntegrationTests
             Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav",
                 new ProjectData { Offsets = [0], BPMs = [120] }))
         };
-        var vm = new WorkstationPageVM(source, audio, new ImmediateUiScheduler());
+        var vm = new WorkstationPageVM(source, new osuHitsounder.Services.MarkerPlaybackCoordinator(audio, (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
         var page = new WorkstationPage(vm);
         page.SetProjectPath("project.json");
         using var view = new InMemoryView(new Window { Content = page, Width = 900, Height = 600,
@@ -806,7 +804,7 @@ public class WorkstationPageIntegrationTests
     [Test]
     public void SpaceIsRejectedUntilLoadedAndAfterDeactivation()
     {
-        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new StubWorkstationAudioService(), new ImmediateUiScheduler());
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
         var page = new WorkstationPage(vm);
         Assert.That(page.HandlePlaybackKey(Key.Space, ModifierKeys.None, false, page), Is.False);
 
@@ -820,7 +818,7 @@ public class WorkstationPageIntegrationTests
     [Test]
     public void ModifierWheelAccumulatesPerModeConsumesBoundsAndIgnoresOtherModifiers()
     {
-        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new StubWorkstationAudioService(), new ImmediateUiScheduler());
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
         var unloadedPage = new WorkstationPage(vm);
         Assert.That(unloadedPage.HandleWaveformWheel(ModifierKeys.Control, 120), Is.False);
 
@@ -861,7 +859,7 @@ public class WorkstationPageIntegrationTests
     [Test]
     public void ControlShiftWheelChangesOnlyTrackLaneHeight()
     {
-        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new StubWorkstationAudioService(),
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)),
             new ImmediateUiScheduler());
         var page = new WorkstationPage(vm);
         page.SetProjectPath("project.json");
@@ -887,7 +885,7 @@ public class WorkstationPageIntegrationTests
     public void ShiftWheelPansWaveformWithoutSeekingAndConsumesBounds()
     {
         var audio = new StubWorkstationAudioService();
-        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), audio, new ImmediateUiScheduler());
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new osuHitsounder.Services.MarkerPlaybackCoordinator(audio, (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
         var page = new WorkstationPage(vm);
         page.SetProjectPath("project.json");
         using var view = new InMemoryView(new Window { Content = page, Width = 900, Height = 600 });
@@ -941,7 +939,7 @@ public class WorkstationPageIntegrationTests
         PresentationTraceSources.DataBindingSource.Switch.Level = SourceLevels.Error;
         try
         {
-            var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new StubWorkstationAudioService(), new ImmediateUiScheduler());
+            var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
             var page = new WorkstationPage(vm);
             page.SetProjectPath("project.json");
             var window = new Window { Content = page, Width = width, Height = height, FlowDirection = flowDirection };
@@ -988,7 +986,7 @@ public class WorkstationPageIntegrationTests
     {
         var completion = new TaskCompletionSource<WorkstationSource>();
         var source = new StubWorkstationSourceService { Load = (_, _) => completion.Task };
-        var vm = new WorkstationPageVM(source, new StubWorkstationAudioService(), new ImmediateUiScheduler());
+        var vm = new WorkstationPageVM(source, new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
         var page = new WorkstationPage(vm);
         page.SetProjectPath("project.json");
         var window = new Window { Content = page, Width = 640, Height = 480 };

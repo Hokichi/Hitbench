@@ -360,7 +360,7 @@ public class HomePageIntegrationTests
         {
             creations++;
             return new WorkstationPage(new WorkstationPageVM(
-                source, new StubWorkstationAudioService(), new ImmediateUiScheduler()));
+                source, new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler()));
         }, vm, new StubAppSettingsService());
         using var view = new InMemoryView(window);
         try

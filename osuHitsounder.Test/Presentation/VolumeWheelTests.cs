@@ -183,8 +183,7 @@ public class VolumeWheelTests
     [Test]
     public void OverlayStaysReachableAtNarrowWidthAndInheritsRightToLeftFlow()
     {
-        var vm = new WorkstationPageVM(new StubWorkstationSourceService(),
-            new StubWorkstationAudioService(), new ImmediateUiScheduler());
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
         var page = new WorkstationPage(vm) { FlowDirection = FlowDirection.RightToLeft };
         page.SetProjectPath("project.json");
         using var view = new InMemoryView(new Window { Content = page, Width = 180, Height = 600 });
@@ -206,8 +205,7 @@ public class VolumeWheelTests
 
     private static (WorkstationPage Page, WorkstationPageVM ViewModel, InMemoryView View) CreateLoadedPage()
     {
-        var vm = new WorkstationPageVM(new StubWorkstationSourceService(),
-            new StubWorkstationAudioService(), new ImmediateUiScheduler());
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
         var page = new WorkstationPage(vm);
         page.SetProjectPath("project.json");
         var view = new InMemoryView(new Window { Content = page, Width = 900, Height = 600 });

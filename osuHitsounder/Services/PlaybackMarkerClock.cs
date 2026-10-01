@@ -17,6 +17,23 @@ public sealed class PlaybackMarkerClock
 
     public bool IsValid { get; }
 
+    public TimeSpan GetDelayToNextBoundary(TimeSpan position)
+    {
+        var segment = GetSegment(position);
+        var origin = (long)segment.Offset * TimeSpan.TicksPerMillisecond;
+        var interval = IntervalTicks(segment.Bpm);
+        var index = Math.Floor((position.Ticks - origin) / interval) + 1;
+        var next = origin + (long)Math.Round(index * interval);
+        if (next <= position.Ticks) next = origin + (long)Math.Round((index + 1) * interval);
+        foreach (var candidate in segments)
+            if (candidate.Offset * TimeSpan.TicksPerMillisecond > position.Ticks)
+            {
+                next = Math.Min(next, candidate.Offset * TimeSpan.TicksPerMillisecond);
+                break;
+            }
+        return TimeSpan.FromTicks(Math.Max(1, next - position.Ticks));
+    }
+
     public TimeSpan GetInterval(TimeSpan position)
     {
         var segment = GetSegment(position);

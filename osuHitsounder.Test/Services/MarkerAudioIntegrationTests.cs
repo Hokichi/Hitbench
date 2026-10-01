@@ -25,7 +25,7 @@ public class MarkerAudioIntegrationTests
                 }]
             }))
         };
-        var vm = new WorkstationPageVM(source, audio, new ImmediateUiScheduler());
+        var vm = new WorkstationPageVM(source, new osuHitsounder.Services.MarkerPlaybackCoordinator(audio, (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
         try
         {
             await vm.LoadAsync(project.ProjectPath, CancellationToken.None);
@@ -34,10 +34,11 @@ public class MarkerAudioIntegrationTests
             players[^1].Provider!.ToSampleProvider().Read(output, 0, output.Length);
             Assert.That(output, Is.All.EqualTo(.2f));
             players[^1].Position = 600 * 8;
+            await StubWorkstationAudioService.WaitUntilAsync(() => { vm.RefreshPlayback(); return vm.Position.TotalMilliseconds >= 10; });
             vm.RefreshPlayback();
             Assert.That(ReadFrame(players[^1]), Is.EqualTo(new[] { .6f, .6f }).Within(.0001));
             vm.RefreshPlayback();
-            vm.SeekCommand.Execute(TimeSpan.Zero);
+            await vm.SeekCommand.ExecuteAsync(TimeSpan.Zero);
             Assert.That(ReadFrame(players[^1]), Is.EqualTo(new[] { .2f,.2f }).Within(.0001));
         }
         finally { await vm.DeactivateAsync(); }
