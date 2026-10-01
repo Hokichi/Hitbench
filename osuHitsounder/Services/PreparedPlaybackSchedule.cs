@@ -4,6 +4,9 @@ public sealed class PreparedPlaybackSchedule
 {
     public static PreparedPlaybackSchedule Empty { get; } = new([]);
     private readonly PreparedSampleEvent[] events;
+    private readonly Dictionary<long, PreparedSampleEvent> byId;
+    public bool TryGetEvent(long id, [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out PreparedSampleEvent? placement) =>
+        byId.TryGetValue(id, out placement);
     public ReadOnlySpan<PreparedSampleEvent> Events => events;
 
     public PreparedPlaybackSchedule(IReadOnlyList<PreparedSampleEvent> events)
@@ -20,5 +23,6 @@ public sealed class PreparedPlaybackSchedule
         }
         Array.Sort(this.events, (a, b) => a.StartFrame != b.StartFrame
             ? a.StartFrame.CompareTo(b.StartFrame) : a.Id.CompareTo(b.Id));
+        byId = this.events.ToDictionary(item => item.Id);
     }
 }

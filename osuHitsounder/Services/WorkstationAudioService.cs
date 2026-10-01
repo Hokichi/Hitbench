@@ -233,10 +233,9 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
 
     private void DrainTriggers()
     {
-        var available = preparedEvents.Events.ToArray().Select(item => item.Id).ToHashSet();
-        if (!preparing) pendingTriggers.IntersectWith(available);
+        if (!preparing) pendingTriggers.RemoveWhere(id => !preparedEvents.TryGetEvent(id, out _));
         if (player?.PlaybackState != PlaybackState.Playing || mixer is null) return;
-        var ready = pendingTriggers.Where(available.Contains).ToArray();
+        var ready = pendingTriggers.Where(id => preparedEvents.TryGetEvent(id, out _)).ToArray();
         mixer.TriggerSamples(ready);
         triggeredIds.UnionWith(ready);
         pendingTriggers.ExceptWith(ready);

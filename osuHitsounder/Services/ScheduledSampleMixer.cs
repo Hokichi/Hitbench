@@ -7,6 +7,8 @@ public sealed class ScheduledSampleMixer : ISampleProvider
     private readonly DecodedAudio song;
     private readonly object sync = new();
     private readonly Dictionary<long, long> activations = [];
+    private readonly List<(long Frame, long Id)> active = [];
+    private readonly List<(long Frame, long Id)> completed = [];
     private PreparedPlaybackSchedule schedule = PreparedPlaybackSchedule.Empty;
     private PlaybackGains gains = new(1, 1, 1);
     private long frame;
@@ -32,9 +34,12 @@ public sealed class ScheduledSampleMixer : ISampleProvider
         lock (sync)
         {
             schedule = value;
-            var ids = value.Events.ToArray().Select(item => item.Id).ToHashSet();
-            foreach (var id in activations.Keys.Where(id => !ids.Contains(id)).ToArray())
+            foreach (var id in activations.Keys.Where(id => !value.TryGetEvent(id, out _)).ToArray())
                 activations.Remove(id);
+            active.Clear();
+            foreach (var (id, start) in activations)
+                if (value.TryGetEvent(id, out var item) && start + item.Audio.FrameCount > frame)
+                    AddActive(item.StartFrame, id);
         }
     }
 
@@ -44,8 +49,9 @@ public sealed class ScheduledSampleMixer : ISampleProvider
         lock (sync)
         {
             var start = frame + (pending ? 1 : 0);
-            foreach (var item in schedule.Events)
-                if (placementIds.Contains(item.Id)) activations.TryAdd(item.Id, start);
+            foreach (var id in placementIds)
+                if (schedule.TryGetEvent(id, out var item) && activations.TryAdd(id, start))
+                    AddActive(item.StartFrame, id);
         }
     }
 
@@ -54,9 +60,9 @@ public sealed class ScheduledSampleMixer : ISampleProvider
         lock (sync)
         {
             var voices = new List<SampleVoiceActivation>();
-            foreach (var item in schedule.Events)
-                if (activations.TryGetValue(item.Id, out var start) && start + item.Audio.FrameCount > consumedFrame)
-                    voices.Add(new SampleVoiceActivation(item.Id, start));
+            foreach (var (id, start) in activations)
+                if (schedule.TryGetEvent(id, out var item) && start + item.Audio.FrameCount > consumedFrame)
+                    voices.Add(new SampleVoiceActivation(id, start));
             return voices.ToArray();
         }
     }
@@ -67,14 +73,19 @@ public sealed class ScheduledSampleMixer : ISampleProvider
         lock (sync)
         {
             foreach (var voice in voices)
-                foreach (var item in schedule.Events)
-                    if (item.Id == voice.Id)
+                    if (schedule.TryGetEvent(voice.Id, out var item))
                     {
                         _ = checked(voice.StartFrame + item.Audio.FrameCount);
-                        activations.TryAdd(voice.Id, voice.StartFrame);
-                        break;
+                        if (activations.TryAdd(voice.Id, voice.StartFrame)) AddActive(item.StartFrame, item.Id);
                     }
         }
+    }
+
+    private void AddActive(long start, long id)
+    {
+        var key = (start, id);
+        var index = active.BinarySearch(key);
+        if (index < 0) active.Insert(~index, key);
     }
 
     public void SetVolumes(float song, float samples, float application) =>
@@ -129,10 +140,12 @@ public sealed class ScheduledSampleMixer : ISampleProvider
         var source = song.Samples.Slice(checked((int)(start * 2)), output.Length);
         for (var i = 0; i < output.Length; i++) output[i] = Finite(source[i]) * volume.Song;
         var end = start + output.Length / 2;
-        foreach (var item in current.Events)
+        completed.Clear();
+        foreach (var key in active)
         {
-            if (!activations.TryGetValue(item.Id, out var voiceStart)) continue;
+            if (!current.TryGetEvent(key.Id, out var item) || !activations.TryGetValue(key.Id, out var voiceStart)) continue;
             var voiceEnd = checked(voiceStart + item.Audio.FrameCount);
+            if (voiceEnd <= end) completed.Add(key);
             if (voiceStart >= end || voiceEnd <= start) continue;
             var overlap = Math.Max(start, voiceStart);
             var length = checked((int)((Math.Min(end, voiceEnd) - overlap) * 2));
@@ -141,9 +154,12 @@ public sealed class ScheduledSampleMixer : ISampleProvider
             var gain = item.Gain * volume.Samples;
             for (var i = 0; i < length; i++) output[target + i] += Finite(input[i]) * gain;
         }
+        foreach (var key in completed) active.Remove(key);
+        // Keep activation history until session reset: buffered-but-unheard tails and duplicate IDs still need it.
         for (var i = 0; i < output.Length; i++) output[i] = Math.Clamp(Finite(output[i] * volume.Application), -1, 1);
     }
 
     private static float Finite(float value) => float.IsFinite(value) ? value : 0;
     private static float Normalize(float value) => Math.Clamp(Finite(value), 0, 1);
 }
+
