@@ -25,7 +25,8 @@ public sealed class StubWorkstationAudioService : IWorkstationAudioService
     private readonly List<IReadOnlyList<long>> triggeredSamples = [];
     public IReadOnlyList<IReadOnlyList<long>> TriggeredSamples { get { lock(sync) return triggeredSamples.ToArray(); } }
     public Func<CancellationToken, Task>? PrepareSamplesAsync { get; set; }
-    public void TriggerSamples(IReadOnlyList<long> placementIds) { lock(sync) triggeredSamples.Add(placementIds.ToArray()); }
+    public Action<IReadOnlyList<long>>? Triggering { get; set; }
+    public void TriggerSamples(IReadOnlyList<long> placementIds) { Triggering?.Invoke(placementIds); lock(sync) triggeredSamples.Add(placementIds.ToArray()); }
     public Task<WaveformData> AnalyzeAsync(string audioPath, CancellationToken token) => Analyze(audioPath, token);
     public void Open(string audioPath) => OpenedPath = audioPath;
     public void Play() => Snapshot = Snapshot with { IsPlaying = true };

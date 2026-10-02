@@ -22,7 +22,11 @@ public partial class WorkstationPage : UserControl
     public double TimelineViewportWidth { get => (double)GetValue(TimelineViewportWidthProperty); set => SetValue(TimelineViewportWidthProperty, value); }
     public double TimelineHorizontalOffset { get => (double)GetValue(TimelineHorizontalOffsetProperty); set => SetValue(TimelineHorizontalOffsetProperty, value); }
     private readonly WorkstationPageVM viewModel;
-    private readonly DispatcherTimer playbackTimer;
+    private bool renderingSubscribed;
+    private Window? ownerWindow;
+    private TimeSpan lastPresentationFrame = TimeSpan.MinValue;
+    private (int Generation, Size Size, double Width, double Viewport)? readinessCandidate;
+    private readonly TaskCompletionSource presentationReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private bool playbackReady;
     private string? projectPath;
     private bool loadStarted;
@@ -38,8 +42,7 @@ public partial class WorkstationPage : UserControl
         this.viewModel = viewModel;
         InitializeComponent();
         DataContext = viewModel;
-        playbackTimer = new DispatcherTimer(DispatcherPriority.Normal, Dispatcher);
-        playbackTimer.Tick += OnPlaybackTick;
+
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
         IsVisibleChanged += OnPlaybackVisibilityChanged;
@@ -49,6 +52,7 @@ public partial class WorkstationPage : UserControl
     }
 
     public Task LoadCompletion { get; private set; } = Task.CompletedTask;
+    internal Task PlaybackInputCompletion { get; private set; } = Task.CompletedTask;
 
     public void SetProjectPath(string value)
     {
@@ -61,6 +65,7 @@ public partial class WorkstationPage : UserControl
     {
         if (deactivationStarted) return LoadCompletion;
         deactivationStarted = true;
+        presentationReady.TrySetResult();
         UpdatePlaybackRefreshSubscription();
         LoadCompletion = DeactivateCoreAsync();
         return LoadCompletion;
@@ -70,6 +75,12 @@ public partial class WorkstationPage : UserControl
     {
         if (loadStarted || projectPath is null) return;
         loadStarted = true;
+        (System.Windows.Automation.Peers.UIElementAutomationPeer.FromElement(LoadingProjectText) ??
+            System.Windows.Automation.Peers.UIElementAutomationPeer.CreatePeerForElement(LoadingProjectText))?
+            .RaiseAutomationEvent(System.Windows.Automation.Peers.AutomationEvents.LiveRegionChanged);
+        ownerWindow = Window.GetWindow(this);
+        if (ownerWindow is not null) ownerWindow.StateChanged += OnOwnerStateChanged;
+        UpdatePlaybackRefreshSubscription();
         LoadCompletion = LoadCoreAsync(projectPath);
         try { await LoadCompletion; }
         catch (OperationCanceledException) { }
@@ -77,7 +88,12 @@ public partial class WorkstationPage : UserControl
 
     private async Task LoadCoreAsync(string path)
     {
+        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Background);
+        if (deactivationStarted) return;
         await viewModel.LoadAsync(path, CancellationToken.None);
+        UpdatePlaybackRefreshSubscription();
+        if (viewModel.LoadPhase == osuHitsounder.Services.ProjectLoadPhase.AwaitingPresentation)
+            await presentationReady.Task;
         if (!deactivationStarted && viewModel.Waveform is not null)
         {
             playbackReady = true;
@@ -95,10 +111,10 @@ public partial class WorkstationPage : UserControl
     private async Task DeactivateCoreAsync()
     {
         DismissVolumeOverlay();
-        try { await viewModel.DeactivateAsync(); }
+        try { await viewModel.DeactivateAsync(); await PlaybackInputCompletion; }
         finally
         {
-            playbackTimer.Tick -= OnPlaybackTick;
+            if (ownerWindow is not null) ownerWindow.StateChanged -= OnOwnerStateChanged;
             Loaded -= OnLoaded;
             Unloaded -= OnUnloaded;
             IsVisibleChanged -= OnPlaybackVisibilityChanged;
@@ -111,24 +127,49 @@ public partial class WorkstationPage : UserControl
         }
     }
 
-    internal void OnPlaybackTick(object? sender, EventArgs e)
+    internal bool IsPlaybackRefreshSubscribed => renderingSubscribed;
+
+    private void OnRendering(object? sender, EventArgs e)
     {
-        if (playbackTimer.IsEnabled && playbackReady && !deactivationStarted && viewModel.IsPlaying)
-            viewModel.RefreshPlayback();
+        if (e is RenderingEventArgs frame) ProcessPresentationFrame(frame.RenderingTime);
     }
 
-    internal TimeSpan PlaybackTimerInterval => playbackTimer.Interval;
-    internal bool IsPlaybackTimerEnabled => playbackTimer.IsEnabled;
+    internal void ProcessPresentationFrame(TimeSpan frameTime)
+    {
+        if (deactivationStarted || !IsVisible || ownerWindow?.WindowState == WindowState.Minimized || frameTime == lastPresentationFrame) return;
+        lastPresentationFrame = frameTime;
+        if (viewModel.LoadPhase == osuHitsounder.Services.ProjectLoadPhase.AwaitingPresentation)
+        {
+            if (!IsMeasureValid || !IsArrangeValid || WaveformScrollViewer.ViewportWidth <= 0 ||
+                !WaveformDisplay.IsMeasureValid || !WaveformDisplay.IsArrangeValid || !TrackList.IsArrangeValid)
+            { readinessCandidate = null; return; }
+            WaveformDisplay.PrepareDrawing();
+            PrepareTrackDrawings(TrackList);
+            var candidate = (viewModel.LoadGeneration, RenderSize, WaveformDisplay.ActualWidth, WaveformScrollViewer.ViewportWidth);
+            if (readinessCandidate != candidate) { readinessCandidate = candidate; return; }
+            viewModel.AcknowledgePresentationReady(viewModel.LoadGeneration);
+            playbackReady = true;
+            presentationReady.TrySetResult();
+        }
+        if (playbackReady && viewModel.IsPlaying) viewModel.RefreshPlayback();
+        UpdatePlaybackRefreshSubscription();
+    }
 
     internal void UpdatePlaybackRefreshSubscription()
     {
-        var interval = viewModel.PlaybackInterval;
-        if (interval > TimeSpan.Zero) playbackTimer.Interval = interval;
-        playbackTimer.IsEnabled = playbackReady && !deactivationStarted && viewModel.IsPlaying && interval > TimeSpan.Zero;
+        var subscribe = loadStarted && !deactivationStarted && IsVisible && ownerWindow?.WindowState != WindowState.Minimized &&
+            (viewModel.IsLoading || viewModel.IsPlaying);
+        if (subscribe == renderingSubscribed) return;
+        renderingSubscribed = subscribe;
+        if (subscribe) CompositionTarget.Rendering += OnRendering;
+        else CompositionTarget.Rendering -= OnRendering;
     }
 
-    private void OnPlaybackVisibilityChanged(object sender, DependencyPropertyChangedEventArgs e)
+    private void OnOwnerStateChanged(object? sender, EventArgs e) => RefreshVisibility();
+    private void OnPlaybackVisibilityChanged(object sender, DependencyPropertyChangedEventArgs e) => RefreshVisibility();
+    private void RefreshVisibility()
     {
+        readinessCandidate = null;
         if (playbackReady && !deactivationStarted && IsVisible) viewModel.RefreshPlayback();
         UpdatePlaybackRefreshSubscription();
     }
@@ -263,7 +304,7 @@ public partial class WorkstationPage : UserControl
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(WorkstationPageVM.IsPlaying) or nameof(WorkstationPageVM.PlaybackInterval))
+        if (e.PropertyName is nameof(WorkstationPageVM.IsPlaying) or nameof(WorkstationPageVM.LoadPhase))
             UpdatePlaybackRefreshSubscription();
         if (e.PropertyName == nameof(WorkstationPageVM.ZoomFactor)) ApplyPendingZoomAnchor();
     }
@@ -335,9 +376,25 @@ public partial class WorkstationPage : UserControl
             ? key == Key.Left ? viewModel.PreviousWholeBeatCommand : viewModel.NextWholeBeatCommand
             : key == Key.Left ? viewModel.PreviousGridLineCommand : viewModel.NextGridLineCommand;
         if (!command.CanExecute(null)) return false;
-        command.Execute(null);
-        RevealPlaybackPosition();
+        PlaybackInputCompletion = RevealAfterNavigationAsync(command.ExecuteAsync(null));
         return true;
+    }
+
+    private static void PrepareTrackDrawings(DependencyObject parent)
+    {
+        if (parent is BeatGridView grid) grid.PrepareDrawing();
+        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(parent); index++)
+            PrepareTrackDrawings(VisualTreeHelper.GetChild(parent, index));
+    }
+
+    private async Task RevealAfterNavigationAsync(Task navigation)
+    {
+        try
+        {
+            await navigation;
+            if (!deactivationStarted) RevealPlaybackPosition();
+        }
+        catch (Exception error) { System.Diagnostics.Trace.TraceError("Playback navigation failed: {0}", error); }
     }
 
     private static bool IsNativeArrowInput(DependencyObject? origin)

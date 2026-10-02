@@ -29,6 +29,7 @@ public class MarkerAudioIntegrationTests
         try
         {
             await vm.LoadAsync(project.ProjectPath, CancellationToken.None);
+            vm.AcknowledgePresentationReady(vm.LoadGeneration);
             await vm.PlayPauseCommand.ExecuteAsync(null);
             var output = new float[1200];
             players[^1].Provider!.ToSampleProvider().Read(output, 0, output.Length);

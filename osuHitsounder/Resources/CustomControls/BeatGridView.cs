@@ -24,8 +24,9 @@ public sealed class BeatGridView : FrameworkElement
     public static readonly DependencyProperty CanPlaceSamplesProperty = DependencyProperty.Register(nameof(CanPlaceSamples), typeof(bool), typeof(BeatGridView), new FrameworkPropertyMetadata(false, OnCanPlaceChanged));
     public static readonly DependencyProperty HoverBrushProperty = DependencyProperty.Register(nameof(HoverBrush), typeof(Brush), typeof(BeatGridView), RenderMetadata());
     public static readonly DependencyProperty MarkerBrushProperty = DependencyProperty.Register(nameof(MarkerBrush), typeof(Brush), typeof(BeatGridView), RenderMetadata());
-    public static readonly DependencyProperty PositionProperty = DependencyProperty.Register(nameof(Position), typeof(TimeSpan), typeof(BeatGridView),
-        new FrameworkPropertyMetadata(TimeSpan.Zero, FrameworkPropertyMetadataOptions.AffectsRender));
+    public static readonly DependencyProperty PositionProperty = DependencyProperty.Register(
+        nameof(Position), typeof(TimeSpan), typeof(BeatGridView),
+        new FrameworkPropertyMetadata(TimeSpan.Zero, (sender, _) => ((BeatGridView)sender).UpdateMarker()));
     public static readonly DependencyProperty PlaybackMarkerBrushProperty = DependencyProperty.Register(nameof(PlaybackMarkerBrush), typeof(Brush), typeof(BeatGridView),
         new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
     public static readonly DependencyProperty PlaybackMarkerOutlineBrushProperty = DependencyProperty.Register(nameof(PlaybackMarkerOutlineBrush), typeof(Brush), typeof(BeatGridView),
@@ -71,6 +72,7 @@ public sealed class BeatGridView : FrameworkElement
 
     public BeatGridView()
     {
+        InitializeDrawing();
         FlowDirection = FlowDirection.LeftToRight;
         Focusable = true;
         Cursor = Cursors.Arrow;
@@ -82,7 +84,7 @@ public sealed class BeatGridView : FrameworkElement
     {
         pointerX = viewportX;
         ActiveInterval = viewportX is { } x ? IntervalAt(x) : null;
-        InvalidateVisual();
+        InvalidateContent();
     }
 
     public bool RequestSamplePlacement()
@@ -130,7 +132,7 @@ public sealed class BeatGridView : FrameworkElement
         if (next is null || next.Value.StartMilliseconds < visibleStart || next.Value.StartMilliseconds >= visibleEnd) return false;
         ActiveInterval = next;
         pointerX = null;
-        InvalidateVisual();
+        InvalidateContent();
         return true;
     }
 
@@ -151,6 +153,86 @@ public sealed class BeatGridView : FrameworkElement
         return Math.Clamp(x, 0.75, Math.Max(0.75, viewport - 0.75));
     }
 
+
+    private readonly DrawingVisual contentVisual = new();
+    private readonly DrawingVisual markerVisual = new();
+    private readonly DrawingVisual focusVisual = new();
+    private readonly TranslateTransform markerTransform = new();
+    private readonly RectangleGeometry markerClip = new();
+    private bool contentDirty = true;
+    internal DrawingGroup? ContentDrawing { get; private set; }
+    protected override int VisualChildrenCount => 3;
+    protected override Visual GetVisualChild(int index) => index switch
+    { 0 => contentVisual, 1 => markerVisual, 2 => focusVisual, _ => throw new ArgumentOutOfRangeException(nameof(index)) };
+
+    private void InitializeDrawing()
+    {
+        AddVisualChild(contentVisual);
+        AddVisualChild(markerVisual);
+        AddVisualChild(focusVisual);
+        markerVisual.Transform = markerTransform;
+        markerVisual.Clip = markerClip;
+        Loaded += (_, _) => { SystemParameters.StaticPropertyChanged -= OnSystemSettingsChanged; SystemParameters.StaticPropertyChanged += OnSystemSettingsChanged; InvalidateContent(); };
+        Unloaded += (_, _) => SystemParameters.StaticPropertyChanged -= OnSystemSettingsChanged;
+    }
+
+    private void OnSystemSettingsChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (Dispatcher.CheckAccess()) InvalidateContent();
+        else Dispatcher.BeginInvoke(InvalidateContent);
+    }
+
+    protected override void OnPropertyChanged(DependencyPropertyChangedEventArgs e)
+    {
+        base.OnPropertyChanged(e);
+        if (e.Property != PositionProperty && e.Property.GetMetadata(GetType()) is FrameworkPropertyMetadata metadata &&
+            (metadata.AffectsRender || metadata.AffectsMeasure)) InvalidateContent();
+    }
+
+    protected override void OnRenderSizeChanged(SizeChangedInfo info)
+    { base.OnRenderSizeChanged(info); InvalidateContent(); }
+    protected override void OnDpiChanged(DpiScale oldDpi, DpiScale newDpi)
+    { base.OnDpiChanged(oldDpi, newDpi); InvalidateContent(); }
+    private void InvalidateContent() { contentDirty = true; InvalidateVisual(); }
+
+    internal void PrepareDrawing()
+    {
+        if (!contentDirty) return;
+        var drawing = new DrawingGroup();
+        using (var context = drawing.Open()) DrawContent(context);
+        ContentDrawing = drawing;
+        using (var context = contentVisual.RenderOpen()) context.DrawDrawing(drawing);
+        using (var context = markerVisual.RenderOpen()) DrawMarker(context);
+        using (var context = focusVisual.RenderOpen())
+        {
+            var focus = SystemParameters.HighContrast ? SystemColors.HighlightTextBrush : FocusBrush;
+            if (IsKeyboardFocused && focus is not null)
+                context.DrawRectangle(null, new Pen(focus, 1), Inset(new Rect(RenderSize)));
+        }
+        contentDirty = false;
+        UpdateMarker();
+    }
+
+    protected override void OnRender(DrawingContext context) { base.OnRender(context); PrepareDrawing(); }
+
+    private void DrawMarker(DrawingContext context)
+    {
+        var brush = SystemParameters.HighContrast ? SystemColors.WindowTextBrush : PlaybackMarkerBrush;
+        if (brush is null) return;
+        var end = new Point(0, ActualHeight);
+        if (!SystemParameters.HighContrast && PlaybackMarkerOutlineBrush is not null)
+            context.DrawLine(new Pen(PlaybackMarkerOutlineBrush, 3.5), new Point(), end);
+        context.DrawLine(new Pen(brush, 1.5), new Point(), end);
+    }
+
+    private void UpdateMarker()
+    {
+        var x = GetPlaybackMarkerX();
+        markerVisual.Opacity = x.HasValue ? 1 : 0;
+        markerTransform.X = x ?? 0;
+        markerClip.Rect = new Rect(-(x ?? 0), 0, ActualWidth, ActualHeight);
+    }
+
     protected override Size MeasureOverride(Size availableSize) => new(
         double.IsFinite(availableSize.Width) ? Math.Max(0, availableSize.Width) : 0,
         double.IsFinite(availableSize.Height) ? Math.Max(0, availableSize.Height) : 72);
@@ -160,20 +242,20 @@ public sealed class BeatGridView : FrameworkElement
     {
         base.OnGotKeyboardFocus(e);
         if (ActiveInterval is null) MoveActiveInterval(true);
-        InvalidateVisual();
+        InvalidateContent();
     }
 
     protected override void OnLostKeyboardFocus(KeyboardFocusChangedEventArgs e)
     {
         base.OnLostKeyboardFocus(e);
-        InvalidateVisual();
+        InvalidateContent();
     }
 
     protected override void OnLostMouseCapture(MouseEventArgs e)
     {
         base.OnLostMouseCapture(e);
         pressedInterval = null;
-        InvalidateVisual();
+        InvalidateContent();
     }
     protected override void OnMouseMove(MouseEventArgs e) { base.OnMouseMove(e); UpdatePointerPosition(e.GetPosition(this).X); }
     protected override void OnMouseLeave(MouseEventArgs e) { base.OnMouseLeave(e); UpdatePointerPosition(null); }
@@ -216,9 +298,8 @@ public sealed class BeatGridView : FrameworkElement
         else if (e.Key == Key.Delete && !e.IsRepeat) e.Handled = RequestActiveSampleRemoval();
     }
 
-    protected override void OnRender(DrawingContext context)
+    private void DrawContent(DrawingContext context)
     {
-        base.OnRender(context);
         context.PushClip(new RectangleGeometry(new Rect(RenderSize)));
         context.DrawRectangle(Brushes.Transparent, null, new Rect(RenderSize));
         var highContrast = SystemParameters.HighContrast;
@@ -241,16 +322,6 @@ public sealed class BeatGridView : FrameworkElement
                 var rect = GetSampleBounds(sample.Timestamp);
                 if (!rect.IsEmpty) context.DrawRoundedRectangle(marker, null, Inset(rect), 4, 4);
             }
-        var playbackX = GetPlaybackMarkerX();
-        var playback = highContrast ? SystemColors.WindowTextBrush : PlaybackMarkerBrush;
-        var playbackOutline = highContrast ? null : PlaybackMarkerOutlineBrush;
-        if (playbackX is { } x && playback is not null)
-        {
-            if (playbackOutline is not null)
-                context.DrawLine(new Pen(playbackOutline, 3.5), new Point(x, 0), new Point(x, ActualHeight));
-            context.DrawLine(new Pen(playback, 1.5), new Point(x, 0), new Point(x, ActualHeight));
-        }
-        if (IsKeyboardFocused && focus is not null) context.DrawRectangle(null, new Pen(focus, 1), Inset(new Rect(RenderSize)));
         context.Pop();
     }
 
@@ -284,7 +355,7 @@ public sealed class BeatGridView : FrameworkElement
         pressedInterval = null;
         ActiveInterval = null;
         if (IsMouseCaptured) ReleaseMouseCapture();
-        InvalidateVisual();
+        InvalidateContent();
     }
 
     private static void OnGeometryChanged(DependencyObject sender, DependencyPropertyChangedEventArgs e)

@@ -12,11 +12,19 @@ public sealed class InMemoryView : IDisposable
     private readonly Window window;
     private readonly HashSet<FrameworkElement> attached = [];
     private bool disposed;
+    private long frameNumber;
+    private readonly SynchronizationContext? previousContext;
+    private readonly DispatcherSynchronizationContext context;
+    private readonly bool processFrames;
     private readonly bool inheritsFlowDirection;
     public FrameworkElement Root { get; }
 
-    public InMemoryView(Window window)
+    public InMemoryView(Window window, bool processFrames = true)
     {
+        this.processFrames = processFrames;
+        previousContext = SynchronizationContext.Current;
+        context = new DispatcherSynchronizationContext(window.Dispatcher);
+        SynchronizationContext.SetSynchronizationContext(context);
         this.window = window;
         Root = (FrameworkElement)window.Content;
         inheritsFlowDirection = Root.ReadLocalValue(FrameworkElement.FlowDirectionProperty) == DependencyProperty.UnsetValue;
@@ -43,6 +51,9 @@ public sealed class InMemoryView : IDisposable
         foreach (var element in current)
             if (attached.Add(element))
                 element.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent, element));
+        if (processFrames)
+            foreach (var page in current.OfType<osuHitsounder.Views.Pages.WorkstationPage>())
+                page.ProcessPresentationFrame(TimeSpan.FromMilliseconds(++frameNumber * 16));
     }
 
     public void Dispose()
@@ -54,6 +65,7 @@ public sealed class InMemoryView : IDisposable
             element.RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent, element));
         attached.Clear();
         source.Dispose();
+        if (ReferenceEquals(SynchronizationContext.Current, context)) SynchronizationContext.SetSynchronizationContext(previousContext);
     }
 
     private static IEnumerable<FrameworkElement> Descendants(DependencyObject parent)

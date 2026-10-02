@@ -28,6 +28,7 @@ public partial class WorkstationPageVM(
     private bool subscribedToPlayback;
     private readonly object notificationLock = new();
     private Task notifications = Task.CompletedTask;
+    private (long Generation, AudioPlaybackSnapshot Playback)? presentedPlayback;
     private readonly PlaybackVolumeSettings playbackVolumes = playbackVolumes ?? new PlaybackVolumeSettings();
     private readonly ObservableCollection<Track> tracks = [];
     private readonly ObservableCollection<string> availableSamples = [];
@@ -52,7 +53,7 @@ public partial class WorkstationPageVM(
     public ObservableCollection<string> SampleFiles => availableSamples;
     public int SamplesRevision => samplesRevision;
     public int Subdivision => new[] { 1, 2, 3, 4, 5, 6, 8, 12, 16 }[SelectedSubdivisionIndex];
-    public bool CanEditTracks => Project is not null && !IsLoading && !deactivated;
+    public bool CanEditTracks => Project is not null && IsInteractionReady;
     public bool CanImportSample => CanEditTracks && !importBusy && !removalBusy &&
         sampleFiles is not null && sampleDialog is not null && projectPath is not null;
     public bool CanAddTrack => CanEditTracks && availableSamples.Count > 0;
@@ -73,7 +74,24 @@ public partial class WorkstationPageVM(
     [ObservableProperty] private ProjectData? project;
     [ObservableProperty] private TimeSpan position;
     [ObservableProperty] private string elapsedText = "00:00.0";
-    [ObservableProperty] private bool isLoading;
+    [ObservableProperty] private ProjectLoadPhase loadPhase = ProjectLoadPhase.PreparingData;
+    public int LoadGeneration => loadGeneration;
+    public bool IsLoading => LoadPhase is ProjectLoadPhase.PreparingData or ProjectLoadPhase.AwaitingPresentation;
+    public bool IsInteractionReady => LoadPhase == ProjectLoadPhase.Ready && !deactivated;
+
+    partial void OnLoadPhaseChanged(ProjectLoadPhase value)
+    {
+        OnPropertyChanged(nameof(IsLoading));
+        OnPropertyChanged(nameof(IsInteractionReady));
+        NotifyEditingState();
+        NotifyCommandState();
+    }
+
+    public void AcknowledgePresentationReady(int generation)
+    {
+        if (!deactivated && generation == loadGeneration && LoadPhase == ProjectLoadPhase.AwaitingPresentation)
+            LoadPhase = ProjectLoadPhase.Ready;
+    }
     [ObservableProperty] private bool isPlaying;
     [ObservableProperty] private string? errorMessage;
     [ObservableProperty] private string? playbackWarning;
@@ -130,8 +148,8 @@ public partial class WorkstationPageVM(
             OnPropertyChanged(nameof(Subdivision));
         }
     }
-    public bool CanPlay => Waveform is not null && !IsLoading && !deactivated;
-    public bool CanZoom => Waveform is not null && !IsLoading && !deactivated;
+    public bool CanPlay => Waveform is not null && IsInteractionReady;
+    public bool CanZoom => Waveform is not null && IsInteractionReady;
 
     public Task LoadAsync(string projectPath, CancellationToken token)
     {
@@ -153,6 +171,7 @@ public partial class WorkstationPageVM(
     {
         if (deactivated) return;
         deactivated = true;
+        LoadPhase = ProjectLoadPhase.Cancelled;
         pendingPlayCancellation?.Cancel();
         OnPropertyChanged(nameof(CanRemoveTrack));
         loadGeneration++;
@@ -187,7 +206,10 @@ public partial class WorkstationPageVM(
     public void RefreshPlayback()
     {
         if (deactivated) return;
-        var snapshot = playback.Latest.Playback;
+        var current = playback.Latest;
+        if (presentedPlayback == current) return;
+        presentedPlayback = current;
+        var snapshot = current.Playback;
         PlaybackWarning = snapshot.Warning;
         if (markerClock.IsValid)
             SetProperty(ref playbackInterval, markerClock.GetInterval(snapshot.Position), nameof(PlaybackInterval));
@@ -211,9 +233,11 @@ public partial class WorkstationPageVM(
     [RelayCommand(CanExecute = nameof(CanUseTransport))]
     private async Task PlayPauseAsync()
     {
+        if (!CanUseTransport()) return;
         if (audioService.GetSnapshot().IsPlaying)
         {
-            await playback.PauseAsync(CancellationToken.None);
+            try { await playback.PauseAsync(CancellationToken.None); }
+            catch (Exception error) { if (!deactivated) ErrorMessage = error.Message; return; }
             // Intentional pause preserves traversal, unlike a device-stopped session.
             IsPlaying = false;
         }
@@ -257,10 +281,12 @@ public partial class WorkstationPageVM(
     [RelayCommand(CanExecute = nameof(CanUseTransport))]
     private async Task StopAsync()
     {
+        if (!CanUseTransport()) return;
         pendingPlayCancellation?.Cancel();
         lastGridTarget = null;
         lastGridAudioPosition = null;
-        await playback.StopAsync(CancellationToken.None);
+        try { await playback.StopAsync(CancellationToken.None); }
+        catch (Exception error) { if (!deactivated) ErrorMessage = error.Message; return; }
         RefreshPlayback();
     }
 
@@ -271,7 +297,8 @@ public partial class WorkstationPageVM(
         pendingPlayCancellation?.Cancel();
         lastGridTarget = null;
         lastGridAudioPosition = null;
-        await playback.SeekAsync(position, CancellationToken.None);
+        try { await playback.SeekAsync(position, CancellationToken.None); }
+        catch (Exception error) { if (!deactivated) ErrorMessage = error.Message; return; }
         RefreshPlayback();
     }
 
@@ -614,23 +641,24 @@ public partial class WorkstationPageVM(
 
     private async Task LoadCoreAsync(string projectPath, int generation, CancellationToken token)
     {
-        await CommitAsync(generation, token, () =>
-        {
-            IsLoading = true;
-            ErrorMessage = null;
-            playbackErrorMessage = null;
-            Waveform = null;
-            Project = null;
-            markerClock = new([], []);
-
-            Position = TimeSpan.Zero;
-            IsPlaying = false;
-            sampleEventIds.Clear();
-            nextSampleEventId = 1;
-            NotifyCommandState();
-        });
         try
         {
+            await CommitAsync(generation, token, () =>
+            {
+                LoadPhase = ProjectLoadPhase.PreparingData;
+                presentedPlayback = null;
+                ErrorMessage = null;
+                playbackErrorMessage = null;
+                Waveform = null;
+                Project = null;
+                markerClock = new([], []);
+
+                Position = TimeSpan.Zero;
+                IsPlaying = false;
+                sampleEventIds.Clear();
+                nextSampleEventId = 1;
+                NotifyCommandState();
+            });
             if (!subscribedToPlayback) { playback.StateChanged += OnPlaybackStateChanged; subscribedToPlayback = true; }
             await playback.StopAsync(token);
             var source = await sourceService.LoadAsync(projectPath, token);
@@ -679,13 +707,14 @@ public partial class WorkstationPageVM(
         catch (OperationCanceledException) when (token.IsCancellationRequested) { }
         catch (Exception error)
         {
-            await CommitAsync(generation, CancellationToken.None, () => ErrorMessage = error.Message);
+            await CommitAsync(generation, CancellationToken.None, () => { ErrorMessage = error.Message; Waveform = null; });
         }
         finally
         {
             await CommitAsync(generation, CancellationToken.None, () =>
             {
-                IsLoading = false;
+                LoadPhase = token.IsCancellationRequested ? ProjectLoadPhase.Cancelled
+                    : Waveform is not null ? ProjectLoadPhase.AwaitingPresentation : ProjectLoadPhase.Failed;
                 OnPropertyChanged(nameof(CanEditTracks));
                 NotifyEditingState();
                 NotifyCommandState();
@@ -704,8 +733,8 @@ public partial class WorkstationPageVM(
     private bool CanZoomOut() => CanZoom && ZoomFactor > 16;
     private bool CanIncreaseTrackHeight() => CanZoom && TrackHeight < 288;
     private bool CanDecreaseTrackHeight() => CanZoom && TrackHeight > 36;
-    private bool CanIncreaseSubdivision() => SelectedSubdivisionIndex < 8;
-    private bool CanDecreaseSubdivision() => SelectedSubdivisionIndex > 0;
+    private bool CanIncreaseSubdivision() => IsInteractionReady && SelectedSubdivisionIndex < 8;
+    private bool CanDecreaseSubdivision() => IsInteractionReady && SelectedSubdivisionIndex > 0;
 
     private void SetZoom(int value)
     {
@@ -740,6 +769,8 @@ public partial class WorkstationPageVM(
         ZoomOutCommand.NotifyCanExecuteChanged();
         IncreaseTrackHeightCommand.NotifyCanExecuteChanged();
         DecreaseTrackHeightCommand.NotifyCanExecuteChanged();
+        IncreaseSubdivisionCommand.NotifyCanExecuteChanged();
+        DecreaseSubdivisionCommand.NotifyCanExecuteChanged();
         AddSampleTrackCommand.NotifyCanExecuteChanged();
         AddPianoTrackCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(CanPlay));

@@ -22,6 +22,7 @@ public class WorkstationMarkerPlaybackTests
             Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "song.wav", project))
         }, playback = new osuHitsounder.Services.MarkerPlaybackCoordinator(audio, (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
         await vm.LoadAsync("project.json", CancellationToken.None);
+        vm.AcknowledgePresentationReady(vm.LoadGeneration);
     }
 
     private async Task Tick(double milliseconds)
@@ -264,6 +265,7 @@ public class WorkstationMarkerPlaybackTests
             Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData()))
         }, playback = new osuHitsounder.Services.MarkerPlaybackCoordinator(audio, (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
         await vm.LoadAsync("project.json", CancellationToken.None);
+        vm.AcknowledgePresentationReady(vm.LoadGeneration);
         await vm.PlayPauseCommand.ExecuteAsync(null);
         Assert.That(vm.IsPlaying, Is.False);
         Assert.That(vm.ErrorMessage, Does.Contain("timing"));

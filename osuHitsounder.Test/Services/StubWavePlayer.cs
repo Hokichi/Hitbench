@@ -27,6 +27,7 @@ public sealed class StubWavePlayer : IWavePlayer, IWavePosition
     public Action? Disposing { get; set; }
     public bool HasPlaybackStoppedSubscribers => playbackStopped is not null;
     public long Position { get; set; }
+    public Func<long>? PositionReader { get; set; }
     public WaveFormat? ConfiguredOutputFormat { get; set; }
     public Action<IWaveProvider>? Initializing { get; set; }
     public Action? Playing { get; set; }
@@ -61,7 +62,7 @@ public sealed class StubWavePlayer : IWavePlayer, IWavePosition
     public void RaiseRetiredStopped(Exception? error = null) =>
         retiredPlaybackStopped?.Invoke(this, new StoppedEventArgs(error));
 
-    public long GetPosition() => FailPosition ? throw new IOException("Position unavailable") : Position;
+    public long GetPosition() => FailPosition ? throw new IOException("Position unavailable") : PositionReader?.Invoke() ?? Position;
 
     public void Dispose()
     {

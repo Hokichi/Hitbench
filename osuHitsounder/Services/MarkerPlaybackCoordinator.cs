@@ -1,4 +1,6 @@
 using osuHitsounder.Core.Entities;
+using System.Runtime.InteropServices;
+using Microsoft.Win32.SafeHandles;
 
 namespace osuHitsounder.Services;
 
@@ -6,6 +8,30 @@ namespace osuHitsounder.Services;
 public sealed class MarkerPlaybackCoordinator(IWorkstationAudioService audio,
     Func<TimeSpan, CancellationToken, Task> delay) : IAsyncDisposable
 {
+    // Windows per-wait precision; no busy spin or process/global timer-resolution change.
+    public static Task DelayAsync(TimeSpan duration, CancellationToken token) => Task.Run(() =>
+    {
+        token.ThrowIfCancellationRequested();
+        using var timer = new EventWaitHandle(false, EventResetMode.AutoReset);
+        var handle = CreateWaitableTimerExW(IntPtr.Zero, null, 2, 0x001F0003);
+        if (handle.IsInvalid) { handle.Dispose(); throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error()); }
+        var original = timer.SafeWaitHandle;
+        timer.SafeWaitHandle = handle;
+        original.Dispose();
+        var due = -Math.Max(1, duration.Ticks);
+        if (!SetWaitableTimer(handle, ref due, 0, IntPtr.Zero, IntPtr.Zero, false))
+            throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
+        WaitHandle.WaitAny([timer, token.WaitHandle]);
+        token.ThrowIfCancellationRequested();
+    }, token);
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern SafeWaitHandle CreateWaitableTimerExW(IntPtr attributes, string? name, uint flags, uint access);
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetWaitableTimer(SafeWaitHandle timer, ref long dueTime, int period, IntPtr callback, IntPtr argument,
+        [MarshalAs(UnmanagedType.Bool)] bool resume);
+
     internal IWorkstationAudioService Audio => audio;
     private readonly SemaphoreSlim transitions = new(1);
     private readonly object snapshotLock = new();
@@ -82,6 +108,13 @@ public sealed class MarkerPlaybackCoordinator(IWorkstationAudioService audio,
                 worker = Task.Run(() => RunAsync(workerToken), CancellationToken.None);
             }
         }
+        catch (Exception error) when (!disposed)
+        {
+            try { audio.Pause(); } catch { }
+            Reset(processed);
+            Publish(new AudioPlaybackSnapshot(processed, false, error.Message));
+            throw;
+        }
         finally { transitions.Release(); }
     }
 
@@ -102,6 +135,7 @@ public sealed class MarkerPlaybackCoordinator(IWorkstationAudioService audio,
         catch (Exception error)
         {
             try { audio.Pause(); } catch { }
+            Reset(processed);
             Publish(new AudioPlaybackSnapshot(processed, false, error.Message));
         }
     }

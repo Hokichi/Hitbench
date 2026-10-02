@@ -4,6 +4,48 @@ namespace osuHitsounder.Test.Services;
 
 public class AudioOutputDeviceTests
 {
+    [Test]
+    public async Task DedicatedOwnerCanCloseAfterDriverDisposalThrows()
+    {
+        var player = new StubWavePlayer { Disposing = () => throw new IOException("driver disposal") };
+        var output = new AudioOutputDevice(() => player, ownThread: true);
+        output.Init(new TestSampleProvider([0, 0], 44100, 2));
+        Assert.Throws<IOException>(output.Dispose);
+        await Task.Run(output.Dispose).WaitAsync(TimeSpan.FromSeconds(2));
+    }
+    [Test]
+    public async Task DedicatedBackendKeepsLifecycleOnOneThreadAcrossCallers()
+    {
+        var threads = new List<int>();
+        var player = new StubWavePlayer
+        {
+            Initializing = _ => threads.Add(Environment.CurrentManagedThreadId),
+            Playing = () => threads.Add(Environment.CurrentManagedThreadId),
+            Disposing = () => threads.Add(Environment.CurrentManagedThreadId)
+        };
+        var output = new AudioOutputDevice(() => player, ownThread: true);
+        output.Init(new TestSampleProvider([0, 0], 44100, 2));
+        await Task.Run(output.Play);
+        await Task.Run(() => { output.GetPlayedFrames(); output.Poll(); });
+        await Task.Run(output.Dispose);
+        Assert.That(threads.Count, Is.EqualTo(3));
+        Assert.That(threads.Distinct().Count(), Is.EqualTo(1));
+        Assert.That(player.IsDisposed, Is.True);
+    }
+
+    [Test]
+    public void BackendFailureNotificationCanReenterFromAnotherThread()
+    {
+        var player = new StubWavePlayer();
+        using var output = new AudioOutputDevice(() => player, ownThread: true);
+        output.Init(new TestSampleProvider([0, 0], 44100, 2));
+        output.Play();
+        var reentered = false;
+        output.PlaybackStopped += (_, _) => reentered = Task.Run(output.GetPlayedFrames).Wait(TimeSpan.FromSeconds(2));
+        player.RaiseStopped(new IOException("lost"));
+        output.Poll();
+        Assert.That(reentered, Is.True);
+    }
     [TestCase(48000, 16)]
     [TestCase(96000, 32)]
     public void PositionUsesOutputByteRateAndCannotExceedProducedFrames(int rate, int bits)

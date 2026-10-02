@@ -11,7 +11,8 @@ public sealed class WaveformView : FrameworkElement
     public static readonly DependencyProperty DataProperty = DependencyProperty.Register(
         nameof(Data), typeof(WaveformData), typeof(WaveformView), new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
     public static readonly DependencyProperty PositionProperty = DependencyProperty.Register(
-        nameof(Position), typeof(TimeSpan), typeof(WaveformView), new FrameworkPropertyMetadata(TimeSpan.Zero, FrameworkPropertyMetadataOptions.AffectsRender));
+        nameof(Position), typeof(TimeSpan), typeof(WaveformView),
+        new FrameworkPropertyMetadata(TimeSpan.Zero, (sender, _) => ((WaveformView)sender).UpdateMarker()));
     public static readonly DependencyProperty ZoomFactorProperty = DependencyProperty.Register(
         nameof(ZoomFactor), typeof(double), typeof(WaveformView), new FrameworkPropertyMetadata(8d, FrameworkPropertyMetadataOptions.AffectsMeasure | FrameworkPropertyMetadataOptions.AffectsRender));
     public static readonly DependencyProperty ViewportWidthProperty = DependencyProperty.Register(
@@ -46,7 +47,79 @@ public sealed class WaveformView : FrameworkElement
     public IReadOnlyList<int>? Bpms { get => (IReadOnlyList<int>?)GetValue(BpmsProperty); set => SetValue(BpmsProperty, value); }
     public int Subdivision { get => (int)GetValue(SubdivisionProperty); set => SetValue(SubdivisionProperty, value); }
 
-    public WaveformView() => FlowDirection = FlowDirection.LeftToRight;
+    public WaveformView() { FlowDirection = FlowDirection.LeftToRight; InitializeDrawing(); }
+
+
+    private readonly DrawingVisual contentVisual = new();
+    private readonly DrawingVisual markerVisual = new();
+    private readonly TranslateTransform markerTransform = new();
+    private readonly RectangleGeometry markerClip = new();
+    private bool contentDirty = true;
+    internal DrawingGroup? ContentDrawing { get; private set; }
+    protected override int VisualChildrenCount => 2;
+    protected override Visual GetVisualChild(int index) => index switch
+    { 0 => contentVisual, 1 => markerVisual, _ => throw new ArgumentOutOfRangeException(nameof(index)) };
+
+    private void InitializeDrawing()
+    {
+        AddVisualChild(contentVisual);
+        AddVisualChild(markerVisual);
+        markerVisual.Transform = markerTransform;
+        markerVisual.Clip = markerClip;
+        Loaded += (_, _) => { SystemParameters.StaticPropertyChanged -= OnSystemSettingsChanged; SystemParameters.StaticPropertyChanged += OnSystemSettingsChanged; InvalidateContent(); };
+        Unloaded += (_, _) => SystemParameters.StaticPropertyChanged -= OnSystemSettingsChanged;
+    }
+
+    private void OnSystemSettingsChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (Dispatcher.CheckAccess()) InvalidateContent();
+        else Dispatcher.BeginInvoke(InvalidateContent);
+    }
+
+    protected override void OnPropertyChanged(DependencyPropertyChangedEventArgs e)
+    {
+        base.OnPropertyChanged(e);
+        if (e.Property != PositionProperty && e.Property.GetMetadata(GetType()) is FrameworkPropertyMetadata metadata &&
+            (metadata.AffectsRender || metadata.AffectsMeasure)) InvalidateContent();
+    }
+
+    protected override void OnRenderSizeChanged(SizeChangedInfo info)
+    { base.OnRenderSizeChanged(info); InvalidateContent(); }
+    protected override void OnDpiChanged(DpiScale oldDpi, DpiScale newDpi)
+    { base.OnDpiChanged(oldDpi, newDpi); InvalidateContent(); }
+    private void InvalidateContent() { contentDirty = true; InvalidateVisual(); }
+
+    internal void PrepareDrawing()
+    {
+        if (!contentDirty) return;
+        var drawing = new DrawingGroup();
+        using (var context = drawing.Open()) DrawContent(context);
+        ContentDrawing = drawing;
+        using (var context = contentVisual.RenderOpen()) context.DrawDrawing(drawing);
+        using (var context = markerVisual.RenderOpen()) DrawMarker(context);
+        contentDirty = false;
+        UpdateMarker();
+    }
+
+    protected override void OnRender(DrawingContext context) { base.OnRender(context); PrepareDrawing(); }
+
+    private void DrawMarker(DrawingContext context)
+    {
+        if (Data is null || Data.Duration <= TimeSpan.Zero || Data.Peaks.Count == 0) return;
+        var end = new Point(0, Math.Max(0, ActualHeight - 20));
+        if (!SystemParameters.HighContrast) context.DrawLine(new Pen(WaveformBrush, 3.5), new Point(), end);
+        context.DrawLine(new Pen(SystemParameters.HighContrast ? SystemColors.WindowTextBrush : MarkerBrush, 1.5), new Point(), end);
+    }
+
+    private void UpdateMarker()
+    {
+        if (Data is null || Data.Duration <= TimeSpan.Zero) return;
+        var x = Math.Clamp(Position.TotalSeconds / Data.Duration.TotalSeconds * ActualWidth, .75, Math.Max(.75, ActualWidth - .75));
+        var viewport = IsPositiveFinite(ViewportWidth) ? Math.Min(ViewportWidth, ActualWidth) : ActualWidth;
+        var offset = double.IsFinite(HorizontalOffset) ? Math.Clamp(HorizontalOffset, 0, Math.Max(0, ActualWidth - viewport)) : 0;
+        markerTransform.X = x;
+        markerClip.Rect = new Rect(offset - x, 0, viewport, ActualHeight);
+    }
 
     protected override Size MeasureOverride(Size availableSize)
     {
@@ -56,9 +129,8 @@ public sealed class WaveformView : FrameworkElement
         return new Size(viewport * zoom, height);
     }
 
-    protected override void OnRender(DrawingContext drawingContext)
+    private void DrawContent(DrawingContext drawingContext)
     {
-        base.OnRender(drawingContext);
         var data = Data;
         var width = ActualWidth;
         var height = ActualHeight;
@@ -68,13 +140,10 @@ public sealed class WaveformView : FrameworkElement
         var viewport = IsPositiveFinite(ViewportWidth) ? Math.Min(ViewportWidth, width) : width;
         var offset = double.IsFinite(HorizontalOffset) ? Math.Clamp(HorizontalOffset, 0, Math.Max(0, width - viewport)) : 0;
         var waveformBrush = SystemParameters.HighContrast ? SystemColors.HighlightBrush : WaveformBrush;
-        var markerBrush = SystemParameters.HighContrast ? SystemColors.WindowTextBrush : MarkerBrush;
         var textBrush = SystemParameters.HighContrast ? SystemColors.WindowTextBrush : TextBrush;
         var baselineY = Math.Max(12, (height - 22) / 2);
         var amplitude = Math.Max(0, baselineY - 8);
         var waveformPen = new Pen(waveformBrush, 1);
-        var markerPen = new Pen(markerBrush, 1.5);
-        var markerOutlinePen = SystemParameters.HighContrast ? null : new Pen(waveformBrush, 3.5);
         var baselinePen = new Pen(textBrush, 1) { DashStyle = DashStyles.Dot };
 
         drawingContext.PushClip(new RectangleGeometry(new Rect(offset, 0, viewport, height)));
@@ -94,11 +163,6 @@ public sealed class WaveformView : FrameworkElement
         }
 
         var pixelsPerSecond = width / data.Duration.TotalSeconds;
-        var markerX = Math.Clamp(Position.TotalSeconds, 0, data.Duration.TotalSeconds) * pixelsPerSecond;
-        markerX = Math.Clamp(markerX, markerPen.Thickness / 2, Math.Max(markerPen.Thickness / 2, width - markerPen.Thickness / 2));
-        if (markerOutlinePen is not null)
-            drawingContext.DrawLine(markerOutlinePen, new Point(markerX, 0), new Point(markerX, Math.Max(0, height - 20)));
-        drawingContext.DrawLine(markerPen, new Point(markerX, 0), new Point(markerX, Math.Max(0, height - 20)));
         DrawRuler(drawingContext, offset, viewport, height, pixelsPerSecond, data.Duration, textBrush);
         drawingContext.Pop();
     }

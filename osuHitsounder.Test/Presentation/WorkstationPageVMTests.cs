@@ -16,6 +16,7 @@ public class WorkstationPageVMTests
         var first = new WorkstationPageVM(new StubWorkstationSourceService(), new osuHitsounder.Services.MarkerPlaybackCoordinator(firstAudio, (duration, token) => Task.Delay(duration, token)),
             new ImmediateUiScheduler(), playbackVolumes: settings);
         await first.LoadAsync("project.json", CancellationToken.None);
+        first.AcknowledgePresentationReady(first.LoadGeneration);
         var trackVolumes = first.Tracks.Select(track => track.Volume).ToArray();
 
         first.ApplicationVolume = 140;
@@ -28,6 +29,7 @@ public class WorkstationPageVMTests
         var second = new WorkstationPageVM(new StubWorkstationSourceService(), new osuHitsounder.Services.MarkerPlaybackCoordinator(secondAudio, (duration, token) => Task.Delay(duration, token)),
             new ImmediateUiScheduler(), playbackVolumes: settings);
         await second.LoadAsync("project.json", CancellationToken.None);
+        second.AcknowledgePresentationReady(second.LoadGeneration);
 
         Assert.Multiple(() =>
         {
@@ -56,6 +58,7 @@ public class WorkstationPageVMTests
         };
         var vm = new WorkstationPageVM(source, new osuHitsounder.Services.MarkerPlaybackCoordinator(audio, (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
         await vm.LoadAsync("project.json", CancellationToken.None);
+        vm.AcknowledgePresentationReady(vm.LoadGeneration);
         Assert.That(vm.Subdivision, Is.EqualTo(4));
         await vm.NextWholeBeatCommand.ExecuteAsync(null);
         Assert.That(vm.Position, Is.EqualTo(TimeSpan.FromMilliseconds(500)));
@@ -85,6 +88,7 @@ public class WorkstationPageVMTests
         };
         var vm = new WorkstationPageVM(source, new osuHitsounder.Services.MarkerPlaybackCoordinator(audio, (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
         await vm.LoadAsync("project.json", CancellationToken.None);
+        vm.AcknowledgePresentationReady(vm.LoadGeneration);
         await vm.NextWholeBeatCommand.ExecuteAsync(null);
         var firstBeat = TimeSpan.FromSeconds(19_314d / 44_100);
         var secondBeat = TimeSpan.FromSeconds(38_628d / 44_100);
@@ -110,6 +114,7 @@ public class WorkstationPageVMTests
         };
         var vm = new WorkstationPageVM(source, new osuHitsounder.Services.MarkerPlaybackCoordinator(audio, (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
         await vm.LoadAsync("project.json", CancellationToken.None);
+        vm.AcknowledgePresentationReady(vm.LoadGeneration);
         await vm.NextGridLineCommand.ExecuteAsync(null);
         var first = vm.Position;
         await vm.NextGridLineCommand.ExecuteAsync(null);
@@ -136,6 +141,7 @@ public class WorkstationPageVMTests
         };
         var vm = new WorkstationPageVM(source, new osuHitsounder.Services.MarkerPlaybackCoordinator(audio, (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
         await vm.LoadAsync("project.json", CancellationToken.None);
+        vm.AcknowledgePresentationReady(vm.LoadGeneration);
         await vm.PlayPauseCommand.ExecuteAsync(null);
         audio.Snapshot = audio.Snapshot with { Position = TimeSpan.FromMilliseconds(200) };
         await vm.NextGridLineCommand.ExecuteAsync(null);
@@ -151,6 +157,7 @@ public class WorkstationPageVMTests
         var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
         Assert.That(vm.ZoomFactor, Is.EqualTo(16));
         await vm.LoadAsync("project.json", CancellationToken.None);
+        vm.AcknowledgePresentationReady(vm.LoadGeneration);
         Assert.That(vm.ZoomOutCommand.CanExecute(null), Is.False);
         vm.ZoomInCommand.Execute(null);
         Assert.That(vm.ZoomFactor, Is.EqualTo(17));
@@ -170,6 +177,7 @@ public class WorkstationPageVMTests
         var vm = new WorkstationPageVM(source, new osuHitsounder.Services.MarkerPlaybackCoordinator(audio, (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
         Assert.That(vm.CanPlay, Is.False);
         await vm.LoadAsync("project.json", CancellationToken.None);
+        vm.AcknowledgePresentationReady(vm.LoadGeneration);
         Assert.Multiple(() =>
         {
             Assert.That(vm.CanPlay, Is.True);
@@ -188,6 +196,7 @@ public class WorkstationPageVMTests
         };
         var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new osuHitsounder.Services.MarkerPlaybackCoordinator(audio, (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
         await vm.LoadAsync("project.json", CancellationToken.None);
+        vm.AcknowledgePresentationReady(vm.LoadGeneration);
         await vm.PlayPauseCommand.ExecuteAsync(null);
         Assert.That(vm.IsPlaying, Is.True);
         audio.Snapshot = new AudioPlaybackSnapshot(TimeSpan.FromMinutes(65.25), true, null);
@@ -204,6 +213,7 @@ public class WorkstationPageVMTests
         var audio = new StubWorkstationAudioService();
         var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new osuHitsounder.Services.MarkerPlaybackCoordinator(audio, (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
         await vm.LoadAsync("project.json", CancellationToken.None);
+        vm.AcknowledgePresentationReady(vm.LoadGeneration);
         var before = audio.Snapshot;
 
         Assert.That(vm.SelectedSubdivisionIndex, Is.EqualTo(3));
@@ -229,6 +239,7 @@ public class WorkstationPageVMTests
         Assert.That(vm.ZoomInCommand.CanExecute(null), Is.False);
         Assert.That(vm.ZoomOutCommand.CanExecute(null), Is.False);
         await vm.LoadAsync("project.json", CancellationToken.None);
+        vm.AcknowledgePresentationReady(vm.LoadGeneration);
         Assert.That(vm.ZoomInCommand.CanExecute(null), Is.True);
         await vm.DeactivateAsync();
         Assert.Multiple(() =>
@@ -246,6 +257,7 @@ public class WorkstationPageVMTests
         var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new osuHitsounder.Services.MarkerPlaybackCoordinator(audio, (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
         Assert.That(vm.SeekCommand.CanExecute(TimeSpan.FromSeconds(3)), Is.False);
         await vm.LoadAsync("project.json", CancellationToken.None);
+        vm.AcknowledgePresentationReady(vm.LoadGeneration);
         await vm.PlayPauseCommand.ExecuteAsync(null);
         await vm.SeekCommand.ExecuteAsync(TimeSpan.FromSeconds(3.4));
         Assert.Multiple(() =>
@@ -265,6 +277,7 @@ public class WorkstationPageVMTests
         };
         var vm = new WorkstationPageVM(source, new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
         await vm.LoadAsync("project.json", CancellationToken.None);
+        vm.AcknowledgePresentationReady(vm.LoadGeneration);
         Assert.That(vm.ErrorMessage, Does.Contain("Missing AudioFilename"));
         Assert.That(vm.CanPlay, Is.False);
         Assert.That(vm.IsLoading, Is.False);
@@ -280,6 +293,7 @@ public class WorkstationPageVMTests
         var vm = new WorkstationPageVM(source, new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
 
         await vm.LoadAsync("missing.json", CancellationToken.None);
+        vm.AcknowledgePresentationReady(vm.LoadGeneration);
 
         Assert.Multiple(() =>
         {

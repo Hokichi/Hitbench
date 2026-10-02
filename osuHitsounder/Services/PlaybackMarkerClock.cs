@@ -31,7 +31,8 @@ public sealed class PlaybackMarkerClock
                 next = Math.Min(next, candidate.Offset * TimeSpan.TicksPerMillisecond);
                 break;
             }
-        return TimeSpan.FromTicks(Math.Max(1, next - position.Ticks));
+        // Task.Delay truncates sub-millisecond waits to zero; never turn a boundary wait into a spin.
+        return TimeSpan.FromTicks(Math.Max(TimeSpan.TicksPerMillisecond, next - position.Ticks));
     }
 
     public TimeSpan GetInterval(TimeSpan position)

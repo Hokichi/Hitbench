@@ -1,10 +1,14 @@
 using NAudio.Wave;
 using System.Diagnostics;
+using System.Windows.Threading;
 
 namespace osuHitsounder.Services;
 
 public sealed class AudioOutputDevice : IAudioOutput
 {
+    private readonly Dispatcher? backendDispatcher;
+    private readonly Thread? backendThread;
+    private StoppedEventArgs? completed;
     private readonly Func<IWavePlayer> createPlayer;
     private readonly Func<Action, IDisposable>? startMonitor;
     private IWavePlayer? player;
@@ -34,8 +38,20 @@ public sealed class AudioOutputDevice : IAudioOutput
 
     public AudioOutputDevice(Func<IWavePlayer> createPlayer, Func<Action, IDisposable>? startMonitor = null,
         Func<int>? getLatencyFrames = null, Func<bool>? resetRequested = null,
-        Func<long>? getTimestamp = null, long timestampFrequency = 0, bool completeFromRenderedFrames = false)
+        Func<long>? getTimestamp = null, long timestampFrequency = 0, bool completeFromRenderedFrames = false, bool ownThread = false)
     {
+        if (ownThread)
+        {
+            var ready = new TaskCompletionSource<Dispatcher>(TaskCreationOptions.RunContinuationsAsynchronously);
+            backendThread = new Thread(() =>
+            {
+                ready.SetResult(Dispatcher.CurrentDispatcher);
+                Dispatcher.Run();
+            }) { IsBackground = true, Name = "Audio backend" };
+            backendThread.SetApartmentState(ApartmentState.STA);
+            backendThread.Start();
+            backendDispatcher = ready.Task.GetAwaiter().GetResult();
+        }
         this.createPlayer = createPlayer;
         this.completeFromRenderedFrames = completeFromRenderedFrames;
         this.startMonitor = startMonitor;
@@ -51,6 +67,7 @@ public sealed class AudioOutputDevice : IAudioOutput
 
     public void Init(ISampleProvider source, Func<long>? renderedFrames = null, Func<bool>? endOfStream = null, Func<bool>? faulted = null)
     {
+        if (backendDispatcher is not null && !backendDispatcher.CheckAccess()) { backendDispatcher.Invoke(() => Init(source, renderedFrames, endOfStream, faulted)); return; }
         ObjectDisposedException.ThrowIf(disposed, this);
         if (player is not null) throw new InvalidOperationException("Output is already initialized.");
         ownerThread = Environment.CurrentManagedThreadId;
@@ -84,6 +101,7 @@ public sealed class AudioOutputDevice : IAudioOutput
 
     public void Play()
     {
+        if (backendDispatcher is not null && !backendDispatcher.CheckAccess()) { backendDispatcher.Invoke(() => Play()); return; }
         CheckOwner();
         ObjectDisposedException.ThrowIf(disposed, this);
         player!.Play();
@@ -92,6 +110,7 @@ public sealed class AudioOutputDevice : IAudioOutput
 
     public void Stop()
     {
+        if (backendDispatcher is not null && !backendDispatcher.CheckAccess()) { backendDispatcher.Invoke(() => Stop()); return; }
         CheckOwner();
         PlaybackState = PlaybackState.Stopped;
         player?.Stop();
@@ -99,6 +118,8 @@ public sealed class AudioOutputDevice : IAudioOutput
 
     public long GetPlayedFrames()
     {
+        if (disposed) return playedFrames;
+        if (backendDispatcher is not null && !backendDispatcher.CheckAccess()) return backendDispatcher.Invoke(GetPlayedFrames);
         CheckOwner();
         try { return ReadPlayedFrames(); }
         catch (Exception failure)
@@ -136,6 +157,16 @@ public sealed class AudioOutputDevice : IAudioOutput
     public void Poll()
     {
         if (disposed) return;
+        if (backendDispatcher is not null && !backendDispatcher.CheckAccess()) backendDispatcher.Invoke(PollCore);
+        else PollCore();
+        // Publish on the caller after releasing the backend owner; service locks may call back into it.
+        var notification = Interlocked.Exchange(ref completed, null);
+        if (notification is not null) PlaybackStopped?.Invoke(this, notification);
+    }
+
+    private void PollCore()
+    {
+        if (disposed) return;
         CheckOwner();
         try
         {
@@ -164,7 +195,7 @@ public sealed class AudioOutputDevice : IAudioOutput
         try { player?.Stop(); }
         catch (Exception error) { args = new StoppedEventArgs(args.Exception ?? error); }
         Interlocked.Exchange(ref pendingStop, null);
-        PlaybackStopped?.Invoke(this, args);
+        Interlocked.Exchange(ref completed, args);
     }
 
     private void OnReset(object? sender, EventArgs args) => Volatile.Write(ref reset, 1);
@@ -173,22 +204,35 @@ public sealed class AudioOutputDevice : IAudioOutput
 
     public void Dispose()
     {
+        if (backendDispatcher is not null && !backendDispatcher.CheckAccess())
+        {
+            try { if (!backendDispatcher.HasShutdownStarted) backendDispatcher.Invoke(Dispose); }
+            finally { backendThread!.Join(); }
+            return;
+        }
         if (disposed) return;
         CheckOwner();
         disposed = true;
-        monitor?.Dispose();
-        monitor = null;
-        var retired = player;
-        player = null;
-        if (retired is not null)
+        try
         {
-            retired.PlaybackStopped -= OnStopped;
-            if (retired is AsioOut asio) asio.DriverResetRequest -= OnReset;
-            try { retired.Stop(); }
-            finally { retired.Dispose(); }
+            monitor?.Dispose();
+            monitor = null;
+            var retired = player;
+            player = null;
+            if (retired is not null)
+            {
+                retired.PlaybackStopped -= OnStopped;
+                if (retired is AsioOut asio) asio.DriverResetRequest -= OnReset;
+                try { retired.Stop(); }
+                finally { retired.Dispose(); }
+            }
         }
-        PlaybackState = PlaybackState.Stopped;
-        Interlocked.Exchange(ref pendingStop, null);
+        finally
+        {
+            PlaybackState = PlaybackState.Stopped;
+            Interlocked.Exchange(ref pendingStop, null);
+            backendDispatcher?.BeginInvokeShutdown(DispatcherPriority.Background);
+        }
     }
 
     private void CheckOwner()
