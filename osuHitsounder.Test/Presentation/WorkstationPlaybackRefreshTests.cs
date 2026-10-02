@@ -10,6 +10,53 @@ namespace osuHitsounder.Test.Presentation;
 [NonParallelizable]
 public class WorkstationPlaybackRefreshTests
 {
+    [TestCase(199, 0, 0)]
+    [TestCase(200, 0, 200)]
+    [TestCase(650, 0, 600)]
+    [TestCase(1000, 0, 800)]
+    [TestCase(350, 600, 200)]
+    public void MarkerPagesAcrossViewport(double marker, double offset, double expected)
+    {
+        Assert.That(WorkstationPage.GetPlaybackPageOffset(marker, offset, 200, 1000), Is.EqualTo(expected));
+    }
+
+    [TestCase(0)]
+    [TestCase(double.NaN)]
+    [TestCase(double.PositiveInfinity)]
+    public void InvalidViewportDoesNotScroll(double viewport)
+    {
+        Assert.That(WorkstationPage.GetPlaybackPageOffset(650, 100, viewport, 1000), Is.EqualTo(100));
+    }
+
+    [Test]
+    public void NaturalCompletionRevealsFinalMarkerWithoutAnotherFrame()
+    {
+        UiTestPump.Run(vm.PlayPauseCommand.ExecuteAsync(null));
+        var viewer = (System.Windows.Controls.ScrollViewer)page.FindName("WaveformScrollViewer");
+        audio.Snapshot = new AudioPlaybackSnapshot(TimeSpan.FromSeconds(10), false, null);
+        UiTestPump.Run(StubWorkstationAudioService.WaitUntilAsync(() => vm.Position == TimeSpan.FromSeconds(10)));
+        view.UpdateLayout();
+        Assert.That(vm.IsPlaying, Is.False);
+        Assert.That(viewer.HorizontalOffset, Is.EqualTo(viewer.ScrollableWidth));
+    }
+
+    [Test]
+    public void PlayingMarkerRevealsNextPageAndKeepsOffsetsAligned()
+    {
+        UiTestPump.Run(vm.PlayPauseCommand.ExecuteAsync(null));
+        var viewer = (System.Windows.Controls.ScrollViewer)page.FindName("WaveformScrollViewer");
+        var waveform = (WaveformView)page.FindName("WaveformDisplay");
+        audio.Snapshot = audio.Snapshot with { Position = TimeSpan.FromSeconds(7) };
+        PumpFrame();
+        view.UpdateLayout();
+        Assert.That(viewer.HorizontalOffset, Is.GreaterThan(0));
+        Assert.That(page.TimelineHorizontalOffset, Is.EqualTo(viewer.HorizontalOffset));
+        Assert.That(waveform.HorizontalOffset, Is.EqualTo(viewer.HorizontalOffset));
+        var markerX = vm.Position.TotalSeconds / 10 * waveform.ActualWidth;
+        Assert.That(markerX, Is.InRange(viewer.HorizontalOffset, viewer.HorizontalOffset + viewer.ViewportWidth));
+        Assert.That(audio.Snapshot.Position, Is.EqualTo(TimeSpan.FromSeconds(7)));
+    }
+
     [TestCase(640, FlowDirection.LeftToRight, "WASAPI")]
     [TestCase(900, FlowDirection.RightToLeft, "WASAPI")]
     [TestCase(640, FlowDirection.LeftToRight, "WaveOut")]

@@ -12,8 +12,35 @@ public class MarkerPlaybackCoordinatorTests
         using var cancellation = new CancellationTokenSource();
         var wait = MarkerPlaybackCoordinator.DelayAsync(TimeSpan.FromSeconds(30), cancellation.Token);
         cancellation.Cancel();
-        Assert.CatchAsync<OperationCanceledException>(async () => await wait);
+        await wait.WaitAsync(TimeSpan.FromSeconds(3));
         await MarkerPlaybackCoordinator.DelayAsync(TimeSpan.FromMilliseconds(1), default);
+    }
+
+    [Test]
+    public async Task NativeWaitAlreadyCancelledReturnsNormally()
+    {
+        await MarkerPlaybackCoordinator.DelayAsync(TimeSpan.FromSeconds(30), new CancellationToken(true))
+            .WaitAsync(TimeSpan.FromSeconds(3));
+    }
+
+    [Test]
+    public async Task NativeWaitSupportsRepeatedPauseAndStopWithoutStaleTriggers()
+    {
+        var audio = new StubWorkstationAudioService();
+        await using var coordinator = new MarkerPlaybackCoordinator(audio, MarkerPlaybackCoordinator.DelayAsync);
+        await coordinator.ConfigureAsync(new PlaybackMarkerClock([0], [60]), TimeSpan.FromSeconds(10),
+            [new(1, "hit", 5000, 100, 100)], default);
+        for (var index = 0; index < 10; index++)
+        {
+            await coordinator.PlayAsync(default);
+            await coordinator.PauseAsync(default).WaitAsync(TimeSpan.FromSeconds(3));
+            Assert.That(coordinator.Latest.Playback.IsPlaying, Is.False);
+            await coordinator.PlayAsync(default);
+            await coordinator.StopAsync(default).WaitAsync(TimeSpan.FromSeconds(3));
+            Assert.That(coordinator.Latest.Playback.Position, Is.EqualTo(TimeSpan.Zero));
+        }
+        Assert.That(audio.TriggeredSamples, Is.Empty);
+        Assert.That(coordinator.Latest.Playback.Error, Is.Null);
     }
 
     [Test]

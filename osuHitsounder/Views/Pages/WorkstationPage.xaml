@@ -446,7 +446,7 @@
             <Setter Property="Background" Value="{DynamicResource Brush.Overlay}" />
             <Setter Property="Visibility" Value="Collapsed" />
             <Style.Triggers>
-                <DataTrigger Binding="{Binding IsLoading, Mode=OneWay}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
+                <DataTrigger Binding="{Binding ShowStatusOverlay, Mode=OneWay}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
             </Style.Triggers>
         </Style>
         <Style x:Key="OHsWorkstationLoadingToastStyle" TargetType="Border" BasedOn="{StaticResource CardBorderStyle}">
@@ -455,7 +455,7 @@
             <Setter Property="VerticalAlignment" Value="Top" />
             <Setter Property="Visibility" Value="Collapsed" />
             <Style.Triggers>
-                <DataTrigger Binding="{Binding IsLoading, Mode=OneWay}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
+                <DataTrigger Binding="{Binding ShowStatusOverlay, Mode=OneWay}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
                 <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
                     <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
                     <Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
@@ -698,7 +698,7 @@
     </Grid>
         <Border x:Name="LoadingOverlay" Style="{StaticResource OHsWorkstationLoadingOverlayStyle}" />
         <Border x:Name="LoadingToast" Style="{StaticResource OHsWorkstationLoadingToastStyle}">
-            <TextBlock x:Name="LoadingProjectText" Text="Loading Project..." AutomationProperties.Name="Loading Project..."
+            <TextBlock x:Name="LoadingProjectText" Text="{Binding StatusText, Mode=OneWay}" AutomationProperties.Name="{Binding StatusText, Mode=OneWay}"
                        Style="{StaticResource OHsWorkstationLoadingTextStyle}" />
         </Border>
     </Grid>

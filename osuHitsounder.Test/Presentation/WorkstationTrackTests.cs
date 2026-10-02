@@ -293,7 +293,7 @@ public class WorkstationTrackTests
         finally { Directory.Delete(root.FullName, true); }
     }
     [Test]
-    public async Task SelectionChangesFutureSampleWithoutMutatingPlacedSamples()
+    public async Task SelectionUpdatesPlacedSamplesAndPlaybackWithoutMovingNodes()
     {
         var one = new Sample { FileName = "old.wav", Volume = 12, Timestamp = 125 };
         var two = new Sample { FileName = "old.wav", Volume = 25, Timestamp = 375 };
@@ -302,15 +302,57 @@ public class WorkstationTrackTests
         {
             Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav", new ProjectData { Tracks = [track] }))
         };
-        var vm = new WorkstationPageVM(source, new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
+        var audio = new StubWorkstationAudioService();
+        var saves = new DelayedProjectFileService();
+        saves.Release();
+        var vm = new WorkstationPageVM(source, new osuHitsounder.Services.MarkerPlaybackCoordinator(audio, (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler(), projectFiles: saves);
         await vm.LoadAsync("project.json", CancellationToken.None);
         vm.AcknowledgePresentationReady(vm.LoadGeneration);
         vm.SelectSample(track, "new.wav");
         Assert.That(track.Samples, Is.EqualTo(new[] { one, two }));
         Assert.That(track.SelectedSampleFileName, Is.EqualTo("new.wav"));
-        Assert.That(track.Samples.Select(sample => sample.FileName), Is.All.EqualTo("old.wav"));
+        Assert.That(track.Samples.Select(sample => sample.FileName), Is.All.EqualTo("new.wav"));
         Assert.That(track.Samples.Select(sample => sample.Volume), Is.EqualTo(new[] { 12, 25 }));
         Assert.That(track.Samples.Select(sample => sample.Timestamp), Is.EqualTo(new[] { 125, 375 }));
+        await vm.FlushPlaybackUpdatesAsync();
+        await vm.FlushSavesAsync();
+        Assert.That(audio.SampleUpdates.Last().Select(item => item.FileName), Is.All.EqualTo("new.wav"));
+        Assert.That(ProjectDataSerializer.Deserialize(saves.LatestJson!).Tracks.Single().Samples.Select(item => item.FileName),
+            Is.All.EqualTo("new.wav"));
+        await vm.DeactivateAsync();
+    }
+
+    [Test]
+    public async Task RapidSelectionUpdatesOnlyChosenTrackAndPreservesEventIdentity()
+    {
+        var first = new Track { SelectedSampleFileName = "a.wav", Samples = [new Sample { FileName = "a.wav", Timestamp = 125 }] };
+        var second = new Track { Samples = [new Sample { FileName = "a.wav", Timestamp = 250 }] };
+        var empty = new Track { SelectedSampleFileName = "a.wav" };
+        var source = new StubWorkstationSourceService
+        {
+            Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [first, second, empty] }))
+        };
+        var audio = new StubWorkstationAudioService();
+        var vm = new WorkstationPageVM(source, new osuHitsounder.Services.MarkerPlaybackCoordinator(audio, (duration, token) => Task.Delay(duration, token)),
+            new ImmediateUiScheduler(), new StubSampleFileService(["a.wav", "B.wav", "c.wav"]));
+        await vm.LoadAsync("project.json", default);
+        vm.AcknowledgePresentationReady(vm.LoadGeneration);
+        var originalId = audio.SampleUpdates.Last()[0].Id;
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        audio.PrepareSamplesAsync = _ => release.Task;
+        vm.SelectSample(first, "b.wav");
+        vm.SelectSample(first, "c.wav");
+        vm.SelectSample(empty, "b.wav");
+        vm.SelectSample(first, "invalid.wav");
+        release.SetResult();
+        await vm.FlushPlaybackUpdatesAsync();
+        Assert.That(first.Samples.Single().FileName, Is.EqualTo("c.wav"));
+        Assert.That(second.Samples.Single().FileName, Is.EqualTo("a.wav"));
+        Assert.That(empty.SelectedSampleFileName, Is.EqualTo("B.wav"));
+        Assert.That(empty.Samples, Is.Empty);
+        Assert.That(audio.SampleUpdates.Last()[0].Id, Is.EqualTo(originalId));
+        Assert.That(audio.SampleUpdates.Last()[0].FileName, Is.EqualTo("c.wav"));
+        await vm.DeactivateAsync();
     }
 
     [Test]
@@ -337,10 +379,10 @@ public class WorkstationTrackTests
         vm.SetTrackVolume(track, 40);
         Assert.That(vm.PlaceSample(track, 125.5), Is.True);
 
-        Assert.That(track.Samples.Select(sample => sample.FileName), Is.EqualTo(new[] { "a.wav", "b.wav" }));
+        Assert.That(track.Samples.Select(sample => sample.FileName), Is.EqualTo(new[] { "b.wav", "b.wav" }));
         Assert.That(track.Samples.Select(sample => sample.Volume), Is.EqualTo(new[] { 100, 100 }));
         Assert.That(track.Samples.Select(sample => sample.Timestamp), Is.EqualTo(new[] { 126, 126 }));
-        Assert.That(vm.SamplesRevision, Is.EqualTo(2));
+        Assert.That(vm.SamplesRevision, Is.EqualTo(3));
     }
 
     [Test]

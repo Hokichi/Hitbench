@@ -48,8 +48,9 @@ public partial class App : Application
         registrations.AddSingleton<IProjectCreationDialogService>(provider =>
             new ProjectCreationDialogService(() => Current.MainWindow, Current.Dispatcher,
                 provider.GetRequiredService<Func<string, IReadOnlySet<string>, ProjectNamePopupVM>>()));
-        registrations.AddSingleton<HomePageVM>();
-        registrations.AddSingleton<HomePage>();
+        registrations.AddTransient<HomePageVM>();
+        registrations.AddTransient<HomePage>();
+        registrations.AddSingleton<Func<HomePage>>(provider => () => provider.GetRequiredService<HomePage>());
         registrations.AddSingleton<MainWindow>();
         return registrations.BuildServiceProvider(new ServiceProviderOptions
         {

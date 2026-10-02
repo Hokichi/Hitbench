@@ -20,13 +20,16 @@ namespace osuHitsounder;
 public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
     IRecipient<ProjectOpenRequestedMessage>, IRecipient<ProjectCreationFailedMessage>
 {
-    private readonly HomePage page;
+    private HomePage page;
     private readonly IMessenger messenger;
     private readonly Func<WorkstationPage> createWorkstation;
+    private readonly Func<HomePage> createHome;
+    private Task returnHome = Task.CompletedTask;
+    private bool closeRequested;
     private readonly CancellationTokenSource lifetime = new();
     private Task? loading;
     private bool closed;
-    private readonly HomePageVM viewModel;
+    private HomePageVM viewModel;
     private readonly IAppSettingsService settings;
     private readonly DispatcherTimer placementTimer;
     private IInputElement? priorFocus;
@@ -48,12 +51,13 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
     private DispatcherOperation? layoutRefresh;
 
     public MainWindow(HomePage page, IMessenger messenger, Func<WorkstationPage> createWorkstation,
-        HomePageVM viewModel, IAppSettingsService settings)
-        : this(page, messenger, createWorkstation, viewModel, settings, null) { }
+        IAppSettingsService settings, Func<HomePage> createHome)
+        : this(page, messenger, createWorkstation, (HomePageVM)page.DataContext, settings, null, createHome: createHome) { }
 
     internal MainWindow(HomePage page, IMessenger messenger, Func<WorkstationPage> createWorkstation,
         HomePageVM viewModel, IAppSettingsService settings, Action<string>? reportError,
-        Action<WindowState>? requestWindowState = null, Func<Window, Size>? getWorkArea = null)
+        Action<WindowState>? requestWindowState = null, Func<Window, Size>? getWorkArea = null,
+        Func<HomePage>? createHome = null)
     {
         this.reportError = reportError ?? (error => MessageBox.Show(this, error, "osuHitsounder",
             MessageBoxButton.OK, MessageBoxImage.Error));
@@ -67,6 +71,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
         this.viewModel = viewModel;
         this.messenger = messenger;
         this.createWorkstation = createWorkstation;
+        this.createHome = createHome ?? (() => throw new InvalidOperationException("A home-page factory is required to return home."));
         this.settings = settings;
         this.getWorkArea = getWorkArea ?? WindowWorkArea.GetClientSize;
         InitializeComponent();
@@ -98,6 +103,70 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
 
     public Task LoadAsync() => loading ??= LoadPageAsync();
 
+    internal Task ReturnHomeAsync()
+    {
+        if (!returnHome.IsCompleted) return returnHome;
+        if (closed || closingForSave || closeRequested || PageHost.Content is not WorkstationPage workstation)
+            return Task.CompletedTask;
+        return returnHome = ReturnHomeCoreAsync(workstation);
+    }
+
+    private async Task ReturnHomeCoreAsync(WorkstationPage workstation)
+    {
+        HomePage? next = null;
+        try
+        {
+            if (!await workstation.PrepareToReturnAsync(lifetime.Token) || closed || closeRequested) return;
+            next = createHome();
+            await workstation.DeactivateAsync();
+            if (closed || closeRequested) { next.Deactivate(); return; }
+            viewModel.PropertyChanged -= OnStateChanged;
+            focusRestore?.Abort();
+            priorFocus = null;
+            page = next;
+            viewModel = (HomePageVM)next.DataContext;
+            DataContext = viewModel;
+            viewModel.PropertyChanged += OnStateChanged;
+            PageHost.Content = next;
+            WorkstationActions.Visibility = Visibility.Collapsed;
+            MinWidth = defaultMinWidth;
+            MinHeight = defaultMinHeight;
+            QueueSongsLayout();
+            loading = LoadPageAsync();
+            await loading;
+            if (!closed && page.FatalError is { } error) reportError(error);
+        }
+        catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { next?.Deactivate(); }
+        catch (Exception error)
+        {
+            if (!ReferenceEquals(PageHost.Content, next)) next?.Deactivate();
+            workstation.CancelReturn();
+            if (!closed) reportError($"Unable to return home: {error.Message}");
+        }
+    }
+
+    internal async Task<bool> PrepareProjectForCloseAsync()
+    {
+        closeRequested = true;
+        try
+        {
+            await returnHome;
+            if (PageHost.Content is WorkstationPage workstation)
+            {
+                await workstation.FlushSavesAsync();
+                await workstation.DeactivateAsync();
+            }
+            return true;
+        }
+        catch (Exception error)
+        {
+            closeRequested = false;
+            if (PageHost.Content is WorkstationPage workstation) workstation.CancelReturn();
+            reportError($"Unable to save project: {error.Message}");
+            return false;
+        }
+    }
+
     public void ApplySettings(AppSettings value)
     {
         restoredWidth = NormalizeDimension(value.RestoredWidth, 1280, MinWidth);
@@ -116,7 +185,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
 
     private void OpenWorkstation(string projectPath)
     {
-        if (closed || PageHost.Content != page)
+        if (closed || closeRequested || closingForSave || !returnHome.IsCompleted || PageHost.Content != page)
             return;
         try
         {
@@ -182,22 +251,15 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
     {
         base.OnClosing(e);
         if (e.Cancel || closingAfterSave ||
-            (!placementDirty && placementSave.IsCompleted &&
+            (!placementDirty && placementSave.IsCompleted && returnHome.IsCompleted &&
              (PageHost.Content is not WorkstationPage workstationPage || !workstationPage.HasPendingSaves))) return;
         e.Cancel = true;
         if (closingForSave) return;
         closingForSave = true;
         placementTimer.Stop();
-        try
+        if (!await PrepareProjectForCloseAsync())
         {
-            if (PageHost.Content is WorkstationPage workstation)
-                await workstation.FlushSavesAsync();
-        }
-        catch (Exception error)
-        {
-            Trace.TraceError("Project save failed during close: {0}", error);
             closingForSave = false;
-            reportError($"Unable to save project: {error.Message}");
             return;
         }
         try
@@ -330,6 +392,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
     }
 
     private void OnLoadSampleClick(object sender, RoutedEventArgs e) => messenger.Send(new LoadSampleRequestedMessage());
+    private async void OnGoBackClick(object sender, RoutedEventArgs e) => await ReturnHomeAsync();
     private void OnAddSampleTrackClick(object sender, RoutedEventArgs e) => messenger.Send(new AddSampleTrackRequestedMessage());
     private void OnAddPianoTrackClick(object sender, RoutedEventArgs e) => messenger.Send(new AddPianoTrackRequestedMessage());
 

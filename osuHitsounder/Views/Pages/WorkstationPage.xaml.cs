@@ -151,7 +151,11 @@ public partial class WorkstationPage : UserControl
             playbackReady = true;
             presentationReady.TrySetResult();
         }
-        if (playbackReady && viewModel.IsPlaying) viewModel.RefreshPlayback();
+        if (playbackReady && viewModel.IsPlaying)
+        {
+            viewModel.RefreshPlayback();
+            FollowPlaybackPosition();
+        }
         UpdatePlaybackRefreshSubscription();
     }
 
@@ -210,6 +214,17 @@ public partial class WorkstationPage : UserControl
     {
         if (sender is ComboBox selector) OnSampleSelectorLoaded(selector, new RoutedEventArgs());
         else if (sender is Slider slider) OnVolumeSliderLoaded(slider, new RoutedEventArgs());
+    }
+
+    private void RefreshSampleSelectors(DependencyObject root)
+    {
+        if (root is ComboBox { DataContext: Track } selector)
+        {
+            OnSampleSelectorLoaded(selector, new RoutedEventArgs());
+            return;
+        }
+        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(root); index++)
+            RefreshSampleSelectors(VisualTreeHelper.GetChild(root, index));
     }
 
     private void OnSampleSelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -279,6 +294,17 @@ public partial class WorkstationPage : UserControl
     public Task FlushSavesAsync() => viewModel.FlushSavesAsync();
     public bool HasPendingSaves => viewModel.HasPendingSaves;
 
+    public async Task<bool> PrepareToReturnAsync(CancellationToken token)
+    {
+        var focus = Keyboard.FocusedElement as UIElement;
+        DismissVolumeOverlay();
+        var prepared = await viewModel.PrepareToReturnAsync(token);
+        if (!prepared && !deactivationStarted && focus is { IsVisible: true, IsEnabled: true }) focus.Focus();
+        return prepared;
+    }
+
+    public void CancelReturn() => viewModel.CancelReturn();
+
     private void OnWaveformScrollBarScroll(object sender, ScrollEventArgs e)
     {
         if (!viewModel.CanPlay || deactivationStarted) return;
@@ -304,9 +330,15 @@ public partial class WorkstationPage : UserControl
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(WorkstationPageVM.SampleFiles)) RefreshSampleSelectors(TrackList);
         if (e.PropertyName is nameof(WorkstationPageVM.IsPlaying) or nameof(WorkstationPageVM.LoadPhase))
             UpdatePlaybackRefreshSubscription();
         if (e.PropertyName == nameof(WorkstationPageVM.ZoomFactor)) ApplyPendingZoomAnchor();
+        if (e.PropertyName == nameof(WorkstationPageVM.Position) && viewModel.IsPlaying) FollowPlaybackPosition();
+        if (e.PropertyName == nameof(WorkstationPageVM.StatusText))
+            (System.Windows.Automation.Peers.UIElementAutomationPeer.FromElement(LoadingProjectText) ??
+             System.Windows.Automation.Peers.UIElementAutomationPeer.CreatePeerForElement(LoadingProjectText))?
+                .RaiseAutomationEvent(System.Windows.Automation.Peers.AutomationEvents.LiveRegionChanged);
     }
 
     private void OnTracksCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -368,7 +400,7 @@ public partial class WorkstationPage : UserControl
         {
             if (modifiers != ModifierKeys.None) return false;
             if (!viewModel.PlayPauseCommand.CanExecute(null)) return false;
-            if (!isRepeat) viewModel.PlayPauseCommand.Execute(null);
+            if (!isRepeat) PlaybackInputCompletion = viewModel.PlayPauseCommand.ExecuteAsync(null);
             return true;
         }
         if (key is not (Key.Left or Key.Right) || IsNativeArrowInput(origin)) return false;
@@ -421,6 +453,25 @@ public partial class WorkstationPage : UserControl
         if (x < offset) WaveformScrollViewer.ScrollToHorizontalOffset(x);
         else if (x > offset + viewport)
             WaveformScrollViewer.ScrollToHorizontalOffset(Math.Min(WaveformScrollViewer.ScrollableWidth, x - viewport));
+    }
+
+    private void FollowPlaybackPosition()
+    {
+        if (!playbackReady || deactivationStarted || !IsVisible || ownerWindow?.WindowState == WindowState.Minimized) return;
+        var duration = viewModel.Waveform?.Duration.TotalSeconds ?? 0;
+        if (duration <= 0) return;
+        var offset = GetPlaybackPageOffset(viewModel.Position.TotalSeconds / duration * WaveformDisplay.ActualWidth,
+            WaveformScrollViewer.HorizontalOffset, WaveformScrollViewer.ViewportWidth, WaveformDisplay.ActualWidth);
+        if (offset != WaveformScrollViewer.HorizontalOffset) WaveformScrollViewer.ScrollToHorizontalOffset(offset);
+    }
+
+    internal static double GetPlaybackPageOffset(double markerX, double offset, double viewportWidth, double extentWidth)
+    {
+        if (!double.IsFinite(markerX) || !double.IsFinite(offset) || !double.IsFinite(viewportWidth) ||
+            !double.IsFinite(extentWidth) || viewportWidth <= 0 || extentWidth <= 0) return offset;
+        if (markerX >= offset && markerX < offset + viewportWidth) return offset;
+        var pages = Math.Floor((markerX - offset) / viewportWidth);
+        return Math.Clamp(offset + pages * viewportWidth, 0, Math.Max(0, extentWidth - viewportWidth));
     }
 
     private static bool IsEditingInput(DependencyObject? origin)

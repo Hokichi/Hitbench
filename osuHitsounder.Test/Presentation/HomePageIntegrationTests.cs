@@ -291,9 +291,12 @@ public class HomePageIntegrationTests
         EnsureResources();
         using var provider = App.CreateServices();
         var window = provider.GetRequiredService<MainWindow>();
-        var page = provider.GetRequiredService<HomePage>();
-        Assert.That(((ContentControl)window.FindName("PageHost")).Content, Is.SameAs(page));
-        Assert.That(page.DataContext, Is.SameAs(provider.GetRequiredService<HomePageVM>()));
+        var page = (HomePage)((ContentControl)window.FindName("PageHost")).Content;
+        Assert.That(window.DataContext, Is.SameAs(page.DataContext));
+        var fresh = provider.GetRequiredService<Func<HomePage>>()();
+        Assert.That(fresh, Is.Not.SameAs(page));
+        Assert.That(fresh.DataContext, Is.Not.SameAs(page.DataContext));
+        fresh.Deactivate();
         window.Close();
     }
 

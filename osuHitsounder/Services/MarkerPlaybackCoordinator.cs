@@ -11,7 +11,7 @@ public sealed class MarkerPlaybackCoordinator(IWorkstationAudioService audio,
     // Windows per-wait precision; no busy spin or process/global timer-resolution change.
     public static Task DelayAsync(TimeSpan duration, CancellationToken token) => Task.Run(() =>
     {
-        token.ThrowIfCancellationRequested();
+        if (token.IsCancellationRequested) return;
         using var timer = new EventWaitHandle(false, EventResetMode.AutoReset);
         var handle = CreateWaitableTimerExW(IntPtr.Zero, null, 2, 0x001F0003);
         if (handle.IsInvalid) { handle.Dispose(); throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error()); }
@@ -22,8 +22,7 @@ public sealed class MarkerPlaybackCoordinator(IWorkstationAudioService audio,
         if (!SetWaitableTimer(handle, ref due, 0, IntPtr.Zero, IntPtr.Zero, false))
             throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
         WaitHandle.WaitAny([timer, token.WaitHandle]);
-        token.ThrowIfCancellationRequested();
-    }, token);
+    }, CancellationToken.None);
 
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     private static extern SafeWaitHandle CreateWaitableTimerExW(IntPtr attributes, string? name, uint flags, uint access);
@@ -127,7 +126,7 @@ public sealed class MarkerPlaybackCoordinator(IWorkstationAudioService audio,
                 // No UI dispatch and no busy spin. Re-read the output clock after every wake.
                 var position = audio.GetSnapshot().Position;
                 await delay(clock.GetDelayToNextBoundary(position), token).ConfigureAwait(false);
-                token.ThrowIfCancellationRequested();
+                if (token.IsCancellationRequested) break;
                 Tick();
             }
         }

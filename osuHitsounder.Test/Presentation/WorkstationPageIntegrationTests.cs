@@ -325,6 +325,56 @@ public class WorkstationPageIntegrationTests
     }
 
     [Test]
+    public void ReloadRestoresTrackSelectionsAfterSampleFilesArrive()
+    {
+        var choices = new TaskCompletionSource<IReadOnlyList<string>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var listing = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var tracks = new[]
+        {
+            new osuHitsounder.Core.Entities.Track { SelectedSampleFileName = "kick.wav", Samples = [new Sample { FileName = "kick.wav" }] },
+            new osuHitsounder.Core.Entities.Track { Samples = [new Sample { FileName = "Snare.wav" }] },
+            new osuHitsounder.Core.Entities.Track { SelectedSampleFileName = "missing.wav", Samples = [new Sample { FileName = "missing.wav" }] }
+        };
+        var source = new StubWorkstationSourceService
+        {
+            Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav", new ProjectData { Tracks = [.. tracks] }))
+        };
+        var files = new StubSampleFileService([])
+        {
+            List = (_, _) => { listing.TrySetResult(); return choices.Task; }
+        };
+        var vm = new WorkstationPageVM(source, new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)),
+            new UiScheduler(Dispatcher.CurrentDispatcher), files);
+        var page = new WorkstationPage(vm);
+        page.SetProjectPath("project.json");
+        using var view = new InMemoryView(new Window { Content = page, Width = 880, Height = 800 });
+        UiTestPump.Run(listing.Task);
+        view.UpdateLayout();
+        var list = (ItemsControl)page.FindName("TrackList");
+        var cards = Enumerable.Range(0, 3).Select(index => (FrameworkElement)list.ItemContainerGenerator.ContainerFromIndex(index)!).ToArray();
+        Assert.That(cards, Has.All.Not.Null);
+        UiTestPump.Run(Dispatcher.CurrentDispatcher.InvokeAsync(() => { }, DispatcherPriority.ContextIdle).Task);
+        Assert.That(FindVisualChild<ComboBox>(cards[0])!.SelectedItem, Is.Null);
+        choices.SetResult(["Kick.wav", "Snare.wav"]);
+        UiTestPump.Run(page.LoadCompletion);
+        view.UpdateLayout();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(FindVisualChild<ComboBox>(cards[0])!.SelectedItem, Is.EqualTo("Kick.wav"));
+            Assert.That(FindVisualChild<ComboBox>(cards[1])!.SelectedItem, Is.EqualTo("Snare.wav"));
+            foreach (var card in cards.Take(2))
+                Assert.That(FindVisualChildren<TextBlock>(card).Single(block => block.Name == "MissingSampleText").Visibility, Is.EqualTo(Visibility.Collapsed));
+            Assert.That(FindVisualChild<ComboBox>(cards[2])!.SelectedItem, Is.Null);
+            Assert.That(FindVisualChildren<TextBlock>(cards[2]).Single(block => block.Name == "MissingSampleText").Text, Does.Contain("missing.wav"));
+            Assert.That(tracks[0].Samples.Single().FileName, Is.EqualTo("kick.wav"));
+            Assert.That(tracks[1].Samples.Single().FileName, Is.EqualTo("Snare.wav"));
+            Assert.That(tracks[2].Samples.Single().FileName, Is.EqualTo("missing.wav"));
+            Assert.That(vm.SamplesRevision, Is.Zero);
+        });
+    }
+
+    [Test]
     public void MissingSavedSampleIsShownWithoutChangingItsFilename()
     {
         var track = new osuHitsounder.Core.Entities.Track { Samples = [new Sample { FileName = "missing.wav" }] };

@@ -25,6 +25,12 @@
             UseAeroCaptionButtons="False" />
     </shell:WindowChrome.WindowChrome>
     <Window.Resources>
+        <Style x:Key="OHsMainWindowGoBackStyle" TargetType="customControls:BalloonButton"
+               BasedOn="{StaticResource OHsBalloonActionStyle}">
+            <Setter Property="DefaultBackground" Value="{DynamicResource Brush.BalloonButton.Background.NavInfo}" />
+            <Setter Property="HoveredBackground" Value="{DynamicResource Brush.BalloonButton.Background.NavInfo.Hovered}" />
+            <Setter Property="ShouldShowText" Value="True" />
+        </Style>
         <Style
             x:Key="MainWindowStyle"
             BasedOn="{StaticResource BaseWindowStyle}"
@@ -132,20 +138,25 @@
     <Border x:Name="ShellRoot" Style="{StaticResource MainWindowRootStyle}">
         <Grid>
             <Grid.RowDefinitions>
-                <RowDefinition Height="40" />
+                <RowDefinition Height="Auto" MinHeight="40" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
             <Grid MouseLeftButtonDown="OnHeaderMouseLeftButtonDown">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <TextBlock
                     Margin="12,0"
                     Style="{StaticResource MainWindowTitleStyle}"
                     Text="osuHitsounder" />
-                <StackPanel x:Name="WorkstationActions" Grid.Column="1" Orientation="Horizontal" Visibility="Collapsed">
+                <WrapPanel x:Name="WorkstationActions" Grid.Column="1" Visibility="Collapsed">
+                    <customControls:BalloonButton x:Name="GoBackButton" Margin="0,0,8,0"
+                        AutomationProperties.Name="Go Back" ButtonIcon="{StaticResource Home}" ButtonText="Go Back"
+                        Click="OnGoBackClick" ToolTip="Save project and return to home"
+                        IsEnabled="{Binding ElementName=PageHost, Path=Content.DataContext.CanGoBack, Mode=OneWay}"
+                        Style="{StaticResource OHsMainWindowGoBackStyle}" />
                     <customControls:BalloonButton AutomationProperties.Name="Load sample" ButtonIcon="{StaticResource PlusSolid}"
                         ButtonText="Load Sample" Click="OnLoadSampleClick" ShouldShowText="True"
                         IsEnabled="{Binding ElementName=PageHost, Path=Content.DataContext.CanImportSample, Mode=OneWay}"
@@ -160,7 +171,7 @@
                         ToolTip="Instrumental track creation is coming later"
                         AutomationProperties.HelpText="Instrumental track creation is not implemented yet."
                         Style="{StaticResource OHsBalloonNeutralActionStyle}" />
-                </StackPanel>
+                </WrapPanel>
                 <StackPanel Grid.Column="2" Orientation="Horizontal">
                     <customControls:BalloonButton
                         x:Name="MinimizeButton"

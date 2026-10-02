@@ -65,6 +65,7 @@ public partial class WorkstationPageVM(
     private Task? activeLoad;
     private int loadGeneration;
     private bool deactivated;
+    private Task? deactivation;
     private PlaybackMarkerClock markerClock = new([], []);
     private TimeSpan playbackInterval;
     public TimeSpan PlaybackInterval => playbackInterval;
@@ -77,11 +78,15 @@ public partial class WorkstationPageVM(
     [ObservableProperty] private ProjectLoadPhase loadPhase = ProjectLoadPhase.PreparingData;
     public int LoadGeneration => loadGeneration;
     public bool IsLoading => LoadPhase is ProjectLoadPhase.PreparingData or ProjectLoadPhase.AwaitingPresentation;
-    public bool IsInteractionReady => LoadPhase == ProjectLoadPhase.Ready && !deactivated;
+    public bool IsInteractionReady => LoadPhase == ProjectLoadPhase.Ready && !deactivated && !IsReturning;
+    public bool CanGoBack => !deactivated && !IsReturning;
+    public bool ShowStatusOverlay => IsLoading || IsSavingForReturn;
+    public string StatusText => IsSavingForReturn ? "Saving..." : "Loading Project...";
 
     partial void OnLoadPhaseChanged(ProjectLoadPhase value)
     {
         OnPropertyChanged(nameof(IsLoading));
+        OnPropertyChanged(nameof(ShowStatusOverlay));
         OnPropertyChanged(nameof(IsInteractionReady));
         NotifyEditingState();
         NotifyCommandState();
@@ -167,10 +172,13 @@ public partial class WorkstationPageVM(
         return activeLoad;
     }
 
-    public async Task DeactivateAsync()
+    public Task DeactivateAsync() => deactivation ??= DeactivateCoreAsync();
+
+    private async Task DeactivateCoreAsync()
     {
         if (deactivated) return;
         deactivated = true;
+        OnPropertyChanged(nameof(CanGoBack));
         LoadPhase = ProjectLoadPhase.Cancelled;
         pendingPlayCancellation?.Cancel();
         OnPropertyChanged(nameof(CanRemoveTrack));
@@ -426,6 +434,10 @@ public partial class WorkstationPageVM(
         if (string.Equals(track.SelectedSampleFileName, fileName, StringComparison.OrdinalIgnoreCase)) return;
         track.SelectedSampleFileName = availableSamples.FirstOrDefault(name =>
             string.Equals(name, fileName, StringComparison.OrdinalIgnoreCase)) ?? fileName;
+        foreach (var sample in track.Samples) sample.FileName = track.SelectedSampleFileName;
+        samplesRevision++;
+        OnPropertyChanged(nameof(SamplesRevision));
+        QueuePlaybackUpdate();
         QueueSave();
     }
 
@@ -517,11 +529,80 @@ public partial class WorkstationPageVM(
     public async Task FlushSavesAsync()
     {
         if (activeImport is not null) await activeImport;
+        if (activeRemoval is not null) await activeRemoval;
         await saveTail;
         if (lastSaveError is not null) throw new IOException("Could not save project.", lastSaveError);
     }
 
     public Task FlushPlaybackUpdatesAsync() => playbackUpdates;
+
+    [ObservableProperty] private bool isReturning;
+    [ObservableProperty] private bool isSavingForReturn;
+
+    partial void OnIsReturningChanged(bool value)
+    {
+        OnPropertyChanged(nameof(CanGoBack));
+        OnPropertyChanged(nameof(IsInteractionReady));
+        NotifyEditingState();
+        NotifyCommandState();
+    }
+
+    partial void OnIsSavingForReturnChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ShowStatusOverlay));
+        OnPropertyChanged(nameof(StatusText));
+    }
+
+    public void CancelReturn()
+    {
+        if (!deactivated) IsReturning = false;
+    }
+
+    public async Task<bool> PrepareToReturnAsync(CancellationToken token)
+    {
+        if (deactivated || IsReturning || token.IsCancellationRequested) return false;
+        IsReturning = true;
+        var prepared = false;
+        try
+        {
+            pendingPlayCancellation?.Cancel();
+            await WaitForReturnAsync(playback.PauseAsync(CancellationToken.None));
+            RefreshPlayback();
+            if (IsLoading)
+            {
+                loadCancellation?.Cancel();
+                if (activeLoad is not null) await WaitForReturnAsync(activeLoad);
+            }
+            else if (LoadPhase == ProjectLoadPhase.Ready)
+            {
+                if (activeImport is not null) await WaitForReturnAsync(activeImport);
+                if (activeRemoval is not null) await WaitForReturnAsync(activeRemoval);
+                await WaitForReturnAsync(playbackUpdates);
+                QueueSave();
+                await WaitForReturnAsync(saveTail);
+                if (lastSaveError is not null) throw new IOException("Could not save project.", lastSaveError);
+            }
+            if (token.IsCancellationRequested) return false;
+            prepared = true;
+            return true;
+        }
+        catch (Exception error)
+        {
+            ErrorMessage = error.Message;
+            return false;
+        }
+        finally
+        {
+            IsSavingForReturn = false;
+            if (!prepared) IsReturning = false;
+        }
+    }
+
+    private async Task WaitForReturnAsync(Task operation)
+    {
+        if (!operation.IsCompleted) IsSavingForReturn = true;
+        await operation;
+    }
 
     private void QueuePlaybackUpdate()
     {
@@ -618,6 +699,7 @@ public partial class WorkstationPageVM(
         while (availableSamples.Count > choices.Count) availableSamples.RemoveAt(availableSamples.Count - 1);
         foreach (var track in tracks)
             track.SelectedSampleFileName ??= track.Samples.FirstOrDefault()?.FileName ?? availableSamples.FirstOrDefault();
+        OnPropertyChanged(nameof(SampleFiles));
         OnPropertyChanged(nameof(CanAddTrack));
         AddSampleTrackCommand.NotifyCanExecuteChanged();
         AddPianoTrackCommand.NotifyCanExecuteChanged();
@@ -780,6 +862,7 @@ public partial class WorkstationPageVM(
 
     private void NotifyEditingState()
     {
+        OnPropertyChanged(nameof(CanEditTracks));
         OnPropertyChanged(nameof(CanImportSample));
         OnPropertyChanged(nameof(CanAddTrack));
         OnPropertyChanged(nameof(CanRemoveTrack));
