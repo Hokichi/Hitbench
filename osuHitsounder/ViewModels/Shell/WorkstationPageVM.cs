@@ -410,7 +410,7 @@ public partial class WorkstationPageVM(
         OnPropertyChanged(nameof(CanPlaceSamples));
         try
         {
-            if (!await trackRemovalDialog!.ConfirmAsync(loadCancellation?.Token ?? CancellationToken.None)) return;
+            if (track.Samples.Count > 0 && !await trackRemovalDialog!.ConfirmAsync(loadCancellation?.Token ?? CancellationToken.None)) return;
             if (deactivated || generation != loadGeneration || !ReferenceEquals(Project, project) ||
                 project is null || !tracks.Contains(track)) return;
             project.Tracks.Remove(track);

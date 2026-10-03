@@ -10,6 +10,25 @@ namespace osuHitsounder.Test.Presentation;
 public class WorkstationTrackTests
 {
     [Test]
+    public async Task EmptyTrackRemovalSkipsDialogAndPersists()
+    {
+        var track = new Track { SelectedSampleFileName = "selected.wav" };
+        var sibling = new Track();
+        var source = new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav", new ProjectData { Tracks = [track, sibling] })) };
+        var saves = new DelayedProjectFileService();
+        saves.Release();
+        var dialog = new StubTrackRemovalDialogService();
+        var vm = new WorkstationPageVM(source, new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), projectFiles: saves, trackRemovalDialog: dialog);
+        await vm.LoadAsync("project.json", CancellationToken.None);
+        vm.AcknowledgePresentationReady(vm.LoadGeneration);
+        await vm.RemoveTrackCommand.ExecuteAsync(track);
+        await vm.FlushSavesAsync();
+        Assert.That(dialog.Calls, Is.Zero);
+        Assert.That(vm.Tracks, Is.EqualTo(new[] { sibling }));
+        Assert.That(ProjectDataSerializer.Deserialize(saves.LatestJson!).Tracks, Has.Count.EqualTo(1));
+        await vm.DeactivateAsync();
+    }
+    [Test]
     public async Task ImportIsUnavailableWithoutRequiredServices()
     {
         var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
@@ -131,7 +150,7 @@ public class WorkstationTrackTests
     [Test]
     public async Task DuplicateRequestWhileConfirmationPendingIsIgnored()
     {
-        var track = new Track();
+        var track = new Track { Samples = [new Sample { FileName = "a.wav" }] };
         var source = new StubWorkstationSourceService
         {
             Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav",
@@ -156,7 +175,7 @@ public class WorkstationTrackTests
     [Test]
     public async Task OldConfirmationCannotRemoveTrackAfterReload()
     {
-        var original = new Track();
+        var original = new Track { Samples = [new Sample { FileName = "a.wav" }] };
         var replacement = new Track();
         var source = new StubWorkstationSourceService
         {
@@ -193,7 +212,7 @@ public class WorkstationTrackTests
     [Test]
     public async Task ConfirmationPendingBlocksImportAndDeactivationPreventsRemoval()
     {
-        var track = new Track();
+        var track = new Track { Samples = [new Sample { FileName = "a.wav" }] };
         var source = new StubWorkstationSourceService
         {
             Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav",
@@ -240,7 +259,7 @@ public class WorkstationTrackTests
     [Test]
     public async Task DialogFailurePreservesTrackAndRestoresRemovalAvailability()
     {
-        var track = new Track();
+        var track = new Track { Samples = [new Sample { FileName = "a.wav" }] };
         var source = new StubWorkstationSourceService
         {
             Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav",
