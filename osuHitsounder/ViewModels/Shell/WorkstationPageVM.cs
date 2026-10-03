@@ -160,6 +160,8 @@ public partial class WorkstationPageVM(
     public Task LoadAsync(string projectPath, CancellationToken token)
     {
         if (deactivated) return Task.CompletedTask;
+        history.Clear();
+        NotifyHistoryState();
         CommitPendingZoom();
         pendingPlayCancellation?.Cancel();
         lastGridTarget = null;
@@ -180,6 +182,8 @@ public partial class WorkstationPageVM(
     {
         if (deactivated) return;
         deactivated = true;
+        history.Clear();
+        NotifyHistoryState();
         OnPropertyChanged(nameof(CanGoBack));
         LoadPhase = ProjectLoadPhase.Cancelled;
         pendingPlayCancellation?.Cancel();
@@ -405,6 +409,7 @@ public partial class WorkstationPageVM(
         var project = Project;
         var generation = loadGeneration;
         removalBusy = true;
+        NotifyHistoryState();
         OnPropertyChanged(nameof(CanRemoveTrack));
         OnPropertyChanged(nameof(CanImportSample));
         OnPropertyChanged(nameof(CanPlaceSamples));
@@ -415,6 +420,8 @@ public partial class WorkstationPageVM(
                 project is null || !tracks.Contains(track)) return;
             project.Tracks.Remove(track);
             tracks.Remove(track);
+            history.RemoveTrack(track);
+            NotifyHistoryState();
             QueuePlaybackUpdate();
             QueueSave();
         }
@@ -423,6 +430,7 @@ public partial class WorkstationPageVM(
         finally
         {
             removalBusy = false;
+            NotifyHistoryState();
             OnPropertyChanged(nameof(CanRemoveTrack));
             OnPropertyChanged(nameof(CanImportSample));
             OnPropertyChanged(nameof(CanPlaceSamples));
@@ -451,26 +459,26 @@ public partial class WorkstationPageVM(
         var fileName = availableSamples.FirstOrDefault(name =>
             string.Equals(name, track.SelectedSampleFileName, StringComparison.OrdinalIgnoreCase));
         if (fileName is null) return false;
-        track.Samples.Add(new Sample
+        var sample = new Sample
         {
             FileName = fileName,
             Volume = 100,
             Timestamp = (int)Math.Round(leftBoundaryMilliseconds, MidpointRounding.AwayFromZero)
-        });
-        samplesRevision++;
-        OnPropertyChanged(nameof(SamplesRevision));
-        QueuePlaybackUpdate();
-        QueueSave();
+        };
+        track.Samples.Add(sample);
+        history.RecordPlacement(track, sample, track.Samples.Count - 1);
+        PublishNodeChange();
         return true;
     }
 
     public bool RemoveSample(Track track, Sample sample)
     {
-        if (!CanPlaceSamples || !tracks.Contains(track) || !track.Samples.Remove(sample)) return false;
-        samplesRevision++;
-        OnPropertyChanged(nameof(SamplesRevision));
-        QueuePlaybackUpdate();
-        QueueSave();
+        if (!CanPlaceSamples || !tracks.Contains(track)) return false;
+        var index = track.Samples.FindIndex(node => ReferenceEquals(node, sample));
+        if (index < 0) return false;
+        track.Samples.RemoveAt(index);
+        history.RecordRemoval(track, sample, index);
+        PublishNodeChange();
         return true;
     }
 
@@ -830,6 +838,7 @@ public partial class WorkstationPageVM(
 
     private void NotifyCommandState()
     {
+        NotifyHistoryState();
         PlayPauseCommand.NotifyCanExecuteChanged();
         StopCommand.NotifyCanExecuteChanged();
         SeekCommand.NotifyCanExecuteChanged();
@@ -852,6 +861,7 @@ public partial class WorkstationPageVM(
 
     private void NotifyEditingState()
     {
+        NotifyHistoryState();
         OnPropertyChanged(nameof(CanEditTracks));
         OnPropertyChanged(nameof(CanImportSample));
         OnPropertyChanged(nameof(CanAddTrack));
