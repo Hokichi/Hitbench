@@ -394,21 +394,34 @@ public partial class WorkstationPage : UserControl
 
     internal bool HandlePlaybackKey(Key key, ModifierKeys modifiers, bool isRepeat, DependencyObject? origin)
     {
-        if (modifiers is not (ModifierKeys.None or ModifierKeys.Control) ||
-            deactivationStarted || IsEditingInput(origin)) return false;
+        if (deactivationStarted || !viewModel.CanPlay) return false;
         if (key == Key.Space)
         {
-            if (modifiers != ModifierKeys.None) return false;
-            if (!viewModel.PlayPauseCommand.CanExecute(null)) return false;
-            if (!isRepeat) PlaybackInputCompletion = viewModel.PlayPauseCommand.ExecuteAsync(null);
+            if (modifiers is not (ModifierKeys.None or ModifierKeys.Shift)) return false;
+            var transport = modifiers == ModifierKeys.Shift ? viewModel.StopCommand : viewModel.PlayPauseCommand;
+            if (!transport.CanExecute(null)) return false;
+            if (!isRepeat) PlaybackInputCompletion = transport.ExecuteAsync(null);
             return true;
         }
-        if (key is not (Key.Left or Key.Right) || IsNativeArrowInput(origin)) return false;
+        if (modifiers is not (ModifierKeys.None or ModifierKeys.Control)) return false;
+        if (key is Key.Home or Key.End)
+        {
+            if (modifiers == ModifierKeys.Control)
+            {
+                var target = key == Key.Home ? TimeSpan.Zero : viewModel.Waveform!.Duration;
+                if (!viewModel.SeekCommand.CanExecute(target)) return false;
+                PlaybackInputCompletion = RevealAfterNavigationAsync(viewModel.SeekCommand.ExecuteAsync(target));
+            }
+            else if (key == Key.Home) WaveformScrollViewer.ScrollToLeftEnd();
+            else WaveformScrollViewer.ScrollToRightEnd();
+            return true;
+        }
+        if (key is not (Key.Left or Key.Right)) return false;
         var command = modifiers == ModifierKeys.Control
             ? key == Key.Left ? viewModel.PreviousWholeBeatCommand : viewModel.NextWholeBeatCommand
             : key == Key.Left ? viewModel.PreviousGridLineCommand : viewModel.NextGridLineCommand;
         if (!command.CanExecute(null)) return false;
-        PlaybackInputCompletion = RevealAfterNavigationAsync(command.ExecuteAsync(null));
+        PlaybackInputCompletion = RevealAfterNavigationAsync(command.ExecuteAsync(null), FindAncestor<BeatGridView>(origin));
         return true;
     }
 
@@ -419,26 +432,18 @@ public partial class WorkstationPage : UserControl
             PrepareTrackDrawings(VisualTreeHelper.GetChild(parent, index));
     }
 
-    private async Task RevealAfterNavigationAsync(Task navigation)
+    private async Task RevealAfterNavigationAsync(Task navigation, BeatGridView? grid = null)
     {
         try
         {
             await navigation;
-            if (!deactivationStarted) RevealPlaybackPosition();
+            if (!deactivationStarted)
+            {
+                RevealPlaybackPosition();
+                grid?.SetActivePosition(viewModel.Position);
+            }
         }
         catch (Exception error) { System.Diagnostics.Trace.TraceError("Playback navigation failed: {0}", error); }
-    }
-
-    private static bool IsNativeArrowInput(DependencyObject? origin)
-    {
-        var actionFocused = false;
-        for (var current = origin; current is not null; current = GetInputParent(current))
-        {
-            if (current is ComboBox or RangeBase or BeatGridView) return true;
-            if (current is ButtonBase) actionFocused = true;
-            if (current is Selector or ListBoxItem) return !actionFocused;
-        }
-        return false;
     }
 
     private void RevealPlaybackPosition()
@@ -472,16 +477,6 @@ public partial class WorkstationPage : UserControl
         if (markerX >= offset && markerX < offset + viewportWidth) return offset;
         var pages = Math.Floor((markerX - offset) / viewportWidth);
         return Math.Clamp(offset + pages * viewportWidth, 0, Math.Max(0, extentWidth - viewportWidth));
-    }
-
-    private static bool IsEditingInput(DependencyObject? origin)
-    {
-        for (var current = origin; current is not null; current = GetInputParent(current))
-        {
-            if (current is TextBoxBase or PasswordBox) return true;
-            if (current is ComboBox) return true;
-        }
-        return false;
     }
 
     private static DependencyObject? GetInputParent(DependencyObject current) =>
@@ -534,36 +529,4 @@ public partial class WorkstationPage : UserControl
         return true;
     }
 
-    private void OnWaveformKeyDown(object sender, KeyEventArgs e)
-    {
-        if (e.Handled) return;
-        if (e.Key is Key.Left or Key.Right)
-        {
-            e.Handled = HandlePlaybackKey(e.Key, Keyboard.Modifiers, e.IsRepeat,
-                e.OriginalSource as DependencyObject);
-            return;
-        }
-        if (Keyboard.Modifiers == ModifierKeys.Control)
-        {
-            var duration = viewModel.Waveform?.Duration;
-            if (duration is null) return;
-            var target = e.Key switch
-            {
-                Key.Home => TimeSpan.Zero,
-                Key.End => duration.Value,
-                _ => (TimeSpan?)null
-            };
-            if (target is null || !viewModel.SeekCommand.CanExecute(target.Value)) return;
-            viewModel.SeekCommand.Execute(target.Value);
-            e.Handled = true;
-            return;
-        }
-        switch (e.Key)
-        {
-            case Key.Home: WaveformScrollViewer.ScrollToLeftEnd(); break;
-            case Key.End: WaveformScrollViewer.ScrollToRightEnd(); break;
-            default: return;
-        }
-        e.Handled = true;
-    }
 }

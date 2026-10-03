@@ -136,6 +136,16 @@ public sealed class BeatGridView : FrameworkElement
         return true;
     }
 
+    public void SetActivePosition(TimeSpan position)
+    {
+        if (!CanPlaceSamples || Offsets is null || Bpms is null) return;
+        ActiveInterval = BeatGridCalculator.GetContainingInterval(Offsets, Bpms, Subdivision,
+            position.TotalMilliseconds, Duration.TotalMilliseconds);
+        pointerX = null;
+        pressedInterval = null;
+        InvalidateContent();
+    }
+
     public Rect GetSampleBounds(int timestampMilliseconds)
     {
         if (Duration <= TimeSpan.Zero || ContentWidth <= 0 || ActualHeight <= 0) return Rect.Empty;

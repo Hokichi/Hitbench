@@ -23,7 +23,7 @@ public class SongsResponsiveLayoutTests
         var app = Application.Current ?? new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
         app.Resources.MergedDictionaries.Clear();
         UiTestPump.EnsureFontResources(app);
-        foreach (var resource in new[] { "Themes/Dark.xaml", "Converters/Converters.xaml", "Icons.xaml", "Styles/TextBlock.xaml", "Styles/ItemsControl.xaml", "Styles/Image.xaml", "Styles/Grid.xaml", "Styles/Border.xaml", "Styles/ContentPresenter.xaml", "Styles/Button.xaml", "Styles/ToolTip.xaml", "Styles/Window.xaml", "Styles/ScrollViewer.xaml", "Styles/TextBox.xaml", "Styles/ComboBox.xaml", "Styles/ListBox.xaml", "Styles/Slider.xaml", "BeatGrid.xaml" })
+        foreach (var resource in new[] { "Themes/Dark.xaml", "Converters/Converters.xaml", "Icons.xaml", "Styles/TextBlock.xaml", "Styles/ItemsControl.xaml", "Styles/StackPanel.xaml", "Styles/Image.xaml", "Styles/Grid.xaml", "Styles/Border.xaml", "Styles/ContentPresenter.xaml", "Styles/Button.xaml", "Styles/ToolTip.xaml", "Styles/Window.xaml", "Styles/ScrollViewer.xaml", "Styles/TextBox.xaml", "Styles/ComboBox.xaml", "Styles/ListBox.xaml", "Styles/Slider.xaml", "BeatGrid.xaml" })
             app.Resources.MergedDictionaries.Add(new ResourceDictionary
             { Source = new Uri($"/osuHitsounder;component/Resources/{resource}", UriKind.Relative) });
     }
@@ -149,14 +149,25 @@ public class SongsResponsiveLayoutTests
             Assert.Multiple(() =>
             {
                 Assert.That(window.HandleWindowMouseWheel(false, ModifierKeys.Control, 120), Is.False);
-                Assert.That(workstationViewModel.ZoomFactor, Is.EqualTo(16));
+                Assert.That(workstationViewModel.ZoomFactor, Is.EqualTo(32));
                 Assert.That(window.HandleWindowMouseWheel(true, ModifierKeys.Control, 120), Is.True);
-                Assert.That(workstationViewModel.ZoomFactor, Is.EqualTo(17));
+                Assert.That(workstationViewModel.ZoomFactor, Is.EqualTo(33));
                 Assert.That(window.HandleWindowMouseWheel(true, ModifierKeys.Alt, 120, workstationPage), Is.True);
                 Assert.That(workstationViewModel.ApplicationVolume, Is.EqualTo(100));
                 Assert.That(window.HandleWindowMouseWheel(true, ModifierKeys.Shift, 120), Is.True);
                 Assert.That(window.HandleWindowMouseWheel(true, ModifierKeys.None, 120), Is.False);
             });
+            var detachedEditor = new TextBox();
+            using var detachedSource = new InMemoryPresentationSource { RootVisual = detachedEditor };
+            var key = new KeyEventArgs(Keyboard.PrimaryDevice, detachedSource, 0, Key.Space)
+            { RoutedEvent = Keyboard.KeyDownEvent, Source = detachedEditor };
+            Assert.That(window.HandleWorkstationInput(false, key, ModifierKeys.None), Is.False);
+            Assert.That(window.HandleWorkstationInput(true, key, ModifierKeys.None), Is.True);
+            UiTestPump.Run(workstationPage.PlaybackInputCompletion);
+            Assert.That(workstationViewModel.IsPlaying, Is.True);
+            key.Handled = true;
+            Assert.That(window.HandleWorkstationInput(true, key, ModifierKeys.None), Is.False);
+            Assert.That(workstationViewModel.IsPlaying, Is.True);
         }
         finally
         {

@@ -398,7 +398,7 @@
                     <Border Grid.Row="1" Style="{StaticResource OHsWorkstationTimelineStyle}">
                         <customControls:BeatGridView
                             Height="{Binding DataContext.TrackHeight, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
-                            AutomationProperties.HelpText="Use Left and Right to choose a beat interval, Enter to place the selected sample, and Delete to remove a sample in the active interval. Right-click a sample node to remove it."
+                            AutomationProperties.HelpText="Use Left and Right to move playback and choose a beat interval, Enter to place the selected sample, and Delete to remove a sample in the active interval. Right-click a sample node to remove it."
                             AutomationProperties.Name="Track sample placement timeline"
                             Bpms="{Binding DataContext.Project.BPMs, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
                             CanPlaceSamples="{Binding DataContext.CanPlaceSamples, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
@@ -538,7 +538,6 @@
                     AutomationProperties.Name="Audio waveform"
                     Focusable="True"
                     IsEnabled="{Binding CanPlay, Mode=OneWay}"
-                    PreviewKeyDown="OnWaveformKeyDown"
                     ScrollChanged="OnWaveformScrollChanged"
                     SizeChanged="OnWaveformViewportSizeChanged"
                     Style="{StaticResource OHsWorkstationWaveformScrollStyle}">

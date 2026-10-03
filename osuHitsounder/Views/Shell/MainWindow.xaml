@@ -10,10 +10,7 @@
     MinWidth="640"
     MinHeight="360"
     Deactivated="OnWindowDeactivated"
-    PreviewKeyDown="OnWindowKeyDown"
-    PreviewKeyUp="OnWindowKeyUp"
     ResizeMode="CanResize"
-    PreviewMouseWheel="OnWindowMouseWheel"
     WindowStartupLocation="CenterScreen"
     WindowStyle="None">
     <shell:WindowChrome.WindowChrome>

@@ -7,6 +7,7 @@ using System.Windows.Automation.Peers;
 using System.Windows.Automation;
 using System.Windows.Media;
 using System.Windows.Threading;
+using System.Windows.Interop;
 using CommunityToolkit.Mvvm.Messaging;
 using osuHitsounder.Core.Entities;
 using osuHitsounder.Resources.Messages;
@@ -75,6 +76,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
         this.settings = settings;
         this.getWorkArea = getWorkArea ?? WindowWorkArea.GetClientSize;
         InitializeComponent();
+        InputManager.Current.PreProcessInput += OnPreProcessInput;
         defaultMinWidth = MinWidth;
         defaultMinHeight = MinHeight;
         placementTimer = new DispatcherTimer(DispatcherPriority.Background, Dispatcher)
@@ -225,6 +227,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
 
     protected override void OnClosed(EventArgs e)
     {
+        InputManager.Current.PreProcessInput -= OnPreProcessInput;
         closed = true;
         placementTimer.Stop();
         placementTimer.Tick -= OnPlacementTimerTick;
@@ -396,18 +399,23 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
     private void OnAddSampleTrackClick(object sender, RoutedEventArgs e) => messenger.Send(new AddSampleTrackRequestedMessage());
     private void OnAddPianoTrackClick(object sender, RoutedEventArgs e) => messenger.Send(new AddPianoTrackRequestedMessage());
 
-    private void OnWindowMouseWheel(object sender, MouseWheelEventArgs e)
+    private void OnPreProcessInput(object sender, PreProcessInputEventArgs e)
     {
-        if (HandleWindowMouseWheel(IsActive, Keyboard.Modifiers, e.Delta,
-                e.OriginalSource as DependencyObject)) e.Handled = true;
+        if (ComponentDispatcher.IsThreadModal || !HandleWorkstationInput(IsActive, e.StagingItem.Input, Keyboard.Modifiers)) return;
+        e.StagingItem.Input.Handled = true;
+        e.Cancel();
     }
 
-    private void OnWindowKeyDown(object sender, KeyEventArgs e)
+    internal bool HandleWorkstationInput(bool isActive, InputEventArgs input, ModifierKeys modifiers)
     {
-        var key = e.Key == Key.System ? e.SystemKey : e.Key;
-        if (HandleWindowKeyDown(IsActive, key, Keyboard.Modifiers, e.IsRepeat,
-                e.OriginalSource as DependencyObject))
-            e.Handled = true;
+        if (input.Handled) return false;
+        var origin = input.OriginalSource as DependencyObject;
+        if (input is KeyEventArgs key && (input.RoutedEvent == Keyboard.KeyDownEvent || input.RoutedEvent == Keyboard.PreviewKeyDownEvent))
+            return HandleWindowKeyDown(isActive, key.Key == Key.System ? key.SystemKey : key.Key, modifiers,
+                key.IsRepeat, origin ?? Keyboard.FocusedElement as DependencyObject);
+        if (input is MouseWheelEventArgs wheel && (input.RoutedEvent == Mouse.MouseWheelEvent || input.RoutedEvent == Mouse.PreviewMouseWheelEvent))
+            return HandleWindowMouseWheel(isActive, modifiers, wheel.Delta, origin ?? Mouse.DirectlyOver as DependencyObject);
+        return false;
     }
 
     internal bool HandleWindowKeyDown(bool isActive, Key key, ModifierKeys modifiers, bool isRepeat,
@@ -425,10 +433,6 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
         if (!isActive || PageHost.Content is not WorkstationPage workstationPage) return false;
 
         return workstationPage.HandleContextWheel(modifiers, delta, origin);
-    }
-
-    private void OnWindowKeyUp(object sender, KeyEventArgs e)
-    {
     }
 
     private void OnWindowDeactivated(object? sender, EventArgs e)

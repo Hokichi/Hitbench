@@ -724,7 +724,7 @@ public class WorkstationPageIntegrationTests
     }
 
     [Test]
-    public void SpaceTogglesPlaybackOncePerPressAndPreservesEditingInputs()
+    public void SpaceTogglesPlaybackOncePerPressAcrossEditingInputs()
     {
         var audio = new StubWorkstationAudioService();
         var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new osuHitsounder.Services.MarkerPlaybackCoordinator(audio, (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
@@ -749,19 +749,19 @@ public class WorkstationPageIntegrationTests
         UiTestPump.Run(page.PlaybackInputCompletion);
             Assert.That(page.HandlePlaybackKey(Key.Enter, ModifierKeys.None, false, page), Is.False);
         UiTestPump.Run(page.PlaybackInputCompletion);
-            Assert.That(page.HandlePlaybackKey(Key.Space, ModifierKeys.None, false, new TextBox()), Is.False);
+            Assert.That(page.HandlePlaybackKey(Key.Space, ModifierKeys.None, false, new TextBox()), Is.True);
         UiTestPump.Run(page.PlaybackInputCompletion);
-            Assert.That(page.HandlePlaybackKey(Key.Space, ModifierKeys.None, false, new PasswordBox()), Is.False);
+            Assert.That(page.HandlePlaybackKey(Key.Space, ModifierKeys.None, false, new PasswordBox()), Is.True);
         UiTestPump.Run(page.PlaybackInputCompletion);
         });
 
-        var selector = new ComboBox { IsDropDownOpen = true };
-        Assert.That(page.HandlePlaybackKey(Key.Space, ModifierKeys.None, false, selector), Is.False);
+        var selector = new ComboBox();
+        Assert.That(page.HandlePlaybackKey(Key.Space, ModifierKeys.None, false, selector), Is.True);
         UiTestPump.Run(page.PlaybackInputCompletion);
     }
 
     [Test]
-    public void ArrowsSeekSubdivisionLinesAndRespectNativeEditors()
+    public void ArrowsSeekSubdivisionLinesAcrossNativeEditors()
     {
         var audio = new StubWorkstationAudioService();
         var source = new StubWorkstationSourceService
@@ -785,22 +785,22 @@ public class WorkstationPageIntegrationTests
         Assert.That(audio.Snapshot.Position, Is.EqualTo(TimeSpan.FromMilliseconds(125)));
         Assert.Multiple(() =>
         {
-            Assert.That(page.HandlePlaybackKey(Key.Left, ModifierKeys.None, false, new TextBox()), Is.False);
+            Assert.That(page.HandlePlaybackKey(Key.Left, ModifierKeys.None, false, new TextBox()), Is.True);
         UiTestPump.Run(page.PlaybackInputCompletion);
-            Assert.That(page.HandlePlaybackKey(Key.Left, ModifierKeys.None, false, new ComboBox()), Is.False);
+            Assert.That(page.HandlePlaybackKey(Key.Left, ModifierKeys.None, false, new ComboBox()), Is.True);
         UiTestPump.Run(page.PlaybackInputCompletion);
-            Assert.That(page.HandlePlaybackKey(Key.Left, ModifierKeys.None, false, new Slider()), Is.False);
+            Assert.That(page.HandlePlaybackKey(Key.Left, ModifierKeys.None, false, new Slider()), Is.True);
         UiTestPump.Run(page.PlaybackInputCompletion);
-            Assert.That(page.HandlePlaybackKey(Key.Left, ModifierKeys.None, false, new ListBoxItem()), Is.False);
+            Assert.That(page.HandlePlaybackKey(Key.Left, ModifierKeys.None, false, new ListBoxItem()), Is.True);
         UiTestPump.Run(page.PlaybackInputCompletion);
             Assert.That(page.HandlePlaybackKey(Key.Right, ModifierKeys.Alt, false, page), Is.False);
         UiTestPump.Run(page.PlaybackInputCompletion);
         });
-        Assert.That(audio.Snapshot.Position, Is.EqualTo(TimeSpan.FromMilliseconds(125)));
+        Assert.That(audio.Snapshot.Position, Is.EqualTo(TimeSpan.Zero));
     }
 
     [Test]
-    public void ControlArrowsSeekWholeBeatsAndKeepEditorKeys()
+    public void ControlArrowsSeekWholeBeatsAcrossEditorFocus()
     {
         var audio = new StubWorkstationAudioService();
         var source = new StubWorkstationSourceService
@@ -823,11 +823,11 @@ public class WorkstationPageIntegrationTests
         Assert.That(page.HandlePlaybackKey(Key.Left, ModifierKeys.Control, false, page), Is.True);
         UiTestPump.Run(page.PlaybackInputCompletion);
         Assert.That(audio.Snapshot.Position, Is.EqualTo(TimeSpan.FromMilliseconds(500)));
-        Assert.That(page.HandlePlaybackKey(Key.Right, ModifierKeys.Control, false, new TextBox()), Is.False);
+        Assert.That(page.HandlePlaybackKey(Key.Right, ModifierKeys.Control, false, new TextBox()), Is.True);
         UiTestPump.Run(page.PlaybackInputCompletion);
-        Assert.That(page.HandlePlaybackKey(Key.Right, ModifierKeys.Control, false, new Slider()), Is.False);
+        Assert.That(page.HandlePlaybackKey(Key.Right, ModifierKeys.Control, false, new Slider()), Is.True);
         UiTestPump.Run(page.PlaybackInputCompletion);
-        Assert.That(audio.Snapshot.Position, Is.EqualTo(TimeSpan.FromMilliseconds(500)));
+        Assert.That(audio.Snapshot.Position, Is.EqualTo(TimeSpan.FromMilliseconds(1800)));
         Assert.That(page.HandlePlaybackKey(Key.Right, ModifierKeys.Control | ModifierKeys.Shift, false, page), Is.False);
         UiTestPump.Run(page.PlaybackInputCompletion);
         audio.Snapshot = new AudioPlaybackSnapshot(TimeSpan.Zero, true, null);
