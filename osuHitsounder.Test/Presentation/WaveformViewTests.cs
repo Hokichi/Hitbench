@@ -10,12 +10,24 @@ namespace osuHitsounder.Test.Presentation;
 [NonParallelizable]
 public class WaveformViewTests
 {
+    [Test]
+    public void ContentHasNoSecondRulerOrTimestampLabels()
+    {
+        var view = CreateView();
+        view.ViewportWidth = 400;
+        view.Measure(new Size(double.PositiveInfinity, 160));
+        view.Arrange(new Rect(0, 0, 3200, 160));
+        view.PrepareDrawing();
+        Assert.That(view.ContentDrawing!.Children.OfType<GlyphRunDrawing>(), Is.Empty);
+        Assert.That(view.ContentDrawing.Children.OfType<GeometryDrawing>()
+            .Where(d => d.Geometry is LineGeometry line && line.StartPoint.Y >= 140), Is.Empty);
+    }
     [TestCase(8d, 3200d)]
     [TestCase(32d, 12800d)]
     [TestCase(1d, 3200d)]
-    [TestCase(64d, 12800d)]
+    [TestCase(64d, 25600d)]
     [TestCase(-2d, 3200d)]
-    public void MeasurementUsesEightToThirtyTwoBounds(double zoom, double width)
+    public void MeasurementSupportsWorkstationZoomUpTo128(double zoom, double width)
     {
         var view = CreateView();
         view.ViewportWidth = 400;

@@ -10,15 +10,15 @@ namespace osuHitsounder.Test.Presentation;
 public class BeatGridDrawingTests
 {
     [Test]
-    public void WaveformUsesThirtyAndTwentyUnitBars()
+    public void WaveformUsesTwentyAndTenUnitBars()
     {
         var drawings = DrawGrid(isWaveform: true);
-        Assert.That(((LineGeometry)LineAt(drawings, 0).Geometry).StartPoint.Y, Is.EqualTo(42));
-        Assert.That(((LineGeometry)LineAt(drawings, 50).Geometry).StartPoint.Y, Is.EqualTo(52));
+        Assert.That(((LineGeometry)LineAt(drawings, 0).Geometry).StartPoint.Y, Is.EqualTo(52));
+        Assert.That(((LineGeometry)LineAt(drawings, 50).Geometry).StartPoint.Y, Is.EqualTo(62));
     }
 
     [TestCase(true, 10d, 0d, 0d)]
-    [TestCase(true, 25d, 0d, 5d)]
+    [TestCase(true, 25d, 5d, 15d)]
     [TestCase(false, 72d, 0d, 0d)]
     public void BarsClipOrFillAvailableHeight(bool waveform, double height, double wholeStart, double otherStart)
     {
@@ -32,28 +32,28 @@ public class BeatGridDrawingTests
     }
 
     [Test]
-    public void WaveformBottomAlignsThirtyUnitWholeBarsAndTwentyUnitOtherBars()
+    public void WaveformBottomAlignsTwentyUnitWholeBarsAndTenUnitOtherBars()
     {
         var drawings = DrawGrid(isWaveform: true);
 
         Assert.Multiple(() =>
         {
-            Assert.That(((LineGeometry)LineAt(drawings, 0).Geometry).StartPoint.Y, Is.EqualTo(42));
-            Assert.That(((LineGeometry)LineAt(drawings, 50).Geometry).StartPoint.Y, Is.EqualTo(52));
+            Assert.That(((LineGeometry)LineAt(drawings, 0).Geometry).StartPoint.Y, Is.EqualTo(52));
+            Assert.That(((LineGeometry)LineAt(drawings, 50).Geometry).StartPoint.Y, Is.EqualTo(62));
             Assert.That(((LineGeometry)LineAt(drawings, 0).Geometry).EndPoint.Y, Is.EqualTo(72));
             Assert.That(((LineGeometry)LineAt(drawings, 50).Geometry).EndPoint.Y, Is.EqualTo(72));
         });
     }
 
     [Test]
-    public void TrackUsesWhiteForWholeBarsAndLightGrayForOtherBars()
+    public void TrackUsesSameSubdivisionColorsAsWaveform()
     {
         var drawings = DrawGrid(isWaveform: false);
 
         Assert.Multiple(() =>
         {
             Assert.That(LineAt(drawings, 0).Pen!.Brush, Is.SameAs(Brushes.White));
-            Assert.That(LineAt(drawings, 50).Pen!.Brush, Is.SameAs(Brushes.LightGray));
+            Assert.That(LineAt(drawings, 50).Pen!.Brush, Is.SameAs(Brushes.Red));
         });
     }
 

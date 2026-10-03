@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -162,43 +161,8 @@ public sealed class WaveformView : FrameworkElement
             drawingContext.DrawLine(waveformPen, new Point(pixel + 0.5, baselineY - extent), new Point(pixel + 0.5, baselineY + extent));
         }
 
-        var pixelsPerSecond = width / data.Duration.TotalSeconds;
-        DrawRuler(drawingContext, offset, viewport, height, pixelsPerSecond, data.Duration, textBrush);
         drawingContext.Pop();
     }
-
-    private void DrawRuler(DrawingContext drawingContext, double offset, double viewport, double height,
-        double pixelsPerSecond, TimeSpan duration, Brush textBrush)
-    {
-        if (FontFamily is null) return;
-        var interval = ChooseTickInterval(pixelsPerSecond);
-        var first = Math.Ceiling(offset / pixelsPerSecond / interval) * interval;
-        var last = Math.Min(duration.TotalSeconds, (offset + viewport) / pixelsPerSecond);
-        var pixelsPerDip = VisualTreeHelper.GetDpi(this).PixelsPerDip;
-        var pen = new Pen(textBrush, 1);
-        for (var seconds = first; seconds <= last; seconds += interval)
-        {
-            var x = seconds * pixelsPerSecond;
-            drawingContext.DrawLine(pen, new Point(x, height - 20), new Point(x, height - 15));
-            var text = new FormattedText(FormatTime(seconds), CultureInfo.CurrentCulture,
-                FlowDirection.LeftToRight, new Typeface(FontFamily, FontStyles.Normal, FontWeights.Normal, FontStretches.Normal),
-                10, textBrush, pixelsPerDip);
-            drawingContext.DrawText(text, new Point(x + 3, height - 16));
-        }
-    }
-
-    private static double ChooseTickInterval(double pixelsPerSecond)
-    {
-        if (!IsPositiveFinite(pixelsPerSecond)) return 1;
-        var targetSeconds = 72 / pixelsPerSecond;
-        var magnitude = Math.Pow(10, Math.Floor(Math.Log10(Math.Max(targetSeconds, 0.001))));
-        foreach (var multiplier in new[] { 1d, 2d, 5d, 10d })
-            if (magnitude * multiplier >= targetSeconds) return magnitude * multiplier;
-        return magnitude * 10;
-    }
-
-    private static string FormatTime(double seconds) =>
-        $"{(int)(seconds / 60):00}:{(int)(seconds % 60):00}";
 
     private static bool IsPositiveFinite(double value) => double.IsFinite(value) && value > 0;
 

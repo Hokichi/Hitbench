@@ -96,7 +96,7 @@ public sealed class BeatGridView : FrameworkElement
 
     public bool RequestSampleRemoval(double viewportX)
     {
-        if (!CanPlaceSamples || Samples is null) return false;
+        if (!CanPlaceSamples || Samples is null || viewportX < 0 || viewportX >= Math.Min(ActualWidth, ViewportWidth)) return false;
         for (var index = Samples.Count - 1; index >= 0; index--)
         {
             var sample = Samples[index];
@@ -139,7 +139,7 @@ public sealed class BeatGridView : FrameworkElement
     public Rect GetSampleBounds(int timestampMilliseconds)
     {
         if (Duration <= TimeSpan.Zero || ContentWidth <= 0 || ActualHeight <= 0) return Rect.Empty;
-        return new Rect(timestampMilliseconds / Duration.TotalMilliseconds * ContentWidth - HorizontalOffset, 0, 20, ActualHeight);
+        return new Rect(timestampMilliseconds / Duration.TotalMilliseconds * ContentWidth - HorizontalOffset - 10, 0, 20, ActualHeight);
     }
 
     public double? GetPlaybackMarkerX()

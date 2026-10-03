@@ -9,6 +9,19 @@ namespace osuHitsounder.Test.Presentation;
 public class BeatGridViewTests
 {
     [Test]
+    public void CenteredStartNodeIsClippedAndHitsOnlyVisibleHalf()
+    {
+        var grid = CreateGrid();
+        grid.HorizontalOffset = 0;
+        grid.Samples = [new Sample { Timestamp = 0 }];
+        Assert.That(grid.GetSampleBounds(0), Is.EqualTo(new Rect(-10, 0, 20, 72)));
+        Assert.That(grid.RequestSampleRemoval(0), Is.True);
+        Assert.That(grid.RequestSampleRemoval(9), Is.True);
+        Assert.That(grid.RequestSampleRemoval(10), Is.False);
+        Assert.That(grid.RequestSampleRemoval(-1), Is.False);
+        Assert.That(grid.Samples[0].Timestamp, Is.Zero);
+    }
+    [Test]
     public void PointerSelectsContainingIntervalAndMarkerKeepsTwentyPixelWidth()
     {
         var grid = CreateGrid();
@@ -16,9 +29,9 @@ public class BeatGridViewTests
         grid.UpdatePointerPosition(30);
 
         Assert.That(grid.ActiveInterval, Is.EqualTo(new BeatInterval(250, 500)));
-        Assert.That(grid.GetSampleBounds(250), Is.EqualTo(new Rect(10, 0, 20, 72)));
+        Assert.That(grid.GetSampleBounds(250), Is.EqualTo(new Rect(0, 0, 20, 72)));
         grid.ContentWidth = 800;
-        Assert.That(grid.GetSampleBounds(250), Is.EqualTo(new Rect(60, 0, 20, 72)));
+        Assert.That(grid.GetSampleBounds(250), Is.EqualTo(new Rect(50, 0, 20, 72)));
     }
 
     [Test]
@@ -45,7 +58,7 @@ public class BeatGridViewTests
         Sample? requested = null;
         grid.SampleRemovalRequested += (_, args) => requested = args.Sample;
 
-        Assert.That(grid.RequestSampleRemoval(20), Is.True);
+        Assert.That(grid.RequestSampleRemoval(5), Is.True);
         Assert.That(requested, Is.SameAs(second));
         Assert.That(grid.RequestSampleRemoval(31), Is.False);
         grid.UpdatePointerPosition(30);
@@ -53,7 +66,7 @@ public class BeatGridViewTests
         Assert.That(grid.RequestActiveSampleRemoval(), Is.True);
         Assert.That(requested, Is.SameAs(second));
         grid.CanPlaceSamples = false;
-        Assert.That(grid.RequestSampleRemoval(20), Is.False);
+        Assert.That(grid.RequestSampleRemoval(5), Is.False);
         Assert.That(grid.RequestActiveSampleRemoval(), Is.False);
     }
 
