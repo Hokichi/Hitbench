@@ -395,6 +395,15 @@ public partial class WorkstationPage : UserControl
     internal bool HandlePlaybackKey(Key key, ModifierKeys modifiers, bool isRepeat, DependencyObject? origin)
     {
         if (deactivationStarted || !viewModel.CanPlay) return false;
+        if (modifiers == ModifierKeys.Control && key is Key.Z or Key.Y)
+        {
+            if (!viewModel.CanPlaceSamples) return false;
+            if (isRepeat) return true;
+            var historyCommand = key == Key.Z ? viewModel.UndoCommand : viewModel.RedoCommand;
+            if (!historyCommand.CanExecute(null)) return false;
+            historyCommand.Execute(null);
+            return true;
+        }
         if (key == Key.Space)
         {
             if (modifiers is not (ModifierKeys.None or ModifierKeys.Shift)) return false;
