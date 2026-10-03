@@ -190,7 +190,7 @@ public class WorkstationPageIntegrationTests
         view.UpdateLayout();
         Assert.Multiple(() =>
         {
-            Assert.That(vm.ZoomFactor, Is.EqualTo(16));
+            Assert.That(vm.ZoomFactor, Is.EqualTo(32));
             Assert.That(scroll.HorizontalOffset, Is.EqualTo(50).Within(1));
         });
     }
@@ -597,7 +597,7 @@ public class WorkstationPageIntegrationTests
         Assert.That(buttons[0].IsEnabled, Is.False);
         buttons[1].Command.Execute(null);
         view.UpdateLayout();
-        Assert.That(vm.ZoomFactor, Is.EqualTo(17));
+        Assert.That(vm.ZoomFactor, Is.EqualTo(33));
         Assert.That(buttons[0].IsEnabled, Is.True);
 
         selector.Value = 8;
@@ -681,7 +681,7 @@ public class WorkstationPageIntegrationTests
 
         for (var index = 0; index < 40; index++) vm.ZoomOutCommand.Execute(null);
         view.UpdateLayout();
-        Assert.That(vm.ZoomFactor, Is.EqualTo(16));
+        Assert.That(vm.ZoomFactor, Is.EqualTo(32));
         Assert.That(scroll.HorizontalOffset, Is.EqualTo(scroll.ScrollableWidth).Within(1));
 
         osuHitsounder.Test.Presentation.UiTestPump.Run(vm.SeekCommand.ExecuteAsync(TimeSpan.FromSeconds(6)));
@@ -710,11 +710,11 @@ public class WorkstationPageIntegrationTests
         Assert.Multiple(() =>
         {
             Assert.That(page.HandleWaveformWheel(ModifierKeys.Control, 120), Is.True);
-            Assert.That(vm.ZoomFactor, Is.EqualTo(17));
+            Assert.That(vm.ZoomFactor, Is.EqualTo(33));
             Assert.That(page.HandleWaveformWheel(ModifierKeys.Control, 240), Is.True);
-            Assert.That(vm.ZoomFactor, Is.EqualTo(19));
+            Assert.That(vm.ZoomFactor, Is.EqualTo(35));
             Assert.That(page.HandleWaveformWheel(ModifierKeys.Control, -120), Is.True);
-            Assert.That(vm.ZoomFactor, Is.EqualTo(18));
+            Assert.That(vm.ZoomFactor, Is.EqualTo(34));
             Assert.That(page.HandleWaveformWheel(ModifierKeys.Alt, 120), Is.True);
             Assert.That(vm.SelectedSubdivisionIndex, Is.EqualTo(4));
             Assert.That(page.HandleWaveformWheel(ModifierKeys.Alt, -120), Is.True);
@@ -908,16 +908,16 @@ public class WorkstationPageIntegrationTests
         UiTestPump.Run(page.LoadCompletion);
 
         Assert.That(page.HandleWaveformWheel(ModifierKeys.Control, 60), Is.True);
-        Assert.That(vm.ZoomFactor, Is.EqualTo(16));
+        Assert.That(vm.ZoomFactor, Is.EqualTo(32));
         Assert.That(page.HandleWaveformWheel(ModifierKeys.Control, 60), Is.True);
-        Assert.That(vm.ZoomFactor, Is.EqualTo(17));
+        Assert.That(vm.ZoomFactor, Is.EqualTo(33));
 
         Assert.That(page.HandleWaveformWheel(ModifierKeys.Control, 60), Is.True);
         Assert.That(page.HandleWaveformWheel(ModifierKeys.Alt, 60), Is.True);
         Assert.That(page.HandleWaveformWheel(ModifierKeys.Alt, 60), Is.True);
         Assert.Multiple(() =>
         {
-            Assert.That(vm.ZoomFactor, Is.EqualTo(17));
+            Assert.That(vm.ZoomFactor, Is.EqualTo(33));
             Assert.That(vm.SelectedSubdivisionIndex, Is.EqualTo(4));
         });
 
@@ -927,9 +927,9 @@ public class WorkstationPageIntegrationTests
             Assert.That(page.HandleWaveformWheel(ModifierKeys.Control | ModifierKeys.Alt, 120), Is.False);
         });
 
-        for (var index = 0; index < 40; index++) vm.ZoomInCommand.Execute(null);
+        for (var index = 0; index < 140; index++) vm.ZoomInCommand.Execute(null);
         Assert.That(page.HandleWaveformWheel(ModifierKeys.Control, 120), Is.True);
-        Assert.That(vm.ZoomFactor, Is.EqualTo(32));
+        Assert.That(vm.ZoomFactor, Is.EqualTo(128));
         vm.SelectedSubdivisionIndex = 8;
         Assert.That(page.HandleWaveformWheel(ModifierKeys.Alt, 120), Is.True);
         Assert.That(vm.SelectedSubdivisionIndex, Is.EqualTo(8));

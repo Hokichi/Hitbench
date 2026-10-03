@@ -22,7 +22,8 @@ public partial class WorkstationPageVM(
     IProjectFileService? projectFiles = null,
     IMessenger? messenger = null,
     ITrackRemovalDialogService? trackRemovalDialog = null,
-    PlaybackVolumeSettings? playbackVolumes = null) : ObservableObject
+    PlaybackVolumeSettings? playbackVolumes = null,
+    Func<TimeSpan, CancellationToken, Task>? zoomDelay = null) : ObservableObject
 {
     private readonly IWorkstationAudioService audioService = playback.Audio;
     private bool subscribedToPlayback;
@@ -59,7 +60,7 @@ public partial class WorkstationPageVM(
     public bool CanAddTrack => CanEditTracks && availableSamples.Count > 0;
     public bool CanRemoveTrack => CanEditTracks && !importBusy && !removalBusy && trackRemovalDialog is not null;
     public bool CanPlaceSamples => CanEditTracks && Waveform is not null && !importBusy && !removalBusy;
-    public bool HasPendingSaves => importBusy || removalBusy || !saveTail.IsCompleted || lastSaveError is not null;
+    public bool HasPendingSaves => pendingZoom is not null || importBusy || removalBusy || !saveTail.IsCompleted || lastSaveError is not null;
     [ObservableProperty] private string? saveError;
     private CancellationTokenSource? loadCancellation;
     private Task? activeLoad;
@@ -101,7 +102,7 @@ public partial class WorkstationPageVM(
     [ObservableProperty] private string? errorMessage;
     [ObservableProperty] private string? playbackWarning;
     private int songVolume = 100;
-    private double zoomFactor = 16;
+    private double zoomFactor = 32;
     private double trackHeight = 72;
     private int selectedSubdivisionIndex = 3;
 
@@ -159,6 +160,7 @@ public partial class WorkstationPageVM(
     public Task LoadAsync(string projectPath, CancellationToken token)
     {
         if (deactivated) return Task.CompletedTask;
+        CommitPendingZoom();
         pendingPlayCancellation?.Cancel();
         lastGridTarget = null;
         lastGridAudioPosition = null;
@@ -528,6 +530,7 @@ public partial class WorkstationPageVM(
 
     public async Task FlushSavesAsync()
     {
+        CommitPendingZoom();
         if (activeImport is not null) await activeImport;
         if (activeRemoval is not null) await activeRemoval;
         await saveTail;
@@ -578,6 +581,7 @@ public partial class WorkstationPageVM(
                 if (activeImport is not null) await WaitForReturnAsync(activeImport);
                 if (activeRemoval is not null) await WaitForReturnAsync(activeRemoval);
                 await WaitForReturnAsync(playbackUpdates);
+                CommitPendingZoom(false);
                 QueueSave();
                 await WaitForReturnAsync(saveTail);
                 if (lastSaveError is not null) throw new IOException("Could not save project.", lastSaveError);
@@ -753,6 +757,7 @@ public partial class WorkstationPageVM(
                 audioService.SetApplicationVolume(ApplicationVolume);
                 audioService.SetSamplesVolume(SamplesVolume);
                 Project = source.Project;
+                RestoreZoom(Project.WorkstationZoom);
                 markerClock = new PlaybackMarkerClock(Project.Offsets, Project.BPMs);
                 SetProperty(ref playbackInterval, markerClock.IsValid ? markerClock.GetInterval(TimeSpan.Zero) : TimeSpan.Zero,
                     nameof(PlaybackInterval));
@@ -811,25 +816,10 @@ public partial class WorkstationPageVM(
         }, token);
 
     private bool CanUseTransport() => CanPlay;
-    private bool CanZoomIn() => CanZoom && ZoomFactor < 32;
-    private bool CanZoomOut() => CanZoom && ZoomFactor > 16;
     private bool CanIncreaseTrackHeight() => CanZoom && TrackHeight < 288;
     private bool CanDecreaseTrackHeight() => CanZoom && TrackHeight > 36;
     private bool CanIncreaseSubdivision() => IsInteractionReady && SelectedSubdivisionIndex < 8;
     private bool CanDecreaseSubdivision() => IsInteractionReady && SelectedSubdivisionIndex > 0;
-
-    private void SetZoom(int value)
-    {
-        if (!CanZoom) return;
-        var next = Math.Clamp(value, 16, 32);
-        if (Math.Abs(zoomFactor - next) > double.Epsilon)
-        {
-            OnPropertyChanging(nameof(ZoomFactor));
-            zoomFactor = next;
-            OnPropertyChanged(nameof(ZoomFactor));
-        }
-        NotifyCommandState();
-    }
 
     private void SetTrackHeight(double value)
     {

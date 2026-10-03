@@ -124,7 +124,7 @@ public sealed class WaveformView : FrameworkElement
     protected override Size MeasureOverride(Size availableSize)
     {
         var viewport = IsPositiveFinite(ViewportWidth) ? ViewportWidth : 0;
-        var zoom = IsPositiveFinite(ZoomFactor) ? Math.Clamp(ZoomFactor, 8, 32) : 8;
+        var zoom = IsPositiveFinite(ZoomFactor) ? Math.Clamp(ZoomFactor, 8, 128) : 8;
         var height = double.IsFinite(availableSize.Height) ? Math.Max(0, availableSize.Height) : 160;
         return new Size(viewport * zoom, height);
     }

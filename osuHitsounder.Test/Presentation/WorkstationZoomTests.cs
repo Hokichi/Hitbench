@@ -1,0 +1,140 @@
+using Newtonsoft.Json.Linq;
+using osuHitsounder.Core.Entities;
+using osuHitsounder.Services;
+using osuHitsounder.Services.ProjectFiles;
+using osuHitsounder.ViewModels.Shell;
+
+namespace osuHitsounder.Test.Presentation;
+
+public class WorkstationZoomTests
+{
+    [Test]
+    public async Task ScrollingCommitsOnlyLatestValueAfterIdle()
+    {
+        var delays = new List<TaskCompletionSource>();
+        var (vm, saves) = Create((duration, _) =>
+        {
+            Assert.That(duration, Is.EqualTo(TimeSpan.FromMilliseconds(300)));
+            var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            delays.Add(gate);
+            return gate.Task;
+        });
+        await Load(vm);
+        for (var i = 0; i < 3; i++) vm.ZoomInCommand.Execute(null);
+        Assert.Multiple(() =>
+        {
+            Assert.That(vm.ZoomFactor, Is.EqualTo(35));
+            Assert.That(vm.Project!.WorkstationZoom, Is.EqualTo(32));
+            Assert.That(saves.Writes, Is.Zero);
+            Assert.That(vm.HasPendingSaves, Is.True);
+        });
+        delays[0].SetResult();
+        delays[1].SetResult();
+        delays[2].SetResult();
+        await StubWorkstationAudioService.WaitUntilAsync(() => saves.Writes == 1);
+        await vm.FlushSavesAsync();
+        Assert.That(ProjectDataSerializer.Deserialize(saves.LatestJson!).WorkstationZoom, Is.EqualTo(35));
+        Assert.That(vm.HasPendingSaves, Is.False);
+        await vm.DeactivateAsync();
+    }
+
+    [TestCase("flush")]
+    [TestCase("return")]
+    [TestCase("deactivate")]
+    [TestCase("reload")]
+    public async Task LifecycleCommitsPendingZoomWithoutWaiting(string action)
+    {
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var (vm, saves) = Create((_, _) => gate.Task);
+        await Load(vm);
+        vm.ZoomInCommand.Execute(null);
+        switch (action)
+        {
+            case "flush": await vm.FlushSavesAsync(); break;
+            case "return": Assert.That(await vm.PrepareToReturnAsync(CancellationToken.None), Is.True); break;
+            case "deactivate": await vm.DeactivateAsync(); break;
+            case "reload": await vm.LoadAsync("second.json", CancellationToken.None); break;
+        }
+        Assert.That(saves.Paths, Is.EqualTo(new[] { "project.json" }));
+        Assert.That(ProjectDataSerializer.Deserialize(saves.LatestJson!).WorkstationZoom, Is.EqualTo(33));
+        gate.SetResult();
+        await vm.DeactivateAsync();
+        Assert.That(saves.Writes, Is.EqualTo(1));
+    }
+
+    [Test]
+    public async Task ReturningToSavedZoomDoesNotWrite()
+    {
+        var (vm, saves) = Create((_, token) => Task.Delay(Timeout.Infinite, token));
+        await Load(vm);
+        vm.ZoomInCommand.Execute(null);
+        vm.ZoomOutCommand.Execute(null);
+        await vm.FlushSavesAsync();
+        Assert.That(saves.Writes, Is.Zero);
+        Assert.That(vm.HasPendingSaves, Is.False);
+        await vm.DeactivateAsync();
+    }
+
+    [Test]
+    public async Task ZoomSaveFailureCanBeRetried()
+    {
+        var saves = new FailOnceProjectFileService();
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), projectFiles: saves,
+            zoomDelay: (_, token) => Task.Delay(Timeout.Infinite, token));
+        await Load(vm);
+        vm.ZoomInCommand.Execute(null);
+        Assert.ThrowsAsync<IOException>(() => vm.FlushSavesAsync());
+        Assert.That(vm.SaveError, Is.Not.Null);
+        vm.RetrySaveCommand.Execute(null);
+        await vm.FlushSavesAsync();
+        Assert.That(ProjectDataSerializer.Deserialize(saves.SavedJson!).WorkstationZoom, Is.EqualTo(33));
+        await vm.DeactivateAsync();
+    }
+
+    private static (WorkstationPageVM Vm, DelayedProjectFileService Saves) Create(Func<TimeSpan, CancellationToken, Task> delay)
+    {
+        var saves = new DelayedProjectFileService();
+        saves.Release();
+        return (new WorkstationPageVM(new StubWorkstationSourceService(), new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), projectFiles: saves, zoomDelay: delay), saves);
+    }
+
+    private static async Task Load(WorkstationPageVM vm)
+    {
+        await vm.LoadAsync("project.json", CancellationToken.None);
+        vm.AcknowledgePresentationReady(vm.LoadGeneration);
+    }
+
+    [Test]
+    public void MissingZoomDefaultsTo32InSerializedProject()
+    {
+        var json = JObject.Parse(ProjectDataSerializer.Serialize(ProjectDataSerializer.Deserialize("{}")));
+        Assert.That(json.Value<int?>("WorkstationZoom"), Is.EqualTo(32));
+    }
+
+    [TestCase(64, 64)]
+    [TestCase(0, 32)]
+    [TestCase(200, 128)]
+    public async Task RestoresZoomBeforePresentation(int stored, int expected)
+    {
+        var project = ProjectDataSerializer.Deserialize($"{{\"WorkstationZoom\":{stored}}}");
+        var source = new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav", project)) };
+        var vm = new WorkstationPageVM(source, new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler());
+        await vm.LoadAsync("project.json", CancellationToken.None);
+        Assert.That(vm.ZoomFactor, Is.EqualTo(expected));
+        await vm.DeactivateAsync();
+    }
+
+    [Test]
+    public async Task ZoomCommandsClampAt32And128()
+    {
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler());
+        await vm.LoadAsync("project.json", CancellationToken.None);
+        vm.AcknowledgePresentationReady(vm.LoadGeneration);
+        Assert.That(vm.ZoomFactor, Is.EqualTo(32));
+        Assert.That(vm.ZoomOutCommand.CanExecute(null), Is.False);
+        for (var i = 0; i < 200; i++) vm.ZoomInCommand.Execute(null);
+        Assert.That(vm.ZoomFactor, Is.EqualTo(128));
+        Assert.That(vm.ZoomInCommand.CanExecute(null), Is.False);
+        await vm.DeactivateAsync();
+    }
+}

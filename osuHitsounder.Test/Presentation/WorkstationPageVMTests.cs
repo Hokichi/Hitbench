@@ -152,20 +152,20 @@ public class WorkstationPageVMTests
         await vm.DeactivateAsync();
     }
     [Test]
-    public async Task ZoomButtonsUseEightToThirtyTwoBounds()
+    public async Task ZoomButtonsUseThirtyTwoToOneHundredTwentyEightBounds()
     {
         var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
-        Assert.That(vm.ZoomFactor, Is.EqualTo(16));
+        Assert.That(vm.ZoomFactor, Is.EqualTo(32));
         await vm.LoadAsync("project.json", CancellationToken.None);
         vm.AcknowledgePresentationReady(vm.LoadGeneration);
         Assert.That(vm.ZoomOutCommand.CanExecute(null), Is.False);
         vm.ZoomInCommand.Execute(null);
-        Assert.That(vm.ZoomFactor, Is.EqualTo(17));
-        for (var index = 0; index < 40; index++) vm.ZoomInCommand.Execute(null);
-        Assert.That(vm.ZoomFactor, Is.EqualTo(32));
+        Assert.That(vm.ZoomFactor, Is.EqualTo(33));
+        for (var index = 0; index < 140; index++) vm.ZoomInCommand.Execute(null);
+        Assert.That(vm.ZoomFactor, Is.EqualTo(128));
         Assert.That(vm.ZoomInCommand.CanExecute(null), Is.False);
-        for (var index = 0; index < 40; index++) vm.ZoomOutCommand.Execute(null);
-        Assert.That(vm.ZoomFactor, Is.EqualTo(16));
+        for (var index = 0; index < 140; index++) vm.ZoomOutCommand.Execute(null);
+        Assert.That(vm.ZoomFactor, Is.EqualTo(32));
         Assert.That(vm.ZoomOutCommand.CanExecute(null), Is.False);
     }
 
