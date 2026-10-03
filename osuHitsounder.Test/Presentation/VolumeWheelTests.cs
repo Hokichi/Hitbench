@@ -16,6 +16,47 @@ namespace osuHitsounder.Test.Presentation;
 public class VolumeWheelTests
 {
     [Test]
+    public void IdleDismissalWaitsOneSecondAndHeldDragKeepsOverlayOpen()
+    {
+        var (page, _, view) = CreateLoadedPage();
+        using (view)
+        {
+            page.ShowVolumeOverlay(false, new Point());
+            page.ProcessVolumeOverlayIdle(TimeSpan.FromMilliseconds(999), false);
+            Assert.That(page.IsVolumeOverlayOpen, Is.True);
+            page.ApplicationVolumeWheel.BeginDrag(100);
+            page.ActivateVolumeWheel(page.SongVolumeWheel);
+            Assert.That(page.ActiveVolumeWheel, Is.SameAs(page.ApplicationVolumeWheel));
+            page.ProcessVolumeOverlayIdle(TimeSpan.FromSeconds(10), false);
+            Assert.That(page.IsVolumeOverlayOpen, Is.True);
+            page.ApplicationVolumeWheel.EndDrag();
+            page.ProcessVolumeOverlayIdle(TimeSpan.FromSeconds(1), false);
+            Assert.That(page.IsVolumeOverlayOpen, Is.False);
+        }
+    }
+
+    [Test]
+    public void ActivityCancelsFadeAndDismissalEndsDrag()
+    {
+        var (page, _, view) = CreateLoadedPage();
+        using (view)
+        {
+            page.ShowVolumeOverlay(false, new Point());
+            page.ProcessVolumeOverlayIdle(TimeSpan.FromSeconds(1), true);
+            var overlay = (Border)page.FindName("VolumeOverlay");
+            Assert.That(overlay.HasAnimatedProperties, Is.True);
+            page.RecordVolumeActivity();
+            Assert.That(overlay.HasAnimatedProperties, Is.False);
+            Assert.That(overlay.Opacity, Is.EqualTo(1));
+            page.ApplicationVolumeWheel.BeginDrag(100);
+            page.DismissVolumeOverlay();
+            Assert.That(page.ApplicationVolumeWheel.IsDragging, Is.False);
+            page.ShowVolumeOverlay(false, new Point());
+            page.ProcessVolumeOverlayIdle(TimeSpan.Zero, false);
+            Assert.That(page.IsVolumeOverlayOpen, Is.True);
+        }
+    }
+    [Test]
     public void VerticalDragChangesValueAndClampsWithoutChangingOnPress()
     {
         var wheel = new VolumeWheel { Value = 50, IsActive = true };

@@ -2,6 +2,8 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
+using System.Diagnostics;
+using System.Windows.Media.Animation;
 using osuHitsounder.Resources.CustomControls;
 
 namespace osuHitsounder.Views.Pages;
@@ -11,6 +13,10 @@ public partial class WorkstationPage
     private bool keyboardVolumeOverlay;
     private int volumeWheelRemainder;
     private IInputElement? volumePriorFocus;
+    private DispatcherTimer? volumeIdleTimer;
+    private long volumeLastActivity;
+    private int volumeOverlayVersion;
+    private bool volumeFading;
 
     internal bool IsVolumeOverlayOpen => VolumeOverlay.Visibility == Visibility.Visible;
     internal VolumeWheel? ActiveVolumeWheel { get; private set; }
@@ -19,16 +25,23 @@ public partial class WorkstationPage
     {
         keyboardVolumeOverlay = keyboardInvoked;
         volumeWheelRemainder = 0;
-        if (keyboardInvoked) volumePriorFocus = Keyboard.FocusedElement;
+        if (keyboardInvoked && !IsVolumeOverlayOpen) volumePriorFocus = Keyboard.FocusedElement;
         VolumeOverlay.Visibility = Visibility.Visible;
         ActivateVolumeWheel(ApplicationVolumeWheel);
         PositionVolumeOverlay(anchor);
         if (keyboardInvoked) ApplicationVolumeWheel.Focus();
+        RecordVolumeActivity();
     }
 
     internal void DismissVolumeOverlay()
     {
         if (!IsVolumeOverlayOpen) return;
+        volumeIdleTimer?.Stop();
+        volumeOverlayVersion++;
+        volumeFading = false;
+        VolumeOverlay.BeginAnimation(OpacityProperty, null);
+        VolumeOverlay.Opacity = 1;
+        VolumeOverlay.Visibility = Visibility.Collapsed;
         SongVolumeWheel.EndDrag();
         ApplicationVolumeWheel.EndDrag();
         SamplesVolumeWheel.EndDrag();
@@ -41,11 +54,6 @@ public partial class WorkstationPage
         ActiveVolumeWheel = null;
         if (restore is { IsVisible: true, IsEnabled: true })
             Dispatcher.BeginInvoke(DispatcherPriority.Input, () => restore.Focus());
-    }
-
-    internal void DismissPointerVolumeOverlay()
-    {
-        if (!keyboardVolumeOverlay) DismissVolumeOverlay();
     }
 
     internal void ActivateVolumeWheel(VolumeWheel wheel)
@@ -80,6 +88,8 @@ public partial class WorkstationPage
             return true;
         }
 
+        RecordVolumeActivity();
+
         var hovered = FindAncestor<VolumeWheel>(origin);
         if (hovered is not null) ActivateVolumeWheel(hovered);
         volumeWheelRemainder += delta;
@@ -102,6 +112,7 @@ public partial class WorkstationPage
     internal bool HandleVolumeOverlayKey(Key key, ModifierKeys modifiers)
     {
         if (!IsVolumeOverlayOpen) return false;
+        RecordVolumeActivity();
         if (key == Key.Escape)
         {
             DismissVolumeOverlay();
@@ -128,11 +139,45 @@ public partial class WorkstationPage
     private void OnVolumeWheelMouseMove(object sender, MouseEventArgs e)
     {
         if (sender is VolumeWheel wheel) ActivateVolumeWheel(wheel);
+        RecordVolumeActivity();
     }
 
     private void OnVolumeWheelMouseDown(object sender, MouseButtonEventArgs e)
     {
         if (sender is VolumeWheel wheel) ActivateVolumeWheel(wheel);
+        RecordVolumeActivity();
+    }
+
+    private void OnVolumeWheelDragStateChanged(object? sender, EventArgs e) => RecordVolumeActivity();
+    private void OnVolumeWheelValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e) => RecordVolumeActivity();
+
+    internal void RecordVolumeActivity()
+    {
+        if (!IsVolumeOverlayOpen) return;
+        volumeLastActivity = Stopwatch.GetTimestamp();
+        volumeOverlayVersion++;
+        volumeFading = false;
+        VolumeOverlay.BeginAnimation(OpacityProperty, null);
+        VolumeOverlay.Opacity = 1;
+        if (volumeIdleTimer is null)
+        {
+            volumeIdleTimer = new DispatcherTimer(DispatcherPriority.Background, Dispatcher) { Interval = TimeSpan.FromMilliseconds(50) };
+            volumeIdleTimer.Tick += (_, _) => ProcessVolumeOverlayIdle(Stopwatch.GetElapsedTime(volumeLastActivity), SystemParameters.ClientAreaAnimation);
+        }
+        volumeIdleTimer.Start();
+    }
+
+    internal void ProcessVolumeOverlayIdle(TimeSpan idleFor, bool animate)
+    {
+        if (!IsVolumeOverlayOpen || volumeFading || idleFor < TimeSpan.FromSeconds(1) || ActiveVolumeWheel?.IsDragging == true) return;
+        volumeIdleTimer?.Stop();
+        if (!animate) { DismissVolumeOverlay(); return; }
+        volumeFading = true;
+        var version = volumeOverlayVersion;
+        var animation = new DoubleAnimation(0, TimeSpan.FromMilliseconds(150))
+        { EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn } };
+        animation.Completed += (_, _) => { if (version == volumeOverlayVersion) DismissVolumeOverlay(); };
+        VolumeOverlay.BeginAnimation(OpacityProperty, animation);
     }
 
     private void PositionVolumeOverlay(Point anchor)

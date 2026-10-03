@@ -429,8 +429,6 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
 
     private void OnWindowKeyUp(object sender, KeyEventArgs e)
     {
-        if (e.Key is Key.LeftAlt or Key.RightAlt && PageHost.Content is WorkstationPage workstation)
-            workstation.DismissPointerVolumeOverlay();
     }
 
     private void OnWindowDeactivated(object? sender, EventArgs e)

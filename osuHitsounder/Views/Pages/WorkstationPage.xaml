@@ -644,6 +644,8 @@
                     IsEnabled="{Binding CanPlay, Mode=OneWay}"
                     Label="Song"
                     MouseMove="OnVolumeWheelMouseMove"
+                    DragStateChanged="OnVolumeWheelDragStateChanged"
+                    ValueChanged="OnVolumeWheelValueChanged"
                     PreviewMouseLeftButtonDown="OnVolumeWheelMouseDown"
                     Style="{StaticResource OHsVolumeWheelStyle}"
                     Value="{Binding SongVolume, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
@@ -652,6 +654,8 @@
                     IsEnabled="{Binding CanPlay, Mode=OneWay}"
                     Label="Application"
                     MouseMove="OnVolumeWheelMouseMove"
+                    DragStateChanged="OnVolumeWheelDragStateChanged"
+                    ValueChanged="OnVolumeWheelValueChanged"
                     PreviewMouseLeftButtonDown="OnVolumeWheelMouseDown"
                     Style="{StaticResource OHsVolumeWheelStyle}"
                     Value="{Binding ApplicationVolume, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
@@ -660,6 +664,8 @@
                     IsEnabled="{Binding CanPlay, Mode=OneWay}"
                     Label="Samples"
                     MouseMove="OnVolumeWheelMouseMove"
+                    DragStateChanged="OnVolumeWheelDragStateChanged"
+                    ValueChanged="OnVolumeWheelValueChanged"
                     PreviewMouseLeftButtonDown="OnVolumeWheelMouseDown"
                     Style="{StaticResource OHsVolumeWheelStyle}"
                     Value="{Binding SamplesVolume, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
