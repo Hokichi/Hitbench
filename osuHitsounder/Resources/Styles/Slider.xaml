@@ -92,12 +92,9 @@
                 TextAlignment="Right" />
         </Grid>
         <ControlTemplate.Triggers>
-            <Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter TargetName="FocusBorder" Property="BorderBrush" Value="{DynamicResource Brush.Border.Focus}" /></Trigger>
+
             <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True"><Setter TargetName="DisplayText" Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" /></DataTrigger>
-            <MultiDataTrigger>
-                <MultiDataTrigger.Conditions><Condition Binding="{Binding IsKeyboardFocusWithin, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}" Value="True" /><Condition Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True" /></MultiDataTrigger.Conditions>
-                <Setter TargetName="FocusBorder" Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
-            </MultiDataTrigger>
+
         </ControlTemplate.Triggers>
     </ControlTemplate>
     <Style x:Key="OHsValueSliderStyle" BasedOn="{StaticResource BaseSliderStyle}" TargetType="customControls:ValueSlider">
@@ -122,7 +119,7 @@
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
                 BorderBrush="Transparent"
-                BorderThickness="2"
+                BorderThickness="0"
                 CornerRadius="84">
                 <Grid>
                     <Grid x:Name="PieGraphic" Width="160" Height="160" HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="{TemplateBinding PieOpacity}">
@@ -152,22 +149,17 @@
         </Grid>
         <ControlTemplate.Triggers>
             <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="WheelBackground" Property="Fill" Value="{DynamicResource Brush.Background.Hover}" /></Trigger>
-            <Trigger Property="IsDragging" Value="True"><Setter TargetName="ActiveBorder" Property="BorderThickness" Value="3" /></Trigger>
-            <Trigger Property="IsActive" Value="True"><Setter TargetName="ActiveBorder" Property="BorderBrush" Value="{DynamicResource Brush.Border.Focus}" /></Trigger>
-            <Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter TargetName="ActiveBorder" Property="BorderBrush" Value="{DynamicResource Brush.Border.Focus}" /></Trigger>
+            <Trigger Property="IsActive" Value="True"><Setter TargetName="WheelLabel" Property="FontFamily" Value="{DynamicResource Bold}" /></Trigger>
+
             <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
                 <Setter TargetName="PieGraphic" Property="Opacity" Value="1" />
-                <Setter TargetName="ActiveBorder" Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
                 <Setter TargetName="WheelBackground" Property="Fill" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
                 <Setter TargetName="WheelBackground" Property="Stroke" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
                 <Setter TargetName="WheelFill" Property="Fill" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
                 <Setter TargetName="WheelValue" Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
                 <Setter TargetName="WheelLabel" Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
             </DataTrigger>
-            <MultiDataTrigger>
-                <MultiDataTrigger.Conditions><Condition Binding="{Binding IsActive, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}" Value="True" /><Condition Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True" /></MultiDataTrigger.Conditions>
-                <Setter TargetName="ActiveBorder" Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
-            </MultiDataTrigger>
+
         </ControlTemplate.Triggers>
     </ControlTemplate>
     <Style x:Key="OHsVolumeWheelStyle" BasedOn="{StaticResource BaseSliderStyle}" TargetType="customControls:VolumeWheel">

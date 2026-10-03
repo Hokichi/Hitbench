@@ -1055,7 +1055,7 @@ public class WorkstationPageIntegrationTests
                 }
                 Assert.That(barBounds.Left, Is.GreaterThanOrEqualTo(0));
                 Assert.That(Grid.GetColumn(bar), Is.EqualTo(0));
-                Assert.That(Grid.GetColumn(zoomControls), Is.EqualTo(1));
+                Assert.That(Grid.GetColumn((FrameworkElement)zoomControls.Parent), Is.EqualTo(1));
                 Assert.That(flowDirection == FlowDirection.RightToLeft || barBounds.Right <= zoomBounds.Left, Is.True);
                 Assert.That(bar.Visibility, Is.EqualTo(Visibility.Visible));
                 Assert.That(trace.ToString(), Is.Empty);
@@ -1092,6 +1092,46 @@ public class WorkstationPageIntegrationTests
         UiTestPump.Run(page.LoadCompletion);
         view.UpdateLayout();
         Assert.That(buttons[1].IsEnabled, Is.True);
+    }
+
+    [TestCase(640, 480, FlowDirection.LeftToRight)]
+    [TestCase(1100, 600, FlowDirection.RightToLeft)]
+    [TestCase(480, 480, FlowDirection.LeftToRight)]
+    public void SubdivisionRemainsInFooterWhileWaveformCardResizes(double width, double height, FlowDirection direction)
+    {
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new osuHitsounder.Services.MarkerPlaybackCoordinator(
+            new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
+        var page = new WorkstationPage(vm);
+        page.SetProjectPath("project.json");
+        var window = new Window { Content = page, Width = width, Height = height, FlowDirection = direction };
+        using var view = new InMemoryView(window);
+        UiTestPump.Run(page.LoadCompletion);
+        var root = (Grid)page.FindName("WorkstationRoot");
+        var footer = (FrameworkElement)page.FindName("ZoomFooter");
+        var panel = (FrameworkElement)page.FindName("SubdivisionPanel");
+        var zoom = (FrameworkElement)page.FindName("ZoomControls");
+        var card = (Border)page.FindName("SongAudioCard");
+        foreach (var cardHeight in new[] { 200d, 260d, 180d })
+        {
+            card.Height = cardHeight;
+            window.Width = width + cardHeight - 200;
+            window.Height = height + cardHeight - 200;
+            view.UpdateLayout();
+            Assert.That(footer.IsAncestorOf(panel), Is.True);
+            Assert.That(card.IsAncestorOf(panel), Is.False);
+            var panelBounds = panel.TransformToAncestor(root).TransformBounds(new Rect(panel.RenderSize));
+            var zoomBounds = zoom.TransformToAncestor(root).TransformBounds(new Rect(zoom.RenderSize));
+            var footerBounds = footer.TransformToAncestor(root).TransformBounds(new Rect(footer.RenderSize));
+            Assert.Multiple(() =>
+            {
+                Assert.That(footerBounds.Bottom, Is.EqualTo(root.ActualHeight).Within(0.01));
+                Assert.That(panelBounds.Top + panelBounds.Height / 2,
+                    Is.EqualTo(zoomBounds.Top + zoomBounds.Height / 2).Within(0.01));
+                Assert.That(panelBounds.IntersectsWith(zoomBounds), Is.False);
+                Assert.That(panelBounds.Left, Is.GreaterThanOrEqualTo(0));
+                Assert.That(panelBounds.Right, Is.LessThanOrEqualTo(root.ActualWidth + 0.01));
+            });
+        }
     }
 
     private static KeyEventArgs CreateKeyEvent(PresentationSource source, Key key) => new(

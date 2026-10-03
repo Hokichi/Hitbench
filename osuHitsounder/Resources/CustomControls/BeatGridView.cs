@@ -217,7 +217,7 @@ public sealed class BeatGridView : FrameworkElement
         {
             var focus = SystemParameters.HighContrast ? SystemColors.HighlightTextBrush : FocusBrush;
             if (IsKeyboardFocused && focus is not null)
-                context.DrawRectangle(null, new Pen(focus, 1), Inset(new Rect(RenderSize)));
+                context.DrawLine(new Pen(focus, 2), new Point(1, ActualHeight - 1), new Point(Math.Max(1, ActualWidth - 1), ActualHeight - 1));
         }
         contentDirty = false;
         UpdateMarker();
@@ -323,8 +323,10 @@ public sealed class BeatGridView : FrameworkElement
         {
             var rect = Inset(GetSampleBounds((int)Math.Round(active.StartMilliseconds, MidpointRounding.AwayFromZero)));
             context.DrawRoundedRectangle(hover, null, rect, 4, 4);
-            var cue = pressedInterval is not null ? pressed : IsKeyboardFocusWithin ? focus : null;
-            if (cue is not null) context.DrawRoundedRectangle(null, new Pen(cue, 1), rect, 4, 4);
+            if (pressedInterval is not null && pressed is not null)
+                context.DrawRoundedRectangle(null, new Pen(pressed, 1), rect, 4, 4);
+            else if (IsKeyboardFocusWithin && focus is not null)
+                context.DrawLine(new Pen(focus, 2), new Point(rect.Left, rect.Bottom), new Point(rect.Right, rect.Bottom));
         }
         if (marker is not null && Samples is not null)
             foreach (var sample in Samples)

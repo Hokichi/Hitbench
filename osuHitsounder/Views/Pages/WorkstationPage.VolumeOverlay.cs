@@ -42,9 +42,6 @@ public partial class WorkstationPage
         VolumeOverlay.BeginAnimation(OpacityProperty, null);
         VolumeOverlay.Opacity = 1;
         VolumeOverlay.Visibility = Visibility.Collapsed;
-        SongVolumeWheel.EndDrag();
-        ApplicationVolumeWheel.EndDrag();
-        SamplesVolumeWheel.EndDrag();
         var restore = keyboardVolumeOverlay ? volumePriorFocus as UIElement : null;
         keyboardVolumeOverlay = false;
         volumePriorFocus = null;
@@ -57,7 +54,6 @@ public partial class WorkstationPage
 
     internal void ActivateVolumeWheel(VolumeWheel wheel)
     {
-        if (ActiveVolumeWheel?.IsDragging == true) return;
         if (ReferenceEquals(ActiveVolumeWheel, wheel)) return;
         if (ActiveVolumeWheel is not null) ActiveVolumeWheel.IsActive = false;
         ActiveVolumeWheel = wheel;
@@ -149,7 +145,6 @@ public partial class WorkstationPage
         RecordVolumeActivity();
     }
 
-    private void OnVolumeWheelDragStateChanged(object? sender, EventArgs e) => RecordVolumeActivity();
     private void OnVolumeWheelValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e) => RecordVolumeActivity();
 
     internal void RecordVolumeActivity()
@@ -170,7 +165,7 @@ public partial class WorkstationPage
 
     internal void ProcessVolumeOverlayIdle(TimeSpan idleFor, bool animate)
     {
-        if (!IsVolumeOverlayOpen || volumeFading || idleFor < TimeSpan.FromSeconds(1) || ActiveVolumeWheel?.IsDragging == true) return;
+        if (!IsVolumeOverlayOpen || volumeFading || idleFor < TimeSpan.FromSeconds(1)) return;
         volumeIdleTimer?.Stop();
         if (!animate) { DismissVolumeOverlay(); return; }
         volumeFading = true;

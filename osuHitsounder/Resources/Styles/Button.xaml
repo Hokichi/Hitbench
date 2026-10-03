@@ -3,11 +3,17 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:c="clr-namespace:osuHitsounder.Resources.CustomControls">
     <ControlTemplate x:Key="DefaultFocusVisualTemplate" TargetType="Control">
-        <Border
-            Margin="-2"
-            BorderBrush="{DynamicResource Brush.Border.Focus}"
-            BorderThickness="2"
-            CornerRadius="4" />
+        <Rectangle x:Name="FocusMarker"
+            Height="2"
+            Margin="0,0,0,-3"
+            VerticalAlignment="Bottom"
+            Fill="{DynamicResource Brush.Text.Primary}"
+            IsHitTestVisible="False" />
+        <ControlTemplate.Triggers>
+            <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
+                <Setter TargetName="FocusMarker" Property="Fill" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+            </DataTrigger>
+        </ControlTemplate.Triggers>
     </ControlTemplate>
     <Style x:Key="DefaultFocusVisualStyle" TargetType="Control">
         <Setter Property="Template" Value="{StaticResource DefaultFocusVisualTemplate}" />
@@ -86,9 +92,7 @@
             <Trigger Property="IsPressed" Value="True">
                 <Setter Property="Background" Value="{DynamicResource Brush.Navy.Tint}" />
             </Trigger>
-            <Trigger Property="IsKeyboardFocused" Value="True">
-                <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Focus}" />
-            </Trigger>
+
             <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
                 <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
                 <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
@@ -350,10 +354,7 @@
             <Trigger Property="IsMouseOver" Value="True">
                 <Setter Property="Background" Value="{Binding HoveredBackground, RelativeSource={RelativeSource Self}}" />
             </Trigger>
-            <Trigger Property="IsKeyboardFocused" Value="True">
-                <Setter Property="StrokeBrush" Value="{DynamicResource Brush.Border.Focus}" />
-                <Setter Property="StrokeThickness" Value="2" />
-            </Trigger>
+
             <Trigger Property="IsEnabled" Value="False">
                 <Setter Property="Opacity" Value="0.4" />
                 <Setter Property="Cursor" Value="Arrow" />
@@ -916,9 +917,7 @@
             <Trigger Property="IsMouseOver" Value="True">
                 <Setter Property="Background" Value="{DynamicResource Brush.Background.Hover}" />
             </Trigger>
-            <Trigger Property="IsKeyboardFocused" Value="True">
-                <Setter Property="BorderBrush" Value="{DynamicResource Brush.Navy}" />
-            </Trigger>
+
             <Trigger Property="IsEnabled" Value="False">
                 <Setter Property="Opacity" Value="0.4" />
             </Trigger>
@@ -938,9 +937,7 @@
                 <Setter Property="Background" Value="{DynamicResource Brush.Navy.Muted}" />
                 <Setter Property="BorderBrush" Value="{DynamicResource Brush.Navy.Muted}" />
             </Trigger>
-            <Trigger Property="IsKeyboardFocused" Value="True">
-                <Setter Property="BorderBrush" Value="{DynamicResource Brush.Text.Primary}" />
-            </Trigger>
+
             <Trigger Property="IsEnabled" Value="False">
                 <Setter Property="Opacity" Value="0.4" />
             </Trigger>

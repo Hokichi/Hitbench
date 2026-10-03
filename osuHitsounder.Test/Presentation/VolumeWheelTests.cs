@@ -83,17 +83,15 @@ public class VolumeWheelTests
         });
         var size = wheel.DesiredSize;
         wheel.IsActive = true;
-        wheel.BeginDrag(100);
         UiTestPump.Layout(host, 320, 168);
         Assert.That(wheel.DesiredSize, Is.EqualTo(size));
         wheel.IsEnabled = false;
         Assert.That(wheel.Cursor, Is.EqualTo(Cursors.Arrow));
         Assert.That(wheel.Opacity, Is.EqualTo(0.4));
-        Assert.That(wheel.IsDragging, Is.False);
     }
 
     [Test]
-    public void IdleDismissalWaitsOneSecondAndHeldDragKeepsOverlayOpen()
+    public void IdleDismissalWaitsOneSecondAfterPointerActivity()
     {
         var (page, _, view) = CreateLoadedPage();
         using (view)
@@ -101,19 +99,16 @@ public class VolumeWheelTests
             page.ShowVolumeOverlay(false, new Point());
             page.ProcessVolumeOverlayIdle(TimeSpan.FromMilliseconds(999), false);
             Assert.That(page.IsVolumeOverlayOpen, Is.True);
-            page.ApplicationVolumeWheel.BeginDrag(100);
+            page.ApplicationVolumeWheel.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, MouseButton.Left) { RoutedEvent = Mouse.MouseDownEvent });
             page.ActivateVolumeWheel(page.SongVolumeWheel);
-            Assert.That(page.ActiveVolumeWheel, Is.SameAs(page.ApplicationVolumeWheel));
-            page.ProcessVolumeOverlayIdle(TimeSpan.FromSeconds(10), false);
-            Assert.That(page.IsVolumeOverlayOpen, Is.True);
-            page.ApplicationVolumeWheel.EndDrag();
+            Assert.That(page.ActiveVolumeWheel, Is.SameAs(page.SongVolumeWheel));
             page.ProcessVolumeOverlayIdle(TimeSpan.FromSeconds(1), false);
             Assert.That(page.IsVolumeOverlayOpen, Is.False);
         }
     }
 
     [Test]
-    public void ActivityCancelsFadeAndDismissalEndsDrag()
+    public void ActivityCancelsFadeAndDismissalClearsActiveWheel()
     {
         var (page, _, view) = CreateLoadedPage();
         using (view)
@@ -125,9 +120,9 @@ public class VolumeWheelTests
             page.RecordVolumeActivity();
             Assert.That(overlay.HasAnimatedProperties, Is.False);
             Assert.That(overlay.Opacity, Is.EqualTo(1));
-            page.ApplicationVolumeWheel.BeginDrag(100);
+            page.ApplicationVolumeWheel.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, MouseButton.Left) { RoutedEvent = Mouse.MouseDownEvent });
             page.DismissVolumeOverlay();
-            Assert.That(page.ApplicationVolumeWheel.IsDragging, Is.False);
+            Assert.That(page.ActiveVolumeWheel, Is.Null);
             page.ShowVolumeOverlay(false, new Point());
             page.ProcessVolumeOverlayIdle(TimeSpan.Zero, false);
             Assert.That(page.IsVolumeOverlayOpen, Is.True);
@@ -149,24 +144,21 @@ public class VolumeWheelTests
     }
 
     [Test]
-    public void VerticalDragChangesValueAndClampsWithoutChangingOnPress()
+    public void PointerPressMoveAndReleaseNeverChangesVolumeOrCapturesMouse()
     {
-        var wheel = new VolumeWheel { Value = 50, IsActive = true };
-        Assert.That(wheel.BeginDrag(100), Is.True);
-        Assert.That(wheel.Value, Is.EqualTo(50));
-        wheel.UpdateDrag(80);
-        Assert.That(wheel.Value, Is.EqualTo(60));
-        wheel.UpdateDrag(120);
-        Assert.That(wheel.Value, Is.EqualTo(40));
-        wheel.UpdateDrag(-1000);
-        Assert.That(wheel.Value, Is.EqualTo(100));
-        wheel.UpdateDrag(1000);
-        Assert.That(wheel.Value, Is.Zero);
-        wheel.IsEnabled = false;
-        Assert.That(wheel.IsDragging, Is.False);
-        Assert.That(wheel.BeginDrag(100), Is.False);
-        wheel.UpdateDrag(0);
-        Assert.That(wheel.Value, Is.Zero);
+        var wheel = new VolumeWheel { Value = 50, IsActive = true,
+            Style = (Style)Application.Current.FindResource("OHsVolumeWheelStyle") };
+        var host = new Grid();
+        host.Children.Add(wheel);
+        UiTestPump.Layout(host, 320, 168);
+        wheel.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, MouseButton.Left) { RoutedEvent = Mouse.MouseDownEvent });
+        wheel.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, 1) { RoutedEvent = Mouse.MouseMoveEvent });
+        wheel.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, 2, MouseButton.Left) { RoutedEvent = Mouse.MouseUpEvent });
+        Assert.Multiple(() =>
+        {
+            Assert.That(wheel.Value, Is.EqualTo(50));
+            Assert.That(wheel.IsMouseCaptured, Is.False);
+        });
     }
     [Test]
     public void OverlayIgnoresInvocationAnchorAndStaysAtLeftAfterResize()
@@ -183,7 +175,15 @@ public class VolumeWheelTests
                 {
                     page.ShowVolumeOverlay(false, anchor);
                     view.UpdateLayout();
-                    Assert.That(overlay.Margin, Is.EqualTo(new Thickness(0)));
+                    Assert.Multiple(() =>
+                    {
+                        Assert.That(overlay.Margin, Is.EqualTo(new Thickness(0)));
+                        Assert.That(overlay.VerticalAlignment, Is.EqualTo(VerticalAlignment.Center));
+                        Assert.That(((SolidColorBrush)overlay.Background).Color.A, Is.Zero);
+                        Assert.That(overlay.BorderThickness, Is.EqualTo(new Thickness(0)));
+                        var center = overlay.TranslatePoint(new Point(overlay.ActualWidth / 2, overlay.ActualHeight / 2), root);
+                        Assert.That(center.Y, Is.EqualTo(root.ActualHeight / 2).Within(0.01));
+                    });
                     var physicalHost = view.Root;
                     var overlayLeft = overlay.TranslatePoint(new Point(), physicalHost).X;
                     var overlayRight = overlay.TranslatePoint(new Point(overlay.ActualWidth, 0), physicalHost).X;

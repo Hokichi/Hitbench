@@ -195,9 +195,6 @@
                 <Trigger Property="IsMouseOver" Value="True">
                     <Setter TargetName="WaveformBoundary" Property="BorderBrush" Value="{DynamicResource Brush.Navy.Muted}" />
                 </Trigger>
-                <Trigger Property="IsKeyboardFocusWithin" Value="True">
-                    <Setter TargetName="WaveformBoundary" Property="BorderBrush" Value="{DynamicResource Brush.Navy}" />
-                </Trigger>
             </ControlTemplate.Triggers>
         </ControlTemplate>
         <Style
@@ -253,22 +250,18 @@
 
         <Style
             x:Key="OHsWorkstationVolumeOverlayStyle"
-            BasedOn="{StaticResource CardBorderStyle}"
+            BasedOn="{StaticResource BaseBorderStyle}"
             TargetType="Border">
             <Setter Property="Padding" Value="8" />
             <Setter Property="HorizontalAlignment" Value="Left" />
-            <Setter Property="Background" Value="{DynamicResource Brush.Background.Popup}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Default}" />
-            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
             <Setter Property="CornerRadius" Value="16" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding FlowDirection, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}" Value="RightToLeft">
                     <Setter Property="HorizontalAlignment" Value="Right" />
                 </DataTrigger>
-                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
-                    <Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
-                </DataTrigger>
+
             </Style.Triggers>
         </Style>
 
@@ -407,7 +400,7 @@
                             Bpms="{Binding DataContext.Project.BPMs, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
                             CanPlaceSamples="{Binding DataContext.CanPlaceSamples, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
                             ContentWidth="{Binding TimelineContentWidth, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
-                            FocusBrush="{DynamicResource Brush.Border.Focus}"
+                            FocusBrush="{DynamicResource Brush.Text.Primary}"
                             HorizontalOffset="{Binding TimelineHorizontalOffset, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
                             HoverBrush="{DynamicResource Brush.Background.Hover}"
                             MarkerBrush="{DynamicResource Brush.Navy}"
@@ -475,10 +468,6 @@
                     <RowDefinition Height="120" />
                 </Grid.RowDefinitions>
                 <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
                     <WrapPanel x:Name="TransportPanel" VerticalAlignment="Center">
                         <customControls:BalloonButton
                             x:Name="PlayPauseButton"
@@ -498,26 +487,6 @@
                             Text="{Binding ElapsedText, Mode=OneWay}" />
 
                     </WrapPanel>
-                    <StackPanel
-                        x:Name="SubdivisionPanel"
-                        Grid.Column="1"
-                        Margin="12,0,0,0"
-                        VerticalAlignment="Center"
-                        Orientation="Horizontal">
-                        <TextBlock Style="{StaticResource OHsWorkstationSubdivisionLabelStyle}" Text="Subdivision" />
-                        <customControls:ValueSlider
-                            x:Name="SubdivisionSelector"
-                            AutomationProperties.Name="Beat subdivision"
-                            DisplayText="{Binding Subdivision, Mode=OneWay}"
-                            IsSnapToTickEnabled="True"
-                            LargeChange="1"
-                            Maximum="8"
-                            Minimum="0"
-                            SmallChange="1"
-                            Style="{StaticResource OHsWorkstationSubdivisionStyle}"
-                            TickFrequency="1"
-                            Value="{Binding SelectedSubdivisionIndex, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                    </StackPanel>
                 </Grid>
                 <Grid Grid.Row="2" Style="{StaticResource BaseGridStyle}">
                     <Grid.RowDefinitions>
@@ -612,24 +581,48 @@
                 SmallChange="16"
                 Style="{StaticResource OHsWorkstationWaveformScrollBarStyle}"
                 ViewportSize="{Binding ViewportWidth, ElementName=WaveformScrollViewer, Mode=OneWay}" />
-            <StackPanel
-                x:Name="ZoomControls"
-                Grid.Column="1"
-                FlowDirection="{Binding RelativeSource={RelativeSource AncestorType=UserControl}, Path=FlowDirection, Mode=OneWay}"
-                Orientation="Horizontal">
-                <customControls:BalloonButton
-                    AutomationProperties.Name="Zoom waveform out"
-                    ButtonIcon="{StaticResource Minus}"
-                    Command="{Binding ZoomOutCommand, Mode=OneWay}"
-                    Style="{StaticResource OHsWorkstationIconButtonStyle}"
-                    ToolTip="Zoom waveform out" />
-                <customControls:BalloonButton
-                    AutomationProperties.Name="Zoom waveform in"
-                    ButtonIcon="{StaticResource PlusSolid}"
-                    Command="{Binding ZoomInCommand, Mode=OneWay}"
-                    Style="{StaticResource OHsWorkstationIconButtonStyle}"
-                    ToolTip="Zoom waveform in" />
-            </StackPanel>
+            <WrapPanel Grid.Column="1"
+                VerticalAlignment="Center"
+                MaxWidth="{Binding ActualWidth, ElementName=WorkstationRoot, Mode=OneWay}"
+                FlowDirection="{Binding FlowDirection, ElementName=WorkstationRoot, Mode=OneWay}">
+                <StackPanel
+                    x:Name="SubdivisionPanel"
+                    Margin="0,0,12,0"
+                    VerticalAlignment="Center"
+                    Orientation="Horizontal">
+                    <TextBlock Style="{StaticResource OHsWorkstationSubdivisionLabelStyle}" Text="Subdivision" />
+                    <customControls:ValueSlider
+                        x:Name="SubdivisionSelector"
+                        AutomationProperties.Name="Beat subdivision"
+                        DisplayText="{Binding Subdivision, Mode=OneWay}"
+                        IsSnapToTickEnabled="True"
+                        LargeChange="1"
+                        Maximum="8"
+                        Minimum="0"
+                        SmallChange="1"
+                        Style="{StaticResource OHsWorkstationSubdivisionStyle}"
+                        TickFrequency="1"
+                        Value="{Binding SelectedSubdivisionIndex, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                </StackPanel>
+                <StackPanel
+                    x:Name="ZoomControls"
+                    VerticalAlignment="Center"
+                    FlowDirection="{Binding RelativeSource={RelativeSource AncestorType=UserControl}, Path=FlowDirection, Mode=OneWay}"
+                    Orientation="Horizontal">
+                    <customControls:BalloonButton
+                        AutomationProperties.Name="Zoom waveform out"
+                        ButtonIcon="{StaticResource Minus}"
+                        Command="{Binding ZoomOutCommand, Mode=OneWay}"
+                        Style="{StaticResource OHsWorkstationIconButtonStyle}"
+                        ToolTip="Zoom waveform out" />
+                    <customControls:BalloonButton
+                        AutomationProperties.Name="Zoom waveform in"
+                        ButtonIcon="{StaticResource PlusSolid}"
+                        Command="{Binding ZoomInCommand, Mode=OneWay}"
+                        Style="{StaticResource OHsWorkstationIconButtonStyle}"
+                        ToolTip="Zoom waveform in" />
+                </StackPanel>
+            </WrapPanel>
         </Grid>
         <Border
             x:Name="VolumeOverlay"
@@ -638,7 +631,7 @@
             Panel.ZIndex="10"
             Width="320"
             FlowDirection="LeftToRight"
-            VerticalAlignment="Top"
+            VerticalAlignment="Center"
             Style="{StaticResource OHsWorkstationVolumeOverlayStyle}"
             Visibility="Collapsed">
             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
@@ -648,7 +641,6 @@
                     IsEnabled="{Binding CanPlay, Mode=OneWay}"
                     Label="Song"
                     MouseMove="OnVolumeWheelMouseMove"
-                    DragStateChanged="OnVolumeWheelDragStateChanged"
                     ValueChanged="OnVolumeWheelValueChanged"
                     PreviewMouseLeftButtonDown="OnVolumeWheelMouseDown"
                     Style="{StaticResource OHsVolumeWheelStyle}"
@@ -658,7 +650,6 @@
                     IsEnabled="{Binding CanPlay, Mode=OneWay}"
                     Label="Application"
                     MouseMove="OnVolumeWheelMouseMove"
-                    DragStateChanged="OnVolumeWheelDragStateChanged"
                     ValueChanged="OnVolumeWheelValueChanged"
                     PreviewMouseLeftButtonDown="OnVolumeWheelMouseDown"
                     Style="{StaticResource OHsVolumeWheelStyle}"
@@ -668,7 +659,6 @@
                     IsEnabled="{Binding CanPlay, Mode=OneWay}"
                     Label="Samples"
                     MouseMove="OnVolumeWheelMouseMove"
-                    DragStateChanged="OnVolumeWheelDragStateChanged"
                     ValueChanged="OnVolumeWheelValueChanged"
                     PreviewMouseLeftButtonDown="OnVolumeWheelMouseDown"
                     Style="{StaticResource OHsVolumeWheelStyle}"

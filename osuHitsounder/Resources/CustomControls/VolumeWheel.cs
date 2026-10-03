@@ -9,13 +9,6 @@ namespace osuHitsounder.Resources.CustomControls;
 
 public sealed class VolumeWheel : Slider
 {
-    private static readonly DependencyPropertyKey IsDraggingPropertyKey = DependencyProperty.RegisterReadOnly(
-        nameof(IsDragging), typeof(bool), typeof(VolumeWheel), new PropertyMetadata(false));
-    public static readonly DependencyProperty IsDraggingProperty = IsDraggingPropertyKey.DependencyProperty;
-    public bool IsDragging => (bool)GetValue(IsDraggingProperty);
-    public event EventHandler? DragStateChanged;
-    private double dragStartY;
-    private double dragStartValue;
     private static readonly DependencyPropertyKey FilledGeometryPropertyKey = DependencyProperty.RegisterReadOnly(
         nameof(FilledGeometry), typeof(Geometry), typeof(VolumeWheel), new PropertyMetadata(Geometry.Empty));
 
@@ -41,66 +34,12 @@ public sealed class VolumeWheel : Slider
     public string Label { get => (string)GetValue(LabelProperty); set => SetValue(LabelProperty, value); }
     public double PieOpacity { get => (double)GetValue(PieOpacityProperty); private set => SetValue(PieOpacityProperty, value); }
 
-    public VolumeWheel()
-    {
-        UpdateGeometry();
-        IsEnabledChanged += (_, _) => { if (!IsEnabled) EndDrag(); };
-        Unloaded += (_, _) => EndDrag();
-    }
-
-    internal bool BeginDrag(double pointerY)
-    {
-        if (!IsEnabled || !IsActive || !double.IsFinite(pointerY)) return false;
-        dragStartY = pointerY;
-        dragStartValue = Value;
-        SetValue(IsDraggingPropertyKey, true);
-        DragStateChanged?.Invoke(this, EventArgs.Empty);
-        return true;
-    }
-
-    internal void UpdateDrag(double pointerY)
-    {
-        if (!IsDragging || !IsEnabled || !double.IsFinite(pointerY)) return;
-        SetCurrentValue(ValueProperty, Math.Clamp(Math.Round(dragStartValue + (dragStartY - pointerY) / 2), Minimum, Maximum));
-    }
-
-    internal void EndDrag()
-    {
-        if (!IsDragging) return;
-        SetValue(IsDraggingPropertyKey, false);
-        if (IsMouseCaptured) ReleaseMouseCapture();
-        DragStateChanged?.Invoke(this, EventArgs.Empty);
-    }
+    public VolumeWheel() => UpdateGeometry();
 
     protected override void OnMouseLeftButtonDown(MouseButtonEventArgs e)
     {
-        if (!BeginDrag(e.GetPosition(this).Y)) return;
-        Focus();
-        if (!CaptureMouse()) EndDrag();
+        if (IsEnabled) Focus();
         e.Handled = true;
-    }
-
-    protected override void OnMouseMove(MouseEventArgs e)
-    {
-        base.OnMouseMove(e);
-        if (!IsDragging) return;
-        if (e.LeftButton != MouseButtonState.Pressed) EndDrag();
-        else UpdateDrag(e.GetPosition(this).Y);
-        e.Handled = true;
-    }
-
-    protected override void OnMouseLeftButtonUp(MouseButtonEventArgs e)
-    {
-        if (!IsDragging) return;
-        UpdateDrag(e.GetPosition(this).Y);
-        EndDrag();
-        e.Handled = true;
-    }
-
-    protected override void OnLostMouseCapture(MouseEventArgs e)
-    {
-        base.OnLostMouseCapture(e);
-        EndDrag();
     }
 
     protected override AutomationPeer OnCreateAutomationPeer() => new VolumeWheelAutomationPeer(this);
