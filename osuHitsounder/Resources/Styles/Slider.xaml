@@ -145,6 +145,8 @@
                 TextTrimming="CharacterEllipsis" />
         </Grid>
         <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="WheelBackground" Property="Fill" Value="{DynamicResource Brush.Background.Hover}" /></Trigger>
+            <Trigger Property="IsDragging" Value="True"><Setter TargetName="ActiveBorder" Property="BorderThickness" Value="3" /></Trigger>
             <Trigger Property="IsActive" Value="True"><Setter TargetName="ActiveBorder" Property="BorderBrush" Value="{DynamicResource Brush.Border.Focus}" /></Trigger>
             <Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter TargetName="ActiveBorder" Property="BorderBrush" Value="{DynamicResource Brush.Border.Focus}" /></Trigger>
             <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">

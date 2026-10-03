@@ -15,6 +15,39 @@ namespace osuHitsounder.Test.Presentation;
 [NonParallelizable]
 public class VolumeWheelTests
 {
+    [Test]
+    public void VerticalDragChangesValueAndClampsWithoutChangingOnPress()
+    {
+        var wheel = new VolumeWheel { Value = 50, IsActive = true };
+        Assert.That(wheel.BeginDrag(100), Is.True);
+        Assert.That(wheel.Value, Is.EqualTo(50));
+        wheel.UpdateDrag(80);
+        Assert.That(wheel.Value, Is.EqualTo(60));
+        wheel.UpdateDrag(120);
+        Assert.That(wheel.Value, Is.EqualTo(40));
+        wheel.UpdateDrag(-1000);
+        Assert.That(wheel.Value, Is.EqualTo(100));
+        wheel.UpdateDrag(1000);
+        Assert.That(wheel.Value, Is.Zero);
+        wheel.IsEnabled = false;
+        Assert.That(wheel.IsDragging, Is.False);
+        Assert.That(wheel.BeginDrag(100), Is.False);
+        wheel.UpdateDrag(0);
+        Assert.That(wheel.Value, Is.Zero);
+    }
+    [Test]
+    public void MasterVolumesHaveSongApplicationSamplesOrder()
+    {
+        var (page, _, view) = CreateLoadedPage();
+        using (view)
+        {
+            page.ShowVolumeOverlay(false, new Point(0, 0));
+            view.UpdateLayout();
+            var panel = (Panel)page.FindName("VolumeWheelPanel");
+            Assert.That(panel.Children.OfType<VolumeWheel>().Select(w => w.Label), Is.EqualTo(new[] { "Song", "Application", "Samples" }));
+            Assert.That(page.FindName("SongVolumeSlider"), Is.Null);
+        }
+    }
     [SetUp]
     public void SetUp()
     {
@@ -22,7 +55,7 @@ public class VolumeWheelTests
         app.Resources.MergedDictionaries.Clear();
         UiTestPump.EnsureFontResources(app);
         foreach (var resource in new[] { "Themes/Dark.xaml", "Converters/Converters.xaml", "Icons.xaml", "Styles/TextBlock.xaml",
-                     "Styles/ItemsControl.xaml", "Styles/Grid.xaml", "Styles/Border.xaml", "Styles/ContentPresenter.xaml",
+                     "Styles/ItemsControl.xaml", "Styles/StackPanel.xaml", "Styles/Grid.xaml", "Styles/Border.xaml", "Styles/ContentPresenter.xaml",
                      "Styles/Button.xaml", "Styles/ToolTip.xaml", "Styles/ScrollViewer.xaml", "Styles/TextBox.xaml",
                      "Styles/ComboBox.xaml", "Styles/ListBox.xaml", "Styles/Slider.xaml", "BeatGrid.xaml" })
             app.Resources.MergedDictionaries.Add(new ResourceDictionary
@@ -161,9 +194,9 @@ public class VolumeWheelTests
             Assert.That(page.HandleVolumeShortcut(Key.V, ModifierKeys.Alt, page), Is.True);
             Assert.That(page.IsVolumeOverlayOpen, Is.True);
             Assert.That(page.HandleVolumeOverlayKey(Key.Tab, ModifierKeys.None), Is.True);
-            Assert.That(page.ActiveVolumeWheel, Is.SameAs(page.SongVolumeWheel));
+            Assert.That(page.ActiveVolumeWheel, Is.SameAs(page.SamplesVolumeWheel));
             Assert.That(page.HandleVolumeOverlayKey(Key.Down, ModifierKeys.None), Is.True);
-            Assert.That(vm.SongVolume, Is.EqualTo(95));
+            Assert.That(vm.SamplesVolume, Is.EqualTo(95));
             Assert.That(page.HandleVolumeOverlayKey(Key.Escape, ModifierKeys.None), Is.True);
             Assert.That(page.IsVolumeOverlayOpen, Is.False);
         }
@@ -198,7 +231,7 @@ public class VolumeWheelTests
             Assert.That(overlay.ActualWidth, Is.LessThanOrEqualTo(root.ActualWidth));
             Assert.That(overlay.Margin.Left + overlay.ActualWidth, Is.LessThanOrEqualTo(root.ActualWidth + 0.01));
             Assert.That(overlay.Margin.Top + overlay.ActualHeight, Is.LessThanOrEqualTo(root.ActualHeight + 0.01));
-            Assert.That(((WrapPanel)page.FindName("VolumeWheelPanel")).FlowDirection,
+            Assert.That(((StackPanel)page.FindName("VolumeWheelPanel")).FlowDirection,
                 Is.EqualTo(FlowDirection.RightToLeft));
         });
     }

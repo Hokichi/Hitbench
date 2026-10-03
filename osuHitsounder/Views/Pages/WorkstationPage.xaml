@@ -250,14 +250,7 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
-        <Style
-            x:Key="OHsWorkstationSongVolumeStyle"
-            BasedOn="{StaticResource OHsWorkstationVolumeStyle}"
-            TargetType="customControls:ValueSlider">
-            <Setter Property="Minimum" Value="0" />
-            <Setter Property="MinHeight" Value="40" />
-            <Setter Property="Width" Value="160" />
-        </Style>
+
         <Style
             x:Key="OHsWorkstationVolumeOverlayStyle"
             BasedOn="{StaticResource CardBorderStyle}"
@@ -274,19 +267,7 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
-        <Style
-            x:Key="OHsWorkstationSongVolumeLabelStyle"
-            BasedOn="{StaticResource FieldLabelTextStyle}"
-            TargetType="TextBlock">
-            <Setter Property="Margin" Value="0,0,8,0" />
-            <Setter Property="VerticalAlignment" Value="Center" />
-            <Setter Property="TextWrapping" Value="Wrap" />
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
-                    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
+
         <ItemsPanelTemplate x:Key="OHsWorkstationTrackItemsPanel">
             <VirtualizingStackPanel />
         </ItemsPanelTemplate>
@@ -511,22 +492,7 @@
                             AutomationProperties.Name="Elapsed audio time"
                             Style="{StaticResource OHsWorkstationElapsedStyle}"
                             Text="{Binding ElapsedText, Mode=OneWay}" />
-                        <StackPanel
-                            Margin="16,0,0,0"
-                            VerticalAlignment="Center"
-                            Orientation="Horizontal">
-                            <TextBlock
-                                Style="{StaticResource OHsWorkstationSongVolumeLabelStyle}"
-                                Text="Song volume" />
-                            <customControls:ValueSlider
-                                x:Name="SongVolumeSlider"
-                                AutomationProperties.HelpText="Changes song volume only; track samples keep their own volume."
-                                AutomationProperties.Name="Song volume"
-                                DisplayText="{Binding SongVolume, Mode=OneWay, StringFormat={}{0:0}%}"
-                                IsEnabled="{Binding CanPlay, Mode=OneWay}"
-                                Style="{StaticResource OHsWorkstationSongVolumeStyle}"
-                                Value="{Binding SongVolume, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                        </StackPanel>
+
                     </WrapPanel>
                     <StackPanel
                         x:Name="SubdivisionPanel"
@@ -666,34 +632,39 @@
             x:Name="VolumeOverlay"
             Grid.RowSpan="4"
             Panel.ZIndex="10"
-            Width="280"
+            Width="128"
             HorizontalAlignment="Left"
             VerticalAlignment="Top"
             Style="{StaticResource OHsWorkstationVolumeOverlayStyle}"
             Visibility="Collapsed">
-            <WrapPanel x:Name="VolumeWheelPanel">
-                <customControls:VolumeWheel
-                    x:Name="ApplicationVolumeWheel"
-                    IsEnabled="{Binding CanPlay, Mode=OneWay}"
-                    Label="Application"
-                    MouseMove="OnVolumeWheelMouseMove"
-                    Style="{StaticResource OHsVolumeWheelStyle}"
-                    Value="{Binding ApplicationVolume, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel x:Name="VolumeWheelPanel" Style="{StaticResource BaseStackPanelStyle}" HorizontalAlignment="Center">
                 <customControls:VolumeWheel
                     x:Name="SongVolumeWheel"
                     IsEnabled="{Binding CanPlay, Mode=OneWay}"
                     Label="Song"
                     MouseMove="OnVolumeWheelMouseMove"
+                    PreviewMouseLeftButtonDown="OnVolumeWheelMouseDown"
                     Style="{StaticResource OHsVolumeWheelStyle}"
                     Value="{Binding SongVolume, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                <customControls:VolumeWheel
+                    x:Name="ApplicationVolumeWheel"
+                    IsEnabled="{Binding CanPlay, Mode=OneWay}"
+                    Label="Application"
+                    MouseMove="OnVolumeWheelMouseMove"
+                    PreviewMouseLeftButtonDown="OnVolumeWheelMouseDown"
+                    Style="{StaticResource OHsVolumeWheelStyle}"
+                    Value="{Binding ApplicationVolume, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                 <customControls:VolumeWheel
                     x:Name="SamplesVolumeWheel"
                     IsEnabled="{Binding CanPlay, Mode=OneWay}"
                     Label="Samples"
                     MouseMove="OnVolumeWheelMouseMove"
+                    PreviewMouseLeftButtonDown="OnVolumeWheelMouseDown"
                     Style="{StaticResource OHsVolumeWheelStyle}"
                     Value="{Binding SamplesVolume, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-            </WrapPanel>
+                </StackPanel>
+            </ScrollViewer>
         </Border>
     </Grid>
         <Border x:Name="LoadingOverlay" Style="{StaticResource OHsWorkstationLoadingOverlayStyle}" />

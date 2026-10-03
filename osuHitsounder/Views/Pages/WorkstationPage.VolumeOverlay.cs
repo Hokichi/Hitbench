@@ -29,6 +29,9 @@ public partial class WorkstationPage
     internal void DismissVolumeOverlay()
     {
         if (!IsVolumeOverlayOpen) return;
+        SongVolumeWheel.EndDrag();
+        ApplicationVolumeWheel.EndDrag();
+        SamplesVolumeWheel.EndDrag();
         var restore = keyboardVolumeOverlay ? volumePriorFocus as UIElement : null;
         VolumeOverlay.Visibility = Visibility.Collapsed;
         keyboardVolumeOverlay = false;
@@ -47,6 +50,7 @@ public partial class WorkstationPage
 
     internal void ActivateVolumeWheel(VolumeWheel wheel)
     {
+        if (ActiveVolumeWheel?.IsDragging == true) return;
         if (ReferenceEquals(ActiveVolumeWheel, wheel)) return;
         if (ActiveVolumeWheel is not null) ActiveVolumeWheel.IsActive = false;
         ActiveVolumeWheel = wheel;
@@ -91,7 +95,7 @@ public partial class WorkstationPage
     {
         if (IsVolumeOverlayOpen && HandleVolumeOverlayKey(key, modifiers)) return true;
         if (key != Key.V || modifiers != ModifierKeys.Alt || deactivationStarted) return false;
-        ShowVolumeOverlay(true, new Point(Math.Max(0, ActualWidth / 2 - 140), 16));
+        ShowVolumeOverlay(true, new Point(Math.Max(0, ActualWidth / 2 - 64), 16));
         return true;
     }
 
@@ -105,11 +109,12 @@ public partial class WorkstationPage
         }
         if (key == Key.Tab && modifiers is ModifierKeys.None or ModifierKeys.Shift)
         {
-            var wheels = new[] { ApplicationVolumeWheel, SongVolumeWheel, SamplesVolumeWheel };
+            var wheels = new[] { SongVolumeWheel, ApplicationVolumeWheel, SamplesVolumeWheel };
             var current = Array.IndexOf(wheels, ActiveVolumeWheel);
             var next = modifiers == ModifierKeys.Shift ? (current + wheels.Length - 1) % wheels.Length : (current + 1) % wheels.Length;
             ActivateVolumeWheel(wheels[next]);
             wheels[next].Focus();
+            wheels[next].BringIntoView();
             return true;
         }
         if (key is not (Key.Up or Key.Right or Key.Down or Key.Left) || modifiers != ModifierKeys.None ||
@@ -125,10 +130,16 @@ public partial class WorkstationPage
         if (sender is VolumeWheel wheel) ActivateVolumeWheel(wheel);
     }
 
+    private void OnVolumeWheelMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is VolumeWheel wheel) ActivateVolumeWheel(wheel);
+    }
+
     private void PositionVolumeOverlay(Point anchor)
     {
-        var availableWidth = Math.Max(96, WorkstationRoot.ActualWidth - 16);
-        VolumeOverlay.Width = Math.Min(280, availableWidth);
+        var availableWidth = Math.Max(0, WorkstationRoot.ActualWidth - 16);
+        VolumeOverlay.Width = Math.Min(128, availableWidth);
+        VolumeOverlay.MaxHeight = Math.Max(0, WorkstationRoot.ActualHeight - 16);
         VolumeOverlay.Measure(new Size(VolumeOverlay.Width, double.PositiveInfinity));
         var left = Math.Clamp(anchor.X, 0, Math.Max(0, WorkstationRoot.ActualWidth - VolumeOverlay.Width));
         var top = Math.Clamp(anchor.Y, 0, Math.Max(0, WorkstationRoot.ActualHeight - VolumeOverlay.DesiredSize.Height));

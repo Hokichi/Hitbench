@@ -23,7 +23,7 @@ namespace osuHitsounder.Test.Presentation;
 public class WorkstationPageIntegrationTests
 {
     [Test]
-    public void SongVolumeSliderUpdatesSongOnlyAndExposesAccessibleBounds()
+    public void SongVolumeWheelUpdatesSongOnlyAndExposesAccessibleBounds()
     {
         var track = new osuHitsounder.Core.Entities.Track { Volume = 70 };
         var source = new StubWorkstationSourceService
@@ -39,7 +39,7 @@ public class WorkstationPageIntegrationTests
         UiTestPump.Run(page.LoadCompletion);
         view.UpdateLayout();
 
-        var slider = (ValueSlider)page.FindName("SongVolumeSlider");
+        var slider = (VolumeWheel)page.FindName("SongVolumeWheel");
         slider.Value = 50;
         slider.GetBindingExpression(RangeBase.ValueProperty)!.UpdateSource();
 
@@ -50,14 +50,14 @@ public class WorkstationPageIntegrationTests
             Assert.That(track.Volume, Is.EqualTo(70));
             Assert.That(slider.Minimum, Is.Zero);
             Assert.That(slider.Maximum, Is.EqualTo(100));
-            Assert.That(slider.SmallChange, Is.EqualTo(1));
+            Assert.That(slider.SmallChange, Is.EqualTo(5));
             Assert.That(slider.IsEnabled, Is.True);
             Assert.That(AutomationProperties.GetName(slider), Is.EqualTo("Song volume"));
         });
     }
 
     [Test]
-    public void SongVolumeSliderIsDisabledWhileLoading()
+    public void SongVolumeWheelIsDisabledWhileLoading()
     {
         var completion = new TaskCompletionSource<WorkstationSource>();
         var vm = new WorkstationPageVM(
@@ -67,7 +67,7 @@ public class WorkstationPageIntegrationTests
         using var view = new InMemoryView(new Window { Content = page, Width = 640, Height = 480 });
         view.UpdateLayout();
 
-        var slider = (ValueSlider)page.FindName("SongVolumeSlider");
+        var slider = (VolumeWheel)page.FindName("SongVolumeWheel");
         Assert.That(slider.IsEnabled, Is.False);
 
         completion.SetResult(new WorkstationSource("map.osu", "audio.wav", new ProjectData()));
@@ -447,7 +447,7 @@ public class WorkstationPageIntegrationTests
         Assert.That(vm.Tracks.Single().Samples, Has.Count.EqualTo(1));
         Assert.That(vm.Tracks.Single().Samples.Single().FileName, Is.EqualTo("kick.wav"));
         Assert.That(vm.Tracks.Single().Samples.Single().Timestamp, Is.EqualTo(0));
-        Assert.That(grid.RequestSampleRemoval(10), Is.True);
+        Assert.That(grid.RequestSampleRemoval(5), Is.True);
         Assert.That(vm.Tracks.Single().Samples, Is.Empty);
     }
 
@@ -1102,7 +1102,7 @@ public class WorkstationPageIntegrationTests
         app.Resources.MergedDictionaries.Clear();
         UiTestPump.EnsureFontResources(app);
         foreach (var resource in new[] { $"Themes/{theme}.xaml", "Converters/Converters.xaml", "Icons.xaml",
-                     "Styles/TextBlock.xaml", "Styles/ItemsControl.xaml", "Styles/Grid.xaml", "Styles/Border.xaml", "Styles/ContentPresenter.xaml",
+                     "Styles/TextBlock.xaml", "Styles/ItemsControl.xaml", "Styles/StackPanel.xaml", "Styles/Grid.xaml", "Styles/Border.xaml", "Styles/ContentPresenter.xaml",
                      "Styles/Button.xaml", "Styles/ToolTip.xaml", "Styles/ScrollViewer.xaml", "Styles/TextBox.xaml", "Styles/ComboBox.xaml", "Styles/ListBox.xaml", "Styles/Slider.xaml", "BeatGrid.xaml" })
             app.Resources.MergedDictionaries.Add(new ResourceDictionary
             {
