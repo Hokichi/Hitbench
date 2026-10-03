@@ -105,11 +105,33 @@
             Opacity="0.95"
             ShadowDepth="0"
             Color="{DynamicResource Color.Text.Primary.Inverted}" />
+        <SolidColorBrush x:Key="HomePageSongArtworkFallbackBrush" Color="Black" />
+        <SolidColorBrush x:Key="HomePageSongArtworkForegroundBrush" Color="White" />
+        <Style
+            x:Key="HomePageSongArtworkStyle"
+            BasedOn="{StaticResource BaseGridStyle}"
+            TargetType="Grid">
+            <Setter Property="Background" Value="{StaticResource HomePageSongArtworkFallbackBrush}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
+                    <Setter Property="Background" Value="{x:Null}" />
+                </DataTrigger>
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding Source, ElementName=SongArtwork, Mode=OneWay}" Value="{x:Null}" />
+                        <Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Button}, Mode=OneWay}" Value="True" />
+                        <Condition Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="False" />
+                    </MultiDataTrigger.Conditions>
+                    <Setter Property="Opacity" Value="0.85" />
+                </MultiDataTrigger>
+            </Style.Triggers>
+        </Style>
         <Style
             x:Key="HomePageSongBackgroundStyle"
             BasedOn="{StaticResource BaseImageStyle}"
             TargetType="Image">
             <Setter Property="Stretch" Value="UniformToFill" />
+            <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="IsHitTestVisible" Value="False" />
             <Setter Property="Focusable" Value="False" />
             <Style.Triggers>
@@ -151,7 +173,7 @@
             TargetType="Button">
             <Setter Property="Padding" Value="0" />
             <Setter Property="VerticalContentAlignment" Value="Stretch" />
-            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+            <Setter Property="Foreground" Value="{StaticResource HomePageSongArtworkForegroundBrush}" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
                     <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
@@ -167,8 +189,9 @@
                 Command="{Binding DataContext.CreateProjectCommand, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=OneWay}"
                 CommandParameter="{Binding Mode=OneWay}"
                 Style="{StaticResource HomePageSongCardButtonStyle}">
-                <Grid SizeChanged="OnSongCardSizeChanged">
+                <Grid SizeChanged="OnSongCardSizeChanged" Style="{StaticResource HomePageSongArtworkStyle}">
                     <Image
+                        x:Name="SongArtwork"
                         DataContextChanged="OnSongImageDataContextChanged"
                         Loaded="OnSongImageLoaded"
                         Style="{StaticResource HomePageSongBackgroundStyle}"

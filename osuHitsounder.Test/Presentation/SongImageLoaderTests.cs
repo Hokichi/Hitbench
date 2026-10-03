@@ -7,6 +7,12 @@ namespace osuHitsounder.Test.Presentation;
 public class SongImageLoaderTests
 {
     [Test]
+    public async Task EmptyArtworkPathReturnsNoImage()
+    {
+        Assert.That(await new SongImageLoader().LoadAsync("", 336, CancellationToken.None), Is.Null);
+    }
+
+    [Test]
     public async Task ThumbnailCacheEvictsOldImagesAtMemoryLimit()
     {
         var path = Path.GetTempFileName();

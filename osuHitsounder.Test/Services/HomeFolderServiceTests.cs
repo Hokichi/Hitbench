@@ -71,13 +71,45 @@ public class HomeFolderServiceTests
     }
 
     [Test]
-    public async Task SkippedFoldersAreInventoriedWithoutRepeatedParsing()
+    public async Task PreviouslyEmptyFolderIsRetriedAfterBeatmapAdded()
     {
-        Directory.CreateDirectory(Path.Combine(root, "Songs", "A"));
+        var folder = Directory.CreateDirectory(Path.Combine(root, "Songs", "A"));
         await new HomeFolderService(appRoot).LoadSongsAsync(root, CancellationToken.None);
-        CreateCachedSong("A");
+        File.WriteAllText(Path.Combine(folder.FullName, "map.osu"), "[Metadata]\nTitleUnicode:Recovered\n");
         var result = await new HomeFolderService(appRoot).LoadSongsAsync(root, CancellationToken.None);
-        Assert.That(result!.Count, Is.Zero);
+        Assert.That(result!.ReadPage(0, 10).Single().Title, Is.EqualTo("Recovered"));
+    }
+
+    [Test]
+    public async Task OldCacheSkippedSongRecoversAndPersists()
+    {
+        var folder = Directory.CreateDirectory(Path.Combine(root, "Songs", "A"));
+        var map = Path.Combine(folder.FullName, "map.osu");
+        File.WriteAllText(map, "[Metadata]\nTitleUnicode:Recovered\n");
+        Directory.CreateDirectory(appRoot);
+        var cachePath = Path.Combine(appRoot, "data.json");
+        File.WriteAllText(cachePath, System.Text.Json.JsonSerializer.Serialize(new
+        {
+            Version = 1, SongsRoot = Path.Combine(root, "Songs"), Folders = new[] { "A" }, Songs = Array.Empty<object>()
+        }));
+        var result = await new HomeFolderService(appRoot).LoadSongsAsync(root, CancellationToken.None);
+        Assert.That(result!.ReadPage(0, 10).Single().Title, Is.EqualTo("Recovered"));
+        using var cache = System.Text.Json.JsonDocument.Parse(File.ReadAllText(cachePath));
+        Assert.That(cache.RootElement.GetProperty("Songs").GetArrayLength(), Is.EqualTo(1));
+        File.WriteAllText(map, "[Metadata]\nTitleUnicode:Changed\n");
+        var warm = await new HomeFolderService(appRoot).LoadSongsAsync(root, CancellationToken.None);
+        Assert.That(warm!.ReadPage(0, 10).Single().Title, Is.EqualTo("Recovered"));
+    }
+
+    [Test]
+    public async Task SkippedFoldersRemainAbsentUntilDirectBeatmapExists()
+    {
+        Directory.CreateDirectory(Path.Combine(root, "Songs", "empty"));
+        var nested = Directory.CreateDirectory(Path.Combine(root, "Songs", "nested-only", "nested"));
+        File.WriteAllText(Path.Combine(nested.FullName, "map.osu"), "[Metadata]\nTitleUnicode:Nested\n");
+        var service = new HomeFolderService(appRoot);
+        Assert.That((await service.LoadSongsAsync(root, CancellationToken.None))!.Count, Is.Zero);
+        Assert.That((await service.LoadSongsAsync(root, CancellationToken.None))!.Count, Is.Zero);
     }
 
     [Test]
@@ -216,7 +248,7 @@ public class HomeFolderServiceTests
     }
 
     [Test]
-    public async Task FailingSongFolderIsSkippedWithoutAbortingOtherFolders()
+    public async Task SongWithoutArtworkDoesNotExcludeOtherFolders()
     {
         var songs = Directory.CreateDirectory(Path.Combine(root, "Songs"));
         var broken = songs.CreateSubdirectory("broken");
@@ -229,7 +261,55 @@ public class HomeFolderServiceTests
 
         var snapshot = await new HomeFolderService(appRoot).LoadSongsAsync(root, CancellationToken.None);
 
-        Assert.That(snapshot!.ReadPage(0, 64).Select(row => row.Name), Is.EqualTo(new[] { "valid" }));
+        Assert.That(snapshot!.ReadPage(0, 64).Select(row => row.Name), Is.EquivalentTo(new[] { "broken", "valid" }));
+    }
+
+    [Test]
+    public async Task DirectBeatmapWithoutArtworkIsIncluded()
+    {
+        var folder = Directory.CreateDirectory(Path.Combine(root, "Songs", "song"));
+        File.WriteAllText(Path.Combine(folder.FullName, "map.OSU"),
+            "[Metadata]\nArtistUnicode:Artist\nTitleUnicode:Title\n");
+        var snapshot = await new HomeFolderService(appRoot).LoadSongsAsync(root, CancellationToken.None);
+        var row = snapshot!.ReadPage(0, 10).Single();
+        Assert.That(row.BackgroundPath, Is.Empty);
+        Assert.That(row.DisplayName, Is.EqualTo("Artist - Title"));
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task UnsupportedOrNestedArtworkDoesNotExcludeSong(bool nested)
+    {
+        var folder = Directory.CreateDirectory(Path.Combine(root, "Songs", "song"));
+        File.WriteAllText(Path.Combine(folder.FullName, "map.osu"), "[Metadata]\nTitleUnicode:Title\n");
+        var imageFolder = nested ? folder.CreateSubdirectory("nested") : folder;
+        File.WriteAllText(Path.Combine(imageFolder.FullName, nested ? "background.png" : "background.webp"), "image");
+        var snapshot = await new HomeFolderService(appRoot).LoadSongsAsync(root, CancellationToken.None);
+        Assert.That(snapshot!.ReadPage(0, 10).Single().BackgroundPath, Is.Empty);
+    }
+
+    [Test]
+    public async Task MissingMetadataUsesFolderName()
+    {
+        var folder = Directory.CreateDirectory(Path.Combine(root, "Songs", "Untitled song"));
+        File.WriteAllText(Path.Combine(folder.FullName, "map.osu"), "osu file format v14\n");
+        var snapshot = await new HomeFolderService(appRoot).LoadSongsAsync(root, CancellationToken.None);
+        var row = snapshot!.ReadPage(0, 10).Single();
+        Assert.That(row.Title, Is.EqualTo(folder.Name));
+        Assert.That(row.DisplayName, Is.EqualTo(folder.Name));
+    }
+
+    [Test]
+    public async Task LockedBeatmapDoesNotExcludeDiscoveredSong()
+    {
+        var folder = Directory.CreateDirectory(Path.Combine(root, "Songs", "Locked song"));
+        var map = Path.Combine(folder.FullName, "map.osu");
+        File.WriteAllText(map, "[Metadata]\nTitleUnicode:Title\n");
+        using var locked = File.Open(map, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+        var snapshot = await new HomeFolderService(appRoot).LoadSongsAsync(root, CancellationToken.None);
+        var row = snapshot!.ReadPage(0, 10).Single();
+        Assert.That(row.Title, Is.EqualTo(folder.Name));
+        Assert.That(row.BackgroundPath, Is.Empty);
     }
 
     [Test]

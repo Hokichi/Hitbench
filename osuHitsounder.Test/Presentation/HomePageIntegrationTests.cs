@@ -646,7 +646,7 @@ public class HomePageIntegrationTests
                         Assert.That(labels.Select(label => label.Text), Is.EqualTo(new[]
                             { "Artist", "Title " + new string('x', 80) }));
                         Assert.That(((SolidColorBrush)labels[0].Foreground).Color,
-                            Is.EqualTo(((SolidColorBrush)app.FindResource("Brush.Text.Primary")).Color));
+                            Is.EqualTo(Colors.White));
                         Assert.That(labels[0].TranslatePoint(new Point(), button).Y,
                             Is.LessThan(labels[1].TranslatePoint(new Point(), button).Y));
                         Assert.That(backgroundImage.Stretch, Is.EqualTo(Stretch.Fill));

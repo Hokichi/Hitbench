@@ -2,8 +2,10 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.Messaging;
 using osuHitsounder.Core.Entities;
@@ -35,6 +37,128 @@ public class ScanOverlayIntegrationTests
             });
     }
     [TearDown] public void TearDown() => SynchronizationContext.SetSynchronizationContext(previous);
+
+    [TestCase("Dark")]
+    [TestCase("Light")]
+    public void SongArtworkFallbackIsBlackAndReadable(string theme)
+    {
+        Application.Current.Resources.MergedDictionaries[0].Source =
+            new Uri($"/osuHitsounder;component/Resources/Themes/{theme}.xaml", UriKind.Relative);
+        var page = CreateSongPage();
+        var song = new FolderEntry(@"C:\Songs\song", "song", DateTimeOffset.MinValue)
+            { Artist = "Artist", Title = "Title", DisplayName = "Artist - Title" };
+        var card = (Button)((DataTemplate)page.Resources["HomePageSongTemplate"]).LoadContent();
+        card.DataContext = song;
+        using var view = new InMemoryView(new Window
+        {
+            Width = 400, Height = 240,
+            Content = new UserControl { DataContext = page.DataContext, Content = card }
+        });
+        try
+        {
+            var backdrop = (Grid)card.Content;
+            Assert.That((backdrop.Background as SolidColorBrush)?.Color, Is.EqualTo(Colors.Black));
+            foreach (var text in Descendants<TextBlock>(backdrop))
+                Assert.That((text.Foreground as SolidColorBrush)?.Color, Is.EqualTo(Colors.White));
+            Assert.That(Descendants<Image>(backdrop).Single().Source, Is.Null);
+            Assert.That(card.Command, Is.Not.Null);
+            Assert.That(card.Command!.CanExecute(card.CommandParameter), Is.True);
+        }
+        finally { page.Deactivate(); }
+    }
+
+    [Test]
+    public void SongArtworkRecyclingClearsPreviousImage()
+    {
+        var folder = Directory.CreateTempSubdirectory("song-artwork-");
+        var page = CreateSongPage();
+        var card = (Button)((DataTemplate)page.Resources["HomePageSongTemplate"]).LoadContent();
+        var song = new FolderEntry(folder.FullName, "song", DateTimeOffset.MinValue) { Title = "Title" };
+        var valid = Path.Combine(folder.FullName, "valid.png");
+        var corrupt = Path.Combine(folder.FullName, "corrupt.png");
+        File.WriteAllText(corrupt, "not an image");
+        var encoder = new PngBitmapEncoder();
+        encoder.Frames.Add(BitmapFrame.Create(BitmapSource.Create(1, 1, 96, 96, PixelFormats.Bgra32,
+            null, new byte[] { 255, 0, 0, 255 }, 4)));
+        using (var stream = File.Create(valid)) encoder.Save(stream);
+        card.DataContext = song with { BackgroundPath = valid };
+        using var view = new InMemoryView(new Window
+        {
+            Width = 400, Height = 240,
+            Content = new UserControl { DataContext = page.DataContext, Content = card }
+        });
+        try
+        {
+            var image = Descendants<Image>(card).Single();
+            foreach (var unavailable in new[] { "", Path.Combine(folder.FullName, "missing.png"), corrupt })
+            {
+                card.DataContext = song with { BackgroundPath = valid };
+                PumpUntil(() => image.Source is not null);
+                card.DataContext = song with { BackgroundPath = unavailable };
+                Assert.That(image.Source, Is.Null, "Recycling must immediately clear the old image.");
+                UiTestPump.Run(page.ImageLoader.LoadAsync(unavailable, 336, CancellationToken.None));
+                view.UpdateLayout();
+                Assert.That(image.Source, Is.Null);
+                Assert.That((((Grid)card.Content).Background as SolidColorBrush)?.Color, Is.EqualTo(Colors.Black));
+            }
+        }
+        finally { page.Deactivate(); folder.Delete(true); }
+    }
+
+    private static HomePage CreateSongPage() => new(new HomePageVM(new StubHomeFolderService(),
+        new StubAppSettingsService(), new StubInstallationDialogService(), new StubProjectCreationDialogService(),
+        new UiScheduler(Dispatcher.CurrentDispatcher),
+        new StubProjectFileService((_, _, _) => Task.FromResult("saved.json")), new WeakReferenceMessenger()));
+
+    [Test]
+    public void SongArtworkFallbackRespectsHighContrast()
+    {
+        var page = CreateSongPage();
+        var card = (Button)((DataTemplate)page.Resources["HomePageSongTemplate"]).LoadContent();
+        card.DataContext = new FolderEntry(@"C:\Songs\song", "song", DateTimeOffset.MinValue) { Title = "Title" };
+        using var view = new InMemoryView(new Window
+        {
+            Width = 400, Height = 240,
+            Content = new UserControl { DataContext = page.DataContext, Content = card }
+        });
+        try
+        {
+            var backdrop = (Grid)card.Content;
+            Assert.That(backdrop.Style, Is.Not.Null, "Artwork must have its own high-contrast-aware style.");
+            card.Style = WithHighContrast(card.Style);
+            backdrop.Style = WithHighContrast(backdrop.Style);
+            var image = Descendants<Image>(backdrop).Single();
+            image.Style = WithHighContrast(image.Style);
+            view.UpdateLayout();
+            Assert.That(backdrop.Background, Is.Null, "High contrast must reveal the system button background.");
+            Assert.That(image.Visibility, Is.EqualTo(Visibility.Hidden));
+            Assert.That((card.Background as SolidColorBrush)?.Color, Is.EqualTo(SystemColors.WindowColor));
+            Assert.That((card.Foreground as SolidColorBrush)?.Color, Is.EqualTo(SystemColors.WindowTextColor));
+            foreach (var text in Descendants<TextBlock>(backdrop))
+                Assert.That((text.Foreground as SolidColorBrush)?.Color, Is.EqualTo(SystemColors.WindowTextColor));
+        }
+        finally { page.Deactivate(); }
+    }
+
+    // Exercise production setters without changing OS accessibility settings.
+    private static Style WithHighContrast(Style original)
+    {
+        var copy = new Style(original.TargetType, original.BasedOn is null ? null : WithHighContrast(original.BasedOn));
+        foreach (var setter in original.Setters) copy.Setters.Add(setter);
+        foreach (var trigger in original.Triggers)
+        {
+            if (trigger is DataTrigger data && data.Binding is Binding binding &&
+                binding.Path?.PathParameters.OfType<System.Reflection.PropertyInfo>().Any(property =>
+                    property.DeclaringType == typeof(SystemParameters) && property.Name == nameof(SystemParameters.HighContrast)) == true)
+            {
+                var replacement = new DataTrigger { Binding = new Binding { Source = true, Mode = BindingMode.OneWay }, Value = data.Value };
+                foreach (var setter in data.Setters) replacement.Setters.Add(setter);
+                copy.Triggers.Add(replacement);
+            }
+            else copy.Triggers.Add(trigger);
+        }
+        return copy;
+    }
 
     [TestCase("Dark")]
     [TestCase("Light")]
