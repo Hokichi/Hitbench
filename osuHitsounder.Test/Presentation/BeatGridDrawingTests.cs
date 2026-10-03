@@ -56,10 +56,11 @@ public class BeatGridDrawingTests
         });
     }
 
-    [TestCase(36d, 36d)]
-    [TestCase(72d, 50d)]
-    [TestCase(288d, 50d)]
-    public void TrackLinesHaveFiftyUnitHeightClippedToTrack(double height, double expected)
+    [TestCase(24d, 24d)]
+    [TestCase(36d, 35d)]
+    [TestCase(72d, 35d)]
+    [TestCase(288d, 35d)]
+    public void TrackLinesHaveThirtyFiveUnitHeightClippedToTrack(double height, double expected)
     {
         foreach (var drawing in DrawGrid(false, height))
         {

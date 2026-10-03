@@ -317,6 +317,8 @@ public sealed class BeatGridView : FrameworkElement
         var focus = highContrast ? SystemColors.HighlightTextBrush : FocusBrush;
         var pressed = highContrast ? SystemColors.HighlightTextBrush : PressedBrush;
         var marker = highContrast ? SystemColors.WindowTextBrush : MarkerBrush;
+        var nodeBorder = new Pen(highContrast ? SystemColors.WindowTextBrush :
+            TryFindResource("Brush.Border.Default") as Brush ?? marker, 1);
         if (ActiveInterval is { } active)
         {
             var rect = Inset(GetSampleBounds((int)Math.Round(active.StartMilliseconds, MidpointRounding.AwayFromZero)));
@@ -324,14 +326,14 @@ public sealed class BeatGridView : FrameworkElement
             var cue = pressedInterval is not null ? pressed : IsKeyboardFocusWithin ? focus : null;
             if (cue is not null) context.DrawRoundedRectangle(null, new Pen(cue, 1), rect, 4, 4);
         }
-        BeatGridDrawing.Draw(context, this, Offsets, Bpms, Subdivision, Duration.TotalMilliseconds,
-            ContentWidth, HorizontalOffset, ViewportWidth, ActualHeight, false);
         if (marker is not null && Samples is not null)
             foreach (var sample in Samples)
             {
                 var rect = GetSampleBounds(sample.Timestamp);
-                if (!rect.IsEmpty) context.DrawRoundedRectangle(marker, null, Inset(rect), 4, 4);
+                if (!rect.IsEmpty) context.DrawRoundedRectangle(marker, nodeBorder, Inset(rect), 4, 4);
             }
+        BeatGridDrawing.Draw(context, this, Offsets, Bpms, Subdivision, Duration.TotalMilliseconds,
+            ContentWidth, HorizontalOffset, ViewportWidth, ActualHeight, false);
         context.Pop();
     }
 

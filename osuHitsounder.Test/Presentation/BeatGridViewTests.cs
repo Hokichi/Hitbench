@@ -9,6 +9,24 @@ namespace osuHitsounder.Test.Presentation;
 [NonParallelizable]
 public class BeatGridViewTests
 {
+    [Test]
+    public void NodesHaveSemanticOneUnitBorderAndAreDrawnBehindDivisors()
+    {
+        var grid = CreateGrid();
+        grid.MarkerBrush = Brushes.Blue;
+        grid.Resources["Brush.Border.Default"] = Brushes.Green;
+        grid.PrepareDrawing();
+        var drawings = Flatten(grid.ContentDrawing!).OfType<GeometryDrawing>().ToArray();
+        var node = drawings.Single(d => ReferenceEquals(d.Brush, Brushes.Blue));
+        Assert.That(node.Pen, Is.Not.Null);
+        Assert.That(node.Pen!.Thickness, Is.EqualTo(1));
+        Assert.That(node.Pen.Brush, Is.SameAs(Brushes.Green));
+        var nodeIndex = Array.IndexOf(drawings, node);
+        var divisorIndices = drawings.Select((d, i) => (d, i)).Where(pair => pair.d.Geometry is LineGeometry).Select(pair => pair.i);
+        Assert.That(divisorIndices, Is.Not.Empty);
+        Assert.That(divisorIndices.All(i => i > nodeIndex), Is.True);
+    }
+
     [TestCase(60, 30d, 250)]
     [TestCase(123, 0d, 122)]
     [TestCase(60, 0d, 0)]
@@ -27,13 +45,14 @@ public class BeatGridViewTests
         var node = drawings.Single(d => ReferenceEquals(d.Brush, Brushes.Blue));
         Assert.That(hover.Geometry.Bounds, Is.EqualTo(node.Geometry.Bounds));
 
-        static IEnumerable<Drawing> Flatten(Drawing drawing)
-        {
-            yield return drawing;
-            if (drawing is DrawingGroup group)
-                foreach (var child in group.Children)
-                    foreach (var descendant in Flatten(child)) yield return descendant;
-        }
+    }
+
+    private static IEnumerable<Drawing> Flatten(Drawing drawing)
+    {
+        yield return drawing;
+        if (drawing is DrawingGroup group)
+            foreach (var child in group.Children)
+                foreach (var descendant in Flatten(child)) yield return descendant;
     }
 
     [Test]
