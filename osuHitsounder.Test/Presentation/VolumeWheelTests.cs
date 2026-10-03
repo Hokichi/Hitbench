@@ -15,6 +15,83 @@ namespace osuHitsounder.Test.Presentation;
 [NonParallelizable]
 public class VolumeWheelTests
 {
+    [TestCase(0d, false, false)]
+    [TestCase(50d, true, false)]
+    [TestCase(100d, true, true)]
+    public void ProgressGeometryIsAnnular(double value, bool rightFilled, bool leftFilled)
+    {
+        var wheel = new VolumeWheel { Value = value };
+        Assert.Multiple(() =>
+        {
+            Assert.That(wheel.FilledGeometry.FillContains(new Point(135, 80)), Is.EqualTo(rightFilled));
+            Assert.That(wheel.FilledGeometry.FillContains(new Point(25, 80)), Is.EqualTo(leftFilled));
+            Assert.That(wheel.FilledGeometry.FillContains(new Point(80, 80)), Is.False);
+            Assert.That(wheel.FilledGeometry.FillContains(new Point(129, 80)), Is.False);
+            Assert.That(wheel.FilledGeometry.FillContains(new Point(141, 80)), Is.False);
+        });
+        if (value == 0) Assert.That(wheel.FilledGeometry.Bounds.IsEmpty, Is.True);
+    }
+
+    [Test]
+    public void ProgressNormalizesCustomRangeAndHandlesDegenerateRange()
+    {
+        var wheel = new VolumeWheel { Minimum = 20, Maximum = 80, Value = 50 };
+        Assert.That(wheel.FilledGeometry.FillContains(new Point(135, 80)), Is.True);
+        Assert.That(wheel.FilledGeometry.FillContains(new Point(25, 80)), Is.False);
+        wheel.Minimum = 80;
+        Assert.That(wheel.FilledGeometry.Bounds.IsEmpty, Is.True);
+    }
+
+    [TestCase(FlowDirection.LeftToRight)]
+    [TestCase(FlowDirection.RightToLeft)]
+    public void RingTemplateKeepsDimensionsFontsAndRightLabel(FlowDirection direction)
+    {
+        var wheel = new VolumeWheel
+        {
+            Label = "Application volume with a long localized name", Value = 50,
+            FlowDirection = direction,
+            Style = (Style)Application.Current.FindResource("OHsVolumeWheelStyle")
+        };
+        var host = new Grid { FlowDirection = FlowDirection.LeftToRight };
+        host.Children.Add(wheel);
+        UiTestPump.Layout(host, 320, 168);
+        var graphic = (Grid)wheel.Template.FindName("PieGraphic", wheel);
+        Assert.That(wheel.Template.FindName("WheelBackground", wheel), Is.TypeOf<System.Windows.Shapes.Path>());
+        var ramp = (System.Windows.Shapes.Path)wheel.Template.FindName("WheelBackground", wheel);
+        var value = (TextBlock)wheel.Template.FindName("WheelValue", wheel);
+        var label = (TextBlock)wheel.Template.FindName("WheelLabel", wheel);
+        var graphicOrigin = graphic.TranslatePoint(new Point(), host);
+        var labelOrigin = label.TranslatePoint(new Point(), host);
+        var labelOtherEdge = label.TranslatePoint(new Point(label.ActualWidth, 0), host);
+        var valueCenter = value.TranslatePoint(new Point(value.ActualWidth / 2, value.ActualHeight / 2), host);
+        Assert.Multiple(() =>
+        {
+            Assert.That(graphic.ActualWidth, Is.EqualTo(160));
+            Assert.That(graphic.ActualHeight, Is.EqualTo(160));
+            Assert.That(ramp.Data.Bounds, Is.EqualTo(new Rect(0, 0, 160, 160)));
+            Assert.That(ramp.Data.FillContains(new Point(111, 80)), Is.True);
+            Assert.That(ramp.Data.FillContains(new Point(109, 80)), Is.False);
+            Assert.That(ramp.Data.FillContains(new Point(159, 80)), Is.True);
+            Assert.That(ramp.Data.FillContains(new Point(161, 80)), Is.False);
+            Assert.That(Math.Min(labelOrigin.X, labelOtherEdge.X), Is.GreaterThanOrEqualTo(graphicOrigin.X + 160));
+            Assert.That(valueCenter.X, Is.EqualTo(graphicOrigin.X + 80).Within(0.01));
+            Assert.That(valueCenter.Y, Is.EqualTo(graphicOrigin.Y + 80).Within(0.01));
+            Assert.That(value.FontSize, Is.EqualTo(13));
+            Assert.That(label.FontSize, Is.EqualTo(13));
+            Assert.That(label.TextWrapping, Is.EqualTo(TextWrapping.Wrap));
+            Assert.That(label.FlowDirection, Is.EqualTo(direction));
+        });
+        var size = wheel.DesiredSize;
+        wheel.IsActive = true;
+        wheel.BeginDrag(100);
+        UiTestPump.Layout(host, 320, 168);
+        Assert.That(wheel.DesiredSize, Is.EqualTo(size));
+        wheel.IsEnabled = false;
+        Assert.That(wheel.Cursor, Is.EqualTo(Cursors.Arrow));
+        Assert.That(wheel.Opacity, Is.EqualTo(0.4));
+        Assert.That(wheel.IsDragging, Is.False);
+    }
+
     [Test]
     public void IdleDismissalWaitsOneSecondAndHeldDragKeepsOverlayOpen()
     {
@@ -92,6 +169,43 @@ public class VolumeWheelTests
         Assert.That(wheel.Value, Is.Zero);
     }
     [Test]
+    public void OverlayIgnoresInvocationAnchorAndStaysAtLeftAfterResize()
+    {
+        var (page, _, view) = CreateLoadedPage(physicalCoordinates: true);
+        using (view)
+        {
+            var overlay = (Border)page.FindName("VolumeOverlay");
+            var root = (Grid)page.FindName("WorkstationRoot");
+            foreach (var direction in new[] { FlowDirection.LeftToRight, FlowDirection.RightToLeft })
+            {
+                page.FlowDirection = direction;
+                foreach (var anchor in new[] { new Point(500, 400), new Point(30, 50) })
+                {
+                    page.ShowVolumeOverlay(false, anchor);
+                    view.UpdateLayout();
+                    Assert.That(overlay.Margin, Is.EqualTo(new Thickness(0)));
+                    var physicalHost = view.Root;
+                    var overlayLeft = overlay.TranslatePoint(new Point(), physicalHost).X;
+                    var overlayRight = overlay.TranslatePoint(new Point(overlay.ActualWidth, 0), physicalHost).X;
+                    var rootLeft = root.TranslatePoint(new Point(), physicalHost).X;
+                    var rootRight = root.TranslatePoint(new Point(root.ActualWidth, 0), physicalHost).X;
+                    Assert.That(Math.Min(overlayLeft, overlayRight), Is.EqualTo(Math.Min(rootLeft, rootRight)).Within(0.01));
+                    page.DismissVolumeOverlay();
+                }
+                page.HandleVolumeShortcut(Key.V, ModifierKeys.Alt, page);
+                view.UpdateLayout();
+                Assert.That(overlay.Margin, Is.EqualTo(new Thickness(0)));
+                page.DismissVolumeOverlay();
+            }
+            page.ShowVolumeOverlay(false, new Point(500, 400));
+            page.Width = 180;
+            page.Height = 250;
+            view.UpdateLayout();
+            Assert.That(overlay.Margin, Is.EqualTo(new Thickness(0)));
+        }
+    }
+
+    [Test]
     public void OpenOverlayStaysInsideHostAfterResize()
     {
         var (page, _, view) = CreateLoadedPage();
@@ -109,6 +223,17 @@ public class VolumeWheelTests
                 Assert.That(overlay.Margin.Left + overlay.ActualWidth, Is.LessThanOrEqualTo(root.ActualWidth + 0.01));
                 Assert.That(overlay.Margin.Top + overlay.ActualHeight, Is.LessThanOrEqualTo(root.ActualHeight + 0.01));
             });
+            var scroll = (ScrollViewer)overlay.Child;
+            Assert.That(scroll.ScrollableWidth, Is.GreaterThan(0));
+            Assert.That(scroll.ScrollableHeight, Is.GreaterThan(0));
+            scroll.ScrollToRightEnd();
+            scroll.ScrollToBottom();
+            view.UpdateLayout();
+            Assert.That(scroll.HorizontalOffset, Is.EqualTo(scroll.ScrollableWidth));
+            Assert.That(scroll.VerticalOffset, Is.EqualTo(scroll.ScrollableHeight));
+            var graphic = (Grid)page.SamplesVolumeWheel.Template.FindName("PieGraphic", page.SamplesVolumeWheel);
+            Assert.That(graphic.ActualWidth, Is.EqualTo(160));
+            Assert.That(graphic.ActualHeight, Is.EqualTo(160));
         }
     }
 
@@ -317,12 +442,19 @@ public class VolumeWheelTests
         });
     }
 
-    private static (WorkstationPage Page, WorkstationPageVM ViewModel, InMemoryView View) CreateLoadedPage()
+    private static (WorkstationPage Page, WorkstationPageVM ViewModel, InMemoryView View) CreateLoadedPage(bool physicalCoordinates = false)
     {
         var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
         var page = new WorkstationPage(vm);
         page.SetProjectPath("project.json");
-        var view = new InMemoryView(new Window { Content = page, Width = 900, Height = 600 });
+        FrameworkElement content = page;
+        if (physicalCoordinates)
+        {
+            var host = new Grid { FlowDirection = FlowDirection.LeftToRight };
+            host.Children.Add(page);
+            content = host;
+        }
+        var view = new InMemoryView(new Window { Content = content, Width = 900, Height = 600 });
         UiTestPump.Run(page.LoadCompletion);
         view.UpdateLayout();
         return (page, vm, view);

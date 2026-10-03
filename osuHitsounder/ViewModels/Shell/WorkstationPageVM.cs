@@ -103,7 +103,7 @@ public partial class WorkstationPageVM(
     [ObservableProperty] private string? playbackWarning;
     private int songVolume = 100;
     private double zoomFactor = 32;
-    private double trackHeight = 72;
+    private double trackHeight = 36;
     private int selectedSubdivisionIndex = 3;
 
     public double ZoomFactor => zoomFactor;
@@ -364,10 +364,10 @@ public partial class WorkstationPageVM(
     }
 
     [RelayCommand(CanExecute = nameof(CanIncreaseTrackHeight))]
-    private void IncreaseTrackHeight() => SetTrackHeight(trackHeight + 12);
+    private void IncreaseTrackHeight() => SetTrackHeight(trackHeight + 6);
 
     [RelayCommand(CanExecute = nameof(CanDecreaseTrackHeight))]
-    private void DecreaseTrackHeight() => SetTrackHeight(trackHeight - 12);
+    private void DecreaseTrackHeight() => SetTrackHeight(trackHeight - 6);
 
     [RelayCommand(CanExecute = nameof(CanIncreaseSubdivision))]
     private void IncreaseSubdivision()
@@ -824,15 +824,15 @@ public partial class WorkstationPageVM(
         }, token);
 
     private bool CanUseTransport() => CanPlay;
-    private bool CanIncreaseTrackHeight() => CanZoom && TrackHeight < 288;
-    private bool CanDecreaseTrackHeight() => CanZoom && TrackHeight > 36;
+    private bool CanIncreaseTrackHeight() => CanZoom && TrackHeight < 144;
+    private bool CanDecreaseTrackHeight() => CanZoom && TrackHeight > 18;
     private bool CanIncreaseSubdivision() => IsInteractionReady && SelectedSubdivisionIndex < 8;
     private bool CanDecreaseSubdivision() => IsInteractionReady && SelectedSubdivisionIndex > 0;
 
     private void SetTrackHeight(double value)
     {
         if (!CanZoom) return;
-        if (SetProperty(ref trackHeight, Math.Clamp(value, 36, 288), nameof(TrackHeight)))
+        if (SetProperty(ref trackHeight, Math.Clamp(value, 18, 144), nameof(TrackHeight)))
             NotifyCommandState();
     }
 

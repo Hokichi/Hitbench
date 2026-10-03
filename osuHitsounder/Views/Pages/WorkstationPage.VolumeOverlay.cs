@@ -28,7 +28,7 @@ public partial class WorkstationPage
         if (keyboardInvoked && !IsVolumeOverlayOpen) volumePriorFocus = Keyboard.FocusedElement;
         VolumeOverlay.Visibility = Visibility.Visible;
         ActivateVolumeWheel(ApplicationVolumeWheel);
-        PositionVolumeOverlay(anchor);
+        PositionVolumeOverlay();
         if (keyboardInvoked) ApplicationVolumeWheel.Focus();
         RecordVolumeActivity();
     }
@@ -83,7 +83,7 @@ public partial class WorkstationPage
 
         if (!IsVolumeOverlayOpen)
         {
-            ShowVolumeOverlay(false, Mouse.GetPosition(this));
+            ShowVolumeOverlay(false, new Point());
             return true;
         }
 
@@ -104,7 +104,7 @@ public partial class WorkstationPage
     {
         if (IsVolumeOverlayOpen && HandleVolumeOverlayKey(key, modifiers)) return true;
         if (key != Key.V || modifiers != ModifierKeys.Alt || deactivationStarted) return false;
-        ShowVolumeOverlay(true, new Point(Math.Max(0, ActualWidth / 2 - 64), 16));
+        ShowVolumeOverlay(true, new Point());
         return true;
     }
 
@@ -183,18 +183,15 @@ public partial class WorkstationPage
 
     private void OnVolumeOverlayHostSizeChanged(object sender, SizeChangedEventArgs e)
     {
-        if (IsVolumeOverlayOpen) PositionVolumeOverlay(new Point(VolumeOverlay.Margin.Left, VolumeOverlay.Margin.Top));
+        if (IsVolumeOverlayOpen) PositionVolumeOverlay();
     }
 
-    private void PositionVolumeOverlay(Point anchor)
+    private void PositionVolumeOverlay()
     {
         var availableWidth = Math.Max(0, WorkstationRoot.ActualWidth - 16);
-        VolumeOverlay.Width = Math.Min(128, availableWidth);
+        VolumeOverlay.Width = Math.Min(320, availableWidth);
         VolumeOverlay.MaxHeight = Math.Max(0, WorkstationRoot.ActualHeight - 16);
-        VolumeOverlay.Measure(new Size(VolumeOverlay.Width, double.PositiveInfinity));
-        var left = Math.Clamp(anchor.X, 0, Math.Max(0, WorkstationRoot.ActualWidth - VolumeOverlay.Width));
-        var top = Math.Clamp(anchor.Y, 0, Math.Max(0, WorkstationRoot.ActualHeight - VolumeOverlay.DesiredSize.Height));
-        VolumeOverlay.Margin = new Thickness(left, top, 0, 0);
+        VolumeOverlay.Margin = new Thickness(0);
     }
 
     private bool IsSongAudioCardElement(DependencyObject? origin) => IsWithin(origin, SongAudioCard);

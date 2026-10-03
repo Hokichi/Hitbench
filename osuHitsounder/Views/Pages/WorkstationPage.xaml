@@ -256,11 +256,15 @@
             BasedOn="{StaticResource CardBorderStyle}"
             TargetType="Border">
             <Setter Property="Padding" Value="8" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
             <Setter Property="Background" Value="{DynamicResource Brush.Background.Popup}" />
             <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Default}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="CornerRadius" Value="16" />
             <Style.Triggers>
+                <DataTrigger Binding="{Binding FlowDirection, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}" Value="RightToLeft">
+                    <Setter Property="HorizontalAlignment" Value="Right" />
+                </DataTrigger>
                 <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
                     <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
                     <Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
@@ -632,13 +636,13 @@
             PreviewMouseMove="OnVolumeOverlayMouseMove"
             Grid.RowSpan="4"
             Panel.ZIndex="10"
-            Width="128"
-            HorizontalAlignment="Left"
+            Width="320"
+            FlowDirection="LeftToRight"
             VerticalAlignment="Top"
             Style="{StaticResource OHsWorkstationVolumeOverlayStyle}"
             Visibility="Collapsed">
-            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                <StackPanel x:Name="VolumeWheelPanel" Style="{StaticResource BaseStackPanelStyle}" HorizontalAlignment="Center">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+                <StackPanel x:Name="VolumeWheelPanel" Style="{StaticResource BaseStackPanelStyle}" HorizontalAlignment="Stretch" FlowDirection="{Binding FlowDirection, ElementName=WorkstationRoot, Mode=OneWay}">
                 <customControls:VolumeWheel
                     x:Name="SongVolumeWheel"
                     IsEnabled="{Binding CanPlay, Mode=OneWay}"

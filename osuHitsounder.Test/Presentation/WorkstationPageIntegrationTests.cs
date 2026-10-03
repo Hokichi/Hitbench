@@ -948,16 +948,23 @@ public class WorkstationPageIntegrationTests
         var waveformHeight = ((FrameworkElement)page.FindName("WaveformDisplay")).ActualHeight;
 
         Assert.That(page.HandleWaveformWheel(ModifierKeys.Control | ModifierKeys.Shift, 60), Is.True);
-        Assert.That(vm.TrackHeight, Is.EqualTo(72));
+        Assert.That(vm.TrackHeight, Is.EqualTo(36));
         Assert.That(page.HandleWaveformWheel(ModifierKeys.Control | ModifierKeys.Shift, 60), Is.True);
         view.UpdateLayout();
 
         Assert.Multiple(() =>
         {
-            Assert.That(vm.TrackHeight, Is.EqualTo(84));
+            Assert.That(vm.TrackHeight, Is.EqualTo(42));
             Assert.That(vm.ZoomFactor, Is.EqualTo(zoom));
             Assert.That(((FrameworkElement)page.FindName("WaveformDisplay")).ActualHeight, Is.EqualTo(waveformHeight));
         });
+
+        for (var index = 0; index < 100; index++) vm.DecreaseTrackHeightCommand.Execute(null);
+        Assert.That(vm.TrackHeight, Is.EqualTo(18));
+        Assert.That(vm.DecreaseTrackHeightCommand.CanExecute(null), Is.False);
+        for (var index = 0; index < 100; index++) vm.IncreaseTrackHeightCommand.Execute(null);
+        Assert.That(vm.TrackHeight, Is.EqualTo(144));
+        Assert.That(vm.IncreaseTrackHeightCommand.CanExecute(null), Is.False);
     }
 
     [Test]

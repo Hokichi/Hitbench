@@ -56,17 +56,18 @@ public class BeatGridDrawingTests
         });
     }
 
+    [TestCase(18d, 18d)]
     [TestCase(24d, 24d)]
     [TestCase(36d, 35d)]
     [TestCase(72d, 35d)]
-    [TestCase(288d, 35d)]
+    [TestCase(144d, 35d)]
     public void TrackLinesHaveThirtyFiveUnitHeightClippedToTrack(double height, double expected)
     {
         foreach (var drawing in DrawGrid(false, height))
         {
             var line = (LineGeometry)drawing.Geometry;
-            Assert.That(line.StartPoint.Y, Is.Zero);
-            Assert.That(line.EndPoint.Y, Is.EqualTo(expected));
+            Assert.That(line.StartPoint.Y, Is.EqualTo(height - expected));
+            Assert.That(line.EndPoint.Y, Is.EqualTo(height));
         }
     }
 

@@ -134,18 +134,24 @@ public sealed class VolumeWheel : Slider
         }
         if (fraction >= 1)
         {
-            SetValue(FilledGeometryPropertyKey, new EllipseGeometry(new Point(36, 36), 32, 32));
+            var ring = new CombinedGeometry(GeometryCombineMode.Exclude,
+                new EllipseGeometry(new Point(80, 80), 60, 60),
+                new EllipseGeometry(new Point(80, 80), 50, 50));
+            ring.Freeze();
+            SetValue(FilledGeometryPropertyKey, ring);
             return;
         }
 
         var angle = fraction * Math.PI * 2 - Math.PI / 2;
-        var end = new Point(36 + Math.Cos(angle) * 32, 36 + Math.Sin(angle) * 32);
+        var outerEnd = new Point(80 + Math.Cos(angle) * 60, 80 + Math.Sin(angle) * 60);
+        var innerEnd = new Point(80 + Math.Cos(angle) * 50, 80 + Math.Sin(angle) * 50);
         var geometry = new StreamGeometry();
         using (var context = geometry.Open())
         {
-            context.BeginFigure(new Point(36, 36), true, true);
-            context.LineTo(new Point(36, 4), true, false);
-            context.ArcTo(end, new Size(32, 32), 0, fraction > 0.5, SweepDirection.Clockwise, true, false);
+            context.BeginFigure(new Point(80, 20), true, true);
+            context.ArcTo(outerEnd, new Size(60, 60), 0, fraction > 0.5, SweepDirection.Clockwise, true, false);
+            context.LineTo(innerEnd, true, false);
+            context.ArcTo(new Point(80, 30), new Size(50, 50), 0, fraction > 0.5, SweepDirection.Counterclockwise, true, false);
         }
         geometry.Freeze();
         SetValue(FilledGeometryPropertyKey, geometry);

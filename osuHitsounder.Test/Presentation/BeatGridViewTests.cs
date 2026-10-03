@@ -9,6 +9,29 @@ namespace osuHitsounder.Test.Presentation;
 [NonParallelizable]
 public class BeatGridViewTests
 {
+    [TestCase(18d)]
+    [TestCase(36d)]
+    [TestCase(144d)]
+    public void NodesFollowCompactLaneHeight(double height)
+    {
+        var grid = CreateGrid();
+        grid.Height = height;
+        UiTestPump.Layout(grid, 200, height);
+        grid.HoverBrush = Brushes.Red;
+        grid.MarkerBrush = Brushes.Blue;
+        grid.UpdatePointerPosition(30);
+        grid.PrepareDrawing();
+        var drawings = Flatten(grid.ContentDrawing!).OfType<GeometryDrawing>().ToArray();
+        Assert.Multiple(() =>
+        {
+            Assert.That(grid.GetSampleBounds(250), Is.EqualTo(new Rect(0, 0, 20, height)));
+            Assert.That(drawings.Single(d => ReferenceEquals(d.Brush, Brushes.Red)).Geometry.Bounds,
+                Is.EqualTo(drawings.Single(d => ReferenceEquals(d.Brush, Brushes.Blue)).Geometry.Bounds));
+            Assert.That(grid.RequestSamplePlacement(), Is.True);
+            Assert.That(grid.RequestSampleRemoval(5), Is.True);
+        });
+    }
+
     [Test]
     public void NodesHaveSemanticOneUnitBorderAndAreDrawnBehindDivisors()
     {

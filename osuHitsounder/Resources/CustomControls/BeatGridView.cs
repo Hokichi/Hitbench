@@ -245,7 +245,7 @@ public sealed class BeatGridView : FrameworkElement
 
     protected override Size MeasureOverride(Size availableSize) => new(
         double.IsFinite(availableSize.Width) ? Math.Max(0, availableSize.Width) : 0,
-        double.IsFinite(availableSize.Height) ? Math.Max(0, availableSize.Height) : 72);
+        double.IsFinite(availableSize.Height) ? Math.Max(0, availableSize.Height) : 36);
 
     protected override AutomationPeer OnCreateAutomationPeer() => new BeatGridViewAutomationPeer(this);
     protected override void OnGotKeyboardFocus(KeyboardFocusChangedEventArgs e)
