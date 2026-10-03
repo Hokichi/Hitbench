@@ -18,14 +18,25 @@ public class WaveformViewTests
         view.Measure(new Size(double.PositiveInfinity, 160));
         view.Arrange(new Rect(0, 0, 3200, 160));
         view.PrepareDrawing();
-        Assert.That(view.ContentDrawing!.Children.OfType<GlyphRunDrawing>(), Is.Empty);
-        Assert.That(view.ContentDrawing.Children.OfType<GeometryDrawing>()
+        var drawings = Flatten(view.ContentDrawing!).ToArray();
+        Assert.That(drawings.OfType<GlyphRunDrawing>(), Is.Empty);
+        Assert.That(drawings.OfType<GeometryDrawing>()
             .Where(d => d.Geometry is LineGeometry line && line.StartPoint.Y >= 140), Is.Empty);
+
+        static IEnumerable<Drawing> Flatten(Drawing drawing)
+        {
+            yield return drawing;
+            if (drawing is DrawingGroup group)
+                foreach (var child in group.Children)
+                    foreach (var descendant in Flatten(child)) yield return descendant;
+        }
     }
     [TestCase(8d, 3200d)]
     [TestCase(32d, 12800d)]
     [TestCase(1d, 3200d)]
     [TestCase(64d, 25600d)]
+    [TestCase(128d, 51200d)]
+    [TestCase(256d, 51200d)]
     [TestCase(-2d, 3200d)]
     public void MeasurementSupportsWorkstationZoomUpTo128(double zoom, double width)
     {

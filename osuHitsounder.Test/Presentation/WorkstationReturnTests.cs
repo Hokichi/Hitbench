@@ -100,7 +100,8 @@ public class WorkstationReturnTests
         var response = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         var saves = new DelayedProjectFileService();
         saves.Release();
-        var vm = await ReadyAsync(saves, new StubWorkstationAudioService(), removal:
+        var vm = await ReadyAsync(saves, new StubWorkstationAudioService(),
+            track: new Track { Samples = [new Sample { FileName = "hit.wav" }] }, removal:
             new StubTrackRemovalDialogService { Confirm = _ => response.Task });
         var removing = vm.RemoveTrackCommand.ExecuteAsync(vm.Tracks.Single());
         var returning = vm.PrepareToReturnAsync(default);

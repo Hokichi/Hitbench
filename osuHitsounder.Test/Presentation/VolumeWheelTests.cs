@@ -57,6 +57,21 @@ public class VolumeWheelTests
         }
     }
     [Test]
+    public void PointerActivityOnOverlayPaddingCancelsFade()
+    {
+        var (page, _, view) = CreateLoadedPage();
+        using (view)
+        {
+            page.ShowVolumeOverlay(false, new Point());
+            page.ProcessVolumeOverlayIdle(TimeSpan.FromSeconds(1), true);
+            var overlay = (Border)page.FindName("VolumeOverlay");
+            overlay.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, 0) { RoutedEvent = Mouse.PreviewMouseMoveEvent });
+            Assert.That(overlay.HasAnimatedProperties, Is.False);
+            Assert.That(overlay.Opacity, Is.EqualTo(1));
+        }
+    }
+
+    [Test]
     public void VerticalDragChangesValueAndClampsWithoutChangingOnPress()
     {
         var wheel = new VolumeWheel { Value = 50, IsActive = true };
@@ -77,6 +92,27 @@ public class VolumeWheelTests
         Assert.That(wheel.Value, Is.Zero);
     }
     [Test]
+    public void OpenOverlayStaysInsideHostAfterResize()
+    {
+        var (page, _, view) = CreateLoadedPage();
+        using (view)
+        {
+            page.ShowVolumeOverlay(false, new Point(500, 400));
+            view.UpdateLayout();
+            page.Width = 180;
+            page.Height = 250;
+            view.UpdateLayout();
+            var overlay = (Border)page.FindName("VolumeOverlay");
+            var root = (Grid)page.FindName("WorkstationRoot");
+            Assert.Multiple(() =>
+            {
+                Assert.That(overlay.Margin.Left + overlay.ActualWidth, Is.LessThanOrEqualTo(root.ActualWidth + 0.01));
+                Assert.That(overlay.Margin.Top + overlay.ActualHeight, Is.LessThanOrEqualTo(root.ActualHeight + 0.01));
+            });
+        }
+    }
+
+    [Test]
     public void MasterVolumesHaveSongApplicationSamplesOrder()
     {
         var (page, _, view) = CreateLoadedPage();
@@ -86,6 +122,10 @@ public class VolumeWheelTests
             view.UpdateLayout();
             var panel = (Panel)page.FindName("VolumeWheelPanel");
             Assert.That(panel.Children.OfType<VolumeWheel>().Select(w => w.Label), Is.EqualTo(new[] { "Song", "Application", "Samples" }));
+            var centers = panel.Children.OfType<VolumeWheel>()
+                .Select(w => w.TranslatePoint(new Point(w.ActualWidth / 2, w.ActualHeight / 2), panel)).ToArray();
+            Assert.That(centers.Select(p => p.X).Distinct().Count(), Is.EqualTo(1));
+            Assert.That(centers.Select(p => p.Y), Is.Ordered);
             Assert.That(page.FindName("SongVolumeSlider"), Is.Null);
         }
     }

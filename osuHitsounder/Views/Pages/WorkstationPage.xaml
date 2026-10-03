@@ -455,7 +455,7 @@
         </Style>
     </UserControl.Resources>
     <Grid Style="{StaticResource BaseGridStyle}">
-    <Grid x:Name="WorkstationRoot" Margin="16" IsEnabled="{Binding IsInteractionReady, Mode=OneWay}">
+    <Grid x:Name="WorkstationRoot" Margin="16" IsEnabled="{Binding IsInteractionReady, Mode=OneWay}" SizeChanged="OnVolumeOverlayHostSizeChanged">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -629,6 +629,7 @@
         </Grid>
         <Border
             x:Name="VolumeOverlay"
+            PreviewMouseMove="OnVolumeOverlayMouseMove"
             Grid.RowSpan="4"
             Panel.ZIndex="10"
             Width="128"

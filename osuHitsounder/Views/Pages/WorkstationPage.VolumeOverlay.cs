@@ -46,7 +46,6 @@ public partial class WorkstationPage
         ApplicationVolumeWheel.EndDrag();
         SamplesVolumeWheel.EndDrag();
         var restore = keyboardVolumeOverlay ? volumePriorFocus as UIElement : null;
-        VolumeOverlay.Visibility = Visibility.Collapsed;
         keyboardVolumeOverlay = false;
         volumePriorFocus = null;
         volumeWheelRemainder = 0;
@@ -142,6 +141,8 @@ public partial class WorkstationPage
         RecordVolumeActivity();
     }
 
+    private void OnVolumeOverlayMouseMove(object sender, MouseEventArgs e) => RecordVolumeActivity();
+
     private void OnVolumeWheelMouseDown(object sender, MouseButtonEventArgs e)
     {
         if (sender is VolumeWheel wheel) ActivateVolumeWheel(wheel);
@@ -178,6 +179,11 @@ public partial class WorkstationPage
         { EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn } };
         animation.Completed += (_, _) => { if (version == volumeOverlayVersion) DismissVolumeOverlay(); };
         VolumeOverlay.BeginAnimation(OpacityProperty, animation);
+    }
+
+    private void OnVolumeOverlayHostSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (IsVolumeOverlayOpen) PositionVolumeOverlay(new Point(VolumeOverlay.Margin.Left, VolumeOverlay.Margin.Top));
     }
 
     private void PositionVolumeOverlay(Point anchor)
