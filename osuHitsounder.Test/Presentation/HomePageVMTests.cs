@@ -6,6 +6,151 @@ namespace osuHitsounder.Test.Presentation;
 
 public class HomePageVMTests
 {
+    private static async Task PresentAsync(HomePageVM vm)
+    {
+        await vm.LoadInitialSongsAsync(CancellationToken.None);
+        vm.CompleteSongsPresentation(vm.SongsPresentationGeneration);
+    }
+
+    [Test]
+    public async Task CancellingSearchRestoresStateAndAllowsRetry()
+    {
+        var vm = CreateVM(new StubHomeFolderService
+        {
+            Songs = (_, _) => Task.FromResult<FolderSnapshot?>(new FolderSnapshot([
+                new FolderEntry("one", "one", DateTimeOffset.MinValue)]))
+        });
+        await vm.LoadAsync(CancellationToken.None);
+        await PresentAsync(vm);
+        vm.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(vm.IsSearchingSongs) && vm.IsSearchingSongs)
+                vm.SearchSongsCommand.Cancel();
+        };
+        vm.SongSearchText = "different";
+        await vm.SearchSongsCommand.ExecutionTask!;
+        Assert.That(vm.IsSearchingSongs, Is.False);
+        Assert.That(vm.SongsStatus, Is.EqualTo("Song search cancelled."));
+        Assert.That(vm.CanRetrySongs, Is.True);
+        Assert.That(vm.ReloadSongsCommand.CanExecute(null), Is.True);
+        vm.Deactivate();
+    }
+
+    [Test]
+    public async Task SearchCoversUnpublishedInventoryAndRestoresBlankQuery()
+    {
+        var vm = CreateVM(new StubHomeFolderService
+        {
+            Songs = (_, _) => Task.FromResult<FolderSnapshot?>(new FolderSnapshot(Enumerable.Range(0, 100)
+                .Select(i => new FolderEntry(i.ToString(), i == 0 ? "hidden MATCH" : "other", DateTimeOffset.UnixEpoch.AddMinutes(i)))))
+        });
+        await vm.LoadAsync(CancellationToken.None);
+        await PresentAsync(vm);
+        vm.SongSearchText = " match ";
+        await vm.SearchSongsCommand.ExecutionTask!;
+        await PresentAsync(vm);
+        Assert.That(vm.Songs.Single().FullName, Is.EqualTo("0"));
+        Assert.That(vm.HasMoreSongs, Is.False);
+        vm.SongSearchText = "missing";
+        await vm.SearchSongsCommand.ExecutionTask!;
+        await PresentAsync(vm);
+        Assert.That(vm.Songs, Is.Empty);
+        Assert.That(vm.SongsStatus, Is.EqualTo("No songs match your search."));
+        Assert.That(vm.CanRetrySongs, Is.False);
+        vm.SongSearchText = " ";
+        await vm.SearchSongsCommand.ExecutionTask!;
+        await PresentAsync(vm);
+        Assert.That(vm.Songs, Has.Count.EqualTo(45));
+        Assert.That(vm.HasMoreSongs, Is.True);
+        vm.Deactivate();
+    }
+
+    [Test]
+    public async Task ReloadPreservesLatestQueryAndExpansionWithoutReloadingProjects()
+    {
+        var pending = new TaskCompletionSource<FolderSnapshot?>();
+        var vm = CreateVM(new StubHomeFolderService
+        {
+            Songs = (_, _) => Task.FromResult<FolderSnapshot?>(new FolderSnapshot([new FolderEntry("old", "old", DateTimeOffset.MinValue)])),
+            ReloadSongs = (_, _) => pending.Task,
+            Projects = _ => Task.FromResult(new FolderSnapshot([new FolderEntry("project", "project", DateTimeOffset.MinValue)]))
+        });
+        await vm.LoadAsync(CancellationToken.None);
+        await PresentAsync(vm);
+        var project = vm.Projects.Single();
+        var inventory = vm.SongsInventoryGeneration;
+        vm.OpenSongSearchCommand.Execute(null);
+        vm.SongSearchText = "old";
+        await vm.SearchSongsCommand.ExecutionTask!;
+        await PresentAsync(vm);
+        var reload = vm.ReloadSongsCommand.ExecuteAsync(null);
+        Assert.That(vm.ReloadSongsCommand.CanExecute(null), Is.False);
+        vm.SongSearchText = "new";
+        pending.SetResult(new FolderSnapshot([new FolderEntry("new", "NEW middle", DateTimeOffset.UtcNow), project]));
+        await reload;
+        await PresentAsync(vm);
+        Assert.That(vm.Songs.Single().FullName, Is.EqualTo("new"));
+        Assert.That(vm.SongsInventoryGeneration, Is.GreaterThan(inventory));
+        Assert.That(vm.IsSongSearchExpanded, Is.True);
+        Assert.That(vm.SongSearchText, Is.EqualTo("new"));
+        Assert.That(vm.Projects.Single(), Is.SameAs(project));
+        vm.CloseSongSearchCommand.Execute(null);
+        await vm.SearchSongsCommand.ExecutionTask!;
+        await PresentAsync(vm);
+        Assert.That(vm.SongSearchText, Is.Empty);
+        Assert.That(vm.IsSongSearchExpanded, Is.False);
+        Assert.That(vm.Songs, Has.Count.EqualTo(2));
+        vm.Deactivate();
+    }
+
+    [Test]
+    public async Task SearchSupersedesPendingPagingAndOlderQuery()
+    {
+        var vm = CreateVM(new StubHomeFolderService
+        {
+            Songs = (_, _) => Task.FromResult<FolderSnapshot?>(new FolderSnapshot(Enumerable.Range(0, 200)
+                .Select(i => new FolderEntry(i.ToString(), i % 2 == 0 ? "even" : "odd", DateTimeOffset.UnixEpoch.AddMinutes(i)))))
+        });
+        await vm.LoadAsync(CancellationToken.None);
+        await PresentAsync(vm);
+        var page = vm.LoadMoreSongsCommand.ExecuteAsync(100);
+        vm.SongSearchText = "even";
+        var older = vm.SearchSongsCommand.ExecutionTask!;
+        vm.SongSearchText = "odd";
+        await Task.WhenAll(page, older, vm.SearchSongsCommand.ExecutionTask!);
+        await PresentAsync(vm);
+        await vm.LoadMoreSongsCommand.ExecuteAsync(60);
+        Assert.That(vm.Songs, Has.Count.EqualTo(100));
+        Assert.That(vm.Songs.All(x => x.Name == "odd"), Is.True);
+        Assert.That(vm.HasMoreSongs, Is.False);
+        vm.Deactivate();
+    }
+
+    [Test]
+    public async Task ReloadFailureCanRetryAndDeactivationRejectsLateResults()
+    {
+        var folders = new StubHomeFolderService
+        {
+            Songs = (_, _) => Task.FromResult<FolderSnapshot?>(new FolderSnapshot([new FolderEntry("old", "old", DateTimeOffset.MinValue)])),
+            ReloadSongs = (_, _) => throw new IOException("Unavailable")
+        };
+        var vm = CreateVM(folders);
+        await vm.LoadAsync(CancellationToken.None);
+        await PresentAsync(vm);
+        await vm.ReloadSongsCommand.ExecuteAsync(null);
+        Assert.That(vm.IsProcessing, Is.False);
+        Assert.That(vm.CanRetrySongs, Is.True);
+        Assert.That(vm.SongsStatus, Does.Contain("Unavailable"));
+        var pending = new TaskCompletionSource<FolderSnapshot?>();
+        folders.ReloadSongs = (_, _) => pending.Task;
+        var retry = vm.RetrySongsCommand.ExecuteAsync(null);
+        vm.Deactivate();
+        pending.SetResult(new FolderSnapshot([new FolderEntry("late", "late", DateTimeOffset.UtcNow)]));
+        await retry;
+        Assert.That(vm.Songs.Any(x => x.Name == "late"), Is.False);
+        Assert.That(vm.CanInteract, Is.False);
+        Assert.That(vm.IsProcessing, Is.False);
+    }
     [Test]
     public async Task ProcessingWaitsForCurrentViewportPresentation()
     {
@@ -57,7 +202,10 @@ public class HomePageVMTests
                 new[] { new FolderEntry(@"C:\project", "project", DateTimeOffset.UtcNow) })),
             Songs = (_, token) => pending.Task.WaitAsync(token)
         });
-        vm.Projects.CollectionChanged += (_, _) => published.TrySetResult();
+        vm.Projects.CollectionChanged += (_, _) =>
+        {
+            if (vm.Projects.Count > 0) published.TrySetResult();
+        };
         var load = vm.LoadAsync(CancellationToken.None);
         await published.Task.WaitAsync(TimeSpan.FromSeconds(3));
         Assert.That(vm.Projects.Single().Name, Is.EqualTo("project"));

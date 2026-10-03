@@ -17,6 +17,37 @@ namespace osuHitsounder.Test.Presentation;
 [NonParallelizable]
 public class SongsResponsiveLayoutTests
 {
+    [TestCase(FlowDirection.LeftToRight, "Dark")]
+    [TestCase(FlowDirection.RightToLeft, "Light")]
+    public void ExpandedSearchFitsMinimumSongsHeader(FlowDirection direction, string theme)
+    {
+        Application.Current.Resources.MergedDictionaries[0] = new ResourceDictionary
+        { Source = new Uri($"/osuHitsounder;component/Resources/Themes/{theme}.xaml", UriKind.Relative) };
+        var vm = CreateVM();
+        var page = new HomePage(vm);
+        var window = new Window { Content = page, Width = 1920, Height = 1040, FlowDirection = direction };
+        using var view = new InMemoryView(window);
+        page.UpdateSongsLayout(new Size(1920, 1040));
+        vm.IsSongSearchExpanded = true;
+        vm.SongSearchText = new string('W', 200);
+        view.UpdateLayout();
+        window.Width = page.MinWidth;
+        window.Height = page.MinHeight;
+        view.UpdateLayout();
+        var input = (TextBox?)page.FindName("SongSearchTextBox");
+        Assert.That(input, Is.Not.Null, "Expanded search input must exist.");
+        var close = (BalloonButton)page.FindName("SongSearchCloseButton");
+        var panel = (FrameworkElement)page.FindName("SongsPanel");
+        var inputBounds = input!.TransformToAncestor(panel).TransformBounds(new Rect(input.RenderSize));
+        var closeBounds = close.TransformToAncestor(panel).TransformBounds(new Rect(close.RenderSize));
+        Assert.That(input.ActualWidth, Is.GreaterThan(32));
+        Assert.That(inputBounds.IntersectsWith(closeBounds), Is.False);
+        Assert.That(inputBounds.Left, Is.GreaterThanOrEqualTo(0));
+        Assert.That(closeBounds.Right, Is.LessThanOrEqualTo(panel.ActualWidth));
+        Assert.That(input.FocusVisualStyle, Is.Not.Null);
+        Assert.That(Descendants<SpacedUniformGrid>(page).Single().Columns, Is.EqualTo(1));
+        window.Close();
+    }
     [SetUp]
     public void SetUp()
     {

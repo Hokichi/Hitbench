@@ -142,6 +142,63 @@ public class HomeFolderServiceTests
     }
 
     [Test]
+    public async Task ForcedReloadRefreshesExistingMetadataAndBackground()
+    {
+        CreateCachedSong("A");
+        var service = new HomeFolderService(appRoot);
+        await service.LoadSongsAsync(root, CancellationToken.None);
+        var folder = Path.Combine(root, "Songs", "A");
+        File.WriteAllText(Path.Combine(folder, "map.osu"),
+            "[Metadata]\nArtistUnicode:Edited\nTitleUnicode:Changed\n[Events]\n//Background and Video events\n0,0,\"new.jpg\",0,0\n");
+        File.WriteAllText(Path.Combine(folder, "new.jpg"), "new image");
+        var refreshed = await service.ReloadSongsAsync(root, CancellationToken.None);
+        Assert.That(refreshed!.ReadPage(0, 1).Single().Title, Is.EqualTo("Changed"));
+        Assert.That(refreshed.ReadPage(0, 1).Single().BackgroundPath, Is.EqualTo(Path.Combine(folder, "new.jpg")));
+        var warm = await new HomeFolderService(appRoot).LoadSongsAsync(root, CancellationToken.None);
+        Assert.That(warm!.ReadPage(0, 1).Single().Artist, Is.EqualTo("Edited"));
+    }
+
+    [Test]
+    public async Task ForcedReloadFindsPreviouslySkippedFolders()
+    {
+        Directory.CreateDirectory(Path.Combine(root, "Songs", "A"));
+        var service = new HomeFolderService(appRoot);
+        await service.LoadSongsAsync(root, CancellationToken.None);
+        CreateCachedSong("A");
+        var result = await service.ReloadSongsAsync(root, CancellationToken.None);
+        Assert.That(result!.ReadPage(0, 10).Single().Name, Is.EqualTo("A"));
+    }
+
+    [Test]
+    public async Task CancelledForcedReloadPreservesCache()
+    {
+        CreateCachedSong("A");
+        var service = new HomeFolderService(appRoot);
+        await service.LoadSongsAsync(root, CancellationToken.None);
+        var before = File.ReadAllBytes(Path.Combine(appRoot, "data.json"));
+        Assert.ThrowsAsync<TaskCanceledException>(async () =>
+            await service.ReloadSongsAsync(root, new CancellationToken(true)));
+        Assert.That(File.ReadAllBytes(Path.Combine(appRoot, "data.json")), Is.EqualTo(before));
+    }
+
+    [Test]
+    public async Task ForcedReloadTracksInventoryAndHandlesMissingRootAndCacheWriteFailure()
+    {
+        CreateCachedSong("A");
+        var service = new HomeFolderService(appRoot);
+        await service.LoadSongsAsync(root, CancellationToken.None);
+        Directory.Delete(Path.Combine(root, "Songs", "A"), true);
+        CreateCachedSong("B");
+        File.Delete(Path.Combine(appRoot, "data.json"));
+        Directory.CreateDirectory(Path.Combine(appRoot, "data.json"));
+        var result = await service.ReloadSongsAsync(root, CancellationToken.None);
+        Assert.That(result!.ReadPage(0, 10).Single().Name, Is.EqualTo("B"));
+        Assert.That(Directory.GetFiles(appRoot, "*.tmp"), Is.Empty);
+        Directory.Delete(Path.Combine(root, "Songs"), true);
+        Assert.That(await service.ReloadSongsAsync(root, CancellationToken.None), Is.Null);
+    }
+
+    [Test]
     public async Task CreatesProjectsAndListsOnlyImmediateSongFolders()
     {
         var install = Directory.CreateDirectory(Path.Combine(root, "game"));

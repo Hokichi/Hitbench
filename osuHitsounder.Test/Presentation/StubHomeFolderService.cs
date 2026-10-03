@@ -26,6 +26,8 @@ public sealed class StubHomeFolderService : IHomeFolderService
         _ => Task.FromResult(new OsuSearchResult(null, false));
     public Task<FolderSnapshot> LoadProjectsAsync(CancellationToken token) => Projects(token);
     public Task<FolderSnapshot?> LoadSongsAsync(string path, CancellationToken token) => Songs(path, token);
+    public Func<string, CancellationToken, Task<FolderSnapshot?>>? ReloadSongs { get; set; }
+    public Task<FolderSnapshot?> ReloadSongsAsync(string path, CancellationToken token) => (ReloadSongs ?? Songs)(path, token);
     public Task<bool> IsInstallationAsync(string path, CancellationToken token) => Valid(path, token);
     public Task<OsuSearchResult> FindInstallationAsync(CancellationToken token) => Find(token);
 }

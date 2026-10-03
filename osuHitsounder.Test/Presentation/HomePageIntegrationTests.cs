@@ -25,6 +25,114 @@ namespace osuHitsounder.Test.Presentation;
 [NonParallelizable]
 public class HomePageIntegrationTests
 {
+    [Test]
+    public void SongSearchOpensBindsFiltersAndClosesWithEscape()
+    {
+        EnsureResources();
+        var vm = CreateVM(new StubHomeFolderService
+        {
+            Songs = (_, _) => Task.FromResult<FolderSnapshot?>(new FolderSnapshot([
+                new FolderEntry("one", "one", DateTimeOffset.MinValue),
+                new FolderEntry("two", "two", DateTimeOffset.MinValue)]))
+        });
+        var page = new HomePage(vm);
+        var window = new Window { Content = page, Width = 1280, Height = 720 };
+        using var view = new InMemoryView(window);
+        UiTestPump.Run(page.LoadAsync(CancellationToken.None));
+        var opener = (BalloonButton?)page.FindName("SongSearchButton");
+        Assert.That(opener, Is.Not.Null, "Songs search action must exist.");
+        var input = (TextBox)page.FindName("SongSearchTextBox");
+        var close = (BalloonButton)page.FindName("SongSearchCloseButton");
+        Assert.That(input.IsVisible, Is.False);
+        opener!.Command.Execute(opener.CommandParameter);
+        view.UpdateLayout();
+        Assert.That(input.IsVisible, Is.True);
+        Assert.That(AutomationProperties.GetName(input), Is.EqualTo("Search songs"));
+        Assert.That(opener.ToolTip, Is.Not.Null);
+        Assert.That(close.ToolTip, Is.Not.Null);
+        input.Text = "two";
+        UiTestPump.Run(vm.SearchSongsCommand.ExecutionTask!);
+        PumpUntil(() => !vm.IsAwaitingSongsPresentation);
+        Assert.That(vm.Songs.Single().Name, Is.EqualTo("two"));
+        input.RaiseEvent(new System.Windows.Input.KeyEventArgs(System.Windows.Input.Keyboard.PrimaryDevice,
+            PresentationSource.FromVisual(input)!, Environment.TickCount, System.Windows.Input.Key.Escape)
+        { RoutedEvent = System.Windows.Input.Keyboard.PreviewKeyDownEvent });
+        UiTestPump.Run(vm.SearchSongsCommand.ExecutionTask!);
+        view.UpdateLayout();
+        Assert.That(vm.SongSearchText, Is.Empty);
+        Assert.That(vm.IsSongSearchExpanded, Is.False);
+        Assert.That(input.IsVisible, Is.False);
+        Assert.That(opener.IsVisible, Is.True);
+        opener.Command.Execute(opener.CommandParameter);
+        view.UpdateLayout();
+        close.Command.Execute(close.CommandParameter);
+        Assert.That(vm.IsSongSearchExpanded, Is.False);
+        window.Close();
+    }
+
+    [Test]
+    public void HomeReloadGestureExecutesForcedReloadFromSearchContext()
+    {
+        EnsureResources();
+        var vm = CreateVM(new StubHomeFolderService
+        {
+            Songs = (_, _) => Task.FromResult<FolderSnapshot?>(new FolderSnapshot([new FolderEntry("old", "old", DateTimeOffset.MinValue)])),
+            ReloadSongs = (_, _) => Task.FromResult<FolderSnapshot?>(new FolderSnapshot([new FolderEntry("new", "new", DateTimeOffset.UtcNow)]))
+        });
+        var page = new HomePage(vm);
+        var window = new Window { Content = page, Width = 1280, Height = 720 };
+        using var view = new InMemoryView(window);
+        UiTestPump.Run(page.LoadAsync(CancellationToken.None));
+        var binding = page.InputBindings.OfType<System.Windows.Input.KeyBinding>().SingleOrDefault(x =>
+            x.Key == System.Windows.Input.Key.R && x.Modifiers == System.Windows.Input.ModifierKeys.Control);
+        Assert.That(binding, Is.Not.Null, "Home must bind Ctrl+R.");
+        vm.OpenSongSearchCommand.Execute(null);
+        view.UpdateLayout();
+        Assert.That(binding!.Command.CanExecute(null), Is.True);
+        binding.Command.Execute(null);
+        UiTestPump.Run(vm.ReloadSongsCommand.ExecutionTask!);
+        PumpUntil(() => !vm.IsAwaitingSongsPresentation);
+        Assert.That(vm.Songs.Single().Name, Is.EqualTo("new"));
+        Assert.That(vm.IsSongSearchExpanded, Is.True);
+        window.Close();
+    }
+
+    [Test]
+    public void ReloadInvalidatesArtworkAtSamePath()
+    {
+        EnsureResources();
+        var path = CreateTestImage();
+        var folders = new StubHomeFolderService
+        {
+            Songs = (_, _) => Task.FromResult<FolderSnapshot?>(new FolderSnapshot([
+                new FolderEntry("one", "one", DateTimeOffset.MinValue) { BackgroundPath = path }]))
+        };
+        var vm = CreateVM(folders);
+        var page = new HomePage(vm);
+        var window = new Window { Content = page, Width = 1280, Height = 720 };
+        using var view = new InMemoryView(window);
+        try
+        {
+            UiTestPump.Run(page.LoadAsync(CancellationToken.None));
+            var original = Descendants<Image>(page).Single().Source;
+            Assert.That(original, Is.Not.Null);
+            var encoder = new System.Windows.Media.Imaging.PngBitmapEncoder();
+            encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(
+                System.Windows.Media.Imaging.BitmapSource.Create(2, 1, 96, 96, PixelFormats.Bgra32,
+                    null, new byte[] { 0, 0, 255, 255, 0, 255, 0, 255 }, 8)));
+            using (var stream = File.Create(path)) encoder.Save(stream);
+            UiTestPump.Run(vm.ReloadSongsCommand.ExecuteAsync(null));
+            PumpUntil(() => !vm.IsAwaitingSongsPresentation);
+            var refreshed = (System.Windows.Media.Imaging.BitmapSource)Descendants<Image>(page).Single().Source;
+            Assert.That(refreshed, Is.Not.SameAs(original));
+            Assert.That(refreshed.PixelHeight * 2, Is.EqualTo(refreshed.PixelWidth));
+            var converted = new System.Windows.Media.Imaging.FormatConvertedBitmap(refreshed, PixelFormats.Bgra32, null, 0);
+            var pixels = new byte[converted.PixelWidth * converted.PixelHeight * 4];
+            converted.CopyPixels(pixels, converted.PixelWidth * 4, 0);
+            Assert.That(pixels[2], Is.EqualTo(255), "Reload must decode edited red pixel.");
+        }
+        finally { window.Close(); Directory.Delete(Path.GetDirectoryName(path)!, true); }
+    }
     private SynchronizationContext? previousContext;
     [SetUp]
     public void SetUp()

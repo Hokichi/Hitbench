@@ -24,11 +24,17 @@ public sealed class HomeFolderService(string applicationDirectory, Func<Cancella
         }, cancellationToken);
 
     public Task<FolderSnapshot?> LoadSongsAsync(string osuDirectory, CancellationToken cancellationToken) =>
+        LoadSongsAsync(osuDirectory, false, cancellationToken);
+
+    public Task<FolderSnapshot?> ReloadSongsAsync(string osuDirectory, CancellationToken cancellationToken) =>
+        LoadSongsAsync(osuDirectory, true, cancellationToken);
+
+    private Task<FolderSnapshot?> LoadSongsAsync(string osuDirectory, bool forceReload, CancellationToken cancellationToken) =>
         Task.Run(() =>
         {
             cancellationToken.ThrowIfCancellationRequested();
             var songsPath = Path.GetFullPath(Path.Combine(osuDirectory, "Songs"));
-            try { return ReadCachedSongs(songsPath, cancellationToken); }
+            try { return ReadCachedSongs(songsPath, forceReload, cancellationToken); }
             catch (DirectoryNotFoundException) when (!Directory.Exists(songsPath)) { return null; }
         }, cancellationToken);
 
@@ -40,12 +46,12 @@ public sealed class HomeFolderService(string applicationDirectory, Func<Cancella
                 File.Exists(Path.Combine(directory, "osu!.exe"));
         }, cancellationToken);
 
-    private FolderSnapshot ReadCachedSongs(string path, CancellationToken token)
+    private FolderSnapshot ReadCachedSongs(string path, bool forceReload, CancellationToken token)
     {
         var inventory = ReadSnapshot(path, token);
         var folders = inventory.ReadPage(0, inventory.Count);
         var cachePath = Path.Combine(applicationDirectory, "data.json");
-        var cache = ReadCache(cachePath, path);
+        var cache = forceReload ? null : ReadCache(cachePath, path);
         var known = (cache?.Songs ?? []).Select(song => song.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var current = folders.Select(folder => folder.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var reused = (cache?.Songs ?? []).Where(song => current.Contains(song.Name)).Select(song =>

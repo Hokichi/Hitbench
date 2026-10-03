@@ -4,6 +4,20 @@ public sealed class FolderSnapshot
 {
     private readonly FolderEntry[] entries;
     public int Count => entries.Length;
+    public FolderSnapshot FilterSongs(string query, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        query = query.Trim();
+        if (query.Length == 0) return this;
+        return new FolderSnapshot(entries.Where(entry =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return entry.Artist.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                entry.Title.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                entry.DisplayName.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                entry.Name.Contains(query, StringComparison.OrdinalIgnoreCase);
+        }), cancellationToken);
+    }
 
     public FolderSnapshot(IEnumerable<FolderEntry> entries, CancellationToken cancellationToken = default)
     {

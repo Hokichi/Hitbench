@@ -19,6 +19,10 @@ public partial class HomePageVM(
     IProjectFileService projectFiles, IMessenger messenger) : ObservableObject
 {
     internal const int InitialSongCount = 9 * 5;
+    [ObservableProperty] private string songSearchText = "";
+    [ObservableProperty] private bool isSongSearchExpanded;
+    [ObservableProperty] private bool isSearchingSongs;
+    public int SongsInventoryGeneration => songsInventoryGeneration;
 
     public ObservableCollection<FolderEntry> Projects { get; } = [];
     public ObservableCollection<FolderEntry> Songs { get; } = [];
@@ -42,6 +46,10 @@ public partial class HomePageVM(
     private Task? cleanup;
     private FolderSnapshot? projectsSnapshot;
     private FolderSnapshot? songsSnapshot;
+    private FolderSnapshot? songsInventory;
+    private readonly HashSet<Task> searchOperations = [];
+    private int songsInventoryGeneration;
+    private string appliedSongSearchText = "";
     private string? osuDirectory;
     private bool active = true;
     private int projectsGeneration;
@@ -51,7 +59,7 @@ public partial class HomePageVM(
     public bool CanInteract => active && !IsInteractionBlocked && !RequiresShutdown && FatalError is null;
     public string SongsStatus => IsCreatingProject ? "Creating project..." : SongsLoadStatus;
     public bool HasMoreProjects => active && projectsSnapshot is not null && Projects.Count < projectsSnapshot.Count;
-    public bool HasMoreSongs => active && songsSnapshot is not null && Songs.Count < songsSnapshot.Count;
+    public bool HasMoreSongs => active && !IsSearchingSongs && songsSnapshot is not null && Songs.Count < songsSnapshot.Count;
 
     partial void OnIsInteractionBlockedChanged(bool value) => RefreshCommands();
     partial void OnRequiresShutdownChanged(bool value) => RefreshCommands();
@@ -60,6 +68,86 @@ public partial class HomePageVM(
     partial void OnIsLoadingSongsChanged(bool value) => RefreshCommands();
     partial void OnCanRetryProjectsChanged(bool value) => RefreshCommands();
     partial void OnCanRetrySongsChanged(bool value) => RefreshCommands();
+    partial void OnIsSearchingSongsChanged(bool value) => RefreshCommands();
+    partial void OnIsAwaitingSongsPresentationChanged(bool value) => RefreshCommands();
+    partial void OnIsProcessingChanged(bool value)
+    {
+        if (!value && appliedSongSearchText != SongSearchText)
+            OnSongSearchTextChanged(SongSearchText);
+    }
+    partial void OnSongSearchTextChanged(string value)
+    {
+        if (active && songsInventory is not null && !IsProcessing)
+            SearchSongsCommand.Execute(null);
+    }
+
+    private bool CanSearchSongs() => CanInteract && !IsCreatingProject;
+    private bool CanReloadSongs() => CanSearchSongs() && !IsLoadingSongs &&
+        !IsSearchingSongs && !IsAwaitingSongsPresentation && osuDirectory is not null;
+
+    [RelayCommand(CanExecute = nameof(CanSearchSongs))]
+    private void OpenSongSearch() => IsSongSearchExpanded = true;
+
+    [RelayCommand(CanExecute = nameof(CanSearchSongs))]
+    private void CloseSongSearch()
+    {
+        SongSearchText = "";
+        IsSongSearchExpanded = false;
+    }
+
+    [RelayCommand(AllowConcurrentExecutions = true)]
+    private async Task SearchSongsAsync(CancellationToken cancellationToken)
+    {
+        if (!active || songsInventory is null || IsProcessing) return;
+        var task = SearchSongsCoreAsync(cancellationToken);
+        searchOperations.Add(task);
+        try { await task; }
+        finally { searchOperations.Remove(task); }
+    }
+
+    private async Task SearchSongsCoreAsync(CancellationToken cancellationToken)
+    {
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token, cancellationToken);
+        var generation = ++songsGeneration;
+        var inventory = songsInventory!;
+        var query = SongSearchText;
+        IsAwaitingSongsPresentation = false;
+        IsSearchingSongs = true;
+        SongsLoadStatus = "Searching songs...";
+        try
+        {
+            var filtered = await Task.Run(() => inventory.FilterSongs(query, linked.Token), linked.Token);
+            linked.Token.ThrowIfCancellationRequested();
+            if (!IsCurrent(false, generation)) return;
+            songsSnapshot = filtered;
+            appliedSongSearchText = query;
+            Songs.Clear();
+            UpdateSongsStatus();
+            OnPropertyChanged(nameof(SongsPresentationGeneration));
+            IsAwaitingSongsPresentation = true;
+        }
+        catch (OperationCanceledException) when (linked.IsCancellationRequested)
+        {
+            if (IsCurrent(false, generation))
+            {
+                SongsLoadStatus = "Song search cancelled.";
+                CanRetrySongs = true;
+            }
+        }
+        catch (Exception error) { if (IsCurrent(false, generation)) FailPanel(false, error); }
+        finally
+        {
+            if (IsCurrent(false, generation))
+            {
+                IsSearchingSongs = false;
+                RefreshCommands();
+            }
+        }
+    }
+
+    [RelayCommand(CanExecute = nameof(CanReloadSongs))]
+    private Task ReloadSongsAsync(CancellationToken cancellationToken) =>
+        CanReloadSongs() ? RetryAsync(false, cancellationToken, true) : Task.CompletedTask;
 
     private void RefreshCommands()
     {
@@ -72,15 +160,19 @@ public partial class HomePageVM(
         LoadMoreSongsCommand.NotifyCanExecuteChanged();
         RetryProjectsCommand.NotifyCanExecuteChanged();
         RetrySongsCommand.NotifyCanExecuteChanged();
+        ReloadSongsCommand.NotifyCanExecuteChanged();
+        OpenSongSearchCommand.NotifyCanExecuteChanged();
+        CloseSongSearchCommand.NotifyCanExecuteChanged();
     }
 
     private bool CanCreateProject(FolderEntry? entry) => entry is not null && CanInteract && !IsCreatingProject;
     private bool CanOpenProject(FolderEntry? entry) => entry is not null && CanInteract && !IsCreatingProject;
     private bool CanLoadMoreProjects() => CanInteract && HasMoreProjects && !IsLoadingProjects && !CanRetryProjects;
     private bool CanLoadMoreSongs(int requestedCount) =>
-        requestedCount > 0 && CanInteract && HasMoreSongs && !IsLoadingSongs && !CanRetrySongs;
+        requestedCount > 0 && CanInteract && HasMoreSongs && !IsLoadingSongs &&
+        !IsAwaitingSongsPresentation && !CanRetrySongs;
     private bool CanRestartProjects() => CanInteract && CanRetryProjects && !IsLoadingProjects;
-    private bool CanRestartSongs() => CanInteract && CanRetrySongs && !IsLoadingSongs;
+    private bool CanRestartSongs() => CanReloadSongs() && CanRetrySongs;
 
     [RelayCommand(CanExecute = nameof(CanOpenProject))]
     private void OpenProject(FolderEntry? entry)
@@ -187,23 +279,26 @@ public partial class HomePageVM(
 
     public void CompleteSongsPresentation(int generation)
     {
-        if (!active || generation != songsGeneration || !IsAwaitingSongsPresentation || IsLoading) return;
+        if (!active || generation != songsGeneration || !IsAwaitingSongsPresentation || IsLoading || IsSearchingSongs) return;
         EndProcessing();
     }
 
     public async Task LoadInitialSongsAsync(CancellationToken cancellationToken)
     {
-        if (!active || !IsAwaitingSongsPresentation || IsLoadingSongs ||
+        if (!active || !IsAwaitingSongsPresentation || IsLoadingSongs || IsSearchingSongs ||
             songsSnapshot is null || Songs.Count >= InitialSongCount) return;
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token, cancellationToken);
+        var generation = songsGeneration;
         SetBusy(false, true);
         try
         {
-            await PublishPageAsync(false, songsSnapshot, songsGeneration,
+            await PublishPageAsync(false, songsSnapshot, generation,
                 InitialSongCount - Songs.Count, linked.Token);
         }
-        catch (OperationCanceledException) when (linked.IsCancellationRequested) { EndProcessing(); }
-        catch (Exception error) { FailPanel(false, error); EndProcessing(); }
+        catch (OperationCanceledException) when (linked.IsCancellationRequested)
+        { if (IsCurrent(false, generation)) EndProcessing(); }
+        catch (Exception error)
+        { if (IsCurrent(false, generation)) { FailPanel(false, error); EndProcessing(); } }
         finally { SetBusy(false, false); }
     }
 
@@ -252,7 +347,7 @@ public partial class HomePageVM(
         return path;
     }
 
-    private async Task PreparePanelAsync(bool projects, CancellationToken token)
+    private async Task PreparePanelAsync(bool projects, CancellationToken token, bool forceReload = false)
     {
         var generation = projects ? ++projectsGeneration : ++songsGeneration;
         SetBusy(projects, true);
@@ -261,11 +356,30 @@ public partial class HomePageVM(
         try
         {
             var snapshot = projects ? await folders.LoadProjectsAsync(token)
+                : forceReload ? await folders.ReloadSongsAsync(osuDirectory!, token)
                 : await folders.LoadSongsAsync(osuDirectory!, token);
             token.ThrowIfCancellationRequested();
             if (!IsCurrent(projects, generation)) return;
             if (projects) projectsSnapshot = snapshot;
-            else songsSnapshot = snapshot;
+            else
+            {
+                FolderSnapshot? filtered;
+                string query;
+                do
+                {
+                    query = SongSearchText;
+                    filtered = snapshot is null ? null :
+                        await Task.Run(() => snapshot.FilterSongs(query, token), token);
+                    token.ThrowIfCancellationRequested();
+                    if (!IsCurrent(false, generation)) return;
+                } while (query != SongSearchText);
+                songsInventory = snapshot;
+                songsSnapshot = filtered;
+                appliedSongSearchText = query;
+                songsInventoryGeneration++;
+                OnPropertyChanged(nameof(SongsInventoryGeneration));
+                OnPropertyChanged(nameof(SongsPresentationGeneration));
+            }
             var rows = projects ? Projects : Songs;
             rows.Clear();
             if (projects && snapshot is not null)
@@ -275,12 +389,18 @@ public partial class HomePageVM(
             if (projects) ProjectsStatus = rows.Count == 0 ? "No project folders found." : "";
             else
             {
-                SongsLoadStatus = snapshot is null ? "Songs folder wasn't found."
-                    : snapshot.Count == 0 ? "No song folders found." : "";
-                CanRetrySongs = snapshot is null || snapshot.Count == 0;
+                UpdateSongsStatus();
             }
         }
         finally { SetBusy(projects, false); }
+    }
+
+    private void UpdateSongsStatus()
+    {
+        SongsLoadStatus = songsInventory is null ? "Songs folder wasn't found."
+            : songsInventory.Count == 0 ? "No song folders found."
+            : songsSnapshot?.Count == 0 ? "No songs match your search." : "";
+        CanRetrySongs = songsInventory is null || songsInventory.Count == 0;
     }
 
     private bool IsCurrent(bool projects, int generation) =>
@@ -324,20 +444,21 @@ public partial class HomePageVM(
     {
         if (!(projects ? CanLoadMoreProjects() : CanLoadMoreSongs(requestedCount))) return;
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token, cancellationToken);
+        var generation = projects ? projectsGeneration : songsGeneration;
         SetBusy(projects, true);
         try
         {
             await PublishPageAsync(projects, (projects ? projectsSnapshot : songsSnapshot)!,
-                projects ? projectsGeneration : songsGeneration, requestedCount, linked.Token);
+                generation, requestedCount, linked.Token);
         }
         catch (OperationCanceledException) when (linked.IsCancellationRequested) { }
-        catch (Exception error) { FailPanel(projects, error); }
+        catch (Exception error) { if (IsCurrent(projects, generation)) FailPanel(projects, error); }
         finally { SetBusy(projects, false); }
     }
 
-    private async Task RetryAsync(bool projects, CancellationToken cancellationToken)
+    private async Task RetryAsync(bool projects, CancellationToken cancellationToken, bool reload = false)
     {
-        if (!(projects ? CanRestartProjects() : CanRestartSongs())) return;
+        if (!(projects ? CanRestartProjects() : reload ? CanReloadSongs() : CanRestartSongs())) return;
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token, cancellationToken);
         try
         {
@@ -349,7 +470,7 @@ public partial class HomePageVM(
                 await ui.YieldForRenderAsync(linked.Token);
                 linked.Token.ThrowIfCancellationRequested();
             }
-            await PreparePanelAsync(projects, linked.Token);
+            await PreparePanelAsync(projects, linked.Token, forceReload: !projects);
             if (!projects) IsAwaitingSongsPresentation = true;
         }
         catch (OperationCanceledException) when (linked.IsCancellationRequested) { }
@@ -377,6 +498,8 @@ public partial class HomePageVM(
         projectsGeneration++;
         songsGeneration++;
         projectsSnapshot = songsSnapshot = null;
+        songsInventory = null;
+        IsSearchingSongs = false;
         EndProcessing();
         lifetime.Cancel();
         CreateProjectCommand.Cancel();
@@ -384,6 +507,8 @@ public partial class HomePageVM(
         LoadMoreSongsCommand.Cancel();
         RetryProjectsCommand.Cancel();
         RetrySongsCommand.Cancel();
+        ReloadSongsCommand.Cancel();
+        SearchSongsCommand.Cancel();
         RefreshCommands();
         cleanup = CleanupAsync();
     }
@@ -398,7 +523,8 @@ public partial class HomePageVM(
     private async Task CleanupAsync()
     {
         var tasks = new[] { loading, CreateProjectCommand.ExecutionTask, LoadMoreProjectsCommand.ExecutionTask,
-            LoadMoreSongsCommand.ExecutionTask, RetryProjectsCommand.ExecutionTask, RetrySongsCommand.ExecutionTask };
+            LoadMoreSongsCommand.ExecutionTask, RetryProjectsCommand.ExecutionTask, RetrySongsCommand.ExecutionTask,
+            ReloadSongsCommand.ExecutionTask }.Concat(searchOperations).ToArray();
         try { await Task.WhenAll(tasks.OfType<Task>()); }
         catch (OperationCanceledException) { }
         catch (Exception error) { Trace.TraceError("HomePage cleanup: {0}", error); }

@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Input;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.Input;
 using osuHitsounder.Resources.CustomControls;
@@ -164,6 +165,27 @@ public partial class HomePage : UserControl
     private void OnVisibilityChanged(object sender, DependencyPropertyChangedEventArgs e) => QueueCheck();
     private void OnStateChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(HomePageVM.SongsInventoryGeneration))
+        {
+            ReleaseSongImages();
+            ImageLoader.Clear();
+        }
+        if (e.PropertyName == nameof(HomePageVM.SongsPresentationGeneration))
+        {
+            songsScrollInput = false;
+            FindScrollViewer(SongsList)?.ScrollToTop();
+            HideSongs();
+        }
+        if (e.PropertyName == nameof(HomePageVM.IsSongSearchExpanded))
+        {
+            var expanded = viewModel.IsSongSearchExpanded;
+            Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() =>
+            {
+                if (!attached || lifetime.IsCancellationRequested || expanded != viewModel.IsSongSearchExpanded) return;
+                if (expanded) SongSearchTextBox.Focus();
+                else SongSearchButton.Focus();
+            }));
+        }
         if (!viewModel.IsProcessing) presentation.TrySetResult();
         if ((e.PropertyName == nameof(HomePageVM.IsProcessing) && viewModel.IsProcessing) ||
             (e.PropertyName == nameof(HomePageVM.IsAwaitingSongsPresentation) &&
@@ -171,8 +193,16 @@ public partial class HomePage : UserControl
             HideSongs();
         if (e.PropertyName is nameof(HomePageVM.HasMoreProjects) or nameof(HomePageVM.HasMoreSongs)
             or nameof(HomePageVM.IsLoadingProjects) or nameof(HomePageVM.IsLoadingSongs)
-            or nameof(HomePageVM.CanInteract) or nameof(HomePageVM.IsAwaitingSongsPresentation))
+            or nameof(HomePageVM.CanInteract) or nameof(HomePageVM.IsAwaitingSongsPresentation)
+            or nameof(HomePageVM.IsSearchingSongs))
             QueueCheck();
+    }
+
+    private void OnSongSearchKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Escape || !viewModel.CloseSongSearchCommand.CanExecute(null)) return;
+        viewModel.CloseSongSearchCommand.Execute(null);
+        e.Handled = true;
     }
 
     private void QueueCheck()
@@ -217,7 +247,7 @@ public partial class HomePage : UserControl
 
     private async Task CheckSongsAsync()
     {
-        if (!attached) return;
+        if (!attached || viewModel.IsSearchingSongs) return;
         var panel = FindDescendant<SpacedUniformGrid>(SongsList);
         if (panel is null) return;
 
@@ -293,7 +323,12 @@ public partial class HomePage : UserControl
         SongsList.UpdateLayout();
         var size = SongsList.RenderSize;
         var backgrounds = Descendants<Image>(SongsList).ToArray();
-        foreach (var background in backgrounds) StartSongImage(background);
+        foreach (var background in backgrounds)
+        {
+            if (!imageOwners.ContainsKey(background))
+                OnSongImageLoaded(background, new RoutedEventArgs());
+            StartSongImage(background);
+        }
         if (backgrounds.Any(background => !imageRequests.ContainsKey(background))) return false;
         var tasks = backgrounds.Select(background => imageRequests[background].LoadingTask).ToArray();
         await Task.WhenAll(tasks).WaitAsync(token);
