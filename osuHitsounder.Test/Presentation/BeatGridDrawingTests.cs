@@ -19,7 +19,6 @@ public class BeatGridDrawingTests
 
     [TestCase(true, 10d, 0d, 0d)]
     [TestCase(true, 25d, 5d, 15d)]
-    [TestCase(false, 72d, 0d, 0d)]
     public void BarsClipOrFillAvailableHeight(bool waveform, double height, double wholeStart, double otherStart)
     {
         var drawings = DrawGrid(waveform, height);
@@ -46,15 +45,28 @@ public class BeatGridDrawingTests
     }
 
     [Test]
-    public void TrackUsesSameSubdivisionColorsAsWaveform()
+    public void TrackUsesOriginalWholeAndSubdivisionColors()
     {
         var drawings = DrawGrid(isWaveform: false);
 
         Assert.Multiple(() =>
         {
             Assert.That(LineAt(drawings, 0).Pen!.Brush, Is.SameAs(Brushes.White));
-            Assert.That(LineAt(drawings, 50).Pen!.Brush, Is.SameAs(Brushes.Red));
+            Assert.That(LineAt(drawings, 50).Pen!.Brush, Is.SameAs(Brushes.LightGray));
         });
+    }
+
+    [TestCase(36d, 36d)]
+    [TestCase(72d, 50d)]
+    [TestCase(288d, 50d)]
+    public void TrackLinesHaveFiftyUnitHeightClippedToTrack(double height, double expected)
+    {
+        foreach (var drawing in DrawGrid(false, height))
+        {
+            var line = (LineGeometry)drawing.Geometry;
+            Assert.That(line.StartPoint.Y, Is.Zero);
+            Assert.That(line.EndPoint.Y, Is.EqualTo(expected));
+        }
     }
 
     private static IReadOnlyList<GeometryDrawing> DrawGrid(bool isWaveform, double height = 72)

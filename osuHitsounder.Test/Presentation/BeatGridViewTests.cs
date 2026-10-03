@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Media;
 using osuHitsounder.Core.Entities;
 using osuHitsounder.Resources.CustomControls;
 
@@ -8,6 +9,33 @@ namespace osuHitsounder.Test.Presentation;
 [NonParallelizable]
 public class BeatGridViewTests
 {
+    [TestCase(60, 30d, 250)]
+    [TestCase(123, 0d, 122)]
+    [TestCase(60, 0d, 0)]
+    public void HoverHasExactlyTheSameDrawnBoundsAsPlacedNode(int bpm, double pointer, int timestamp)
+    {
+        var grid = CreateGrid();
+        grid.Bpms = [bpm];
+        if (timestamp == 0) grid.HorizontalOffset = 0;
+        grid.Samples = [new Sample { Timestamp = timestamp }];
+        grid.HoverBrush = Brushes.Red;
+        grid.MarkerBrush = Brushes.Blue;
+        grid.UpdatePointerPosition(pointer);
+        grid.PrepareDrawing();
+        var drawings = Flatten(grid.ContentDrawing!).OfType<GeometryDrawing>().ToArray();
+        var hover = drawings.Single(d => ReferenceEquals(d.Brush, Brushes.Red));
+        var node = drawings.Single(d => ReferenceEquals(d.Brush, Brushes.Blue));
+        Assert.That(hover.Geometry.Bounds, Is.EqualTo(node.Geometry.Bounds));
+
+        static IEnumerable<Drawing> Flatten(Drawing drawing)
+        {
+            yield return drawing;
+            if (drawing is DrawingGroup group)
+                foreach (var child in group.Children)
+                    foreach (var descendant in Flatten(child)) yield return descendant;
+        }
+    }
+
     [Test]
     public void CenteredStartNodeIsClippedAndHitsOnlyVisibleHalf()
     {

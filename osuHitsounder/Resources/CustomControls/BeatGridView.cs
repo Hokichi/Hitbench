@@ -319,10 +319,10 @@ public sealed class BeatGridView : FrameworkElement
         var marker = highContrast ? SystemColors.WindowTextBrush : MarkerBrush;
         if (ActiveInterval is { } active)
         {
-            var rect = IntervalBounds(active);
+            var rect = Inset(GetSampleBounds((int)Math.Round(active.StartMilliseconds, MidpointRounding.AwayFromZero)));
             context.DrawRoundedRectangle(hover, null, rect, 4, 4);
             var cue = pressedInterval is not null ? pressed : IsKeyboardFocusWithin ? focus : null;
-            if (cue is not null) context.DrawRoundedRectangle(null, new Pen(cue, 1), Inset(rect), 4, 4);
+            if (cue is not null) context.DrawRoundedRectangle(null, new Pen(cue, 1), rect, 4, 4);
         }
         BeatGridDrawing.Draw(context, this, Offsets, Bpms, Subdivision, Duration.TotalMilliseconds,
             ContentWidth, HorizontalOffset, ViewportWidth, ActualHeight, false);
@@ -347,13 +347,6 @@ public sealed class BeatGridView : FrameworkElement
     {
         RaiseEvent(new SampleRemovalRequestedEventArgs(SampleRemovalRequestedEvent, sample));
         return true;
-    }
-
-    private Rect IntervalBounds(BeatInterval interval)
-    {
-        var scale = ContentWidth / Duration.TotalMilliseconds;
-        return new Rect(interval.StartMilliseconds * scale - HorizontalOffset, 0,
-            (interval.EndMilliseconds - interval.StartMilliseconds) * scale, ActualHeight);
     }
 
     private static Rect Inset(Rect rect) => rect.Width > 1 && rect.Height > 1
