@@ -14,19 +14,22 @@ internal sealed class OHsWindowFrame : IDisposable
     private readonly Func<nint, bool> enable;
     private readonly Action<nint> disable;
     private readonly Func<nint, int, int, int> setWindowAttribute;
+    private readonly Func<nint, int, nint, nint, nint> defaultWindowProc;
     private HwndSource? source;
     private nint handle;
     private bool disposed;
 
     internal OHsWindowFrame(Window window, Action<bool> setAcrylicEnabled,
         Func<nint, bool>? enableBackdrop = null, Action<nint>? disableBackdrop = null,
-        Func<nint, int, int, int>? setWindowAttribute = null)
+        Func<nint, int, int, int>? setWindowAttribute = null,
+        Func<nint, int, nint, nint, nint>? defaultWindowProc = null)
     {
         this.window = window;
         publish = setAcrylicEnabled;
         enable = enableBackdrop ?? EnableBackdrop;
         disable = disableBackdrop ?? DisableBackdrop;
         this.setWindowAttribute = setWindowAttribute ?? SetWindowAttribute;
+        this.defaultWindowProc = defaultWindowProc ?? DefWindowProc;
         window.SourceInitialized += OnSourceInitialized;
         window.Activated += OnEnvironmentChanged;
         window.StateChanged += OnEnvironmentChanged;
@@ -100,6 +103,17 @@ internal sealed class OHsWindowFrame : IDisposable
 
     internal nint WindowProc(nint hwnd, int message, nint wParam, nint lParam, ref bool handled)
     {
+        if (disposed) return 0;
+        if (message == 0x0086) // WM_NCACTIVATE: retain activation processing without repainting the native frame.
+        {
+            handled = true;
+            return defaultWindowProc(hwnd, message, wParam, -1);
+        }
+        if (message == 0x0085) // WM_NCPAINT: ShellRoot owns the visible outline.
+        {
+            handled = true;
+            return 0;
+        }
         if (message == 0x0083) // WM_NCCALCSIZE: both forms retain the full proposed window rectangle.
         {
             handled = true;
@@ -200,6 +214,7 @@ internal sealed class OHsWindowFrame : IDisposable
         handle = 0;
     }
 
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern nint DefWindowProc(nint hwnd, int message, nint wParam, nint lParam);
     [DllImport("dwmapi.dll")] private static extern int DwmSetWindowAttribute(nint hwnd, int attribute, ref int value, int size);
     [DllImport("dwmapi.dll")] private static extern int DwmExtendFrameIntoClientArea(nint hwnd, ref NativeMargins margins);
     [DllImport("user32.dll")] private static extern int GetWindowLong(nint hwnd, int index);

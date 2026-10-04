@@ -10,7 +10,9 @@ public class OHsWindowFrameTests
     [TestCase(0), TestCase(1)]
     public void BothClientCalculationFormsPreserveFullWindowBounds(int form)
     {
-        using var frame = new OHsWindowFrame(new Window(), _ => { }, _ => true, _ => { });
+        int activationCalls = 0;
+        using var frame = new OHsWindowFrame(new Window(), _ => { }, _ => true, _ => { },
+            defaultWindowProc: (_, _, _, _) => { activationCalls++; return 1; });
         var rectangles = new[]
         {
             new NativeRect { Right = 1280, Bottom = 720 },
@@ -24,6 +26,16 @@ public class OHsWindowFrameTests
             var buffer = Marshal.AllocHGlobal(length);
             try
             {
+                bool activated = false, painted = false;
+                var activationResult = frame.WindowProc(42, 0x0086, activationCalls % 2, 123, ref activated);
+                var paintResult = frame.WindowProc(42, 0x0085, 1, 0, ref painted);
+                Assert.Multiple(() =>
+                {
+                    Assert.That(activated, Is.True);
+                    Assert.That(activationResult, Is.EqualTo((nint)1));
+                    Assert.That(painted, Is.True);
+                    Assert.That(paintResult, Is.EqualTo((nint)0));
+                });
                 Marshal.Copy(new byte[length], 0, buffer, length);
                 Marshal.StructureToPtr(bounds, buffer, false);
                 var before = new byte[length];
@@ -40,6 +52,64 @@ public class OHsWindowFrameTests
                 });
             }
             finally { Marshal.FreeHGlobal(buffer); }
+        }
+        Assert.That(activationCalls, Is.EqualTo(rectangles.Length));
+    }
+
+    [TestCase(0, 0), TestCase(0, 1), TestCase(1, 0), TestCase(1, 1)]
+    public void NativeActivationDelegatesWithoutFrameRepaint(int activation, int nativeResult)
+    {
+        var calls = new List<(nint Handle, int Message, nint Activation, nint Region)>();
+        using var frame = new OHsWindowFrame(new Window(), _ => { }, _ => true, _ => { },
+            (_, _, _) => 0, (hwnd, message, wParam, lParam) =>
+            {
+                calls.Add((hwnd, message, wParam, lParam));
+                return nativeResult;
+            });
+        frame.RefreshBackdrop(84, true, false);
+        bool handled = false;
+        var result = frame.WindowProc(42, 0x0086, activation, 123, ref handled);
+        Assert.Multiple(() =>
+        {
+            Assert.That(calls, Is.EqualTo(new[] { ((nint)42, 0x0086, (nint)activation, (nint)(-1)) }));
+            Assert.That(result, Is.EqualTo((nint)nativeResult));
+            Assert.That(handled, Is.True);
+        });
+    }
+
+    [TestCase(0), TestCase(1), TestCase(123)]
+    public void NonClientPaintIsConsumedWithoutNativeDrawing(int region)
+    {
+        int calls = 0;
+        using var frame = new OHsWindowFrame(new Window(), _ => { }, _ => true, _ => { },
+            defaultWindowProc: (_, _, _, _) => { calls++; return 1; });
+        bool handled = false;
+        var result = frame.WindowProc(42, 0x0085, region, 0, ref handled);
+        Assert.Multiple(() =>
+        {
+            Assert.That(handled, Is.True);
+            Assert.That(result, Is.EqualTo((nint)0));
+            Assert.That(calls, Is.Zero);
+        });
+    }
+
+    [Test]
+    public void UnrelatedAndDisposedMessagesDoNotCallDefaultProcedure()
+    {
+        int calls = 0;
+        using var frame = new OHsWindowFrame(new Window(), _ => { }, _ => true, _ => { },
+            defaultWindowProc: (_, _, _, _) => { calls++; return 1; });
+        bool handled = false;
+        Assert.That(frame.WindowProc(42, 0x0400, 0, 0, ref handled), Is.EqualTo((nint)0));
+        Assert.That(handled, Is.False);
+        Assert.That(calls, Is.Zero);
+        frame.Dispose();
+        foreach (var message in new[] { 0x0086, 0x0085, 0x0083 })
+        {
+            handled = false;
+            Assert.That(frame.WindowProc(42, message, 1, 123, ref handled), Is.EqualTo((nint)0));
+            Assert.That(handled, Is.False);
+            Assert.That(calls, Is.Zero);
         }
     }
 
