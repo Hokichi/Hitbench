@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Runtime.InteropServices;
 using osuHitsounder.Services.Ui;
 
 namespace osuHitsounder.Test.Presentation;
@@ -6,6 +7,42 @@ namespace osuHitsounder.Test.Presentation;
 [Apartment(ApartmentState.STA), NonParallelizable]
 public class OHsWindowFrameTests
 {
+    [TestCase(0), TestCase(1)]
+    public void BothClientCalculationFormsPreserveFullWindowBounds(int form)
+    {
+        using var frame = new OHsWindowFrame(new Window(), _ => { }, _ => true, _ => { });
+        var rectangles = new[]
+        {
+            new NativeRect { Right = 1280, Bottom = 720 },
+            new NativeRect { Left = -1920, Right = 0, Bottom = 1040 },
+            new NativeRect { Left = -32000, Top = -32000, Right = -31840, Bottom = -31972 },
+            new NativeRect { Right = 1280, Bottom = 720 }
+        };
+        foreach (var bounds in rectangles)
+        {
+            var length = form == 0 ? Marshal.SizeOf<NativeRect>() : 3 * Marshal.SizeOf<NativeRect>() + IntPtr.Size;
+            var buffer = Marshal.AllocHGlobal(length);
+            try
+            {
+                Marshal.Copy(new byte[length], 0, buffer, length);
+                Marshal.StructureToPtr(bounds, buffer, false);
+                var before = new byte[length];
+                Marshal.Copy(buffer, before, 0, length);
+                bool handled = false;
+                var result = frame.WindowProc(0, 0x0083, form, buffer, ref handled);
+                var after = new byte[length];
+                Marshal.Copy(buffer, after, 0, length);
+                Assert.Multiple(() =>
+                {
+                    Assert.That(handled, Is.True);
+                    Assert.That(result, Is.EqualTo((nint)0));
+                    Assert.That(after, Is.EqualTo(before));
+                });
+            }
+            finally { Marshal.FreeHGlobal(buffer); }
+        }
+    }
+
     [Test]
     public void SupportedBackdropSucceedsOrFallsBackAndDisposesOnce()
     {

@@ -85,9 +85,9 @@ internal sealed class OHsWindowFrame : IDisposable
         DwmExtendFrameIntoClientArea(hwnd, ref margins);
     }
 
-    private nint WindowProc(nint hwnd, int message, nint wParam, nint lParam, ref bool handled)
+    internal nint WindowProc(nint hwnd, int message, nint wParam, nint lParam, ref bool handled)
     {
-        if (message == 0x0083 && wParam != 0) // WM_NCCALCSIZE
+        if (message == 0x0083) // WM_NCCALCSIZE: both forms retain the full proposed window rectangle.
         {
             handled = true;
             return 0;
