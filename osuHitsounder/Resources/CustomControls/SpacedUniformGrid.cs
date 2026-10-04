@@ -18,6 +18,10 @@ public class SpacedUniformGrid : VirtualizingPanel, IScrollInfo
     private int computedRows;
     private double cellWidth;
     private double cellHeight;
+    internal long MeasurePassCount { get; private set; }
+    internal long RealizationPassCount { get; private set; }
+    internal long PreparedContainerCount { get; private set; }
+    internal long RecycledContainerCount { get; private set; }
 
     public double HorizontalGap
     {
@@ -74,6 +78,7 @@ public class SpacedUniformGrid : VirtualizingPanel, IScrollInfo
 
     protected override Size MeasureOverride(Size availableSize)
     {
+        MeasurePassCount++;
         var owner = ItemsControl.GetItemsOwner(this);
         var itemCount = owner?.Items.Count ?? InternalChildren.Count;
         ComputeGridDimensions(itemCount);
@@ -118,6 +123,7 @@ public class SpacedUniformGrid : VirtualizingPanel, IScrollInfo
 
     private void RealizeFixedItems(ItemsControl owner, int itemCount)
     {
+        RealizationPassCount++;
         var generator = (IRecyclingItemContainerGenerator)((IItemContainerGenerator)owner.ItemContainerGenerator)
             .GetItemContainerGeneratorForPanel(this);
         var firstRow = Math.Max(0, (int)Math.Floor(VerticalOffset / RowStride));
@@ -140,6 +146,7 @@ public class SpacedUniformGrid : VirtualizingPanel, IScrollInfo
                 if (childIndex >= InternalChildren.Count) AddInternalChild(child);
                 else InsertInternalChild(childIndex, child);
                 generator.PrepareItemContainer(child);
+                PreparedContainerCount++;
             }
             child.Measure(new Size(cellWidth, cellHeight));
         }
@@ -153,6 +160,7 @@ public class SpacedUniformGrid : VirtualizingPanel, IScrollInfo
             var itemIndex = generator.IndexFromGeneratorPosition(position);
             if (itemIndex >= firstIndex && itemIndex <= finalIndex) continue;
             generator.Recycle(position, 1);
+            RecycledContainerCount++;
             RemoveInternalChildRange(childIndex, 1);
         }
     }

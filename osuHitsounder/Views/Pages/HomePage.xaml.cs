@@ -27,6 +27,7 @@ public partial class HomePage : UserControl
     private SongTileLayout? tileLayout;
     private bool updatingLayout;
     private double baselineHeaderHeight;
+    internal long SongsLayoutCalculationCount { get; private set; }
     private readonly CancellationTokenSource lifetime = new();
     private readonly TaskCompletionSource presentation = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -113,6 +114,7 @@ public partial class HomePage : UserControl
             FindDescendant<SpacedUniformGrid>(SongsList) is not { } panel ||
             FindScrollViewer(SongsList) is not { } viewer) return;
         updatingLayout = true;
+        SongsLayoutCalculationCount++;
         try
         {
             var scrollbar = viewer.Template.FindName("PART_VerticalScrollBar", viewer) as ScrollBar;

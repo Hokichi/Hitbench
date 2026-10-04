@@ -19,7 +19,7 @@ public sealed class InMemoryView : IDisposable
     private readonly bool inheritsFlowDirection;
     public FrameworkElement Root { get; }
 
-    public InMemoryView(Window window, bool processFrames = true)
+    public InMemoryView(Window window, bool processFrames = true, bool scheduleLayout = true)
     {
         this.processFrames = processFrames;
         previousContext = SynchronizationContext.Current;
@@ -34,6 +34,7 @@ public sealed class InMemoryView : IDisposable
         UpdateLayout();
         layout = new DispatcherTimer(TimeSpan.FromMilliseconds(10), DispatcherPriority.Background,
             (_, _) => UpdateLayout(), window.Dispatcher);
+        if (!scheduleLayout) layout.Stop();
     }
 
     public void UpdateLayout()

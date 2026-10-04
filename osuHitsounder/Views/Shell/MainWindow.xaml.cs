@@ -50,6 +50,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
     private readonly double defaultMinWidth;
     private readonly double defaultMinHeight;
     private DispatcherOperation? layoutRefresh;
+    internal long SongsLayoutRefreshCount { get; private set; }
 
     public MainWindow(HomePage page, IMessenger messenger, Func<WorkstationPage> createWorkstation,
         IAppSettingsService settings, Func<HomePage> createHome)
@@ -307,6 +308,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
         {
             if (closed || PageHost.Content != page || page.ActualWidth <= 0) return;
             var size = getWorkArea(this);
+            SongsLayoutRefreshCount++;
             if (size.IsEmpty || size.Width <= 0 || size.Height <= 0) return;
             // Named shell content uses a border and a header row. Measure their public layout values.
             var root = ShellRoot;
