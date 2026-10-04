@@ -371,7 +371,6 @@
         <Setter Property="Padding" Value="12" />
         <Setter Property="FontFamily" Value="{DynamicResource Bold}" />
         <Setter Property="FontSize" Value="12" />
-        <Setter Property="ShouldExpand" Value="True" />
         <Style.Triggers>
             <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
                 <Setter Property="DefaultBackground" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />

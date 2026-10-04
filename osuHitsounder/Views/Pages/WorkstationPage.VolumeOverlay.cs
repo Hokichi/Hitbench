@@ -4,32 +4,55 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using System.Diagnostics;
 using System.Windows.Media.Animation;
+using System.Windows.Media.Effects;
 using osuHitsounder.Resources.CustomControls;
 
 namespace osuHitsounder.Views.Pages;
 
 public partial class WorkstationPage
 {
-    private bool keyboardVolumeOverlay;
     private int volumeWheelRemainder;
     private IInputElement? volumePriorFocus;
     private DispatcherTimer? volumeIdleTimer;
     private long volumeLastActivity;
     private int volumeOverlayVersion;
     private bool volumeFading;
+    private bool volumeAnimate;
+    private double volumeBlurRadius;
+    private BlurEffect? volumeBlur;
 
     internal bool IsVolumeOverlayOpen => VolumeOverlay.Visibility == Visibility.Visible;
     internal VolumeWheel? ActiveVolumeWheel { get; private set; }
 
-    internal void ShowVolumeOverlay(bool keyboardInvoked, Point anchor)
+    internal void ShowVolumeOverlay(bool keyboardInvoked, Point anchor) =>
+        ShowVolumeOverlay(keyboardInvoked, anchor, SystemParameters.ClientAreaAnimation, SystemParameters.HighContrast);
+
+    internal void ShowVolumeOverlay(bool keyboardInvoked, Point anchor, bool animate, bool highContrast)
     {
-        keyboardVolumeOverlay = keyboardInvoked;
+        if (deactivationStarted) return;
+        var wasOpen = IsVolumeOverlayOpen;
+        var settingsChanged = volumeAnimate != animate || volumeBlurRadius != (highContrast ? 0 : 6);
+        volumeAnimate = animate;
+        volumeBlurRadius = highContrast ? 0 : 6;
         volumeWheelRemainder = 0;
-        if (keyboardInvoked && !IsVolumeOverlayOpen) volumePriorFocus = Keyboard.FocusedElement;
+        if (!wasOpen) volumePriorFocus = Keyboard.FocusedElement;
         VolumeOverlay.Visibility = Visibility.Visible;
+        if (!wasOpen)
+        {
+            VolumeOverlay.Opacity = 0;
+            volumeBlur ??= ((BlurEffect)FindResource("OHsWorkstationVolumeBlurEffect")).Clone();
+            volumeBlur.Radius = 0;
+            WorkstationContent.Effect = volumeBlurRadius > 0 ? volumeBlur : null;
+            AnimateVolumeOverlay(true, animate);
+        }
+        else
+        {
+            WorkstationContent.Effect = volumeBlurRadius > 0 ? volumeBlur : null;
+            if (settingsChanged && !volumeFading) AnimateVolumeOverlay(true, animate);
+        }
         ActivateVolumeWheel(ApplicationVolumeWheel);
         PositionVolumeOverlay();
-        if (keyboardInvoked) ApplicationVolumeWheel.Focus();
+        ApplicationVolumeWheel.Focus();
         RecordVolumeActivity();
     }
 
@@ -42,14 +65,19 @@ public partial class WorkstationPage
         VolumeOverlay.BeginAnimation(OpacityProperty, null);
         VolumeOverlay.Opacity = 1;
         VolumeOverlay.Visibility = Visibility.Collapsed;
-        var restore = keyboardVolumeOverlay ? volumePriorFocus as UIElement : null;
-        keyboardVolumeOverlay = false;
+        volumeBlur?.BeginAnimation(BlurEffect.RadiusProperty, null);
+        if (volumeBlur is not null) volumeBlur.Radius = 0;
+        WorkstationContent.Effect = null;
+        var restore = volumePriorFocus as UIElement;
         volumePriorFocus = null;
         volumeWheelRemainder = 0;
         if (ActiveVolumeWheel is not null) ActiveVolumeWheel.IsActive = false;
         ActiveVolumeWheel = null;
-        if (restore is { IsVisible: true, IsEnabled: true })
-            Dispatcher.BeginInvoke(DispatcherPriority.Input, () => restore.Focus());
+        if (!deactivationStarted && restore is { IsVisible: true, IsEnabled: true })
+            Dispatcher.BeginInvoke(DispatcherPriority.Input, () =>
+            {
+                if (!deactivationStarted && !IsVolumeOverlayOpen && restore is { IsVisible: true, IsEnabled: true }) restore.Focus();
+            });
     }
 
     internal void ActivateVolumeWheel(VolumeWheel wheel)
@@ -63,12 +91,13 @@ public partial class WorkstationPage
 
     internal bool HandleContextWheel(ModifierKeys modifiers, int delta, DependencyObject? origin)
     {
+        if (IsVolumeOverlayOpen && modifiers == ModifierKeys.None && IsVolumeOverlayElement(origin)) return false;
         if (modifiers != ModifierKeys.Alt)
         {
             volumeWheelRemainder = 0;
             return HandleWaveformWheel(modifiers, delta);
         }
-        if (!IsVolumeOverlayElement(origin) && IsSongAudioCardElement(origin))
+        if (!IsVolumeOverlayOpen && IsSongAudioCardElement(origin))
         {
             volumeWheelRemainder = 0;
             return HandleWaveformWheel(modifiers, delta);
@@ -151,10 +180,7 @@ public partial class WorkstationPage
     {
         if (!IsVolumeOverlayOpen) return;
         volumeLastActivity = Stopwatch.GetTimestamp();
-        volumeOverlayVersion++;
-        volumeFading = false;
-        VolumeOverlay.BeginAnimation(OpacityProperty, null);
-        VolumeOverlay.Opacity = 1;
+        if (volumeFading) AnimateVolumeOverlay(true, volumeAnimate);
         if (volumeIdleTimer is null)
         {
             volumeIdleTimer = new DispatcherTimer(DispatcherPriority.Background, Dispatcher) { Interval = TimeSpan.FromMilliseconds(50) };
@@ -168,12 +194,42 @@ public partial class WorkstationPage
         if (!IsVolumeOverlayOpen || volumeFading || idleFor < TimeSpan.FromSeconds(1)) return;
         volumeIdleTimer?.Stop();
         if (!animate) { DismissVolumeOverlay(); return; }
-        volumeFading = true;
-        var version = volumeOverlayVersion;
-        var animation = new DoubleAnimation(0, TimeSpan.FromMilliseconds(150))
-        { EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn } };
-        animation.Completed += (_, _) => { if (version == volumeOverlayVersion) DismissVolumeOverlay(); };
+        AnimateVolumeOverlay(false, true);
+    }
+
+    private void AnimateVolumeOverlay(bool opening, bool animate)
+    {
+        var version = ++volumeOverlayVersion;
+        volumeFading = !opening;
+        var opacity = VolumeOverlay.Opacity;
+        var radius = volumeBlur?.Radius ?? 0;
+        VolumeOverlay.BeginAnimation(OpacityProperty, null);
+        volumeBlur?.BeginAnimation(BlurEffect.RadiusProperty, null);
+        VolumeOverlay.Opacity = animate ? opacity : opening ? 1 : 0;
+        if (volumeBlur is not null) volumeBlur.Radius = animate ? radius : opening ? volumeBlurRadius : 0;
+        if (!animate)
+        {
+            if (!opening) DismissVolumeOverlay();
+            return;
+        }
+        var duration = TimeSpan.FromMilliseconds(200);
+        var easing = new QuadraticEase { EasingMode = opening ? EasingMode.EaseOut : EasingMode.EaseIn };
+        var animation = new DoubleAnimation(opacity, opening ? 1 : 0, duration) { EasingFunction = easing };
+        animation.Completed += (_, _) =>
+        {
+            if (version != volumeOverlayVersion || !IsVolumeOverlayOpen) return;
+            if (!opening) DismissVolumeOverlay();
+            else
+            {
+                VolumeOverlay.Opacity = 1;
+                if (volumeBlur is not null) volumeBlur.Radius = volumeBlurRadius;
+                VolumeOverlay.BeginAnimation(OpacityProperty, null);
+                volumeBlur?.BeginAnimation(BlurEffect.RadiusProperty, null);
+            }
+        };
         VolumeOverlay.BeginAnimation(OpacityProperty, animation);
+        volumeBlur?.BeginAnimation(BlurEffect.RadiusProperty,
+            new DoubleAnimation(radius, opening ? volumeBlurRadius : 0, duration) { EasingFunction = easing });
     }
 
     private void OnVolumeOverlayHostSizeChanged(object sender, SizeChangedEventArgs e)

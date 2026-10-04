@@ -409,6 +409,7 @@ public partial class WorkstationPage : UserControl
 
     internal bool HandlePlaybackKey(Key key, ModifierKeys modifiers, bool isRepeat, DependencyObject? origin)
     {
+        if (IsVolumeOverlayOpen) return true;
         if (deactivationStarted || !viewModel.CanPlay) return false;
         if (modifiers == ModifierKeys.Control && key is Key.Z or Key.Y)
         {
@@ -421,6 +422,7 @@ public partial class WorkstationPage : UserControl
         }
         if (key == Key.Space)
         {
+            if (FindAncestor<TextBoxBase>(origin) is not null || FindAncestor<PasswordBox>(origin) is not null) return false;
             if (modifiers is not (ModifierKeys.None or ModifierKeys.Shift)) return false;
             var transport = modifiers == ModifierKeys.Shift ? viewModel.StopCommand : viewModel.PlayPauseCommand;
             if (!transport.CanExecute(null)) return false;
@@ -506,10 +508,16 @@ public partial class WorkstationPage : UserControl
     private static DependencyObject? GetInputParent(DependencyObject current) =>
         current is Visual or Visual3D
             ? VisualTreeHelper.GetParent(current)
-            : LogicalTreeHelper.GetParent(current);
+            : current is FrameworkContentElement content ? content.Parent : LogicalTreeHelper.GetParent(current);
 
     internal bool HandleWaveformWheel(ModifierKeys modifiers, int delta)
     {
+        if (IsVolumeOverlayOpen)
+        {
+            wheelMode = ModifierKeys.None;
+            wheelRemainder = 0;
+            return true;
+        }
         if (modifiers is not ModifierKeys.Control and not ModifierKeys.Alt and not ModifierKeys.Shift and
             not (ModifierKeys.Control | ModifierKeys.Shift) ||
             !viewModel.CanZoom)

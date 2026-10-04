@@ -105,7 +105,7 @@ public sealed class WaveformView : FrameworkElement
     private void DrawMarker(DrawingContext context)
     {
         if (Data is null || Data.Duration <= TimeSpan.Zero || Data.Peaks.Count == 0) return;
-        var end = new Point(0, Math.Max(0, ActualHeight - 20));
+        var end = new Point(0, ActualHeight);
         if (!SystemParameters.HighContrast) context.DrawLine(new Pen(WaveformBrush, 3.5), new Point(), end);
         context.DrawLine(new Pen(SystemParameters.HighContrast ? SystemColors.WindowTextBrush : MarkerBrush, 1.5), new Point(), end);
     }

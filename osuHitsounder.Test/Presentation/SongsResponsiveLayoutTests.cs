@@ -186,7 +186,8 @@ public class SongsResponsiveLayoutTests
                 Assert.That(window.HandleWindowMouseWheel(true, ModifierKeys.Alt, 120, workstationPage), Is.True);
                 Assert.That(workstationViewModel.ApplicationVolume, Is.EqualTo(100));
                 Assert.That(window.HandleWindowMouseWheel(true, ModifierKeys.Shift, 120), Is.True);
-                Assert.That(window.HandleWindowMouseWheel(true, ModifierKeys.None, 120), Is.False);
+                Assert.That(window.HandleWindowMouseWheel(true, ModifierKeys.None, 120), Is.True);
+                Assert.That(workstationViewModel.ZoomFactor, Is.EqualTo(33));
             });
             var detachedEditor = new TextBox();
             using var detachedSource = new InMemoryPresentationSource { RootVisual = detachedEditor };
@@ -195,10 +196,12 @@ public class SongsResponsiveLayoutTests
             Assert.That(window.HandleWorkstationInput(false, key, ModifierKeys.None), Is.False);
             Assert.That(window.HandleWorkstationInput(true, key, ModifierKeys.None), Is.True);
             UiTestPump.Run(workstationPage.PlaybackInputCompletion);
-            Assert.That(workstationViewModel.IsPlaying, Is.True);
+            Assert.That(workstationViewModel.IsPlaying, Is.False);
+            workstationPage.DismissVolumeOverlay();
+            Assert.That(window.HandleWorkstationInput(true, key, ModifierKeys.None), Is.False);
             key.Handled = true;
             Assert.That(window.HandleWorkstationInput(true, key, ModifierKeys.None), Is.False);
-            Assert.That(workstationViewModel.IsPlaying, Is.True);
+            Assert.That(workstationViewModel.IsPlaying, Is.False);
         }
         finally
         {

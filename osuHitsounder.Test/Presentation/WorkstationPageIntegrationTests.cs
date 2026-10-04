@@ -780,7 +780,7 @@ public class WorkstationPageIntegrationTests
     }
 
     [Test]
-    public void SpaceTogglesPlaybackOncePerPressAcrossEditingInputs()
+    public void SpaceTogglesPlaybackOncePerPressExceptInsideTextInputs()
     {
         var audio = new StubWorkstationAudioService();
         var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new osuHitsounder.Services.MarkerPlaybackCoordinator(audio, (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
@@ -805,9 +805,9 @@ public class WorkstationPageIntegrationTests
         UiTestPump.Run(page.PlaybackInputCompletion);
             Assert.That(page.HandlePlaybackKey(Key.Enter, ModifierKeys.None, false, page), Is.False);
         UiTestPump.Run(page.PlaybackInputCompletion);
-            Assert.That(page.HandlePlaybackKey(Key.Space, ModifierKeys.None, false, new TextBox()), Is.True);
+            Assert.That(page.HandlePlaybackKey(Key.Space, ModifierKeys.None, false, new TextBox()), Is.False);
         UiTestPump.Run(page.PlaybackInputCompletion);
-            Assert.That(page.HandlePlaybackKey(Key.Space, ModifierKeys.None, false, new PasswordBox()), Is.True);
+            Assert.That(page.HandlePlaybackKey(Key.Space, ModifierKeys.None, false, new PasswordBox()), Is.False);
         UiTestPump.Run(page.PlaybackInputCompletion);
         });
 

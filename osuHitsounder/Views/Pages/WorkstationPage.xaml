@@ -10,6 +10,15 @@
     d:DesignWidth="1100"
     mc:Ignorable="d">
     <UserControl.Resources>
+        <BlurEffect x:Key="OHsWorkstationVolumeBlurEffect" Radius="0" />
+        <Style x:Key="OHsWorkstationContentStyle" TargetType="Grid" BasedOn="{StaticResource BaseGridStyle}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Visibility, ElementName=VolumeOverlay, Mode=OneWay}" Value="Visible">
+                    <Setter Property="IsEnabled" Value="False" />
+                    <Setter Property="IsHitTestVisible" Value="False" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
         <SolidColorBrush x:Key="OHsWorkstationPlaybackMarkerBrush" Color="White" />
         <Style
             x:Key="OHsWorkstationPanelStyle"
@@ -220,6 +229,7 @@
             x:Key="OHsWorkstationVolumeStyle"
             BasedOn="{StaticResource OHsValueSliderStyle}"
             TargetType="customControls:ValueSlider">
+            <Setter Property="IsMoveToPointEnabled" Value="True" />
             <Setter Property="Minimum" Value="5" />
             <Setter Property="Maximum" Value="100" />
             <Setter Property="TickFrequency" Value="1" />
@@ -467,6 +477,7 @@
     </UserControl.Resources>
     <Grid Style="{StaticResource BaseGridStyle}">
     <Grid x:Name="WorkstationRoot" Margin="16" IsEnabled="{Binding IsInteractionReady, Mode=OneWay}" SizeChanged="OnVolumeOverlayHostSizeChanged">
+        <Grid x:Name="WorkstationContent" Style="{StaticResource OHsWorkstationContentStyle}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -638,10 +649,10 @@
                 </StackPanel>
             </WrapPanel>
         </Grid>
+        </Grid>
         <Border
             x:Name="VolumeOverlay"
             PreviewMouseMove="OnVolumeOverlayMouseMove"
-            Grid.RowSpan="4"
             Panel.ZIndex="10"
             Width="320"
             FlowDirection="LeftToRight"

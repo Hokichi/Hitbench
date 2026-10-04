@@ -118,7 +118,8 @@ public class VolumeWheelTests
             var overlay = (Border)page.FindName("VolumeOverlay");
             Assert.That(overlay.HasAnimatedProperties, Is.True);
             page.RecordVolumeActivity();
-            Assert.That(overlay.HasAnimatedProperties, Is.False);
+            Assert.That(overlay.HasAnimatedProperties, Is.EqualTo(SystemParameters.ClientAreaAnimation));
+            UiTestPump.Run(Task.Delay(250));
             Assert.That(overlay.Opacity, Is.EqualTo(1));
             page.ApplicationVolumeWheel.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, MouseButton.Left) { RoutedEvent = Mouse.MouseDownEvent });
             page.DismissVolumeOverlay();
@@ -138,7 +139,8 @@ public class VolumeWheelTests
             page.ProcessVolumeOverlayIdle(TimeSpan.FromSeconds(1), true);
             var overlay = (Border)page.FindName("VolumeOverlay");
             overlay.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, 0) { RoutedEvent = Mouse.PreviewMouseMoveEvent });
-            Assert.That(overlay.HasAnimatedProperties, Is.False);
+            Assert.That(overlay.HasAnimatedProperties, Is.EqualTo(SystemParameters.ClientAreaAnimation));
+            UiTestPump.Run(Task.Delay(250));
             Assert.That(overlay.Opacity, Is.EqualTo(1));
         }
     }
