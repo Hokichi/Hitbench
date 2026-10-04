@@ -24,6 +24,8 @@ public partial class WorkstationPageVM
 
     private void PublishNodeChange()
     {
+        CancelNodeDrag();
+        PruneNodeSelection();
         samplesRevision++;
         OnPropertyChanged(nameof(SamplesRevision));
         NotifyHistoryState();
