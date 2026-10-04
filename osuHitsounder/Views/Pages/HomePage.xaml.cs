@@ -27,6 +27,14 @@ public partial class HomePage : UserControl
     private SongTileLayout? tileLayout;
     private bool updatingLayout;
     private double baselineHeaderHeight;
+    private readonly SongScrollMotion scrollMotion = new();
+    private SpacedUniformGrid? songsPanel;
+    private ScrollViewer? songsViewer;
+    private ControlTemplate? songsTemplate;
+    private bool renderingSubscribed;
+    private long motionClockStart;
+    private TimeSpan motionTimeStart;
+    private (double Width, double Height, double Stride, int Columns, FlowDirection Direction) motionGeometry;
     internal long SongsLayoutCalculationCount { get; private set; }
     private readonly CancellationTokenSource lifetime = new();
     private readonly TaskCompletionSource presentation = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -43,6 +51,85 @@ public partial class HomePage : UserControl
     public string? FatalError => viewModel.FatalError;
     public SongImageLoader ImageLoader { get; } = new();
     public bool RequiresShutdown => viewModel.RequiresShutdown;
+    internal bool HandleSongsMouseWheel(int delta, int wheelLines, bool animate, TimeSpan now)
+    {
+        if (!attached || !viewModel.CanInteract || delta == 0 || !GetSongsParts() || songsPanel!.ViewportHeight <= 0) return false;
+        var panel = songsPanel;
+        if (scrollMotion.IsActive && panel.VerticalScrollRequestVersion != lastScrollRequest) CancelSongsScrollMotion();
+        var offset = scrollMotion.Request(delta, wheelLines, panel.RowStride, panel.ViewportHeight,
+            Math.Max(0, panel.ExtentHeight - panel.ViewportHeight), panel.VerticalOffset, now, animate);
+        panel.BeginScrollRequest();
+        lastScrollRequest = panel.VerticalScrollRequestVersion;
+        songsScrollInput = wheelLines != 0;
+        motionGeometry = GetMotionGeometry(panel);
+        panel.SetAnimatedVerticalOffset(offset);
+        motionClockStart = Stopwatch.GetTimestamp();
+        motionTimeStart = now;
+        if (scrollMotion.IsActive && !renderingSubscribed)
+        {
+            CompositionTarget.Rendering += OnSongScrollRendering;
+            renderingSubscribed = true;
+        }
+        else if (!scrollMotion.IsActive) StopSongScrollRendering();
+        QueueCheck();
+        return true;
+    }
+
+    internal void ProcessSongScrollFrame(TimeSpan now)
+    {
+        if (!attached || !GetSongsParts() || !scrollMotion.IsActive) return;
+        var panel = songsPanel!;
+        if (panel.VerticalScrollRequestVersion != lastScrollRequest || GetMotionGeometry(panel) != motionGeometry)
+        {
+            CancelSongsScrollMotion();
+            return;
+        }
+        panel.SetAnimatedVerticalOffset(scrollMotion.Advance(now, Math.Max(0, panel.ExtentHeight - panel.ViewportHeight)));
+        if (!scrollMotion.IsActive) StopSongScrollRendering();
+        QueueCheck();
+    }
+
+    private static (double, double, double, int, FlowDirection) GetMotionGeometry(SpacedUniformGrid panel) =>
+        (panel.ViewportWidth, panel.ViewportHeight, panel.RowStride, panel.Columns, panel.FlowDirection);
+
+    private void OnSongScrollRendering(object? sender, EventArgs e)
+    {
+        if (!SystemParameters.ClientAreaAnimation || SystemParameters.HighContrast)
+            ProcessSongScrollFrame(motionTimeStart + TimeSpan.FromMilliseconds(160));
+        else ProcessSongScrollFrame(motionTimeStart + Stopwatch.GetElapsedTime(motionClockStart));
+    }
+
+    internal void CancelSongsScrollMotion()
+    {
+        StopSongScrollRendering();
+        scrollMotion.Cancel(songsPanel?.VerticalOffset ?? 0);
+        songsScrollInput = false;
+    }
+
+    private void StopSongScrollRendering()
+    {
+        if (!renderingSubscribed) return;
+        CompositionTarget.Rendering -= OnSongScrollRendering;
+        renderingSubscribed = false;
+    }
+
+    private void OnSongsPreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (!e.Handled) e.Handled = HandleSongsMouseWheel(e.Delta, SystemParameters.WheelScrollLines,
+            SystemParameters.ClientAreaAnimation && !SystemParameters.HighContrast, Stopwatch.GetElapsedTime(0));
+    }
+
+    private bool GetSongsParts()
+    {
+        if (ReferenceEquals(songsTemplate, SongsList.Template) && songsPanel is not null &&
+            songsViewer is not null && songsPanel.IsDescendantOf(SongsList)) return true;
+        CancelSongsScrollMotion();
+        songsTemplate = SongsList.Template;
+        songsViewer = FindScrollViewer(SongsList);
+        songsPanel = FindDescendant<SpacedUniformGrid>(SongsList);
+        lastScrollRequest = songsPanel?.VerticalScrollRequestVersion ?? 0;
+        return songsViewer is not null && songsPanel is not null;
+    }
     public async Task LoadAsync(CancellationToken cancellationToken)
     {
         try
@@ -77,6 +164,7 @@ public partial class HomePage : UserControl
         attached = true;
         ProjectsList.AddHandler(ScrollViewer.ScrollChangedEvent, new ScrollChangedEventHandler(OnScrollChanged));
         SongsList.AddHandler(ScrollViewer.ScrollChangedEvent, new ScrollChangedEventHandler(OnScrollChanged));
+        SongsList.PreviewMouseWheel += OnSongsPreviewMouseWheel;
         SizeChanged += OnSizeChanged;
         LayoutUpdated += OnLayoutUpdated;
         IsVisibleChanged += OnVisibilityChanged;
@@ -87,11 +175,14 @@ public partial class HomePage : UserControl
     private void OnUnloaded(object sender, RoutedEventArgs e) => Deactivate();
     private void OnScrollChanged(object sender, ScrollChangedEventArgs e)
     {
-        if (ReferenceEquals(e.OriginalSource, FindScrollViewer(SongsList)) &&
-            FindDescendant<SpacedUniformGrid>(SongsList) is { } panel)
+        if (GetSongsParts() && ReferenceEquals(e.OriginalSource, songsViewer))
         {
+            var panel = songsPanel!;
             if (panel.VerticalScrollRequestVersion != lastScrollRequest)
+            {
+                CancelSongsScrollMotion();
                 songsScrollInput = true;
+            }
             lastScrollRequest = panel.VerticalScrollRequestVersion;
         }
         QueueCheck();
@@ -99,6 +190,7 @@ public partial class HomePage : UserControl
     private void OnSizeChanged(object sender, SizeChangedEventArgs e)
     {
         songsScrollInput = false;
+        CancelSongsScrollMotion();
         QueueCheck();
     }
 
@@ -169,11 +261,13 @@ public partial class HomePage : UserControl
     {
         if (e.PropertyName == nameof(HomePageVM.SongsInventoryGeneration))
         {
+            CancelSongsScrollMotion();
             ReleaseSongImages();
             ImageLoader.Clear();
         }
         if (e.PropertyName == nameof(HomePageVM.SongsPresentationGeneration))
         {
+            CancelSongsScrollMotion();
             songsScrollInput = false;
             FindScrollViewer(SongsList)?.ScrollToTop();
             HideSongs();
@@ -250,7 +344,7 @@ public partial class HomePage : UserControl
     private async Task CheckSongsAsync()
     {
         if (!attached || viewModel.IsSearchingSongs) return;
-        var panel = FindDescendant<SpacedUniformGrid>(SongsList);
+        var panel = GetSongsParts() ? songsPanel : null;
         if (panel is null) return;
 
         if (viewModel.IsAwaitingSongsPresentation)
@@ -281,16 +375,22 @@ public partial class HomePage : UserControl
             return;
         }
 
-        var scrollRequested = songsScrollInput;
-        songsScrollInput = false;
-        if (!scrollRequested || !panel.IsPrefetchThresholdReached) return;
+        if (!songsScrollInput) return;
+        if (!panel.IsPrefetchThresholdReached)
+        {
+            if (!scrollMotion.IsActive) songsScrollInput = false;
+            return;
+        }
         var requestedCount = panel.ItemsPerViewport;
         if (viewModel.LoadMoreSongsCommand.CanExecute(requestedCount))
+        {
+            songsScrollInput = false;
             await viewModel.LoadMoreSongsCommand.ExecuteAsync(requestedCount);
+        }
     }
 
     private static ScrollViewer? FindScrollViewer(ItemsControl list) =>
-        list.Template.FindName("PART_ScrollViewer", list) as ScrollViewer;
+        list.Template?.FindName("PART_ScrollViewer", list) as ScrollViewer;
 
     private static T? FindDescendant<T>(DependencyObject parent) where T : DependencyObject
     {
@@ -371,9 +471,14 @@ public partial class HomePage : UserControl
     {
         if (!attached) return;
         attached = false;
+        CancelSongsScrollMotion();
+        songsPanel = null;
+        songsViewer = null;
+        songsTemplate = null;
         queuedCheck?.Abort();
         ProjectsList.RemoveHandler(ScrollViewer.ScrollChangedEvent, new ScrollChangedEventHandler(OnScrollChanged));
         SongsList.RemoveHandler(ScrollViewer.ScrollChangedEvent, new ScrollChangedEventHandler(OnScrollChanged));
+        SongsList.PreviewMouseWheel -= OnSongsPreviewMouseWheel;
         SizeChanged -= OnSizeChanged;
         LayoutUpdated -= OnLayoutUpdated;
         IsVisibleChanged -= OnVisibilityChanged;

@@ -1,0 +1,134 @@
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+using CommunityToolkit.Mvvm.Messaging;
+using osuHitsounder.Resources.DataModels;
+using osuHitsounder.ViewModels.Shell.HomePage;
+using osuHitsounder.Views.Pages;
+
+namespace osuHitsounder.Test.Presentation;
+
+[Apartment(ApartmentState.STA), NonParallelizable]
+public class HomePageSongScrollingTests
+{
+    private HomePageVM vm = null!;
+    private HomePage page = null!;
+    private Window window = null!;
+    private InMemoryView view = null!;
+    [SetUp]
+    public void SetUp()
+    {
+        new SongsResponsiveLayoutTests().SetUp();
+        vm = new HomePageVM(new StubHomeFolderService
+            { Songs = (_, _) => Task.FromResult<FolderSnapshot?>(new FolderSnapshot(Enumerable.Range(0, 500).Select(i =>
+                new FolderEntry($@"C:\Songs\{i:D3}", $"{i:D3}", DateTimeOffset.MinValue)))) },
+            new StubAppSettingsService(), new StubInstallationDialogService(), new StubProjectCreationDialogService(),
+            new ImmediateUiScheduler(), new StubProjectFileService((_, _, _) => Task.FromResult("saved.json")), new WeakReferenceMessenger());
+        page = new HomePage(vm);
+        window = new Window { Content = page, Width = 1920, Height = 1040 };
+        view = new InMemoryView(window);
+        page.UpdateSongsLayout(new Size(1920, 1040));
+        UiTestPump.Run(page.LoadAsync(CancellationToken.None));
+        view.UpdateLayout();
+    }
+    [TearDown]
+    public void TearDown() { view.Dispose(); window.Close(); }
+
+    [Test]
+    public void SongsWheelHandlesDeltaExactlyOnceAndFractionalTravel()
+    {
+        UiTestPump.Run(vm.LoadMoreSongsCommand.ExecuteAsync(300));
+        view.UpdateLayout();
+        var panel = SongsScrollPerformanceTests.FindPanel(page);
+        var version = panel.VerticalScrollRequestVersion;
+        Assert.That(page.HandleSongsMouseWheel(-30, 3, false, TimeSpan.Zero), Is.True);
+        Assert.That(panel.VerticalOffset, Is.EqualTo(.75 * panel.RowStride).Within(.001));
+        Assert.That(panel.VerticalScrollRequestVersion, Is.EqualTo(version + 1));
+        page.HandleSongsMouseWheel(-240, 3, false, TimeSpan.Zero);
+        Assert.That(panel.VerticalOffset, Is.EqualTo(6.75 * panel.RowStride).Within(.001));
+        var list = (ItemsControl)page.FindName("SongsList");
+        var wheel = new MouseWheelEventArgs(Mouse.PrimaryDevice, 0, -120) { RoutedEvent = Mouse.PreviewMouseWheelEvent };
+        var prior = panel.VerticalOffset;
+        list.RaiseEvent(wheel);
+        Assert.That(wheel.Handled, Is.True);
+        page.ProcessSongScrollFrame(TimeSpan.MaxValue);
+        var rows = SystemParameters.WheelScrollLines < 0 ? panel.ViewportHeight : SystemParameters.WheelScrollLines * panel.RowStride;
+        Assert.That(panel.VerticalOffset, Is.EqualTo(prior + rows).Within(.001));
+    }
+
+    [Test]
+    public void ThresholdReachedDuringMotionLoadsOneBatchAndAllowsReversalWhileLoading()
+    {
+        UiTestPump.Run(vm.LoadMoreSongsCommand.ExecuteAsync(40));
+        view.UpdateLayout();
+        var panel = SongsScrollPerformanceTests.FindPanel(page);
+        var max = panel.ExtentHeight - panel.ViewportHeight;
+        panel.SetVerticalOffset(max - panel.RowStride * 2);
+        view.UpdateLayout();
+        SongsScrollPerformanceTests.Drain();
+        var before = vm.Songs.Count;
+        bool reversedWhileLoading = false;
+        vm.Songs.CollectionChanged += (_, _) =>
+        {
+            if (reversedWhileLoading || !vm.IsLoadingSongs) return;
+            reversedWhileLoading = true;
+            var displayed = panel.VerticalOffset;
+            page.HandleSongsMouseWheel(120, 3, true, TimeSpan.FromMilliseconds(80));
+            page.ProcessSongScrollFrame(TimeSpan.FromMilliseconds(96));
+            Assert.That(panel.VerticalOffset, Is.LessThan(displayed));
+        };
+        page.HandleSongsMouseWheel(-120, 3, true, TimeSpan.Zero);
+        view.UpdateLayout();
+        SongsScrollPerformanceTests.Drain();
+        Assert.That(vm.Songs.Count, Is.EqualTo(before));
+        page.ProcessSongScrollFrame(TimeSpan.FromMilliseconds(80));
+        view.UpdateLayout();
+        UiTestPump.Run(window.Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle).Task);
+        if (vm.LoadMoreSongsCommand.ExecutionTask is { } loading) UiTestPump.Run(loading);
+        Assert.That(reversedWhileLoading, Is.True);
+        Assert.That(vm.Songs.Count, Is.EqualTo(before + panel.ItemsPerViewport));
+        page.ProcessSongScrollFrame(TimeSpan.FromMilliseconds(240));
+        view.UpdateLayout();
+        SongsScrollPerformanceTests.Drain();
+        Assert.That(vm.Songs.Count, Is.EqualTo(before + panel.ItemsPerViewport));
+    }
+
+    [Test]
+    public void DirectOffsetsSearchTemplateReplacementAndUnloadCancelWheelTail()
+    {
+        UiTestPump.Run(vm.LoadMoreSongsCommand.ExecuteAsync(300));
+        view.UpdateLayout();
+        var panel = SongsScrollPerformanceTests.FindPanel(page);
+        page.HandleSongsMouseWheel(-120, 3, true, TimeSpan.Zero);
+        panel.SetVerticalOffset(12);
+        page.ProcessSongScrollFrame(TimeSpan.FromMilliseconds(80));
+        Assert.That(panel.VerticalOffset, Is.EqualTo(12));
+        page.HandleSongsMouseWheel(-120, 3, true, TimeSpan.Zero);
+        panel.LineDown();
+        var keyboardOffset = panel.VerticalOffset;
+        page.ProcessSongScrollFrame(TimeSpan.FromMilliseconds(80));
+        Assert.That(panel.VerticalOffset, Is.EqualTo(keyboardOffset));
+        var list = (ItemsControl)page.FindName("SongsList");
+        page.HandleSongsMouseWheel(-120, 3, true, TimeSpan.Zero);
+        var template = list.Template;
+        list.Template = null;
+        list.ApplyTemplate();
+        list.Template = template;
+        view.UpdateLayout();
+        page.ProcessSongScrollFrame(TimeSpan.FromMilliseconds(160));
+        var replacement = SongsScrollPerformanceTests.FindPanel(page);
+        Assert.That(replacement, Is.Not.SameAs(panel));
+        Assert.That(replacement.VerticalOffset, Is.Zero);
+        page.HandleSongsMouseWheel(-120, 3, true, TimeSpan.Zero);
+        vm.SongSearchText = "499";
+        UiTestPump.Run(vm.SearchSongsCommand.ExecutionTask!);
+        view.UpdateLayout();
+        page.ProcessSongScrollFrame(TimeSpan.FromMilliseconds(160));
+        Assert.That(replacement.VerticalOffset, Is.Zero);
+        view.UpdateLayout();
+        page.Deactivate();
+        Assert.That(page.HandleSongsMouseWheel(-120, 3, true, TimeSpan.Zero), Is.False);
+        page.ProcessSongScrollFrame(TimeSpan.MaxValue);
+        Assert.That(replacement.VerticalOffset, Is.Zero);
+    }
+}
