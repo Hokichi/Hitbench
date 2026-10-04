@@ -13,17 +13,20 @@ internal sealed class OHsWindowFrame : IDisposable
     private readonly Action<bool> publish;
     private readonly Func<nint, bool> enable;
     private readonly Action<nint> disable;
+    private readonly Func<nint, int, int, int> setWindowAttribute;
     private HwndSource? source;
     private nint handle;
     private bool disposed;
 
     internal OHsWindowFrame(Window window, Action<bool> setAcrylicEnabled,
-        Func<nint, bool>? enableBackdrop = null, Action<nint>? disableBackdrop = null)
+        Func<nint, bool>? enableBackdrop = null, Action<nint>? disableBackdrop = null,
+        Func<nint, int, int, int>? setWindowAttribute = null)
     {
         this.window = window;
         publish = setAcrylicEnabled;
         enable = enableBackdrop ?? EnableBackdrop;
         disable = disableBackdrop ?? DisableBackdrop;
+        this.setWindowAttribute = setWindowAttribute ?? SetWindowAttribute;
         window.SourceInitialized += OnSourceInitialized;
         window.Activated += OnEnvironmentChanged;
         window.StateChanged += OnEnvironmentChanged;
@@ -43,7 +46,8 @@ internal sealed class OHsWindowFrame : IDisposable
         Refresh();
     }
 
-    private void Refresh() => RefreshBackdrop(handle, OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22621), SystemParameters.HighContrast);
+    private void Refresh() => RefreshBackdrop(handle, OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22621),
+        SystemParameters.HighContrast, OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000));
     private void OnEnvironmentChanged(object? sender, EventArgs e) => Refresh();
     private void OnSystemChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -51,7 +55,7 @@ internal sealed class OHsWindowFrame : IDisposable
         else window.Dispatcher.BeginInvoke(new Action(Refresh));
     }
 
-    internal void RefreshBackdrop(nint windowHandle, bool supported, bool highContrast)
+    internal void RefreshBackdrop(nint windowHandle, bool supported, bool highContrast, bool borderSupported = true)
     {
         if (disposed) return;
         handle = windowHandle;
@@ -59,12 +63,21 @@ internal sealed class OHsWindowFrame : IDisposable
         try { enabled = handle != 0 && supported && !highContrast && enable(handle); }
         catch (ExternalException) { }
         if (!enabled && handle != 0) disable(handle);
+        if (handle != 0 && borderSupported)
+        {
+            // ShellRoot owns the visible border, including the high-contrast fallback.
+            try { setWindowAttribute(handle, 34, unchecked((int)0xFFFFFFFE)); } // DWMWA_BORDER_COLOR / COLOR_NONE
+            catch (ExternalException) { }
+        }
         if (source?.CompositionTarget is { } target)
             target.BackgroundColor = enabled ? Colors.Transparent : GetMainColor();
         publish(enabled);
     }
 
     private Color GetMainColor() => window.TryFindResource("Color.Background.Main") is Color color ? color : SystemColors.WindowColor;
+
+    private static int SetWindowAttribute(nint hwnd, int attribute, int value) =>
+        DwmSetWindowAttribute(hwnd, attribute, ref value, sizeof(int));
 
     private bool EnableBackdrop(nint hwnd)
     {

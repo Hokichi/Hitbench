@@ -50,7 +50,7 @@ public class OHsWindowFrameTests
         bool succeeds = true;
         int calls = 0, resets = 0;
         var frame = new OHsWindowFrame(new Window(), value => enabled = value,
-            _ => { calls++; return succeeds; }, _ => resets++);
+            _ => { calls++; return succeeds; }, _ => resets++, (_, _, _) => 0);
         frame.RefreshBackdrop(42, true, false);
         Assert.That(enabled, Is.True);
         frame.RefreshBackdrop(42, true, true);
@@ -66,6 +66,63 @@ public class OHsWindowFrameTests
         frame.RefreshBackdrop(42, true, false);
         Assert.That(resets, Is.EqualTo(prior));
         Assert.That(calls, Is.EqualTo(2));
+    }
+
+    [Test]
+    public void BorderSuppressionSurvivesRefreshAndFallback()
+    {
+        var calls = new List<(nint Handle, int Attribute, int Value)>();
+        var order = new List<string>();
+        bool enabled = false, succeeds = true;
+        using var frame = new OHsWindowFrame(new Window(), value => enabled = value,
+            _ => succeeds, _ => order.Add("disable"), (handle, attribute, value) =>
+            {
+                calls.Add((handle, attribute, value));
+                order.Add("border");
+                return 0;
+            });
+        frame.RefreshBackdrop(42, true, false);
+        Assert.That(enabled, Is.True);
+        frame.RefreshBackdrop(42, true, false);
+        frame.RefreshBackdrop(42, true, true);
+        Assert.That(enabled, Is.False);
+        succeeds = false;
+        frame.RefreshBackdrop(42, true, false);
+        frame.RefreshBackdrop(42, false, false, borderSupported: true);
+        Assert.That(enabled, Is.False);
+        Assert.That(calls, Is.EqualTo(Enumerable.Repeat(((nint)42, 34, unchecked((int)0xFFFFFFFE)), 5)));
+        Assert.That(order, Is.EqualTo(new[] { "border", "border", "disable", "border", "disable", "border", "disable", "border" }));
+    }
+
+    [Test]
+    public void UnsupportedBorderAndDisposedRefreshDoNotCallNative()
+    {
+        int calls = 0;
+        using var frame = new OHsWindowFrame(new Window(), _ => { }, _ => true, _ => { },
+            (_, _, _) => { calls++; return 0; });
+        frame.RefreshBackdrop(0, true, false);
+        frame.RefreshBackdrop(42, true, false, borderSupported: false);
+        frame.Dispose();
+        frame.RefreshBackdrop(42, true, false);
+        Assert.That(calls, Is.Zero);
+    }
+
+    [TestCase(false), TestCase(true)]
+    public void BorderAttributeFailureDoesNotDisableAcrylic(bool throws)
+    {
+        bool enabled = false;
+        int calls = 0, resets = 0;
+        using var frame = new OHsWindowFrame(new Window(), value => enabled = value, _ => true,
+            _ => resets++, (_, _, _) =>
+            {
+                calls++;
+                if (throws) throw new ExternalException("Unsupported border attribute");
+                return unchecked((int)0x80070057);
+            });
+        Assert.DoesNotThrow(() => frame.RefreshBackdrop(42, true, false));
+        Assert.That(calls, Is.EqualTo(1));
+        Assert.That(enabled, Is.True);
+        Assert.That(resets, Is.Zero);
     }
 
     [TestCase(4, 100, 10), TestCase(1276, 100, 11), TestCase(100, 4, 12)]
