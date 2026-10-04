@@ -9,6 +9,73 @@ namespace osuHitsounder.Test.Presentation;
 [NonParallelizable]
 public class SpacedUniformGridTests
 {
+    [TestCase(2000, FlowDirection.LeftToRight), TestCase(20000, FlowDirection.RightToLeft)]
+    public void OffsetsInsideRealizedRangeDoNotMeasureOrRegenerate(int count, FlowDirection direction)
+    {
+        var items = CreateItemsControl(direction);
+        items.ItemsSource = Enumerable.Range(0, count);
+        var window = new Window { Content = items, Width = 700, Height = 500 };
+        using var view = new InMemoryView(window, scheduleLayout: false);
+        var panel = Descendants<SpacedUniformGrid>(items).Single();
+        panel.SetVerticalOffset(360.25);
+        view.UpdateLayout();
+        var measures = panel.MeasurePassCount;
+        var realized = panel.RealizationPassCount;
+        var prepared = panel.PreparedContainerCount;
+        var first = (FrameworkElement)panel.Children[0];
+        var y = first.TranslatePoint(new Point(), panel).Y;
+        panel.SetVerticalOffset(360.75);
+        view.UpdateLayout();
+        Assert.Multiple(() =>
+        {
+            Assert.That(panel.MeasurePassCount, Is.EqualTo(measures));
+            Assert.That(panel.RealizationPassCount, Is.EqualTo(realized));
+            Assert.That(panel.PreparedContainerCount, Is.EqualTo(prepared));
+            Assert.That(first.TranslatePoint(new Point(), panel).Y, Is.EqualTo(y - .5).Within(.01));
+        });
+        var version = panel.VerticalScrollRequestVersion;
+        panel.BeginScrollRequest();
+        panel.SetAnimatedVerticalOffset(360.25);
+        panel.SetAnimatedVerticalOffset(360.75);
+        Assert.That(panel.VerticalScrollRequestVersion, Is.EqualTo(version + 1));
+        panel.SetVerticalOffset(480);
+        view.UpdateLayout();
+        Assert.That(panel.MeasurePassCount, Is.GreaterThan(measures));
+        Assert.That(panel.PreparedContainerCount - prepared, Is.LessThanOrEqualTo(8));
+        Assert.That(panel.Children.Count, Is.LessThanOrEqualTo((panel.VisibleRowCount + 3) * 4));
+        items.ItemsSource = Enumerable.Range(0, 4);
+        view.UpdateLayout();
+        Assert.That(panel.VerticalOffset, Is.Zero);
+        Assert.That(panel.Children.Count, Is.EqualTo(4));
+        items.ItemsSource = Array.Empty<int>();
+        view.UpdateLayout();
+        Assert.That(panel.Children.Count, Is.Zero);
+        Assert.That(panel.ExtentHeight, Is.Zero);
+        window.Close();
+    }
+    [Test]
+    public void CollectionRemovalAndGeometryChangesKeepViewportClamped()
+    {
+        var source = new System.Collections.ObjectModel.ObservableCollection<int>(Enumerable.Range(0, 80));
+        var items = CreateItemsControl(FlowDirection.LeftToRight);
+        items.ItemsSource = source;
+        var window = new Window { Content = items, Width = 700, Height = 500 };
+        using var view = new InMemoryView(window, scheduleLayout: false);
+        var panel = Descendants<SpacedUniformGrid>(items).Single();
+        panel.SetVerticalOffset(double.MaxValue);
+        view.UpdateLayout();
+        source.RemoveAt(79);
+        source.RemoveAt(0);
+        view.UpdateLayout();
+        panel.Columns = 2;
+        panel.ItemHeight = 200;
+        window.Height = 800;
+        view.UpdateLayout();
+        Assert.That(panel.VerticalOffset, Is.InRange(0, panel.ExtentHeight - panel.ViewportHeight));
+        Assert.That(panel.Children.Cast<FrameworkElement>().Select(child => child.DataContext), Does.Not.Contain(79));
+        window.Close();
+    }
+
     [Test]
     public void FixedCardMathUsesFourColumnsAndFullyVisibleRows()
     {

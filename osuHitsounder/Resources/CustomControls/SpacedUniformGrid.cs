@@ -22,6 +22,9 @@ public class SpacedUniformGrid : VirtualizingPanel, IScrollInfo
     internal long RealizationPassCount { get; private set; }
     internal long PreparedContainerCount { get; private set; }
     internal long RecycledContainerCount { get; private set; }
+    private int realizedFirst = -1;
+    private int realizedLast = -1;
+    private int measuredItemCount;
 
     public double HorizontalGap
     {
@@ -81,6 +84,7 @@ public class SpacedUniformGrid : VirtualizingPanel, IScrollInfo
         MeasurePassCount++;
         var owner = ItemsControl.GetItemsOwner(this);
         var itemCount = owner?.Items.Count ?? InternalChildren.Count;
+        measuredItemCount = itemCount;
         ComputeGridDimensions(itemCount);
         if (ItemWidth <= 0 || ItemHeight <= 0)
             return MeasureAutoSized(availableSize, owner, itemCount);
@@ -132,6 +136,8 @@ public class SpacedUniformGrid : VirtualizingPanel, IScrollInfo
         var finalRow = Math.Min(computedRows - 1, finalVisibleRow + 1);
         var firstIndex = Math.Min(itemCount - 1, firstRow * computedColumns);
         var finalIndex = Math.Min(itemCount - 1, ((finalRow + 1) * computedColumns) - 1);
+        realizedFirst = firstIndex;
+        realizedLast = finalIndex;
 
         RecycleOutsideRange(generator, firstIndex, finalIndex);
 
@@ -148,8 +154,36 @@ public class SpacedUniformGrid : VirtualizingPanel, IScrollInfo
                 generator.PrepareItemContainer(child);
                 PreparedContainerCount++;
             }
-            child.Measure(new Size(cellWidth, cellHeight));
         }
+    }
+
+    protected override void OnItemsChanged(object sender, ItemsChangedEventArgs args)
+    {
+        realizedFirst = realizedLast = -1;
+        // The generator has already removed these mappings; remove their visuals without recycling twice.
+        if (args.Action == System.Collections.Specialized.NotifyCollectionChangedAction.Reset)
+            RemoveInternalChildRange(0, InternalChildren.Count);
+        else if (args.Action is System.Collections.Specialized.NotifyCollectionChangedAction.Remove or
+                 System.Collections.Specialized.NotifyCollectionChangedAction.Replace or
+                 System.Collections.Specialized.NotifyCollectionChangedAction.Move)
+        {
+            var index = args.Action == System.Collections.Specialized.NotifyCollectionChangedAction.Move
+                ? args.OldPosition.Index : args.Position.Index;
+            if (args.ItemUICount > 0 && index >= 0 && index < InternalChildren.Count)
+                RemoveInternalChildRange(index, Math.Min(args.ItemUICount, InternalChildren.Count - index));
+        }
+        base.OnItemsChanged(sender, args);
+        InvalidateMeasure();
+    }
+
+    private bool OffsetKeepsRealizedRange(double offset)
+    {
+        if (!IsMeasureValid || realizedFirst < 0 || ItemWidth <= 0 || ItemHeight <= 0 || RowStride <= 0 || measuredItemCount == 0) return false;
+        var firstRow = Math.Max(0, (int)Math.Floor(offset / RowStride));
+        var lastRow = Math.Min(computedRows - 1,
+            Math.Max(firstRow, (int)Math.Ceiling((offset + ViewportHeight) / RowStride) - 1) + 1);
+        return realizedFirst == Math.Min(measuredItemCount - 1, firstRow * computedColumns) &&
+            realizedLast == Math.Min(measuredItemCount - 1, (lastRow + 1) * computedColumns - 1);
     }
 
     private void RecycleOutsideRange(IRecyclingItemContainerGenerator generator, int firstIndex, int finalIndex)
@@ -276,18 +310,27 @@ public class SpacedUniformGrid : VirtualizingPanel, IScrollInfo
         if (AreClose(value, HorizontalOffset)) return;
         HorizontalOffset = value;
         ScrollOwner?.InvalidateScrollInfo();
-        InvalidateMeasure();
+        if (ItemWidth > 0 && ItemHeight > 0 && IsMeasureValid) InvalidateArrange();
+        else InvalidateMeasure();
     }
 
     public void SetVerticalOffset(double offset)
+        => ApplyVerticalOffset(offset, true);
+
+    private void ApplyVerticalOffset(double offset, bool userRequest)
     {
         var value = CanVerticallyScroll ? Clamp(offset, ExtentHeight, ViewportHeight) : 0;
         if (AreClose(value, VerticalOffset)) return;
-        VerticalScrollRequestVersion++;
+        if (userRequest) VerticalScrollRequestVersion++;
+        var arrangeOnly = OffsetKeepsRealizedRange(value);
         VerticalOffset = value;
         ScrollOwner?.InvalidateScrollInfo();
-        InvalidateMeasure();
+        if (arrangeOnly) InvalidateArrange();
+        else InvalidateMeasure();
     }
+
+    internal void BeginScrollRequest() => VerticalScrollRequestVersion++;
+    internal void SetAnimatedVerticalOffset(double offset) => ApplyVerticalOffset(offset, false);
 
     public Rect MakeVisible(Visual visual, Rect rectangle)
     {
@@ -317,5 +360,6 @@ public class SpacedUniformGrid : VirtualizingPanel, IScrollInfo
     private static DependencyProperty RegisterLayoutProperty<T>(string name, T defaultValue) =>
         DependencyProperty.Register(name, typeof(T), typeof(SpacedUniformGrid),
             new FrameworkPropertyMetadata(defaultValue,
-                FrameworkPropertyMetadataOptions.AffectsMeasure | FrameworkPropertyMetadataOptions.AffectsArrange));
+                FrameworkPropertyMetadataOptions.AffectsMeasure | FrameworkPropertyMetadataOptions.AffectsArrange,
+                (owner, _) => { var panel = (SpacedUniformGrid)owner; panel.realizedFirst = panel.realizedLast = -1; }));
 }
