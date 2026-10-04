@@ -1,0 +1,84 @@
+using osuHitsounder.Core.Entities;
+using osuHitsounder.Services;
+
+namespace osuHitsounder.Test.Services;
+
+public class NodeHistoryBatchTests
+{
+    [Test]
+    public void MovementReplaysWholeGroupWithOriginalIdentity()
+    {
+        var a = new Sample { Timestamp = 375, Volume = 37 };
+        var b = new Sample { Timestamp = 500 };
+        var first = new Track { Samples = [a] };
+        var second = new Track { Samples = [b] };
+        var history = new NodeHistoryManager();
+        history.RecordBatch([new(first, a, 0, NodeHistoryOperation.Movement, 125, 375), new(second, b, 0, NodeHistoryOperation.Movement, 250, 500)]);
+        Assert.That(history.Undo([first, second]), Is.True);
+        Assert.That(new[] { a.Timestamp, b.Timestamp }, Is.EqualTo(new[] { 125, 250 }));
+        Assert.That(a.Volume, Is.EqualTo(37));
+        Assert.That(history.Redo([first, second]), Is.True);
+        Assert.That(new[] { a.Timestamp, b.Timestamp }, Is.EqualTo(new[] { 375, 500 }));
+        Assert.That(first.Samples.Single(), Is.SameAs(a));
+    }
+
+    [Test]
+    public void RemovalRestoresAdjacentIndexesAndCurrentTrackFile()
+    {
+        var left = new Sample(); var a = new Sample(); var b = new Sample(); var right = new Sample();
+        var track = new Track { Samples = [left, right], SelectedSampleFileName = "current.wav" };
+        var history = new NodeHistoryManager();
+        history.RecordBatch([new(track, b, 2, NodeHistoryOperation.Removal), new(track, a, 1, NodeHistoryOperation.Removal)]);
+        Assert.That(history.Undo([track]), Is.True);
+        Assert.That(track.Samples, Is.EqualTo(new[] { left, a, b, right }));
+        Assert.That(a.FileName, Is.EqualTo("current.wav"));
+        Assert.That(history.Redo([track]), Is.True);
+        Assert.That(track.Samples, Is.EqualTo(new[] { left, right }));
+    }
+
+    [Test]
+    public void InvalidLaterMemberDoesNotPartiallyReplayOrAdvance()
+    {
+        var a = new Sample { Timestamp = 375 }; var b = new Sample { Timestamp = 999 };
+        var first = new Track { Samples = [a] }; var second = new Track { Samples = [b] };
+        var history = new NodeHistoryManager();
+        history.RecordBatch([new(first, a, 0, NodeHistoryOperation.Movement, 125, 375), new(second, b, 0, NodeHistoryOperation.Movement, 250, 500)]);
+        Assert.That(history.Undo([first, second]), Is.False);
+        Assert.That(a.Timestamp, Is.EqualTo(375));
+        Assert.That(history.CanUndo, Is.True);
+        Assert.That(history.CanRedo, Is.False);
+    }
+
+    [Test]
+    public void PlacementBatchPrunesOnlyRemovedTrackAndPreservesRedo()
+    {
+        var a = new Sample(); var b = new Sample(); var c = new Sample();
+        var first = new Track { Samples = [a] }; var second = new Track { Samples = [b, c] };
+        var history = new NodeHistoryManager();
+        history.RecordBatch([new(first, a, 0, NodeHistoryOperation.Placement), new(second, b, 0, NodeHistoryOperation.Placement)]);
+        history.RecordPlacement(second, c, 1);
+        history.Undo([first, second]);
+        history.RemoveTrack(first);
+        Assert.That(history.Undo([second]), Is.True);
+        Assert.That(second.Samples, Is.Empty);
+        history.RecordBatch([]);
+        Assert.That(history.CanRedo, Is.True);
+        Assert.That(history.Redo([second]), Is.True);
+        Assert.That(second.Samples.Single(), Is.SameAs(b));
+        Assert.That(history.Redo([second]), Is.True);
+        Assert.That(second.Samples.Last(), Is.SameAs(c));
+    }
+
+    [Test]
+    public void NoOpMovementDoesNotInvalidateRedo()
+    {
+        var node = new Sample { Timestamp = 125 };
+        var track = new Track { Samples = [node] };
+        var history = new NodeHistoryManager();
+        history.RecordPlacement(track, node, 0);
+        history.Undo([track]);
+        history.RecordBatch([new(track, node, 0, NodeHistoryOperation.Movement, 125, 125)]);
+        Assert.That(history.CanRedo, Is.True);
+        Assert.That(history.CanUndo, Is.False);
+    }
+}
