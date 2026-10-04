@@ -6,6 +6,50 @@ public static class BeatGridCalculator
 {
     private static readonly HashSet<int> Supported = [1, 2, 3, 4, 5, 6, 8, 12, 16];
 
+    public static int? GetNearestTimestamp(IReadOnlyList<int> offsets, IReadOnlyList<int> bpms,
+        int subdivision, double requestedMilliseconds, double durationMilliseconds,
+        int minimumTimestamp = 0, int maximumTimestamp = int.MaxValue)
+    {
+        if (offsets.Count == 0 || offsets.Count != bpms.Count || !Supported.Contains(subdivision) ||
+            bpms.Any(bpm => bpm <= 0) || !double.IsFinite(requestedMilliseconds) ||
+            !double.IsFinite(durationMilliseconds) || durationMilliseconds <= 0 ||
+            minimumTimestamp < 0 || minimumTimestamp > maximumTimestamp) return null;
+        var maximum = Math.Min(maximumTimestamp, Math.Ceiling(durationMilliseconds) - 1);
+        if (minimumTimestamp > maximum) return null;
+        var target = Math.Clamp(requestedMilliseconds, minimumTimestamp, maximum);
+        var segments = offsets.Select((offset, index) => (Offset: offset, Bpm: bpms[index], Index: index))
+            .OrderBy(item => item.Offset).ThenBy(item => item.Index)
+            .GroupBy(item => item.Offset).Select(group => group.Last()).ToArray();
+        double bestDistance = double.PositiveInfinity, bestBeat = double.PositiveInfinity;
+        int? result = null;
+        for (var index = 0; index < segments.Length; index++)
+        {
+            var segment = segments[index];
+            var step = 60000d / segment.Bpm / subdivision;
+            var end = index + 1 < segments.Length ? Math.Min(durationMilliseconds, segments[index + 1].Offset) : durationMilliseconds;
+            var lower = Math.Max(0, minimumTimestamp - 0.5);
+            var upper = Math.Min(end, maximum + 0.5);
+            if (upper < lower || end <= segment.Offset) continue;
+            var first = Math.Max(0, Math.Floor((lower - segment.Offset) / step) - 1);
+            var last = Math.Floor((upper - segment.Offset) / step) + 1;
+            if (last < first) continue;
+            var nearest = Math.Clamp(Math.Floor((target - segment.Offset) / step), first, last);
+            foreach (var tick in new[] { first, first + 1, first + 2, last, last - 1, last - 2, nearest - 1, nearest, nearest + 1 })
+            {
+                if (tick < 0) continue;
+                var beat = segment.Offset + tick * step;
+                var timestamp = Math.Round(beat, MidpointRounding.AwayFromZero);
+                if (!double.IsFinite(beat) || beat < 0 || beat >= end || timestamp < minimumTimestamp || timestamp > maximum) continue;
+                var distance = Math.Abs(beat - target);
+                if (distance > bestDistance + 1e-9 || Math.Abs(distance - bestDistance) <= 1e-9 && beat >= bestBeat) continue;
+                bestDistance = distance;
+                bestBeat = beat;
+                result = (int)timestamp;
+            }
+        }
+        return result;
+    }
+
     public static BeatInterval? GetContainingInterval(IReadOnlyList<int> offsets, IReadOnlyList<int> bpms,
         int subdivision, double positionMilliseconds, double durationMilliseconds)
     {
