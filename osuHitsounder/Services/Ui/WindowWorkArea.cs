@@ -13,7 +13,7 @@ internal static class WindowWorkArea
         var monitor = MonitorFromWindow(handle, 2);
         var info = new NativeMonitorInfo { Size = Marshal.SizeOf<NativeMonitorInfo>() };
         if (!GetMonitorInfo(monitor, ref info)) return Size.Empty;
-        // The shell uses WindowStyle.None and WindowChrome: its maximized content fills the work area.
+        // The borderless native frame makes maximized content fill the monitor's work area.
         var pixels = new Vector(info.WorkArea.Right - info.WorkArea.Left, info.WorkArea.Bottom - info.WorkArea.Top);
         var dips = target.TransformFromDevice.Transform(pixels);
         return new Size(dips.X, dips.Y);

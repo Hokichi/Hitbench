@@ -1,0 +1,10 @@
+using System.Runtime.InteropServices;
+namespace osuHitsounder.Services.Ui;
+[StructLayout(LayoutKind.Sequential)]
+internal struct NativeMargins
+{
+    public int Left;
+    public int Right;
+    public int Top;
+    public int Bottom;
+}

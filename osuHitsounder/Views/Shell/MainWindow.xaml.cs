@@ -51,6 +51,11 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
     private readonly double defaultMinHeight;
     private DispatcherOperation? layoutRefresh;
     internal long SongsLayoutRefreshCount { get; private set; }
+    private readonly OHsWindowFrame nativeFrame;
+    private static readonly DependencyPropertyKey IsAcrylicEnabledPropertyKey = DependencyProperty.RegisterReadOnly(
+        nameof(IsAcrylicEnabled), typeof(bool), typeof(MainWindow), new PropertyMetadata(false));
+    public static readonly DependencyProperty IsAcrylicEnabledProperty = IsAcrylicEnabledPropertyKey.DependencyProperty;
+    public bool IsAcrylicEnabled => (bool)GetValue(IsAcrylicEnabledProperty);
 
     public MainWindow(HomePage page, IMessenger messenger, Func<WorkstationPage> createWorkstation,
         IAppSettingsService settings, Func<HomePage> createHome)
@@ -77,6 +82,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
         this.settings = settings;
         this.getWorkArea = getWorkArea ?? WindowWorkArea.GetClientSize;
         InitializeComponent();
+        nativeFrame = new OHsWindowFrame(this, enabled => SetValue(IsAcrylicEnabledPropertyKey, enabled));
         InputManager.Current.PreProcessInput += OnPreProcessInput;
         defaultMinWidth = MinWidth;
         defaultMinHeight = MinHeight;
@@ -230,6 +236,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
     {
         InputManager.Current.PreProcessInput -= OnPreProcessInput;
         closed = true;
+        nativeFrame.Dispose();
         placementTimer.Stop();
         placementTimer.Tick -= OnPlacementTimerTick;
         SizeChanged -= OnWindowSizeChanged;

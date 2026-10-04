@@ -3,7 +3,6 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:customControls="clr-namespace:osuHitsounder.Resources.CustomControls"
-    xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
     Title="osuHitsounder"
     Width="1280"
     Height="720"
@@ -13,15 +12,8 @@
     ResizeMode="CanResize"
     WindowStartupLocation="CenterScreen"
     WindowStyle="None">
-    <shell:WindowChrome.WindowChrome>
-        <shell:WindowChrome
-            CaptionHeight="0"
-            CornerRadius="8"
-            GlassFrameThickness="0"
-            ResizeBorderThickness="8"
-            UseAeroCaptionButtons="False" />
-    </shell:WindowChrome.WindowChrome>
     <Window.Resources>
+        <SolidColorBrush x:Key="OHsMainWindowAcrylicBackground" Color="Transparent" />
         <Style x:Key="OHsMainWindowGoBackStyle" TargetType="customControls:BalloonButton"
                BasedOn="{StaticResource OHsBalloonActionStyle}">
             <Setter Property="DefaultBackground" Value="{DynamicResource Brush.BalloonButton.Background.NavInfo}" />
@@ -33,6 +25,14 @@
             BasedOn="{StaticResource BaseWindowStyle}"
             TargetType="Window">
             <Setter Property="Background" Value="{DynamicResource Brush.Background.Main}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsAcrylicEnabled, RelativeSource={RelativeSource Self}, Mode=OneWay}" Value="True">
+                    <Setter Property="Background" Value="{StaticResource OHsMainWindowAcrylicBackground}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
+                </DataTrigger>
+            </Style.Triggers>
         </Style>
         <Style
             x:Key="MainWindowRootStyle"
@@ -43,6 +43,9 @@
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="CornerRadius" Value="8" />
             <Style.Triggers>
+                <DataTrigger Binding="{Binding IsAcrylicEnabled, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}" Value="True">
+                    <Setter Property="Background" Value="{StaticResource OHsMainWindowAcrylicBackground}" />
+                </DataTrigger>
                 <DataTrigger Binding="{Binding WindowState, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}" Value="Maximized">
                     <Setter Property="BorderThickness" Value="0" />
                     <Setter Property="CornerRadius" Value="0" />
