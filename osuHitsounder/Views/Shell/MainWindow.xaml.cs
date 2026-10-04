@@ -52,6 +52,10 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
     private DispatcherOperation? layoutRefresh;
     internal long SongsLayoutRefreshCount { get; private set; }
     private readonly OHsWindowFrame nativeFrame;
+    private readonly Action startDrag;
+    private readonly Action<Rect> moveRestoredWindow;
+    private readonly Func<bool> isLeftButtonPressed;
+    private bool restoringBackgroundDrag;
     private static readonly DependencyPropertyKey IsAcrylicEnabledPropertyKey = DependencyProperty.RegisterReadOnly(
         nameof(IsAcrylicEnabled), typeof(bool), typeof(MainWindow), new PropertyMetadata(false));
     public static readonly DependencyProperty IsAcrylicEnabledProperty = IsAcrylicEnabledPropertyKey.DependencyProperty;
@@ -64,7 +68,8 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
     internal MainWindow(HomePage page, IMessenger messenger, Func<WorkstationPage> createWorkstation,
         HomePageVM viewModel, IAppSettingsService settings, Action<string>? reportError,
         Action<WindowState>? requestWindowState = null, Func<Window, Size>? getWorkArea = null,
-        Func<HomePage>? createHome = null)
+        Func<HomePage>? createHome = null, Action? startDrag = null,
+        Action<Rect>? moveRestoredWindow = null, Func<bool>? isLeftButtonPressed = null)
     {
         this.reportError = reportError ?? (error => MessageBox.Show(this, error, "osuHitsounder",
             MessageBoxButton.OK, MessageBoxImage.Error));
@@ -83,6 +88,9 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
         this.getWorkArea = getWorkArea ?? WindowWorkArea.GetClientSize;
         InitializeComponent();
         nativeFrame = new OHsWindowFrame(this, enabled => SetValue(IsAcrylicEnabledPropertyKey, enabled));
+        this.startDrag = startDrag ?? DragMove;
+        this.moveRestoredWindow = moveRestoredWindow ?? nativeFrame.MoveRestoredWindow;
+        this.isLeftButtonPressed = isLeftButtonPressed ?? (() => Mouse.LeftButton == MouseButtonState.Pressed);
         InputManager.Current.PreProcessInput += OnPreProcessInput;
         defaultMinWidth = MinWidth;
         defaultMinHeight = MinHeight;
@@ -331,7 +339,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
 
     internal void RecordWindowSize(double width, double height)
     {
-        if (!placementInitialized || closed || WindowState != WindowState.Normal) return;
+        if (!placementInitialized || closed || restoringBackgroundDrag || WindowState != WindowState.Normal) return;
         restoredWidth = width;
         restoredHeight = height;
         QueuePlacementSave();
@@ -348,7 +356,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
         UpdateMaximizeRestoreButton();
         if (!placementInitialized || closed || WindowState == WindowState.Minimized) return;
         lastIsMaximized = WindowState == WindowState.Maximized;
-        if (!lastIsMaximized)
+        if (!lastIsMaximized && !restoringBackgroundDrag)
         {
             restoredWidth = width;
             restoredHeight = height;
@@ -391,16 +399,32 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
         }
     }
 
-    private void OnHeaderMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    private void OnBackgroundMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        for (var element = e.OriginalSource as DependencyObject; element is not null; element = VisualTreeHelper.GetParent(element))
-            if (element is System.Windows.Controls.Primitives.ButtonBase) return;
-        if (e.ClickCount == 2)
+        if (e.OriginalSource is not DependencyObject origin ||
+            !nativeFrame.TryGetDragGeometry(out var cursor, out var bounds, out var dpiX, out var dpiY)) return;
+        e.Handled = HandleBackgroundMouseDown(origin, e.ClickCount, e.LeftButton == MouseButtonState.Pressed,
+            cursor, bounds, dpiX, dpiY);
+    }
+
+    internal bool HandleBackgroundMouseDown(DependencyObject originalSource, int clickCount, bool leftPressed,
+        Point cursorPixels, Rect currentPixels, double dpiX, double dpiY)
+    {
+        if (closed || !ReferenceEquals(originalSource, ShellRoot) || !leftPressed ||
+            viewModel.IsInteractionBlocked || viewModel.IsProcessing || ComponentDispatcher.IsThreadModal) return false;
+        if (clickCount == 2) { ToggleMaximizeRestore(); return true; }
+        var maximized = WindowState == WindowState.Maximized;
+        var restored = maximized ? OHsWindowFrame.GetRestoreBounds(cursorPixels, currentPixels,
+            new Size(restoredWidth, restoredHeight), dpiX, dpiY) : Rect.Empty;
+        restoringBackgroundDrag = true;
+        try
         {
-            ToggleMaximizeRestore();
-            return;
+            requestWindowState(WindowState.Normal);
+            if (maximized && !restored.IsEmpty) moveRestoredWindow(restored);
         }
-        if (WindowState == WindowState.Normal) DragMove();
+        finally { restoringBackgroundDrag = false; }
+        if (isLeftButtonPressed()) startDrag();
+        return true;
     }
 
     private void OnLoadSampleClick(object sender, RoutedEventArgs e) => messenger.Send(new LoadSampleRequestedMessage());

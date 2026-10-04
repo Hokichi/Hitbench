@@ -135,13 +135,13 @@
     <Window.Style>
         <StaticResource ResourceKey="MainWindowStyle" />
     </Window.Style>
-    <Border x:Name="ShellRoot" Style="{StaticResource MainWindowRootStyle}">
+    <Border x:Name="ShellRoot" Style="{StaticResource MainWindowRootStyle}" MouseLeftButtonDown="OnBackgroundMouseLeftButtonDown">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" MinHeight="40" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
-            <Grid MouseLeftButtonDown="OnHeaderMouseLeftButtonDown">
+            <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
