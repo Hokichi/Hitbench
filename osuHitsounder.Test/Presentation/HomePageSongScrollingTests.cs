@@ -94,6 +94,43 @@ public class HomePageSongScrollingTests
     }
 
     [Test]
+    public void CompleteLibraryDoesNotQueueIdleDemandCallbacksForWheelFrames()
+    {
+        UiTestPump.Run(vm.LoadMoreSongsCommand.ExecuteAsync(1000));
+        view.UpdateLayout();
+        UiTestPump.Run(window.Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle).Task);
+        Assert.That(vm.HasMoreSongs, Is.False);
+        Assert.That(vm.HasMoreProjects, Is.False);
+        Assert.That(page.HandleSongsMouseWheel(-120, 3, true, TimeSpan.Zero), Is.True);
+        Assert.That(page.IsDemandCheckPending, Is.False);
+        page.ProcessSongScrollFrame(TimeSpan.FromMilliseconds(80));
+        Assert.That(page.IsDemandCheckPending, Is.False);
+    }
+
+    [Test]
+    public void WrappedHeaderAndRtlChangeCancelMotionWithoutLayoutPrefetch()
+    {
+        UiTestPump.Run(vm.LoadMoreSongsCommand.ExecuteAsync(300));
+        view.UpdateLayout();
+        var panel = SongsScrollPerformanceTests.FindPanel(page);
+        var before = vm.Songs.Count;
+        page.HandleSongsMouseWheel(-120, 3, true, TimeSpan.Zero);
+        page.ProcessSongScrollFrame(TimeSpan.FromMilliseconds(40));
+        vm.IsSongSearchExpanded = true;
+        vm.SongsLoadStatus = new string('W', 400);
+        page.FlowDirection = FlowDirection.RightToLeft;
+        window.Width = page.MinWidth;
+        view.UpdateLayout();
+        SongsScrollPerformanceTests.Drain();
+        var clamped = panel.VerticalOffset;
+        page.ProcessSongScrollFrame(TimeSpan.FromMilliseconds(160));
+        Assert.That(panel.VerticalOffset, Is.EqualTo(clamped));
+        Assert.That(panel.VerticalOffset, Is.InRange(0, Math.Max(0, panel.ExtentHeight - panel.ViewportHeight)));
+        Assert.That(panel.VisibleRowCount, Is.GreaterThanOrEqualTo(3));
+        Assert.That(vm.Songs.Count, Is.EqualTo(before));
+    }
+
+    [Test]
     public void DirectOffsetsSearchTemplateReplacementAndUnloadCancelWheelTail()
     {
         UiTestPump.Run(vm.LoadMoreSongsCommand.ExecuteAsync(300));

@@ -127,7 +127,6 @@ public class SpacedUniformGrid : VirtualizingPanel, IScrollInfo
 
     private void RealizeFixedItems(ItemsControl owner, int itemCount)
     {
-        RealizationPassCount++;
         var generator = (IRecyclingItemContainerGenerator)((IItemContainerGenerator)owner.ItemContainerGenerator)
             .GetItemContainerGeneratorForPanel(this);
         var firstRow = Math.Max(0, (int)Math.Floor(VerticalOffset / RowStride));
@@ -136,11 +135,26 @@ public class SpacedUniformGrid : VirtualizingPanel, IScrollInfo
         var finalRow = Math.Min(computedRows - 1, finalVisibleRow + 1);
         var firstIndex = Math.Min(itemCount - 1, firstRow * computedColumns);
         var finalIndex = Math.Min(itemCount - 1, ((finalRow + 1) * computedColumns) - 1);
+        if (realizedFirst == firstIndex && realizedLast == finalIndex) return;
+        RealizationPassCount++;
+        var oldFirst = realizedFirst;
+        var oldLast = realizedLast;
         realizedFirst = firstIndex;
         realizedLast = finalIndex;
 
         RecycleOutsideRange(generator, firstIndex, finalIndex);
 
+        if (oldFirst >= 0 && oldLast >= firstIndex && oldFirst <= finalIndex)
+        {
+            GenerateRange(generator, firstIndex, Math.Min(finalIndex, oldFirst - 1));
+            GenerateRange(generator, Math.Max(firstIndex, oldLast + 1), finalIndex);
+        }
+        else GenerateRange(generator, firstIndex, finalIndex);
+    }
+
+    private void GenerateRange(IRecyclingItemContainerGenerator generator, int firstIndex, int finalIndex)
+    {
+        if (firstIndex > finalIndex) return;
         var start = generator.GeneratorPositionFromIndex(firstIndex);
         var childIndex = start.Offset == 0 ? start.Index : start.Index + 1;
         using var generation = generator.StartAt(start, GeneratorDirection.Forward, true);
@@ -188,14 +202,23 @@ public class SpacedUniformGrid : VirtualizingPanel, IScrollInfo
 
     private void RecycleOutsideRange(IRecyclingItemContainerGenerator generator, int firstIndex, int finalIndex)
     {
+        // Realized containers are ordered. Only the two ends can lie outside the new viewport.
         for (var childIndex = InternalChildren.Count - 1; childIndex >= 0; childIndex--)
         {
             var position = new GeneratorPosition(childIndex, 0);
             var itemIndex = generator.IndexFromGeneratorPosition(position);
-            if (itemIndex >= firstIndex && itemIndex <= finalIndex) continue;
+            if (itemIndex >= 0 && itemIndex <= finalIndex) break;
             generator.Recycle(position, 1);
             RecycledContainerCount++;
             RemoveInternalChildRange(childIndex, 1);
+        }
+        while (InternalChildren.Count > 0)
+        {
+            var position = new GeneratorPosition(0, 0);
+            if (generator.IndexFromGeneratorPosition(position) >= firstIndex) break;
+            generator.Recycle(position, 1);
+            RecycledContainerCount++;
+            RemoveInternalChildRange(0, 1);
         }
     }
 

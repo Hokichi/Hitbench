@@ -17,6 +17,79 @@ namespace osuHitsounder.Test.Presentation;
 [NonParallelizable]
 public class SongsResponsiveLayoutTests
 {
+    [Test]
+    public void ScrollFramesDoNotRefreshSongSizingButGeometryChangesDo()
+    {
+        var vm = CreateVM();
+        for (var i = 0; i < 2000; i++) vm.Songs.Add(new FolderEntry($@"C:\Songs\{i}", i.ToString(), DateTimeOffset.MinValue));
+        var page = new HomePage(vm);
+        var window = TestShell.Create(page, new WeakReferenceMessenger(), WorkstationTestPage.Create, vm, new StubAppSettingsService());
+        window.Width = 1922;
+        window.Height = 1082;
+        using var view = new InMemoryView(window, scheduleLayout: false);
+        for (var i = 0; i < 5; i++) { view.UpdateLayout(); SongsScrollPerformanceTests.Drain(); }
+        var panel = Descendants<SpacedUniformGrid>(page).Single();
+        panel.SetVerticalOffset(3 * panel.RowStride + .25);
+        view.UpdateLayout();
+        SongsScrollPerformanceTests.Drain();
+        var shell = window.SongsLayoutRefreshCount;
+        var sizing = page.SongsLayoutCalculationCount;
+        var measure = panel.MeasurePassCount;
+        for (var i = 0; i < 10; i++)
+        {
+            panel.SetVerticalOffset(3 * panel.RowStride + (i % 2 == 0 ? .75 : .25));
+            view.UpdateLayout();
+            SongsScrollPerformanceTests.Drain();
+        }
+        Assert.Multiple(() =>
+        {
+            Assert.That(window.SongsLayoutRefreshCount, Is.EqualTo(shell));
+            Assert.That(page.SongsLayoutCalculationCount, Is.EqualTo(sizing));
+            Assert.That(panel.MeasurePassCount, Is.EqualTo(measure));
+        });
+        vm.IsSongSearchExpanded = true;
+        vm.SongsLoadStatus = new string('W', 400);
+        page.FlowDirection = FlowDirection.RightToLeft;
+        window.Width = page.MinWidth + 2;
+        window.Height = page.MinHeight + 42;
+        view.UpdateLayout();
+        SongsScrollPerformanceTests.Drain();
+        Assert.That(page.SongsLayoutCalculationCount, Is.GreaterThan(sizing));
+        Assert.That(panel.Columns, Is.EqualTo(1));
+        Assert.That(panel.VerticalOffset, Is.InRange(0, panel.ExtentHeight - panel.ViewportHeight));
+        Assert.That(vm.Songs.Count, Is.EqualTo(2000));
+        window.Close();
+    }
+
+    [TestCase(FlowDirection.LeftToRight, "Dark")]
+    [TestCase(FlowDirection.RightToLeft, "Light")]
+    public void TemplateLaneChangeInvalidatesLayoutGuard(FlowDirection direction, string theme)
+    {
+        Application.Current.Resources.MergedDictionaries[0] = new ResourceDictionary
+        { Source = new Uri($"/osuHitsounder;component/Resources/Themes/{theme}.xaml", UriKind.Relative) };
+        var page = new HomePage(CreateVM()) { FlowDirection = direction };
+        var window = new Window { Content = page, Width = 1920, Height = 1040 };
+        using var view = new InMemoryView(window, scheduleLayout: false);
+        page.UpdateSongsLayout(new Size(1920, 1040));
+        view.UpdateLayout();
+        var list = (ItemsControl)page.FindName("SongsList");
+        var viewer = Descendants<ScrollViewer>(list).Single();
+        var template = viewer.Template;
+        viewer.Template = null;
+        viewer.ApplyTemplate();
+        viewer.Template = template;
+        view.UpdateLayout();
+        var scrollbar = (System.Windows.Controls.Primitives.ScrollBar)viewer.Template.FindName("PART_VerticalScrollBar", viewer);
+        scrollbar.Width = 24;
+        view.UpdateLayout();
+        page.UpdateSongsLayout(new Size(1920, 1040));
+        view.UpdateLayout();
+        Assert.That(direction == FlowDirection.LeftToRight ? list.Padding.Right : list.Padding.Left, Is.EqualTo(24).Within(.01));
+        var panel = Descendants<SpacedUniformGrid>(page).Single();
+        Assert.That(panel.ExtentWidth, Is.EqualTo(panel.ViewportWidth).Within(.01));
+        window.Close();
+    }
+
     [TestCase(FlowDirection.LeftToRight, "Dark")]
     [TestCase(FlowDirection.RightToLeft, "Light")]
     public void ExpandedSearchFitsMinimumSongsHeader(FlowDirection direction, string theme)

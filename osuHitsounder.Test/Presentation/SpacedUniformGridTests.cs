@@ -33,6 +33,9 @@ public class SpacedUniformGridTests
             Assert.That(panel.PreparedContainerCount, Is.EqualTo(prepared));
             Assert.That(first.TranslatePoint(new Point(), panel).Y, Is.EqualTo(y - .5).Within(.01));
         });
+        panel.InvalidateMeasure();
+        view.UpdateLayout();
+        Assert.That(panel.RealizationPassCount, Is.EqualTo(realized), "Child measurement must not restart unchanged generator work.");
         var version = panel.VerticalScrollRequestVersion;
         panel.BeginScrollRequest();
         panel.SetAnimatedVerticalOffset(360.25);

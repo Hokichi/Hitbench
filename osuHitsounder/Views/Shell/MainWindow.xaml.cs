@@ -50,6 +50,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
     private readonly double defaultMinWidth;
     private readonly double defaultMinHeight;
     private DispatcherOperation? layoutRefresh;
+    private (Size Size, double Header, object? Content, double MinimumWidth, double MinimumHeight)? lastShellLayout;
     internal long SongsLayoutRefreshCount { get; private set; }
     private readonly OHsWindowFrame nativeFrame;
     private readonly Action startDrag;
@@ -110,7 +111,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
         StateChanged += OnWindowStateChanged;
         LocationChanged += OnLayoutEnvironmentChanged;
         SourceInitialized += OnLayoutEnvironmentChanged;
-        LayoutUpdated += OnLayoutEnvironmentChanged;
+        LayoutUpdated += OnShellLayoutUpdated;
         DpiChanged += OnWindowDpiChanged;
         SystemParameters.StaticPropertyChanged += OnSystemParametersChanged;
     }
@@ -251,7 +252,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
         StateChanged -= OnWindowStateChanged;
         LocationChanged -= OnLayoutEnvironmentChanged;
         SourceInitialized -= OnLayoutEnvironmentChanged;
-        LayoutUpdated -= OnLayoutEnvironmentChanged;
+        LayoutUpdated -= OnShellLayoutUpdated;
         DpiChanged -= OnWindowDpiChanged;
         SystemParameters.StaticPropertyChanged -= OnSystemParametersChanged;
         layoutRefresh?.Abort();
@@ -313,6 +314,13 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
     }
 
     private void OnLayoutEnvironmentChanged(object? sender, EventArgs e) => QueueSongsLayout();
+    private (Size, double, object?, double, double) GetShellLayout() =>
+        (ShellRoot.RenderSize, ((Grid)ShellRoot.Child).RowDefinitions[0].ActualHeight,
+            PageHost.Content, page.MinWidth, page.MinHeight);
+    private void OnShellLayoutUpdated(object? sender, EventArgs e)
+    {
+        if (lastShellLayout != GetShellLayout()) QueueSongsLayout();
+    }
     private void OnWindowDpiChanged(object sender, DpiChangedEventArgs e) => QueueSongsLayout();
     private void OnSystemParametersChanged(object? sender, PropertyChangedEventArgs e) => QueueSongsLayout();
 
@@ -334,6 +342,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
             var height = page.MinHeight + header + root.BorderThickness.Top + root.BorderThickness.Bottom;
             if (Math.Abs(MinWidth - width) > .01) MinWidth = width;
             if (Math.Abs(MinHeight - height) > .01) MinHeight = height;
+            lastShellLayout = GetShellLayout();
         }));
     }
 
