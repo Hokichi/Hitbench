@@ -10,6 +10,44 @@ namespace osuHitsounder.Test.Presentation;
 [NonParallelizable]
 public class WaveformViewTests
 {
+    [TestCase(80d)]
+    [TestCase(160d)]
+    [TestCase(240d)]
+    public void BeatBarsStayAtBottomAcrossResizeZoomAndScroll(double height)
+    {
+        var view = CreateView();
+        view.Data = new WaveformData(TimeSpan.FromSeconds(10), [0, 0]);
+        view.Offsets = new[] { 0 };
+        view.Bpms = new[] { 120 };
+        view.Subdivision = 4;
+        view.ViewportWidth = 400;
+        foreach (var currentHeight in new[] { height, height + 40 })
+        foreach (var zoom in new[] { 8d, 16d })
+        {
+            view.ZoomFactor = zoom;
+            view.HorizontalOffset = 400;
+            view.Measure(new Size(double.PositiveInfinity, currentHeight));
+            view.Arrange(new Rect(0, 0, 400 * zoom, currentHeight));
+            view.PrepareDrawing();
+            var bars = Lines(view.ContentDrawing!).Where(line =>
+                line.StartPoint.X == line.EndPoint.X && line.EndPoint.Y > line.StartPoint.Y).ToArray();
+            Assert.That(bars, Is.Not.Empty);
+            Assert.That(bars.All(line => line.EndPoint.Y == currentHeight), Is.True);
+            Assert.That(bars.Select(line => line.EndPoint.Y - line.StartPoint.Y).Distinct(), Is.SubsetOf(new[] { 10d, 20d }));
+            Assert.That(bars.Any(line => line.EndPoint.Y - line.StartPoint.Y == 20), Is.True);
+            Assert.That(bars.Any(line => line.EndPoint.Y - line.StartPoint.Y == 10), Is.True);
+            Assert.That(bars.All(line => line.EndPoint.X >= 400 && line.EndPoint.X <= 800), Is.True);
+        }
+
+        static IEnumerable<LineGeometry> Lines(Drawing drawing)
+        {
+            if (drawing is GeometryDrawing { Geometry: LineGeometry line }) yield return line;
+            if (drawing is DrawingGroup group)
+                foreach (var child in group.Children)
+                    foreach (var descendant in Lines(child)) yield return descendant;
+        }
+    }
+
     [Test]
     public void ContentHasNoSecondRulerOrTimestampLabels()
     {

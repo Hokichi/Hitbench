@@ -482,6 +482,13 @@ public partial class WorkstationPageVM(
         return true;
     }
 
+    public void SetTrackName(Track track, string name)
+    {
+        if (!CanEditTracks || !tracks.Contains(track) || string.Equals(track.Name, name, StringComparison.Ordinal)) return;
+        track.Name = name;
+        QueueSave();
+    }
+
     public void SetTrackVolume(Track track, int volume)
     {
         if (!CanEditTracks || !tracks.Contains(track)) return;

@@ -1,7 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
-using System.Windows.Shapes;
 using System.Windows.Data;
 using osuHitsounder.Resources.CustomControls;
 
@@ -27,25 +26,18 @@ public sealed class FocusVisualTests
     }
 
     [Test]
-    public void SharedFocusVisualUsesNeutralUnderlineWithoutEnclosingBorder()
+    public void SharedFocusVisualHasNoUnderlineOrEnclosingBorder()
     {
         var visual = new Control { Style = (Style)Application.Current.FindResource("DefaultFocusVisualStyle") };
         UiTestPump.Layout(visual, 160, 40);
-        var marker = VisualTreeHelper.GetChild(visual, 0);
-        Assert.That(marker, Is.TypeOf<Rectangle>());
-        var underline = (Rectangle)marker;
         Assert.Multiple(() =>
         {
-            Assert.That(underline.ActualHeight, Is.EqualTo(2));
-            Assert.That(underline.VerticalAlignment, Is.EqualTo(VerticalAlignment.Bottom));
-            Assert.That(underline.IsHitTestVisible, Is.False);
-            Assert.That(underline.Fill, Is.SameAs(Application.Current.FindResource("Brush.Text.Primary")));
+            Assert.That(visual.Template, Is.Null);
+            Assert.That(VisualTreeHelper.GetChildrenCount(visual), Is.Zero);
             Assert.That(visual.ActualHeight, Is.EqualTo(40));
         });
-        visual.Resources["Brush.Text.Primary"] = Brushes.Green;
-        Assert.That(underline.Fill, Is.SameAs(Brushes.Green));
         UiTestPump.Layout(visual, 240, 40);
-        Assert.That(underline.ActualHeight, Is.EqualTo(2));
+        Assert.That(VisualTreeHelper.GetChildrenCount(visual), Is.Zero);
         Assert.That(visual.ActualWidth, Is.EqualTo(240));
     }
 

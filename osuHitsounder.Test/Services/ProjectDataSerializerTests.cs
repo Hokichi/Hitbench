@@ -6,6 +6,35 @@ namespace osuHitsounder.Test.Services;
 public class ProjectDataSerializerTests
 {
     [Test]
+    public void TrackNamesDefaultEmptyAndRoundTripIndependentlyOfSample()
+    {
+        Assert.That(new Track().Name, Is.Empty);
+        var name = "กลอง " + new string('a', 1024);
+        var project = new ProjectData { Tracks = [new Track { Name = name, SelectedSampleFileName = "kick.wav" },
+            new Track { Name = name }, new Track()] };
+        var restored = ProjectDataSerializer.Deserialize(ProjectDataSerializer.Serialize(project));
+        Assert.That(restored.Tracks.Select(track => track.Name), Is.EqualTo(new[] { name, name, "" }));
+        Assert.That(restored.Tracks[0].SelectedSampleFileName, Is.EqualTo("kick.wav"));
+    }
+
+    [TestCase("{\"Tracks\":[{}]}")]
+    [TestCase("{\"Tracks\":[{\"Name\":null}]}")]
+    [TestCase("{\"Samples\":[{\"Path\":\"old.wav\",\"Timestamps\":[0]}]}")]
+    public void OlderProjectsAndNullNamesLoadAsEmpty(string json) =>
+        Assert.That(ProjectDataSerializer.Deserialize(json).Tracks.Single().Name, Is.Empty);
+
+    [TestCase("123")]
+    [TestCase("true")]
+    [TestCase("{}")]
+    [TestCase("[]")]
+    public void RejectsNonStringTrackNames(string token)
+    {
+        var error = Assert.Throws<InvalidDataException>(() =>
+            ProjectDataSerializer.Deserialize("{\"Tracks\":[{\"Name\":" + token + "}]}"));
+        Assert.That(error!.Message, Is.EqualTo("Track Name must be a string or null."));
+    }
+
+    [Test]
     public void RoundTripsTracksAndSamples()
     {
         var source = new ProjectData { BeatmapPath = "song", Offsets = [125], BPMs = [120],

@@ -38,6 +38,9 @@ public static class ProjectDataSerializer
             foreach (var item in trackNodes)
             {
                 if (item is not JObject track) throw new InvalidDataException("Track must be an object.");
+                if (track["Name"] is { Type: not (JTokenType.String or JTokenType.Null) })
+                    throw new InvalidDataException("Track Name must be a string or null.");
+                if (track["Name"] is { Type: JTokenType.Null }) track["Name"] = string.Empty;
                 if (track["SelectedSampleFileName"] is { Type: not (JTokenType.String or JTokenType.Null) })
                     throw new InvalidDataException("Track SelectedSampleFileName must be a string or null.");
                 if (track["Samples"] is null) continue;

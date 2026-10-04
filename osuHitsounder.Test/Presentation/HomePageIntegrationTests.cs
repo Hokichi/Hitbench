@@ -578,7 +578,7 @@ public class HomePageIntegrationTests
             { RoutedEvent = UIElement.MouseEnterEvent });
             view.UpdateLayout();
             Assert.That(button.ToolTip, Is.Null);
-            Assert.That(button.IsTabStop, Is.True);
+            Assert.That(button.IsTabStop, Is.False);
             Assert.That(button.Opacity, Is.EqualTo(1));
             Assert.That(button.Effect, Is.Null);
             PumpFor(TimeSpan.FromMilliseconds(220));

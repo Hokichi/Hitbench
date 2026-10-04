@@ -147,7 +147,7 @@ public sealed class WaveformView : FrameworkElement
 
         drawingContext.PushClip(new RectangleGeometry(new Rect(offset, 0, viewport, height)));
         BeatGridDrawing.Draw(drawingContext, this, Offsets, Bpms, Subdivision, data.Duration.TotalMilliseconds,
-            width, offset, viewport, Math.Max(0, height - 20), true);
+            width, offset, viewport, height, true);
         drawingContext.DrawLine(baselinePen, new Point(offset, baselineY), new Point(offset + viewport, baselineY));
         var startPixel = Math.Max(0, (int)Math.Floor(offset));
         var endPixel = Math.Min((int)Math.Ceiling(width), (int)Math.Ceiling(offset + viewport));

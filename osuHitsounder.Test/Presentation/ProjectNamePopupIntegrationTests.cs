@@ -30,7 +30,8 @@ public class ProjectNamePopupIntegrationTests
             var create = (BalloonButton)popup.FindName("CreateButton");
             Assert.Multiple(() =>
             {
-                Assert.That(input.Focusable && input.IsTabStop, Is.True);
+                Assert.That(input.Focusable, Is.True);
+                Assert.That(input.IsTabStop, Is.False);
                 Assert.That(input.Text, Is.Empty);
                 Assert.That(watermark.Text, Is.EqualTo("Artist - Title"));
                 Assert.That(watermark.Visibility, Is.EqualTo(Visibility.Visible));

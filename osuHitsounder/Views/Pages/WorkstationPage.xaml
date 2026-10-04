@@ -361,6 +361,20 @@
                             Margin="12,0,8,0"
                             VerticalAlignment="Center"
                             Style="{StaticResource FieldLabelTextStyle}"
+                            Text="Name" />
+                        <TextBox
+                            Width="220"
+                            AutomationProperties.Name="Track name"
+                            DataContextChanged="OnTrackControlDataContextChanged"
+                            IsEnabled="{Binding DataContext.CanEditTracks, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
+                            Loaded="OnTrackNameLoaded"
+                            Style="{StaticResource RoundedTextInputStyle}"
+                            Text="{Binding Name, Mode=OneWay, UpdateSourceTrigger=Explicit}"
+                            TextChanged="OnTrackNameTextChanged" />
+                        <TextBlock
+                            Margin="12,0,8,0"
+                            VerticalAlignment="Center"
+                            Style="{StaticResource FieldLabelTextStyle}"
                             Text="Sample" />
                         <ComboBox
                             Width="220"

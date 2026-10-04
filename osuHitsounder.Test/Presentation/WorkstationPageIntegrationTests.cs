@@ -22,6 +22,62 @@ namespace osuHitsounder.Test.Presentation;
 [NonParallelizable]
 public class WorkstationPageIntegrationTests
 {
+    [TestCase(480d, FlowDirection.LeftToRight, "Dark")]
+    [TestCase(1100d, FlowDirection.RightToLeft, "Light")]
+    public void TrackNameFieldInitializesEditsSavesAndRebindsWithoutSpuriousWrites(double width, FlowDirection direction, string theme)
+    {
+        EnsureResources(theme);
+        var first = new osuHitsounder.Core.Entities.Track { Name = "Kick " + new string('a', 256) };
+        var second = new osuHitsounder.Core.Entities.Track { Name = "Snare" };
+        var source = new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(
+            new WorkstationSource("map.osu", "audio.wav", new ProjectData { Tracks = [first, second] })) };
+        var saves = new DelayedProjectFileService();
+        saves.Release();
+        var vm = new WorkstationPageVM(source, new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay),
+            new ImmediateUiScheduler(), projectFiles: saves);
+        var page = new WorkstationPage(vm);
+        page.SetProjectPath("project.json");
+        using var view = new InMemoryView(new Window { Content = page, Width = width, Height = 720, FlowDirection = direction });
+        UiTestPump.Run(page.LoadCompletion);
+        view.UpdateLayout();
+        var input = FindVisualChildren<TextBox>(page).Single(box =>
+            AutomationProperties.GetName(box) == "Track name" && ReferenceEquals(box.DataContext, first));
+        Assert.That(input.Text, Is.EqualTo(first.Name));
+        Assert.That(input.IsEnabled, Is.True);
+        Assert.That(input.IsTabStop, Is.False);
+        Assert.That(input.Style, Is.SameAs(page.FindResource("RoundedTextInputStyle")));
+        Assert.That(saves.Writes, Is.Zero);
+        var bounds = input.TransformToAncestor(page).TransformBounds(new Rect(input.RenderSize));
+        Assert.That(bounds.Left, Is.GreaterThanOrEqualTo(0));
+        Assert.That(bounds.Right, Is.LessThanOrEqualTo(page.ActualWidth));
+        var header = (WrapPanel)input.Parent;
+        Assert.That(header.Children.OfType<TextBlock>().Any(label => label.Text == "Name"), Is.True);
+        Assert.That(header.Children.IndexOf(input), Is.LessThan(header.Children.OfType<ComboBox>()
+            .Select(selector => header.Children.IndexOf(selector)).Single()));
+
+        input.Text = "กลอง";
+        UiTestPump.Run(vm.FlushSavesAsync());
+        Assert.That(first.Name, Is.EqualTo("กลอง"));
+        Assert.That(ProjectDataSerializer.Deserialize(saves.LatestJson!).Tracks[0].Name, Is.EqualTo("กลอง"));
+        var writes = saves.Writes;
+        input.DataContext = second;
+        UiTestPump.Run(vm.FlushSavesAsync());
+        Assert.That(input.Text, Is.EqualTo("Snare"));
+        Assert.That(first.Name, Is.EqualTo("กลอง"));
+        Assert.That(second.Name, Is.EqualTo("Snare"));
+        Assert.That(saves.Writes, Is.EqualTo(writes));
+        input.Text = "";
+        UiTestPump.Run(vm.FlushSavesAsync());
+        Assert.That(second.Name, Is.Empty);
+        Assert.That(ProjectDataSerializer.Deserialize(saves.LatestJson!).Tracks[1].Name, Is.Empty);
+
+        UiTestPump.Run(vm.DeactivateAsync());
+        view.UpdateLayout();
+        Assert.That(input.IsEnabled, Is.False);
+        input.Text = "Cannot edit";
+        Assert.That(second.Name, Is.Empty);
+    }
+
     [Test]
     public void SongVolumeWheelUpdatesSongOnlyAndExposesAccessibleBounds()
     {

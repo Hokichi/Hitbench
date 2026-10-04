@@ -214,6 +214,21 @@ public partial class WorkstationPage : UserControl
     {
         if (sender is ComboBox selector) OnSampleSelectorLoaded(selector, new RoutedEventArgs());
         else if (sender is Slider slider) OnVolumeSliderLoaded(slider, new RoutedEventArgs());
+        else if (sender is TextBox input) OnTrackNameLoaded(input, new RoutedEventArgs());
+    }
+
+    private void OnTrackNameLoaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is not TextBox { DataContext: Track track } input) return;
+        input.Tag = true;
+        input.SetCurrentValue(TextBox.TextProperty, track.Name);
+        input.Tag = false;
+    }
+
+    private void OnTrackNameTextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (sender is TextBox { IsLoaded: true, DataContext: Track track } input && input.Tag is not true)
+            viewModel.SetTrackName(track, input.Text);
     }
 
     private void RefreshSampleSelectors(DependencyObject root)

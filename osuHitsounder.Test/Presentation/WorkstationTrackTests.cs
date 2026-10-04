@@ -10,6 +10,64 @@ namespace osuHitsounder.Test.Presentation;
 public class WorkstationTrackTests
 {
     [Test]
+    public async Task RenamingPersistsOrderedSnapshotsWithoutChangingAudioOrNodeHistory()
+    {
+        var track = new Track { SelectedSampleFileName = "kick.wav" };
+        var source = new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(
+            new WorkstationSource("map.osu", "audio.wav", new ProjectData { Tracks = [track] })) };
+        var audio = new StubWorkstationAudioService();
+        var saves = new DelayedProjectFileService();
+        var vm = new WorkstationPageVM(source, new osuHitsounder.Services.MarkerPlaybackCoordinator(audio, Task.Delay),
+            new ImmediateUiScheduler(), projectFiles: saves);
+        await vm.LoadAsync("project.json", CancellationToken.None);
+        vm.AcknowledgePresentationReady(vm.LoadGeneration);
+        var audioUpdates = audio.SampleUpdates.Count;
+        vm.SetTrackName(track, "Kick");
+        vm.SetTrackName(track, "Kick");
+        vm.SetTrackName(track, "Snare");
+        vm.SetTrackName(track, "");
+        Assert.That(audio.SampleUpdates, Has.Count.EqualTo(audioUpdates));
+        Assert.That(vm.CanUndo, Is.False);
+        vm.SelectSample(track, "snare.wav");
+        vm.SetTrackVolume(track, 70);
+        saves.Release();
+        await vm.FlushSavesAsync();
+        Assert.That(saves.Snapshots.Select(json => ProjectDataSerializer.Deserialize(json).Tracks.Single().Name),
+            Is.EqualTo(new[] { "Kick", "Snare", "", "", "" }));
+        var restored = ProjectDataSerializer.Deserialize(saves.LatestJson!).Tracks.Single();
+        Assert.That(restored.Name, Is.Empty);
+        Assert.That(restored.SelectedSampleFileName, Is.EqualTo("snare.wav"));
+        Assert.That(restored.Volume, Is.EqualTo(70));
+        await vm.DeactivateAsync();
+    }
+
+    [Test]
+    public async Task RenameRequiresReadyMemberTrackAndStopsAfterDeactivation()
+    {
+        var track = new Track { Name = "Original" };
+        var stranger = new Track { Name = "Other" };
+        var source = new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(
+            new WorkstationSource("map.osu", "audio.wav", new ProjectData { Tracks = [track] })) };
+        var saves = new DelayedProjectFileService();
+        saves.Release();
+        var vm = new WorkstationPageVM(source, new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay),
+            new ImmediateUiScheduler(), projectFiles: saves);
+        await vm.LoadAsync("project.json", CancellationToken.None);
+        vm.SetTrackName(track, "Too early");
+        Assert.That(track.Name, Is.EqualTo("Original"));
+        vm.AcknowledgePresentationReady(vm.LoadGeneration);
+        vm.SetTrackName(stranger, "Wrong track");
+        Assert.That(stranger.Name, Is.EqualTo("Other"));
+        vm.SetTrackName(track, "Ready");
+        await vm.FlushSavesAsync();
+        var writes = saves.Writes;
+        await vm.DeactivateAsync();
+        vm.SetTrackName(track, "Too late");
+        Assert.That(track.Name, Is.EqualTo("Ready"));
+        Assert.That(saves.Writes, Is.EqualTo(writes));
+    }
+
+    [Test]
     public async Task EmptyTrackRemovalSkipsDialogAndPersists()
     {
         var track = new Track { SelectedSampleFileName = "selected.wav" };
