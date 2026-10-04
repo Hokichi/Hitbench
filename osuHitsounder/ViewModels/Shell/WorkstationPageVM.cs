@@ -160,6 +160,7 @@ public partial class WorkstationPageVM(
     public Task LoadAsync(string projectPath, CancellationToken token)
     {
         if (deactivated) return Task.CompletedTask;
+        ResetNodeEditing();
         history.Clear();
         NotifyHistoryState();
         CommitPendingZoom();
@@ -182,6 +183,7 @@ public partial class WorkstationPageVM(
     {
         if (deactivated) return;
         deactivated = true;
+        ResetNodeEditing();
         history.Clear();
         NotifyHistoryState();
         OnPropertyChanged(nameof(CanGoBack));
@@ -421,6 +423,7 @@ public partial class WorkstationPageVM(
             project.Tracks.Remove(track);
             tracks.Remove(track);
             history.RemoveTrack(track);
+            PruneNodeSelection();
             NotifyHistoryState();
             QueuePlaybackUpdate();
             QueueSave();
@@ -845,6 +848,7 @@ public partial class WorkstationPageVM(
 
     private void NotifyCommandState()
     {
+        NotifyNodeEditingState();
         NotifyHistoryState();
         PlayPauseCommand.NotifyCanExecuteChanged();
         StopCommand.NotifyCanExecuteChanged();
@@ -868,6 +872,7 @@ public partial class WorkstationPageVM(
 
     private void NotifyEditingState()
     {
+        NotifyNodeEditingState();
         NotifyHistoryState();
         OnPropertyChanged(nameof(CanEditTracks));
         OnPropertyChanged(nameof(CanImportSample));
