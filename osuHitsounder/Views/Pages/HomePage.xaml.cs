@@ -82,6 +82,11 @@ public partial class HomePage : UserControl
 
     internal void ProcessSongScrollFrame(TimeSpan now)
     {
+        if (!viewModel.CanInteract)
+        {
+            CancelSongsScrollMotion();
+            return;
+        }
         if (!attached || !GetSongsParts() || !scrollMotion.IsActive) return;
         var panel = songsPanel!;
         if (panel.VerticalScrollRequestVersion != lastScrollRequest || GetMotionGeometry(panel) != motionGeometry)
@@ -273,6 +278,8 @@ public partial class HomePage : UserControl
     private void OnVisibilityChanged(object sender, DependencyPropertyChangedEventArgs e) => QueueCheck();
     private void OnStateChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(HomePageVM.CanInteract) && !viewModel.CanInteract)
+            CancelSongsScrollMotion();
         if (e.PropertyName == nameof(HomePageVM.SongsInventoryGeneration))
         {
             CancelSongsScrollMotion();

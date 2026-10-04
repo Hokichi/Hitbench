@@ -94,6 +94,63 @@ public class HomePageSongScrollingTests
     }
 
     [Test]
+    public void ExplicitOffsetAtCurrentPositionCancelsPendingWheelTravel()
+    {
+        UiTestPump.Run(vm.LoadMoreSongsCommand.ExecuteAsync(300));
+        view.UpdateLayout();
+        var panel = SongsScrollPerformanceTests.FindPanel(page);
+        page.HandleSongsMouseWheel(-120, 3, true, TimeSpan.Zero);
+        panel.SetVerticalOffset(panel.VerticalOffset);
+        page.ProcessSongScrollFrame(TimeSpan.FromMilliseconds(80));
+        Assert.That(panel.VerticalOffset, Is.Zero);
+    }
+
+    [Test]
+    public void BlockedInteractionStopsExistingWheelTail()
+    {
+        UiTestPump.Run(vm.LoadMoreSongsCommand.ExecuteAsync(300));
+        view.UpdateLayout();
+        var panel = SongsScrollPerformanceTests.FindPanel(page);
+        panel.SetVerticalOffset(120);
+        page.HandleSongsMouseWheel(-120, 3, true, TimeSpan.Zero);
+        vm.IsInteractionBlocked = true;
+        page.ProcessSongScrollFrame(TimeSpan.FromMilliseconds(80));
+        Assert.That(panel.VerticalOffset, Is.EqualTo(120));
+        Assert.That(page.HandleSongsMouseWheel(-120, 3, true, TimeSpan.Zero), Is.False);
+    }
+
+    [Test]
+    public void ViewerKeyboardAndFocusScrollCommandsCancelWheelTail()
+    {
+        UiTestPump.Run(vm.LoadMoreSongsCommand.ExecuteAsync(300));
+        view.UpdateLayout();
+        var panel = SongsScrollPerformanceTests.FindPanel(page);
+        var list = (ItemsControl)page.FindName("SongsList");
+        var viewer = (ScrollViewer)list.Template.FindName("PART_ScrollViewer", list);
+        page.HandleSongsMouseWheel(-120, 3, true, TimeSpan.Zero);
+        viewer.ScrollToVerticalOffset(12);
+        view.UpdateLayout();
+        page.ProcessSongScrollFrame(TimeSpan.FromMilliseconds(80));
+        Assert.That(panel.VerticalOffset, Is.EqualTo(12));
+        page.HandleSongsMouseWheel(-120, 3, true, TimeSpan.Zero);
+        viewer.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, PresentationSource.FromVisual(viewer)!, 0, Key.PageDown)
+        { RoutedEvent = Keyboard.KeyDownEvent });
+        view.UpdateLayout();
+        var keyboard = panel.VerticalOffset;
+        Assert.That(keyboard, Is.GreaterThan(12));
+        page.ProcessSongScrollFrame(TimeSpan.FromMilliseconds(80));
+        Assert.That(panel.VerticalOffset, Is.EqualTo(keyboard));
+        page.HandleSongsMouseWheel(-120, 3, true, TimeSpan.Zero);
+        var last = (FrameworkElement)panel.Children[panel.Children.Count - 1];
+        panel.MakeVisible(last, new Rect(last.RenderSize));
+        view.UpdateLayout();
+        var focus = panel.VerticalOffset;
+        Assert.That(focus, Is.GreaterThan(keyboard));
+        page.ProcessSongScrollFrame(TimeSpan.FromMilliseconds(80));
+        Assert.That(panel.VerticalOffset, Is.EqualTo(focus));
+    }
+
+    [Test]
     public void CompleteLibraryDoesNotQueueIdleDemandCallbacksForWheelFrames()
     {
         UiTestPump.Run(vm.LoadMoreSongsCommand.ExecuteAsync(1000));

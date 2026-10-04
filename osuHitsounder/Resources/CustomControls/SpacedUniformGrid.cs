@@ -343,8 +343,8 @@ public class SpacedUniformGrid : VirtualizingPanel, IScrollInfo
     private void ApplyVerticalOffset(double offset, bool userRequest)
     {
         var value = CanVerticallyScroll ? Clamp(offset, ExtentHeight, ViewportHeight) : 0;
-        if (AreClose(value, VerticalOffset)) return;
         if (userRequest) VerticalScrollRequestVersion++;
+        if (AreClose(value, VerticalOffset)) return;
         var arrangeOnly = OffsetKeepsRealizedRange(value);
         VerticalOffset = value;
         ScrollOwner?.InvalidateScrollInfo();
