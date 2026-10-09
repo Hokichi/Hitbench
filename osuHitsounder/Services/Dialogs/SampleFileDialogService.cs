@@ -25,10 +25,10 @@ public sealed class SampleFileDialogService : ISampleFileDialogService
         this.select = select;
     }
 
-    public async Task<IReadOnlyList<string>> SelectAsync(CancellationToken token) =>
-        await dispatcher.InvokeAsync(() => SelectCoreAsync(token)).Task.Unwrap();
+    public async Task<IReadOnlyList<string>> SelectAsync(string? initialDirectory, CancellationToken token) =>
+        await dispatcher.InvokeAsync(() => SelectCoreAsync(initialDirectory, token)).Task.Unwrap();
 
-    private async Task<IReadOnlyList<string>> SelectCoreAsync(CancellationToken token)
+    private async Task<IReadOnlyList<string>> SelectCoreAsync(string? initialDirectory, CancellationToken token)
     {
         if (token.IsCancellationRequested) return Array.Empty<string>();
         var owner = select is null ? getOwner() : null;
@@ -40,7 +40,7 @@ public sealed class SampleFileDialogService : ISampleFileDialogService
             IReadOnlyList<string> paths;
             if (select is not null)
             {
-                await vm.InitializeAsync(token);
+                await vm.InitializeAsync(initialDirectory, token);
                 token.ThrowIfCancellationRequested();
                 paths = await select(vm, token);
             }
@@ -51,7 +51,7 @@ public sealed class SampleFileDialogService : ISampleFileDialogService
                 {
                     if (popup.IsVisible) popup.Close();
                 })));
-                await popup.InitializeAsync(token);
+                await popup.InitializeAsync(initialDirectory, token);
                 token.ThrowIfCancellationRequested();
                 paths = popup.ShowDialog() == true ? popup.Result : Array.Empty<string>();
             }

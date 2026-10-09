@@ -52,14 +52,18 @@ public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, I
     public string SampleRateText => Metadata is { } data ? string.Format(CultureInfo.CurrentCulture, "{0:N0} Hz", data.SampleRate) : "";
     public string ChannelsText => Metadata?.Channels.ToString(CultureInfo.CurrentCulture) ?? "";
 
-    public Task InitializeAsync(CancellationToken token) => OwnAsync(async () =>
+    public Task InitializeAsync(CancellationToken token) => InitializeAsync(null, token);
+
+    public Task InitializeAsync(string? initialDirectory, CancellationToken token) => OwnAsync(async () =>
     {
         externalCancellation = token.Register(lifetime.Cancel);
         try
         {
             var roots = await browser.GetRootsAsync(lifetime.Token);
             await UpdateAsync(() => { foreach (var root in roots) { Roots.Add(root); Observe(root); } });
-            var folder = await browser.GetDefaultDirectoryAsync(lifetime.Token);
+            var folder = string.IsNullOrWhiteSpace(initialDirectory)
+                ? await browser.GetDefaultDirectoryAsync(lifetime.Token) : initialDirectory;
+            await UpdateAsync(() => DirectoryText = folder);
             await NavigateToAsync(folder);
         }
         catch (OperationCanceledException) { }
@@ -136,8 +140,12 @@ public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, I
         if (root is null)
         {
             var rootPath = Path.GetPathRoot(path) ?? path;
-            root = new(rootPath, rootPath, true);
-            await uiScheduler.InvokeAsync(() => { Roots.Add(root); Observe(root); }, token);
+            root = Roots.FirstOrDefault(entry => SamePath(entry.FullPath, rootPath));
+            if (root is null)
+            {
+                root = new(rootPath, rootPath, true);
+                await uiScheduler.InvokeAsync(() => { Roots.Add(root); Observe(root); }, token);
+            }
         }
         var node = root;
         var relative = Path.GetRelativePath(root.FullPath, path);
@@ -306,7 +314,7 @@ public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, I
     private static bool SamePath(string? left, string? right) => left is not null && right is not null &&
         string.Equals(Path.TrimEndingDirectorySeparator(left), Path.TrimEndingDirectorySeparator(right), StringComparison.OrdinalIgnoreCase);
     private static bool IsAncestor(string parent, string path) => SamePath(parent, path) ||
-        path.StartsWith(Path.TrimEndingDirectorySeparator(parent) + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
+        path.StartsWith(Path.EndsInDirectorySeparator(parent) ? parent : parent + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
 
     public Task DeactivateAsync() => deactivation ??= DeactivateCoreAsync();
     private async Task DeactivateCoreAsync()

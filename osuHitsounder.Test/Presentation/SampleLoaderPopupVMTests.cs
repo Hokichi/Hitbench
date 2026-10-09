@@ -25,6 +25,80 @@ public sealed class SampleLoaderPopupVMTests
     }
     [TearDown] public Task TearDown() => vm.DeactivateAsync();
 
+    [TestCase(@"F:\", @"F:\Storage", @"F:\Other")]
+    [TestCase(@"F:\", @"f:\Storage", @"F:\Other")]
+    [TestCase(@"\\server\share\", @"\\server\share\Storage", @"\\server\share\Other")]
+    public async Task NavigationReusesDriveOrUncRoot(string rootPath, string firstPath, string nextPath)
+    {
+        var root = new SampleBrowserEntry(rootPath, rootPath, true);
+        var firstFolder = new SampleBrowserEntry(firstPath, "Storage", true);
+        var nextFolder = new SampleBrowserEntry(nextPath, "Other", true);
+        var source = new StubSampleBrowserService { RootEntries = [root], DefaultDirectory = firstPath };
+        source.Entries[rootPath] = [firstFolder, nextFolder];
+        source.Entries[firstPath] = [];
+        source.Entries[nextPath] = [];
+        var model = new SampleLoaderPopupVM(source, new StubSamplePreviewService(), new ImmediateUiScheduler(), new PlaybackVolumeSettings());
+        try
+        {
+            await model.InitializeAsync(default);
+            model.DirectoryText = nextPath;
+            await model.NavigateCommand.ExecuteAsync(null);
+            model.DirectoryText = firstPath;
+            await model.NavigateCommand.ExecuteAsync(null);
+            Assert.That(model.Roots, Has.Count.EqualTo(1));
+            Assert.That(model.Roots.Single(), Is.SameAs(root));
+            Assert.That(root.Children, Does.Contain(firstFolder).And.Contain(nextFolder));
+            Assert.That(model.CurrentDirectory, Is.EqualTo(firstPath));
+            Assert.That(model.DirectoryError, Is.Null);
+        }
+        finally { await model.DeactivateAsync(); }
+    }
+
+    [Test]
+    public async Task SiblingPrefixIsNotAnAncestor()
+    {
+        var sibling = Path.Combine(browser.RootPath, "AExtra");
+        var folder = new SampleBrowserEntry(sibling, "AExtra", true);
+        browser.Entries[browser.RootPath] = [a, b, folder];
+        browser.Entries[sibling] = [];
+        vm.DirectoryText = sibling;
+        await vm.NavigateCommand.ExecuteAsync(null);
+        Assert.That(vm.Roots.Single().Children, Does.Contain(folder));
+        Assert.That(a.Children, Does.Not.Contain(folder));
+        Assert.That(vm.CurrentDirectory, Is.EqualTo(sibling));
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task SuppliedDirectoryOverridesDefaultAndPreservesUnavailablePath(bool unavailable)
+    {
+        var source = new StubSampleBrowserService();
+        var requested = Path.Combine(source.RootPath, "Beatmap");
+        source.DefaultDirectory = source.RootPath;
+        source.Entries[source.RootPath] = [new(requested, "Beatmap", true)];
+        if (!unavailable) source.Entries[requested] = [];
+        var model = new SampleLoaderPopupVM(source, new StubSamplePreviewService(), new ImmediateUiScheduler(), new PlaybackVolumeSettings());
+        try
+        {
+            await model.InitializeAsync(requested, default);
+            Assert.That(source.DefaultDirectoryRequests, Is.Zero);
+            Assert.That(model.DirectoryText, Is.EqualTo(requested));
+            Assert.That(model.SelectedFile, Is.Null);
+            Assert.That(model.CheckedCount, Is.Zero);
+            if (unavailable)
+            {
+                Assert.That(model.DirectoryError, Is.Not.Empty);
+                Assert.That(model.CurrentDirectory, Is.Empty);
+            }
+            else
+            {
+                Assert.That(model.CurrentDirectory, Is.EqualTo(requested));
+                Assert.That(model.DirectoryError, Is.Null);
+            }
+        }
+        finally { await model.DeactivateAsync(); }
+    }
+
     [Test]
     public async Task NavigationClearsChecksButExpansionAndSameFolderDoNot()
     {

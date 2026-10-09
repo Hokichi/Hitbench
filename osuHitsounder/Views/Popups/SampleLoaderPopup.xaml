@@ -9,6 +9,25 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
+        <Style x:Key="SampleLoaderSelectedFileDetailsStyle" TargetType="Grid" BasedOn="{StaticResource BaseGridStyle}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding SelectedFile, Mode=OneWay}" Value="{x:Null}">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="SampleLoaderEmptySelectionStyle" TargetType="TextBlock" BasedOn="{StaticResource CenteredEmptyStateTextStyle}">
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Visibility" Value="Collapsed" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding SelectedFile, Mode=OneWay}" Value="{x:Null}">
+                    <Setter Property="Visibility" Value="Visible" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
+                    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
         <Style x:Key="SampleLoaderCaptionStyle" TargetType="TextBlock" BasedOn="{StaticResource SampleLoaderTextStyle}">
             <Setter Property="FontSize" Value="11" />
             <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}" />
@@ -158,6 +177,25 @@
                 <Trigger Property="IsExpanded" Value="False">
                     <Setter TargetName="Children" Property="Visibility" Value="Collapsed" />
                 </Trigger>
+                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
+                    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+                </DataTrigger>
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding IsMouseOver, ElementName=Row, Mode=OneWay}" Value="True" />
+                        <Condition Binding="{Binding IsEnabled, RelativeSource={RelativeSource Self}, Mode=OneWay}" Value="True" />
+                    </MultiDataTrigger.Conditions>
+                    <Setter Property="Background" Value="{DynamicResource Brush.Background.Hover}" />
+                </MultiDataTrigger>
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding IsMouseOver, ElementName=Row, Mode=OneWay}" Value="True" />
+                        <Condition Binding="{Binding IsEnabled, RelativeSource={RelativeSource Self}, Mode=OneWay}" Value="True" />
+                        <Condition Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True" />
+                    </MultiDataTrigger.Conditions>
+                    <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.ControlBrushKey}}" />
+                    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}" />
+                </MultiDataTrigger>
             </ControlTemplate.Triggers>
         </ControlTemplate>
         <Style x:Key="SampleLoaderTreeItemStyle" TargetType="TreeViewItem" BasedOn="{StaticResource BaseTreeViewItemStyle}">
@@ -176,9 +214,6 @@
             <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
             <EventSetter Event="Expanded" Handler="OnFolderExpanded" />
             <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource Brush.Background.Hover}" />
-                </Trigger>
                 <Trigger Property="IsSelected" Value="True">
                     <Setter Property="Background" Value="{DynamicResource Brush.Navy.Tint}" />
                     <Setter Property="FontFamily" Value="{DynamicResource Bold}" />
@@ -190,17 +225,6 @@
                 <DataTrigger Binding="{Binding IsPlaceholder, Mode=OneWay}" Value="True">
                     <Setter Property="IsEnabled" Value="False" />
                 </DataTrigger>
-                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
-                    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
-                </DataTrigger>
-                <MultiDataTrigger>
-                    <MultiDataTrigger.Conditions>
-                        <Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource Self}, Mode=OneWay}" Value="True" />
-                        <Condition Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True" />
-                    </MultiDataTrigger.Conditions>
-                    <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.ControlBrushKey}}" />
-                    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}" />
-                </MultiDataTrigger>
                 <MultiDataTrigger>
                     <MultiDataTrigger.Conditions>
                         <Condition Binding="{Binding IsSelected, RelativeSource={RelativeSource Self}, Mode=OneWay}" Value="True" />
@@ -287,6 +311,7 @@
             </Border>
             <Border Grid.Column="2" Style="{StaticResource SampleLoaderCardStyle}">
                 <Grid Style="{StaticResource BaseGridStyle}">
+                    <Grid x:Name="SelectedFileDetails" Style="{StaticResource SampleLoaderSelectedFileDetailsStyle}">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="*" />
                         <RowDefinition Height="Auto" />
@@ -313,6 +338,8 @@
                         </StackPanel>
                     </ScrollViewer>
                     <c:BalloonButton x:Name="PreviewButton" Grid.Row="1" Margin="0,8,0,0" HorizontalAlignment="Left" ButtonText="{Binding PreviewActionText, Mode=OneWay}" Command="{Binding TogglePreviewCommand, Mode=OneWay}" IsEnabled="{Binding CanPreview, Mode=OneWay}" AutomationProperties.Name="{Binding PreviewActionText, Mode=OneWay}" Style="{StaticResource SampleLoaderPreviewStyle}" />
+                    </Grid>
+                    <TextBlock x:Name="EmptySelectionPrompt" Text="Select a .wav, .ogg or .mp3" Style="{StaticResource SampleLoaderEmptySelectionStyle}" />
                 </Grid>
             </Border>
         </Grid>

@@ -18,6 +18,28 @@ public sealed class WorkstationSampleImportTests
     }
 
     [Test]
+    public async Task ImportPassesCapturedProjectBeatmapFolder()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "BeatmapFolder");
+        var source = new StubWorkstationSourceService
+        {
+            Load = (_, _) => Task.FromResult(new osuHitsounder.Core.Entities.WorkstationSource("map.osu", "audio.wav",
+                new osuHitsounder.Core.Entities.ProjectData { BeatmapPath = directory, Offsets = [0], BPMs = [120] }))
+        };
+        var dialog = new StubSampleFileDialogService(Array.Empty<string>());
+        var model = new WorkstationPageVM(source, new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), MarkerPlaybackCoordinator.DelayAsync),
+            new ImmediateUiScheduler(), new StubSampleFileService([]), dialog, messenger: new WeakReferenceMessenger());
+        try
+        {
+            await model.LoadAsync("project.json", default);
+            model.AcknowledgePresentationReady(model.LoadGeneration);
+            await model.ImportSamplesAsync();
+            Assert.That(dialog.InitialDirectory, Is.EqualTo(directory));
+        }
+        finally { await model.DeactivateAsync(); }
+    }
+
+    [Test]
     public async Task BatchImportsCheckedPathsAndRefreshesOnce()
     {
         List<string> attempted = [];

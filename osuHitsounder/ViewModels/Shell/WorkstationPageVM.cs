@@ -530,7 +530,7 @@ public partial class WorkstationPageVM(
             await playback.PauseAsync(token);
             RefreshPlayback();
             if (!IsCurrentProject(path, project, generation)) return Array.Empty<string>();
-            var sources = await sampleDialog!.SelectAsync(token);
+            var sources = await sampleDialog!.SelectAsync(project?.BeatmapPath, token);
             if (sources.Count == 0 || !IsCurrentProject(path, project, generation)) return Array.Empty<string>();
             foreach (var source in sources.Distinct(StringComparer.OrdinalIgnoreCase))
             {

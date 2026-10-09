@@ -47,6 +47,39 @@ public sealed class SampleLoaderPopupIntegrationTests
     }
 
     [Test]
+    public void NoSelectionShowsOnlyAudioPrompt()
+    {
+        var prompt = (TextBlock)popup.FindName("EmptySelectionPrompt");
+        var details = (Grid)popup.FindName("SelectedFileDetails");
+        Assert.That(prompt.Text, Is.EqualTo("Select a .wav, .ogg or .mp3"));
+        Assert.That(prompt.Visibility, Is.EqualTo(Visibility.Visible));
+        Assert.That(details.Visibility, Is.EqualTo(Visibility.Collapsed));
+        Assert.That(((BalloonButton)popup.FindName("PreviewButton")).IsVisible, Is.False);
+    }
+
+    [Test]
+    public void SelectionAndNavigationSwitchPromptAndDetails()
+    {
+        var prompt = (TextBlock)popup.FindName("EmptySelectionPrompt");
+        var details = (Grid)popup.FindName("SelectedFileDetails");
+        var completion = new TaskCompletionSource<SampleFileMetadata>();
+        browser.Metadata = (_, _) => completion.Task;
+        var selecting = vm.SelectAsync(file);
+        view.UpdateLayout();
+        Assert.That(prompt.Visibility, Is.EqualTo(Visibility.Collapsed));
+        Assert.That(details.Visibility, Is.EqualTo(Visibility.Visible));
+        UiTestPump.Run(vm.SelectAsync(browser.Entries[browser.RootPath].Single(entry => entry.IsDirectory)));
+        view.UpdateLayout();
+        Assert.That(prompt.Visibility, Is.EqualTo(Visibility.Visible));
+        Assert.That(details.Visibility, Is.EqualTo(Visibility.Collapsed));
+        completion.SetResult(new(file.FullPath, file.Name, "WAV", 100, TimeSpan.FromSeconds(1), 44100, 1));
+        UiTestPump.Run(selecting);
+        view.UpdateLayout();
+        Assert.That(prompt.Visibility, Is.EqualTo(Visibility.Visible));
+        Assert.That(details.Visibility, Is.EqualTo(Visibility.Collapsed));
+    }
+
+    [Test]
     public void CardsBindDirectoryMetadataAndCheckedCount()
     {
         Assert.That(((TextBox)popup.FindName("DirectoryTextBox")).Text, Is.EqualTo(browser.RootPath));
@@ -128,6 +161,64 @@ public sealed class SampleLoaderPopupIntegrationTests
     }
 
     [Test]
+    public void ChildHeaderHoverDoesNotHighlightAncestors()
+    {
+        var branch = browser.Entries[browser.RootPath].Single(entry => entry.IsDirectory);
+        var nestedFile = new SampleBrowserEntry(Path.Combine(branch.FullPath, "nested.wav"), "nested.wav", false);
+        browser.Entries[branch.FullPath] = [nestedFile];
+        UiTestPump.Run(vm.ExpandAsync(branch));
+        vm.Roots.Single().IsSelected = false;
+        view.UpdateLayout();
+        var containers = Descendants(view.Root).OfType<TreeViewItem>().ToArray();
+        var leaf = containers.Single(item => ReferenceEquals(item.DataContext, nestedFile));
+        var parent = containers.Single(item => ReferenceEquals(item.DataContext, branch));
+        var root = containers.Single(item => ReferenceEquals(item.DataContext, vm.Roots.Single()));
+        var leafRow = (Border)leaf.Template.FindName("Row", leaf);
+        var parentRow = (Border)parent.Template.FindName("Row", parent);
+        var rootRow = (Border)root.Template.FindName("Row", root);
+        var parentRest = parentRow.Background;
+        var rootRest = rootRow.Background;
+        var checkbox = Descendants(leafRow).OfType<CheckBox>().Single();
+        MouseOverTestState.Set(root, true);
+        MouseOverTestState.Set(parent, true);
+        MouseOverTestState.Set(leaf, true);
+        MouseOverTestState.Set(leafRow, true);
+        MouseOverTestState.Set(checkbox, true);
+        view.UpdateLayout();
+        Assert.That(leafRow.Background, Is.SameAs(popup.FindResource("Brush.Background.Hover")));
+        Assert.That(parentRow.Background, Is.SameAs(parentRest));
+        Assert.That(rootRow.Background, Is.SameAs(rootRest));
+        leaf.SetCurrentValue(TreeViewItem.IsEnabledProperty, false);
+        view.UpdateLayout();
+        Assert.That(leafRow.Background, Is.Not.SameAs(popup.FindResource("Brush.Background.Hover")));
+    }
+
+    [TestCase("Dark", false)]
+    [TestCase("Light", false)]
+    [TestCase("Dark", true)]
+    [TestCase("Light", true)]
+    public void SelectedAndHighContrastRowsKeepStateDuringHeaderHover(string theme, bool highContrast)
+    {
+        Application.Current.Resources.MergedDictionaries[0].Source = new Uri($"/osuHitsounder;component/Resources/Themes/{theme}.xaml", UriKind.Relative);
+        view.UpdateLayout();
+        var container = Descendants(view.Root).OfType<TreeViewItem>().Single(item => ReferenceEquals(item.DataContext, file));
+        if (highContrast) container.Style = WithHighContrast(container.Style);
+        view.UpdateLayout();
+        var row = (Border)container.Template.FindName("Row", container);
+        MouseOverTestState.Set(container, true);
+        MouseOverTestState.Set(row, true);
+        view.UpdateLayout();
+        Assert.That(((SolidColorBrush)row.Background).Color, Is.EqualTo(highContrast ? SystemColors.ControlColor :
+            ((SolidColorBrush)popup.FindResource("Brush.Background.Hover")).Color));
+        if (highContrast) Assert.That(((SolidColorBrush)container.Foreground).Color, Is.EqualTo(SystemColors.ControlTextColor));
+        container.SetCurrentValue(TreeViewItem.IsSelectedProperty, true);
+        view.UpdateLayout();
+        Assert.That(((SolidColorBrush)row.Background).Color, Is.EqualTo(highContrast ? SystemColors.HighlightColor :
+            ((SolidColorBrush)popup.FindResource("Brush.Navy.Tint")).Color));
+        if (highContrast) Assert.That(((SolidColorBrush)container.Foreground).Color, Is.EqualTo(SystemColors.HighlightTextColor));
+    }
+
+    [Test]
     public void TreeKeepsVirtualizationAndNativeSelectionSemantics()
     {
         var tree = (TreeView)popup.FindName("DirectoryTree");
@@ -170,7 +261,10 @@ public sealed class SampleLoaderPopupIntegrationTests
     private static Style WithHighContrast(Style original)
     {
         var copy = new Style(original.TargetType, original.BasedOn is null ? null : WithHighContrast(original.BasedOn));
-        foreach (var setter in original.Setters) copy.Setters.Add(setter);
+        foreach (var setter in original.Setters)
+            if (setter is Setter { Property: var property, Value: ControlTemplate template } && property == Control.TemplateProperty)
+                copy.Setters.Add(new Setter(property, WithHighContrast(template)));
+            else copy.Setters.Add(setter);
         BindingBase Override(BindingBase binding) => binding is Binding value &&
             value.Path?.PathParameters.OfType<System.Reflection.PropertyInfo>().Any(property =>
                 property.DeclaringType == typeof(SystemParameters) && property.Name == nameof(SystemParameters.HighContrast)) == true
@@ -194,6 +288,27 @@ public sealed class SampleLoaderPopupIntegrationTests
         }
         return copy;
     }
+
+    private static ControlTemplate WithHighContrast(ControlTemplate original)
+    {
+        // Clone the control object, not repository source, so sealed templates remain untouched.
+        var copy = (ControlTemplate)System.Windows.Markup.XamlReader.Parse(System.Windows.Markup.XamlWriter.Save(original));
+        foreach (var trigger in copy.Triggers)
+        {
+            if (trigger is DataTrigger data && IsHighContrastBinding(data.Binding))
+                data.Binding = new Binding { Source = true, Mode = BindingMode.OneWay };
+            if (trigger is MultiDataTrigger multi)
+                foreach (var condition in multi.Conditions)
+                    if (IsHighContrastBinding(condition.Binding))
+                        condition.Binding = new Binding { Source = true, Mode = BindingMode.OneWay };
+        }
+        return copy;
+    }
+
+    private static bool IsHighContrastBinding(BindingBase binding) => binding is Binding value &&
+        (value.Path?.PathParameters.OfType<System.Reflection.PropertyInfo>().Any(property =>
+            property.DeclaringType == typeof(SystemParameters) && property.Name == nameof(SystemParameters.HighContrast)) == true ||
+         value.Path?.Path.Contains("HighContrast", StringComparison.Ordinal) == true);
 
     private static IEnumerable<DependencyObject> Descendants(DependencyObject parent)
     {

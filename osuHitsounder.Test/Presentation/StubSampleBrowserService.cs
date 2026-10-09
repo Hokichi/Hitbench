@@ -10,8 +10,14 @@ public sealed class StubSampleBrowserService : ISampleBrowserService
     public Func<string, CancellationToken, Task<IReadOnlyList<SampleBrowserEntry>>>? Listing { get; set; }
     public Func<string, CancellationToken, Task<SampleFileMetadata>>? Metadata { get; set; }
     public string DefaultDirectory { get; set; } = "";
-    public Task<IReadOnlyList<SampleBrowserEntry>> GetRootsAsync(CancellationToken token) => Task.FromResult<IReadOnlyList<SampleBrowserEntry>>([new(RootPath, "Root", true)]);
-    public Task<string> GetDefaultDirectoryAsync(CancellationToken token) => Task.FromResult(DefaultDirectory);
+    public IReadOnlyList<SampleBrowserEntry>? RootEntries { get; set; }
+    public int DefaultDirectoryRequests { get; private set; }
+    public Task<IReadOnlyList<SampleBrowserEntry>> GetRootsAsync(CancellationToken token) => Task.FromResult<IReadOnlyList<SampleBrowserEntry>>(RootEntries ?? [new(RootPath, "Root", true)]);
+    public Task<string> GetDefaultDirectoryAsync(CancellationToken token)
+    {
+        DefaultDirectoryRequests++;
+        return Task.FromResult(DefaultDirectory);
+    }
     public Task<IReadOnlyList<SampleBrowserEntry>> GetEntriesAsync(string directory, CancellationToken token) => Listing?.Invoke(directory, token) ??
         (Entries.TryGetValue(directory, out var entries) ? Task.FromResult(entries) : Task.FromException<IReadOnlyList<SampleBrowserEntry>>(new DirectoryNotFoundException("Folder unavailable")));
     public Task<SampleFileMetadata> ReadMetadataAsync(string path, CancellationToken token) => Metadata?.Invoke(path, token) ??
