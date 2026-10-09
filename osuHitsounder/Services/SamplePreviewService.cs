@@ -14,13 +14,20 @@ public sealed class SamplePreviewService(Func<string, WaveStream> openDecoder,
     private string? error;
     private string? warning;
     private bool disposed;
+    private string? playingPath;
+    private int playingVolume;
+    private TimeSpan position, duration, origin;
 
-    public Task PlayAsync(string path, int applicationVolume, CancellationToken token) => RunAsync(() =>
+    public Task PlayAsync(string path, int applicationVolume, CancellationToken token, TimeSpan startPosition = default) =>
+        RunAsync(() => Start(path, applicationVolume, startPosition, token), token);
+
+    private bool Start(string path, int applicationVolume, TimeSpan startPosition, CancellationToken token)
     {
         ObjectDisposedException.ThrowIf(disposed, this);
         Retire();
         error = null;
         warning = null;
+        position = duration = TimeSpan.Zero;
         var failures = new List<string>();
         foreach (var candidate in outputCandidates)
         {
@@ -28,6 +35,12 @@ public sealed class SamplePreviewService(Func<string, WaveStream> openDecoder,
             try
             {
                 reader = openDecoder(path);
+                duration = reader.TotalTime;
+                var bounded = TimeSpan.FromTicks(Math.Clamp(startPosition.Ticks, 0, duration.Ticks));
+                if (bounded > TimeSpan.Zero) reader.CurrentTime = bounded;
+                origin = position = reader.CurrentTime;
+                playingPath = path;
+                playingVolume = applicationVolume;
                 var source = new VolumeSampleProvider(reader.ToSampleProvider()) { Volume = Math.Clamp(applicationVolume, 0, 100) / 100f };
                 var next = candidate.Create();
                 output = next;
@@ -43,21 +56,34 @@ public sealed class SamplePreviewService(Func<string, WaveStream> openDecoder,
             catch (Exception failure) { failures.Add($"{candidate.Name}: {failure.Message}"); Retire(); }
         }
         throw new InvalidOperationException($"Unable to play sample: {string.Join("; ", failures)}");
+    }
+
+    public Task SeekAsync(TimeSpan position, CancellationToken token) => RunAsync(() =>
+    {
+        ObjectDisposedException.ThrowIf(disposed, this);
+        return output is null || playingPath is null || Start(playingPath, playingVolume, position, token);
     }, token);
 
-    public Task StopAsync(CancellationToken token) => RunAsync(() => { Retire(); return true; }, token);
+    public Task StopAsync(CancellationToken token) => RunAsync(() =>
+    {
+        Retire(); position = duration = TimeSpan.Zero; playingPath = null; return true;
+    }, token);
 
     public Task<SamplePreviewSnapshot> GetSnapshotAsync(CancellationToken token) => RunAsync(() =>
     {
-        if (disposed) return new SamplePreviewSnapshot(false, error, warning);
+        if (disposed) return new SamplePreviewSnapshot(false, error, warning, position, duration);
         try { output?.Poll(); }
         catch (Exception failure) { Interlocked.Exchange(ref stopped, new StoppedEventArgs(failure)); }
         if (Interlocked.Exchange(ref stopped, null) is { } result)
         {
             error = result.Exception?.Message;
+            if (error is null) position = duration;
             Retire();
         }
-        return new SamplePreviewSnapshot(output?.PlaybackState == PlaybackState.Playing, error, warning);
+        if (output is not null && reader is not null)
+            position = TimeSpan.FromTicks(Math.Clamp((origin + TimeSpan.FromSeconds(
+                output.GetPlayedFrames() / (double)reader.WaveFormat.SampleRate)).Ticks, 0, duration.Ticks));
+        return new SamplePreviewSnapshot(output?.PlaybackState == PlaybackState.Playing, error, warning, position, duration);
     }, token);
 
     private async Task<T> RunAsync<T>(Func<T> operation, CancellationToken token)

@@ -1,6 +1,9 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Data;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Threading;
 using osuHitsounder.Resources.CustomControls;
 using osuHitsounder.Resources.DataModels;
@@ -18,6 +21,11 @@ public partial class SampleLoaderPopup : BasePopup
     private Window? sizingOwner;
     private bool deactivated;
     private DispatcherOperation? initialFocus;
+    private readonly CancellationTokenSource viewLifetime = new();
+    private string? initialFolder;
+    private Task? initialReveal;
+    private bool initialFolderRevealed, isScrubbing;
+    private SampleBrowserEntry? scrubbingFile;
     public IReadOnlyList<string> Result { get; private set; } = Array.Empty<string>();
 
     public SampleLoaderPopup(SampleLoaderPopupVM viewModel) : this(viewModel, null, null) { }
@@ -33,19 +41,25 @@ public partial class SampleLoaderPopup : BasePopup
         KeyboardNavigationPolicy.EnableTabNavigation(this);
         KeyboardNavigationPolicy.EnableTabNavigation((DependencyObject)Content);
         Loaded += OnPopupLoaded;
+        DirectoryTree.Loaded += OnTreeLoaded;
+        PlaybackTimeline.ValueChanged += OnTimelineValueChanged;
+        PlaybackTimeline.AddHandler(Thumb.DragStartedEvent, new DragStartedEventHandler(OnTimelineDragStarted));
+        PlaybackTimeline.AddHandler(Thumb.DragCompletedEvent, new DragCompletedEventHandler(OnTimelineDragCompleted));
     }
 
     protected override bool ShouldBubbleApplicationClose => false;
 
     public Task InitializeAsync(CancellationToken token) => InitializeAsync(null, token);
 
-    public Task InitializeAsync(string? initialDirectory, CancellationToken token)
+    public async Task InitializeAsync(string? initialDirectory, CancellationToken token)
     {
         sizingOwner = Owner;
         if (sizingOwner is not null) sizingOwner.SizeChanged += OnOwnerSizeChanged;
         DpiChanged += OnPopupDpiChanged;
         UpdateSize();
-        return viewModel.InitializeAsync(initialDirectory, token);
+        await viewModel.InitializeAsync(initialDirectory, token);
+        initialFolder = viewModel.CurrentDirectory;
+        if (DirectoryTree.IsLoaded) await RevealInitialFolderAsync();
     }
 
     public async Task DeactivateAsync()
@@ -53,10 +67,17 @@ public partial class SampleLoaderPopup : BasePopup
         if (deactivated) return;
         deactivated = true;
         initialFocus?.Abort();
+        viewLifetime.Cancel();
         Loaded -= OnPopupLoaded;
+        DirectoryTree.Loaded -= OnTreeLoaded;
+        PlaybackTimeline.ValueChanged -= OnTimelineValueChanged;
+        PlaybackTimeline.RemoveHandler(Thumb.DragStartedEvent, new DragStartedEventHandler(OnTimelineDragStarted));
+        PlaybackTimeline.RemoveHandler(Thumb.DragCompletedEvent, new DragCompletedEventHandler(OnTimelineDragCompleted));
         DpiChanged -= OnPopupDpiChanged;
         if (sizingOwner is not null) sizingOwner.SizeChanged -= OnOwnerSizeChanged;
         await viewModel.DeactivateAsync();
+        if (initialReveal is not null) await initialReveal;
+        viewLifetime.Dispose();
     }
 
     private void UpdateSize()
@@ -73,6 +94,95 @@ public partial class SampleLoaderPopup : BasePopup
     private void OnPopupDpiChanged(object sender, DpiChangedEventArgs e) => UpdateSize();
     private void OnPopupLoaded(object sender, RoutedEventArgs e) => initialFocus = Dispatcher.BeginInvoke(
         DispatcherPriority.Input, new Action(() => { if (!deactivated) DirectoryTextBox.Focus(); }));
+
+    private async void OnTreeLoaded(object sender, RoutedEventArgs e) =>
+        await HandleInteractionAsync(RevealInitialFolderAsync);
+
+    internal Task RevealInitialFolderAsync()
+    {
+        if (deactivated || initialFolderRevealed || string.IsNullOrEmpty(initialFolder)) return Task.CompletedTask;
+        return initialReveal ??= RevealInitialFolderCoreAsync();
+    }
+
+    private async Task RevealInitialFolderCoreAsync()
+    {
+        try
+        {
+            ItemsControl owner = DirectoryTree;
+            var entries = viewModel.Roots.AsEnumerable();
+            while (!deactivated)
+            {
+                var entry = entries.FirstOrDefault(item => item.IsDirectory && (SameFolder(item.FullPath, initialFolder!) ||
+                    initialFolder!.StartsWith(System.IO.Path.TrimEndingDirectorySeparator(item.FullPath) + System.IO.Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)));
+                if (entry is null) return;
+                owner.ApplyTemplate();
+                owner.UpdateLayout();
+                var index = owner.Items.IndexOf(entry);
+                if (owner.ItemContainerGenerator.ContainerFromIndex(index) is not TreeViewItem)
+                {
+                    var panel = Descendants(owner).OfType<VirtualizingStackPanel>().FirstOrDefault(value => ItemsControl.GetItemsOwner(value) == owner);
+                    panel?.BringIndexIntoViewPublic(index);
+                }
+                await Dispatcher.InvokeAsync(owner.UpdateLayout, DispatcherPriority.Loaded, viewLifetime.Token);
+                if (owner.ItemContainerGenerator.ContainerFromIndex(index) is not TreeViewItem container) return;
+                if (SameFolder(entry.FullPath, initialFolder!))
+                {
+                    var header = container.Template.FindName("Row", container) as FrameworkElement;
+                    (header ?? container).BringIntoView();
+                    initialFolderRevealed = true;
+                    return;
+                }
+                owner = container;
+                entries = entry.Children;
+            }
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    private static bool SameFolder(string left, string right) => string.Equals(
+        System.IO.Path.TrimEndingDirectorySeparator(left), System.IO.Path.TrimEndingDirectorySeparator(right), StringComparison.OrdinalIgnoreCase);
+
+    private static IEnumerable<DependencyObject> Descendants(DependencyObject parent)
+    {
+        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(parent); index++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, index);
+            yield return child;
+            foreach (var descendant in Descendants(child)) yield return descendant;
+        }
+    }
+
+    private async void OnTimelineValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (isScrubbing || !viewModel.CanSeek || Math.Abs(e.NewValue - viewModel.PlaybackPositionSeconds) < .000001) return;
+        await HandleInteractionAsync(() => viewModel.SeekAsync(e.NewValue));
+    }
+
+    private void OnTimelineDragStarted(object sender, DragStartedEventArgs e)
+    {
+        if (!viewModel.CanSeek) return;
+        isScrubbing = true;
+        scrubbingFile = viewModel.SelectedFile;
+        var value = PlaybackTimeline.Value;
+        BindingOperations.ClearBinding(PlaybackTimeline, RangeBase.ValueProperty);
+        PlaybackTimeline.Value = value;
+    }
+
+    private async void OnTimelineDragCompleted(object sender, DragCompletedEventArgs e)
+    {
+        if (!isScrubbing) return;
+        try
+        {
+            if (!e.Canceled && ReferenceEquals(scrubbingFile, viewModel.SelectedFile))
+                await HandleInteractionAsync(() => viewModel.SeekAsync(PlaybackTimeline.Value));
+        }
+        finally
+        {
+            PlaybackTimeline.SetBinding(RangeBase.ValueProperty, new Binding(nameof(SampleLoaderPopupVM.PlaybackPositionSeconds)) { Mode = BindingMode.OneWay });
+            isScrubbing = false;
+            scrubbingFile = null;
+        }
+    }
 
     private async void OnFolderExpanded(object sender, RoutedEventArgs e)
     {
@@ -110,6 +220,7 @@ public partial class SampleLoaderPopup : BasePopup
         base.OnKeyDown(e);
         if (!e.Handled && e.Key == Key.Enter && Keyboard.Modifiers == ModifierKeys.None &&
             e.OriginalSource is not TextBox && e.OriginalSource is not TreeViewItem && e.OriginalSource is not CheckBox &&
+            e.OriginalSource is not Slider && e.OriginalSource is not Thumb &&
             e.OriginalSource is not System.Windows.Controls.Primitives.ToggleButton)
         {
             e.Handled = true;

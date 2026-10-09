@@ -17,12 +17,16 @@ public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, I
     private readonly CancellationTokenSource lifetime = new();
     private readonly HashSet<Task> operations = [];
     private readonly HashSet<SampleBrowserEntry> observed = [];
+    private readonly SemaphoreSlim previewGate = new(1, 1);
     private CancellationTokenSource? navigationCancellation, metadataCancellation, playCancellation;
     private Task previewMonitor = Task.CompletedTask;
     private CancellationTokenRegistration externalCancellation;
     private Task? deactivation;
     private int navigationGeneration, selectionGeneration;
     private bool deactivated;
+    private bool isStartingPreview;
+    private double playbackPositionSeconds;
+    private bool isSeeking;
     private SampleBrowserEntry? currentFolder;
     public ObservableCollection<SampleBrowserEntry> Roots { get; } = [];
 
@@ -38,13 +42,20 @@ public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, I
     [ObservableProperty] private string? metadataError;
     [ObservableProperty] private string? previewError;
     [ObservableProperty] private string? previewWarning;
+    [ObservableProperty] private bool autoPlaySamples = true;
 
-    public int CheckedCount => currentFolder?.Children.Count(entry => !entry.IsDirectory && entry.IsChecked) ?? 0;
+    public double PlaybackPositionSeconds => playbackPositionSeconds;
+    public double PlaybackDurationSeconds => Math.Max(0, Metadata?.Duration.TotalSeconds ?? 0);
+    public bool IsSeeking => isSeeking;
+    public bool CanSeek => CanPreview && PlaybackDurationSeconds > 0;
+    public string PlaybackTimeText => string.Format(CultureInfo.CurrentCulture, "{0:0.000} / {1:0.000} s",
+        PlaybackPositionSeconds, PlaybackDurationSeconds);
+
+    public int CheckedCount => currentFolder?.Children.Count(entry => !entry.IsDirectory && !entry.IsPlaceholder && entry.IsChecked) ?? 0;
     public string CheckedCountText => string.Format(CultureInfo.CurrentCulture, "{0:N0} files checked", CheckedCount);
     public bool CanImport => !deactivated && !IsNavigating && !IsConfirming && CheckedCount > 0;
-    public bool CanPreview => !deactivated && !IsNavigating && !IsConfirming && !IsMetadataLoading && Metadata is not null;
-    public string BrowserStatusText => IsNavigating ? "Loading folder..." : CurrentDirectory.Length == 0 ? "Choose a folder." :
-        currentFolder?.Children.Any(entry => !entry.IsDirectory && !entry.IsPlaceholder) == true ? "" : "No WAV, OGG, or MP3 files in this folder.";
+    public bool CanPreview => !deactivated && !IsNavigating && !IsConfirming && !IsMetadataLoading && !isStartingPreview && !IsSeeking && Metadata is not null;
+    public string BrowserStatusText => IsNavigating ? "Loading folder..." : CurrentDirectory.Length == 0 ? "Choose a folder." : "";
     public string PreviewActionText => IsPreviewPlaying ? "Stop" : "Play";
     public string MetadataStatusText => IsMetadataLoading ? "Reading metadata..." : SelectedFile is null ? "Select a file to inspect and preview." : "";
     public string SizeText => Metadata is { } data ? string.Format(CultureInfo.CurrentCulture, "{0:N1} KiB", data.Length / 1024d) : "";
@@ -203,6 +214,8 @@ public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, I
         catch (OperationCanceledException) { }
         catch (Exception error) { if (request == selectionGeneration) await ReportAsync(() => MetadataError = error.Message); }
         finally { if (request == selectionGeneration) await ReportAsync(() => { IsMetadataLoading = false; NotifyState(); }); }
+        if (request == selectionGeneration && !deactivated && AutoPlaySamples && CanPreview)
+            await StartPreviewAsync();
     }
 
     public Task SetCheckedAsync(SampleBrowserEntry entry, bool value) => OwnAsync(async () =>
@@ -221,21 +234,80 @@ public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, I
     private Task TogglePreviewAsync() => OwnAsync(async () =>
     {
         if (IsPreviewPlaying) { await StopPreviewAsync(); return; }
+        await StartPreviewAsync();
+    });
+
+    private async Task StartPreviewAsync()
+    {
         if (!CanPreview || SelectedFile is not { } file) return;
         playCancellation?.Cancel();
         playCancellation?.Dispose();
         var cancellation = playCancellation = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);
         var request = selectionGeneration;
+        var entered = false;
         try
         {
-            await UpdateAsync(() => { PreviewError = null; PreviewWarning = null; });
-            await preview.PlayAsync(file.FullPath, volumes.ApplicationVolume, cancellation.Token);
+            await UpdateAsync(() => { isStartingPreview = true; PreviewError = null; PreviewWarning = null; NotifyState(); });
+            await previewGate.WaitAsync(cancellation.Token);
+            entered = true;
+            if (request != selectionGeneration || deactivated) return;
+            var start = PlaybackPositionSeconds >= PlaybackDurationSeconds ? 0 : PlaybackPositionSeconds;
+            await preview.PlayAsync(file.FullPath, volumes.ApplicationVolume, cancellation.Token, TimeSpan.FromSeconds(start));
             if (request != selectionGeneration || deactivated || cancellation.IsCancellationRequested) { await preview.StopAsync(CancellationToken.None); return; }
-            await UpdateAsync(() => { IsPreviewPlaying = true; NotifyState(); });
+            await UpdateAsync(() => { playbackPositionSeconds = start; IsPreviewPlaying = true; NotifyState(); });
             previewMonitor = MonitorPreviewAsync(request, cancellation.Token);
         }
         catch (OperationCanceledException) { }
-        catch (Exception error) { await ReportAsync(() => { PreviewError = error.Message; IsPreviewPlaying = false; NotifyState(); }); }
+        catch (Exception error)
+        {
+            if (request == selectionGeneration) await ReportAsync(() => { PreviewError = error.Message; IsPreviewPlaying = false; NotifyState(); });
+        }
+        finally
+        {
+            await ReportAsync(() => { isStartingPreview = false; NotifyState(); });
+            if (entered) previewGate.Release();
+        }
+    }
+
+    public Task SeekAsync(double seconds) => OwnAsync(async () =>
+    {
+        if (!CanSeek || !double.IsFinite(seconds)) return;
+        var request = selectionGeneration;
+        var target = Math.Clamp(seconds, 0, PlaybackDurationSeconds);
+        if (!IsPreviewPlaying)
+        {
+            await UpdateAsync(() => { playbackPositionSeconds = target; NotifyState(); });
+            return;
+        }
+        var entered = false;
+        var wasPlaying = true;
+        playCancellation?.Cancel();
+        playCancellation?.Dispose();
+        var cancellation = playCancellation = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);
+        try
+        {
+            await UpdateAsync(() => { isSeeking = true; PreviewError = null; NotifyState(); });
+            await previewGate.WaitAsync(cancellation.Token);
+            entered = true;
+            await previewMonitor;
+            if (request != selectionGeneration || deactivated) return;
+            await preview.SeekAsync(TimeSpan.FromSeconds(target), cancellation.Token);
+            if (request != selectionGeneration || deactivated || cancellation.IsCancellationRequested) return;
+            await UpdateAsync(() => { playbackPositionSeconds = target; NotifyState(); });
+        }
+        catch (OperationCanceledException) { wasPlaying = false; }
+        catch (Exception error)
+        {
+            wasPlaying = false;
+            if (request == selectionGeneration) await ReportAsync(() => { PreviewError = error.Message; IsPreviewPlaying = false; NotifyState(); });
+        }
+        finally
+        {
+            await ReportAsync(() => { isSeeking = false; NotifyState(); });
+            if (entered) previewGate.Release();
+            if (wasPlaying && request == selectionGeneration && !deactivated && !cancellation.IsCancellationRequested)
+                previewMonitor = MonitorPreviewAsync(request, cancellation.Token);
+        }
     });
 
     private async Task MonitorPreviewAsync(int request, CancellationToken token)
@@ -246,7 +318,13 @@ public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, I
             {
                 var state = await preview.GetSnapshotAsync(token);
                 if (request != selectionGeneration || deactivated) return;
-                await UpdateAsync(() => { IsPreviewPlaying = state.IsPlaying; PreviewError = state.Error; PreviewWarning = state.Warning; NotifyState(); });
+                if (token.IsCancellationRequested) return;
+                await UpdateAsync(() =>
+                {
+                    if (request != selectionGeneration || token.IsCancellationRequested) return;
+                    playbackPositionSeconds = Math.Clamp(state.Position.TotalSeconds, 0, PlaybackDurationSeconds);
+                    IsPreviewPlaying = state.IsPlaying; PreviewError = state.Error; PreviewWarning = state.Warning; NotifyState();
+                });
                 if (!state.IsPlaying) return;
                 await Task.Delay(100, token);
             }
@@ -259,8 +337,10 @@ public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, I
     {
         playCancellation?.Cancel();
         await previewMonitor;
-        await preview.StopAsync(CancellationToken.None);
-        await ReportAsync(() => { IsPreviewPlaying = false; PreviewError = null; PreviewWarning = null; NotifyState(); });
+        await previewGate.WaitAsync();
+        try { await preview.StopAsync(CancellationToken.None); }
+        finally { previewGate.Release(); }
+        await ReportAsync(() => { playbackPositionSeconds = 0; IsPreviewPlaying = false; PreviewError = null; PreviewWarning = null; NotifyState(); });
     }
 
     public async Task<IReadOnlyList<string>> ConfirmAsync()
@@ -268,7 +348,7 @@ public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, I
         if (!CanImport) return Array.Empty<string>();
         IsConfirming = true;
         NotifyState();
-        var result = currentFolder!.Children.Where(entry => !entry.IsDirectory && entry.IsChecked).Select(entry => entry.FullPath).ToArray();
+        var result = currentFolder!.Children.Where(entry => !entry.IsDirectory && !entry.IsPlaceholder && entry.IsChecked).Select(entry => entry.FullPath).ToArray();
         try { await StopPreviewAsync(); return deactivated ? Array.Empty<string>() : Array.AsReadOnly(result); }
         catch (Exception error) { PreviewError = error.Message; IsConfirming = false; NotifyState(); return Array.Empty<string>(); }
     }
@@ -278,6 +358,12 @@ public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, I
         foreach (var child in entry.Children) Forget(child);
         entry.Children.Clear();
         foreach (var child in children) { entry.Children.Add(child); Observe(child); }
+        if (!children.Any(child => !child.IsDirectory && !child.IsPlaceholder))
+        {
+            var empty = new SampleBrowserEntry("", "No audio file found", false, true);
+            entry.Children.Add(empty);
+            Observe(empty);
+        }
         entry.IsLoaded = true;
         entry.Error = null;
     }
@@ -298,7 +384,8 @@ public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, I
     private void NotifyState()
     {
         foreach (var name in new[] { nameof(CheckedCount), nameof(CheckedCountText), nameof(CanImport), nameof(CanPreview), nameof(BrowserStatusText),
-            nameof(PreviewActionText), nameof(MetadataStatusText), nameof(SizeText), nameof(DurationText), nameof(SampleRateText), nameof(ChannelsText) }) OnPropertyChanged(name);
+            nameof(PreviewActionText), nameof(MetadataStatusText), nameof(SizeText), nameof(DurationText), nameof(SampleRateText), nameof(ChannelsText),
+            nameof(PlaybackPositionSeconds), nameof(PlaybackDurationSeconds), nameof(PlaybackTimeText), nameof(CanSeek), nameof(IsSeeking) }) OnPropertyChanged(name);
         TogglePreviewCommand.NotifyCanExecuteChanged();
     }
     private Task UpdateAsync(Action action) => uiScheduler.InvokeAsync(action, lifetime.Token);

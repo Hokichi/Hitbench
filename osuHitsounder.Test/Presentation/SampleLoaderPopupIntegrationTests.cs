@@ -3,6 +3,8 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Data;
+using System.Windows.Controls.Primitives;
+using System.Xml.Linq;
 using osuHitsounder.Resources.CustomControls;
 using osuHitsounder.Resources.DataModels;
 using osuHitsounder.Services;
@@ -21,10 +23,12 @@ public sealed class SampleLoaderPopupIntegrationTests
     private SampleBrowserEntry file = null!;
     private bool? completion;
     private InMemoryView view = null!;
+    private StubSamplePreviewService preview = null!;
 
     [SetUp]
     public void Setup()
     {
+        completion = null;
         new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
         browser = new StubSampleBrowserService();
         browser.DefaultDirectory = browser.RootPath;
@@ -32,7 +36,8 @@ public sealed class SampleLoaderPopupIntegrationTests
         var empty = Path.Combine(browser.RootPath, "empty");
         browser.Entries[browser.RootPath] = [file, new(empty, "empty", true)];
         browser.Entries[empty] = [];
-        vm = new(browser, new StubSamplePreviewService(), new ImmediateUiScheduler(), new PlaybackVolumeSettings());
+        preview = new();
+        vm = new(browser, preview, new ImmediateUiScheduler(), new PlaybackVolumeSettings()) { AutoPlaySamples = false };
         popup = new(vm, value => completion = value, _ => new Size(640, 360));
         UiTestPump.Run(popup.InitializeAsync(CancellationToken.None));
         view = new InMemoryView(popup, scheduleLayout: false);
@@ -99,7 +104,7 @@ public sealed class SampleLoaderPopupIntegrationTests
         UiTestPump.Run(vm.SelectAsync(file));
         view.UpdateLayout();
         Assert.That(file.IsChecked, Is.False);
-        var checkbox = Descendants(view.Root).OfType<CheckBox>().Single(box => box.Visibility == Visibility.Visible);
+        var checkbox = Descendants(view.Root).OfType<CheckBox>().Single(box => ReferenceEquals(box.DataContext, file));
         checkbox.SetCurrentValue(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, true);
         checkbox.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
         view.UpdateLayout();
@@ -224,7 +229,7 @@ public sealed class SampleLoaderPopupIntegrationTests
         var tree = (TreeView)popup.FindName("DirectoryTree");
         Assert.That(VirtualizingPanel.GetIsVirtualizing(tree), Is.True);
         Assert.That(VirtualizingPanel.GetVirtualizationMode(tree), Is.EqualTo(VirtualizationMode.Recycling));
-        Assert.That(Descendants(view.Root).OfType<CheckBox>().Count(box => box.Visibility == Visibility.Visible), Is.EqualTo(1));
+        Assert.That(Descendants(view.Root).OfType<CheckBox>().Count(box => box.Visibility == Visibility.Visible && box.DataContext is SampleBrowserEntry), Is.EqualTo(1));
         Assert.That(tree.ItemContainerStyle.TargetType, Is.EqualTo(typeof(TreeViewItem)));
     }
 
@@ -233,7 +238,7 @@ public sealed class SampleLoaderPopupIntegrationTests
     {
         Assert.That(((TextBox)popup.FindName("DirectoryTextBox")).IsTabStop, Is.True);
         Assert.That(((BalloonButton)popup.FindName("ImportButton")).IsTabStop, Is.True);
-        var checkbox = Descendants(view.Root).OfType<CheckBox>().Single(box => box.Visibility == Visibility.Visible);
+        var checkbox = Descendants(view.Root).OfType<CheckBox>().Single(box => ReferenceEquals(box.DataContext, file));
         Assert.That(checkbox.IsTabStop, Is.True);
         var shellAction = new BalloonButton { Style = (Style)popup.FindResource("OHsBalloonNeutralActionStyle") };
         Assert.That(shellAction.IsTabStop, Is.False);
@@ -248,14 +253,188 @@ public sealed class SampleLoaderPopupIntegrationTests
         view.UpdateLayout();
         var input = (TextBox)popup.FindName("DirectoryTextBox");
         input.Style = WithHighContrast(input.Style);
-        var checkbox = Descendants(view.Root).OfType<CheckBox>().Single(box => box.Visibility == Visibility.Visible);
+        var checkbox = Descendants(view.Root).OfType<CheckBox>().Single(box => ReferenceEquals(box.DataContext, file));
         var container = Descendants(view.Root).OfType<TreeViewItem>().Single(item => ReferenceEquals(item.DataContext, file));
         container.Style = WithHighContrast(container.Style);
+        view.UpdateLayout();
+        checkbox = Descendants(view.Root).OfType<CheckBox>().Single(box => ReferenceEquals(box.DataContext, file));
         checkbox.Style = WithHighContrast(checkbox.Style);
         view.UpdateLayout();
         Assert.That(((SolidColorBrush)input.Background).Color, Is.EqualTo(SystemColors.WindowColor));
         Assert.That(((SolidColorBrush)input.Foreground).Color, Is.EqualTo(SystemColors.WindowTextColor));
         Assert.That(((SolidColorBrush)checkbox.Foreground).Color, Is.EqualTo(SystemColors.HighlightTextColor));
+    }
+
+    [Test]
+    public void TreeCardIsAbovePlaybackAndFooter()
+    {
+        UiTestPump.Run(vm.SelectAsync(file));
+        view.Root.InvalidateMeasure();
+        view.UpdateLayout();
+        var tree = (TreeView)popup.FindName("DirectoryTree");
+        var timeline = (ValueSlider)popup.FindName("PlaybackTimeline");
+        Assert.That(timeline, Is.Not.Null);
+        var treeBounds = tree.TransformToAncestor(view.Root).TransformBounds(new Rect(tree.RenderSize));
+        var playbackBounds = timeline.TransformToAncestor(view.Root).TransformBounds(new Rect(timeline.RenderSize));
+        var footer = (CheckBox)popup.FindName("AutoPlayCheckBox");
+        var footerBounds = footer.TransformToAncestor(view.Root).TransformBounds(new Rect(footer.RenderSize));
+        Assert.That(treeBounds.Bottom, Is.LessThanOrEqualTo(playbackBounds.Top));
+        Assert.That(playbackBounds.Bottom, Is.LessThanOrEqualTo(footerBounds.Top));
+        Assert.That(treeBounds.Width, Is.GreaterThan(popup.Width * .7));
+    }
+
+    [Test]
+    public void AutoPlayCheckboxWritesVmState()
+    {
+        var checkbox = (CheckBox)popup.FindName("AutoPlayCheckBox");
+        Assert.That(checkbox, Is.Not.Null);
+        Assert.That(checkbox.Content, Is.EqualTo("Auto-play samples"));
+        checkbox.SetCurrentValue(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, true);
+        Assert.That(vm.AutoPlaySamples, Is.True);
+        Assert.That(checkbox.IsTabStop, Is.True);
+        Assert.That(checkbox.ActualHeight, Is.GreaterThanOrEqualTo(40));
+        Assert.That(System.Windows.Automation.AutomationProperties.GetName(checkbox), Is.EqualTo("Auto-play samples"));
+    }
+
+    [Test]
+    public void TimelineBindsBoundsPositionAndDisabledState()
+    {
+        var timeline = (ValueSlider)popup.FindName("PlaybackTimeline");
+        Assert.That(timeline, Is.Not.Null);
+        Assert.That(timeline.IsEnabled, Is.False);
+        UiTestPump.Run(vm.SelectAsync(file));
+        UiTestPump.Run(vm.SeekAsync(.35));
+        view.UpdateLayout();
+        Assert.That(timeline.Minimum, Is.Zero);
+        Assert.That(timeline.Maximum, Is.EqualTo(1));
+        Assert.That(timeline.Value, Is.EqualTo(.35));
+        Assert.That(timeline.IsEnabled, Is.True);
+        Assert.That(timeline.IsTabStop, Is.True);
+        Assert.That(((TextBlock)popup.FindName("PlaybackTimeTextBlock")).Text, Is.EqualTo(vm.PlaybackTimeText));
+    }
+
+    [TestCase("Dark", FlowDirection.LeftToRight)]
+    [TestCase("Light", FlowDirection.RightToLeft)]
+    public void FooterAndPlaybackRemainReachableWithLongContent(string theme, FlowDirection direction)
+    {
+        Application.Current.Resources.MergedDictionaries[0].Source = new Uri($"/osuHitsounder;component/Resources/Themes/{theme}.xaml", UriKind.Relative);
+        popup.FlowDirection = direction;
+        browser.Metadata = (path, _) => Task.FromResult(new SampleFileMetadata(path, new string('x', 400), "WAV", 1, TimeSpan.FromSeconds(1), 44100, 2));
+        UiTestPump.Run(vm.SelectAsync(file));
+        vm.PreviewError = new string('e', 400);
+        view.Root.InvalidateMeasure();
+        view.UpdateLayout();
+        foreach (var name in new[] { "AutoPlayCheckBox", "PlaybackTimeline", "ImportButton" })
+        {
+            var control = (FrameworkElement)popup.FindName(name);
+            Assert.That(control, Is.Not.Null);
+            var bounds = control.TransformToAncestor(view.Root).TransformBounds(new Rect(control.RenderSize));
+            Assert.That(bounds.Bottom, Is.LessThanOrEqualTo(popup.Height));
+            Assert.That(bounds.Right, Is.LessThanOrEqualTo(popup.Width));
+        }
+    }
+
+    [Test]
+    public void KeyboardAndPointerTimelineChangesSeekWithoutImport()
+    {
+        UiTestPump.Run(vm.SetCheckedAsync(file, true));
+        view.Root.InvalidateMeasure();
+        view.UpdateLayout();
+        var timeline = (ValueSlider)popup.FindName("PlaybackTimeline");
+        Slider.IncreaseSmall.Execute(null, timeline);
+        Assert.That(vm.PlaybackPositionSeconds, Is.EqualTo(.01));
+        var thumb = Descendants(timeline).OfType<Thumb>().Single();
+        thumb.RaiseEvent(new DragStartedEventArgs(0, 0));
+        timeline.SetCurrentValue(RangeBase.ValueProperty, .6);
+        thumb.RaiseEvent(new DragCompletedEventArgs(0, 0, false));
+        Assert.That(vm.PlaybackPositionSeconds, Is.EqualTo(.6));
+        using var source = new InMemoryPresentationSource();
+        timeline.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, source, 0, Key.Enter) { RoutedEvent = Keyboard.KeyDownEvent });
+        Assert.That(completion, Is.Null);
+    }
+
+    [Test]
+    public void PlaybackUpdatesDoNotTriggerSeek()
+    {
+        UiTestPump.Run(vm.SelectAsync(file));
+        UiTestPump.Run(vm.TogglePreviewCommand.ExecuteAsync(null));
+        preview.Position = TimeSpan.FromSeconds(.3);
+        var updated = new TaskCompletionSource();
+        vm.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(vm.PlaybackPositionSeconds) && vm.PlaybackPositionSeconds == .3) updated.TrySetResult();
+        };
+        UiTestPump.Run(updated.Task);
+        view.UpdateLayout();
+        Assert.That(((ValueSlider)popup.FindName("PlaybackTimeline")).Value, Is.EqualTo(.3));
+        Assert.That(preview.SeekPositions, Is.Empty);
+    }
+
+    [Test]
+    public void ScrubPositionIsNotOverwrittenByMonitor()
+    {
+        UiTestPump.Run(vm.SelectAsync(file));
+        UiTestPump.Run(vm.TogglePreviewCommand.ExecuteAsync(null));
+        view.Root.InvalidateMeasure();
+        view.UpdateLayout();
+        var timeline = (ValueSlider)popup.FindName("PlaybackTimeline");
+        var thumb = Descendants(timeline).OfType<Thumb>().Single();
+        thumb.RaiseEvent(new DragStartedEventArgs(0, 0));
+        timeline.SetCurrentValue(RangeBase.ValueProperty, .6);
+        UiTestPump.Run(vm.SeekAsync(.2));
+        Assert.That(timeline.Value, Is.EqualTo(.6));
+        var scrubbed = new TaskCompletionSource();
+        vm.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(vm.PlaybackPositionSeconds) && vm.PlaybackPositionSeconds == .6) scrubbed.TrySetResult();
+        };
+        thumb.RaiseEvent(new DragCompletedEventArgs(0, 0, false));
+        UiTestPump.Run(scrubbed.Task);
+        UiTestPump.Run(popup.Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle).Task);
+        Assert.That(vm.PlaybackPositionSeconds, Is.EqualTo(.6));
+        Assert.That(BindingOperations.IsDataBound(timeline, RangeBase.ValueProperty), Is.True);
+    }
+
+    [Test]
+    public void DeepInitialFolderIsBroughtIntoViewportOnce()
+    {
+        UiTestPump.Run(popup.DeactivateAsync());
+        view.Dispose();
+        popup.Close();
+        browser = new();
+        var branches = Enumerable.Range(0, 120).Select(index => new SampleBrowserEntry(Path.Combine(browser.RootPath, $"Folder{index:000}"), $"Folder{index:000}", true)).ToArray();
+        var parent = branches[^1];
+        var target = new SampleBrowserEntry(Path.Combine(parent.FullPath, "Beatmap"), "Beatmap", true);
+        browser.Entries[browser.RootPath] = branches;
+        browser.Entries[parent.FullPath] = [target];
+        browser.Entries[target.FullPath] = [];
+        vm = new(browser, new StubSamplePreviewService(), new ImmediateUiScheduler(), new PlaybackVolumeSettings());
+        popup = new(vm, _ => { }, _ => new Size(640, 360));
+        UiTestPump.Run(popup.InitializeAsync(target.FullPath, default));
+        view = new InMemoryView(popup, scheduleLayout: false);
+        UiTestPump.Run(popup.RevealInitialFolderAsync());
+        view.UpdateLayout();
+        var tree = (TreeView)popup.FindName("DirectoryTree");
+        var selected = Descendants(tree).OfType<TreeViewItem>().Single(item => ReferenceEquals(item.DataContext, target));
+        var header = (Border)selected.Template.FindName("Row", selected);
+        var bounds = header.TransformToAncestor(tree).TransformBounds(new Rect(header.RenderSize));
+        Assert.That(bounds.Top, Is.GreaterThanOrEqualTo(0));
+        Assert.That(bounds.Bottom, Is.LessThanOrEqualTo(tree.ActualHeight));
+        var scroll = Descendants(tree).OfType<ScrollViewer>().First();
+        scroll.ScrollToTop();
+        view.UpdateLayout();
+        UiTestPump.Run(popup.RevealInitialFolderAsync());
+        Assert.That(scroll.VerticalOffset, Is.Zero);
+        Assert.That(VirtualizingPanel.GetIsVirtualizing(tree), Is.True);
+    }
+
+    [Test]
+    public void DeactivateCancelsPendingInitialReveal()
+    {
+        var revealing = popup.RevealInitialFolderAsync();
+        UiTestPump.Run(popup.DeactivateAsync());
+        UiTestPump.Run(revealing);
+        Assert.That(vm.CanPreview, Is.False);
     }
 
     private static Style WithHighContrast(Style original)
@@ -291,8 +470,11 @@ public sealed class SampleLoaderPopupIntegrationTests
 
     private static ControlTemplate WithHighContrast(ControlTemplate original)
     {
-        // Clone the control object, not repository source, so sealed templates remain untouched.
-        var copy = (ControlTemplate)System.Windows.Markup.XamlReader.Parse(System.Windows.Markup.XamlWriter.Save(original));
+        // Icon initializes its own resources; do not deserialize those a second time.
+        // This serializes runtime controls, never repository source.
+        var markup = XDocument.Parse(System.Windows.Markup.XamlWriter.Save(original));
+        markup.Descendants().Where(element => element.Name.LocalName == "Icon.Resources").Remove();
+        var copy = (ControlTemplate)System.Windows.Markup.XamlReader.Parse(markup.ToString());
         foreach (var trigger in copy.Triggers)
         {
             if (trigger is DataTrigger data && IsHighContrastBinding(data.Binding))

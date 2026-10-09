@@ -135,6 +135,7 @@ public sealed class SampleLoaderPopupVMTests
     [Test]
     public async Task SelectionLoadsMetadataWithoutTogglingOrPlaying()
     {
+        vm.AutoPlaySamples = false;
         await vm.SelectAsync(first);
         Assert.That(vm.Metadata!.Name, Is.EqualTo("first.wav"));
         Assert.That(vm.CheckedCount, Is.Zero);
@@ -156,6 +157,7 @@ public sealed class SampleLoaderPopupVMTests
     [Test]
     public async Task PreviewStopsOnSelectionNavigationConfirmAndDeactivate()
     {
+        vm.AutoPlaySamples = false;
         await vm.SetCheckedAsync(first, true);
         await vm.TogglePreviewCommand.ExecuteAsync(null);
         Assert.That(vm.IsPreviewPlaying, Is.True);
@@ -192,6 +194,7 @@ public sealed class SampleLoaderPopupVMTests
     [Test]
     public async Task DeactivateCancelsPendingPlayAndRejectsLateResults()
     {
+        vm.AutoPlaySamples = false;
         var started = new TaskCompletionSource();
         preview.Play = async token => { started.SetResult(); await Task.Delay(Timeout.Infinite, token); };
         await vm.SelectAsync(first);
@@ -228,5 +231,199 @@ public sealed class SampleLoaderPopupVMTests
         Assert.That(vm.CurrentDirectory, Is.EqualTo(folder.FullPath));
         Assert.That(vm.DirectoryError, Is.Null);
         Assert.That(vm.Roots.Single().Children, Does.Contain(folder));
+    }
+
+    [Test]
+    public async Task AutoPlayDefaultsOnAndStartsSelectedSample()
+    {
+        Assert.That(vm.AutoPlaySamples, Is.True);
+        await vm.SelectAsync(first);
+        Assert.That(preview.PlayedPaths, Is.EqualTo(new[] { first.FullPath }));
+        Assert.That(vm.IsPreviewPlaying, Is.True);
+        Assert.That(first.IsChecked, Is.False);
+    }
+
+    [Test]
+    public async Task DisabledAutoPlayStillLoadsMetadata()
+    {
+        vm.AutoPlaySamples = false;
+        await vm.SelectAsync(first);
+        Assert.That(vm.Metadata!.Name, Is.EqualTo(first.Name));
+        Assert.That(preview.PlayedPaths, Is.Empty);
+        Assert.That(vm.PlaybackDurationSeconds, Is.EqualTo(1));
+    }
+
+    [Test]
+    public async Task ChangingAutoPlayDoesNotStartOrStopCurrentSample()
+    {
+        vm.AutoPlaySamples = false;
+        await vm.SelectAsync(first);
+        vm.AutoPlaySamples = true;
+        Assert.That(preview.PlayedPaths, Is.Empty);
+        await vm.TogglePreviewCommand.ExecuteAsync(null);
+        vm.AutoPlaySamples = false;
+        Assert.That(vm.IsPreviewPlaying, Is.True);
+    }
+
+    [Test]
+    public async Task ManualPlayUsesStoppedSeekPosition()
+    {
+        vm.AutoPlaySamples = false;
+        await vm.SelectAsync(first);
+        await vm.SeekAsync(.4);
+        Assert.That(vm.PlaybackPositionSeconds, Is.EqualTo(.4));
+        Assert.That(preview.SeekPositions, Is.Empty);
+        await vm.TogglePreviewCommand.ExecuteAsync(null);
+        Assert.That(preview.StartPosition.TotalSeconds, Is.EqualTo(.4));
+        await vm.TogglePreviewCommand.ExecuteAsync(null);
+        Assert.That(vm.PlaybackPositionSeconds, Is.Zero);
+    }
+
+    [Test]
+    public async Task SeekAndCompletionResetOnNextPlay()
+    {
+        await vm.SelectAsync(first);
+        await vm.SeekAsync(.6);
+        Assert.That(preview.SeekPositions.Single().TotalSeconds, Is.EqualTo(.6));
+        await vm.TogglePreviewCommand.ExecuteAsync(null);
+        await vm.SeekAsync(5);
+        await vm.TogglePreviewCommand.ExecuteAsync(null);
+        Assert.That(preview.StartPosition, Is.EqualTo(TimeSpan.Zero));
+    }
+
+    [Test]
+    public async Task SelectionDuringPendingMetadataPlayOrSeekCannotRestoreStaleState()
+    {
+        var pending = new TaskCompletionSource<SampleFileMetadata>();
+        browser.Metadata = (path, _) => path == first.FullPath ? pending.Task :
+            Task.FromResult(new SampleFileMetadata(path, second.Name, "WAV", 1, TimeSpan.FromSeconds(1), 44100, 1));
+        var old = vm.SelectAsync(first);
+        await vm.SelectAsync(second);
+        pending.SetResult(new(first.FullPath, first.Name, "WAV", 1, TimeSpan.FromSeconds(1), 44100, 1));
+        await old;
+        Assert.That(preview.PlayedPaths, Is.EqualTo(new[] { second.FullPath }));
+
+        var seekStarted = new TaskCompletionSource();
+        preview.Seek = async token => { seekStarted.SetResult(); await Task.Delay(Timeout.Infinite, token); };
+        var seeking = vm.SeekAsync(.7);
+        await seekStarted.Task;
+        await vm.SelectAsync(a);
+        await seeking;
+        Assert.That(vm.SelectedFile, Is.Null);
+        Assert.That(vm.PlaybackPositionSeconds, Is.Zero);
+        Assert.That(vm.IsSeeking, Is.False);
+    }
+
+    [Test]
+    public async Task ZeroDurationDisablesSeek()
+    {
+        browser.Metadata = (path, _) => Task.FromResult(new SampleFileMetadata(path, first.Name, "WAV", 1, TimeSpan.Zero, 44100, 1));
+        vm.AutoPlaySamples = false;
+        await vm.SelectAsync(first);
+        Assert.That(vm.CanSeek, Is.False);
+        await vm.SeekAsync(.5);
+        Assert.That(vm.PlaybackPositionSeconds, Is.Zero);
+    }
+
+    [Test]
+    public async Task SeekFailureShowsErrorAndRestoresBusyState()
+    {
+        await vm.SelectAsync(first);
+        preview.Seek = _ => Task.FromException(new IOException("Seeking failed"));
+        await vm.SeekAsync(.5);
+        Assert.That(vm.PreviewError, Does.Contain("Seeking failed"));
+        Assert.That(vm.IsSeeking, Is.False);
+        Assert.That(vm.CanPreview, Is.True);
+    }
+
+    [Test]
+    public async Task EmptyFolderGetsInformationalChild()
+    {
+        browser.Entries[b.FullPath] = [];
+        await vm.ExpandAsync(b);
+        Assert.That(b.Children.Single().Name, Is.EqualTo("No audio file found"));
+        Assert.That(b.Children.Single().IsPlaceholder, Is.True);
+    }
+
+    [Test]
+    public async Task FolderWithOnlySubfoldersRetainsThemAndEmptyMessage()
+    {
+        var inner = new SampleBrowserEntry(Path.Combine(b.FullPath, "inner"), "inner", true);
+        browser.Entries[b.FullPath] = [inner];
+        browser.Entries[inner.FullPath] = [new(Path.Combine(inner.FullPath, "hit.wav"), "hit.wav", false)];
+        await vm.ExpandAsync(b);
+        Assert.That(b.Children, Does.Contain(inner));
+        Assert.That(b.Children.Single(entry => entry.IsPlaceholder).Name, Is.EqualTo("No audio file found"));
+        await vm.SelectAsync(inner);
+        Assert.That(vm.CurrentDirectory, Is.EqualTo(inner.FullPath));
+    }
+
+    [Test]
+    public async Task InformationalChildCannotBeCheckedOrPreviewed()
+    {
+        browser.Entries[b.FullPath] = [];
+        await vm.SelectAsync(b);
+        var message = b.Children.Single();
+        await vm.SetCheckedAsync(message, true);
+        await vm.SelectAsync(message);
+        Assert.That(vm.CheckedCount, Is.Zero);
+        Assert.That(vm.SelectedFile, Is.Null);
+        Assert.That(vm.BrowserStatusText, Is.Empty);
+        Assert.That(preview.PlayedPaths, Is.Empty);
+    }
+
+    [Test]
+    public async Task PendingPlayCannotStopNewSelection()
+    {
+        var started = new TaskCompletionSource();
+        var release = new TaskCompletionSource();
+        preview.Play = _ => { started.TrySetResult(); return release.Task; };
+        var selecting = vm.SelectAsync(first);
+        await started.Task;
+        var next = vm.SelectAsync(second);
+        release.SetResult();
+        await Task.WhenAll(selecting, next);
+        Assert.That(vm.SelectedFile, Is.SameAs(second));
+        Assert.That(vm.IsPreviewPlaying, Is.True);
+        Assert.That(preview.PlayedPaths, Is.EqualTo(new[] { second.FullPath }));
+    }
+
+    [Test]
+    public async Task PendingSnapshotDuringSeekAndSelectionCannotReplaceNewPlayback()
+    {
+        var snapshotStarted = new TaskCompletionSource();
+        var release = new TaskCompletionSource<SamplePreviewSnapshot>();
+        preview.Snapshot = _ => { snapshotStarted.TrySetResult(); return release.Task; };
+        await vm.SelectAsync(first);
+        await snapshotStarted.Task;
+        var seeking = vm.SeekAsync(.6);
+        var busyDuringSnapshot = vm.IsSeeking;
+        var selecting = vm.SelectAsync(second);
+        preview.Snapshot = null;
+        release.SetResult(new(true, null, null, TimeSpan.FromSeconds(.8), TimeSpan.FromSeconds(1)));
+        await Task.WhenAll(seeking, selecting).WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.That(busyDuringSnapshot, Is.True);
+        Assert.That(vm.SelectedFile, Is.SameAs(second));
+        Assert.That(vm.IsPreviewPlaying, Is.True);
+        Assert.That(vm.PlaybackPositionSeconds, Is.Zero);
+        await vm.SelectAsync(a);
+        Assert.That(vm.IsPreviewPlaying, Is.False);
+    }
+
+    [Test]
+    public async Task NaturalCompletionShowsEndAndNextPlayStartsAtZero()
+    {
+        var completed = new TaskCompletionSource();
+        preview.Snapshot = _ => Task.FromResult(new SamplePreviewSnapshot(false, null, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1)));
+        vm.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(vm.PlaybackPositionSeconds) && vm.PlaybackPositionSeconds == 1) completed.TrySetResult();
+        };
+        await vm.SelectAsync(first);
+        await completed.Task;
+        Assert.That(vm.IsPreviewPlaying, Is.False);
+        preview.Snapshot = null;
+        await vm.TogglePreviewCommand.ExecuteAsync(null);
+        Assert.That(preview.StartPosition, Is.EqualTo(TimeSpan.Zero));
     }
 }

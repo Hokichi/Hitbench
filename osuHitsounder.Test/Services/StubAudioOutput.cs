@@ -29,6 +29,7 @@ public sealed class StubAudioOutput : IAudioOutput
         PlaybackStopped?.Invoke(this, result);
     }
     public void RaiseRetiredStopped() => retired?.Invoke(this, new StoppedEventArgs());
-    public long GetPlayedFrames() => 0;
+    public long PlayedFrames { get; set; }
+    public long GetPlayedFrames() => PlayedFrames;
     public void Dispose() { retired = PlaybackStopped; IsDisposed = true; }
 }

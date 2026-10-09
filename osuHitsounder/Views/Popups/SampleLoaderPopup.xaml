@@ -247,14 +247,12 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <CheckBox Style="{StaticResource SampleLoaderCheckStyle}" IsChecked="{Binding IsChecked, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="{Binding Name, Mode=OneWay}" Click="OnFileCheckClick" />
                 <StackPanel Style="{StaticResource BaseStackPanelStyle}" Grid.Column="1" VerticalAlignment="Center">
                     <TextBlock Text="{Binding Name, Mode=OneWay}" FontFamily="{Binding FontFamily, RelativeSource={RelativeSource AncestorType=TreeViewItem}, Mode=OneWay}" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=TreeViewItem}, Mode=OneWay}" Style="{StaticResource SampleLoaderTextStyle}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" ToolTip="{Binding FullPath, Mode=OneWay}" />
                     <TextBlock Text="{Binding Error, Mode=OneWay}" Style="{StaticResource SampleLoaderTreeErrorStyle}" />
                 </StackPanel>
-                <TextBlock Grid.Column="2" Margin="8,0,4,0" VerticalAlignment="Center" Text="{Binding KindText, Mode=OneWay}" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=TreeViewItem}, Mode=OneWay}" Style="{StaticResource SampleLoaderCaptionStyle}" />
             </Grid>
         </HierarchicalDataTemplate>
         <Style x:Key="SampleLoaderTreeStyle" TargetType="TreeView" BasedOn="{StaticResource BaseTreeViewStyle}">
@@ -281,75 +279,121 @@
             <Setter Property="ShouldShowText" Value="True" />
             <Setter Property="FocusVisualStyle" Value="{StaticResource OHsKeyboardFocusVisualStyle}" />
         </Style>
+        <Style x:Key="SampleLoaderCompactTextStyle" TargetType="TextBlock" BasedOn="{StaticResource SampleLoaderTextStyle}">
+            <Setter Property="TextWrapping" Value="NoWrap" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+            <Setter Property="AutomationProperties.Name" Value="{Binding Text, RelativeSource={RelativeSource Self}, Mode=OneWay}" />
+        </Style>
+        <Style x:Key="SampleLoaderMetadataLabelStyle" TargetType="TextBlock" BasedOn="{StaticResource SampleLoaderTextStyle}">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}" />
+            <Setter Property="Margin" Value="0,0,4,0" />
+        </Style>
+        <Style x:Key="SampleLoaderTimelineStyle" TargetType="c:ValueSlider" BasedOn="{StaticResource OHsValueSliderStyle}">
+            <Setter Property="IsTabStop" Value="True" />
+            <Setter Property="MinHeight" Value="40" />
+            <Setter Property="FocusVisualStyle" Value="{StaticResource OHsKeyboardFocusVisualStyle}" />
+            <Setter Property="SmallChange" Value="0.01" />
+            <Setter Property="LargeChange" Value="0.1" />
+        </Style>
+        <ControlTemplate x:Key="SampleLoaderAutoPlayTemplate" TargetType="CheckBox">
+            <Border Style="{StaticResource BaseBorderStyle}" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}" CornerRadius="8">
+                <Grid Style="{StaticResource BaseGridStyle}">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                    <Grid Style="{StaticResource BaseGridStyle}" Width="16" Height="16" Margin="0,0,8,0">
+                        <c:Icon Path="{StaticResource CheckboxBlankOutline}" Color="{TemplateBinding Foreground}" />
+                        <c:Icon x:Name="CheckMark" Width="12" Height="12" Path="{StaticResource Check}" Color="{TemplateBinding Foreground}" Visibility="Collapsed" />
+                    </Grid>
+                    <ContentPresenter Grid.Column="1" VerticalAlignment="Center" RecognizesAccessKey="True"
+                                      Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      TextElement.FontFamily="{TemplateBinding FontFamily}" TextElement.FontSize="{TemplateBinding FontSize}" TextElement.Foreground="{TemplateBinding Foreground}" />
+                </Grid>
+            </Border>
+            <ControlTemplate.Triggers>
+                <Trigger Property="IsChecked" Value="True"><Setter TargetName="CheckMark" Property="Visibility" Value="Visible" /></Trigger>
+            </ControlTemplate.Triggers>
+        </ControlTemplate>
+        <Style x:Key="SampleLoaderAutoPlayStyle" TargetType="CheckBox" BasedOn="{StaticResource BaseCheckBoxStyle}">
+            <Setter Property="Template" Value="{StaticResource SampleLoaderAutoPlayTemplate}" />
+            <Setter Property="MinHeight" Value="40" />
+            <Setter Property="Padding" Value="8,0" />
+            <Setter Property="IsTabStop" Value="True" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+            <Setter Property="FontFamily" Value="{DynamicResource Regular}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FocusVisualStyle" Value="{StaticResource OHsKeyboardFocusVisualStyle}" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{DynamicResource Brush.Background.Hover}" /></Trigger>
+                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
+                    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+                </DataTrigger>
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource Self}, Mode=OneWay}" Value="True" />
+                        <Condition Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True" />
+                    </MultiDataTrigger.Conditions>
+                    <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
+                    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.HighlightTextBrushKey}}" />
+                </MultiDataTrigger>
+            </Style.Triggers>
+        </Style>
     </c:BasePopup.Resources>
     <Grid Style="{StaticResource BaseGridStyle}" Margin="24,0,24,8">
         <Grid.RowDefinitions>
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
-        <Grid Style="{StaticResource BaseGridStyle}">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="3*" />
-                <ColumnDefinition Width="16" />
-                <ColumnDefinition Width="2*" />
-            </Grid.ColumnDefinitions>
-            <Border Style="{StaticResource SampleLoaderCardStyle}">
+        <Border Style="{StaticResource SampleLoaderCardStyle}">
+            <Grid Style="{StaticResource BaseGridStyle}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
                 <Grid Style="{StaticResource BaseGridStyle}">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-                    <TextBlock Text="Current directory" Style="{StaticResource SampleLoaderCaptionStyle}" />
-                    <TextBox x:Name="DirectoryTextBox" Grid.Row="1" AutomationProperties.Name="Current directory" Style="{StaticResource SampleLoaderDirectoryInputStyle}" Text="{Binding DirectoryText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" PreviewKeyDown="OnDirectoryKeyDown" />
-                    <TextBlock Grid.Row="2" Text="{Binding DirectoryError, Mode=OneWay}" Style="{StaticResource SampleLoaderErrorStyle}" />
-                    <TreeView x:Name="DirectoryTree" Grid.Row="3" Margin="0,8,0,0" AutomationProperties.Name="Folders and audio files" ItemsSource="{Binding Roots, Mode=OneWay}" Style="{StaticResource SampleLoaderTreeStyle}" SelectedItemChanged="OnTreeSelectionChanged" />
-                    <TextBlock Grid.Row="4" Text="{Binding BrowserStatusText, Mode=OneWay}" Style="{StaticResource SampleLoaderStatusStyle}" />
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                    <TextBlock Text="Current directory" VerticalAlignment="Center" Margin="0,0,8,0" Style="{StaticResource SampleLoaderMetadataLabelStyle}" />
+                    <TextBox x:Name="DirectoryTextBox" Grid.Column="1" AutomationProperties.Name="Current directory" Style="{StaticResource SampleLoaderDirectoryInputStyle}" Text="{Binding DirectoryText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" PreviewKeyDown="OnDirectoryKeyDown" />
                 </Grid>
-            </Border>
-            <Border Grid.Column="2" Style="{StaticResource SampleLoaderCardStyle}">
-                <Grid Style="{StaticResource BaseGridStyle}">
-                    <Grid x:Name="SelectedFileDetails" Style="{StaticResource SampleLoaderSelectedFileDetailsStyle}">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="*" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Style="{StaticResource {x:Type ScrollViewer}}">
-                        <StackPanel Style="{StaticResource BaseStackPanelStyle}">
-                            <TextBlock Text="Selected file" Style="{StaticResource SampleLoaderCaptionStyle}" />
-                            <TextBlock Text="{Binding Metadata.Name, Mode=OneWay}" Style="{StaticResource SampleLoaderTextStyle}" />
-                            <TextBlock Text="{Binding SelectedFile.FullPath, Mode=OneWay}" Style="{StaticResource SampleLoaderCaptionStyle}" />
-                            <TextBlock Text="{Binding MetadataStatusText, Mode=OneWay}" Style="{StaticResource SampleLoaderStatusStyle}" />
-                            <TextBlock Text="Format" Style="{StaticResource SampleLoaderCaptionStyle}" />
-                            <TextBlock Text="{Binding Metadata.Format, Mode=OneWay}" Style="{StaticResource SampleLoaderTextStyle}" />
-                            <TextBlock Text="Size" Style="{StaticResource SampleLoaderCaptionStyle}" />
-                            <TextBlock Text="{Binding SizeText, Mode=OneWay}" Style="{StaticResource SampleLoaderTextStyle}" />
-                            <TextBlock Text="Duration" Style="{StaticResource SampleLoaderCaptionStyle}" />
-                            <TextBlock Text="{Binding DurationText, Mode=OneWay}" Style="{StaticResource SampleLoaderTextStyle}" />
-                            <TextBlock Text="Sample rate" Style="{StaticResource SampleLoaderCaptionStyle}" />
-                            <TextBlock Text="{Binding SampleRateText, Mode=OneWay}" Style="{StaticResource SampleLoaderTextStyle}" />
-                            <TextBlock Text="Channels" Style="{StaticResource SampleLoaderCaptionStyle}" />
-                            <TextBlock Text="{Binding ChannelsText, Mode=OneWay}" Style="{StaticResource SampleLoaderTextStyle}" />
-                            <TextBlock Text="{Binding MetadataError, Mode=OneWay}" Style="{StaticResource SampleLoaderErrorStyle}" />
-                            <TextBlock Text="{Binding PreviewError, Mode=OneWay}" Style="{StaticResource SampleLoaderErrorStyle}" />
-                            <TextBlock Text="{Binding PreviewWarning, Mode=OneWay}" Style="{StaticResource SampleLoaderWarningStyle}" />
-                        </StackPanel>
-                    </ScrollViewer>
-                    <c:BalloonButton x:Name="PreviewButton" Grid.Row="1" Margin="0,8,0,0" HorizontalAlignment="Left" ButtonText="{Binding PreviewActionText, Mode=OneWay}" Command="{Binding TogglePreviewCommand, Mode=OneWay}" IsEnabled="{Binding CanPreview, Mode=OneWay}" AutomationProperties.Name="{Binding PreviewActionText, Mode=OneWay}" Style="{StaticResource SampleLoaderPreviewStyle}" />
-                    </Grid>
-                    <TextBlock x:Name="EmptySelectionPrompt" Text="Select a .wav, .ogg or .mp3" Style="{StaticResource SampleLoaderEmptySelectionStyle}" />
+                <TextBlock Grid.Row="1" Text="{Binding DirectoryError, Mode=OneWay}" Style="{StaticResource SampleLoaderErrorStyle}" />
+                <TreeView x:Name="DirectoryTree" Grid.Row="2" Margin="0,8,0,0" AutomationProperties.Name="Folders and audio files" ItemsSource="{Binding Roots, Mode=OneWay}" Style="{StaticResource SampleLoaderTreeStyle}" SelectedItemChanged="OnTreeSelectionChanged" />
+                <TextBlock Grid.Row="3" Text="{Binding BrowserStatusText, Mode=OneWay}" Style="{StaticResource SampleLoaderStatusStyle}" />
+            </Grid>
+        </Border>
+        <Grid Grid.Row="1" Margin="0,8,0,0" Style="{StaticResource BaseGridStyle}">
+            <Grid x:Name="SelectedFileDetails" Style="{StaticResource SampleLoaderSelectedFileDetailsStyle}">
+                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                <ScrollViewer MaxHeight="80" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Style="{StaticResource {x:Type ScrollViewer}}">
+                    <StackPanel Style="{StaticResource BaseStackPanelStyle}">
+                        <TextBlock Text="{Binding SelectedFile.Name, Mode=OneWay}" Style="{StaticResource SampleLoaderCompactTextStyle}" FontFamily="{DynamicResource Bold}" />
+                        <TextBlock Text="{Binding SelectedFile.FullPath, Mode=OneWay}" Style="{StaticResource SampleLoaderCompactTextStyle}" FontSize="11" />
+                        <WrapPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,12,0" Style="{StaticResource BaseStackPanelStyle}"><TextBlock Text="Format" Style="{StaticResource SampleLoaderMetadataLabelStyle}" /><TextBlock Text="{Binding Metadata.Format, Mode=OneWay}" Style="{StaticResource SampleLoaderTextStyle}" /></StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,12,0" Style="{StaticResource BaseStackPanelStyle}"><TextBlock Text="Size" Style="{StaticResource SampleLoaderMetadataLabelStyle}" /><TextBlock Text="{Binding SizeText, Mode=OneWay}" Style="{StaticResource SampleLoaderTextStyle}" /></StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,12,0" Style="{StaticResource BaseStackPanelStyle}"><TextBlock Text="Duration" Style="{StaticResource SampleLoaderMetadataLabelStyle}" /><TextBlock Text="{Binding DurationText, Mode=OneWay}" Style="{StaticResource SampleLoaderTextStyle}" /></StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,12,0" Style="{StaticResource BaseStackPanelStyle}"><TextBlock Text="Sample rate" Style="{StaticResource SampleLoaderMetadataLabelStyle}" /><TextBlock Text="{Binding SampleRateText, Mode=OneWay}" Style="{StaticResource SampleLoaderTextStyle}" /></StackPanel>
+                            <StackPanel Orientation="Horizontal" Style="{StaticResource BaseStackPanelStyle}"><TextBlock Text="Channels" Style="{StaticResource SampleLoaderMetadataLabelStyle}" /><TextBlock Text="{Binding ChannelsText, Mode=OneWay}" Style="{StaticResource SampleLoaderTextStyle}" /></StackPanel>
+                        </WrapPanel>
+                        <TextBlock Text="{Binding MetadataStatusText, Mode=OneWay}" Style="{StaticResource SampleLoaderStatusStyle}" />
+                        <TextBlock Text="{Binding MetadataError, Mode=OneWay}" Style="{StaticResource SampleLoaderErrorStyle}" />
+                        <TextBlock Text="{Binding PreviewError, Mode=OneWay}" Style="{StaticResource SampleLoaderErrorStyle}" />
+                        <TextBlock Text="{Binding PreviewWarning, Mode=OneWay}" Style="{StaticResource SampleLoaderWarningStyle}" />
+                    </StackPanel>
+                </ScrollViewer>
+                <Grid Grid.Row="1" Style="{StaticResource BaseGridStyle}">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                    <c:BalloonButton x:Name="PreviewButton" HorizontalAlignment="Left" ButtonText="{Binding PreviewActionText, Mode=OneWay}" Command="{Binding TogglePreviewCommand, Mode=OneWay}" IsEnabled="{Binding CanPreview, Mode=OneWay}" AutomationProperties.Name="{Binding PreviewActionText, Mode=OneWay}" Style="{StaticResource SampleLoaderPreviewStyle}" />
+                    <c:ValueSlider x:Name="PlaybackTimeline" Grid.Column="1" Margin="8,0" Minimum="0" Maximum="{Binding PlaybackDurationSeconds, Mode=OneWay}" Value="{Binding PlaybackPositionSeconds, Mode=OneWay}" IsEnabled="{Binding CanSeek, Mode=OneWay}" AutomationProperties.Name="Sample playback position" Style="{StaticResource SampleLoaderTimelineStyle}" />
+                    <TextBlock x:Name="PlaybackTimeTextBlock" Grid.Column="2" VerticalAlignment="Center" Text="{Binding PlaybackTimeText, Mode=OneWay}" Style="{StaticResource SampleLoaderTextStyle}" />
                 </Grid>
-            </Border>
+            </Grid>
+            <TextBlock x:Name="EmptySelectionPrompt" Text="Select a .wav, .ogg or .mp3" MinHeight="40" Style="{StaticResource SampleLoaderEmptySelectionStyle}" />
         </Grid>
-        <Grid Style="{StaticResource BaseGridStyle}" Grid.Row="1" Margin="0,16,0,0">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
-            <TextBlock x:Name="CheckedCountTextBlock" VerticalAlignment="Center" Text="{Binding CheckedCountText, Mode=OneWay}" Style="{StaticResource SampleLoaderTextStyle}" />
-            <c:BalloonButton x:Name="ImportButton" Grid.Column="1" ButtonIcon="{StaticResource PlusSolid}" ButtonText="Import" IsEnabled="{Binding CanImport, Mode=OneWay}" AutomationProperties.Name="Import checked files" Click="OnImportClick" Style="{StaticResource SampleLoaderImportStyle}" />
+        <Grid Style="{StaticResource BaseGridStyle}" Grid.Row="2" Margin="0,8,0,0">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+            <CheckBox x:Name="AutoPlayCheckBox" Content="Auto-play samples" IsChecked="{Binding AutoPlaySamples, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Auto-play samples" Style="{StaticResource SampleLoaderAutoPlayStyle}" />
+            <TextBlock x:Name="CheckedCountTextBlock" Grid.Column="1" Margin="8,0" VerticalAlignment="Center" Text="{Binding CheckedCountText, Mode=OneWay}" Style="{StaticResource SampleLoaderCompactTextStyle}" />
+            <c:BalloonButton x:Name="ImportButton" Grid.Column="2" ButtonIcon="{StaticResource PlusSolid}" ButtonText="Import" IsEnabled="{Binding CanImport, Mode=OneWay}" AutomationProperties.Name="Import checked files" Click="OnImportClick" Style="{StaticResource SampleLoaderImportStyle}" />
         </Grid>
     </Grid>
 </c:BasePopup>
