@@ -22,7 +22,7 @@ public sealed class SharedUiResourceIntegrationTests
                          "Styles/ColumnDefinition.xaml", "Styles/Grid.xaml", "Styles/StackPanel.xaml",
                          "Styles/TextBlock.xaml", "Styles/ItemsControl.xaml", "Styles/Image.xaml", "Styles/Border.xaml",
                          "Styles/ContentPresenter.xaml", "Styles/Button.xaml", "Styles/ToolTip.xaml",
-                         "Styles/Window.xaml", "Styles/ListBox.xaml", "Styles/ListView.xaml",
+                         "Styles/Window.xaml", "Styles/ListBox.xaml", "Styles/ListView.xaml", "Styles/TreeView.xaml",
                          "Styles/ComboBox.xaml", "Styles/Slider.xaml", "BeatGrid.xaml", "Styles/TextBox.xaml", "Styles/ProgressBar.xaml",
                          "Styles/ScrollViewer.xaml", "Styles/StepNavigator.xaml", "Styles/Popup.xaml"
                      })
@@ -58,7 +58,7 @@ public sealed class SharedUiResourceIntegrationTests
                      "Styles/ColumnDefinition.xaml", "Styles/Grid.xaml", "Styles/StackPanel.xaml",
                      "Styles/TextBlock.xaml", "Styles/ItemsControl.xaml", "Styles/Image.xaml", "Styles/Border.xaml",
                      "Styles/ContentPresenter.xaml", "Styles/Button.xaml", "Styles/ToolTip.xaml",
-                     "Styles/Window.xaml", "Styles/ListBox.xaml", "Styles/ListView.xaml",
+                     "Styles/Window.xaml", "Styles/ListBox.xaml", "Styles/ListView.xaml", "Styles/TreeView.xaml",
                      "Styles/ComboBox.xaml", "Styles/Slider.xaml", "BeatGrid.xaml", "Styles/TextBox.xaml", "Styles/ProgressBar.xaml",
                      "Styles/ScrollViewer.xaml", "Styles/StepNavigator.xaml", "Styles/Popup.xaml"
                  })
