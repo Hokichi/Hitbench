@@ -41,26 +41,25 @@ public class WorkstationMarkerPlaybackTests
     public async Task Cleanup() { if (vm is not null) await vm.DeactivateAsync(); audio.Dispose(); }
 
     [Test]
-    public async Task CrossingsTriggerEachPlacementOnceAndNeverWhilePausedOrEnded()
+    public async Task MarkerAdvancesAndPreservesPausedAndEndedPositions()
     {
         await Load(0, 10, 10, 31);
         await vm.PlayPauseCommand.ExecuteAsync(null);
-        Assert.That(audio.TriggeredSamples.SelectMany(ids => ids), Is.EqualTo(new long[] { 1 }));
-        await Tick(10);
-        Assert.That(audio.TriggeredSamples, Has.Count.EqualTo(1));
         await Tick(12.5);
-        await Tick(12.5);
+        Assert.That(vm.Position, Is.EqualTo(TimeSpan.FromMilliseconds(12.5)));
         await Tick(90);
-        Assert.That(audio.TriggeredSamples.SelectMany(ids => ids), Is.EqualTo(new long[] { 1,2,3,4 }));
+        Assert.That(vm.Position, Is.EqualTo(TimeSpan.FromMilliseconds(87.5)));
         await vm.PlayPauseCommand.ExecuteAsync(null);
         await Tick(100);
+        Assert.That(vm.IsPlaying, Is.False);
         audio.Snapshot = new AudioPlaybackSnapshot(TimeSpan.FromSeconds(10), false, null);
+        await playback.PauseAsync(default);
         vm.RefreshPlayback();
-        Assert.That(audio.TriggeredSamples.SelectMany(ids => ids), Is.EqualTo(new long[] { 1,2,3,4 }));
+        Assert.That(vm.Position, Is.EqualTo(TimeSpan.FromSeconds(10)));
         await vm.SeekCommand.ExecuteAsync(TimeSpan.FromMilliseconds(10));
         await vm.PlayPauseCommand.ExecuteAsync(null);
         await Tick(12.5);
-        Assert.That(audio.TriggeredSamples.SelectMany(ids => ids), Is.EqualTo(new long[] { 1,2,3,4,2,3 }));
+        Assert.That(vm.Position, Is.EqualTo(TimeSpan.FromMilliseconds(12.5)));
     }
 
     [Test]
@@ -74,11 +73,9 @@ public class WorkstationMarkerPlaybackTests
         try
         {
             Assert.That(vm.IsPlaying, Is.False);
-            Assert.That(audio.TriggeredSamples, Is.Empty);
         }
         finally { prepared.TrySetResult(); await vm.FlushPlaybackUpdatesAsync(); await playing; }
         Assert.That(vm.IsPlaying, Is.True);
-        Assert.That(audio.TriggeredSamples.SelectMany(ids => ids), Is.EqualTo(new long[] { 1 }));
     }
 
     [Test]
@@ -129,31 +126,32 @@ public class WorkstationMarkerPlaybackTests
             await playing;
             if (changing is not null) await changing;
             Assert.That(vm.IsPlaying, Is.False);
-            Assert.That(audio.TriggeredSamples, Is.Empty);
             if (action == "failure") Assert.That(vm.ErrorMessage, Does.Contain("Preparation failed"));
         }
         finally { prepared.TrySetResult(); await vm.FlushPlaybackUpdatesAsync(); }
     }
 
     [Test]
-    public async Task DeviceFailureAtZeroResetsStartingBoundary()
+    public async Task DeviceFailureAtZeroCanRestart()
     {
         await Load(0);
         await vm.PlayPauseCommand.ExecuteAsync(null);
         audio.Snapshot = new AudioPlaybackSnapshot(TimeSpan.Zero, false, "device lost");
         vm.RefreshPlayback();
         await vm.PlayPauseCommand.ExecuteAsync(null);
-        Assert.That(audio.TriggeredSamples.SelectMany(ids => ids), Is.EqualTo(new long[] { 1, 1 }));
+        Assert.That(vm.IsPlaying, Is.True);
     }
 
     [Test]
-    public async Task PauseAtZeroDoesNotRetriggerStartingBoundary()
+    public async Task PauseAtZeroCanResume()
     {
         await Load(0);
         await vm.PlayPauseCommand.ExecuteAsync(null);
         await vm.PlayPauseCommand.ExecuteAsync(null);
+        Assert.That(vm.IsPlaying, Is.False);
         await vm.PlayPauseCommand.ExecuteAsync(null);
-        Assert.That(audio.TriggeredSamples.SelectMany(ids => ids), Is.EqualTo(new long[] { 1 }));
+        Assert.That(vm.IsPlaying, Is.True);
+        Assert.That(vm.Position, Is.EqualTo(TimeSpan.Zero));
     }
 
     [Test]

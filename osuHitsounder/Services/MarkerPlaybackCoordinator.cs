@@ -4,7 +4,7 @@ using Microsoft.Win32.SafeHandles;
 
 namespace osuHitsounder.Services;
 
-/// <summary>Owns marker traversal; presentation never schedules sample triggers.</summary>
+/// <summary>Publishes the played-position marker and coordinates transport independently of sample rendering.</summary>
 public sealed class MarkerPlaybackCoordinator(IWorkstationAudioService audio,
     Func<TimeSpan, CancellationToken, Task> delay) : IAsyncDisposable
 {
@@ -34,8 +34,6 @@ public sealed class MarkerPlaybackCoordinator(IWorkstationAudioService audio,
     internal IWorkstationAudioService Audio => audio;
     private readonly SemaphoreSlim transitions = new(1);
     private readonly object snapshotLock = new();
-    private readonly MarkerTraversal traversal = new();
-    private readonly List<long> crossed = [];
     private PlaybackMarkerClock clock = new([], []);
     private TimeSpan duration;
     private TimeSpan processed;
@@ -52,11 +50,10 @@ public sealed class MarkerPlaybackCoordinator(IWorkstationAudioService audio,
     }
 
     public Task ConfigureAsync(PlaybackMarkerClock markerClock, TimeSpan songDuration,
-        IReadOnlyList<SamplePlaybackEvent> events, CancellationToken token) => TransitionAsync(() =>
+        CancellationToken token) => TransitionAsync(() =>
     {
         clock = markerClock;
         duration = songDuration;
-        traversal.Replace(events);
         Reset(TimeSpan.Zero);
         lock (snapshotLock) generation++;
     }, token);
@@ -77,17 +74,11 @@ public sealed class MarkerPlaybackCoordinator(IWorkstationAudioService audio,
         audio.Seek(position);
         Reset(audio.GetSnapshot().Position);
     }, token);
-    public Task ReplaceEventsAsync(IReadOnlyList<SamplePlaybackEvent> events, CancellationToken token) =>
-        TransitionAsync(() => traversal.Replace(events), token);
 
     public async Task UpdateSamplesAsync(string path, IReadOnlyList<SamplePlaybackEvent> events, CancellationToken token)
     {
         Task preparation = Task.CompletedTask;
-        await TransitionAsync(() =>
-        {
-            preparation = audio.UpdateSamplesAsync(path, events, token);
-            traversal.Replace(events);
-        }, token).ConfigureAwait(false);
+        await TransitionAsync(() => preparation = audio.UpdateSamplesAsync(path, events, token), token).ConfigureAwait(false);
         await preparation.ConfigureAwait(false);
     }
 
@@ -146,8 +137,6 @@ public sealed class MarkerPlaybackCoordinator(IWorkstationAudioService audio,
         {
             var marker = clock.GetPosition(snapshot.Position, duration);
             if (marker < processed) marker = processed;
-            traversal.Advance(marker, crossed);
-            if (crossed.Count != 0) audio.TriggerSamples(crossed);
             processed = marker;
             snapshot = snapshot with { Position = marker };
         }
@@ -158,7 +147,6 @@ public sealed class MarkerPlaybackCoordinator(IWorkstationAudioService audio,
     private void Reset(TimeSpan position)
     {
         processed = position;
-        traversal.Reset(position, true);
     }
 
     private void Publish(AudioPlaybackSnapshot value)

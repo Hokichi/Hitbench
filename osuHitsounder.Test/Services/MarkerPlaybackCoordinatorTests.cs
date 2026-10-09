@@ -1,4 +1,3 @@
-using osuHitsounder.Core.Entities;
 using osuHitsounder.Services;
 using osuHitsounder.Test.Presentation;
 
@@ -17,19 +16,16 @@ public class MarkerPlaybackCoordinatorTests
     }
 
     [Test]
-    public async Task NativeWaitAlreadyCancelledReturnsNormally()
-    {
+    public async Task NativeWaitAlreadyCancelledReturnsNormally() =>
         await MarkerPlaybackCoordinator.DelayAsync(TimeSpan.FromSeconds(30), new CancellationToken(true))
             .WaitAsync(TimeSpan.FromSeconds(3));
-    }
 
     [Test]
-    public async Task NativeWaitSupportsRepeatedPauseAndStopWithoutStaleTriggers()
+    public async Task NativeWaitSupportsRepeatedPauseAndStop()
     {
         var audio = new StubWorkstationAudioService();
         await using var coordinator = new MarkerPlaybackCoordinator(audio, MarkerPlaybackCoordinator.DelayAsync);
-        await coordinator.ConfigureAsync(new PlaybackMarkerClock([0], [60]), TimeSpan.FromSeconds(10),
-            [new(1, "hit", 5000, 100, 100)], default);
+        await coordinator.ConfigureAsync(new PlaybackMarkerClock([0], [60]), TimeSpan.FromSeconds(10), default);
         for (var index = 0; index < 10; index++)
         {
             await coordinator.PlayAsync(default);
@@ -39,90 +35,94 @@ public class MarkerPlaybackCoordinatorTests
             await coordinator.StopAsync(default).WaitAsync(TimeSpan.FromSeconds(3));
             Assert.That(coordinator.Latest.Playback.Position, Is.EqualTo(TimeSpan.Zero));
         }
-        Assert.That(audio.TriggeredSamples, Is.Empty);
         Assert.That(coordinator.Latest.Playback.Error, Is.Null);
     }
 
     [Test]
-    public async Task ReplacementGenerationCannotReceiveOldWorkerTriggers()
+    public async Task ReplacementGenerationResetsMarker()
     {
         var audio = new StubWorkstationAudioService();
         await using var coordinator = new MarkerPlaybackCoordinator(audio, (_, token) => Task.Delay(Timeout.Infinite, token));
-        await coordinator.ConfigureAsync(new PlaybackMarkerClock([0], [120]), TimeSpan.FromSeconds(10), [new(1,"hit",10,100,100)], default);
+        await coordinator.ConfigureAsync(new PlaybackMarkerClock([0], [120]), TimeSpan.FromSeconds(10), default);
         await coordinator.PlayAsync(default);
         var previous = coordinator.Latest.Generation;
         await coordinator.StopAsync(default);
-        await coordinator.ConfigureAsync(new PlaybackMarkerClock([0], [240]), TimeSpan.FromSeconds(10), [new(2,"hit",0,100,100)], default);
+        await coordinator.ConfigureAsync(new PlaybackMarkerClock([0], [240]), TimeSpan.FromSeconds(10), default);
         await coordinator.PlayAsync(default);
         Assert.That(coordinator.Latest.Generation, Is.GreaterThan(previous));
-        Assert.That(audio.TriggeredSamples.SelectMany(x => x), Is.EqualTo(new long[] { 2 }));
+        Assert.That(coordinator.Latest.Playback.Position, Is.EqualTo(TimeSpan.Zero));
     }
+
     [Test]
-    public async Task StopWaitsForInFlightTriggerAndDisposedWorkerCannotRestart()
+    public async Task StopWaitsForInFlightSnapshotAndDisposedWorkerCannotRestart()
     {
         using var release = new ManualResetEventSlim();
         var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var audio = new StubWorkstationAudioService();
-        var wake = new SemaphoreSlim(0);
-        var coordinator = new MarkerPlaybackCoordinator(audio, (_, token) => wake.WaitAsync(token));
-        await coordinator.ConfigureAsync(new PlaybackMarkerClock([0], [120]), TimeSpan.FromSeconds(10), [new(1,"hit",10,100,100)], default);
+        using var wake = new SemaphoreSlim(0);
+        using var waiting = new SemaphoreSlim(0);
+        await using var coordinator = new MarkerPlaybackCoordinator(audio, async (_, token) =>
+        {
+            waiting.Release();
+            await wake.WaitAsync(token);
+        });
+        await coordinator.ConfigureAsync(new PlaybackMarkerClock([0], [120]), TimeSpan.FromSeconds(10), default);
         await coordinator.PlayAsync(default);
-        audio.Triggering = _ => { entered.TrySetResult(); if (!release.Wait(TimeSpan.FromSeconds(3))) throw new TimeoutException(); };
+        await waiting.WaitAsync().WaitAsync(TimeSpan.FromSeconds(3));
+        audio.ReadingSnapshot = () => { entered.TrySetResult(); if (!release.Wait(TimeSpan.FromSeconds(3))) throw new TimeoutException(); };
         audio.Snapshot = audio.Snapshot with { Position = TimeSpan.FromMilliseconds(30) };
         wake.Release();
         await entered.Task.WaitAsync(TimeSpan.FromSeconds(3));
         var stop = coordinator.StopAsync(default);
-        Assert.That(stop.IsCompleted, Is.False);
-        release.Set();
-        await stop;
+        try { Assert.That(stop.IsCompleted, Is.False); }
+        finally { release.Set(); await stop; }
         Assert.That(coordinator.Latest.Playback.Position, Is.EqualTo(TimeSpan.Zero));
-        Assert.That(audio.TriggeredSamples.SelectMany(x => x), Is.EqualTo(new long[] { 1 }));
+        Assert.That(coordinator.Latest.Playback.IsPlaying, Is.False);
         await coordinator.DisposeAsync();
         Assert.ThrowsAsync<ObjectDisposedException>(async () => await coordinator.PlayAsync(default));
     }
 
     [Test]
-    public async Task InitialTriggerFailurePausesTransportAndCanRetry()
+    public async Task InitialPlayFailurePausesTransportAndCanRetry()
     {
-        var audio = new StubWorkstationAudioService { Triggering = _ => throw new IOException("trigger failed") };
+        var audio = new StubWorkstationAudioService { Playing = () => throw new IOException("play failed") };
         await using var coordinator = new MarkerPlaybackCoordinator(audio, (_, token) => Task.Delay(Timeout.Infinite, token));
-        await coordinator.ConfigureAsync(new PlaybackMarkerClock([0], [120]), TimeSpan.FromSeconds(10), [new(1,"hit",0,100,100)], default);
+        await coordinator.ConfigureAsync(new PlaybackMarkerClock([0], [120]), TimeSpan.FromSeconds(10), default);
         Assert.ThrowsAsync<IOException>(async () => await coordinator.PlayAsync(default));
         Assert.That(audio.Snapshot.IsPlaying, Is.False);
-        Assert.That(coordinator.Latest.Playback.Error, Is.EqualTo("trigger failed"));
-        audio.Triggering = null;
+        Assert.That(coordinator.Latest.Playback.Error, Is.EqualTo("play failed"));
+        audio.Playing = null;
         await coordinator.PlayAsync(default);
-        Assert.That(audio.TriggeredSamples.SelectMany(x => x), Is.EqualTo(new long[] { 1 }));
+        Assert.That(coordinator.Latest.Playback.IsPlaying, Is.True);
+        Assert.That(coordinator.Latest.Playback.Error, Is.Null);
     }
 
     [Test]
-    public void BoundaryWaitNeverBecomesASynchronousSpin()
-    {
+    public void BoundaryWaitNeverBecomesASynchronousSpin() =>
         Assert.That(new PlaybackMarkerClock([0], [240]).GetDelayToNextBoundary(TimeSpan.FromMilliseconds(2)),
             Is.GreaterThanOrEqualTo(TimeSpan.FromMilliseconds(1)));
-    }
+
     [Test]
-    public async Task WorkerCrossesSamplesWithoutPresentationAndStopsCleanly()
+    public async Task WorkerUpdatesMarkerWithoutPresentationAndStopsCleanly()
     {
         var audio = new StubWorkstationAudioService();
-        var wake = new SemaphoreSlim(0);
-        var stepped = new SemaphoreSlim(0);
+        using var wake = new SemaphoreSlim(0);
+        using var stepped = new SemaphoreSlim(0);
         await using var coordinator = new MarkerPlaybackCoordinator(audio, async (_, token) =>
         {
             stepped.Release();
             await wake.WaitAsync(token);
         });
-        await coordinator.ConfigureAsync(new PlaybackMarkerClock([0], [120]), TimeSpan.FromSeconds(10),
-            [new(1, "hit", 0, 100, 100), new(2, "hit", 10, 100, 100), new(3, "hit", 10, 100, 100)], default);
+        await coordinator.ConfigureAsync(new PlaybackMarkerClock([0], [120]), TimeSpan.FromSeconds(10), default);
         await coordinator.PlayAsync(default);
-        Assert.That(await stepped.WaitAsync(TimeSpan.FromSeconds(3)), Is.True);
+        await stepped.WaitAsync().WaitAsync(TimeSpan.FromSeconds(3));
         audio.Snapshot = audio.Snapshot with { Position = TimeSpan.FromMilliseconds(30) };
         wake.Release();
-        Assert.That(await stepped.WaitAsync(TimeSpan.FromSeconds(3)), Is.True);
-        Assert.That(audio.TriggeredSamples.SelectMany(x => x), Is.EqualTo(new long[] { 1, 2, 3 }));
+        await stepped.WaitAsync().WaitAsync(TimeSpan.FromSeconds(3));
+        Assert.That(coordinator.Latest.Playback.Position, Is.EqualTo(TimeSpan.FromMilliseconds(29.1667)));
         wake.Release();
-        Assert.That(await stepped.WaitAsync(TimeSpan.FromSeconds(3)), Is.True);
-        Assert.That(audio.TriggeredSamples.SelectMany(x => x).Count(), Is.EqualTo(3));
+        await stepped.WaitAsync().WaitAsync(TimeSpan.FromSeconds(3));
+        Assert.That(coordinator.Latest.Playback.Position, Is.EqualTo(TimeSpan.FromMilliseconds(29.1667)));
         await coordinator.StopAsync(default);
         Assert.That(coordinator.Latest.Playback.Position, Is.EqualTo(TimeSpan.Zero));
         Assert.That(coordinator.Latest.Playback.IsPlaying, Is.False);
@@ -133,13 +133,14 @@ public class MarkerPlaybackCoordinatorTests
     {
         var audio = new StubWorkstationAudioService();
         await using var coordinator = new MarkerPlaybackCoordinator(audio, (_, token) => Task.Delay(Timeout.Infinite, token));
-        await coordinator.ConfigureAsync(new PlaybackMarkerClock([0], [120]), TimeSpan.FromSeconds(10), [new(1,"hit",0,100,100)], default);
+        await coordinator.ConfigureAsync(new PlaybackMarkerClock([0], [120]), TimeSpan.FromSeconds(10), default);
+        audio.Snapshot = audio.Snapshot with { Position = TimeSpan.FromMilliseconds(30) };
         await coordinator.PlayAsync(default);
         await coordinator.PauseAsync(default);
+        Assert.That(coordinator.Latest.Playback.Position, Is.EqualTo(TimeSpan.FromMilliseconds(30)));
         await coordinator.PlayAsync(default);
-        Assert.That(audio.TriggeredSamples.SelectMany(x => x), Is.EqualTo(new long[] { 1 }));
         await coordinator.SeekAsync(TimeSpan.Zero, default);
-        Assert.That(audio.TriggeredSamples.SelectMany(x => x), Is.EqualTo(new long[] { 1, 1 }));
+        Assert.That(coordinator.Latest.Playback.Position, Is.EqualTo(TimeSpan.Zero));
     }
 
     [Test]

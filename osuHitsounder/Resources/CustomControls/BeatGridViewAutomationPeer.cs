@@ -8,6 +8,12 @@ public sealed class BeatGridViewAutomationPeer(BeatGridView owner) : FrameworkEl
 {
     protected override string GetClassNameCore() => nameof(BeatGridView);
     protected override AutomationControlType GetAutomationControlTypeCore() => AutomationControlType.Custom;
+    protected override bool IsEnabledCore() => base.IsEnabledCore() && ((BeatGridView)Owner).CanPlaceSamples;
+    protected override string GetItemStatusCore()
+    {
+        var grid = (BeatGridView)Owner;
+        return $"{grid.Samples?.Count(sample => grid.SelectedSamples?.Contains(sample) == true) ?? 0} samples selected";
+    }
 
     public override object? GetPattern(PatternInterface patternInterface) =>
         patternInterface == PatternInterface.Invoke ? this : base.GetPattern(patternInterface);

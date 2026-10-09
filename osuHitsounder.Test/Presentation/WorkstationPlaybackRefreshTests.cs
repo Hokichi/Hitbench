@@ -168,12 +168,12 @@ public class WorkstationPlaybackRefreshTests
     }
 
     [TestCase(50), TestCase(100), TestCase(250)]
-    public void UiStallDoesNotDelayLogicalTrigger(int holdMilliseconds)
+    public void UiStallDoesNotDelayLogicalMarker(int holdMilliseconds)
     {
         UiTestPump.Run(vm.PlayPauseCommand.ExecuteAsync(null));
         audio.Snapshot = audio.Snapshot with { Position = TimeSpan.FromMilliseconds(holdMilliseconds) };
         Thread.Sleep(holdMilliseconds);
-        Assert.That(audio.TriggeredSamples.SelectMany(ids => ids), Is.EqualTo(new long[] { 1 }));
+        Assert.That(playback.Latest.Playback.Position, Is.GreaterThan(TimeSpan.Zero));
         page.ProcessPresentationFrame(TimeSpan.FromHours(2));
         Assert.That(vm.Position, Is.EqualTo(playback.Latest.Playback.Position));
     }
@@ -203,7 +203,7 @@ public class WorkstationPlaybackRefreshTests
     }
 
     [Test]
-    public void FrameUpdatesBoundMarkerWithoutDuplicateTriggers()
+    public void FrameUpdatesBoundMarker()
     {
         osuHitsounder.Test.Presentation.UiTestPump.Run(vm.PlayPauseCommand.ExecuteAsync(null));
         audio.Snapshot = audio.Snapshot with { Position = TimeSpan.FromMilliseconds(12.5) };
@@ -211,13 +211,13 @@ public class WorkstationPlaybackRefreshTests
         PumpFrame();
         Assert.That(vm.Position.TotalMilliseconds, Is.EqualTo(12.5));
         Assert.That(((WaveformView)page.FindName("WaveformDisplay")).Position, Is.EqualTo(vm.Position));
-        Assert.That(audio.TriggeredSamples.SelectMany(ids => ids), Is.EqualTo(new long[] { 1 }));
+        Assert.That(playback.Latest.Playback.Position, Is.GreaterThan(TimeSpan.Zero));
         Assert.That(vm.Position.TotalMilliseconds, Is.EqualTo(12.5));
     }
 
     [TestCase(Visibility.Hidden)]
     [TestCase(Visibility.Collapsed)]
-    public void HiddenPageStopsFramesButKeepsMarkerTriggers(Visibility visibility)
+    public void HiddenPageStopsFramesButKeepsLogicalMarker(Visibility visibility)
     {
         UiTestPump.Run(vm.PlayPauseCommand.ExecuteAsync(null));
         page.Visibility = visibility;
@@ -225,7 +225,7 @@ public class WorkstationPlaybackRefreshTests
         Assert.That(page.IsPlaybackRefreshSubscribed, Is.False);
         audio.Snapshot = audio.Snapshot with { Position = TimeSpan.FromMilliseconds(12.5) };
         WaitForWorker();
-        Assert.That(audio.TriggeredSamples.SelectMany(ids => ids), Is.EqualTo(new long[] { 1 }));
+        Assert.That(playback.Latest.Playback.Position, Is.GreaterThan(TimeSpan.Zero));
         Assert.That(vm.Position, Is.EqualTo(TimeSpan.Zero));
         page.Visibility = Visibility.Visible;
         Assert.That(vm.Position.TotalMilliseconds, Is.EqualTo(12.5));

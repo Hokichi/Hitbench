@@ -33,6 +33,12 @@ public sealed class BeatGridView : FrameworkElement
         new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
     public static readonly DependencyProperty FocusBrushProperty = DependencyProperty.Register(nameof(FocusBrush), typeof(Brush), typeof(BeatGridView), RenderMetadata());
     public static readonly DependencyProperty PressedBrushProperty = DependencyProperty.Register(nameof(PressedBrush), typeof(Brush), typeof(BeatGridView), RenderMetadata());
+    public static readonly DependencyProperty SelectionBrushProperty = DependencyProperty.Register(nameof(SelectionBrush), typeof(Brush), typeof(BeatGridView), new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
+    public static readonly DependencyProperty SelectionCueBrushProperty = DependencyProperty.Register(nameof(SelectionCueBrush), typeof(Brush), typeof(BeatGridView), new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
+    public static readonly DependencyProperty SelectedSamplesProperty = DependencyProperty.Register(nameof(SelectedSamples), typeof(IReadOnlyCollection<Sample>), typeof(BeatGridView), new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
+    public static readonly DependencyProperty PreviewTimestampsProperty = DependencyProperty.Register(nameof(PreviewTimestamps), typeof(IReadOnlyDictionary<Sample, int>), typeof(BeatGridView), RenderMetadata());
+    public static readonly DependencyProperty PressedSampleProperty = DependencyProperty.Register(nameof(PressedSample), typeof(Sample), typeof(BeatGridView), new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
+    public static readonly DependencyProperty SuppressPlacementFeedbackProperty = DependencyProperty.Register(nameof(SuppressPlacementFeedback), typeof(bool), typeof(BeatGridView), new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsRender));
     public static readonly RoutedEvent SamplePlacementRequestedEvent = EventManager.RegisterRoutedEvent(nameof(SamplePlacementRequested), RoutingStrategy.Bubble, typeof(EventHandler<SamplePlacementRequestedEventArgs>), typeof(BeatGridView));
     public static readonly RoutedEvent SampleRemovalRequestedEvent = EventManager.RegisterRoutedEvent(nameof(SampleRemovalRequested), RoutingStrategy.Bubble, typeof(EventHandler<SampleRemovalRequestedEventArgs>), typeof(BeatGridView));
 
@@ -53,7 +59,52 @@ public sealed class BeatGridView : FrameworkElement
     public Brush? PlaybackMarkerOutlineBrush { get => (Brush?)GetValue(PlaybackMarkerOutlineBrushProperty); set => SetValue(PlaybackMarkerOutlineBrushProperty, value); }
     public Brush? FocusBrush { get => (Brush?)GetValue(FocusBrushProperty); set => SetValue(FocusBrushProperty, value); }
     public Brush? PressedBrush { get => (Brush?)GetValue(PressedBrushProperty); set => SetValue(PressedBrushProperty, value); }
+    public Brush? SelectionBrush { get => (Brush?)GetValue(SelectionBrushProperty); set => SetValue(SelectionBrushProperty, value); }
+    public Brush? SelectionCueBrush { get => (Brush?)GetValue(SelectionCueBrushProperty); set => SetValue(SelectionCueBrushProperty, value); }
+    public IReadOnlyCollection<Sample>? SelectedSamples { get => (IReadOnlyCollection<Sample>?)GetValue(SelectedSamplesProperty); set => SetValue(SelectedSamplesProperty, value); }
+    public IReadOnlyDictionary<Sample, int>? PreviewTimestamps { get => (IReadOnlyDictionary<Sample, int>?)GetValue(PreviewTimestampsProperty); set => SetValue(PreviewTimestampsProperty, value); }
+    public Sample? PressedSample { get => (Sample?)GetValue(PressedSampleProperty); set => SetValue(PressedSampleProperty, value); }
+    public bool SuppressPlacementFeedback { get => (bool)GetValue(SuppressPlacementFeedbackProperty); set => SetValue(SuppressPlacementFeedbackProperty, value); }
     public BeatInterval? ActiveInterval { get; private set; }
+
+    public Rect GetDisplayedSampleBounds(Sample sample) => GetSampleBounds(
+        PreviewTimestamps?.TryGetValue(sample, out var timestamp) == true ? timestamp : sample.Timestamp);
+
+    private Rect SampleViewport => new(0, 0, Math.Max(0, Math.Min(ActualWidth, ViewportWidth)), Math.Max(0, ActualHeight));
+
+    public Sample? FindSampleAt(Point point)
+    {
+        if (!CanPlaceSamples || Samples is null || !double.IsFinite(point.X) || !double.IsFinite(point.Y) ||
+            point.X < 0 || point.X >= SampleViewport.Width || point.Y < 0 || point.Y >= ActualHeight) return null;
+        for (var index = Samples.Count - 1; index >= 0; index--)
+        {
+            var bounds = GetDisplayedSampleBounds(Samples[index]);
+            if (!bounds.IsEmpty && point.X >= bounds.Left && point.X < bounds.Right &&
+                point.Y >= bounds.Top && point.Y < bounds.Bottom) return Samples[index];
+        }
+        return null;
+    }
+
+    public IReadOnlyList<Sample> GetSamplesIntersecting(Rect selection)
+    {
+        if (!CanPlaceSamples || Samples is null || selection.IsEmpty) return [];
+        selection.Intersect(SampleViewport);
+        if (selection.IsEmpty || selection.Width <= 0 || selection.Height <= 0) return [];
+        return Samples.Where(sample => GetDisplayedSampleBounds(sample).IntersectsWith(selection)).ToArray();
+    }
+
+    public Sample? FindActiveSample()
+    {
+        if (pointerX is { } x) return FindSampleAt(new Point(x, ActualHeight / 2));
+        if (!CanPlaceSamples || Samples is null || ActiveInterval is not { } interval) return null;
+        for (var index = Samples.Count - 1; index >= 0; index--)
+        {
+            var sample = Samples[index];
+            var timestamp = PreviewTimestamps?.TryGetValue(sample, out var preview) == true ? preview : sample.Timestamp;
+            if (timestamp >= interval.StartMilliseconds && timestamp < interval.EndMilliseconds) return sample;
+        }
+        return null;
+    }
 
     public event EventHandler<SamplePlacementRequestedEventArgs> SamplePlacementRequested
     {
@@ -100,7 +151,7 @@ public sealed class BeatGridView : FrameworkElement
         for (var index = Samples.Count - 1; index >= 0; index--)
         {
             var sample = Samples[index];
-            var bounds = GetSampleBounds(sample.Timestamp);
+            var bounds = GetDisplayedSampleBounds(sample);
             if (bounds.IsEmpty || viewportX < bounds.Left || viewportX >= bounds.Right) continue;
             return RequestSampleRemoval(sample);
         }
@@ -113,8 +164,8 @@ public sealed class BeatGridView : FrameworkElement
         for (var index = Samples.Count - 1; index >= 0; index--)
         {
             var sample = Samples[index];
-            if (sample.Timestamp < interval.StartMilliseconds || sample.Timestamp >= interval.EndMilliseconds) continue;
-            return RequestSampleRemoval(sample);
+            var timestamp = PreviewTimestamps?.TryGetValue(sample, out var preview) == true ? preview : sample.Timestamp;
+            if (timestamp >= interval.StartMilliseconds && timestamp < interval.EndMilliseconds) return RequestSampleRemoval(sample);
         }
         return false;
     }
@@ -317,9 +368,11 @@ public sealed class BeatGridView : FrameworkElement
         var focus = highContrast ? SystemColors.HighlightTextBrush : FocusBrush;
         var pressed = highContrast ? SystemColors.HighlightTextBrush : PressedBrush;
         var marker = highContrast ? SystemColors.WindowTextBrush : MarkerBrush;
+        var selection = highContrast ? SystemColors.HighlightBrush : SelectionBrush ?? marker;
+        var selectionCue = highContrast ? SystemColors.HighlightTextBrush : SelectionCueBrush ?? FocusBrush;
         var nodeBorder = new Pen(highContrast ? SystemColors.WindowTextBrush :
             TryFindResource("Brush.Border.Default") as Brush ?? marker, 1);
-        if (ActiveInterval is { } active)
+        if (!SuppressPlacementFeedback && ActiveInterval is { } active)
         {
             var rect = Inset(GetSampleBounds((int)Math.Round(active.StartMilliseconds, MidpointRounding.AwayFromZero)));
             context.DrawRoundedRectangle(hover, null, rect, 4, 4);
@@ -331,8 +384,15 @@ public sealed class BeatGridView : FrameworkElement
         if (marker is not null && Samples is not null)
             foreach (var sample in Samples)
             {
-                var rect = GetSampleBounds(sample.Timestamp);
-                if (!rect.IsEmpty) context.DrawRoundedRectangle(marker, nodeBorder, Inset(rect), 4, 4);
+                var rect = GetDisplayedSampleBounds(sample);
+                if (rect.IsEmpty) continue;
+                rect = Inset(rect);
+                var selected = SelectedSamples?.Contains(sample) == true;
+                context.DrawRoundedRectangle(selected ? selection : marker, nodeBorder, rect, 4, 4);
+                if (selected && selectionCue is not null)
+                    context.DrawLine(new Pen(selectionCue, 2), new Point(rect.Left + 3, rect.Bottom - 3), new Point(rect.Right - 3, rect.Bottom - 3));
+                if (ReferenceEquals(PressedSample, sample) && pressed is not null)
+                    context.DrawRoundedRectangle(null, new Pen(pressed, 2), rect, 4, 4);
             }
         BeatGridDrawing.Draw(context, this, Offsets, Bpms, Subdivision, Duration.TotalMilliseconds,
             ContentWidth, HorizontalOffset, ViewportWidth, ActualHeight, false);
@@ -360,6 +420,7 @@ public sealed class BeatGridView : FrameworkElement
     {
         pointerX = null;
         pressedInterval = null;
+        SetCurrentValue(PressedSampleProperty, null);
         ActiveInterval = null;
         if (IsMouseCaptured) ReleaseMouseCapture();
         InvalidateContent();

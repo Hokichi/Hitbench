@@ -9,7 +9,7 @@ namespace osuHitsounder.Test.Services;
 public class MarkerAudioIntegrationTests
 {
     [Test]
-    public async Task MarkerCrossingStartsAudioAndSeekResetsPosition()
+    public async Task AudioOnsetPrecedesBufferedMarkerCrossingAndSeekResetsPosition()
     {
         using var project = new TestProjectFolder("hit.wav");
         var players = new List<StubWavePlayer>();
@@ -33,7 +33,8 @@ public class MarkerAudioIntegrationTests
             await vm.PlayPauseCommand.ExecuteAsync(null);
             var output = new float[1200];
             players[^1].Provider!.ToSampleProvider().Read(output, 0, output.Length);
-            Assert.That(output, Is.All.EqualTo(.2f));
+            Assert.That(output[..882], Is.All.EqualTo(.2f));
+            Assert.That(output[882..], Is.EqualTo(Enumerable.Repeat(.6f, 318).ToArray()).Within(.0001));
             players[^1].Position = 600 * 8;
             await StubWorkstationAudioService.WaitUntilAsync(() => { vm.RefreshPlayback(); return vm.Position.TotalMilliseconds >= 10; });
             vm.RefreshPlayback();
@@ -71,7 +72,6 @@ public class MarkerAudioIntegrationTests
             release.Set();
             await Task.WhenAll(first, replacement);
             audio.Play();
-            audio.TriggerSamples([2]);
 
             Assert.That(ReadFrame(player), Is.EqualTo(new[] { .6f, .6f }).Within(.0001));
         }
@@ -79,7 +79,7 @@ public class MarkerAudioIntegrationTests
     }
 
     [Test]
-    public async Task NewScheduleDoesNotStartPastPlacementWithoutTrigger()
+    public async Task NewScheduleRendersOverlappingPastTail()
     {
         using var project = new TestProjectFolder("hit.wav");
         var player = new StubWavePlayer();
@@ -88,8 +88,7 @@ public class MarkerAudioIntegrationTests
         await audio.UpdateSamplesAsync(project.ProjectPath, [], CancellationToken.None);
         audio.Play();
         await audio.UpdateSamplesAsync(project.ProjectPath, [new SamplePlaybackEvent(1, "hit.wav", 0, 100, 100)], CancellationToken.None);
-        Assert.That(ReadFrame(player), Is.EqualTo(new[] { .2f, .2f }).Within(.0001));
-        audio.TriggerSamples([1]);
+        Assert.That(ReadFrame(player), Is.EqualTo(new[] { .6f, .6f }).Within(.0001));
         Assert.That(ReadFrame(player), Is.EqualTo(new[] { .6f, .6f }).Within(.0001));
     }
 

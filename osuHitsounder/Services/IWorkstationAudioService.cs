@@ -7,7 +7,6 @@ public interface IWorkstationAudioService : IDisposable
     Task<WaveformData> AnalyzeAsync(string audioPath, CancellationToken token);
     void Open(string audioPath);
     void Play();
-    void TriggerSamples(IReadOnlyList<long> placementIds);
     void Pause();
     void Stop();
     void Seek(TimeSpan position);

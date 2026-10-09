@@ -5,56 +5,47 @@ namespace osuHitsounder.Test.Services;
 public class ScheduledSampleMixerTests
 {
     [Test]
-    public void PublicationDoesNotStartSampleWithoutMarkerTrigger()
+    public void PublicationStartsSampleAtItsTimestamp()
     {
         var mixer = new ScheduledSampleMixer(DecodedAudio.CopyFrom(new float[8]), 0);
         mixer.Publish(new PreparedPlaybackSchedule([Event(1, 0, [.5f, .5f])]));
         var output = new float[8];
         mixer.Read(output, 0, output.Length);
+        Assert.That(output, Is.EqualTo(new[] { .5f, .5f, 0f, 0f, 0f, 0f, 0f, 0f }));
+    }
+
+    [Test]
+    public void PastPublicationDoesNotReplayExhaustedAttack()
+    {
+        var mixer = new ScheduledSampleMixer(DecodedAudio.CopyFrom(new float[20]), 0);
+        mixer.Read(new float[6], 0, 6);
+        mixer.Publish(new PreparedPlaybackSchedule([Event(1, 0, [.5f, .6f, .3f, .4f])]));
+        var output = new float[6];
+        mixer.Read(output, 0, output.Length);
         Assert.That(output, Is.All.Zero);
     }
 
     [Test]
-    public void LateTriggerStartsFullAttackOnce()
-    {
-        var mixer = new ScheduledSampleMixer(DecodedAudio.CopyFrom(new float[20]), 0);
-        mixer.Publish(new PreparedPlaybackSchedule([Event(1, 0, [.5f, .6f, .3f, .4f])]));
-        mixer.Read(new float[6], 0, 6);
-        mixer.TriggerSamples([1, 1]);
-        var output = new float[6];
-        mixer.Read(output, 0, 2);
-        mixer.TriggerSamples([1]);
-        mixer.Read(output, 2, 4);
-        Assert.That(output, Is.EqualTo(new[] { .5f, .6f, .3f, .4f, 0f, 0f }));
-        mixer.TriggerSamples([1]);
-        mixer.Read(output, 0, 2);
-        Assert.That(output[..2], Is.All.Zero);
-    }
-
-    [Test]
-    public void TriggerBetweenChannelsStartsAtNextCompleteFrame()
+    public void NewSampleBetweenChannelsStartsAtNextCompleteFrame()
     {
         var mixer = new ScheduledSampleMixer(DecodedAudio.CopyFrom(new float[8]), 0);
-        mixer.Publish(new PreparedPlaybackSchedule([Event(1, 0, [.5f, .6f])]));
         mixer.Read(new float[1], 0, 1);
-        mixer.TriggerSamples([1]);
+        mixer.Publish(new PreparedPlaybackSchedule([Event(1, 1, [.5f, .6f])]));
         var output = new float[3];
         mixer.Read(output, 0, 3);
         Assert.That(output, Is.EqualTo(new[] { 0f, .5f, .6f }));
     }
 
     [Test]
-    public void CaptureRetainsRenderedButUnheardVoice()
+    public void ResumeAtConsumedFrameRetainsRenderedButUnheardTail()
     {
         var song = DecodedAudio.CopyFrom(new float[20]);
         var schedule = new PreparedPlaybackSchedule([Event(1, 0, [.1f,.1f,.2f,.2f,.3f,.3f,.4f,.4f])]);
         var mixer = new ScheduledSampleMixer(song, 0);
         mixer.Publish(schedule);
-        mixer.TriggerSamples([1]);
         mixer.Read(new float[16], 0, 16);
         var resumed = new ScheduledSampleMixer(song, 2);
         resumed.Publish(schedule);
-        resumed.RestoreVoices(mixer.CaptureVoices(2));
         var output = new float[6];
         resumed.Read(output, 0, 6);
         Assert.That(output, Is.EqualTo(new[] { .3f,.3f,.4f,.4f,0f,0f }));
@@ -66,7 +57,7 @@ public class ScheduledSampleMixerTests
         var mixer = new ScheduledSampleMixer(DecodedAudio.CopyFrom(new float[200000]),0);
         var first = new PreparedPlaybackSchedule([Event(1,0,Enumerable.Repeat(.2f,200000).ToArray())]);
         var second = new PreparedPlaybackSchedule([Event(1,0,Enumerable.Repeat(.4f,200000).ToArray())]);
-        PublishActivated(mixer, first);
+        mixer.Publish( first);
         using var started = new ManualResetEventSlim();
         var publisher = Task.Run(()=>
         {
@@ -92,7 +83,7 @@ public class ScheduledSampleMixerTests
     public void ImpulseStartsAtExactFrameWithoutExternalTrigger(int chunk)
     {
         var mixer = new ScheduledSampleMixer(DecodedAudio.CopyFrom(new float[4096]), 0);
-        PublishActivated(mixer, new PreparedPlaybackSchedule([Event(1, 1000, [.5f, .5f])]));
+        mixer.Publish( new PreparedPlaybackSchedule([Event(1, 1000, [.5f, .5f])]));
         var output = new float[4096];
         for (var i = 0; i < output.Length;)
             i += mixer.Read(output, i, Math.Min(chunk * 2, output.Length - i));
@@ -107,12 +98,11 @@ public class ScheduledSampleMixerTests
     public void PartialFrameKeepsOriginalRightChannel()
     {
         var mixer = new ScheduledSampleMixer(DecodedAudio.CopyFrom(new float[4]), 0);
-        PublishActivated(mixer, new PreparedPlaybackSchedule([Event(1, 0, [.2f, .3f, .4f, .5f])]));
+        mixer.Publish( new PreparedPlaybackSchedule([Event(1, 0, [.2f, .3f, .4f, .5f])]));
         var output = new float[4];
         mixer.Read(output, 0, 1);
         Assert.That(mixer.RenderedFrames, Is.Zero);
         mixer.Publish(new PreparedPlaybackSchedule([Event(2, 0, [.8f, .8f, .7f, .6f])]));
-        mixer.RestoreVoices([new SampleVoiceActivation(2, 0)]);
         mixer.Read(output, 1, 3);
         Assert.That(output, Is.EqualTo(new[] { .2f, .3f, .7f, .6f }));
         Assert.That(mixer.RenderedFrames, Is.EqualTo(2));
@@ -122,7 +112,7 @@ public class ScheduledSampleMixerTests
     public void SeekAndNegativeTailsRespectSourceOffsetAndSongEnd()
     {
         var mixer = new ScheduledSampleMixer(DecodedAudio.CopyFrom(new float[6]), 1);
-        PublishActivated(mixer, new PreparedPlaybackSchedule([Event(1, -1, [.1f,.1f,.2f,.2f,.3f,.3f,.4f,.4f,.5f,.5f])]));
+        mixer.Publish( new PreparedPlaybackSchedule([Event(1, -1, [.1f,.1f,.2f,.2f,.3f,.3f,.4f,.4f,.5f,.5f])]));
         var output = Enumerable.Repeat(-9f, 8).ToArray();
         Assert.That(mixer.Read(output, 2, 6), Is.EqualTo(4));
         Assert.That(output, Is.EqualTo(new[] {-9f,-9f,.3f,.3f,.4f,.4f,-9f,-9f}));
@@ -132,7 +122,7 @@ public class ScheduledSampleMixerTests
     public void OverlappingSamplesHaveNoVoiceLimitAndGainPrecedesClipping()
     {
         var mixer = new ScheduledSampleMixer(DecodedAudio.CopyFrom([float.NaN, float.PositiveInfinity]), 0);
-        PublishActivated(mixer, new PreparedPlaybackSchedule(Enumerable.Range(1, 64).Select(id => Event(id, 0, [.4f,.4f], .5f)).ToArray()));
+        mixer.Publish( new PreparedPlaybackSchedule(Enumerable.Range(1, 64).Select(id => Event(id, 0, [.4f,.4f], .5f)).ToArray()));
         mixer.SetVolumes(1, .5f, .05f);
         var output = new float[2];
         mixer.Read(output, 0, 2);
@@ -149,7 +139,7 @@ public class ScheduledSampleMixerTests
         var schedule = new PreparedPlaybackSchedule(events);
         events[0] = Event(2, 0, [0,0]);
         var mixer = new ScheduledSampleMixer(DecodedAudio.CopyFrom(new float[2]), 0);
-        PublishActivated(mixer, schedule);
+        mixer.Publish( schedule);
         var output = new float[2];
         mixer.Read(output,0,2);
         Assert.That(output, Is.EqualTo(new[] {.5f,.5f}));
@@ -163,7 +153,7 @@ public class ScheduledSampleMixerTests
     public void NormalReadAllocatesNothingAndChecksBounds()
     {
         var mixer = new ScheduledSampleMixer(DecodedAudio.CopyFrom(new float[400_100]),0);
-        PublishActivated(mixer, new PreparedPlaybackSchedule([Event(1,0,new float[400_100])]));
+        mixer.Publish( new PreparedPlaybackSchedule([Event(1,0,new float[400_100])]));
         var output = new float[16];
         _ = MeasureReads(mixer, output);
         var allocated = MeasureReads(mixer, output);
@@ -183,10 +173,4 @@ public class ScheduledSampleMixerTests
         for (var i = 0; i < 10_000; i++) mixer.Read(output, 0, output.Length);
         return GC.GetAllocatedBytesForCurrentThread() - before;
     }
-    private static void PublishActivated(ScheduledSampleMixer mixer, PreparedPlaybackSchedule schedule)
-    {
-        mixer.Publish(schedule);
-        mixer.RestoreVoices(schedule.Events.ToArray().Select(item => new SampleVoiceActivation(item.Id, item.StartFrame)).ToArray());
-    }
-
 }

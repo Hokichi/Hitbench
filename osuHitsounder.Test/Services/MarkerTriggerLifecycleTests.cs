@@ -17,12 +17,10 @@ public class MarkerTriggerLifecycleTests
         audio.Open("song.wav");
         await audio.UpdateSamplesAsync(project.ProjectPath, [new(1,"hit.wav",0,100,100)], CancellationToken.None);
         audio.Play();
-        audio.TriggerSamples([1]);
         Read(players[^1], 16);
         players[^1].Position = 2 * 8;
         audio.Pause();
         audio.Play();
-        audio.TriggerSamples([1]);
         Assert.That(Read(players[^1], 6), Is.EqualTo(new[] { .3f,.3f,.4f,.4f,0f,0f }));
     }
 
@@ -40,8 +38,6 @@ public class MarkerTriggerLifecycleTests
         audio.Play();
         Assert.That(Read(players[^1], 2), Is.All.EqualTo(.25f));
         audio.Seek(TimeSpan.FromMilliseconds(10));
-        Assert.That(Read(players[^1], 2), Is.All.Zero);
-        audio.TriggerSamples([1,1]);
         Assert.That(Read(players[^1], 2), Is.All.EqualTo(.25f));
         audio.Stop();
         audio.Play();
@@ -56,7 +52,7 @@ public class MarkerTriggerLifecycleTests
     [TestCase("failure")]
     [TestCase("device")]
     [TestCase("pause")]
-    public async Task PendingTriggerFollowsPreparationAndTraversal(string action)
+    public async Task PreparedScheduleFollowsTransportAndCancellation(string action)
     {
         using var project = new TestProjectFolder("slow.wav");
         using var release = new ManualResetEventSlim();
@@ -78,7 +74,6 @@ public class MarkerTriggerLifecycleTests
         try
         {
             await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
-            audio.TriggerSamples([1]);
             Task? removed = null;
             if (action == "stop") { audio.Stop(); audio.Play(); }
             if (action == "seek") audio.Seek(TimeSpan.Zero);
@@ -90,9 +85,11 @@ public class MarkerTriggerLifecycleTests
             try { await update; } catch (OperationCanceledException) when (action == "cancel") { }
             if (removed is not null) await removed;
             if (action == "pause") audio.Play();
-            var output = Read(players[^1], 6);
-            Assert.That(output, Is.EqualTo(action is "publish" or "pause"
-                ? new[] { .5f,.6f,.3f,.4f,0f,0f } : new float[6]));
+            var output = Read(players[^1], 9000);
+            var expected = new float[9000];
+            if (action is not ("remove" or "cancel" or "failure"))
+                new[] { .5f, .6f, .3f, .4f }.CopyTo(expected, 8820);
+            Assert.That(output, Is.EqualTo(expected));
             if (action == "failure") Assert.That(audio.GetSnapshot().Error, Does.Contain("decode failed"));
         }
         finally { release.Set(); try { await update; } catch (OperationCanceledException) { } }

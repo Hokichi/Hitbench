@@ -22,7 +22,7 @@ public class WorkstationReturnTests
     }
 
     [Test]
-    public async Task ReturnShowsStatusWhilePauseWaitsForInFlightTrigger()
+    public async Task ReturnShowsStatusWhilePauseWaitsForInFlightSnapshot()
     {
         var saves = new DelayedProjectFileService();
         saves.Release();
@@ -32,7 +32,7 @@ public class WorkstationReturnTests
         await vm.PlayPauseCommand.ExecuteAsync(null);
         using var release = new ManualResetEventSlim();
         var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        audio.Triggering = _ =>
+        audio.ReadingSnapshot = () =>
         {
             entered.TrySetResult();
             if (!release.Wait(TimeSpan.FromSeconds(3))) throw new TimeoutException();
@@ -57,7 +57,7 @@ public class WorkstationReturnTests
         await vm.PlayPauseCommand.ExecuteAsync(null);
         vm.SetTrackVolume(vm.Tracks.Single(), 75);
         var returning = vm.PrepareToReturnAsync(default);
-        await StubWorkstationAudioService.WaitUntilAsync(() => vm.IsSavingForReturn);
+        await StubWorkstationAudioService.WaitUntilAsync(() => vm.IsSavingForReturn && !audio.Snapshot.IsPlaying);
         try
         {
             Assert.That(returning.IsCompleted, Is.False);

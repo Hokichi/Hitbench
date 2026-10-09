@@ -34,13 +34,6 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
     private float applicationVolume = 1;
     private TimeSpan currentPosition;
     private TimeSpan playbackOrigin;
-    private HashSet<long> requestedIds = [];
-    private readonly HashSet<long> pendingTriggers = [];
-    private readonly HashSet<long> triggeredIds = [];
-    private readonly HashSet<long> pendingSeekTails = [];
-    private SampleVoiceActivation[] pausedVoices = [];
-    private long seekFrame;
-    private bool preparing;
 
     public WorkstationAudioService() : this(AudioDecoder.Open, new AudioOutputFactory().CreateCandidates(null)) { }
 
@@ -77,9 +70,6 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
         {
             ThrowIfDisposed();
             retired = DetachPlayback();
-            ResetSampleTraversal();
-            requestedIds.Clear();
-            preparing = false;
             audioPath = path;
             preparedSong = null;
             preparedEvents = PreparedPlaybackSchedule.Empty;
@@ -108,16 +98,12 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
             ThrowIfDisposed();
             songPath = audioPath ?? throw new InvalidOperationException("Open a song before preparing playback.");
             request = ++preparationGeneration;
-            preparing = true;
             if (events.All(item => item.Id > 0) && events.Select(item => item.Id).Distinct().Count() == events.Count)
             {
-                requestedIds = events.Select(item => item.Id).ToHashSet();
-                pendingTriggers.IntersectWith(requestedIds);
-                pendingSeekTails.IntersectWith(requestedIds);
+                var requestedIds = events.Select(item => item.Id).ToHashSet();
                 // Remove voices immediately; decoding the remaining files may take time.
                 mixer?.Publish(new PreparedPlaybackSchedule(preparedEvents.Events.ToArray()
                     .Where(item => requestedIds.Contains(item.Id)).ToArray()));
-                pausedVoices = pausedVoices.Where(voice => requestedIds.Contains(voice.Id)).ToArray();
             }
         }
 
@@ -182,10 +168,7 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
                 foreach (var path in sampleCache.Keys.Where(path => !referencedPaths.Contains(path)).ToArray())
                     sampleCache.Remove(path);
                 preparedEvents = schedule;
-                preparing = false;
                 mixer?.Publish(schedule);
-                RestorePendingSeekTails();
-                DrainTriggers();
                 error = errors.Count == 0 ? null : string.Join(Environment.NewLine, errors.Distinct());
             }
         }
@@ -209,57 +192,7 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
         finally { if (acquired) preparationGate.Release(); }
     }
 
-    private void AbandonPreparation()
-    {
-        preparing = false;
-        pendingTriggers.Clear();
-        pendingSeekTails.Clear();
-        requestedIds = preparedEvents.Events.ToArray().Select(item => item.Id).ToHashSet();
-        mixer?.Publish(preparedEvents);
-    }
-
-    public void TriggerSamples(IReadOnlyList<long> placementIds)
-    {
-        ArgumentNullException.ThrowIfNull(placementIds);
-        lock (sync)
-        {
-            ThrowIfDisposed();
-            if (player?.PlaybackState != PlaybackState.Playing) return;
-            foreach (var id in placementIds)
-                if (requestedIds.Contains(id) && !triggeredIds.Contains(id)) pendingTriggers.Add(id);
-            DrainTriggers();
-        }
-    }
-
-    private void DrainTriggers()
-    {
-        if (!preparing) pendingTriggers.RemoveWhere(id => !preparedEvents.TryGetEvent(id, out _));
-        if (player?.PlaybackState != PlaybackState.Playing || mixer is null) return;
-        var ready = pendingTriggers.Where(id => preparedEvents.TryGetEvent(id, out _)).ToArray();
-        mixer.TriggerSamples(ready);
-        triggeredIds.UnionWith(ready);
-        pendingTriggers.ExceptWith(ready);
-    }
-
-    private void RestorePendingSeekTails()
-    {
-        var tails = preparedEvents.Events.ToArray()
-            .Where(item => pendingSeekTails.Contains(item.Id) && item.StartFrame < seekFrame && item.EndFrame > seekFrame)
-            .Select(item => new SampleVoiceActivation(item.Id, item.StartFrame)).ToArray();
-        pausedVoices = pausedVoices.Concat(tails).DistinctBy(voice => voice.Id).ToArray();
-        mixer?.RestoreVoices(tails);
-        triggeredIds.UnionWith(tails.Select(voice => voice.Id));
-        if (preparing) pendingSeekTails.ExceptWith(preparedEvents.Events.ToArray().Select(item => item.Id));
-        else pendingSeekTails.Clear();
-    }
-
-    private void ResetSampleTraversal()
-    {
-        pendingTriggers.Clear();
-        triggeredIds.Clear();
-        pendingSeekTails.Clear();
-        pausedVoices = [];
-    }
+    private void AbandonPreparation() => mixer?.Publish(preparedEvents);
 
     public void SetSongVolume(int volume)
     {
@@ -328,7 +261,6 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
                     if (disposed || generation != request || !ReferenceEquals(active, player)) return;
                     selectedOutput = index;
                     playbackError = null;
-                    DrainTriggers();
                     warning = index == 0 ? null : $"Using {outputCandidates[index].Name} because preferred audio output failed. {string.Join(" ", outputFailures)}";
                 }
                 return;
@@ -364,7 +296,6 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
             ThrowIfDisposed();
             if (player is null) return;
             currentPosition = GetCurrentPosition();
-            pausedVoices = mixer?.CaptureVoices(TimeToFrame(currentPosition)) ?? [];
             retired = DetachPlayback();
         }
         DisposeOutput(retired);
@@ -398,10 +329,6 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
             detachedGeneration = generation;
             currentPosition = FrameToTime(TimeToFrame(clamped));
             playbackOrigin = currentPosition;
-            ResetSampleTraversal();
-            seekFrame = TimeToFrame(currentPosition);
-            pendingSeekTails.UnionWith(requestedIds);
-            RestorePendingSeekTails();
         }
         DisposeOutput(retired);
         if (resume)
@@ -453,7 +380,6 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
             sessionMixer = new ScheduledSampleMixer(preparedSong!, startFrame);
             sessionMixer.SetVolumes(songVolume, samplesVolume, applicationVolume);
             sessionMixer.Publish(preparedEvents);
-            sessionMixer.RestoreVoices(pausedVoices);
             sessionGeneration = generation;
         }
         var output = outputCandidates[candidateIndex].Create();
@@ -484,7 +410,6 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
             {
                 sessionMixer.SetVolumes(songVolume, samplesVolume, applicationVolume);
                 sessionMixer.Publish(preparedEvents);
-                sessionMixer.RestoreVoices(pausedVoices);
                 mixer = sessionMixer;
                 player = output;
                 activeOutput = candidateIndex;
@@ -531,7 +456,6 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
 
     private void ResetPosition()
     {
-        ResetSampleTraversal();
         currentPosition = TimeSpan.Zero;
         playbackOrigin = TimeSpan.Zero;
     }

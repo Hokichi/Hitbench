@@ -85,7 +85,6 @@ public class ScheduledPlaybackTests
             {
                 if(change=="open") await audio.UpdateSamplesAsync(project.ProjectPath,[],CancellationToken.None);
                 audio.Play();
-                audio.TriggerSamples([1]);
                 Assert.That(Read(player),Is.EqualTo(change=="cancel" ? new[]{.6f,.6f}:new[]{.2f,.2f}).Within(.0001));
             }
         }
@@ -104,7 +103,6 @@ public class ScheduledPlaybackTests
         audio.Play();
         var output = new float[4096];
         players[^1].Provider!.ToSampleProvider().Read(output,0,882);
-        audio.TriggerSamples([1]);
         players[^1].Provider!.ToSampleProvider().Read(output,882,4096-882);
         Assert.That(output[880..886],Is.EqualTo(new[]{.2f,.2f,.6f,.6f,.6f,.6f}).Within(.0001));
         players[^1].Position = 1024 * 8;
@@ -127,7 +125,6 @@ public class ScheduledPlaybackTests
         await audio.UpdateSamplesAsync(project.ProjectPath,[new SamplePlaybackEvent(1,"hit.wav",0,100,100)],CancellationToken.None);
         await audio.UpdateSamplesAsync(project.ProjectPath,[new SamplePlaybackEvent(2,"hit.wav",0,0,100),new SamplePlaybackEvent(2,"hit.wav",0,0,100)],CancellationToken.None);
         audio.Play();
-        audio.TriggerSamples([1]);
         Assert.That(audio.GetSnapshot().Error, Does.Contain("prepare"));
         Assert.That(Read(player),Is.EqualTo(new[]{.6f,.6f}).Within(.0001));
     }

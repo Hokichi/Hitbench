@@ -254,7 +254,7 @@ public partial class WorkstationPageVM(
         {
             try { await playback.PauseAsync(CancellationToken.None); }
             catch (Exception error) { if (!deactivated) ErrorMessage = error.Message; return; }
-            // Intentional pause preserves traversal, unlike a device-stopped session.
+            // Intentional pause preserves consumed position, unlike a device-stopped session.
             IsPlaying = false;
         }
         else
@@ -822,7 +822,7 @@ public partial class WorkstationPageVM(
                     messenger.Register<LoadSampleRequestedMessage>(this, (_, _) => LoadSampleCommand.Execute(null));
                 }
             });
-            await playback.ConfigureAsync(markerClock, waveform.Duration, CreatePlaybackEvents(), token);
+            await playback.ConfigureAsync(markerClock, waveform.Duration, token);
             await UpdatePlaybackAsync(projectPath, generation, token);
             if (audioService.GetSnapshot().Error?.StartsWith("Unable to prepare audio:", StringComparison.Ordinal) == true)
                 await CommitAsync(generation, CancellationToken.None, () => Waveform = null);
