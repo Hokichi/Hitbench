@@ -14,10 +14,18 @@
     </Style>
 
     <ControlTemplate x:Key="OHsValueSliderDecreaseTemplate" TargetType="RepeatButton">
-        <Border Height="6" VerticalAlignment="Center" Background="{TemplateBinding Background}" CornerRadius="3" />
+        <Border
+            Height="6"
+            VerticalAlignment="Center"
+            Background="{TemplateBinding Background}"
+            CornerRadius="3" />
     </ControlTemplate>
     <ControlTemplate x:Key="OHsValueSliderIncreaseTemplate" TargetType="RepeatButton">
-        <Border Height="6" VerticalAlignment="Center" Background="{TemplateBinding Background}" CornerRadius="3" />
+        <Border
+            Height="6"
+            VerticalAlignment="Center"
+            Background="{TemplateBinding Background}"
+            CornerRadius="3" />
     </ControlTemplate>
     <ControlTemplate x:Key="OHsValueSliderThumbTemplate" TargetType="Thumb">
         <Ellipse
@@ -25,23 +33,36 @@
             Stroke="{TemplateBinding BorderBrush}"
             StrokeThickness="{TemplateBinding BorderThickness}" />
     </ControlTemplate>
-    <Style x:Key="OHsValueSliderDecreaseStyle" BasedOn="{StaticResource BaseRepeatButtonStyle}" TargetType="RepeatButton">
+    <Style
+        x:Key="OHsValueSliderDecreaseStyle"
+        BasedOn="{StaticResource BaseRepeatButtonStyle}"
+        TargetType="RepeatButton">
         <Setter Property="Background" Value="{DynamicResource Brush.Navy}" />
         <Setter Property="Focusable" Value="False" />
         <Setter Property="Template" Value="{StaticResource OHsValueSliderDecreaseTemplate}" />
         <Style.Triggers>
-            <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True"><Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" /></DataTrigger>
+            <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
+                <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
+            </DataTrigger>
         </Style.Triggers>
     </Style>
-    <Style x:Key="OHsValueSliderIncreaseStyle" BasedOn="{StaticResource BaseRepeatButtonStyle}" TargetType="RepeatButton">
+    <Style
+        x:Key="OHsValueSliderIncreaseStyle"
+        BasedOn="{StaticResource BaseRepeatButtonStyle}"
+        TargetType="RepeatButton">
         <Setter Property="Background" Value="{DynamicResource Brush.Background.Deepened}" />
         <Setter Property="Focusable" Value="False" />
         <Setter Property="Template" Value="{StaticResource OHsValueSliderIncreaseTemplate}" />
         <Style.Triggers>
-            <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True"><Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" /></DataTrigger>
+            <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
+                <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
+            </DataTrigger>
         </Style.Triggers>
     </Style>
-    <Style x:Key="OHsValueSliderThumbStyle" BasedOn="{StaticResource BaseThumbStyle}" TargetType="Thumb">
+    <Style
+        x:Key="OHsValueSliderThumbStyle"
+        BasedOn="{StaticResource BaseThumbStyle}"
+        TargetType="Thumb">
         <Setter Property="Width" Value="16" />
         <Setter Property="Height" Value="16" />
         <Setter Property="Background" Value="{DynamicResource Brush.Navy}" />
@@ -50,9 +71,17 @@
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="Template" Value="{StaticResource OHsValueSliderThumbTemplate}" />
         <Style.Triggers>
-            <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{DynamicResource Brush.Navy.Muted}" /></Trigger>
-            <Trigger Property="IsDragging" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Focus}" /><Setter Property="BorderThickness" Value="2" /></Trigger>
-            <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True"><Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" /><Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" /></DataTrigger>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{DynamicResource Brush.Navy.Muted}" />
+            </Trigger>
+            <Trigger Property="IsDragging" Value="True">
+                <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Focus}" />
+                <Setter Property="BorderThickness" Value="2" />
+            </Trigger>
+            <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
+                <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+            </DataTrigger>
         </Style.Triggers>
     </Style>
     <ControlTemplate x:Key="OHsValueSliderTemplate" TargetType="customControls:ValueSlider">
@@ -61,7 +90,13 @@
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
-            <Border x:Name="FocusBorder" Margin="1" Padding="3" BorderBrush="Transparent" BorderThickness="1" CornerRadius="10">
+            <Border
+                x:Name="FocusBorder"
+                Margin="1"
+                Padding="3"
+                BorderBrush="Transparent"
+                BorderThickness="1"
+                CornerRadius="10">
                 <Track
                     x:Name="PART_Track"
                     IsDirectionReversed="{TemplateBinding IsDirectionReversed}"
@@ -80,7 +115,8 @@
                     </Track.Thumb>
                 </Track>
             </Border>
-            <TextBlock x:Name="DisplayText"
+            <TextBlock
+                x:Name="DisplayText"
                 Grid.Column="1"
                 MinWidth="24"
                 Margin="8,0,0,0"
@@ -93,21 +129,35 @@
         </Grid>
         <ControlTemplate.Triggers>
 
-            <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True"><Setter TargetName="DisplayText" Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" /></DataTrigger>
+            <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
+                <Setter TargetName="DisplayText" Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+            </DataTrigger>
 
         </ControlTemplate.Triggers>
     </ControlTemplate>
-    <Style x:Key="OHsValueSliderStyle" BasedOn="{StaticResource BaseSliderStyle}" TargetType="customControls:ValueSlider">
+    <Style
+        x:Key="OHsValueSliderStyle"
+        BasedOn="{StaticResource BaseSliderStyle}"
+        TargetType="customControls:ValueSlider">
         <Setter Property="MinHeight" Value="28" />
         <Setter Property="Template" Value="{StaticResource OHsValueSliderTemplate}" />
     </Style>
 
     <GeometryGroup x:Key="OHsVolumeWheelRampGeometry" FillRule="EvenOdd">
-        <EllipseGeometry Center="80,80" RadiusX="80" RadiusY="80" />
-        <EllipseGeometry Center="80,80" RadiusX="30" RadiusY="30" />
+        <EllipseGeometry
+            Center="80,80"
+            RadiusX="80"
+            RadiusY="80" />
+        <EllipseGeometry
+            Center="80,80"
+            RadiusX="30"
+            RadiusY="30" />
     </GeometryGroup>
     <ControlTemplate x:Key="OHsVolumeWheelTemplate" TargetType="customControls:VolumeWheel">
-        <Grid MinWidth="272" MinHeight="168" FlowDirection="LeftToRight">
+        <Grid
+            MinWidth="272"
+            MinHeight="168"
+            FlowDirection="LeftToRight">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="168" />
                 <ColumnDefinition Width="*" />
@@ -122,34 +172,56 @@
                 BorderThickness="0"
                 CornerRadius="84">
                 <Grid>
-                    <Grid x:Name="PieGraphic" Width="160" Height="160" HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="{TemplateBinding PieOpacity}">
-                        <Path x:Name="WheelBackground" Data="{StaticResource OHsVolumeWheelRampGeometry}" Fill="{DynamicResource Brush.Background.Deepened}" Stroke="{DynamicResource Brush.Border.Default}" StrokeThickness="1" Stretch="None" />
-                        <Path x:Name="WheelFill" Data="{TemplateBinding FilledGeometry}" Fill="{DynamicResource Brush.Navy}" Stretch="None" />
-                    </Grid>
-                    <TextBlock x:Name="WheelValue"
+                    <Grid
+                        x:Name="PieGraphic"
+                        Width="160"
+                        Height="160"
                         HorizontalAlignment="Center"
                         VerticalAlignment="Center"
+                        Opacity="{TemplateBinding PieOpacity}">
+                        <Path
+                            x:Name="WheelBackground"
+                            Data="{StaticResource OHsVolumeWheelRampGeometry}"
+                            Fill="{DynamicResource Brush.Background.Deepened}"
+                            Stretch="None"
+                            Stroke="{DynamicResource Brush.Border.Default}"
+                            StrokeThickness="1" />
+                        <Path
+                            x:Name="WheelFill"
+                            Data="{TemplateBinding FilledGeometry}"
+                            Fill="{DynamicResource Brush.Navy}"
+                            Stretch="None" />
+                    </Grid>
+                    <TextBlock
+                        x:Name="WheelValue"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        FlowDirection="{Binding FlowDirection, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}"
                         FontFamily="{DynamicResource Bold}"
                         Foreground="{DynamicResource Brush.Text.Primary}"
-                        FlowDirection="{Binding FlowDirection, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}"
                         Style="{StaticResource BaseTextBlockStyle}"
                         Text="{Binding Value, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay, StringFormat={}{0:0}%}" />
                 </Grid>
             </Border>
-            <TextBlock x:Name="WheelLabel"
+            <TextBlock
+                x:Name="WheelLabel"
                 Grid.Column="1"
-                Margin="8,0,0,0"
                 MinWidth="96"
+                Margin="8,0,0,0"
                 VerticalAlignment="Center"
-                Foreground="{DynamicResource Brush.Text.Primary}"
                 FlowDirection="{Binding FlowDirection, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}"
+                Foreground="{DynamicResource Brush.Text.Primary}"
                 Style="{StaticResource BaseTextBlockStyle}"
                 Text="{TemplateBinding Label}"
                 TextWrapping="Wrap" />
         </Grid>
         <ControlTemplate.Triggers>
-            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="WheelBackground" Property="Fill" Value="{DynamicResource Brush.Background.Hover}" /></Trigger>
-            <Trigger Property="IsActive" Value="True"><Setter TargetName="WheelLabel" Property="FontFamily" Value="{DynamicResource Bold}" /></Trigger>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="WheelBackground" Property="Fill" Value="{DynamicResource Brush.Background.Hover}" />
+            </Trigger>
+            <Trigger Property="IsActive" Value="True">
+                <Setter TargetName="WheelLabel" Property="FontFamily" Value="{DynamicResource Bold}" />
+            </Trigger>
 
             <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
                 <Setter TargetName="PieGraphic" Property="Opacity" Value="1" />
@@ -162,7 +234,10 @@
 
         </ControlTemplate.Triggers>
     </ControlTemplate>
-    <Style x:Key="OHsVolumeWheelStyle" BasedOn="{StaticResource BaseSliderStyle}" TargetType="customControls:VolumeWheel">
+    <Style
+        x:Key="OHsVolumeWheelStyle"
+        BasedOn="{StaticResource BaseSliderStyle}"
+        TargetType="customControls:VolumeWheel">
         <Setter Property="Focusable" Value="True" />
         <Setter Property="Template" Value="{StaticResource OHsVolumeWheelTemplate}" />
     </Style>

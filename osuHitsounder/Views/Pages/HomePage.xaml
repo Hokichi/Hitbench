@@ -9,17 +9,26 @@
     d:DesignWidth="1280"
     mc:Ignorable="d">
     <UserControl.InputBindings>
-        <KeyBinding Key="R" Modifiers="Control" Command="{Binding ReloadSongsCommand, Mode=OneWay}" />
+        <KeyBinding
+            Key="R"
+            Command="{Binding ReloadSongsCommand, Mode=OneWay}"
+            Modifiers="Control" />
     </UserControl.InputBindings>
     <UserControl.Resources>
-        <Style x:Key="HomePageSearchButtonStyle" BasedOn="{StaticResource OHsBalloonNeutralActionStyle}" TargetType="customControls:BalloonButton">
+        <Style
+            x:Key="HomePageSearchButtonStyle"
+            BasedOn="{StaticResource OHsBalloonNeutralActionStyle}"
+            TargetType="customControls:BalloonButton">
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsSongSearchExpanded, Mode=OneWay}" Value="True">
                     <Setter Property="Visibility" Value="Collapsed" />
                 </DataTrigger>
             </Style.Triggers>
         </Style>
-        <Style x:Key="HomePageSearchAreaStyle" BasedOn="{StaticResource BaseGridStyle}" TargetType="Grid">
+        <Style
+            x:Key="HomePageSearchAreaStyle"
+            BasedOn="{StaticResource BaseGridStyle}"
+            TargetType="Grid">
             <Setter Property="Visibility" Value="Collapsed" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsSongSearchExpanded, Mode=OneWay}" Value="True">
@@ -27,7 +36,10 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
-        <Style x:Key="HomePageSearchInputStyle" BasedOn="{StaticResource RoundedTextInputStyle}" TargetType="TextBox">
+        <Style
+            x:Key="HomePageSearchInputStyle"
+            BasedOn="{StaticResource RoundedTextInputStyle}"
+            TargetType="TextBox">
             <Style.Triggers>
                 <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
                     <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
@@ -58,7 +70,10 @@
             <Setter Property="TextWrapping" Value="Wrap" />
             <Setter Property="Margin" Value="0,0,0,12" />
         </Style>
-        <Style x:Key="HomePageSongsHeadingStyle" BasedOn="{StaticResource HomePageHeadingStyle}" TargetType="TextBlock">
+        <Style
+            x:Key="HomePageSongsHeadingStyle"
+            BasedOn="{StaticResource HomePageHeadingStyle}"
+            TargetType="TextBlock">
             <Setter Property="Margin" Value="0" />
             <Setter Property="VerticalAlignment" Value="Center" />
         </Style>
@@ -380,10 +395,14 @@
                             AutomationProperties.Name="Search songs"
                             ButtonIcon="{StaticResource MagnifyingGlass}"
                             Command="{Binding OpenSongSearchCommand, Mode=OneWay}"
+                            Style="{StaticResource HomePageSearchButtonStyle}"
                             ToolTip="Search songs"
-                            ToolTipService.ShowsToolTipOnKeyboardFocus="True"
-                            Style="{StaticResource HomePageSearchButtonStyle}" />
-                        <Grid MaxWidth="320" Width="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=Grid}, Mode=OneWay}" HorizontalAlignment="Right" Style="{StaticResource HomePageSearchAreaStyle}">
+                            ToolTipService.ShowsToolTipOnKeyboardFocus="True" />
+                        <Grid
+                            Width="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=Grid}, Mode=OneWay}"
+                            MaxWidth="320"
+                            HorizontalAlignment="Right"
+                            Style="{StaticResource HomePageSearchAreaStyle}">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
@@ -392,15 +411,20 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Grid.ColumnSpan="2" Margin="0,0,0,4" Style="{StaticResource HomePageBodyStyle}" Text="Search songs" TextWrapping="Wrap" />
+                            <TextBlock
+                                Grid.ColumnSpan="2"
+                                Margin="0,0,0,4"
+                                Style="{StaticResource HomePageBodyStyle}"
+                                Text="Search songs"
+                                TextWrapping="Wrap" />
                             <TextBox
                                 x:Name="SongSearchTextBox"
                                 Grid.Row="1"
                                 AutomationProperties.Name="Search songs"
                                 IsEnabled="{Binding CanInteract, Mode=OneWay}"
                                 PreviewKeyDown="OnSongSearchKeyDown"
-                                Text="{Binding SongSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                Style="{StaticResource HomePageSearchInputStyle}" />
+                                Style="{StaticResource HomePageSearchInputStyle}"
+                                Text="{Binding SongSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             <customControls:BalloonButton
                                 x:Name="SongSearchCloseButton"
                                 Grid.Row="1"
@@ -409,9 +433,9 @@
                                 AutomationProperties.Name="Close song search"
                                 ButtonIcon="{StaticResource Close}"
                                 Command="{Binding CloseSongSearchCommand, Mode=OneWay}"
+                                Style="{StaticResource OHsBalloonDestructiveActionStyle}"
                                 ToolTip="Clear and close song search (Escape)"
-                                ToolTipService.ShowsToolTipOnKeyboardFocus="True"
-                                Style="{StaticResource OHsBalloonDestructiveActionStyle}" />
+                                ToolTipService.ShowsToolTipOnKeyboardFocus="True" />
                         </Grid>
                     </Grid>
                 </Grid>

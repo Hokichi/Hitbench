@@ -1,16 +1,29 @@
-<ResourceDictionary
-    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Style x:Key="BaseControlStyle" TargetType="Control" />
-    <Style x:Key="DefaultFocusVisualStyle" TargetType="Control" BasedOn="{StaticResource BaseControlStyle}">
+    <Style
+        x:Key="DefaultFocusVisualStyle"
+        BasedOn="{StaticResource BaseControlStyle}"
+        TargetType="Control">
         <Setter Property="Template" Value="{x:Null}" />
     </Style>
     <ControlTemplate x:Key="OHsKeyboardFocusTemplate" TargetType="Control">
-        <Grid Width="8" Height="8" Margin="-9,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center" Background="{TemplateBinding Background}">
-            <Ellipse Width="6" Height="6" Fill="{TemplateBinding Foreground}" />
+        <Grid
+            Width="8"
+            Height="8"
+            Margin="-9,0,0,0"
+            HorizontalAlignment="Left"
+            VerticalAlignment="Center"
+            Background="{TemplateBinding Background}">
+            <Ellipse
+                Width="6"
+                Height="6"
+                Fill="{TemplateBinding Foreground}" />
         </Grid>
     </ControlTemplate>
-    <Style x:Key="OHsKeyboardFocusVisualStyle" TargetType="Control" BasedOn="{StaticResource BaseControlStyle}">
+    <Style
+        x:Key="OHsKeyboardFocusVisualStyle"
+        BasedOn="{StaticResource BaseControlStyle}"
+        TargetType="Control">
         <Setter Property="Template" Value="{StaticResource OHsKeyboardFocusTemplate}" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
         <Style.Triggers>

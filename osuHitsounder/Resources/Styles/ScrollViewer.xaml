@@ -1,18 +1,321 @@
-<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:customControls="clr-namespace:osuHitsounder.Resources.CustomControls" >
-<Style x:Key="BaseThumbStyle" TargetType="Thumb"><Setter Property="OverridesDefaultStyle" Value="True" /></Style>
-<Style x:Key="BaseScrollBarStyle" TargetType="ScrollBar" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"><Setter Property="OverridesDefaultStyle" Value="True" /></Style>
-<Style x:Key="BaseScrollViewerStyle" TargetType="ScrollViewer" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"><Setter Property="OverridesDefaultStyle" Value="True" /></Style>
-<Style x:Key="BaseFadingScrollViewerStyle" TargetType="{x:Type customControls:FadingScrollViewer}" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"><Setter Property="OverridesDefaultStyle" Value="True" /><Setter Property="Margin" Value="10" /><Setter Property="HorizontalScrollBarVisibility" Value="Visible" /><Setter Property="VerticalScrollBarVisibility" Value="Visible" /></Style>
-<ControlTemplate x:Key="RoundedScrollThumbTemplate" TargetType="Thumb" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"><Border x:Name="ThumbBody" Background="{TemplateBinding Background}" CornerRadius="2" Opacity="0.7" /><ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="ThumbBody" Property="Opacity" Value="1" /></Trigger><Trigger Property="IsDragging" Value="True"><Setter TargetName="ThumbBody" Property="Opacity" Value="1" /><Setter TargetName="ThumbBody" Property="Background" Value="{DynamicResource Brush.Text.Primary}" /></Trigger></ControlTemplate.Triggers></ControlTemplate>
-<Style x:Key="RoundedHorizontalScrollThumbStyle" BasedOn="{StaticResource BaseThumbStyle}" TargetType="Thumb" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"><Setter Property="Background" Value="{DynamicResource Brush.Text.Secondary}" /><Setter Property="Height" Value="4" /><Setter Property="Template" Value="{StaticResource RoundedScrollThumbTemplate}" /></Style>
-<Style x:Key="RoundedVerticalScrollThumbStyle" BasedOn="{StaticResource BaseThumbStyle}" TargetType="Thumb" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"><Setter Property="Background" Value="{DynamicResource Brush.Text.Secondary}" /><Setter Property="Width" Value="4" /><Setter Property="Template" Value="{StaticResource RoundedScrollThumbTemplate}" /></Style>
-<ControlTemplate x:Key="RoundedVerticalScrollBarTemplate" TargetType="ScrollBar" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"><Grid x:Name="Root" Background="Transparent"><Border x:Name="TrackBackground" Width="8" Margin="2,0" HorizontalAlignment="Center" Background="{TemplateBinding Background}" CornerRadius="4" Opacity="0" /><Track x:Name="PART_Track" IsDirectionReversed="True" Orientation="Vertical"><Track.DecreaseRepeatButton><RepeatButton Command="ScrollBar.LineUpCommand" IsHitTestVisible="False" Opacity="0" /></Track.DecreaseRepeatButton><Track.Thumb><Thumb Style="{StaticResource RoundedVerticalScrollThumbStyle}" /></Track.Thumb><Track.IncreaseRepeatButton><RepeatButton Command="ScrollBar.LineDownCommand" IsHitTestVisible="False" Opacity="0" /></Track.IncreaseRepeatButton></Track></Grid><ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="TrackBackground" Property="Opacity" Value="1" /></Trigger><Trigger SourceName="PART_Track" Property="IsMouseCaptureWithin" Value="True"><Setter TargetName="TrackBackground" Property="Opacity" Value="1" /></Trigger><Trigger Property="IsEnabled" Value="False"><Setter TargetName="Root" Property="Opacity" Value="0.4" /></Trigger></ControlTemplate.Triggers></ControlTemplate>
-<Style x:Key="RoundedVerticalScrollBarStyle" BasedOn="{StaticResource BaseScrollBarStyle}" TargetType="ScrollBar" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"><Setter Property="Width" Value="12" /><Setter Property="Margin" Value="12,0,0,0" /><Setter Property="Background" Value="{DynamicResource Brush.Background.Deepened}" /><Setter Property="Template" Value="{StaticResource RoundedVerticalScrollBarTemplate}" /></Style>
-<ControlTemplate x:Key="HorizontalScrollBarTemplate" TargetType="ScrollBar" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"><Grid x:Name="Root" Background="Transparent"><Border x:Name="TrackBackground" Height="8" Margin="0,2" Background="{TemplateBinding Background}" CornerRadius="4" Opacity="0" /><Track x:Name="PART_Track" Orientation="Horizontal"><Track.DecreaseRepeatButton><RepeatButton Command="ScrollBar.LineLeftCommand" IsHitTestVisible="False" Opacity="0" /></Track.DecreaseRepeatButton><Track.Thumb><Thumb Style="{StaticResource RoundedHorizontalScrollThumbStyle}" /></Track.Thumb><Track.IncreaseRepeatButton><RepeatButton Command="ScrollBar.LineRightCommand" IsHitTestVisible="False" Opacity="0" /></Track.IncreaseRepeatButton></Track></Grid><ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="TrackBackground" Property="Opacity" Value="1" /></Trigger><Trigger SourceName="PART_Track" Property="IsMouseCaptureWithin" Value="True"><Setter TargetName="TrackBackground" Property="Opacity" Value="1" /></Trigger><Trigger Property="IsEnabled" Value="False"><Setter TargetName="Root" Property="Opacity" Value="0.4" /></Trigger></ControlTemplate.Triggers></ControlTemplate>
-<Style BasedOn="{StaticResource BaseScrollBarStyle}" TargetType="ScrollBar" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"><Setter Property="Height" Value="12" /><Setter Property="Margin" Value="0,12,0,0" /><Setter Property="Background" Value="{DynamicResource Brush.Background.Deepened}" /><Setter Property="Template" Value="{StaticResource HorizontalScrollBarTemplate}" /><Style.Triggers><Trigger Property="Orientation" Value="Vertical"><Setter Property="Width" Value="12" /><Setter Property="Height" Value="Auto" /><Setter Property="Margin" Value="12,0,0,0" /><Setter Property="Template" Value="{StaticResource RoundedVerticalScrollBarTemplate}" /></Trigger></Style.Triggers></Style>
-<ControlTemplate x:Key="DefaultScrollViewerTemplate" TargetType="{x:Type ScrollViewer}" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"><Grid x:Name="Grid" Background="{TemplateBinding Background}"><ScrollContentPresenter x:Name="PART_ScrollContentPresenter" Margin="{TemplateBinding Padding}" CanContentScroll="{TemplateBinding CanContentScroll}" CanHorizontallyScroll="False" CanVerticallyScroll="False" Content="{TemplateBinding Content}" /><ScrollBar x:Name="PART_VerticalScrollBar" Margin="0" HorizontalAlignment="Right" AutomationProperties.AutomationId="VerticalScrollBar" Cursor="Arrow" IsHitTestVisible="False" Maximum="{TemplateBinding ScrollableHeight}" Minimum="0" Opacity="0" ViewportSize="{TemplateBinding ViewportHeight}" Visibility="{TemplateBinding ComputedVerticalScrollBarVisibility}" Value="{Binding VerticalOffset, Mode=OneWay, RelativeSource={RelativeSource TemplatedParent}}" /><ScrollBar x:Name="PART_HorizontalScrollBar" Margin="0" VerticalAlignment="Bottom" AutomationProperties.AutomationId="HorizontalScrollBar" Cursor="Arrow" IsHitTestVisible="False" Maximum="{TemplateBinding ScrollableWidth}" Minimum="0" Opacity="0" Orientation="Horizontal" ViewportSize="{TemplateBinding ViewportWidth}" Visibility="{TemplateBinding ComputedHorizontalScrollBarVisibility}" Value="{Binding HorizontalOffset, Mode=OneWay, RelativeSource={RelativeSource TemplatedParent}}" /></Grid><ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="PART_VerticalScrollBar" Property="IsHitTestVisible" Value="True" /><Setter TargetName="PART_VerticalScrollBar" Property="Opacity" Value="1" /><Setter TargetName="PART_HorizontalScrollBar" Property="IsHitTestVisible" Value="True" /><Setter TargetName="PART_HorizontalScrollBar" Property="Opacity" Value="1" /></Trigger><Trigger SourceName="PART_VerticalScrollBar" Property="IsMouseCaptureWithin" Value="True"><Setter TargetName="PART_VerticalScrollBar" Property="IsHitTestVisible" Value="True" /><Setter TargetName="PART_VerticalScrollBar" Property="Opacity" Value="1" /></Trigger><Trigger SourceName="PART_HorizontalScrollBar" Property="IsMouseCaptureWithin" Value="True"><Setter TargetName="PART_HorizontalScrollBar" Property="IsHitTestVisible" Value="True" /><Setter TargetName="PART_HorizontalScrollBar" Property="Opacity" Value="1" /></Trigger></ControlTemplate.Triggers></ControlTemplate>
-<Style BasedOn="{StaticResource BaseScrollViewerStyle}" TargetType="{x:Type ScrollViewer}" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"><Setter Property="Template" Value="{StaticResource DefaultScrollViewerTemplate}" /></Style>
-<ControlTemplate x:Key="DefaultFadingScrollViewerTemplate" TargetType="{x:Type customControls:FadingScrollViewer}" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"><Grid x:Name="Grid" Background="{TemplateBinding Background}"><Border x:Name="PART_ScrollContentPresenterContainer"><ScrollContentPresenter x:Name="PART_ScrollContentPresenter" Margin="{TemplateBinding Padding}" CanContentScroll="{TemplateBinding CanContentScroll}" CanHorizontallyScroll="False" CanVerticallyScroll="False" Content="{TemplateBinding Content}" /></Border><ScrollBar x:Name="PART_VerticalScrollBar" Margin="0" HorizontalAlignment="Right" AutomationProperties.AutomationId="VerticalScrollBar" Cursor="Arrow" IsHitTestVisible="False" Maximum="{TemplateBinding ScrollableHeight}" Minimum="0" Opacity="0" ViewportSize="{TemplateBinding ViewportHeight}" Visibility="{TemplateBinding ComputedVerticalScrollBarVisibility}" Value="{Binding VerticalOffset, Mode=OneWay, RelativeSource={RelativeSource TemplatedParent}}" /><ScrollBar x:Name="PART_HorizontalScrollBar" Margin="0" VerticalAlignment="Bottom" AutomationProperties.AutomationId="HorizontalScrollBar" Cursor="Arrow" IsHitTestVisible="False" Maximum="{TemplateBinding ScrollableWidth}" Minimum="0" Opacity="0" Orientation="Horizontal" ViewportSize="{TemplateBinding ViewportWidth}" Visibility="{TemplateBinding ComputedHorizontalScrollBarVisibility}" Value="{Binding HorizontalOffset, Mode=OneWay, RelativeSource={RelativeSource TemplatedParent}}" /></Grid><ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="PART_VerticalScrollBar" Property="IsHitTestVisible" Value="True" /><Setter TargetName="PART_VerticalScrollBar" Property="Opacity" Value="1" /><Setter TargetName="PART_HorizontalScrollBar" Property="IsHitTestVisible" Value="True" /><Setter TargetName="PART_HorizontalScrollBar" Property="Opacity" Value="1" /></Trigger><Trigger SourceName="PART_VerticalScrollBar" Property="IsMouseCaptureWithin" Value="True"><Setter TargetName="PART_VerticalScrollBar" Property="IsHitTestVisible" Value="True" /><Setter TargetName="PART_VerticalScrollBar" Property="Opacity" Value="1" /></Trigger><Trigger SourceName="PART_HorizontalScrollBar" Property="IsMouseCaptureWithin" Value="True"><Setter TargetName="PART_HorizontalScrollBar" Property="IsHitTestVisible" Value="True" /><Setter TargetName="PART_HorizontalScrollBar" Property="Opacity" Value="1" /></Trigger></ControlTemplate.Triggers></ControlTemplate>
-<Style BasedOn="{StaticResource BaseFadingScrollViewerStyle}" TargetType="{x:Type customControls:FadingScrollViewer}" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"><Setter Property="Template" Value="{StaticResource DefaultFadingScrollViewerTemplate}" /></Style>
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:customControls="clr-namespace:osuHitsounder.Resources.CustomControls">
+    <Style x:Key="BaseThumbStyle" TargetType="Thumb">
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+    </Style>
+    <Style
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Key="BaseScrollBarStyle"
+        TargetType="ScrollBar">
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+    </Style>
+    <Style
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Key="BaseScrollViewerStyle"
+        TargetType="ScrollViewer">
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+    </Style>
+    <Style
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Key="BaseFadingScrollViewerStyle"
+        TargetType="{x:Type customControls:FadingScrollViewer}">
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="Margin" Value="10" />
+        <Setter Property="HorizontalScrollBarVisibility" Value="Visible" />
+        <Setter Property="VerticalScrollBarVisibility" Value="Visible" />
+    </Style>
+    <ControlTemplate
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Key="RoundedScrollThumbTemplate"
+        TargetType="Thumb">
+        <Border
+            x:Name="ThumbBody"
+            Background="{TemplateBinding Background}"
+            CornerRadius="2"
+            Opacity="0.7" />
+        <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="ThumbBody" Property="Opacity" Value="1" />
+            </Trigger>
+            <Trigger Property="IsDragging" Value="True">
+                <Setter TargetName="ThumbBody" Property="Opacity" Value="1" />
+                <Setter TargetName="ThumbBody" Property="Background" Value="{DynamicResource Brush.Text.Primary}" />
+            </Trigger>
+        </ControlTemplate.Triggers>
+    </ControlTemplate>
+    <Style
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Key="RoundedHorizontalScrollThumbStyle"
+        BasedOn="{StaticResource BaseThumbStyle}"
+        TargetType="Thumb">
+        <Setter Property="Background" Value="{DynamicResource Brush.Text.Secondary}" />
+        <Setter Property="Height" Value="4" />
+        <Setter Property="Template" Value="{StaticResource RoundedScrollThumbTemplate}" />
+    </Style>
+    <Style
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Key="RoundedVerticalScrollThumbStyle"
+        BasedOn="{StaticResource BaseThumbStyle}"
+        TargetType="Thumb">
+        <Setter Property="Background" Value="{DynamicResource Brush.Text.Secondary}" />
+        <Setter Property="Width" Value="4" />
+        <Setter Property="Template" Value="{StaticResource RoundedScrollThumbTemplate}" />
+    </Style>
+    <ControlTemplate
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Key="RoundedVerticalScrollBarTemplate"
+        TargetType="ScrollBar">
+        <Grid x:Name="Root" Background="Transparent">
+            <Border
+                x:Name="TrackBackground"
+                Width="8"
+                Margin="2,0"
+                HorizontalAlignment="Center"
+                Background="{TemplateBinding Background}"
+                CornerRadius="4"
+                Opacity="0" />
+            <Track
+                x:Name="PART_Track"
+                IsDirectionReversed="True"
+                Orientation="Vertical">
+                <Track.DecreaseRepeatButton>
+                    <RepeatButton
+                        Command="ScrollBar.LineUpCommand"
+                        IsHitTestVisible="False"
+                        Opacity="0" />
+                </Track.DecreaseRepeatButton>
+                <Track.Thumb>
+                    <Thumb Style="{StaticResource RoundedVerticalScrollThumbStyle}" />
+                </Track.Thumb>
+                <Track.IncreaseRepeatButton>
+                    <RepeatButton
+                        Command="ScrollBar.LineDownCommand"
+                        IsHitTestVisible="False"
+                        Opacity="0" />
+                </Track.IncreaseRepeatButton>
+            </Track>
+        </Grid>
+        <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="TrackBackground" Property="Opacity" Value="1" />
+            </Trigger>
+            <Trigger SourceName="PART_Track" Property="IsMouseCaptureWithin" Value="True">
+                <Setter TargetName="TrackBackground" Property="Opacity" Value="1" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter TargetName="Root" Property="Opacity" Value="0.4" />
+            </Trigger>
+        </ControlTemplate.Triggers>
+    </ControlTemplate>
+    <Style
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Key="RoundedVerticalScrollBarStyle"
+        BasedOn="{StaticResource BaseScrollBarStyle}"
+        TargetType="ScrollBar">
+        <Setter Property="Width" Value="12" />
+        <Setter Property="Margin" Value="12,0,0,0" />
+        <Setter Property="Background" Value="{DynamicResource Brush.Background.Deepened}" />
+        <Setter Property="Template" Value="{StaticResource RoundedVerticalScrollBarTemplate}" />
+    </Style>
+    <ControlTemplate
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Key="HorizontalScrollBarTemplate"
+        TargetType="ScrollBar">
+        <Grid x:Name="Root" Background="Transparent">
+            <Border
+                x:Name="TrackBackground"
+                Height="8"
+                Margin="0,2"
+                Background="{TemplateBinding Background}"
+                CornerRadius="4"
+                Opacity="0" />
+            <Track x:Name="PART_Track" Orientation="Horizontal">
+                <Track.DecreaseRepeatButton>
+                    <RepeatButton
+                        Command="ScrollBar.LineLeftCommand"
+                        IsHitTestVisible="False"
+                        Opacity="0" />
+                </Track.DecreaseRepeatButton>
+                <Track.Thumb>
+                    <Thumb Style="{StaticResource RoundedHorizontalScrollThumbStyle}" />
+                </Track.Thumb>
+                <Track.IncreaseRepeatButton>
+                    <RepeatButton
+                        Command="ScrollBar.LineRightCommand"
+                        IsHitTestVisible="False"
+                        Opacity="0" />
+                </Track.IncreaseRepeatButton>
+            </Track>
+        </Grid>
+        <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="TrackBackground" Property="Opacity" Value="1" />
+            </Trigger>
+            <Trigger SourceName="PART_Track" Property="IsMouseCaptureWithin" Value="True">
+                <Setter TargetName="TrackBackground" Property="Opacity" Value="1" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter TargetName="Root" Property="Opacity" Value="0.4" />
+            </Trigger>
+        </ControlTemplate.Triggers>
+    </ControlTemplate>
+    <Style
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        BasedOn="{StaticResource BaseScrollBarStyle}"
+        TargetType="ScrollBar">
+        <Setter Property="Height" Value="12" />
+        <Setter Property="Margin" Value="0,12,0,0" />
+        <Setter Property="Background" Value="{DynamicResource Brush.Background.Deepened}" />
+        <Setter Property="Template" Value="{StaticResource HorizontalScrollBarTemplate}" />
+        <Style.Triggers>
+            <Trigger Property="Orientation" Value="Vertical">
+                <Setter Property="Width" Value="12" />
+                <Setter Property="Height" Value="Auto" />
+                <Setter Property="Margin" Value="12,0,0,0" />
+                <Setter Property="Template" Value="{StaticResource RoundedVerticalScrollBarTemplate}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+    <ControlTemplate
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Key="DefaultScrollViewerTemplate"
+        TargetType="{x:Type ScrollViewer}">
+        <Grid x:Name="Grid" Background="{TemplateBinding Background}">
+            <ScrollContentPresenter
+                x:Name="PART_ScrollContentPresenter"
+                Margin="{TemplateBinding Padding}"
+                CanContentScroll="{TemplateBinding CanContentScroll}"
+                CanHorizontallyScroll="False"
+                CanVerticallyScroll="False"
+                Content="{TemplateBinding Content}" />
+            <ScrollBar
+                x:Name="PART_VerticalScrollBar"
+                Margin="0"
+                HorizontalAlignment="Right"
+                AutomationProperties.AutomationId="VerticalScrollBar"
+                Cursor="Arrow"
+                IsHitTestVisible="False"
+                Maximum="{TemplateBinding ScrollableHeight}"
+                Minimum="0"
+                Opacity="0"
+                ViewportSize="{TemplateBinding ViewportHeight}"
+                Visibility="{TemplateBinding ComputedVerticalScrollBarVisibility}"
+                Value="{Binding VerticalOffset, Mode=OneWay, RelativeSource={RelativeSource TemplatedParent}}" />
+            <ScrollBar
+                x:Name="PART_HorizontalScrollBar"
+                Margin="0"
+                VerticalAlignment="Bottom"
+                AutomationProperties.AutomationId="HorizontalScrollBar"
+                Cursor="Arrow"
+                IsHitTestVisible="False"
+                Maximum="{TemplateBinding ScrollableWidth}"
+                Minimum="0"
+                Opacity="0"
+                Orientation="Horizontal"
+                ViewportSize="{TemplateBinding ViewportWidth}"
+                Visibility="{TemplateBinding ComputedHorizontalScrollBarVisibility}"
+                Value="{Binding HorizontalOffset, Mode=OneWay, RelativeSource={RelativeSource TemplatedParent}}" />
+        </Grid>
+        <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="PART_VerticalScrollBar" Property="IsHitTestVisible" Value="True" />
+                <Setter TargetName="PART_VerticalScrollBar" Property="Opacity" Value="1" />
+                <Setter TargetName="PART_HorizontalScrollBar" Property="IsHitTestVisible" Value="True" />
+                <Setter TargetName="PART_HorizontalScrollBar" Property="Opacity" Value="1" />
+            </Trigger>
+            <Trigger SourceName="PART_VerticalScrollBar" Property="IsMouseCaptureWithin" Value="True">
+                <Setter TargetName="PART_VerticalScrollBar" Property="IsHitTestVisible" Value="True" />
+                <Setter TargetName="PART_VerticalScrollBar" Property="Opacity" Value="1" />
+            </Trigger>
+            <Trigger SourceName="PART_HorizontalScrollBar" Property="IsMouseCaptureWithin" Value="True">
+                <Setter TargetName="PART_HorizontalScrollBar" Property="IsHitTestVisible" Value="True" />
+                <Setter TargetName="PART_HorizontalScrollBar" Property="Opacity" Value="1" />
+            </Trigger>
+        </ControlTemplate.Triggers>
+    </ControlTemplate>
+    <Style
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        BasedOn="{StaticResource BaseScrollViewerStyle}"
+        TargetType="{x:Type ScrollViewer}">
+        <Setter Property="Template" Value="{StaticResource DefaultScrollViewerTemplate}" />
+    </Style>
+    <ControlTemplate
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Key="DefaultFadingScrollViewerTemplate"
+        TargetType="{x:Type customControls:FadingScrollViewer}">
+        <Grid x:Name="Grid" Background="{TemplateBinding Background}">
+            <Border x:Name="PART_ScrollContentPresenterContainer">
+                <ScrollContentPresenter
+                    x:Name="PART_ScrollContentPresenter"
+                    Margin="{TemplateBinding Padding}"
+                    CanContentScroll="{TemplateBinding CanContentScroll}"
+                    CanHorizontallyScroll="False"
+                    CanVerticallyScroll="False"
+                    Content="{TemplateBinding Content}" />
+            </Border>
+            <ScrollBar
+                x:Name="PART_VerticalScrollBar"
+                Margin="0"
+                HorizontalAlignment="Right"
+                AutomationProperties.AutomationId="VerticalScrollBar"
+                Cursor="Arrow"
+                IsHitTestVisible="False"
+                Maximum="{TemplateBinding ScrollableHeight}"
+                Minimum="0"
+                Opacity="0"
+                ViewportSize="{TemplateBinding ViewportHeight}"
+                Visibility="{TemplateBinding ComputedVerticalScrollBarVisibility}"
+                Value="{Binding VerticalOffset, Mode=OneWay, RelativeSource={RelativeSource TemplatedParent}}" />
+            <ScrollBar
+                x:Name="PART_HorizontalScrollBar"
+                Margin="0"
+                VerticalAlignment="Bottom"
+                AutomationProperties.AutomationId="HorizontalScrollBar"
+                Cursor="Arrow"
+                IsHitTestVisible="False"
+                Maximum="{TemplateBinding ScrollableWidth}"
+                Minimum="0"
+                Opacity="0"
+                Orientation="Horizontal"
+                ViewportSize="{TemplateBinding ViewportWidth}"
+                Visibility="{TemplateBinding ComputedHorizontalScrollBarVisibility}"
+                Value="{Binding HorizontalOffset, Mode=OneWay, RelativeSource={RelativeSource TemplatedParent}}" />
+        </Grid>
+        <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="PART_VerticalScrollBar" Property="IsHitTestVisible" Value="True" />
+                <Setter TargetName="PART_VerticalScrollBar" Property="Opacity" Value="1" />
+                <Setter TargetName="PART_HorizontalScrollBar" Property="IsHitTestVisible" Value="True" />
+                <Setter TargetName="PART_HorizontalScrollBar" Property="Opacity" Value="1" />
+            </Trigger>
+            <Trigger SourceName="PART_VerticalScrollBar" Property="IsMouseCaptureWithin" Value="True">
+                <Setter TargetName="PART_VerticalScrollBar" Property="IsHitTestVisible" Value="True" />
+                <Setter TargetName="PART_VerticalScrollBar" Property="Opacity" Value="1" />
+            </Trigger>
+            <Trigger SourceName="PART_HorizontalScrollBar" Property="IsMouseCaptureWithin" Value="True">
+                <Setter TargetName="PART_HorizontalScrollBar" Property="IsHitTestVisible" Value="True" />
+                <Setter TargetName="PART_HorizontalScrollBar" Property="Opacity" Value="1" />
+            </Trigger>
+        </ControlTemplate.Triggers>
+    </ControlTemplate>
+    <Style
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        BasedOn="{StaticResource BaseFadingScrollViewerStyle}"
+        TargetType="{x:Type customControls:FadingScrollViewer}">
+        <Setter Property="Template" Value="{StaticResource DefaultFadingScrollViewerTemplate}" />
+    </Style>
 
 </ResourceDictionary>

@@ -1,6 +1,20 @@
-<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:customControls="clr-namespace:osuHitsounder.Resources.CustomControls" >
-<Style x:Key="BaseItemsControlStyle" TargetType="ItemsControl" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"><Setter Property="HorizontalContentAlignment" Value="Stretch" /></Style>
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:customControls="clr-namespace:osuHitsounder.Resources.CustomControls">
+    <Style
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Key="BaseItemsControlStyle"
+        TargetType="ItemsControl">
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    </Style>
 
-<ItemsPanelTemplate x:Key="HorizontalStackItemsPanelTemplate" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+    <ItemsPanelTemplate
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Key="HorizontalStackItemsPanelTemplate">
+        <StackPanel Orientation="Horizontal" />
+    </ItemsPanelTemplate>
 
 </ResourceDictionary>

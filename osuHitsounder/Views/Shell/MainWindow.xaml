@@ -14,8 +14,10 @@
     WindowStyle="None">
     <Window.Resources>
         <SolidColorBrush x:Key="OHsMainWindowAcrylicBackground" Color="Transparent" />
-        <Style x:Key="OHsMainWindowGoBackStyle" TargetType="customControls:BalloonButton"
-               BasedOn="{StaticResource OHsBalloonActionStyle}">
+        <Style
+            x:Key="OHsMainWindowGoBackStyle"
+            BasedOn="{StaticResource OHsBalloonActionStyle}"
+            TargetType="customControls:BalloonButton">
             <Setter Property="DefaultBackground" Value="{DynamicResource Brush.BalloonButton.Background.NavInfo}" />
             <Setter Property="HoveredBackground" Value="{DynamicResource Brush.BalloonButton.Background.NavInfo.Hovered}" />
             <Setter Property="ShouldShowText" Value="True" />
@@ -132,7 +134,10 @@
             </Style.Triggers>
         </Style>
         <BlurEffect x:Key="MainWindowModalBlur" Radius="8" />
-        <Style x:Key="MainWindowModalContentStyle" TargetType="Border" BasedOn="{StaticResource BaseBorderStyle}">
+        <Style
+            x:Key="MainWindowModalContentStyle"
+            BasedOn="{StaticResource BaseBorderStyle}"
+            TargetType="Border">
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsPopupOverlayVisible, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}" Value="True">
                     <Setter Property="Effect" Value="{StaticResource MainWindowModalBlur}" />
@@ -140,7 +145,10 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
-        <Style x:Key="MainWindowModalOverlayStyle" TargetType="Border" BasedOn="{StaticResource BaseBorderStyle}">
+        <Style
+            x:Key="MainWindowModalOverlayStyle"
+            BasedOn="{StaticResource BaseBorderStyle}"
+            TargetType="Border">
             <Setter Property="Background" Value="{DynamicResource Brush.Overlay}" />
             <Setter Property="Visibility" Value="Collapsed" />
             <Setter Property="Focusable" Value="False" />
@@ -154,88 +162,113 @@
     <Window.Style>
         <StaticResource ResourceKey="MainWindowStyle" />
     </Window.Style>
-    <Border x:Name="ShellRoot" Style="{StaticResource MainWindowRootStyle}" MouseLeftButtonDown="OnBackgroundMouseLeftButtonDown">
-      <Grid>
-       <Border x:Name="ModalShellContent" Style="{StaticResource MainWindowModalContentStyle}">
-        <Grid x:Name="ShellLayout">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" MinHeight="40" />
-                <RowDefinition Height="*" />
-            </Grid.RowDefinitions>
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <TextBlock
-                    Margin="12,0"
-                    Style="{StaticResource MainWindowTitleStyle}"
-                    Text="osuHitsounder" />
-                <WrapPanel x:Name="WorkstationActions" Grid.Column="1" Visibility="Collapsed">
-                    <customControls:BalloonButton x:Name="GoBackButton" Margin="0,0,8,0"
-                        AutomationProperties.Name="Go Back" ButtonIcon="{StaticResource Home}" ButtonText="Go Back"
-                        Click="OnGoBackClick" ToolTip="Save project and return to home"
-                        IsEnabled="{Binding ElementName=PageHost, Path=Content.DataContext.CanGoBack, Mode=OneWay}"
-                        Style="{StaticResource OHsMainWindowGoBackStyle}" />
-                    <customControls:BalloonButton AutomationProperties.Name="Load sample" ButtonIcon="{StaticResource PlusSolid}"
-                        ButtonText="Load Sample" Click="OnLoadSampleClick" ShouldShowText="True"
-                        IsEnabled="{Binding ElementName=PageHost, Path=Content.DataContext.CanImportSample, Mode=OneWay}"
-                        Style="{StaticResource OHsBalloonNeutralActionStyle}" />
-                    <customControls:BalloonButton Margin="8,0,0,0" AutomationProperties.Name="Add sample track" ButtonIcon="{StaticResource PlusSolid}"
-                        ButtonText="Sample Track" Click="OnAddSampleTrackClick" ShouldShowText="True"
-                        IsEnabled="{Binding ElementName=PageHost, Path=Content.DataContext.CanAddTrack, Mode=OneWay}"
-                        Style="{StaticResource OHsBalloonNeutralActionStyle}" />
-                    <customControls:BalloonButton Margin="8,0,0,0" AutomationProperties.Name="Add instrumental track" ButtonIcon="{StaticResource PlusSolid}"
-                        ButtonText="Instrumental Track" Click="OnAddPianoTrackClick" ShouldShowText="True"
-                        IsEnabled="{Binding ElementName=PageHost, Path=Content.DataContext.CanAddTrack, Mode=OneWay}"
-                        ToolTip="Instrumental track creation is coming later"
-                        AutomationProperties.HelpText="Instrumental track creation is not implemented yet."
-                        Style="{StaticResource OHsBalloonNeutralActionStyle}" />
-                </WrapPanel>
-                <StackPanel Grid.Column="2" Orientation="Horizontal">
-                    <customControls:BalloonButton
-                        x:Name="MinimizeButton"
-                        AutomationProperties.Name="Minimize"
-                        ButtonIcon="{StaticResource Minus}"
-                        ButtonText="Minimize"
-                        Click="OnMinimizeClick"
-                        Style="{StaticResource OHsBalloonNeutralActionStyle}"
-                        ToolTip="Minimize" />
-                    <customControls:BalloonButton
-                        x:Name="MaximizeRestoreButton"
-                        AutomationProperties.Name="Maximize"
-                        ButtonIcon="{StaticResource ExpandAlt}"
-                        ButtonText="Maximize"
-                        Click="OnMaximizeRestoreClick"
-                        Style="{StaticResource OHsBalloonNeutralActionStyle}"
-                        ToolTip="Maximize" />
-                    <customControls:BalloonButton
-                        x:Name="CloseButton"
-                        AutomationProperties.Name="Close"
-                        ButtonIcon="{StaticResource Close}"
-                        ButtonText="Close"
-                        Click="OnCloseClick"
-                        Style="{StaticResource OHsBalloonDestructiveActionStyle}"
-                        ToolTip="Close" />
-                </StackPanel>
-            </Grid>
-            <Grid Grid.Row="1">
-                <Border Style="{StaticResource MainWindowScanContentStyle}">
-                    <ContentControl x:Name="PageHost" />
-                </Border>
-                <Border Style="{StaticResource MainWindowProcessingOverlayStyle}">
-                    <Border Style="{StaticResource MainWindowProcessingSurfaceStyle}">
+    <Border
+        x:Name="ShellRoot"
+        MouseLeftButtonDown="OnBackgroundMouseLeftButtonDown"
+        Style="{StaticResource MainWindowRootStyle}">
+        <Grid>
+            <Border x:Name="ModalShellContent" Style="{StaticResource MainWindowModalContentStyle}">
+                <Grid x:Name="ShellLayout">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" MinHeight="40" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
                         <TextBlock
-                            x:Name="ProcessingText"
-                            Style="{StaticResource MainWindowProcessingTextStyle}"
-                            Text="Processing..." />
-                    </Border>
-                </Border>
-            </Grid>
+                            Margin="12,0"
+                            Style="{StaticResource MainWindowTitleStyle}"
+                            Text="osuHitsounder" />
+                        <WrapPanel
+                            x:Name="WorkstationActions"
+                            Grid.Column="1"
+                            Visibility="Collapsed">
+                            <customControls:BalloonButton
+                                x:Name="GoBackButton"
+                                Margin="0,0,8,0"
+                                AutomationProperties.Name="Go Back"
+                                ButtonIcon="{StaticResource Home}"
+                                ButtonText="Go Back"
+                                Click="OnGoBackClick"
+                                IsEnabled="{Binding ElementName=PageHost, Path=Content.DataContext.CanGoBack, Mode=OneWay}"
+                                Style="{StaticResource OHsMainWindowGoBackStyle}"
+                                ToolTip="Save project and return to home" />
+                            <customControls:BalloonButton
+                                AutomationProperties.Name="Load sample"
+                                ButtonIcon="{StaticResource PlusSolid}"
+                                ButtonText="Load Sample"
+                                Click="OnLoadSampleClick"
+                                IsEnabled="{Binding ElementName=PageHost, Path=Content.DataContext.CanImportSample, Mode=OneWay}"
+                                ShouldShowText="True"
+                                Style="{StaticResource OHsBalloonNeutralActionStyle}" />
+                            <customControls:BalloonButton
+                                Margin="8,0,0,0"
+                                AutomationProperties.Name="Add sample track"
+                                ButtonIcon="{StaticResource PlusSolid}"
+                                ButtonText="Sample Track"
+                                Click="OnAddSampleTrackClick"
+                                IsEnabled="{Binding ElementName=PageHost, Path=Content.DataContext.CanAddTrack, Mode=OneWay}"
+                                ShouldShowText="True"
+                                Style="{StaticResource OHsBalloonNeutralActionStyle}" />
+                            <customControls:BalloonButton
+                                Margin="8,0,0,0"
+                                AutomationProperties.HelpText="Instrumental track creation is not implemented yet."
+                                AutomationProperties.Name="Add instrumental track"
+                                ButtonIcon="{StaticResource PlusSolid}"
+                                ButtonText="Instrumental Track"
+                                Click="OnAddPianoTrackClick"
+                                IsEnabled="{Binding ElementName=PageHost, Path=Content.DataContext.CanAddTrack, Mode=OneWay}"
+                                ShouldShowText="True"
+                                Style="{StaticResource OHsBalloonNeutralActionStyle}"
+                                ToolTip="Instrumental track creation is coming later" />
+                        </WrapPanel>
+                        <StackPanel Grid.Column="2" Orientation="Horizontal">
+                            <customControls:BalloonButton
+                                x:Name="MinimizeButton"
+                                AutomationProperties.Name="Minimize"
+                                ButtonIcon="{StaticResource Minus}"
+                                ButtonText="Minimize"
+                                Click="OnMinimizeClick"
+                                Style="{StaticResource OHsBalloonNeutralActionStyle}"
+                                ToolTip="Minimize" />
+                            <customControls:BalloonButton
+                                x:Name="MaximizeRestoreButton"
+                                AutomationProperties.Name="Maximize"
+                                ButtonIcon="{StaticResource ExpandAlt}"
+                                ButtonText="Maximize"
+                                Click="OnMaximizeRestoreClick"
+                                Style="{StaticResource OHsBalloonNeutralActionStyle}"
+                                ToolTip="Maximize" />
+                            <customControls:BalloonButton
+                                x:Name="CloseButton"
+                                AutomationProperties.Name="Close"
+                                ButtonIcon="{StaticResource Close}"
+                                ButtonText="Close"
+                                Click="OnCloseClick"
+                                Style="{StaticResource OHsBalloonDestructiveActionStyle}"
+                                ToolTip="Close" />
+                        </StackPanel>
+                    </Grid>
+                    <Grid Grid.Row="1">
+                        <Border Style="{StaticResource MainWindowScanContentStyle}">
+                            <ContentControl x:Name="PageHost" />
+                        </Border>
+                        <Border Style="{StaticResource MainWindowProcessingOverlayStyle}">
+                            <Border Style="{StaticResource MainWindowProcessingSurfaceStyle}">
+                                <TextBlock
+                                    x:Name="ProcessingText"
+                                    Style="{StaticResource MainWindowProcessingTextStyle}"
+                                    Text="Processing..." />
+                            </Border>
+                        </Border>
+                    </Grid>
+                </Grid>
+            </Border>
+            <Border x:Name="ModalShellOverlay" Style="{StaticResource MainWindowModalOverlayStyle}" />
         </Grid>
-       </Border>
-       <Border x:Name="ModalShellOverlay" Style="{StaticResource MainWindowModalOverlayStyle}" />
-      </Grid>
     </Border>
 </Window>

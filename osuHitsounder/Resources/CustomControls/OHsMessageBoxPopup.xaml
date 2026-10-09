@@ -55,20 +55,20 @@
             Orientation="Horizontal">
             <customControls:BalloonButton
                 x:Name="TertiaryButton"
+                Margin="0,0,8,0"
                 AutomationProperties.Name="Cancel"
                 ButtonIcon="{StaticResource Ban}"
                 ButtonText="Cancel"
-                Margin="0,0,8,0"
                 Click="OnTertiaryButtonClick"
                 ShouldShowText="True"
                 Style="{StaticResource OHsBalloonDestructiveActionStyle}"
                 Visibility="Collapsed" />
             <customControls:BalloonButton
                 x:Name="SecondaryButton"
+                Margin="0,0,8,0"
                 AutomationProperties.Name="Cancel"
                 ButtonIcon="{StaticResource Ban}"
                 ButtonText="Cancel"
-                Margin="0,0,8,0"
                 Click="OnSecondaryButtonClick"
                 ShouldShowText="True"
                 Style="{StaticResource OHsBalloonDestructiveActionStyle}"

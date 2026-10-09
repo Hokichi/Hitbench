@@ -1,9 +1,12 @@
-<ResourceDictionary
-    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <ControlTemplate x:Key="PlainListBoxItemTemplate" TargetType="ListBoxItem">
-        <Border x:Name="ItemBorder" Padding="{TemplateBinding Padding}" Background="{TemplateBinding Background}"
-                BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="4">
+        <Border
+            x:Name="ItemBorder"
+            Padding="{TemplateBinding Padding}"
+            Background="{TemplateBinding Background}"
+            BorderBrush="{TemplateBinding BorderBrush}"
+            BorderThickness="{TemplateBinding BorderThickness}"
+            CornerRadius="4">
             <ContentPresenter />
         </Border>
         <ControlTemplate.Triggers>
@@ -33,7 +36,10 @@
     <Style x:Key="BaseListBoxStyle" TargetType="ListBox">
         <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
     </Style>
-    <Style x:Key="PlainListBoxItemStyle" BasedOn="{StaticResource BaseListBoxItemStyle}" TargetType="ListBoxItem">
+    <Style
+        x:Key="PlainListBoxItemStyle"
+        BasedOn="{StaticResource BaseListBoxItemStyle}"
+        TargetType="ListBoxItem">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderBrush" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
