@@ -52,7 +52,7 @@ public class KeyboardNavigationPolicyTests
         app.Resources.MergedDictionaries.Clear();
         UiTestPump.EnsureFontResources(app);
         foreach (var resource in new[] { "Themes/Dark.xaml", "Converters/Converters.xaml", "Icons.xaml",
-                     "Styles/ContentPresenter.xaml", "Styles/Border.xaml", "Styles/Button.xaml",
+                     "Styles/TextBlock.xaml", "Styles/ContentPresenter.xaml", "Styles/Border.xaml", "Styles/Button.xaml",
                      "Styles/TextBox.xaml", "Styles/ScrollViewer.xaml", "Styles/Popup.xaml" })
             app.Resources.MergedDictionaries.Add(new ResourceDictionary
             {

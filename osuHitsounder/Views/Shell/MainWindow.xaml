@@ -131,12 +131,33 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
+        <BlurEffect x:Key="MainWindowModalBlur" Radius="8" />
+        <Style x:Key="MainWindowModalContentStyle" TargetType="Border" BasedOn="{StaticResource BaseBorderStyle}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsPopupOverlayVisible, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}" Value="True">
+                    <Setter Property="Effect" Value="{StaticResource MainWindowModalBlur}" />
+                    <Setter Property="IsEnabled" Value="False" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="MainWindowModalOverlayStyle" TargetType="Border" BasedOn="{StaticResource BaseBorderStyle}">
+            <Setter Property="Background" Value="{DynamicResource Brush.Overlay}" />
+            <Setter Property="Visibility" Value="Collapsed" />
+            <Setter Property="Focusable" Value="False" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsPopupOverlayVisible, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}" Value="True">
+                    <Setter Property="Visibility" Value="Visible" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
     </Window.Resources>
     <Window.Style>
         <StaticResource ResourceKey="MainWindowStyle" />
     </Window.Style>
     <Border x:Name="ShellRoot" Style="{StaticResource MainWindowRootStyle}" MouseLeftButtonDown="OnBackgroundMouseLeftButtonDown">
-        <Grid>
+      <Grid>
+       <Border x:Name="ModalShellContent" Style="{StaticResource MainWindowModalContentStyle}">
+        <Grid x:Name="ShellLayout">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" MinHeight="40" />
                 <RowDefinition Height="*" />
@@ -213,5 +234,8 @@
                 </Border>
             </Grid>
         </Grid>
+       </Border>
+       <Border x:Name="ModalShellOverlay" Style="{StaticResource MainWindowModalOverlayStyle}" />
+      </Grid>
     </Border>
 </Window>

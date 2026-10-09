@@ -15,12 +15,58 @@ using osuHitsounder.Services.FileSystem;
 using osuHitsounder.Services.Ui;
 using osuHitsounder.Views.Pages;
 using osuHitsounder.ViewModels.Shell.HomePage;
+using osuHitsounder.Resources.CustomControls;
 
 namespace osuHitsounder;
 
 public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
-    IRecipient<ProjectOpenRequestedMessage>, IRecipient<ProjectCreationFailedMessage>
+    IRecipient<ProjectOpenRequestedMessage>, IRecipient<ProjectCreationFailedMessage>, IPopupHost
 {
+    private readonly PopupOverlayHandoffState popupOverlayState = new();
+    private readonly DispatcherTimer popupOverlayTimer;
+    private int popupHideGeneration;
+    private bool popupHandoffPending;
+    private static readonly DependencyPropertyKey IsPopupOverlayVisiblePropertyKey = DependencyProperty.RegisterReadOnly(
+        nameof(IsPopupOverlayVisible), typeof(bool), typeof(MainWindow), new PropertyMetadata(false));
+    public static readonly DependencyProperty IsPopupOverlayVisibleProperty = IsPopupOverlayVisiblePropertyKey.DependencyProperty;
+    public bool IsPopupOverlayVisible => (bool)GetValue(IsPopupOverlayVisibleProperty);
+
+    public void ShowPopupOverlay()
+    {
+        popupOverlayTimer.Stop();
+        popupHandoffPending = false;
+        if (popupOverlayState.OnPopupShown() == PopupOverlayHostAction.ShowOverlay)
+            SetValue(IsPopupOverlayVisiblePropertyKey, true);
+    }
+
+    public void BeginPopupHandoff() => popupHandoffPending = popupOverlayState.ActivePopupCount > 0;
+
+    public void HidePopupOverlay()
+    {
+        if (popupHandoffPending)
+        {
+            popupHandoffPending = false;
+            HidePopupOverlayForHandoff();
+        }
+        else if (popupOverlayState.OnPopupHidden() == PopupOverlayHostAction.HideOverlay)
+            SetValue(IsPopupOverlayVisiblePropertyKey, false);
+    }
+
+    public void HidePopupOverlayForHandoff()
+    {
+        if (popupOverlayState.OnPopupHiddenForHandoff(out popupHideGeneration) == PopupOverlayHostAction.DeferHide)
+        {
+            popupOverlayTimer.Stop();
+            popupOverlayTimer.Start();
+        }
+    }
+
+    private void OnPopupOverlayTimerTick(object? sender, EventArgs e)
+    {
+        popupOverlayTimer.Stop();
+        if (popupOverlayState.ResolveDeferredHide(popupHideGeneration) == PopupOverlayHostAction.HideOverlay)
+            SetValue(IsPopupOverlayVisiblePropertyKey, false);
+    }
     private HomePage page;
     private readonly IMessenger messenger;
     private readonly Func<WorkstationPage> createWorkstation;
@@ -88,6 +134,9 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
         this.settings = settings;
         this.getWorkArea = getWorkArea ?? WindowWorkArea.GetClientSize;
         InitializeComponent();
+        popupOverlayTimer = new DispatcherTimer(DispatcherPriority.Background, Dispatcher)
+        { Interval = TimeSpan.FromMilliseconds(200) };
+        popupOverlayTimer.Tick += OnPopupOverlayTimerTick;
         nativeFrame = new OHsWindowFrame(this, enabled => SetValue(IsAcrylicEnabledPropertyKey, enabled));
         this.startDrag = startDrag ?? DragMove;
         this.moveRestoredWindow = moveRestoredWindow ?? nativeFrame.MoveRestoredWindow;
@@ -245,6 +294,8 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
     {
         InputManager.Current.PreProcessInput -= OnPreProcessInput;
         closed = true;
+        popupOverlayTimer.Stop();
+        popupOverlayTimer.Tick -= OnPopupOverlayTimerTick;
         nativeFrame.Dispose();
         placementTimer.Stop();
         placementTimer.Tick -= OnPlacementTimerTick;
@@ -315,7 +366,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
 
     private void OnLayoutEnvironmentChanged(object? sender, EventArgs e) => QueueSongsLayout();
     private (Size, double, object?, double, double) GetShellLayout() =>
-        (ShellRoot.RenderSize, ((Grid)ShellRoot.Child).RowDefinitions[0].ActualHeight,
+        (ShellRoot.RenderSize, ShellLayout.RowDefinitions[0].ActualHeight,
             PageHost.Content, page.MinWidth, page.MinHeight);
     private void OnShellLayoutUpdated(object? sender, EventArgs e)
     {
@@ -335,7 +386,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
             if (size.IsEmpty || size.Width <= 0 || size.Height <= 0) return;
             // Named shell content uses a border and a header row. Measure their public layout values.
             var root = ShellRoot;
-            var grid = (Grid)root.Child;
+            var grid = ShellLayout;
             var header = grid.RowDefinitions[0].ActualHeight;
             page.UpdateSongsLayout(new Size(size.Width, Math.Max(0, size.Height - header)));
             var width = page.MinWidth + root.BorderThickness.Left + root.BorderThickness.Right;

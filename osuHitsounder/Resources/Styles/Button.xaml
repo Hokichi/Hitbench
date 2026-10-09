@@ -1172,4 +1172,5 @@
         <Setter Property="IconSize" Value="8" />
     </Style>
 
+<Style x:Key="OHsPopupCloseActionStyle" TargetType="c:BalloonButton" BasedOn="{StaticResource OHsBalloonDestructiveActionStyle}"><Setter Property="IsTabStop" Value="True" /><Setter Property="ShouldShowText" Value="True" /><Setter Property="FocusVisualStyle" Value="{StaticResource OHsKeyboardFocusVisualStyle}" /><Setter Property="ToolTip" Value="Close (Esc)" /><Setter Property="AutomationProperties.Name" Value="Close" /></Style>
 </ResourceDictionary>

@@ -35,12 +35,12 @@
     </ItemsPanelTemplate>
 
         <ControlTemplate x:Key="BasePopupTemplate" TargetType="{x:Type c:BasePopup}">
-                        <Border Background="{DynamicResource Brush.Background.Popup}" CornerRadius="16">
+                        <Border Style="{StaticResource OHsPopupSurfaceBorderStyle}">
                             <Border.Clip>
                                 <MultiBinding Converter="{StaticResource BorderCornerClipConverter}">
-                                    <Binding Path="CornerRadius" RelativeSource="{RelativeSource Self}" />
-                                    <Binding Path="ActualWidth" RelativeSource="{RelativeSource Self}" />
-                                    <Binding Path="ActualHeight" RelativeSource="{RelativeSource Self}" />
+                                    <Binding Path="CornerRadius" RelativeSource="{RelativeSource Self}" Mode="OneWay" />
+                                    <Binding Path="ActualWidth" RelativeSource="{RelativeSource Self}" Mode="OneWay" />
+                                    <Binding Path="ActualHeight" RelativeSource="{RelativeSource Self}" Mode="OneWay" />
                                 </MultiBinding>
                             </Border.Clip>
                             <Grid x:Name="PART_ContentRoot">
@@ -66,9 +66,7 @@
                                             <TextBlock
                                                 x:Name="PopupTitleText"
                                                 VerticalAlignment="Center"
-                                                FontFamily="{DynamicResource Bold}"
-                                                FontSize="18"
-                                                Foreground="{DynamicResource Brush.Text.Primary}"
+                                                Style="{StaticResource OHsPopupTitleTextStyle}"
                                                 Text="{TemplateBinding PopupTitle}"
                                                 Visibility="Collapsed" />
                                             <ContentPresenter
@@ -82,10 +80,7 @@
                                             Grid.Column="1"
                                             ButtonIcon="{StaticResource Close}"
                                             ButtonText="Close"
-                                            DefaultBackground="{DynamicResource Brush.BalloonButton.Background.Destructive}"
-                                            HoveredBackground="{DynamicResource Brush.BalloonButton.Background.Destructive.Hovered}"
-                                            ShouldExpand="True"
-                                            Style="{StaticResource HeaderButtonStyle}"
+                                            Style="{StaticResource OHsPopupCloseActionStyle}"
                                             SubText="Esc"
                                             Visibility="{TemplateBinding ShowCloseButton,
                                                                          Converter={StaticResource BoolToVisibilityConverter}}" />
@@ -347,4 +342,3 @@
         <Setter Property="Template" Value="{StaticResource BasePopupTemplate}" />
     </Style>
 </ResourceDictionary>
-
