@@ -1,22 +1,68 @@
 using System.Windows;
 using System.Windows.Threading;
-using Microsoft.Win32;
+using osuHitsounder.ViewModels.Popups;
+using osuHitsounder.Views.Popups;
 
 namespace osuHitsounder.Services.Dialogs;
 
-public sealed class SampleFileDialogService(Func<Window?> getOwner, Dispatcher dispatcher) : ISampleFileDialogService
+public sealed class SampleFileDialogService : ISampleFileDialogService
 {
-    public async Task<string?> SelectAsync(CancellationToken token) => await dispatcher.InvokeAsync(() =>
+    private readonly Func<Window?> getOwner;
+    private readonly Dispatcher dispatcher;
+    private readonly Func<SampleLoaderPopupVM> createViewModel;
+    private readonly Func<SampleLoaderPopupVM, CancellationToken, Task<IReadOnlyList<string>>>? select;
+
+    public SampleFileDialogService(Func<Window?> getOwner, Dispatcher dispatcher, Func<SampleLoaderPopupVM> createViewModel)
+        : this(getOwner, dispatcher, createViewModel, null) { }
+
+    internal SampleFileDialogService(Func<Window?> getOwner, Dispatcher dispatcher,
+        Func<SampleLoaderPopupVM> createViewModel,
+        Func<SampleLoaderPopupVM, CancellationToken, Task<IReadOnlyList<string>>>? select)
     {
-        token.ThrowIfCancellationRequested();
-        var owner = getOwner();
-        if (owner is null || !owner.IsVisible) return null;
-        var picker = new OpenFileDialog
+        this.getOwner = getOwner;
+        this.dispatcher = dispatcher;
+        this.createViewModel = createViewModel;
+        this.select = select;
+    }
+
+    public async Task<IReadOnlyList<string>> SelectAsync(CancellationToken token) =>
+        await dispatcher.InvokeAsync(() => SelectCoreAsync(token)).Task.Unwrap();
+
+    private async Task<IReadOnlyList<string>> SelectCoreAsync(CancellationToken token)
+    {
+        if (token.IsCancellationRequested) return Array.Empty<string>();
+        var owner = select is null ? getOwner() : null;
+        if (select is null && (owner is null || !owner.IsVisible)) return Array.Empty<string>();
+        var vm = createViewModel();
+        SampleLoaderPopup? popup = null;
+        try
         {
-            Filter = "Audio files (*.wav;*.ogg;*.mp3)|*.wav;*.ogg;*.mp3",
-            CheckFileExists = true,
-            Multiselect = false
-        };
-        return picker.ShowDialog(owner) == true ? picker.FileName : null;
-    }, DispatcherPriority.Normal, token);
+            IReadOnlyList<string> paths;
+            if (select is not null)
+            {
+                await vm.InitializeAsync(token);
+                token.ThrowIfCancellationRequested();
+                paths = await select(vm, token);
+            }
+            else
+            {
+                popup = new SampleLoaderPopup(vm) { Owner = owner };
+                using var cancellation = token.Register(() => dispatcher.BeginInvoke(new Action(() =>
+                {
+                    if (popup.IsVisible) popup.Close();
+                })));
+                await popup.InitializeAsync(token);
+                token.ThrowIfCancellationRequested();
+                paths = popup.ShowDialog() == true ? popup.Result : Array.Empty<string>();
+            }
+            token.ThrowIfCancellationRequested();
+            return Array.AsReadOnly(paths.ToArray());
+        }
+        catch (OperationCanceledException) { return Array.Empty<string>(); }
+        finally
+        {
+            if (popup is not null) await popup.DeactivateAsync();
+            else await vm.DeactivateAsync();
+        }
+    }
 }

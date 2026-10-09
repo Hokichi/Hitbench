@@ -2,5 +2,5 @@ namespace osuHitsounder.Services.Dialogs;
 
 public interface ISampleFileDialogService
 {
-    Task<string?> SelectAsync(CancellationToken token);
+    Task<IReadOnlyList<string>> SelectAsync(CancellationToken token);
 }

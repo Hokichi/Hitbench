@@ -18,6 +18,9 @@ public partial class App : Application
     private ServiceProvider? services;
 
     public static ServiceProvider CreateServices(string? asioDriverName = null, AudioOutputFactory? audioOutputs = null)
+        => CreateServices(asioDriverName, audioOutputs, null);
+
+    internal static ServiceProvider CreateServices(string? asioDriverName, AudioOutputFactory? audioOutputs, IUiScheduler? uiScheduler)
     {
         audioOutputs ??= new AudioOutputFactory();
         var registrations = new ServiceCollection();
@@ -28,8 +31,14 @@ public partial class App : Application
         registrations.AddSingleton<IWorkstationSourceService, WorkstationSourceService>();
         registrations.AddSingleton<PlaybackVolumeSettings>();
         registrations.AddSingleton<ISampleFileService, SampleFileService>();
-        registrations.AddSingleton<ISampleFileDialogService>(_ =>
-            new SampleFileDialogService(() => Current.MainWindow, Current.Dispatcher));
+        registrations.AddSingleton<ISampleBrowserService, SampleBrowserService>();
+        registrations.AddSingleton<Func<SampleLoaderPopupVM>>(provider => () => new SampleLoaderPopupVM(
+            provider.GetRequiredService<ISampleBrowserService>(),
+            new SamplePreviewService(AudioDecoder.Open, audioOutputs.CreateCandidates(null)),
+            provider.GetRequiredService<IUiScheduler>(), provider.GetRequiredService<PlaybackVolumeSettings>()));
+        registrations.AddSingleton<ISampleFileDialogService>(provider =>
+            new SampleFileDialogService(() => Current.MainWindow, Current.Dispatcher,
+                provider.GetRequiredService<Func<SampleLoaderPopupVM>>()));
         registrations.AddSingleton<ITrackRemovalDialogService>(_ =>
             new TrackRemovalDialogService(() => Current.MainWindow, Current.Dispatcher));
         registrations.AddSingleton<Func<WorkstationPage>>(provider => () => new WorkstationPage(
@@ -40,7 +49,7 @@ public partial class App : Application
                 provider.GetRequiredService<PlaybackVolumeSettings>())));
         registrations.AddSingleton<IHomeFolderService>(_ => new HomeFolderService(AppContext.BaseDirectory));
         registrations.AddSingleton<IAppSettingsService>(_ => new AppSettingsService(AppContext.BaseDirectory));
-        registrations.AddSingleton<IUiScheduler>(_ => new UiScheduler(Current.Dispatcher));
+        registrations.AddSingleton<IUiScheduler>(_ => uiScheduler ?? new UiScheduler(Current.Dispatcher));
         registrations.AddSingleton<IInstallationDialogService>(_ =>
             new InstallationDialogService(() => Current.MainWindow, Current.Dispatcher));
         registrations.AddSingleton<Func<string, IReadOnlySet<string>, ProjectNamePopupVM>>(_ =>

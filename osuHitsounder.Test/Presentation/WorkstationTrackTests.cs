@@ -118,7 +118,7 @@ public class WorkstationTrackTests
             Assert.That(vm.CanAddTrack, Is.False);
             Assert.That(vm.AddSampleTrackCommand.CanExecute(null), Is.False);
 
-            Assert.That(await vm.ImportSampleAsync(), Is.EqualTo("kick.wav"));
+            Assert.That(await vm.ImportSamplesAsync(), Is.EqualTo(new[] { "kick.wav" }));
             await vm.FlushPlaybackUpdatesAsync();
             Assert.That(vm.SampleFiles, Is.EqualTo(new[] { "kick.wav" }));
             Assert.That(audio.SampleUpdates, Has.Count.EqualTo(2));
@@ -587,7 +587,7 @@ public class WorkstationTrackTests
             var track = vm.Tracks.Single();
             Assert.That(track.SelectedSampleFileName, Is.EqualTo("a.wav"));
             Assert.That(track.Samples, Is.Empty);
-            Assert.That(await vm.ImportSampleAsync(), Is.EqualTo("b.mp3"));
+            Assert.That(await vm.ImportSamplesAsync(), Is.EqualTo(new[] { "b.mp3" }));
             vm.SelectSample(track, "b.mp3");
             vm.SetTrackVolume(track, 70);
             Assert.That(vm.PlaceSample(track, 0), Is.True);

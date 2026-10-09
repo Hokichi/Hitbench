@@ -355,7 +355,7 @@ public class WorkstationPageIntegrationTests
             var otherCard = (FrameworkElement)list.ItemContainerGenerator.ContainerFromIndex(1)!;
             var selector = FindVisualChild<ComboBox>(otherCard)!;
             Assert.That(selector.SelectedItem, Is.EqualTo("a.wav"));
-            UiTestPump.Run(vm.ImportSampleAsync());
+            UiTestPump.Run(vm.ImportSamplesAsync());
             view.UpdateLayout();
             Assert.That(selector.SelectedItem, Is.EqualTo("a.wav"));
             UiTestPump.Run(vm.FlushSavesAsync());

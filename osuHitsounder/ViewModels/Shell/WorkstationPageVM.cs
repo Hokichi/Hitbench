@@ -35,7 +35,7 @@ public partial class WorkstationPageVM(
     private readonly ObservableCollection<string> availableSamples = [];
     private string? projectPath;
     private Task saveTail = Task.CompletedTask;
-    private Task<string?>? activeImport;
+    private Task<IReadOnlyList<string>>? activeImport;
     private Exception? lastSaveError;
     private bool importBusy;
     private TimeSpan? lastGridTarget;
@@ -503,39 +503,64 @@ public partial class WorkstationPageVM(
     }
 
     [RelayCommand(CanExecute = nameof(CanImportSample))]
-    private Task LoadSampleAsync() => ImportSampleAsync();
+    private Task LoadSampleAsync() => ImportSamplesAsync();
 
-    public Task<string?> ImportSampleAsync()
+    public Task<IReadOnlyList<string>> ImportSamplesAsync()
     {
         if (!CanImportSample || sampleDialog is null || sampleFiles is null || projectPath is null)
-            return Task.FromResult<string?>(null);
+            return Task.FromResult<IReadOnlyList<string>>(Array.Empty<string>());
         var generation = loadGeneration;
         var project = Project;
         var path = projectPath;
         var token = loadCancellation?.Token ?? CancellationToken.None;
         importBusy = true;
         NotifyEditingState();
-        activeImport = ImportSampleCoreAsync(path, project, generation, token);
+        activeImport = ImportSamplesCoreAsync(path, project, generation, token);
         return activeImport;
     }
 
-    private async Task<string?> ImportSampleCoreAsync(string path, ProjectData? project, int generation,
+    private async Task<IReadOnlyList<string>> ImportSamplesCoreAsync(string path, ProjectData? project, int generation,
         CancellationToken token)
     {
+        List<string> imported = [];
+        List<string> failures = [];
         try
         {
-            var source = await sampleDialog!.SelectAsync(token);
-            if (source is null || !IsCurrentProject(path, project, generation)) return null;
-            var name = await sampleFiles!.ImportAsync(path, source, token);
-            if (!IsCurrentProject(path, project, generation)) return null;
-            var choices = await sampleFiles.ListAsync(path, token);
-            if (!IsCurrentProject(path, project, generation)) return null;
-            await CommitAsync(generation, token, () => RefreshAvailableSamples(choices));
-            QueuePlaybackUpdate();
-            return name;
+            pendingPlayCancellation?.Cancel();
+            await playback.PauseAsync(token);
+            RefreshPlayback();
+            if (!IsCurrentProject(path, project, generation)) return Array.Empty<string>();
+            var sources = await sampleDialog!.SelectAsync(token);
+            if (sources.Count == 0 || !IsCurrentProject(path, project, generation)) return Array.Empty<string>();
+            foreach (var source in sources.Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                token.ThrowIfCancellationRequested();
+                if (!IsCurrentProject(path, project, generation)) return Array.Empty<string>();
+                try { imported.Add(await sampleFiles!.ImportAsync(path, source, token)); }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception error) { failures.Add($"{Path.GetFileName(source)}: {error.Message}"); }
+            }
+            token.ThrowIfCancellationRequested();
+            if (!IsCurrentProject(path, project, generation)) return Array.Empty<string>();
+            try
+            {
+                var choices = await sampleFiles!.ListAsync(path, token);
+                if (!IsCurrentProject(path, project, generation)) return Array.Empty<string>();
+                await CommitAsync(generation, token, () => RefreshAvailableSamples(choices, false));
+                QueuePlaybackUpdate();
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception error) { failures.Add($"Could not refresh sample choices: {error.Message}"); }
+            if (IsCurrentProject(path, project, generation))
+                ErrorMessage = failures.Count == 0 ? null : string.Join(Environment.NewLine, failures);
+            return Array.AsReadOnly(imported.ToArray());
         }
-        catch (OperationCanceledException) { return null; }
-        catch (Exception error) { ErrorMessage = error.Message; return null; }
+        catch (OperationCanceledException) { return Array.Empty<string>(); }
+        catch (Exception error)
+        {
+            if (IsCurrentProject(path, project, generation)) ErrorMessage = error.Message;
+            return Array.AsReadOnly(imported.ToArray());
+        }
         finally
         {
             importBusy = false;
@@ -709,7 +734,7 @@ public partial class WorkstationPageVM(
         saveTail = SaveSnapshotAsync(previous, projectPath, json);
     }
 
-    private void RefreshAvailableSamples(IReadOnlyList<string> choices)
+    private void RefreshAvailableSamples(IReadOnlyList<string> choices, bool initializeSelections = true)
     {
         for (var index = 0; index < choices.Count; index++)
         {
@@ -719,8 +744,9 @@ public partial class WorkstationPageVM(
             else availableSamples.Insert(index, choices[index]);
         }
         while (availableSamples.Count > choices.Count) availableSamples.RemoveAt(availableSamples.Count - 1);
-        foreach (var track in tracks)
-            track.SelectedSampleFileName ??= track.Samples.FirstOrDefault()?.FileName ?? availableSamples.FirstOrDefault();
+        if (initializeSelections)
+            foreach (var track in tracks)
+                track.SelectedSampleFileName ??= track.Samples.FirstOrDefault()?.FileName ?? availableSamples.FirstOrDefault();
         OnPropertyChanged(nameof(SampleFiles));
         OnPropertyChanged(nameof(CanAddTrack));
         AddSampleTrackCommand.NotifyCanExecuteChanged();

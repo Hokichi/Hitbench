@@ -145,7 +145,7 @@ public class WorkstationReturnTests
             files, new StubSampleFileDialogService("hit.wav"), saves);
         await vm.LoadAsync("project.json", default);
         vm.AcknowledgePresentationReady(vm.LoadGeneration);
-        var importing = vm.ImportSampleAsync();
+        var importing = vm.ImportSamplesAsync();
         var returning = vm.PrepareToReturnAsync(default);
         await StubWorkstationAudioService.WaitUntilAsync(() => vm.IsSavingForReturn);
         Assert.That(returning.IsCompleted, Is.False);

@@ -147,7 +147,7 @@ public class WorkstationHistoryTests
         await vm.SeekCommand.ExecuteAsync(TimeSpan.FromMilliseconds(250));
         await vm.PlayPauseCommand.ExecuteAsync(null);
         await vm.StopCommand.ExecuteAsync(null);
-        Assert.That(await vm.ImportSampleAsync(), Is.EqualTo("a.wav"));
+        Assert.That(await vm.ImportSamplesAsync(), Is.EqualTo(new[] { "a.wav" }));
         vm.AddSampleTrackCommand.Execute(null);
         Assert.That(vm.CanUndo, Is.False);
         Assert.That(vm.CanRedo, Is.True);
@@ -221,7 +221,7 @@ public class WorkstationHistoryTests
         var confirmed = new TaskCompletionSource<bool>();
         files.Import = (_, _, _) => imported.Task;
         removal.Confirm = _ => confirmed.Task;
-        Task pending = import ? vm.ImportSampleAsync() : vm.RemoveTrackCommand.ExecuteAsync(first);
+        Task pending = import ? vm.ImportSamplesAsync() : vm.RemoveTrackCommand.ExecuteAsync(first);
         Assert.That(vm.CanUndo, Is.False);
         Assert.That(vm.CanRedo, Is.False);
         vm.UndoCommand.Execute(null);
