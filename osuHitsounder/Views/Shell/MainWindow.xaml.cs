@@ -33,6 +33,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
 
     public void ShowPopupOverlay()
     {
+        CancelBackgroundDrag();
         popupOverlayTimer.Stop();
         popupHandoffPending = false;
         if (popupOverlayState.OnPopupShown() == PopupOverlayHostAction.ShowOverlay)
@@ -103,6 +104,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
     private readonly Action<Rect> moveRestoredWindow;
     private readonly Func<bool> isLeftButtonPressed;
     private bool restoringBackgroundDrag;
+    private Point? backgroundDragOrigin;
     private static readonly DependencyPropertyKey IsAcrylicEnabledPropertyKey = DependencyProperty.RegisterReadOnly(
         nameof(IsAcrylicEnabled), typeof(bool), typeof(MainWindow), new PropertyMetadata(false));
     public static readonly DependencyProperty IsAcrylicEnabledProperty = IsAcrylicEnabledPropertyKey.DependencyProperty;
@@ -141,6 +143,10 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
         this.startDrag = startDrag ?? DragMove;
         this.moveRestoredWindow = moveRestoredWindow ?? nativeFrame.MoveRestoredWindow;
         this.isLeftButtonPressed = isLeftButtonPressed ?? (() => Mouse.LeftButton == MouseButtonState.Pressed);
+        ShellRoot.MouseMove += OnBackgroundMouseMove;
+        ShellRoot.MouseUp += OnBackgroundMouseUp;
+        ShellRoot.LostMouseCapture += OnBackgroundLostMouseCapture;
+        ComponentDispatcher.EnterThreadModal += OnEnterThreadModal;
         InputManager.Current.PreProcessInput += OnPreProcessInput;
         defaultMinWidth = MinWidth;
         defaultMinHeight = MinHeight;
@@ -290,8 +296,19 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
         }
     }
 
+    protected override void OnPropertyChanged(DependencyPropertyChangedEventArgs e)
+    {
+        base.OnPropertyChanged(e);
+        if (e.Property == WindowStateProperty) CancelBackgroundDrag();
+    }
+
     protected override void OnClosed(EventArgs e)
     {
+        CancelBackgroundDrag();
+        ComponentDispatcher.EnterThreadModal -= OnEnterThreadModal;
+        ShellRoot.MouseMove -= OnBackgroundMouseMove;
+        ShellRoot.MouseUp -= OnBackgroundMouseUp;
+        ShellRoot.LostMouseCapture -= OnBackgroundLostMouseCapture;
         InputManager.Current.PreProcessInput -= OnPreProcessInput;
         closed = true;
         popupOverlayTimer.Stop();
@@ -470,9 +487,24 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
     internal bool HandleBackgroundMouseDown(DependencyObject originalSource, int clickCount, bool leftPressed,
         Point cursorPixels, Rect currentPixels, double dpiX, double dpiY)
     {
-        if (closed || !ReferenceEquals(originalSource, ShellRoot) || !leftPressed ||
-            viewModel.IsInteractionBlocked || viewModel.IsProcessing || ComponentDispatcher.IsThreadModal) return false;
+        CancelBackgroundDrag();
+        if (!ReferenceEquals(originalSource, ShellRoot) || !leftPressed || !CanDragBackground) return false;
         if (clickCount == 2) { ToggleMaximizeRestore(); return true; }
+        if (WindowState == WindowState.Maximized)
+        {
+            backgroundDragOrigin = cursorPixels;
+            if (PresentationSource.FromVisual(ShellRoot) is not null) ShellRoot.CaptureMouse();
+            return true;
+        }
+        BeginBackgroundDrag(cursorPixels, currentPixels, dpiX, dpiY);
+        return true;
+    }
+
+    private bool CanDragBackground => !closed && !viewModel.IsInteractionBlocked && !viewModel.IsProcessing &&
+        !IsPopupOverlayVisible && !ComponentDispatcher.IsThreadModal;
+
+    private void BeginBackgroundDrag(Point cursorPixels, Rect currentPixels, double dpiX, double dpiY)
+    {
         var maximized = WindowState == WindowState.Maximized;
         var restored = maximized ? OHsWindowFrame.GetRestoreBounds(cursorPixels, currentPixels,
             new Size(restoredWidth, restoredHeight), dpiX, dpiY) : Rect.Empty;
@@ -484,8 +516,53 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
         }
         finally { restoringBackgroundDrag = false; }
         if (isLeftButtonPressed()) startDrag();
+    }
+
+    internal bool HandleBackgroundMouseMove(bool leftPressed, Point cursorPixels, Rect currentPixels,
+        double dpiX, double dpiY)
+    {
+        if (backgroundDragOrigin is not { } origin) return false;
+        if (!leftPressed || !CanDragBackground || WindowState != WindowState.Maximized || dpiX <= 0 || dpiY <= 0)
+        {
+            CancelBackgroundDrag();
+            return false;
+        }
+        if (Math.Abs(cursorPixels.X - origin.X) / dpiX <= SystemParameters.MinimumHorizontalDragDistance &&
+            Math.Abs(cursorPixels.Y - origin.Y) / dpiY <= SystemParameters.MinimumVerticalDragDistance) return false;
+        CancelBackgroundDrag();
+        BeginBackgroundDrag(cursorPixels, currentPixels, dpiX, dpiY);
         return true;
     }
+
+    internal void CancelBackgroundDrag()
+    {
+        backgroundDragOrigin = null;
+        if (ShellRoot is not null && ReferenceEquals(Mouse.Captured, ShellRoot)) ShellRoot.ReleaseMouseCapture();
+    }
+
+    private void OnBackgroundMouseMove(object sender, MouseEventArgs e)
+    {
+        if (backgroundDragOrigin is null) return;
+        if (!nativeFrame.TryGetDragGeometry(out var cursor, out var bounds, out var dpiX, out var dpiY))
+        {
+            CancelBackgroundDrag();
+            return;
+        }
+        if (HandleBackgroundMouseMove(e.LeftButton == MouseButtonState.Pressed, cursor, bounds, dpiX, dpiY))
+            e.Handled = true;
+    }
+
+    private void OnBackgroundMouseUp(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton == MouseButton.Left) CancelBackgroundDrag();
+    }
+
+    private void OnBackgroundLostMouseCapture(object sender, MouseEventArgs e)
+    {
+        if (ReferenceEquals(e.OriginalSource, ShellRoot)) CancelBackgroundDrag();
+    }
+
+    private void OnEnterThreadModal(object? sender, EventArgs e) => CancelBackgroundDrag();
 
     private void OnLoadSampleClick(object sender, RoutedEventArgs e) => messenger.Send(new LoadSampleRequestedMessage());
     private async void OnGoBackClick(object sender, RoutedEventArgs e) => await ReturnHomeAsync();
@@ -528,8 +605,9 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
         return workstationPage.HandleContextWheel(modifiers, delta, origin);
     }
 
-    private void OnWindowDeactivated(object? sender, EventArgs e)
+    internal void OnWindowDeactivated(object? sender, EventArgs e)
     {
+        CancelBackgroundDrag();
         if (PageHost.Content is WorkstationPage workstation) workstation.DismissVolumeOverlay();
     }
 
@@ -559,6 +637,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
 
     private void OnStateChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (viewModel.IsInteractionBlocked || viewModel.IsProcessing) CancelBackgroundDrag();
         if (e.PropertyName != nameof(HomePageVM.IsInteractionBlocked) || closed) return;
         if (viewModel.IsInteractionBlocked)
         {
