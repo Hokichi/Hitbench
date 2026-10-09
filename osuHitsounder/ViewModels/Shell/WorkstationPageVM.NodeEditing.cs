@@ -187,6 +187,38 @@ public partial class WorkstationPageVM
         return CommitNodeDrag();
     }
 
+    private bool CanResnapAllSamples() => CanPlaceSamples && tracks.Any(track => track.Samples.Count > 0);
+
+    public bool ResnapAllSampleNodes()
+    {
+        if (!CanResnapAllSamples()) return false;
+        var entries = new List<NodeHistoryEntry>();
+        foreach (var track in tracks)
+        for (var index = 0; index < track.Samples.Count; index++)
+        {
+            var sample = track.Samples[index];
+            var timestamp = BeatGridCalculator.GetNearestTimestamp(Project!.Offsets, Project.BPMs, Subdivision,
+                sample.Timestamp, Waveform!.Duration.TotalMilliseconds);
+            if (timestamp is null)
+            {
+                ErrorMessage = "No usable grid beat for resnapping samples.";
+                return false;
+            }
+            if (timestamp.Value != sample.Timestamp)
+                entries.Add(new(track, sample, index, NodeHistoryOperation.Movement, sample.Timestamp, timestamp.Value));
+        }
+        CancelNodeDrag();
+        ErrorMessage = null;
+        if (entries.Count == 0) return false;
+        foreach (var entry in entries) entry.Sample.Timestamp = entry.NextTimestamp;
+        history.RecordBatch(entries);
+        PublishNodeChange();
+        return true;
+    }
+
+    [RelayCommand(CanExecute = nameof(CanResnapAllSamples))]
+    private void ResnapAllSamples() => ResnapAllSampleNodes();
+
     [RelayCommand(CanExecute = nameof(CanCopyNodes))] private void CopyNodes() => CopySelectedNodes();
     [RelayCommand(CanExecute = nameof(CanPasteNodes))] private void PasteNodes() => PasteCopiedNodes();
     [RelayCommand(CanExecute = nameof(CanDeleteNodes))] private void DeleteSelectedNodes() => RemoveSelectedNodes();

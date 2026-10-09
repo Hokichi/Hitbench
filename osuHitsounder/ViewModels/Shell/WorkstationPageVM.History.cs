@@ -39,5 +39,6 @@ public partial class WorkstationPageVM
         OnPropertyChanged(nameof(CanRedo));
         UndoCommand.NotifyCanExecuteChanged();
         RedoCommand.NotifyCanExecuteChanged();
+        ResnapAllSamplesCommand.NotifyCanExecuteChanged();
     }
 }

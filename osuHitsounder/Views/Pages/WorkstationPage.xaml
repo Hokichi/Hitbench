@@ -34,6 +34,13 @@
             <Setter Property="ShouldShowText" Value="True" />
         </Style>
         <Style
+            x:Key="OHsWorkstationResnapButtonStyle"
+            BasedOn="{StaticResource OHsWorkstationTransportButtonStyle}"
+            TargetType="customControls:BalloonButton">
+            <Setter Property="FocusVisualStyle" Value="{StaticResource OHsKeyboardFocusVisualStyle}" />
+            <Setter Property="IsTabStop" Value="True" />
+        </Style>
+        <Style
             x:Key="OHsWorkstationPlayPauseStyle"
             BasedOn="{StaticResource OHsWorkstationTransportButtonStyle}"
             TargetType="customControls:BalloonButton">
@@ -506,6 +513,15 @@
                             ShouldShowText="True"
                             Style="{StaticResource OHsWorkstationTransportButtonStyle}"
                             ToolTip="Stop audio and return to the beginning" />
+                        <customControls:BalloonButton
+                            x:Name="ResnapAllSamplesButton"
+                            AutomationProperties.HelpText="Snap every sample to the nearest beat in the current subdivision"
+                            AutomationProperties.Name="Resnap all samples"
+                            ButtonIcon="{StaticResource RegularRepeat}"
+                            ButtonText="Resnap all samples"
+                            Command="{Binding ResnapAllSamplesCommand, Mode=OneWay}"
+                            Style="{StaticResource OHsWorkstationResnapButtonStyle}"
+                            ToolTip="Snap every sample to the nearest beat in the current subdivision" />
                         <TextBlock
                             AutomationProperties.Name="Elapsed audio time"
                             Style="{StaticResource OHsWorkstationElapsedStyle}"

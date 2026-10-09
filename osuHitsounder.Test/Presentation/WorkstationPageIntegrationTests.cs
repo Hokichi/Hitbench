@@ -1190,6 +1190,78 @@ public class WorkstationPageIntegrationTests
         }
     }
 
+    [TestCase(480d, FlowDirection.LeftToRight, "Dark")]
+    [TestCase(480d, FlowDirection.RightToLeft, "Light")]
+    [TestCase(1100d, FlowDirection.LeftToRight, "Light")]
+    [TestCase(1100d, FlowDirection.RightToLeft, "Dark")]
+    public void ResnapHeaderActionBindsCommandAndWrapsWithinPage(double width, FlowDirection direction, string theme)
+    {
+        EnsureResources(theme);
+        var sample = new Sample { Timestamp = 1188, FileName = "a.wav" };
+        var track = new osuHitsounder.Core.Entities.Track { SelectedSampleFileName = "a.wav", Samples = [sample] };
+        var completion = new TaskCompletionSource<WorkstationSource>();
+        var source = new StubWorkstationSourceService { Load = (_, _) => completion.Task };
+        var vm = new WorkstationPageVM(source, new osuHitsounder.Services.MarkerPlaybackCoordinator(
+            new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), new StubSampleFileService(["a.wav"]));
+        var page = new WorkstationPage(vm);
+        page.SetProjectPath("project.json");
+        using var view = new InMemoryView(new Window { Content = page, Width = width, Height = 720, FlowDirection = direction });
+        try
+        {
+            var panel = (WrapPanel)page.FindName("TransportPanel");
+            var action = panel.Children.OfType<BalloonButton>().SingleOrDefault(button =>
+                AutomationProperties.GetName(button) == "Resnap all samples");
+            Assert.That(action, Is.Not.Null, "The workstation header must expose the resnap action.");
+            var button = action!;
+            Assert.That(button.IsEnabled, Is.False);
+            completion.SetResult(new WorkstationSource("map.osu", "audio.wav", new ProjectData
+            {
+                Offsets = [0], BPMs = [120], Tracks = [track]
+            }));
+            UiTestPump.Run(page.LoadCompletion);
+            view.UpdateLayout();
+            Assert.That(button.Command, Is.SameAs(vm.ResnapAllSamplesCommand));
+            Assert.That(button.IsEnabled, Is.True);
+            Assert.That(button.ButtonText, Is.EqualTo("Resnap all samples"));
+            Assert.That(button.ShouldShowText, Is.True);
+            Assert.That(button.ButtonIcon, Is.SameAs(page.FindResource("RegularRepeat")));
+            Assert.That(button.Focusable && button.IsTabStop, Is.True);
+            Assert.That(button.FocusVisualStyle, Is.SameAs(page.FindResource("OHsKeyboardFocusVisualStyle")));
+            Assert.That(button.ToolTip, Is.EqualTo("Snap every sample to the nearest beat in the current subdivision"));
+            Assert.That(AutomationProperties.GetHelpText(button), Is.EqualTo(button.ToolTip));
+            var bounds = button.TransformToAncestor(page).TransformBounds(new Rect(button.RenderSize));
+            Assert.That(bounds.Left, Is.GreaterThanOrEqualTo(0));
+            Assert.That(bounds.Right, Is.LessThanOrEqualTo(page.ActualWidth));
+            Assert.That(bounds.Height, Is.GreaterThanOrEqualTo(40));
+            foreach (var sibling in panel.Children.OfType<FrameworkElement>().Where(child => child != button))
+            {
+                var siblingBounds = sibling.TransformToAncestor(page).TransformBounds(new Rect(sibling.RenderSize));
+                Assert.That(bounds.IntersectsWith(siblingBounds), Is.False);
+            }
+            Assert.That(page.HandlePlaybackKey(Key.Enter, ModifierKeys.None, false, button), Is.False);
+            using var inputSource = new InMemoryPresentationSource();
+            var enter = CreateKeyEvent(inputSource, Key.Enter);
+            enter.RoutedEvent = Keyboard.KeyDownEvent;
+            button.RaiseEvent(enter);
+            Assert.That(sample.Timestamp, Is.EqualTo(1250));
+            vm.RemoveSample(track, sample);
+            view.UpdateLayout();
+            Assert.That(button.IsEnabled, Is.False);
+            vm.UndoCommand.Execute(null);
+            view.UpdateLayout();
+            Assert.That(button.IsEnabled, Is.True);
+            vm.IsReturning = true;
+            view.UpdateLayout();
+            Assert.That(button.IsEnabled, Is.False);
+        }
+        finally
+        {
+            completion.TrySetResult(new WorkstationSource("map.osu", "audio.wav", new ProjectData()));
+            UiTestPump.Run(page.LoadCompletion);
+            UiTestPump.Run(page.DeactivateAsync());
+        }
+    }
+
     private static KeyEventArgs CreateKeyEvent(PresentationSource source, Key key) => new(
         Keyboard.PrimaryDevice,
         source,
