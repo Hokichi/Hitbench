@@ -16,6 +16,24 @@ namespace osuHitsounder.Test.Presentation;
 public class WorkstationNodeInteractionTests
 {
     [Test]
+    public void BlankClickInOccupiedIntervalDoesNotReselectOnRelease()
+    {
+        var editor = CreateEditor(); using var view = editor.View;
+        var grid = Descendants<BeatGridView>(editor.Page).First();
+        grid.ContentWidth = 1000; grid.ViewportWidth = 500; grid.HorizontalOffset = 0;
+        editor.Vm.SelectNode(editor.Vm.Tracks[0], editor.Node, false);
+        Assert.That(editor.Page.BeginNodePointer(grid, new Point(111, 10), new Point()), Is.False);
+        Assert.That(editor.Vm.SelectedSamples, Is.Empty);
+        grid.UpdatePointerPosition(111);
+        Assert.That(grid.RequestPointerSamplePlacement(), Is.True);
+        Assert.That(editor.Vm.SelectedSamples, Is.Empty);
+        Assert.That(editor.Vm.Tracks[0].Samples, Has.Count.EqualTo(1));
+        Assert.That(editor.Vm.CanUndo, Is.False);
+        Assert.That(grid.RequestSamplePlacement(), Is.True);
+        Assert.That(editor.Vm.SelectedSamples.Single(), Is.SameAs(editor.Node));
+        UiTestPump.Run(editor.Page.DeactivateAsync());
+    }
+    [Test]
     public void ZoomDuringGestureUpdatesBoundHitGeometryWithoutChangingSamples()
     {
         var editor = CreateEditor(); using var view = editor.View;

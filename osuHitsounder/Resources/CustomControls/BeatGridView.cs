@@ -153,6 +153,12 @@ public sealed class BeatGridView : FrameworkElement
         return true;
     }
 
+    internal bool RequestPointerSamplePlacement()
+    {
+        if (pointerX is { } x && FindSampleAt(new Point(x, ActualHeight / 2)) is null && FindActiveSample() is not null) return true;
+        return RequestSamplePlacement();
+    }
+
     public bool RequestSampleRemoval(double viewportX)
     {
         if (!CanPlaceSamples || Samples is null || viewportX < 0 || viewportX >= Math.Min(ActualWidth, ViewportWidth)) return false;
@@ -349,7 +355,7 @@ public sealed class BeatGridView : FrameworkElement
         var place = IsMouseCaptured && pressedInterval is { } pressed && pressed == ActiveInterval;
         ReleaseMouseCapture();
         pressedInterval = null;
-        if (place) RequestSamplePlacement();
+        if (place) RequestPointerSamplePlacement();
         e.Handled = place;
     }
 
