@@ -46,7 +46,7 @@ public sealed class SampleFileDialogService : ISampleFileDialogService
             }
             else
             {
-                popup = new SampleLoaderPopup(vm) { Owner = owner };
+                popup = new SampleLoaderPopup(vm) { Owner = owner, FlowDirection = owner!.FlowDirection };
                 using var cancellation = token.Register(() => dispatcher.BeginInvoke(new Action(() =>
                 {
                     if (popup.IsVisible) popup.Close();
