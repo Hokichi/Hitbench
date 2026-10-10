@@ -43,7 +43,7 @@ public partial class WorkstationPageVM
 
     public bool SelectNode(Track track, Sample sample, bool toggle)
     {
-        if (!CanPlaceSamples || !tracks.Contains(track) || !track.Samples.Contains(sample)) return false;
+        if (!CanPlaceSamples || !CanEditTrackGrid(track) || !track.Samples.Contains(sample)) return false;
         ScrollWithMarker = false;
         SelectedTrack = track;
         SetNodeSelection(toggle ? selectedNodes.Contains(sample) ? selectedNodes.Where(node => !ReferenceEquals(node, sample))
@@ -60,7 +60,7 @@ public partial class WorkstationPageVM
 
     private void SetNodeSelectionCore(IEnumerable<Sample> samples)
     {
-        var live = tracks.SelectMany(track => track.Samples).ToHashSet();
+        var live = tracks.Where(CanEditTrackGrid).SelectMany(track => track.Samples).ToHashSet();
         var next = samples.Where(live.Contains).Distinct().ToArray();
         if (next.Length > 0) ScrollWithMarker = false;
         if (selectedNodes.SequenceEqual(next)) return;
@@ -174,7 +174,7 @@ public partial class WorkstationPageVM
     public bool BeginNodeDrag(Track track, Sample anchor)
     {
         CancelNodeDrag();
-        if (!CanPlaceSamples || !tracks.Contains(track) || !track.Samples.Contains(anchor)) return false;
+        if (!CanPlaceSamples || !CanEditTrackGrid(track) || !track.Samples.Contains(anchor)) return false;
         if (!selectedNodes.Contains(anchor)) SelectNode(track, anchor, false);
         var entries = SelectedNodeEntries(NodeHistoryOperation.Movement);
         if (entries.Length == 0 || entries.Any(entry => !ValidNodeTimestamp(entry.PreviousTimestamp))) return false;
@@ -188,6 +188,7 @@ public partial class WorkstationPageVM
     public void PreviewNodeDrag(double deltaMilliseconds, Track? destinationTrack = null)
     {
         if (!IsNodeDragActive) return;
+        if (destinationTrack is not null && !CanEditTrackGrid(destinationTrack)) { CancelNodeDrag(); return; }
         DragDestinationTrack = destinationTrack;
         if (!CanPlaceSamples || !double.IsFinite(deltaMilliseconds)) { CancelNodeDrag(); return; }
         var anchor = dragNodes.Single(entry => ReferenceEquals(entry.Sample, dragAnchor)).PreviousTimestamp;
@@ -289,7 +290,7 @@ public partial class WorkstationPageVM
     {
         if (!CanResnapAllSamples()) return false;
         var entries = new List<NodeHistoryEntry>();
-        foreach (var track in tracks)
+        foreach (var track in tracks.Where(CanEditTrackGrid))
         for (var index = 0; index < track.Samples.Count; index++)
         {
             var sample = track.Samples[index];

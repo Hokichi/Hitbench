@@ -5,6 +5,19 @@ namespace osuHitsounder.Test.Services;
 
 public class NodeHistoryManagerTests
 {
+    [Test] public void RenamingPreservesCrossTrackUndoAndRedoSnapshots()
+    {
+        var history = new NodeHistoryManager();
+        var node = new Sample { FileName="b.wav", Timestamp=250 };
+        var a = new Track { SelectedSampleFileName="a.wav" };
+        var b = new Track { SelectedSampleFileName="b.wav", Samples=[node] };
+        history.RecordBatch([new(a,node,0,NodeHistoryOperation.Movement,125,250,b,0,"a.wav","b.wav")]);
+        history.RenameSample("a.wav","renamed.wav"); a.SelectedSampleFileName="renamed.wav";
+        Assert.That(history.Undo([a,b]), Is.True); Assert.That(node.FileName,Is.EqualTo("renamed.wav"));
+        history.RenameSample("b.wav","other.wav"); b.SelectedSampleFileName="other.wav";
+        Assert.That(history.Redo([a,b]),Is.True); Assert.That(node.FileName,Is.EqualTo("other.wav"));
+        Assert.That(node.Timestamp,Is.EqualTo(250)); Assert.That(b.Samples.Single(),Is.SameAs(node));
+    }
     [Test]
     public void GlobalEditsUndoInReverseOrder()
     {

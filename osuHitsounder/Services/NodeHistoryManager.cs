@@ -121,4 +121,21 @@ public sealed class NodeHistoryManager
         undo.Clear();
         redo.Clear();
     }
+
+    public void RenameSample(string oldFileName, string newFileName)
+    {
+        foreach (var stack in new[] { undo, redo })
+        {
+            var batches = stack.Reverse().Select(batch => batch.Select(entry =>
+            {
+                if (string.Equals(entry.Sample.FileName, oldFileName, StringComparison.OrdinalIgnoreCase)) entry.Sample.FileName = newFileName;
+                return entry with
+                {
+                    PreviousFileName = string.Equals(entry.PreviousFileName, oldFileName, StringComparison.OrdinalIgnoreCase) ? newFileName : entry.PreviousFileName,
+                    NextFileName = string.Equals(entry.NextFileName, oldFileName, StringComparison.OrdinalIgnoreCase) ? newFileName : entry.NextFileName
+                };
+            }).ToArray()).ToArray();
+            stack.Clear(); foreach (var batch in batches) stack.Push(batch);
+        }
+    }
 }

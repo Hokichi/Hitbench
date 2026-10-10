@@ -24,7 +24,9 @@ public partial class WorkstationPageVM(
     ITrackRemovalDialogService? trackRemovalDialog = null,
     PlaybackVolumeSettings? playbackVolumes = null,
     Func<TimeSpan, CancellationToken, Task>? zoomDelay = null,
-    INodePasteDialogService? nodePasteDialog = null) : ObservableObject
+    INodePasteDialogService? nodePasteDialog = null,
+    ISampleManagementDialogService? sampleManagementDialog = null,
+    SampleImportBatch? sampleImports = null) : ObservableObject
 {
     private readonly IWorkstationAudioService audioService = playback.Audio;
     private bool subscribedToPlayback;
@@ -66,12 +68,12 @@ public partial class WorkstationPageVM(
     public int SamplesRevision => samplesRevision;
     public int Subdivision => new[] { 1, 2, 3, 4, 5, 6, 8, 12, 16 }[SelectedSubdivisionIndex];
     public bool CanEditTracks => Project is not null && IsInteractionReady;
-    public bool CanImportSample => !IsNodeEditBusy && CanEditTracks && !importBusy && !removalBusy &&
+    public bool CanImportSample => !managingSamples && !IsNodeEditBusy && CanEditTracks && !importBusy && !removalBusy &&
         sampleFiles is not null && sampleDialog is not null && projectPath is not null;
     public bool CanAddTrack => CanEditTracks && availableSamples.Count > 0;
-    public bool CanRemoveTrack => !IsNodeEditBusy && CanEditTracks && !importBusy && !removalBusy && trackRemovalDialog is not null;
-    public bool CanPlaceSamples => !IsNodeEditBusy && CanEditTracks && Waveform is not null && !importBusy && !removalBusy;
-    public bool HasPendingSaves => IsNodeEditBusy || pendingZoom is not null || importBusy || removalBusy || !saveTail.IsCompleted || lastSaveError is not null;
+    public bool CanRemoveTrack => !managingSamples && !IsNodeEditBusy && CanEditTracks && !importBusy && !removalBusy && trackRemovalDialog is not null;
+    public bool CanPlaceSamples => !managingSamples && !IsNodeEditBusy && CanEditTracks && Waveform is not null && !importBusy && !removalBusy;
+    public bool HasPendingSaves => managingSamples || IsNodeEditBusy || pendingZoom is not null || importBusy || removalBusy || !saveTail.IsCompleted || lastSaveError is not null;
     [ObservableProperty] private string? saveError;
     [ObservableProperty] private bool scrollWithMarker = true;
     private CancellationTokenSource? loadCancellation;
@@ -169,9 +171,11 @@ public partial class WorkstationPageVM(
     public bool CanPlay => Waveform is not null && IsInteractionReady;
     public bool CanZoom => Waveform is not null && IsInteractionReady;
 
-    public Task LoadAsync(string projectPath, CancellationToken token)
+    public async Task LoadAsync(string projectPath, CancellationToken token)
     {
-        if (deactivated) return Task.CompletedTask;
+        if (deactivated) return;
+        await SettleSampleManagerAsync();
+        sampleSession = Guid.NewGuid();
         ResetNodeEditing();
         history.Clear();
         NotifyHistoryState();
@@ -186,7 +190,7 @@ public partial class WorkstationPageVM(
         var generation = ++loadGeneration;
         this.projectPath = projectPath;
         activeLoad = LoadCoreAsync(projectPath, generation, loadCancellation.Token);
-        return activeLoad;
+        await activeLoad;
     }
 
     public Task DeactivateAsync() => deactivation ??= DeactivateCoreAsync();
@@ -194,6 +198,7 @@ public partial class WorkstationPageVM(
     private async Task DeactivateCoreAsync()
     {
         if (deactivated) return;
+        await SettleSampleManagerAsync();
         deactivated = true;
         ResetNodeEditing();
         history.Clear();
@@ -475,7 +480,7 @@ public partial class WorkstationPageVM(
 
     public bool PlaceSample(Track track, double leftBoundaryMilliseconds)
     {
-        if (!CanPlaceSamples || !tracks.Contains(track) || !double.IsFinite(leftBoundaryMilliseconds) ||
+        if (!CanPlaceSamples || !CanEditTrackGrid(track) || !double.IsFinite(leftBoundaryMilliseconds) ||
             leftBoundaryMilliseconds < 0 || leftBoundaryMilliseconds >= Waveform!.Duration.TotalMilliseconds ||
             leftBoundaryMilliseconds > int.MaxValue) return false;
         var timestamp = (int)Math.Round(leftBoundaryMilliseconds, MidpointRounding.AwayFromZero);
@@ -499,7 +504,7 @@ public partial class WorkstationPageVM(
 
     public bool RemoveSample(Track track, Sample sample)
     {
-        if (!CanPlaceSamples || !tracks.Contains(track)) return false;
+        if (!CanPlaceSamples || !CanEditTrackGrid(track)) return false;
         var index = track.Samples.FindIndex(node => ReferenceEquals(node, sample));
         if (index < 0) return false;
         track.Samples.RemoveAt(index);
@@ -569,14 +574,8 @@ public partial class WorkstationPageVM(
             if (!IsCurrentProject(path, project, generation)) return Array.Empty<string>();
             var sources = await sampleDialog!.SelectAsync(project?.BeatmapPath, token);
             if (sources.Count == 0 || !IsCurrentProject(path, project, generation)) return Array.Empty<string>();
-            foreach (var source in sources.Distinct(StringComparer.OrdinalIgnoreCase))
-            {
-                token.ThrowIfCancellationRequested();
-                if (!IsCurrentProject(path, project, generation)) return Array.Empty<string>();
-                try { imported.Add(await sampleFiles!.ImportAsync(path, source, token)); }
-                catch (OperationCanceledException) { throw; }
-                catch (Exception error) { failures.Add($"{Path.GetFileName(source)}: {error.Message}"); }
-            }
+            var batch = await (sampleImports ?? new SampleImportBatch(sampleFiles!)).ImportAsync(path, sources, token);
+            imported.AddRange(batch.ImportedFiles); failures.AddRange(batch.Failures);
             token.ThrowIfCancellationRequested();
             if (!IsCurrentProject(path, project, generation)) return Array.Empty<string>();
             try
@@ -610,6 +609,8 @@ public partial class WorkstationPageVM(
 
     public async Task FlushSavesAsync()
     {
+        if (activeManager is not null) await activeManager;
+        await sampleChangeNotifications;
         CommitPendingZoom();
         if (activeImport is not null) await activeImport;
         if (activeRemoval is not null) await activeRemoval;
@@ -646,6 +647,7 @@ public partial class WorkstationPageVM(
     public async Task<bool> PrepareToReturnAsync(CancellationToken token)
     {
         if (deactivated || IsReturning || token.IsCancellationRequested) return false;
+        await SettleSampleManagerAsync();
         IsReturning = true;
         var prepared = false;
         try
@@ -747,6 +749,7 @@ public partial class WorkstationPageVM(
         foreach (var track in tracks)
         foreach (var sample in track.Samples)
         {
+            if (sampleFiles is not null && GetSampleAvailability(track) != Resources.DataModels.TrackSampleAvailability.Available) continue;
             if (!sampleEventIds.TryGetValue(sample, out var id))
             {
                 id = nextSampleEventId++;
@@ -860,12 +863,11 @@ public partial class WorkstationPageVM(
                     messenger.Register<AddSampleTrackRequestedMessage>(this, (_, _) => AddSampleTrackCommand.Execute(null));
                     messenger.Register<AddPianoTrackRequestedMessage>(this, (_, _) => AddPianoTrackCommand.Execute(null));
                     messenger.Register<LoadSampleRequestedMessage>(this, (_, _) => LoadSampleCommand.Execute(null));
+                    messenger.Register<ManageSamplesRequestedMessage>(this, (_, _) => ManageSamplesCommand.Execute(null));
+                    messenger.Register<ProjectSamplesChangedMessage>(this, (_, change) => ReceiveSampleChange(change));
                 }
             });
             await playback.ConfigureAsync(markerClock, waveform.Duration, token);
-            await UpdatePlaybackAsync(projectPath, generation, token);
-            if (audioService.GetSnapshot().Error?.StartsWith("Unable to prepare audio:", StringComparison.Ordinal) == true)
-                await CommitAsync(generation, CancellationToken.None, () => Waveform = null);
             if (sampleFiles is not null)
             {
                 var choices = await sampleFiles.ListAsync(projectPath, token);
@@ -874,6 +876,10 @@ public partial class WorkstationPageVM(
                     RefreshAvailableSamples(choices);
                 });
             }
+            await UpdatePlaybackAsync(projectPath, generation, token);
+            if (audioService.GetSnapshot().Error?.StartsWith("Unable to prepare audio:", StringComparison.Ordinal) == true)
+                await CommitAsync(generation, CancellationToken.None, () => Waveform = null);
+
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { }
         catch (Exception error)
@@ -899,7 +905,7 @@ public partial class WorkstationPageVM(
             if (generation == loadGeneration && !deactivated) action();
         }, token);
 
-    private bool CanUseTransport() => CanPlay;
+    private bool CanUseTransport() => CanPlay && !managingSamples;
     private bool CanIncreaseTrackHeight() => CanZoom && TrackHeight < 144;
     private bool CanDecreaseTrackHeight() => CanZoom && TrackHeight > 18;
     private bool CanIncreaseSubdivision() => IsInteractionReady && SelectedSubdivisionIndex < 8;
@@ -938,6 +944,7 @@ public partial class WorkstationPageVM(
 
     private void NotifyEditingState()
     {
+        OnPropertyChanged(nameof(CanManageSamples)); ManageSamplesCommand.NotifyCanExecuteChanged();
         NotifyNodeEditingState();
         NotifyHistoryState();
         OnPropertyChanged(nameof(CanEditTracks));
