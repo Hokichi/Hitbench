@@ -24,6 +24,7 @@ public partial class WorkstationPageVM
     public bool SelectNode(Track track, Sample sample, bool toggle)
     {
         if (!CanPlaceSamples || !tracks.Contains(track) || !track.Samples.Contains(sample)) return false;
+        SelectedTrack = track;
         SetNodeSelection(toggle ? selectedNodes.Contains(sample) ? selectedNodes.Where(node => !ReferenceEquals(node, sample))
             : selectedNodes.Append(sample) : [sample]);
         return true;
@@ -225,7 +226,7 @@ public partial class WorkstationPageVM
     [RelayCommand(CanExecute = nameof(CanPlaceSamples))] private void SelectAllNodes() => SetNodeSelection(tracks.SelectMany(track => track.Samples));
 
     private void PruneNodeSelection() => SetNodeSelectionCore(selectedNodes);
-    private void ResetNodeEditing() { CancelNodeDrag(); copiedNodes = []; ClearNodeSelection(); NotifyNodeEditingState(); }
+    private void ResetNodeEditing() { SelectedTrack = null; CancelNodeDrag(); copiedNodes = []; ClearNodeSelection(); NotifyNodeEditingState(); }
     private void NotifyNodeEditingState()
     {
         if (!CanPlaceSamples) CancelNodeDrag();

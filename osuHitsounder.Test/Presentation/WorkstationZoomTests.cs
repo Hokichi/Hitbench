@@ -112,7 +112,7 @@ public class WorkstationZoomTests
     }
 
     [TestCase(64, 64)]
-    [TestCase(0, 32)]
+    [TestCase(0, 8)]
     [TestCase(200, 128)]
     public async Task RestoresZoomBeforePresentation(int stored, int expected)
     {
@@ -125,12 +125,14 @@ public class WorkstationZoomTests
     }
 
     [Test]
-    public async Task ZoomCommandsClampAt32And128()
+    public async Task ZoomCommandsClampAt8And128()
     {
         var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler());
         await vm.LoadAsync("project.json", CancellationToken.None);
         vm.AcknowledgePresentationReady(vm.LoadGeneration);
         Assert.That(vm.ZoomFactor, Is.EqualTo(32));
+        for (var i = 0; i < 100; i++) vm.ZoomOutCommand.Execute(null);
+        Assert.That(vm.ZoomFactor, Is.EqualTo(8));
         Assert.That(vm.ZoomOutCommand.CanExecute(null), Is.False);
         for (var i = 0; i < 200; i++) vm.ZoomInCommand.Execute(null);
         Assert.That(vm.ZoomFactor, Is.EqualTo(128));

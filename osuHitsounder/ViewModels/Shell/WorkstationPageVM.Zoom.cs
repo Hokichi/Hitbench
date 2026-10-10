@@ -10,11 +10,11 @@ public partial class WorkstationPageVM
     private readonly Func<TimeSpan, CancellationToken, Task> waitForZoom = zoomDelay ?? Task.Delay;
 
     private bool CanZoomIn() => CanZoom && ZoomFactor < 128;
-    private bool CanZoomOut() => CanZoom && ZoomFactor > 32;
+    private bool CanZoomOut() => CanZoom && ZoomFactor > 8;
 
     private void RestoreZoom(int value)
     {
-        zoomFactor = Math.Clamp(value, 32, 128);
+        zoomFactor = Math.Clamp(value, 8, 128);
         Project!.WorkstationZoom = (int)zoomFactor;
         OnPropertyChanged(nameof(ZoomFactor));
     }
@@ -22,7 +22,7 @@ public partial class WorkstationPageVM
     private void SetZoom(int value)
     {
         if (!CanZoom) return;
-        var next = Math.Clamp(value, 32, 128);
+        var next = Math.Clamp(value, 8, 128);
         if (zoomFactor == next) return;
         OnPropertyChanging(nameof(ZoomFactor));
         zoomFactor = next;

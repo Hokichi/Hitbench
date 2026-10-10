@@ -456,10 +456,10 @@ public class WorkstationTrackTests
         vm.SetTrackVolume(track, 40);
         Assert.That(vm.PlaceSample(track, 125.5), Is.True);
 
-        Assert.That(track.Samples.Select(sample => sample.FileName), Is.EqualTo(new[] { "b.wav", "b.wav" }));
-        Assert.That(track.Samples.Select(sample => sample.Volume), Is.EqualTo(new[] { 100, 100 }));
-        Assert.That(track.Samples.Select(sample => sample.Timestamp), Is.EqualTo(new[] { 126, 126 }));
-        Assert.That(vm.SamplesRevision, Is.EqualTo(3));
+        Assert.That(track.Samples.Select(sample => sample.FileName), Is.EqualTo(new[] { "b.wav" }));
+        Assert.That(track.Samples.Select(sample => sample.Volume), Is.EqualTo(new[] { 100 }));
+        Assert.That(track.Samples.Select(sample => sample.Timestamp), Is.EqualTo(new[] { 126 }));
+        Assert.That(vm.SamplesRevision, Is.EqualTo(2));
     }
 
     [Test]

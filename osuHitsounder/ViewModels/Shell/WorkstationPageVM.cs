@@ -50,6 +50,16 @@ public partial class WorkstationPageVM(
     private long nextSampleEventId = 1;
     private int samplesRevision;
     private string? playbackErrorMessage;
+    private Track? selectedTrack;
+    public Track? SelectedTrack
+    {
+        get => selectedTrack;
+        set
+        {
+            if (value is not null && !tracks.Contains(value)) return;
+            if (SetProperty(ref selectedTrack, value)) NotifyNodeEditingState();
+        }
+    }
     public ObservableCollection<Track> Tracks => tracks;
     public ObservableCollection<string> SampleFiles => availableSamples;
     public int SamplesRevision => samplesRevision;
@@ -392,6 +402,7 @@ public partial class WorkstationPageVM(
         var track = new Track { SelectedSampleFileName = availableSamples[0] };
         Project!.Tracks.Add(track);
         tracks.Add(track);
+        SelectedTrack = track;
         QueueSave();
     }
 
@@ -420,8 +431,11 @@ public partial class WorkstationPageVM(
             if (track.Samples.Count > 0 && !await trackRemovalDialog!.ConfirmAsync(loadCancellation?.Token ?? CancellationToken.None)) return;
             if (deactivated || generation != loadGeneration || !ReferenceEquals(Project, project) ||
                 project is null || !tracks.Contains(track)) return;
+            var removedIndex = tracks.IndexOf(track);
+            var wasSelected = ReferenceEquals(SelectedTrack, track);
             project.Tracks.Remove(track);
             tracks.Remove(track);
+            if (wasSelected) SelectedTrack = tracks.Count == 0 ? null : tracks[Math.Min(removedIndex, tracks.Count - 1)];
             history.RemoveTrack(track);
             PruneNodeSelection();
             NotifyHistoryState();
@@ -459,6 +473,9 @@ public partial class WorkstationPageVM(
         if (!CanPlaceSamples || !tracks.Contains(track) || !double.IsFinite(leftBoundaryMilliseconds) ||
             leftBoundaryMilliseconds < 0 || leftBoundaryMilliseconds >= Waveform!.Duration.TotalMilliseconds ||
             leftBoundaryMilliseconds > int.MaxValue) return false;
+        var timestamp = (int)Math.Round(leftBoundaryMilliseconds, MidpointRounding.AwayFromZero);
+        var existing = track.Samples.LastOrDefault(node => node.Timestamp == timestamp);
+        if (existing is not null) return SelectNode(track, existing, false);
         var fileName = availableSamples.FirstOrDefault(name =>
             string.Equals(name, track.SelectedSampleFileName, StringComparison.OrdinalIgnoreCase));
         if (fileName is null) return false;
@@ -471,6 +488,7 @@ public partial class WorkstationPageVM(
         track.Samples.Add(sample);
         history.RecordPlacement(track, sample, track.Samples.Count - 1);
         PublishNodeChange();
+        SelectNode(track, sample, false);
         return true;
     }
 

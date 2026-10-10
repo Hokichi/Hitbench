@@ -37,6 +37,16 @@ public class WorkstationNodeEditingTests
     public async Task Cleanup() { await vm.DeactivateAsync(); audio.Dispose(); }
 
     [Test]
+    public void OccupiedPlacementSelectsInsteadOfStacking()
+    {
+        var revision = vm.SamplesRevision;
+        Assert.That(vm.PlaceSample(first, 1000), Is.True);
+        Assert.That(first.Samples.Count, Is.EqualTo(2));
+        Assert.That(vm.SelectedSamples.Single(), Is.SameAs(a));
+        Assert.That(vm.SamplesRevision, Is.EqualTo(revision));
+    }
+
+    [Test]
     public void SelectionUsesLiveIdentityAndToggle()
     {
         Assert.That(vm.SelectNode(first, a, false), Is.True);
