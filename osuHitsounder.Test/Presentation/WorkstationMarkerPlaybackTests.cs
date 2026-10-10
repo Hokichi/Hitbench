@@ -249,7 +249,7 @@ public class WorkstationMarkerPlaybackTests
         await vm.PlayPauseCommand.ExecuteAsync(null);
         await Tick(25);
         audio.Snapshot = new AudioPlaybackSnapshot(TimeSpan.Zero, false, "device lost");
-        await StubWorkstationAudioService.WaitUntilAsync(() => playback.Latest.Playback.Error is not null);
+        await StubWorkstationAudioService.WaitUntilAsync(() => vm.ErrorMessage == "device lost");
         vm.RefreshPlayback();
         Assert.That(vm.ErrorMessage, Is.EqualTo("device lost"));
         await vm.PlayPauseCommand.ExecuteAsync(null);
