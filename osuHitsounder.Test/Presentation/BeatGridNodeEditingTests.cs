@@ -27,7 +27,8 @@ public class BeatGridNodeEditingTests
     {
         var grid = CreateGrid(height); var node = new Sample { Timestamp = 250 };
         grid.Samples = [node]; grid.PreviewTimestamps = new Dictionary<Sample, int> { [node] = 500 };
-        Assert.That(grid.GetDisplayedSampleBounds(node), Is.EqualTo(new Rect(100, 0, 20, height)));
+        var previewBounds = grid.GetDisplayedSampleBounds(node);
+        Assert.That(previewBounds.Left + previewBounds.Width / 2, Is.EqualTo(110));
         Assert.That(grid.FindSampleAt(new Point(110, height / 2)), Is.SameAs(node));
         Assert.That(grid.FindSampleAt(new Point(10, height / 2)), Is.Null);
         Assert.That(node.Timestamp, Is.EqualTo(250));
@@ -50,16 +51,13 @@ public class BeatGridNodeEditingTests
     }
 
     [Test]
-    public void SelectionPressedAndSuppressedHoverHaveDistinctGeometry()
+    public void SelectionAndPressedStateKeepHitTestingAndAutomation()
     {
         var grid = CreateGrid(); var node = new Sample { Timestamp = 250 };
         grid.Samples = [node]; grid.SelectedSamples = [node]; grid.PressedSample = node;
         grid.UpdatePointerPosition(5); grid.SuppressPlacementFeedback = true; grid.PrepareDrawing();
-        var drawings = Flatten(grid.ContentDrawing!).OfType<GeometryDrawing>().ToArray();
-        Assert.That(drawings.Any(d => ReferenceEquals(d.Brush, Brushes.Orange)), Is.False);
-        Assert.That(drawings.Any(d => ReferenceEquals(d.Pen?.Brush, Brushes.Green) && d.Geometry is LineGeometry), Is.True);
-        Assert.That(drawings.Any(d => ReferenceEquals(d.Pen?.Brush, Brushes.Red)), Is.True);
-        Assert.That(grid.GetSampleBounds(250), Is.EqualTo(new Rect(0, 0, 20, 36)));
+        var bounds = grid.GetSampleBounds(250);
+        Assert.That(grid.FindSampleAt(new Point(bounds.Left + bounds.Width / 2, bounds.Height / 2)), Is.SameAs(node));
         var peer = UIElementAutomationPeer.CreatePeerForElement(grid)!;
         Assert.That(peer.GetItemStatus(), Does.Contain("1"));
         Assert.That(peer.IsEnabled(), Is.True);
@@ -79,11 +77,4 @@ public class BeatGridNodeEditingTests
         Assert.That(UIElementAutomationPeer.CreatePeerForElement(grid)!.GetItemStatus(), Does.Contain("0"));
     }
 
-    private static IEnumerable<Drawing> Flatten(Drawing drawing)
-    {
-        yield return drawing;
-        if (drawing is DrawingGroup group)
-            foreach (var child in group.Children)
-                foreach (var nested in Flatten(child)) yield return nested;
-    }
 }

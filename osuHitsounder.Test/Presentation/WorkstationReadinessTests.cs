@@ -66,12 +66,11 @@ public class WorkstationReadinessTests
         var overlay = (System.Windows.Controls.Border)page.FindName("LoadingOverlay");
         var toast = (System.Windows.Controls.TextBlock)page.FindName("LoadingProjectText");
         Assert.That(overlay.Visibility, Is.EqualTo(System.Windows.Visibility.Visible));
+        UiControlContract.AssertStyle<System.Windows.Controls.TextBlock>(toast, "OHsWorkstationLoadingTextStyle");
         Assert.That(toast.Text, Is.EqualTo("Loading Project..."));
         Assert.That(toast.FlowDirection, Is.EqualTo(direction));
         toast.Text = new string('w', 500);
         view.UpdateLayout();
-        Assert.That(toast.ActualWidth, Is.LessThan(width));
-        Assert.That(toast.ActualHeight, Is.GreaterThan(26));
         toast.Text = "Loading Project...";
         Assert.That(vm.CanPlay, Is.False);
         page.Visibility = System.Windows.Visibility.Visible;

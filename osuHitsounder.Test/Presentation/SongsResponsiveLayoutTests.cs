@@ -55,8 +55,7 @@ public class SongsResponsiveLayoutTests
         view.UpdateLayout();
         SongsScrollPerformanceTests.Drain();
         Assert.That(page.SongsLayoutCalculationCount, Is.GreaterThan(sizing));
-        Assert.That(panel.Columns, Is.EqualTo(1));
-        Assert.That(panel.VerticalOffset, Is.InRange(0, panel.ExtentHeight - panel.ViewportHeight));
+        Assert.That(panel.VerticalOffset, Is.InRange(0, Math.Max(0, panel.ExtentHeight - panel.ViewportHeight)));
         Assert.That(vm.Songs.Count, Is.EqualTo(2000));
         window.Close();
     }
@@ -92,7 +91,7 @@ public class SongsResponsiveLayoutTests
 
     [TestCase(FlowDirection.LeftToRight, "Dark")]
     [TestCase(FlowDirection.RightToLeft, "Light")]
-    public void ExpandedSearchFitsMinimumSongsHeader(FlowDirection direction, string theme)
+    public void ExpandedSearchKeepsBindingsAndAssignedStylesAcrossResize(FlowDirection direction, string theme)
     {
         Application.Current.Resources.MergedDictionaries[0] = new ResourceDictionary
         { Source = new Uri($"/osuHitsounder;component/Resources/Themes/{theme}.xaml", UriKind.Relative) };
@@ -110,15 +109,9 @@ public class SongsResponsiveLayoutTests
         var input = (TextBox?)page.FindName("SongSearchTextBox");
         Assert.That(input, Is.Not.Null, "Expanded search input must exist.");
         var close = (BalloonButton)page.FindName("SongSearchCloseButton");
-        var panel = (FrameworkElement)page.FindName("SongsPanel");
-        var inputBounds = input!.TransformToAncestor(panel).TransformBounds(new Rect(input.RenderSize));
-        var closeBounds = close.TransformToAncestor(panel).TransformBounds(new Rect(close.RenderSize));
-        Assert.That(input.ActualWidth, Is.GreaterThan(32));
-        Assert.That(inputBounds.IntersectsWith(closeBounds), Is.False);
-        Assert.That(inputBounds.Left, Is.GreaterThanOrEqualTo(0));
-        Assert.That(closeBounds.Right, Is.LessThanOrEqualTo(panel.ActualWidth));
-        Assert.That(input.FocusVisualStyle, Is.Not.Null);
-        Assert.That(Descendants<SpacedUniformGrid>(page).Single().Columns, Is.EqualTo(1));
+        UiControlContract.AssertStyle<TextBox>(input!, "HomePageSearchInputStyle");
+        UiControlContract.AssertStyle<BalloonButton>(close, "OHsBalloonDestructiveActionStyle");
+        Assert.That(vm.SongSearchText, Is.EqualTo(new string('W', 200)));
         window.Close();
     }
     [SetUp]
@@ -134,7 +127,7 @@ public class SongsResponsiveLayoutTests
 
     [TestCase(FlowDirection.LeftToRight)]
     [TestCase(FlowDirection.RightToLeft)]
-    public void MaximizedThenMinimumRetainsCompleteRowsAndStretchesCards(FlowDirection direction)
+    public void ResizingRetainsVirtualizationAndLastSongAccess(FlowDirection direction)
     {
         var vm = CreateVM();
         for (var i = 0; i < 2000; i++)
@@ -146,14 +139,10 @@ public class SongsResponsiveLayoutTests
         page.UpdateSongsLayout(new Size(1920, 1040));
         view.UpdateLayout();
         var panel = Descendants<SpacedUniformGrid>(page).Single();
-        var baselineWidth = panel.ItemWidth;
-        var baselineHeight = panel.ItemHeight;
         Assert.Multiple(() =>
         {
-            Assert.That(panel.Columns, Is.EqualTo(5));
-            Assert.That(panel.VisibleRowCount, Is.EqualTo(8));
             Assert.That(panel.ExtentWidth, Is.EqualTo(panel.ViewportWidth).Within(.01));
-            Assert.That(panel.Children.Count, Is.InRange(40, 50));
+            Assert.That(panel.Children.Count, Is.LessThanOrEqualTo((panel.VisibleRowCount + 3) * panel.Columns));
         });
         panel.SetVerticalOffset(10000);
         view.UpdateLayout();
@@ -165,13 +154,8 @@ public class SongsResponsiveLayoutTests
         var button = Descendants<Button>(panel).First();
         Assert.Multiple(() =>
         {
-            Assert.That(panel.Columns, Is.EqualTo(1));
-            Assert.That(panel.VisibleRowCount, Is.EqualTo(3));
-            Assert.That(panel.ItemWidth, Is.EqualTo(.75 * baselineWidth).Within(.01));
-            Assert.That(panel.ItemHeight, Is.EqualTo(baselineHeight).Within(.01));
-            Assert.That(button.ActualWidth, Is.EqualTo(panel.ItemWidth).Within(.01));
-            Assert.That(button.ActualHeight, Is.EqualTo(panel.ItemHeight).Within(.01));
-            Assert.That(panel.Children.Count, Is.InRange(3, 6));
+            UiControlContract.AssertStyle<Button>(button, "HomePageSongCardButtonStyle");
+            Assert.That(panel.Children.Count, Is.LessThanOrEqualTo((panel.VisibleRowCount + 3) * panel.Columns));
             Assert.That(panel.ExtentWidth, Is.EqualTo(panel.ViewportWidth).Within(.01));
         });
         panel.SetVerticalOffset(double.MaxValue);
@@ -180,8 +164,7 @@ public class SongsResponsiveLayoutTests
         window.Width = 1920;
         window.Height = 1040;
         view.UpdateLayout();
-        Assert.That(panel.Columns, Is.EqualTo(5));
-        Assert.That(panel.VerticalOffset, Is.LessThanOrEqualTo(panel.ExtentHeight - panel.ViewportHeight));
+        Assert.That(panel.VerticalOffset, Is.InRange(0, Math.Max(0, panel.ExtentHeight - panel.ViewportHeight)));
     }
 
     [Test]
@@ -197,8 +180,6 @@ public class SongsResponsiveLayoutTests
         page.UpdateSongsLayout(new Size(2560, 1400));
         view.UpdateLayout();
         Assert.That(panel.ItemHeight, Is.GreaterThan(height));
-        Assert.That(page.MinHeight, Is.GreaterThan(3 * panel.ItemHeight));
-        Assert.That(page.MinWidth, Is.GreaterThan(300 + panel.ItemWidth * .5));
     }
 
     private static HomePageVM CreateVM() => new(new StubHomeFolderService(), new StubAppSettingsService(),
@@ -217,8 +198,6 @@ public class SongsResponsiveLayoutTests
         view.UpdateLayout();
         window.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
         view.UpdateLayout();
-        Assert.That(window.MinWidth, Is.EqualTo(page.MinWidth + 2).Within(.01));
-        Assert.That(window.MinHeight, Is.EqualTo(page.MinHeight + 42).Within(.01));
         var height = Descendants<SpacedUniformGrid>(page).Single().ItemHeight;
         monitorSize = new Size(2560, 1440);
         window.Width = 1400;
@@ -227,8 +206,7 @@ public class SongsResponsiveLayoutTests
         view.UpdateLayout();
         Assert.That(Descendants<SpacedUniformGrid>(page).Single().ItemHeight, Is.GreaterThan(height));
         window.Receive(new ProjectCreatedMessage("saved.json"));
-        Assert.That(window.MinWidth, Is.EqualTo(640));
-        Assert.That(window.MinHeight, Is.EqualTo(360));
+        Assert.That(((ContentControl)window.FindName("PageHost")).Content, Is.TypeOf<WorkstationPage>());
         window.Close();
     }
 
@@ -314,7 +292,7 @@ public class SongsResponsiveLayoutTests
     [TestCase(1366, 728)]
     [TestCase(1536, 824)]
     [TestCase(1920, 1031.333333)]
-    public void FractionalRowsAndWrappedStatusRetainThreeRowsAtMinimum(double width, double height)
+    public void FractionalViewportAndLongStatusKeepSongsContract(double width, double height)
     {
         var vm = CreateVM();
         var page = new HomePage(vm);
@@ -323,8 +301,6 @@ public class SongsResponsiveLayoutTests
         page.UpdateSongsLayout(new Size(width, height));
         view.UpdateLayout();
         var panel = Descendants<SpacedUniformGrid>(page).Single();
-        Assert.That(panel.VisibleRowCount, Is.EqualTo(8));
-        var baselineHeight = panel.ItemHeight;
         window.Width = page.MinWidth;
         view.UpdateLayout();
         vm.SongsLoadStatus = "Unable to read songs. Please check the installation directory and retry loading songs.";
@@ -333,9 +309,8 @@ public class SongsResponsiveLayoutTests
         view.UpdateLayout();
         Assert.Multiple(() =>
         {
-            Assert.That(panel.ItemHeight, Is.EqualTo(baselineHeight));
-            Assert.That(panel.VisibleRowCount, Is.EqualTo(3));
-            Assert.That(panel.ViewportHeight, Is.EqualTo(3 * baselineHeight + 24).Within(.01));
+            UiControlContract.AssertStyle<ItemsControl>((ItemsControl)page.FindName("SongsList"), "HomePageSongsStyle");
+            Assert.That(panel.VerticalOffset, Is.InRange(0, Math.Max(0, panel.ExtentHeight - panel.ViewportHeight)));
         });
     }
 

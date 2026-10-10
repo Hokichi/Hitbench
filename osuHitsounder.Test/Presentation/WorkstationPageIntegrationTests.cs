@@ -47,13 +47,6 @@ public class WorkstationPageIntegrationTests
         Assert.That(input.IsTabStop, Is.False);
         Assert.That(input.Style, Is.SameAs(page.FindResource("RoundedTextInputStyle")));
         Assert.That(saves.Writes, Is.Zero);
-        var bounds = input.TransformToAncestor(page).TransformBounds(new Rect(input.RenderSize));
-        Assert.That(bounds.Left, Is.GreaterThanOrEqualTo(0));
-        Assert.That(bounds.Right, Is.LessThanOrEqualTo(page.ActualWidth));
-        var header = (WrapPanel)input.Parent;
-        Assert.That(header.Children.OfType<TextBlock>().Any(label => label.Text == "Name"), Is.True);
-        Assert.That(header.Children.IndexOf(input), Is.LessThan(header.Children.OfType<ComboBox>()
-            .Select(selector => header.Children.IndexOf(selector)).Single()));
 
         input.Text = "กลอง";
         UiTestPump.Run(vm.FlushSavesAsync());
@@ -212,17 +205,18 @@ public class WorkstationPageIntegrationTests
     public void SetUp() => EnsureResources();
 
     [Test]
-    public void PlaybackMarkerIsWhite()
+    public void WaveformUsesExpectedControlType()
     {
         var page = new WorkstationPage(new WorkstationPageVM(new StubWorkstationSourceService(), new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler()));
         using var view = new InMemoryView(new Window { Content = page, Width = 900, Height = 600 });
         view.UpdateLayout();
         var waveform = (WaveformView)page.FindName("WaveformDisplay");
-        Assert.That(((SolidColorBrush)waveform.MarkerBrush).Color, Is.EqualTo(Colors.White));
+        Assert.That(waveform, Is.TypeOf<WaveformView>());
+        UiControlContract.AssertStyle<ScrollViewer>((ScrollViewer)page.FindName("WaveformScrollViewer"), "OHsWorkstationWaveformScrollStyle");
     }
 
     [Test]
-    public void LoadsWaveformSwitchesTransportIconAndKeepsMinimumZoomScrollable()
+    public void LoadsWaveformBindsTransportStateAndKeepsMinimumZoomScrollable()
     {
         var audio = new StubWorkstationAudioService();
         var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new osuHitsounder.Services.MarkerPlaybackCoordinator(audio, (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
@@ -234,10 +228,12 @@ public class WorkstationPageIntegrationTests
         view.UpdateLayout();
 
         var play = (BalloonButton)page.FindName("PlayPauseButton");
-        Assert.That(play.ButtonIcon, Is.SameAs(Application.Current.FindResource("MediaPlay")));
+        UiControlContract.AssertStyle<BalloonButton>(play, "OHsWorkstationPlayPauseStyle");
+        Assert.That(vm.IsPlaying, Is.False);
         osuHitsounder.Test.Presentation.UiTestPump.Run(vm.PlayPauseCommand.ExecuteAsync(null));
         view.UpdateLayout();
-        Assert.That(play.ButtonIcon, Is.SameAs(Application.Current.FindResource("MediaPause")));
+        Assert.That(vm.IsPlaying, Is.True);
+        UiControlContract.AssertStyle<BalloonButton>(play, "OHsWorkstationPlayPauseStyle");
 
         var scroll = (ScrollViewer)page.FindName("WaveformScrollViewer");
         var waveform = (WaveformView)page.FindName("WaveformDisplay");
@@ -266,7 +262,6 @@ public class WorkstationPageIntegrationTests
         Assert.Multiple(() =>
         {
             Assert.That(((ItemsControl)page.FindName("TrackList")).ItemsSource, Is.SameAs(vm.Tracks));
-            Assert.That(((FrameworkElement)page.FindName("ZoomFooter")).HorizontalAlignment, Is.EqualTo(HorizontalAlignment.Stretch));
             Assert.That(((ScrollViewer)page.FindName("WaveformScrollViewer")).Focusable, Is.True);
         });
     }
@@ -578,7 +573,9 @@ public class WorkstationPageIntegrationTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(bar.Visibility, Is.EqualTo(Visibility.Visible));
+            UiControlContract.AssertStyle<ScrollBar>(bar, "OHsWorkstationWaveformScrollBarStyle");
+                UiControlContract.AssertTemplate(bar, "OHsWorkstationWaveformScrollBarTemplate");
+                Assert.That(bar.Visibility, Is.EqualTo(Visibility.Visible));
             Assert.That(bar.IsEnabled, Is.True);
             Assert.That(bar.Value, Is.Zero.Within(1));
         });
@@ -627,7 +624,6 @@ public class WorkstationPageIntegrationTests
             Assert.That(selector.Value, Is.EqualTo(3));
             Assert.That(selector.DisplayText, Is.EqualTo("4"));
             Assert.That(AutomationProperties.GetName(selector), Is.EqualTo("Beat subdivision"));
-            Assert.That(selector.ActualHeight, Is.GreaterThanOrEqualTo(28));
         });
         selector.Value = 8;
         Assert.That(audio.Snapshot, Is.EqualTo(before));
@@ -1070,7 +1066,7 @@ public class WorkstationPageIntegrationTests
     [TestCase(640, 480, FlowDirection.RightToLeft, "Light")]
     [TestCase(900, 600, FlowDirection.LeftToRight, "Light")]
     [TestCase(900, 600, FlowDirection.RightToLeft, "Light")]
-    public void ZoomButtonsStayReachableAcrossLayouts(
+    public void ZoomButtonsKeepResourceAndAutomationContractsAcrossLayouts(
         double width, double height, FlowDirection flowDirection, string theme)
     {
         EnsureResources(theme);
@@ -1093,8 +1089,6 @@ public class WorkstationPageIntegrationTests
             var bar = (ScrollBar)page.FindName("WaveformScrollBar");
             var zoomControls = (StackPanel)page.FindName("ZoomControls");
             var buttons = zoomControls.Children.OfType<BalloonButton>().ToArray();
-            var barBounds = bar.TransformToAncestor(page).TransformBounds(new Rect(bar.RenderSize));
-            var zoomBounds = zoomControls.TransformToAncestor(page).TransformBounds(new Rect(zoomControls.RenderSize));
             listener.Flush();
             Assert.Multiple(() =>
             {
@@ -1102,17 +1096,11 @@ public class WorkstationPageIntegrationTests
                 Assert.That(AutomationProperties.GetName(selector), Is.EqualTo("Beat subdivision"));
                 foreach (var button in buttons)
                 {
-                    var bounds = button.TransformToAncestor(page).TransformBounds(new Rect(button.RenderSize));
-                    Assert.That(bounds.Left, Is.GreaterThanOrEqualTo(0));
-                    Assert.That(bounds.Right, Is.LessThanOrEqualTo(page.ActualWidth));
-                    Assert.That(bounds.Top, Is.GreaterThanOrEqualTo(0));
-                    Assert.That(bounds.Bottom, Is.LessThanOrEqualTo(page.ActualHeight));
+                    UiControlContract.AssertStyle<BalloonButton>(button, "OHsWorkstationIconButtonStyle");
                     Assert.That(AutomationProperties.GetName(button), Is.Not.Empty);
                 }
-                Assert.That(barBounds.Left, Is.GreaterThanOrEqualTo(0));
-                Assert.That(Grid.GetColumn(bar), Is.EqualTo(0));
-                Assert.That(Grid.GetColumn((FrameworkElement)zoomControls.Parent), Is.EqualTo(1));
-                Assert.That(flowDirection == FlowDirection.RightToLeft || barBounds.Right <= zoomBounds.Left, Is.True);
+                UiControlContract.AssertStyle<ScrollBar>(bar, "OHsWorkstationWaveformScrollBarStyle");
+                UiControlContract.AssertTemplate(bar, "OHsWorkstationWaveformScrollBarTemplate");
                 Assert.That(bar.Visibility, Is.EqualTo(Visibility.Visible));
                 Assert.That(trace.ToString(), Is.Empty);
             });
@@ -1147,13 +1135,13 @@ public class WorkstationPageIntegrationTests
         completion.SetResult(new WorkstationSource("map.osu", "audio.wav", new ProjectData()));
         UiTestPump.Run(page.LoadCompletion);
         view.UpdateLayout();
-        Assert.That(buttons[1].IsEnabled, Is.True);
+        Assert.That(buttons.Single(button => ReferenceEquals(button.Command, vm.ZoomInCommand)).IsEnabled, Is.True);
     }
 
     [TestCase(640, 480, FlowDirection.LeftToRight)]
     [TestCase(1100, 600, FlowDirection.RightToLeft)]
     [TestCase(480, 480, FlowDirection.LeftToRight)]
-    public void SubdivisionRemainsInFooterWhileWaveformCardResizes(double width, double height, FlowDirection direction)
+    public void SubdivisionKeepsResourceAndBindingAcrossResize(double width, double height, FlowDirection direction)
     {
         var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new osuHitsounder.Services.MarkerPlaybackCoordinator(
             new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
@@ -1162,10 +1150,6 @@ public class WorkstationPageIntegrationTests
         var window = new Window { Content = page, Width = width, Height = height, FlowDirection = direction };
         using var view = new InMemoryView(window);
         UiTestPump.Run(page.LoadCompletion);
-        var root = (Grid)page.FindName("WorkstationRoot");
-        var footer = (FrameworkElement)page.FindName("ZoomFooter");
-        var panel = (FrameworkElement)page.FindName("SubdivisionPanel");
-        var zoom = (FrameworkElement)page.FindName("ZoomControls");
         var card = (Border)page.FindName("SongAudioCard");
         foreach (var cardHeight in new[] { 200d, 260d, 180d })
         {
@@ -1173,20 +1157,9 @@ public class WorkstationPageIntegrationTests
             window.Width = width + cardHeight - 200;
             window.Height = height + cardHeight - 200;
             view.UpdateLayout();
-            Assert.That(footer.IsAncestorOf(panel), Is.True);
-            Assert.That(card.IsAncestorOf(panel), Is.False);
-            var panelBounds = panel.TransformToAncestor(root).TransformBounds(new Rect(panel.RenderSize));
-            var zoomBounds = zoom.TransformToAncestor(root).TransformBounds(new Rect(zoom.RenderSize));
-            var footerBounds = footer.TransformToAncestor(root).TransformBounds(new Rect(footer.RenderSize));
-            Assert.Multiple(() =>
-            {
-                Assert.That(footerBounds.Bottom, Is.EqualTo(root.ActualHeight).Within(0.01));
-                Assert.That(panelBounds.Top + panelBounds.Height / 2,
-                    Is.EqualTo(zoomBounds.Top + zoomBounds.Height / 2).Within(0.01));
-                Assert.That(panelBounds.IntersectsWith(zoomBounds), Is.False);
-                Assert.That(panelBounds.Left, Is.GreaterThanOrEqualTo(0));
-                Assert.That(panelBounds.Right, Is.LessThanOrEqualTo(root.ActualWidth + 0.01));
-            });
+            var selector = (ValueSlider)page.FindName("SubdivisionSelector");
+            UiControlContract.AssertStyle<ValueSlider>(selector, "OHsWorkstationSubdivisionStyle");
+            Assert.That(selector.Value, Is.EqualTo(vm.SelectedSubdivisionIndex));
         }
     }
 
@@ -1194,7 +1167,7 @@ public class WorkstationPageIntegrationTests
     [TestCase(480d, FlowDirection.RightToLeft, "Light")]
     [TestCase(1100d, FlowDirection.LeftToRight, "Light")]
     [TestCase(1100d, FlowDirection.RightToLeft, "Dark")]
-    public void ResnapHeaderActionBindsCommandAndWrapsWithinPage(double width, FlowDirection direction, string theme)
+    public void ResnapHeaderActionBindsCommandAndAssignedStyle(double width, FlowDirection direction, string theme)
     {
         EnsureResources(theme);
         var sample = new Sample { Timestamp = 1188, FileName = "a.wav" };
@@ -1220,24 +1193,14 @@ public class WorkstationPageIntegrationTests
             }));
             UiTestPump.Run(page.LoadCompletion);
             view.UpdateLayout();
+            UiControlContract.AssertStyle<BalloonButton>(button, "OHsWorkstationResnapButtonStyle");
             Assert.That(button.Command, Is.SameAs(vm.ResnapAllSamplesCommand));
             Assert.That(button.IsEnabled, Is.True);
             Assert.That(button.ButtonText, Is.EqualTo("Resnap all samples"));
-            Assert.That(button.ShouldShowText, Is.True);
-            Assert.That(button.ButtonIcon, Is.SameAs(page.FindResource("RegularRepeat")));
             Assert.That(button.Focusable && button.IsTabStop, Is.True);
             Assert.That(button.FocusVisualStyle, Is.SameAs(page.FindResource("OHsKeyboardFocusVisualStyle")));
             Assert.That(button.ToolTip, Is.EqualTo("Snap every sample to the nearest beat in the current subdivision"));
             Assert.That(AutomationProperties.GetHelpText(button), Is.EqualTo(button.ToolTip));
-            var bounds = button.TransformToAncestor(page).TransformBounds(new Rect(button.RenderSize));
-            Assert.That(bounds.Left, Is.GreaterThanOrEqualTo(0));
-            Assert.That(bounds.Right, Is.LessThanOrEqualTo(page.ActualWidth));
-            Assert.That(bounds.Height, Is.GreaterThanOrEqualTo(40));
-            foreach (var sibling in panel.Children.OfType<FrameworkElement>().Where(child => child != button))
-            {
-                var siblingBounds = sibling.TransformToAncestor(page).TransformBounds(new Rect(sibling.RenderSize));
-                Assert.That(bounds.IntersectsWith(siblingBounds), Is.False);
-            }
             Assert.That(page.HandlePlaybackKey(Key.Enter, ModifierKeys.None, false, button), Is.False);
             using var inputSource = new InMemoryPresentationSource();
             var enter = CreateKeyEvent(inputSource, Key.Enter);

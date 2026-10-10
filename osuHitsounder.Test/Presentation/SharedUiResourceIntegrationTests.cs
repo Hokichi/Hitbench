@@ -42,7 +42,9 @@ public sealed class SharedUiResourceIntegrationTests
         Assert.That(button.ApplyTemplate(), Is.True);
         var text = (TextBlock?)button.Template.FindName("PART_ButtonText", button);
         Assert.That(text, Is.Not.Null);
-        Assert.That(text!.FontFamily, Is.SameAs(app.FindResource("Bold")));
+        Assert.That(text!.Text, Is.EqualTo("Deferred font"));
+        UiControlContract.AssertStyle<BalloonButton>(button, typeof(BalloonButton));
+        UiControlContract.AssertTemplate(button, "BalloonControlTemplate");
     }
 
     [Test]
@@ -81,14 +83,11 @@ public sealed class SharedUiResourceIntegrationTests
         popup.Close();
     }
 
-    [TestCase("OHsBalloonNeutralActionStyle", "Brush.BalloonButton.Background.Neutral", "Brush.BalloonButton.Background.Neutral.Hovered")]
-    [TestCase("OHsBalloonDefaultActionStyle", "Brush.BalloonButton.Background.Default", "Brush.BalloonButton.Background.Default.Hovered")]
-    [TestCase("OHsBalloonConfirmActionStyle", "Brush.BalloonButton.Background.ConfirmSave", "Brush.BalloonButton.Background.ConfirmSave.Hovered")]
-    [TestCase("OHsBalloonDestructiveActionStyle", "Brush.BalloonButton.Background.Destructive", "Brush.BalloonButton.Background.Destructive.Hovered")]
-    public void BalloonActionStyles_ProvideSharedGeometryAndSemanticBrushes(
-        string styleKey,
-        string defaultBrushKey,
-        string hoveredBrushKey)
+    [TestCase("OHsBalloonNeutralActionStyle")]
+    [TestCase("OHsBalloonDefaultActionStyle")]
+    [TestCase("OHsBalloonConfirmActionStyle")]
+    [TestCase("OHsBalloonDestructiveActionStyle")]
+    public void BalloonActionStyles_ProvideAssignedControlContracts(string styleKey)
     {
         var app = Application.Current ?? new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
         app.Resources.MergedDictionaries.Clear();
@@ -119,16 +118,7 @@ public sealed class SharedUiResourceIntegrationTests
         Assert.That(style!.TargetType, Is.EqualTo(typeof(BalloonButton)));
 
         var button = new BalloonButton { Style = style };
-        Assert.Multiple(() =>
-        {
-            Assert.That(button.ButtonSize, Is.EqualTo(40));
-            Assert.That(button.CornerRadius, Is.EqualTo(8));
-            Assert.That(button.CurveHeight, Is.EqualTo(8));
-            Assert.That(button.IconSize, Is.EqualTo(12));
-            Assert.That(button.Padding, Is.EqualTo(new Thickness(12)));
-            Assert.That(button.FontSize, Is.EqualTo(12));
-            Assert.That(button.DefaultBackground, Is.SameAs(app.TryFindResource(defaultBrushKey)));
-            Assert.That(button.HoveredBackground, Is.SameAs(app.TryFindResource(hoveredBrushKey)));
-        });
+        UiControlContract.AssertStyle<BalloonButton>(button, styleKey);
+        UiControlContract.AssertTemplate(button, "BalloonControlTemplate");
     }
 }

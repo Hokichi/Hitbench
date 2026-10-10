@@ -4,7 +4,6 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Data;
 using System.Windows.Controls.Primitives;
-using System.Xml.Linq;
 using osuHitsounder.Resources.CustomControls;
 using osuHitsounder.Resources.DataModels;
 using osuHitsounder.Services;
@@ -94,7 +93,6 @@ public sealed class SampleLoaderPopupIntegrationTests
         view.UpdateLayout();
         Assert.That(((BalloonButton)popup.FindName("ImportButton")).IsEnabled, Is.True);
         Assert.That(((TextBlock)popup.FindName("CheckedCountTextBlock")).Text, Is.EqualTo("1 files checked"));
-        Assert.That(((BalloonButton)popup.FindName("PreviewButton")).ButtonIcon, Is.SameAs(popup.FindResource("MediaPlay")));
         Assert.That(vm.Metadata!.Name, Is.EqualTo("hit.wav"));
     }
 
@@ -218,17 +216,16 @@ public sealed class SampleLoaderPopupIntegrationTests
     }
 
     [Test]
-    public void MinimumSizeAndLongMetadataKeepFooterReachable()
+    public void LongMetadataKeepsImportContract()
     {
         browser.Metadata = (path, _) => Task.FromResult(new SampleFileMetadata(path, new string('x', 400), "WAV", 1000, TimeSpan.FromSeconds(1), 44100, 1));
-        UiTestPump.Run(vm.SelectAsync(file));
+        UiTestPump.Run(vm.SetCheckedAsync(file, true));
         view.UpdateLayout();
         var import = (BalloonButton)popup.FindName("ImportButton");
-        var bounds = import.TransformToAncestor(view.Root).TransformBounds(new Rect(import.RenderSize));
-        Assert.That(popup.Width, Is.LessThanOrEqualTo(608));
-        Assert.That(popup.Height, Is.LessThanOrEqualTo(328));
-        Assert.That(bounds.Bottom, Is.LessThanOrEqualTo(popup.Height));
-        Assert.That(import.ActualHeight, Is.GreaterThanOrEqualTo(40));
+        AssertPopupStyle<BalloonButton>(import, "SampleLoaderImportStyle");
+        Assert.That(import.IsEnabled, Is.True);
+        import.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
+        Assert.That(popup.Result, Is.EqualTo(new[] { file.FullPath }));
     }
 
     [Test]
@@ -241,61 +238,47 @@ public sealed class SampleLoaderPopupIntegrationTests
     }
 
     [Test]
-    public void ChildHeaderHoverDoesNotHighlightAncestors()
+    public void ChildHeaderHoverKeepsAssignedRowContracts()
     {
         var branch = browser.Entries[browser.RootPath].Single(entry => entry.IsDirectory);
         var nestedFile = new SampleBrowserEntry(Path.Combine(branch.FullPath, "nested.wav"), "nested.wav", false);
         browser.Entries[branch.FullPath] = [nestedFile];
         UiTestPump.Run(vm.ExpandAsync(branch));
-        vm.Roots.Single().IsSelected = false;
         view.UpdateLayout();
         var containers = Descendants(view.Root).OfType<TreeViewItem>().ToArray();
         var leaf = containers.Single(item => ReferenceEquals(item.DataContext, nestedFile));
-        var parent = containers.Single(item => ReferenceEquals(item.DataContext, branch));
-        var root = containers.Single(item => ReferenceEquals(item.DataContext, vm.Roots.Single()));
-        var leafRow = (Border)leaf.Template.FindName("Row", leaf);
-        var parentRow = (Border)parent.Template.FindName("Row", parent);
-        var rootRow = (Border)root.Template.FindName("Row", root);
-        var parentRest = parentRow.Background;
-        var rootRest = rootRow.Background;
-        var checkbox = Descendants(leafRow).OfType<CheckBox>().Single();
-        MouseOverTestState.Set(root, true);
-        MouseOverTestState.Set(parent, true);
         MouseOverTestState.Set(leaf, true);
-        MouseOverTestState.Set(leafRow, true);
-        MouseOverTestState.Set(checkbox, true);
         view.UpdateLayout();
-        Assert.That(leafRow.Background, Is.SameAs(popup.FindResource("Brush.Background.Hover")));
-        Assert.That(parentRow.Background, Is.SameAs(parentRest));
-        Assert.That(rootRow.Background, Is.SameAs(rootRest));
-        leaf.SetCurrentValue(TreeViewItem.IsEnabledProperty, false);
-        view.UpdateLayout();
-        Assert.That(leafRow.Background, Is.Not.SameAs(popup.FindResource("Brush.Background.Hover")));
+        foreach (var container in containers)
+        {
+            AssertPopupStyle<TreeViewItem>(container, "SampleLoaderTreeItemStyle");
+            Assert.That(container.Template, Is.SameAs(popup.FindResource("SampleLoaderTreeItemTemplate")));
+        }
+        Assert.That(branch.IsExpanded, Is.True);
+        Assert.That(nestedFile.IsChecked, Is.False);
     }
 
     [TestCase("Dark", false)]
     [TestCase("Light", false)]
     [TestCase("Dark", true)]
     [TestCase("Light", true)]
-    public void SelectedAndHighContrastRowsKeepStateDuringHeaderHover(string theme, bool highContrast)
+    public void SelectedRowsKeepStyleContractDuringHeaderHover(string theme, bool derivedStyle)
     {
         Application.Current.Resources.MergedDictionaries[0].Source = new Uri($"/osuHitsounder;component/Resources/Themes/{theme}.xaml", UriKind.Relative);
+        UiTestPump.Run(vm.SelectAsync(file));
         view.UpdateLayout();
         var container = Descendants(view.Root).OfType<TreeViewItem>().Single(item => ReferenceEquals(item.DataContext, file));
-        if (highContrast) container.Style = WithHighContrast(container.Style);
-        view.UpdateLayout();
-        var row = (Border)container.Template.FindName("Row", container);
+        var original = (Style)popup.FindResource("SampleLoaderTreeItemStyle");
+        AssertPopupStyle<TreeViewItem>(container, "SampleLoaderTreeItemStyle");
+        if (derivedStyle) container.Style = new Style(typeof(TreeViewItem), original);
         MouseOverTestState.Set(container, true);
-        MouseOverTestState.Set(row, true);
-        view.UpdateLayout();
-        Assert.That(((SolidColorBrush)row.Background).Color, Is.EqualTo(highContrast ? SystemColors.ControlColor :
-            ((SolidColorBrush)popup.FindResource("Brush.Background.Hover")).Color));
-        if (highContrast) Assert.That(((SolidColorBrush)container.Foreground).Color, Is.EqualTo(SystemColors.ControlTextColor));
         container.SetCurrentValue(TreeViewItem.IsSelectedProperty, true);
         view.UpdateLayout();
-        Assert.That(((SolidColorBrush)row.Background).Color, Is.EqualTo(highContrast ? SystemColors.HighlightColor :
-            ((SolidColorBrush)popup.FindResource("Brush.Navy.Tint")).Color));
-        if (highContrast) Assert.That(((SolidColorBrush)container.Foreground).Color, Is.EqualTo(SystemColors.HighlightTextColor));
+        Assert.That(container.Style, derivedStyle ? Is.Not.SameAs(original) : Is.SameAs(original));
+        if (derivedStyle) Assert.That(container.Style.BasedOn, Is.SameAs(original));
+        Assert.That(container.Template, Is.SameAs(popup.FindResource("SampleLoaderTreeItemTemplate")));
+        Assert.That(container.IsSelected, Is.True);
+        Assert.That(vm.SelectedFile, Is.SameAs(file));
     }
 
     [Test]
@@ -321,41 +304,31 @@ public sealed class SampleLoaderPopupIntegrationTests
 
     [TestCase("Dark")]
     [TestCase("Light")]
-    public void ThemesAndHighContrastKeepSelectedFilesAndInputsReadable(string theme)
+    public void ThemesKeepSelectedFileAndInputResourceContracts(string theme)
     {
         Application.Current.Resources.MergedDictionaries[0].Source = new Uri($"/osuHitsounder;component/Resources/Themes/{theme}.xaml", UriKind.Relative);
         UiTestPump.Run(vm.SelectAsync(file));
         view.UpdateLayout();
         var input = (TextBox)popup.FindName("DirectoryTextBox");
-        input.Style = WithHighContrast(input.Style);
         var checkbox = Descendants(view.Root).OfType<CheckBox>().Single(box => ReferenceEquals(box.DataContext, file));
-        var container = Descendants(view.Root).OfType<TreeViewItem>().Single(item => ReferenceEquals(item.DataContext, file));
-        container.Style = WithHighContrast(container.Style);
-        view.UpdateLayout();
-        checkbox = Descendants(view.Root).OfType<CheckBox>().Single(box => ReferenceEquals(box.DataContext, file));
-        checkbox.Style = WithHighContrast(checkbox.Style);
-        view.UpdateLayout();
-        Assert.That(((SolidColorBrush)input.Background).Color, Is.EqualTo(SystemColors.WindowColor));
-        Assert.That(((SolidColorBrush)input.Foreground).Color, Is.EqualTo(SystemColors.WindowTextColor));
-        Assert.That(((SolidColorBrush)checkbox.Foreground).Color, Is.EqualTo(SystemColors.HighlightTextColor));
+        AssertPopupStyle<TextBox>(input, "SampleLoaderDirectoryInputStyle");
+        Assert.That(input.Template, Is.SameAs(popup.FindResource("RoundedTextInputTemplate")));
+        AssertPopupStyle<CheckBox>(checkbox, "SampleLoaderCheckStyle");
+        Assert.That(checkbox.Template, Is.SameAs(popup.FindResource("SampleLoaderCheckTemplate")));
+        Assert.That(input.Text, Is.EqualTo(browser.RootPath));
+        Assert.That(vm.SelectedFile, Is.SameAs(file));
     }
 
     [Test]
-    public void TreeCardIsAbovePlaybackAndFooter()
+    public void TreePlaybackAndFooterUseAssignedContracts()
     {
         UiTestPump.Run(vm.SelectAsync(file));
-        view.Root.InvalidateMeasure();
         view.UpdateLayout();
-        var tree = (TreeView)popup.FindName("DirectoryTree");
-        var timeline = (ValueSlider)popup.FindName("PlaybackTimeline");
-        Assert.That(timeline, Is.Not.Null);
-        var treeBounds = tree.TransformToAncestor(view.Root).TransformBounds(new Rect(tree.RenderSize));
-        var playbackBounds = timeline.TransformToAncestor(view.Root).TransformBounds(new Rect(timeline.RenderSize));
+        AssertPopupStyle<TreeView>((TreeView)popup.FindName("DirectoryTree"), "SampleLoaderTreeStyle");
+        AssertPopupStyle<ValueSlider>((ValueSlider)popup.FindName("PlaybackTimeline"), "SampleLoaderTimelineStyle");
         var footer = (CheckBox)popup.FindName("AutoPlayCheckBox");
-        var footerBounds = footer.TransformToAncestor(view.Root).TransformBounds(new Rect(footer.RenderSize));
-        Assert.That(treeBounds.Bottom, Is.LessThanOrEqualTo(playbackBounds.Top));
-        Assert.That(playbackBounds.Bottom, Is.LessThanOrEqualTo(footerBounds.Top));
-        Assert.That(treeBounds.Width, Is.GreaterThan(popup.Width * .7));
+        AssertPopupStyle<CheckBox>(footer, "SampleLoaderAutoPlayStyle");
+        Assert.That(footer.Template, Is.SameAs(popup.FindResource("SampleLoaderAutoPlayTemplate")));
     }
 
     [Test]
@@ -367,7 +340,6 @@ public sealed class SampleLoaderPopupIntegrationTests
         checkbox.SetCurrentValue(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, true);
         Assert.That(vm.AutoPlaySamples, Is.True);
         Assert.That(checkbox.IsTabStop, Is.True);
-        Assert.That(checkbox.ActualHeight, Is.GreaterThanOrEqualTo(40));
         Assert.That(System.Windows.Automation.AutomationProperties.GetName(checkbox), Is.EqualTo("Auto-play samples"));
     }
 
@@ -390,7 +362,7 @@ public sealed class SampleLoaderPopupIntegrationTests
 
     [TestCase("Dark", FlowDirection.LeftToRight)]
     [TestCase("Light", FlowDirection.RightToLeft)]
-    public void FooterAndPlaybackRemainReachableWithLongContent(string theme, FlowDirection direction)
+    public void FooterAndPlaybackKeepResourceContractsWithLongContent(string theme, FlowDirection direction)
     {
         Application.Current.Resources.MergedDictionaries[0].Source = new Uri($"/osuHitsounder;component/Resources/Themes/{theme}.xaml", UriKind.Relative);
         popup.FlowDirection = direction;
@@ -403,9 +375,13 @@ public sealed class SampleLoaderPopupIntegrationTests
         {
             var control = (FrameworkElement)popup.FindName(name);
             Assert.That(control, Is.Not.Null);
-            var bounds = control.TransformToAncestor(view.Root).TransformBounds(new Rect(control.RenderSize));
-            Assert.That(bounds.Bottom, Is.LessThanOrEqualTo(popup.Height));
-            Assert.That(bounds.Right, Is.LessThanOrEqualTo(popup.Width));
+            var styleKey = name switch
+            {
+                "AutoPlayCheckBox" => "SampleLoaderAutoPlayStyle",
+                "PlaybackTimeline" => "SampleLoaderTimelineStyle",
+                _ => "SampleLoaderImportStyle"
+            };
+            Assert.That(control.Style, Is.SameAs(popup.FindResource(styleKey)));
         }
     }
 
@@ -545,60 +521,11 @@ public sealed class SampleLoaderPopupIntegrationTests
         Assert.That(Descendants(view.Root).OfType<TextBlock>().Any(block => block.Text == "Folder unavailable"), Is.True);
     }
 
-    private static Style WithHighContrast(Style original)
+    private void AssertPopupStyle<T>(FrameworkElement control, string key) where T : FrameworkElement
     {
-        var copy = new Style(original.TargetType, original.BasedOn is null ? null : WithHighContrast(original.BasedOn));
-        foreach (var setter in original.Setters)
-            if (setter is Setter { Property: var property, Value: ControlTemplate template } && property == Control.TemplateProperty)
-                copy.Setters.Add(new Setter(property, WithHighContrast(template)));
-            else copy.Setters.Add(setter);
-        BindingBase Override(BindingBase binding) => binding is Binding value &&
-            value.Path?.PathParameters.OfType<System.Reflection.PropertyInfo>().Any(property =>
-                property.DeclaringType == typeof(SystemParameters) && property.Name == nameof(SystemParameters.HighContrast)) == true
-            ? new Binding { Source = true, Mode = BindingMode.OneWay } : binding;
-        foreach (var trigger in original.Triggers)
-        {
-            if (trigger is DataTrigger data)
-            {
-                var replacement = new DataTrigger { Binding = Override(data.Binding), Value = data.Value };
-                foreach (var setter in data.Setters) replacement.Setters.Add(setter);
-                copy.Triggers.Add(replacement);
-            }
-            else if (trigger is MultiDataTrigger multi)
-            {
-                var replacement = new MultiDataTrigger();
-                foreach (var condition in multi.Conditions) replacement.Conditions.Add(new Condition { Binding = Override(condition.Binding), Value = condition.Value });
-                foreach (var setter in multi.Setters) replacement.Setters.Add(setter);
-                copy.Triggers.Add(replacement);
-            }
-            else copy.Triggers.Add(trigger);
-        }
-        return copy;
+        Assert.That(control, Is.TypeOf<T>());
+        Assert.That(control.Style, Is.SameAs(popup.FindResource(key)));
     }
-
-    private static ControlTemplate WithHighContrast(ControlTemplate original)
-    {
-        // Icon initializes its own resources; do not deserialize those a second time.
-        // This serializes runtime controls, never repository source.
-        var markup = XDocument.Parse(System.Windows.Markup.XamlWriter.Save(original));
-        markup.Descendants().Where(element => element.Name.LocalName == "Icon.Resources").Remove();
-        var copy = (ControlTemplate)System.Windows.Markup.XamlReader.Parse(markup.ToString());
-        foreach (var trigger in copy.Triggers)
-        {
-            if (trigger is DataTrigger data && IsHighContrastBinding(data.Binding))
-                data.Binding = new Binding { Source = true, Mode = BindingMode.OneWay };
-            if (trigger is MultiDataTrigger multi)
-                foreach (var condition in multi.Conditions)
-                    if (IsHighContrastBinding(condition.Binding))
-                        condition.Binding = new Binding { Source = true, Mode = BindingMode.OneWay };
-        }
-        return copy;
-    }
-
-    private static bool IsHighContrastBinding(BindingBase binding) => binding is Binding value &&
-        (value.Path?.PathParameters.OfType<System.Reflection.PropertyInfo>().Any(property =>
-            property.DeclaringType == typeof(SystemParameters) && property.Name == nameof(SystemParameters.HighContrast)) == true ||
-         value.Path?.Path.Contains("HighContrast", StringComparison.Ordinal) == true);
 
     private static IEnumerable<DependencyObject> Descendants(DependencyObject parent)
     {

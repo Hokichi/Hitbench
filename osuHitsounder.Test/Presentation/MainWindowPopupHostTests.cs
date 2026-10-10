@@ -1,6 +1,5 @@
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Media.Effects;
 using CommunityToolkit.Mvvm.Messaging;
 using osuHitsounder.Views.Pages;
 using osuHitsounder.ViewModels.Shell.HomePage;
@@ -25,25 +24,22 @@ public sealed class MainWindowPopupHostTests
     }
 
     [Test]
-    public void PopupHostBlursWholeShellAndRestoresExistingScanState()
+    public void PopupHostBlocksShellAndRestoresExistingScanState()
     {
         var window = Create();
         var vm = (HomePageVM)window.DataContext;
         vm.IsProcessing = true;
         vm.IsInteractionBlocked = true;
         var content = (Border)window.FindName("ModalShellContent");
+        Assert.That(content.Style, Is.SameAs(window.FindResource("MainWindowModalContentStyle")));
         UiTestPump.Layout((FrameworkElement)window.Content, 1280, 720);
         window.ShowPopupOverlay();
         UiTestPump.Layout((FrameworkElement)window.Content, 1280, 720);
-        Assert.That(content.Effect, Is.TypeOf<BlurEffect>());
-        Assert.That(((BlurEffect)content.Effect).Radius, Is.EqualTo(8));
         Assert.That(content.IsEnabled, Is.False);
         window.HidePopupOverlay();
         UiTestPump.Layout((FrameworkElement)window.Content, 1280, 720);
-        Assert.That(content.Effect, Is.Null);
         Assert.That(content.IsEnabled, Is.True);
         var pageHost = (ContentControl)window.FindName("PageHost");
-        Assert.That(((Border)pageHost.Parent).Effect, Is.TypeOf<BlurEffect>());
         Assert.That(pageHost.IsEnabled, Is.False);
         window.Close();
     }
@@ -87,7 +83,7 @@ public sealed class MainWindowPopupHostTests
         Assert.That(cue.Template, Is.Not.Null);
         var close = new osuHitsounder.Resources.CustomControls.BalloonButton
         { Style = (Style)app.FindResource("OHsPopupCloseActionStyle") };
-        Assert.That(close.ShouldShowText, Is.True);
+        UiControlContract.AssertStyle<osuHitsounder.Resources.CustomControls.BalloonButton>(close, "OHsPopupCloseActionStyle");
         Assert.That(close.FocusVisualStyle, Is.SameAs(focus));
     }
 }

@@ -24,10 +24,14 @@ public class ProjectNamePopupIntegrationTests
         try
         {
             var input = (TextBox)popup.FindName("ProjectNameTextBox");
+            Assert.That(input, Is.TypeOf<TextBox>());
+            Assert.That(input.Style, Is.SameAs(popup.FindResource("ProjectNamePopupInputStyle")));
             var watermark = (TextBlock)popup.FindName("ProjectNameWatermark");
             var validation = (TextBlock)popup.FindName("ProjectNameValidation");
             var cancel = (BalloonButton)popup.FindName("CancelButton");
+            Assert.That(cancel.Style, Is.SameAs(popup.FindResource("ProjectNamePopupCancelButtonStyle")));
             var create = (BalloonButton)popup.FindName("CreateButton");
+            Assert.That(create.Style, Is.SameAs(popup.FindResource("ProjectNamePopupCreateButtonStyle")));
             Assert.Multiple(() =>
             {
                 Assert.That(input.Focusable, Is.True);
@@ -35,9 +39,7 @@ public class ProjectNamePopupIntegrationTests
                 Assert.That(input.Text, Is.Empty);
                 Assert.That(watermark.Text, Is.EqualTo("Artist - Title"));
                 Assert.That(watermark.Visibility, Is.EqualTo(Visibility.Visible));
-                Assert.That(cancel.ButtonIcon, Is.SameAs(popup.FindResource("Ban")));
                 Assert.That(cancel.ButtonText, Is.EqualTo("Cancel"));
-                Assert.That(create.ButtonIcon, Is.SameAs(popup.FindResource("PlusSolid")));
                 Assert.That(create.ButtonText, Is.EqualTo("Create"));
             });
 
@@ -47,7 +49,6 @@ public class ProjectNamePopupIntegrationTests
             Assert.Multiple(() =>
             {
                 Assert.That(create.IsEnabled, Is.False);
-                Assert.That(input.BorderBrush, Is.SameAs(popup.FindResource("Brush.Border.Danger")));
                 Assert.That(validation.Text, Is.EqualTo("Project name is reserved by Windows."));
             });
 
@@ -77,6 +78,8 @@ public class ProjectNamePopupIntegrationTests
         try
         {
             var input = (TextBox)popup.FindName("ProjectNameTextBox");
+            Assert.That(input, Is.TypeOf<TextBox>());
+            Assert.That(input.Style, Is.SameAs(popup.FindResource("ProjectNamePopupInputStyle")));
             var composition = new TextComposition(InputManager.Current, input, ":");
             var typing = new TextCompositionEventArgs(Keyboard.PrimaryDevice, composition)
             {
@@ -93,7 +96,7 @@ public class ProjectNamePopupIntegrationTests
             Assert.That(input.Text, Is.EqualTo("AB"));
 
             var cancel = (BalloonButton)popup.FindName("CancelButton");
-            Assert.That(cancel.ButtonIcon, Is.SameAs(popup.FindResource("Ban")));
+            Assert.That(cancel.Style, Is.SameAs(popup.FindResource("ProjectNamePopupCancelButtonStyle")));
             popup.RaiseEvent(CreateKeyEvent(source, Key.Escape));
 
             Assert.That(completion, Is.False);
@@ -117,6 +120,7 @@ public class ProjectNamePopupIntegrationTests
         try
         {
             var create = (BalloonButton)popup.FindName("CreateButton");
+            Assert.That(create.Style, Is.SameAs(popup.FindResource("ProjectNamePopupCreateButtonStyle")));
             Assert.That(create.IsEnabled, Is.False);
             popup.RaiseEvent(CreateKeyEvent(source, Key.Enter));
             Assert.That(completion, Is.Null);

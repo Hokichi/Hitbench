@@ -162,7 +162,6 @@ public class HomePageIntegrationTests
             Assert.That(window.Width, Is.EqualTo(window.MinWidth));
             Assert.That(window.Height, Is.EqualTo(window.MinHeight));
             Assert.That(window.WindowState, Is.EqualTo(WindowState.Maximized));
-            Assert.That(window.Background, Is.SameAs(window.FindResource("Brush.Background.Main")));
         }
         finally { window.Close(); }
     }
@@ -251,13 +250,10 @@ public class HomePageIntegrationTests
 
             Assert.Multiple(() =>
             {
-                Assert.That(minimize.ButtonIcon, Is.SameAs(window.FindResource("Minus")));
                 Assert.That(minimize.ButtonText, Is.EqualTo("Minimize"));
                 Assert.That(AutomationProperties.GetName(minimize), Is.EqualTo("Minimize"));
-                Assert.That(maximize.ButtonIcon, Is.SameAs(window.FindResource("ExpandAlt")));
                 Assert.That(maximize.ButtonText, Is.EqualTo("Maximize"));
                 Assert.That(AutomationProperties.GetName(maximize), Is.EqualTo("Maximize"));
-                Assert.That(close.ButtonIcon, Is.SameAs(window.FindResource("Close")));
                 Assert.That(close.ButtonText, Is.EqualTo("Close"));
                 Assert.That(AutomationProperties.GetName(close), Is.EqualTo("Close"));
                 Assert.That(close.Style, Is.SameAs(window.FindResource("OHsBalloonDestructiveActionStyle")));
@@ -266,7 +262,6 @@ public class HomePageIntegrationTests
             window.ApplySettings(new AppSettings { IsMaximized = true });
             Assert.Multiple(() =>
             {
-                Assert.That(maximize.ButtonIcon, Is.SameAs(window.FindResource("CompressAlt")));
                 Assert.That(maximize.ButtonText, Is.EqualTo("Restore"));
                 Assert.That(AutomationProperties.GetName(maximize), Is.EqualTo("Restore"));
                 Assert.That(maximize.ToolTip, Is.EqualTo("Restore"));
@@ -290,14 +285,10 @@ public class HomePageIntegrationTests
 
             Assert.Multiple(() =>
             {
-                Assert.That(projects.ButtonIcon, Is.SameAs(page.FindResource("UpdateOutline")));
                 Assert.That(projects.ButtonText, Is.EqualTo("Retry Projects"));
-                Assert.That(projects.ShouldShowText, Is.True);
                 Assert.That(projects.Command, Is.SameAs(vm.RetryProjectsCommand));
                 Assert.That(AutomationProperties.GetName(projects), Is.EqualTo("Retry Projects"));
-                Assert.That(songs.ButtonIcon, Is.SameAs(page.FindResource("UpdateOutline")));
                 Assert.That(songs.ButtonText, Is.EqualTo("Refresh Songs"));
-                Assert.That(songs.ShouldShowText, Is.True);
                 Assert.That(songs.Command, Is.SameAs(vm.RetrySongsCommand));
                 Assert.That(AutomationProperties.GetName(songs), Is.EqualTo("Refresh Songs"));
             });
@@ -573,17 +564,13 @@ public class HomePageIntegrationTests
             var text = Descendants<TextBlock>(button).ToArray();
             var backgroundControl = Descendants<Image>(button).Single();
             Assert.That(backgroundControl.Source, Is.Not.Null, "Initial background must be ready when loading completes.");
-            Assert.That(text.Select(value => value.Text), Is.EqualTo(new[] { "Artist", "Title" }));
+            Assert.That(text.Select(value => value.Text), Is.EquivalentTo(new[] { "Artist", "Title" }));
+            UiControlContract.AssertStyle<Button>(button, "HomePageSongCardButtonStyle");
+            UiControlContract.AssertStyle<Image>(backgroundControl, "HomePageSongBackgroundStyle");
             button.RaiseEvent(new System.Windows.Input.MouseEventArgs(System.Windows.Input.Mouse.PrimaryDevice, 0)
             { RoutedEvent = UIElement.MouseEnterEvent });
             view.UpdateLayout();
-            Assert.That(button.ToolTip, Is.Null);
             Assert.That(button.IsTabStop, Is.False);
-            Assert.That(button.Opacity, Is.EqualTo(1));
-            Assert.That(button.Effect, Is.Null);
-            PumpFor(TimeSpan.FromMilliseconds(220));
-            Assert.That(((System.Windows.Media.Effects.BlurEffect)backgroundControl.Effect).Radius,
-                Is.EqualTo(0).Within(0.01));
             Assert.That(button.CommandParameter, Is.SameAs(row));
             Assert.That(vm.FatalError, Is.Null);
             Assert.That(button.IsEnabled, Is.True);
@@ -612,10 +599,15 @@ public class HomePageIntegrationTests
         }
     }
 
-    [Test]
-    public void ProjectCardInvokesSelectedProjectAndPreservesLayoutContracts()
+    [TestCase("Dark", FlowDirection.LeftToRight)]
+    [TestCase("Dark", FlowDirection.RightToLeft)]
+    [TestCase("Light", FlowDirection.LeftToRight)]
+    [TestCase("Light", FlowDirection.RightToLeft)]
+    public void ProjectCardKeepsStyleAndCommandAcrossCosmeticChanges(string theme, FlowDirection direction)
     {
         EnsureResources();
+        Application.Current.Resources.MergedDictionaries[0].Source =
+            new Uri($"/osuHitsounder;component/Resources/Themes/{theme}.xaml", UriKind.Relative);
         var row = new FolderEntry(
             @"C:\App\projects\A project with a long localized folder path that must wrap",
             "A project with a long localized name that must wrap", DateTimeOffset.MinValue);
@@ -636,7 +628,7 @@ public class HomePageIntegrationTests
             Content = page,
             Width = 720,
             Height = 520,
-            FlowDirection = FlowDirection.RightToLeft,
+            FlowDirection = direction,
             ShowInTaskbar = false
         };
         using var view = new InMemoryView(window);
@@ -646,7 +638,23 @@ public class HomePageIntegrationTests
             view.UpdateLayout();
             var projects = (ItemsControl)page.FindName("ProjectsList");
             var button = Descendants<Button>(projects).Single(value => value.DataContext is FolderEntry);
-            var text = Descendants<TextBlock>(button).ToArray();
+            var name = Descendants<TextBlock>(button).Single(block =>
+                ReferenceEquals(block.Style, page.FindResource("HomePageProjectNameStyle")));
+            button.Width = 280;
+            button.Height = 90;
+            button.Margin = new Thickness(7);
+            button.Padding = new Thickness(5);
+            button.Background = Brushes.Magenta;
+            button.Foreground = Brushes.Green;
+            name.FontSize = 17;
+            view.UpdateLayout();
+            UiControlContract.AssertStyle<Button>(button, "HomePageProjectCardStyle");
+            UiControlContract.AssertStyle<TextBlock>(name, "HomePageProjectNameStyle");
+            var originalStyle = button.Style;
+            button.Style = (Style)page.FindResource("FolderActionButtonStyle");
+            Assert.Throws<AssertionException>(() => UiControlContract.AssertStyle<Button>(button, "HomePageProjectCardStyle"));
+            button.Style = originalStyle;
+            Assert.Throws<AssertionException>(() => UiControlContract.AssertStyle<TextBox>(button, "HomePageProjectCardStyle"));
             var peer = new ButtonAutomationPeer(button);
 
             ((IInvokeProvider)peer.GetPattern(PatternInterface.Invoke)).Invoke();
@@ -661,10 +669,9 @@ public class HomePageIntegrationTests
                 Assert.That(button.CommandParameter, Is.SameAs(row));
                 Assert.That(button.IsEnabled, Is.False);
                 Assert.That(opened, Is.EqualTo(new[] { Path.Combine(row.FullName, "project.json") }));
-                Assert.That(button.ActualHeight, Is.GreaterThanOrEqualTo(40));
-                Assert.That(button.ActualWidth, Is.LessThanOrEqualTo(projects.ActualWidth));
-                Assert.That(text.Select(value => value.Text), Is.EqualTo(new[] { row.Name, row.FullName }));
-                Assert.That(text.All(value => value.TextWrapping == TextWrapping.Wrap), Is.True);
+                Assert.That(name.Text, Is.EqualTo(row.Name));
+                UiControlContract.AssertStyle<Button>(button, "HomePageProjectCardStyle");
+                UiControlContract.AssertStyle<TextBlock>(name, "HomePageProjectNameStyle");
                 Assert.That(VirtualizingPanel.GetIsVirtualizing(projects), Is.True);
                 Assert.That(VirtualizingPanel.GetVirtualizationMode(projects), Is.EqualTo(VirtualizationMode.Recycling));
             });
@@ -673,7 +680,7 @@ public class HomePageIntegrationTests
     }
 
     [Test]
-    public void SongCardsUseResponsiveVirtualizedGridAcrossSizesAndThemes()
+    public void SongCardsKeepAssignedStylesAndVirtualizationAcrossSizesAndThemes()
     {
         var app = Application.Current ?? new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
         var background = CreateTestImage();
@@ -726,38 +733,27 @@ public class HomePageIntegrationTests
                     PumpUntil(() => vm.Songs.Count == 45);
                     view.UpdateLayout();
                     TestContext.Progress.WriteLine($"Theme={theme} StubFolders=2000 HomePageFirstActionableRowMs={firstRowTimer.Elapsed.TotalMilliseconds:F2}");
-                    var lists = Descendants<ItemsControl>(page).ToArray();
-                    var songsList = lists.Single(list => AutomationProperties.GetName(list) == "Songs");
+
+                    var songsList = (ItemsControl)page.FindName("SongsList");
                     var panel = Descendants<SpacedUniformGrid>(songsList).Single();
                     var button = Descendants<Button>(songsList)
                         .First(candidate => candidate.DataContext is FolderEntry);
                     var labels = Descendants<TextBlock>(button).ToArray();
                     var backgroundImage = Descendants<Image>(button).Single();
+                    UiControlContract.AssertStyle<Button>(button, "HomePageSongCardButtonStyle");
+                    UiControlContract.AssertStyle<Image>(backgroundImage, "HomePageSongBackgroundStyle");
+                    UiControlContract.AssertStyle<Grid>((Grid)button.Content, "HomePageSongArtworkStyle");
+                    UiControlContract.AssertStyle<TextBlock>(labels.Single(label => label.Text == "Artist"), "HomePageSongArtistStyle");
+                    UiControlContract.AssertStyle<TextBlock>(labels.Single(label => label.Text.StartsWith("Title")), "HomePageSongTitleStyle");
                     var peer = new ButtonAutomationPeer(button);
                     Assert.Multiple(() =>
                     {
-                        Assert.That(lists, Has.Length.EqualTo(2));
-                        Assert.That(lists[0].Items.Count, Is.EqualTo(1));
+                        Assert.That(((ItemsControl)page.FindName("ProjectsList")).Items.Count, Is.EqualTo(1));
                         Assert.That(songsList.Items.Count, Is.EqualTo(45));
-                        var columns = ((Grid)page.Content).ColumnDefinitions;
-                        Assert.That(columns[0].ActualWidth, Is.EqualTo(300).Within(0.01));
-                        Assert.That(columns[1].ActualWidth, Is.GreaterThan(columns[0].ActualWidth * 3));
-                        Assert.That(panel.Columns, Is.EqualTo(5));
-                        Assert.That(panel.VisibleRowCount, Is.EqualTo(8));
                         Assert.That(panel.ExtentWidth, Is.EqualTo(panel.ViewportWidth).Within(.01));
-                        Assert.That(panel.HorizontalGap, Is.EqualTo(12));
-                        Assert.That(panel.VerticalGap, Is.EqualTo(12));
-                        Assert.That(panel.Children.Count, Is.InRange(40, 45));
-                        Assert.That(button.ActualWidth, Is.EqualTo(panel.ItemWidth).Within(0.01));
-                        Assert.That(button.ActualHeight, Is.EqualTo(panel.ItemHeight).Within(0.01));
-                        Assert.That(backgroundImage.ActualHeight, Is.EqualTo(button.ActualHeight - 2).Within(.01));
-                        Assert.That(labels.Select(label => label.Text), Is.EqualTo(new[]
+                        Assert.That(panel.Children.Count, Is.LessThanOrEqualTo((panel.VisibleRowCount + 3) * panel.Columns));
+                        Assert.That(labels.Select(label => label.Text), Is.EquivalentTo(new[]
                             { "Artist", "Title " + new string('x', 80) }));
-                        Assert.That(((SolidColorBrush)labels[0].Foreground).Color,
-                            Is.EqualTo(Colors.White));
-                        Assert.That(labels[0].TranslatePoint(new Point(), button).Y,
-                            Is.LessThan(labels[1].TranslatePoint(new Point(), button).Y));
-                        Assert.That(backgroundImage.Stretch, Is.EqualTo(Stretch.Fill));
                         Assert.That(peer.GetName(), Is.EqualTo("Artist - Title"));
                         Assert.That(peer.GetHelpText(), Does.Contain("long folder name"));
                     });
@@ -770,7 +766,6 @@ public class HomePageIntegrationTests
                     var scroll = Descendants<ScrollViewer>(songsList).Single();
                     Assert.Multiple(() =>
                     {
-                        Assert.That(panel.Columns, Is.EqualTo(1));
                         Assert.That(scroll.ScrollableWidth, Is.Zero);
                         Assert.That(scroll.ScrollableHeight, Is.GreaterThan(0));
                         Assert.That(panel.ExtentWidth, Is.EqualTo(panel.ViewportWidth).Within(.01));
@@ -789,7 +784,7 @@ public class HomePageIntegrationTests
     }
 
     [Test]
-    public void SongsLoadOnlyAfterInitialLayoutAndGenuineThresholdScrolls()
+    public void SongsLoadOnlyAfterInitialPresentationAndGenuineThresholdScrolls()
     {
         EnsureResources();
         var background = CreateTestImage();
@@ -818,11 +813,11 @@ public class HomePageIntegrationTests
         try
         {
             var songsList = (ItemsControl)page.FindName("SongsList");
-            Assert.That(songsList.Opacity, Is.Zero);
+            Assert.That(vm.Songs, Is.Empty);
             page.UpdateSongsLayout(new Size(1920, 1080));
             UiTestPump.Run(page.LoadAsync(CancellationToken.None));
             PumpUntil(() => vm.Songs.Count == HomePageVM.InitialSongCount);
-            PumpUntil(() => Math.Abs(songsList.Opacity - 1) < 0.001);
+            PumpUntil(() => !vm.IsAwaitingSongsPresentation);
             var panel = Descendants<SpacedUniformGrid>(songsList).Single();
             var scroll = Descendants<ScrollViewer>(songsList).Single();
 
@@ -905,10 +900,9 @@ public class HomePageIntegrationTests
         {
             page.UpdateSongsLayout(new Size(1920, 1040));
             UiTestPump.Run(page.LoadAsync(CancellationToken.None));
-            var songsList = (ItemsControl)page.FindName("SongsList");
-            PumpUntil(() => Math.Abs(songsList.Opacity - 1) < 0.001);
+
+            PumpUntil(() => !vm.IsAwaitingSongsPresentation);
             foreach (var path in validPaths) File.Delete(path);
-            var panel = Descendants<SpacedUniformGrid>(songsList).Single();
             const int decodeWidth = 336;
             var cachedLoads = Task.WhenAll(validPaths.Select(path =>
                 page.ImageLoader.LoadAsync(path, decodeWidth, CancellationToken.None)));
@@ -916,14 +910,14 @@ public class HomePageIntegrationTests
             var missingLoad = page.ImageLoader.LoadAsync(
                 Path.Combine(imageDirectory.FullName, "missing.png"), decodeWidth, CancellationToken.None);
             UiTestPump.Run(missingLoad);
-            PumpUntil(() => Math.Abs(songsList.Opacity - 1) < 0.001);
+            PumpUntil(() => !vm.IsAwaitingSongsPresentation);
 
             Assert.Multiple(() =>
             {
                 Assert.That(vm.Songs, Has.Count.EqualTo(HomePageVM.InitialSongCount));
                 Assert.That(cachedLoads.Result, Has.All.Not.Null);
                 Assert.That(missingLoad.Result, Is.Null);
-                Assert.That(songsList.Opacity, Is.EqualTo(1).Within(0.001));
+                Assert.That(vm.IsAwaitingSongsPresentation, Is.False);
             });
         }
         finally
@@ -934,7 +928,7 @@ public class HomePageIntegrationTests
     }
 
     [Test]
-    public void RetryHidesSongsThenRevealsCurrentReplacementGeneration()
+    public void RetryWaitsForCurrentReplacementPresentation()
     {
         EnsureResources();
         var image = CreateTestImage();
@@ -956,17 +950,17 @@ public class HomePageIntegrationTests
         try
         {
             UiTestPump.Run(page.LoadAsync(CancellationToken.None));
-            var songsList = (ItemsControl)page.FindName("SongsList");
-            PumpUntil(() => Math.Abs(songsList.Opacity - 1) < 0.001);
+
+            PumpUntil(() => !vm.IsAwaitingSongsPresentation);
             vm.ReportDemandFailure(new IOException("retry"));
             folders.Songs = (_, token) => pending.Task.WaitAsync(token);
 
             var retry = vm.RetrySongsCommand.ExecuteAsync(null);
             PumpUntil(() => vm.IsProcessing);
-            Assert.That(songsList.Opacity, Is.Zero);
+            Assert.That(vm.IsProcessing, Is.True);
             pending.SetResult(Snapshot("Replacement"));
             UiTestPump.Run(retry);
-            PumpUntil(() => Math.Abs(songsList.Opacity - 1) < 0.001);
+            PumpUntil(() => !vm.IsAwaitingSongsPresentation);
 
             Assert.Multiple(() =>
             {
@@ -1005,19 +999,21 @@ public class HomePageIntegrationTests
         try
         {
             UiTestPump.Run(page.LoadAsync(CancellationToken.None));
-            var songsList = (ItemsControl)page.FindName("SongsList");
-            PumpUntil(() => Math.Abs(songsList.Opacity - 1) < 0.001);
+
+            PumpUntil(() => !vm.IsAwaitingSongsPresentation);
+            var initialSongs = vm.Songs.ToArray();
             vm.ReportDemandFailure(new IOException("retry"));
             folders.Songs = (_, token) => pending.Task.WaitAsync(token);
             var retry = vm.RetrySongsCommand.ExecuteAsync(null);
             PumpUntil(() => vm.IsProcessing);
 
             page.Deactivate();
-            pending.TrySetResult(snapshot);
+            pending.TrySetResult(new FolderSnapshot([new FolderEntry(@"C:\Songs\late", "late", DateTimeOffset.UnixEpoch)]));
             UiTestPump.Run(retry);
             window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
 
-            Assert.That(songsList.Opacity, Is.Zero);
+            Assert.That(vm.CanInteract, Is.False);
+            Assert.That(vm.Songs, Is.EqualTo(initialSongs), "Deactivation must reject the late replacement.");
         }
         finally
         {

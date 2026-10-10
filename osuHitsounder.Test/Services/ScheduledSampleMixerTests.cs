@@ -155,9 +155,24 @@ public class ScheduledSampleMixerTests
         var mixer = new ScheduledSampleMixer(DecodedAudio.CopyFrom(new float[400_100]),0);
         mixer.Publish( new PreparedPlaybackSchedule([Event(1,0,new float[400_100])]));
         var output = new float[16];
-        _ = MeasureReads(mixer, output);
-        var allocated = MeasureReads(mixer, output);
+        long allocated = -1;
+        Exception? measurementFailure = null;
+        // Isolate allocation measurement from the test runner's reused-thread state.
+        var worker = new Thread(() =>
+        {
+            try
+            {
+                _ = MeasureReads(mixer, output);
+                allocated = MeasureReads(mixer, output);
+            }
+            catch (Exception error) { measurementFailure = error; }
+        });
+        worker.Start();
+        worker.Join();
+        if (measurementFailure is not null)
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(measurementFailure).Throw();
         Assert.That(allocated, Is.Zero);
+        Assert.That(mixer.Faulted, Is.False);
         Assert.That(mixer.EndOfStream, Is.False);
         Assert.That(mixer.Read(output,0,0), Is.Zero);
         Assert.Throws<ArgumentOutOfRangeException>(()=>mixer.Read(output,1,16));

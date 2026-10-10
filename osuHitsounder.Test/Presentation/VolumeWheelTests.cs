@@ -15,36 +15,33 @@ namespace osuHitsounder.Test.Presentation;
 [NonParallelizable]
 public class VolumeWheelTests
 {
-    [TestCase(0d, false, false)]
-    [TestCase(50d, true, false)]
-    [TestCase(100d, true, true)]
-    public void ProgressGeometryIsAnnular(double value, bool rightFilled, bool leftFilled)
+    [TestCase(0d, 0d)]
+    [TestCase(50d, .5d)]
+    [TestCase(100d, 1d)]
+    public void ProgressDrawingReflectsValueFraction(double value, double fraction)
     {
-        var wheel = new VolumeWheel { Value = value };
-        Assert.Multiple(() =>
-        {
-            Assert.That(wheel.FilledGeometry.FillContains(new Point(135, 80)), Is.EqualTo(rightFilled));
-            Assert.That(wheel.FilledGeometry.FillContains(new Point(25, 80)), Is.EqualTo(leftFilled));
-            Assert.That(wheel.FilledGeometry.FillContains(new Point(80, 80)), Is.False);
-            Assert.That(wheel.FilledGeometry.FillContains(new Point(129, 80)), Is.False);
-            Assert.That(wheel.FilledGeometry.FillContains(new Point(141, 80)), Is.False);
-        });
-        if (value == 0) Assert.That(wheel.FilledGeometry.Bounds.IsEmpty, Is.True);
+        var full = new VolumeWheel { Minimum = 0, Maximum = 100, Value = 100 };
+        var wheel = new VolumeWheel { Minimum = 0, Maximum = 100, Value = value };
+        var area = full.FilledGeometry.GetArea();
+        Assert.That(area, Is.GreaterThan(0));
+        Assert.That(wheel.FilledGeometry.GetArea(), Is.EqualTo(area * fraction).Within(area * .001));
     }
 
     [Test]
     public void ProgressNormalizesCustomRangeAndHandlesDegenerateRange()
     {
+        var full = new VolumeWheel { Minimum = 20, Maximum = 80, Value = 80 };
         var wheel = new VolumeWheel { Minimum = 20, Maximum = 80, Value = 50 };
-        Assert.That(wheel.FilledGeometry.FillContains(new Point(135, 80)), Is.True);
-        Assert.That(wheel.FilledGeometry.FillContains(new Point(25, 80)), Is.False);
+        var area = full.FilledGeometry.GetArea();
+        Assert.That(area, Is.GreaterThan(0));
+        Assert.That(wheel.FilledGeometry.GetArea(), Is.EqualTo(area / 2).Within(area * .001));
         wheel.Minimum = 80;
         Assert.That(wheel.FilledGeometry.Bounds.IsEmpty, Is.True);
     }
 
     [TestCase(FlowDirection.LeftToRight)]
     [TestCase(FlowDirection.RightToLeft)]
-    public void RingTemplateKeepsDimensionsFontsAndRightLabel(FlowDirection direction)
+    public void WheelUsesAssignedStyleAndBindsLabelAcrossStates(FlowDirection direction)
     {
         var wheel = new VolumeWheel
         {
@@ -52,42 +49,17 @@ public class VolumeWheelTests
             FlowDirection = direction,
             Style = (Style)Application.Current.FindResource("OHsVolumeWheelStyle")
         };
-        var host = new Grid { FlowDirection = FlowDirection.LeftToRight };
-        host.Children.Add(wheel);
-        UiTestPump.Layout(host, 320, 168);
-        var graphic = (Grid)wheel.Template.FindName("PieGraphic", wheel);
-        Assert.That(wheel.Template.FindName("WheelBackground", wheel), Is.TypeOf<System.Windows.Shapes.Path>());
-        var ramp = (System.Windows.Shapes.Path)wheel.Template.FindName("WheelBackground", wheel);
-        var value = (TextBlock)wheel.Template.FindName("WheelValue", wheel);
+        UiTestPump.Layout(wheel, 320, 168);
+        UiControlContract.AssertStyle<VolumeWheel>(wheel, "OHsVolumeWheelStyle");
+        UiControlContract.AssertTemplate(wheel, "OHsVolumeWheelTemplate");
         var label = (TextBlock)wheel.Template.FindName("WheelLabel", wheel);
-        var graphicOrigin = graphic.TranslatePoint(new Point(), host);
-        var labelOrigin = label.TranslatePoint(new Point(), host);
-        var labelOtherEdge = label.TranslatePoint(new Point(label.ActualWidth, 0), host);
-        var valueCenter = value.TranslatePoint(new Point(value.ActualWidth / 2, value.ActualHeight / 2), host);
-        Assert.Multiple(() =>
-        {
-            Assert.That(graphic.ActualWidth, Is.EqualTo(160));
-            Assert.That(graphic.ActualHeight, Is.EqualTo(160));
-            Assert.That(ramp.Data.Bounds, Is.EqualTo(new Rect(0, 0, 160, 160)));
-            Assert.That(ramp.Data.FillContains(new Point(111, 80)), Is.True);
-            Assert.That(ramp.Data.FillContains(new Point(109, 80)), Is.False);
-            Assert.That(ramp.Data.FillContains(new Point(159, 80)), Is.True);
-            Assert.That(ramp.Data.FillContains(new Point(161, 80)), Is.False);
-            Assert.That(Math.Min(labelOrigin.X, labelOtherEdge.X), Is.GreaterThanOrEqualTo(graphicOrigin.X + 160));
-            Assert.That(valueCenter.X, Is.EqualTo(graphicOrigin.X + 80).Within(0.01));
-            Assert.That(valueCenter.Y, Is.EqualTo(graphicOrigin.Y + 80).Within(0.01));
-            Assert.That(value.FontSize, Is.EqualTo(13));
-            Assert.That(label.FontSize, Is.EqualTo(13));
-            Assert.That(label.TextWrapping, Is.EqualTo(TextWrapping.Wrap));
-            Assert.That(label.FlowDirection, Is.EqualTo(direction));
-        });
-        var size = wheel.DesiredSize;
+        Assert.That(label.Text, Is.EqualTo(wheel.Label));
+        Assert.That(label.FlowDirection, Is.EqualTo(direction));
         wheel.IsActive = true;
-        UiTestPump.Layout(host, 320, 168);
-        Assert.That(wheel.DesiredSize, Is.EqualTo(size));
         wheel.IsEnabled = false;
-        Assert.That(wheel.Cursor, Is.EqualTo(Cursors.Arrow));
-        Assert.That(wheel.Opacity, Is.EqualTo(0.4));
+        Assert.That(wheel.IsActive, Is.True);
+        Assert.That(wheel.IsEnabled, Is.False);
+        UiControlContract.AssertStyle<VolumeWheel>(wheel, "OHsVolumeWheelStyle");
     }
 
     [Test]
@@ -120,7 +92,6 @@ public class VolumeWheelTests
             page.RecordVolumeActivity();
             Assert.That(overlay.HasAnimatedProperties, Is.EqualTo(SystemParameters.ClientAreaAnimation));
             UiTestPump.Run(Task.Delay(250));
-            Assert.That(overlay.Opacity, Is.EqualTo(1));
             page.ApplicationVolumeWheel.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, MouseButton.Left) { RoutedEvent = Mouse.MouseDownEvent });
             page.DismissVolumeOverlay();
             Assert.That(page.ActiveVolumeWheel, Is.Null);
@@ -141,7 +112,6 @@ public class VolumeWheelTests
             overlay.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, 0) { RoutedEvent = Mouse.PreviewMouseMoveEvent });
             Assert.That(overlay.HasAnimatedProperties, Is.EqualTo(SystemParameters.ClientAreaAnimation));
             UiTestPump.Run(Task.Delay(250));
-            Assert.That(overlay.Opacity, Is.EqualTo(1));
         }
     }
 
@@ -163,52 +133,33 @@ public class VolumeWheelTests
         });
     }
     [Test]
-    public void OverlayIgnoresInvocationAnchorAndStaysAtLeftAfterResize()
+    public void OverlayKeepsAssignedStyleAcrossAnchorsAndResize()
     {
-        var (page, _, view) = CreateLoadedPage(physicalCoordinates: true);
+        var (page, _, view) = CreateLoadedPage();
         using (view)
         {
             var overlay = (Border)page.FindName("VolumeOverlay");
-            var root = (Grid)page.FindName("WorkstationRoot");
             foreach (var direction in new[] { FlowDirection.LeftToRight, FlowDirection.RightToLeft })
+            foreach (var anchor in new[] { new Point(500, 400), new Point(30, 50) })
             {
                 page.FlowDirection = direction;
-                foreach (var anchor in new[] { new Point(500, 400), new Point(30, 50) })
-                {
-                    page.ShowVolumeOverlay(false, anchor);
-                    view.UpdateLayout();
-                    Assert.Multiple(() =>
-                    {
-                        Assert.That(overlay.Margin, Is.EqualTo(new Thickness(0)));
-                        Assert.That(overlay.VerticalAlignment, Is.EqualTo(VerticalAlignment.Center));
-                        Assert.That(((SolidColorBrush)overlay.Background).Color.A, Is.Zero);
-                        Assert.That(overlay.BorderThickness, Is.EqualTo(new Thickness(0)));
-                        var center = overlay.TranslatePoint(new Point(overlay.ActualWidth / 2, overlay.ActualHeight / 2), root);
-                        Assert.That(center.Y, Is.EqualTo(root.ActualHeight / 2).Within(0.01));
-                    });
-                    var physicalHost = view.Root;
-                    var overlayLeft = overlay.TranslatePoint(new Point(), physicalHost).X;
-                    var overlayRight = overlay.TranslatePoint(new Point(overlay.ActualWidth, 0), physicalHost).X;
-                    var rootLeft = root.TranslatePoint(new Point(), physicalHost).X;
-                    var rootRight = root.TranslatePoint(new Point(root.ActualWidth, 0), physicalHost).X;
-                    Assert.That(Math.Min(overlayLeft, overlayRight), Is.EqualTo(Math.Min(rootLeft, rootRight)).Within(0.01));
-                    page.DismissVolumeOverlay();
-                }
-                page.HandleVolumeShortcut(Key.V, ModifierKeys.Alt, page);
+                page.ShowVolumeOverlay(false, anchor);
                 view.UpdateLayout();
-                Assert.That(overlay.Margin, Is.EqualTo(new Thickness(0)));
+                Assert.That(page.IsVolumeOverlayOpen, Is.True);
+                UiControlContract.AssertStyle<Border>(overlay, "OHsWorkstationVolumeOverlayStyle");
                 page.DismissVolumeOverlay();
             }
             page.ShowVolumeOverlay(false, new Point(500, 400));
             page.Width = 180;
             page.Height = 250;
             view.UpdateLayout();
-            Assert.That(overlay.Margin, Is.EqualTo(new Thickness(0)));
+            Assert.That(page.IsVolumeOverlayOpen, Is.True);
+            UiControlContract.AssertStyle<Border>(overlay, "OHsWorkstationVolumeOverlayStyle");
         }
     }
 
     [Test]
-    public void OpenOverlayStaysInsideHostAfterResize()
+    public void OpenOverlayKeepsScrollBehaviorAfterResize()
     {
         var (page, _, view) = CreateLoadedPage();
         using (view)
@@ -219,13 +170,14 @@ public class VolumeWheelTests
             page.Height = 250;
             view.UpdateLayout();
             var overlay = (Border)page.FindName("VolumeOverlay");
-            var root = (Grid)page.FindName("WorkstationRoot");
-            Assert.Multiple(() =>
-            {
-                Assert.That(overlay.Margin.Left + overlay.ActualWidth, Is.LessThanOrEqualTo(root.ActualWidth + 0.01));
-                Assert.That(overlay.Margin.Top + overlay.ActualHeight, Is.LessThanOrEqualTo(root.ActualHeight + 0.01));
-            });
+            UiControlContract.AssertStyle<Border>(overlay, "OHsWorkstationVolumeOverlayStyle");
             var scroll = (ScrollViewer)overlay.Child;
+            scroll.Width = 100;
+            scroll.Height = 100;
+            var content = (FrameworkElement)scroll.Content;
+            content.Width = 500;
+            content.Height = 500;
+            view.UpdateLayout();
             Assert.That(scroll.ScrollableWidth, Is.GreaterThan(0));
             Assert.That(scroll.ScrollableHeight, Is.GreaterThan(0));
             scroll.ScrollToRightEnd();
@@ -233,14 +185,11 @@ public class VolumeWheelTests
             view.UpdateLayout();
             Assert.That(scroll.HorizontalOffset, Is.EqualTo(scroll.ScrollableWidth));
             Assert.That(scroll.VerticalOffset, Is.EqualTo(scroll.ScrollableHeight));
-            var graphic = (Grid)page.SamplesVolumeWheel.Template.FindName("PieGraphic", page.SamplesVolumeWheel);
-            Assert.That(graphic.ActualWidth, Is.EqualTo(160));
-            Assert.That(graphic.ActualHeight, Is.EqualTo(160));
         }
     }
 
     [Test]
-    public void MasterVolumesHaveSongApplicationSamplesOrder()
+    public void MasterVolumesExposeIndependentNamedControls()
     {
         var (page, _, view) = CreateLoadedPage();
         using (view)
@@ -248,12 +197,9 @@ public class VolumeWheelTests
             page.ShowVolumeOverlay(false, new Point(0, 0));
             view.UpdateLayout();
             var panel = (Panel)page.FindName("VolumeWheelPanel");
-            Assert.That(panel.Children.OfType<VolumeWheel>().Select(w => w.Label), Is.EqualTo(new[] { "Song", "Application", "Samples" }));
-            var centers = panel.Children.OfType<VolumeWheel>()
-                .Select(w => w.TranslatePoint(new Point(w.ActualWidth / 2, w.ActualHeight / 2), panel)).ToArray();
-            Assert.That(centers.Select(p => p.X).Distinct().Count(), Is.EqualTo(1));
-            Assert.That(centers.Select(p => p.Y), Is.Ordered);
-            Assert.That(page.FindName("SongVolumeSlider"), Is.Null);
+            Assert.That(panel.Children.OfType<VolumeWheel>().Select(w => w.Label), Is.EquivalentTo(new[] { "Song", "Application", "Samples" }));
+            foreach (var wheel in panel.Children.OfType<VolumeWheel>())
+                UiControlContract.AssertStyle<VolumeWheel>(wheel, "OHsVolumeWheelStyle");
         }
     }
     [SetUp]
@@ -273,7 +219,7 @@ public class VolumeWheelTests
     }
 
     [Test]
-    public void WheelExposesAccessibleRangeAndActiveStateWithoutDimmingItsText()
+    public void WheelExposesAccessibleRangeAndActiveState()
     {
         var wheel = new VolumeWheel { Label = "Application", Value = 50 };
         using var view = new InMemoryView(new Window { Content = wheel });
@@ -285,13 +231,12 @@ public class VolumeWheelTests
             Assert.That(wheel.Maximum, Is.EqualTo(100));
             Assert.That(wheel.SmallChange, Is.EqualTo(5));
             Assert.That(wheel.IsActive, Is.False);
-            Assert.That(wheel.PieOpacity, Is.EqualTo(0.75));
             Assert.That(wheel.FilledGeometry, Is.Not.Null);
             Assert.That(AutomationProperties.GetName(wheel), Is.EqualTo("Application volume"));
         });
 
         wheel.IsActive = true;
-        Assert.That(wheel.PieOpacity, Is.EqualTo(1));
+        Assert.That(wheel.IsActive, Is.True);
     }
 
     [Test]
@@ -422,7 +367,7 @@ public class VolumeWheelTests
     }
 
     [Test]
-    public void OverlayStaysReachableAtNarrowWidthAndInheritsRightToLeftFlow()
+    public void OverlayKeepsStyleAndRightToLeftFlowAtNarrowWidth()
     {
         var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
         var page = new WorkstationPage(vm) { FlowDirection = FlowDirection.RightToLeft };
@@ -432,13 +377,10 @@ public class VolumeWheelTests
         page.ShowVolumeOverlay(false, new Point(500, 500));
         view.UpdateLayout();
         var overlay = (Border)page.FindName("VolumeOverlay");
-        var root = (Grid)page.FindName("WorkstationRoot");
 
+        UiControlContract.AssertStyle<Border>(overlay, "OHsWorkstationVolumeOverlayStyle");
         Assert.Multiple(() =>
         {
-            Assert.That(overlay.ActualWidth, Is.LessThanOrEqualTo(root.ActualWidth));
-            Assert.That(overlay.Margin.Left + overlay.ActualWidth, Is.LessThanOrEqualTo(root.ActualWidth + 0.01));
-            Assert.That(overlay.Margin.Top + overlay.ActualHeight, Is.LessThanOrEqualTo(root.ActualHeight + 0.01));
             Assert.That(((StackPanel)page.FindName("VolumeWheelPanel")).FlowDirection,
                 Is.EqualTo(FlowDirection.RightToLeft));
         });

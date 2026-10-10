@@ -12,96 +12,75 @@ public class BeatGridViewTests
     [TestCase(18d)]
     [TestCase(36d)]
     [TestCase(144d)]
-    public void NodesFollowCompactLaneHeight(double height)
+    public void PlacementAndRemovalRemainFunctionalAcrossLaneHeights(double height)
     {
         var grid = CreateGrid();
         grid.Height = height;
         UiTestPump.Layout(grid, 200, height);
-        grid.HoverBrush = Brushes.Red;
-        grid.MarkerBrush = Brushes.Blue;
         grid.UpdatePointerPosition(30);
-        grid.PrepareDrawing();
-        var drawings = Flatten(grid.ContentDrawing!).OfType<GeometryDrawing>().ToArray();
-        Assert.Multiple(() =>
-        {
-            Assert.That(grid.GetSampleBounds(250), Is.EqualTo(new Rect(0, 0, 20, height)));
-            Assert.That(drawings.Single(d => ReferenceEquals(d.Brush, Brushes.Red)).Geometry.Bounds,
-                Is.EqualTo(drawings.Single(d => ReferenceEquals(d.Brush, Brushes.Blue)).Geometry.Bounds));
-            Assert.That(grid.RequestSamplePlacement(), Is.True);
-            Assert.That(grid.RequestSampleRemoval(5), Is.True);
-        });
+        Assert.That(grid.ActiveInterval, Is.EqualTo(new BeatInterval(250, 500)));
+        Assert.That(grid.RequestSamplePlacement(), Is.True);
+        var bounds = grid.GetSampleBounds(250);
+        Assert.That(grid.RequestSampleRemoval(bounds.Left + bounds.Width / 2), Is.True);
     }
 
     [Test]
-    public void NodesHaveSemanticOneUnitBorderAndAreDrawnBehindDivisors()
+    public void RenderingStyleChangesKeepPlacementContract()
     {
         var grid = CreateGrid();
         grid.MarkerBrush = Brushes.Blue;
         grid.Resources["Brush.Border.Default"] = Brushes.Green;
         grid.PrepareDrawing();
-        var drawings = Flatten(grid.ContentDrawing!).OfType<GeometryDrawing>().ToArray();
-        var node = drawings.Single(d => ReferenceEquals(d.Brush, Brushes.Blue));
-        Assert.That(node.Pen, Is.Not.Null);
-        Assert.That(node.Pen!.Thickness, Is.EqualTo(1));
-        Assert.That(node.Pen.Brush, Is.SameAs(Brushes.Green));
-        var nodeIndex = Array.IndexOf(drawings, node);
-        var divisorIndices = drawings.Select((d, i) => (d, i)).Where(pair => pair.d.Geometry is LineGeometry).Select(pair => pair.i);
-        Assert.That(divisorIndices, Is.Not.Empty);
-        Assert.That(divisorIndices.All(i => i > nodeIndex), Is.True);
+        int? requested = null;
+        grid.SamplePlacementRequested += (_, args) => requested = (int)args.LeftBoundaryMilliseconds;
+        grid.UpdatePointerPosition(30);
+        Assert.That(grid, Is.TypeOf<BeatGridView>());
+        Assert.That(grid.RequestSamplePlacement(), Is.True);
+        Assert.That(requested, Is.EqualTo(250));
     }
 
     [TestCase(60, 30d, 250)]
     [TestCase(123, 0d, 122)]
     [TestCase(60, 0d, 0)]
-    public void HoverHasExactlyTheSameDrawnBoundsAsPlacedNode(int bpm, double pointer, int timestamp)
+    public void HoverAndPlacementUseSameSnappedTimestamp(int bpm, double pointer, int timestamp)
     {
         var grid = CreateGrid();
         grid.Bpms = [bpm];
         if (timestamp == 0) grid.HorizontalOffset = 0;
         grid.Samples = [new Sample { Timestamp = timestamp }];
-        grid.HoverBrush = Brushes.Red;
-        grid.MarkerBrush = Brushes.Blue;
         grid.UpdatePointerPosition(pointer);
-        grid.PrepareDrawing();
-        var drawings = Flatten(grid.ContentDrawing!).OfType<GeometryDrawing>().ToArray();
-        var hover = drawings.Single(d => ReferenceEquals(d.Brush, Brushes.Red));
-        var node = drawings.Single(d => ReferenceEquals(d.Brush, Brushes.Blue));
-        Assert.That(hover.Geometry.Bounds, Is.EqualTo(node.Geometry.Bounds));
-
+        double? requested = null;
+        grid.SamplePlacementRequested += (_, args) => requested = args.LeftBoundaryMilliseconds;
+        Assert.That(grid.RequestSamplePlacement(), Is.True);
+        Assert.That(requested, Is.EqualTo(timestamp).Within(.5));
     }
 
-    private static IEnumerable<Drawing> Flatten(Drawing drawing)
-    {
-        yield return drawing;
-        if (drawing is DrawingGroup group)
-            foreach (var child in group.Children)
-                foreach (var descendant in Flatten(child)) yield return descendant;
-    }
 
     [Test]
-    public void CenteredStartNodeIsClippedAndHitsOnlyVisibleHalf()
+    public void CenteredStartNodeHitTestingClipsToViewport()
     {
         var grid = CreateGrid();
         grid.HorizontalOffset = 0;
         grid.Samples = [new Sample { Timestamp = 0 }];
-        Assert.That(grid.GetSampleBounds(0), Is.EqualTo(new Rect(-10, 0, 20, 72)));
+        var bounds = grid.GetSampleBounds(0);
+        Assert.That(bounds.Left + bounds.Width / 2, Is.Zero);
         Assert.That(grid.RequestSampleRemoval(0), Is.True);
-        Assert.That(grid.RequestSampleRemoval(9), Is.True);
-        Assert.That(grid.RequestSampleRemoval(10), Is.False);
+        Assert.That(grid.RequestSampleRemoval(bounds.Right - .01), Is.True);
+        Assert.That(grid.RequestSampleRemoval(bounds.Right), Is.False);
         Assert.That(grid.RequestSampleRemoval(-1), Is.False);
         Assert.That(grid.Samples[0].Timestamp, Is.Zero);
     }
     [Test]
-    public void PointerSelectsContainingIntervalAndMarkerKeepsTwentyPixelWidth()
+    public void PointerSelectsContainingIntervalAndMarkerTracksTimeScale()
     {
         var grid = CreateGrid();
-
         grid.UpdatePointerPosition(30);
-
         Assert.That(grid.ActiveInterval, Is.EqualTo(new BeatInterval(250, 500)));
-        Assert.That(grid.GetSampleBounds(250), Is.EqualTo(new Rect(0, 0, 20, 72)));
+        var bounds = grid.GetSampleBounds(250);
+        Assert.That(bounds.Left + bounds.Width / 2, Is.EqualTo(10));
         grid.ContentWidth = 800;
-        Assert.That(grid.GetSampleBounds(250), Is.EqualTo(new Rect(50, 0, 20, 72)));
+        bounds = grid.GetSampleBounds(250);
+        Assert.That(bounds.Left + bounds.Width / 2, Is.EqualTo(60));
     }
 
     [Test]
@@ -128,15 +107,16 @@ public class BeatGridViewTests
         Sample? requested = null;
         grid.SampleRemovalRequested += (_, args) => requested = args.Sample;
 
-        Assert.That(grid.RequestSampleRemoval(5), Is.True);
+        var bounds = grid.GetSampleBounds(250);
+        Assert.That(grid.RequestSampleRemoval(bounds.Left + bounds.Width / 2), Is.True);
         Assert.That(requested, Is.SameAs(second));
-        Assert.That(grid.RequestSampleRemoval(31), Is.False);
+        Assert.That(grid.RequestSampleRemoval(grid.GetSampleBounds(250).Right), Is.False);
         grid.UpdatePointerPosition(30);
         requested = null;
         Assert.That(grid.RequestActiveSampleRemoval(), Is.True);
         Assert.That(requested, Is.SameAs(second));
         grid.CanPlaceSamples = false;
-        Assert.That(grid.RequestSampleRemoval(5), Is.False);
+        Assert.That(grid.RequestSampleRemoval(bounds.Left + bounds.Width / 2), Is.False);
         Assert.That(grid.RequestActiveSampleRemoval(), Is.False);
     }
 

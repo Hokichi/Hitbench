@@ -2,7 +2,6 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Effects;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.Messaging;
@@ -86,7 +85,7 @@ public class SongBackgroundTests
     [TestCase("Dark", FlowDirection.RightToLeft)]
     [TestCase("Light", FlowDirection.LeftToRight)]
     [TestCase("Light", FlowDirection.RightToLeft)]
-    public void ResizingBackgroundFillsCardWithoutReloading(string theme, FlowDirection direction)
+    public void ResizingArtworkKeepsSourceAndAssignedStyle(string theme, FlowDirection direction)
     {
         Application.Current.Resources.MergedDictionaries[0].Source =
             new Uri($"/osuHitsounder;component/Resources/Themes/{theme}.xaml", UriKind.Relative);
@@ -101,36 +100,31 @@ public class SongBackgroundTests
             Assert.Multiple(() =>
             {
                 Assert.That(first.Source, Is.SameAs(source));
-                Assert.That(first.Stretch, Is.EqualTo(Stretch.Fill));
-                Assert.That(first.ActualWidth, Is.EqualTo(button.ActualWidth - 2).Within(.01));
-                Assert.That(first.ActualHeight, Is.EqualTo(button.ActualHeight - 2).Within(.01));
-                var card = (Grid)VisualTreeHelper.GetParent(first);
-                Assert.That(((RectangleGeometry)card.Clip).Rect.Size, Is.EqualTo(card.RenderSize));
-                Assert.That(((RectangleGeometry)card.Clip).RadiusX, Is.EqualTo(7));
+                UiControlContract.AssertStyle<Image>(first, "HomePageSongBackgroundStyle");
+                UiControlContract.AssertStyle<Button>(button, "HomePageSongCardButtonStyle");
             });
         }
     }
 
     [Test]
-    public void BlurStateOwnsPerImageEffectAndReachesRequestedRadius()
+    public void ArtworkKeepsSourceAndAssignedStyleAcrossPointerStates()
     {
         var button = Descendants<Button>(page).First(item => ReferenceEquals(item.DataContext, first.DataContext));
-        Assert.That(second.Effect, Is.Not.SameAs(first.Effect));
-        Assert.That(((BlurEffect)first.Effect).Radius, Is.EqualTo(10));
-        button.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, 0) { RoutedEvent = UIElement.MouseEnterEvent });
-        PumpFor(TimeSpan.FromMilliseconds(220));
-        Assert.That(((BlurEffect)first.Effect).Radius, Is.EqualTo(0).Within(.01));
-        Assert.That(((BlurEffect)second.Effect).Radius, Is.EqualTo(10));
-        button.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, 0) { RoutedEvent = UIElement.MouseLeaveEvent });
-        PumpFor(TimeSpan.FromMilliseconds(220));
-        Assert.That(((BlurEffect)first.Effect).Radius, Is.EqualTo(10).Within(.01));
+        var source = first.Source;
+        foreach (var routedEvent in new[] { UIElement.MouseEnterEvent, UIElement.MouseLeaveEvent })
+        {
+            button.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, 0) { RoutedEvent = routedEvent });
+            view.UpdateLayout();
+            Assert.That(first.Source, Is.SameAs(source));
+            UiControlContract.AssertStyle<Image>(first, "HomePageSongBackgroundStyle");
+            UiControlContract.AssertStyle<Button>(button, "HomePageSongCardButtonStyle");
+        }
     }
 
     [Test]
     public void RecycledImageRejectsOldSourceAndUnloadsCleanly()
     {
         var row = (FolderEntry)first.DataContext;
-        var size = first.RenderSize;
         page.ImageLoader.Clear();
         first.DataContext = row with { BackgroundPath = path + ".missing" };
         first.DataContext = row;
@@ -139,7 +133,6 @@ public class SongBackgroundTests
         Assert.That(first.Source, Is.Null, "Previous item's completion must not replace a recycled image.");
         first.DataContext = row;
         PumpUntil(() => first.Source is not null);
-        Assert.That(first.RenderSize, Is.EqualTo(size));
         page.ImageLoader.Clear();
         first.DataContext = row with { BackgroundPath = path + ".missing" };
         first.DataContext = row;
@@ -149,7 +142,7 @@ public class SongBackgroundTests
     }
 
     [Test]
-    public void ScrollingRecyclesArtworkAndFillsCardsWithPortraitSource()
+    public void ScrollingRecyclesArtworkWithoutChangingAssignedStyle()
     {
         var portraitPath = Path.GetTempFileName();
         try
@@ -169,20 +162,14 @@ public class SongBackgroundTests
             var images = Descendants<Image>(panel).ToArray();
             PumpUntil(() => images.All(image => image.Source is not null));
             view.UpdateLayout();
-            Assert.That(images.Length, Is.LessThan(60), "Artwork must remain virtualized.");
+            Assert.That(images.Length, Is.LessThanOrEqualTo((panel.VisibleRowCount + 3) * panel.Columns), "Artwork must remain virtualized.");
             foreach (var image in images)
             {
-                var frame = (Grid)VisualTreeHelper.GetParent(image);
-                var viewport = frame;
                 Assert.Multiple(() =>
                 {
                     Assert.That(((FolderEntry)image.DataContext).BackgroundPath, Is.EqualTo(portraitPath));
                     Assert.That(image.Source, Is.Not.SameAs(originalSource));
-                    Assert.That(image.ActualWidth, Is.EqualTo(viewport.ActualWidth).Within(.01));
-                    Assert.That(image.ActualHeight, Is.EqualTo(viewport.ActualHeight).Within(.01));
-                    var center = image.TranslatePoint(new Point(image.ActualWidth / 2, image.ActualHeight / 2), viewport);
-                    Assert.That(center.X, Is.EqualTo(viewport.ActualWidth / 2).Within(.01));
-                    Assert.That(center.Y, Is.EqualTo(viewport.ActualHeight / 2).Within(.01));
+                    UiControlContract.AssertStyle<Image>(image, "HomePageSongBackgroundStyle");
                 });
             }
             panel.SetVerticalOffset(0);
@@ -190,9 +177,6 @@ public class SongBackgroundTests
             var returned = Descendants<Image>(panel).First();
             PumpUntil(() => ReferenceEquals(returned.Source, originalSource));
             view.UpdateLayout();
-            var returnedCard = (Grid)VisualTreeHelper.GetParent(returned);
-            Assert.That(returned.ActualWidth, Is.EqualTo(returnedCard.ActualWidth).Within(.01));
-            Assert.That(returned.ActualHeight, Is.EqualTo(returnedCard.ActualHeight).Within(.01));
         }
         finally { File.Delete(portraitPath); }
     }

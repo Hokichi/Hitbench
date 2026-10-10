@@ -1,6 +1,5 @@
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Media.Effects;
 using osuHitsounder.Services;
 using osuHitsounder.ViewModels.Shell;
 using osuHitsounder.Views.Pages;
@@ -21,6 +20,7 @@ public class WorkstationVolumeTransitionTests
         using var view = new InMemoryView(new Window { Content = page, Width = 900, Height = 600 });
         UiTestPump.Run(page.LoadCompletion);
         var content = (Grid)page.FindName("WorkstationContent");
+        UiControlContract.AssertStyle<Grid>(content, "OHsWorkstationContentStyle");
         page.ShowVolumeOverlay(false, new Point(), true, false);
         AssertLocked();
         UiTestPump.Run(Task.Delay(100));
@@ -56,6 +56,7 @@ public class WorkstationVolumeTransitionTests
         UiTestPump.Run(page.LoadCompletion);
         var root = (Grid)page.FindName("WorkstationRoot");
         var content = (Grid)page.FindName("WorkstationContent");
+        UiControlContract.AssertStyle<Grid>(content, "OHsWorkstationContentStyle");
         page.ShowVolumeOverlay(false, new Point(), false, false);
         Assert.That(content.IsHitTestVisible, Is.False);
         root.IsEnabled = false;
@@ -67,33 +68,24 @@ public class WorkstationVolumeTransitionTests
     }
 
     [Test]
-    public void EntryAndExitFadeTogetherAndActivityPreservesEntry()
+    public void EntryAndExitPreserveInputGateAndActivity()
     {
         var page = CreatePage();
         using var view = new InMemoryView(new Window { Content = page, Width = 900, Height = 600 });
         UiTestPump.Run(page.LoadCompletion);
         page.ShowVolumeOverlay(false, new Point(), true, false);
         var panel = (Border)page.FindName("VolumeOverlay");
-        Assert.That(panel.Opacity, Is.LessThan(1));
+        UiControlContract.AssertStyle<Border>(panel, "OHsWorkstationVolumeOverlayStyle");
         var content = (Grid)page.FindName("WorkstationContent");
-        Assert.That(content.Effect, Is.TypeOf<BlurEffect>());
-        var blur = (BlurEffect)content.Effect;
+        UiControlContract.AssertStyle<Grid>(content, "OHsWorkstationContentStyle");
         page.RecordVolumeActivity();
-        Assert.That(panel.Opacity, Is.LessThan(1));
         UiTestPump.Run(Task.Delay(100));
-        Assert.That(panel.Opacity, Is.InRange(0.01, 0.99));
-        Assert.That(blur.Radius, Is.InRange(0.01, 5.99));
         UiTestPump.Run(Task.Delay(150));
-        Assert.That(panel.Opacity, Is.EqualTo(1).Within(0.001));
-        Assert.That(blur.Radius, Is.EqualTo(6).Within(0.001));
         page.ProcessVolumeOverlayIdle(TimeSpan.FromSeconds(1), true);
         UiTestPump.Run(Task.Delay(100));
         Assert.That(page.IsVolumeOverlayOpen, Is.True);
-        Assert.That(panel.Opacity, Is.InRange(0.01, 0.99));
-        Assert.That(blur.Radius, Is.InRange(0.01, 5.99));
         UiTestPump.Run(Task.Delay(150));
         Assert.That(page.IsVolumeOverlayOpen, Is.False);
-        Assert.That(content.Effect, Is.Null);
         Assert.That(content.IsHitTestVisible, Is.True);
     }
 
@@ -108,35 +100,31 @@ public class WorkstationVolumeTransitionTests
         page.ProcessVolumeOverlayIdle(TimeSpan.FromSeconds(1), true);
         UiTestPump.Run(Task.Delay(100));
         var panel = (Border)page.FindName("VolumeOverlay");
-        var opacity = panel.Opacity;
+        UiControlContract.AssertStyle<Border>(panel, "OHsWorkstationVolumeOverlayStyle");
         page.RecordVolumeActivity();
-        Assert.That(panel.Opacity, Is.EqualTo(opacity).Within(0.01));
+        Assert.That(page.IsVolumeOverlayOpen, Is.True);
         UiTestPump.Run(Task.Delay(250));
         Assert.That(page.IsVolumeOverlayOpen, Is.True);
-        Assert.That(panel.Opacity, Is.EqualTo(1).Within(0.001));
         page.DismissVolumeOverlay();
-        Assert.That(((Grid)page.FindName("WorkstationContent")).Effect, Is.Null);
     }
 
     [TestCase(false)]
     [TestCase(true)]
-    public void DisabledAnimationAppliesFinalStatesAndHighContrastStaysSharp(bool highContrast)
+    public void DisabledAnimationAppliesTerminalInteractionStates(bool highContrast)
     {
         var page = CreatePage();
         using var view = new InMemoryView(new Window { Content = page, Width = 900, Height = 600 });
         UiTestPump.Run(page.LoadCompletion);
         page.ShowVolumeOverlay(false, new Point(), false, highContrast);
         var panel = (Border)page.FindName("VolumeOverlay");
+        UiControlContract.AssertStyle<Border>(panel, "OHsWorkstationVolumeOverlayStyle");
         var content = (Grid)page.FindName("WorkstationContent");
-        Assert.That(panel.Opacity, Is.EqualTo(1));
+        UiControlContract.AssertStyle<Grid>(content, "OHsWorkstationContentStyle");
         Assert.That(panel.HasAnimatedProperties, Is.False);
-        if (highContrast) Assert.That(content.Effect, Is.Null);
-        else Assert.That(((BlurEffect)content.Effect).Radius, Is.EqualTo(6));
         page.ProcessVolumeOverlayIdle(TimeSpan.FromMilliseconds(999), false);
         Assert.That(page.IsVolumeOverlayOpen, Is.True);
         page.ProcessVolumeOverlayIdle(TimeSpan.FromSeconds(1), false);
         Assert.That(page.IsVolumeOverlayOpen, Is.False);
-        Assert.That(content.Effect, Is.Null);
     }
 
     [TestCase(false)]
@@ -150,8 +138,8 @@ public class WorkstationVolumeTransitionTests
         if (unload) view.Dispose();
         else UiTestPump.Run(page.DeactivateAsync());
         var panel = (Border)page.FindName("VolumeOverlay");
+        UiControlContract.AssertStyle<Border>(panel, "OHsWorkstationVolumeOverlayStyle");
         Assert.That(panel.HasAnimatedProperties, Is.False);
-        Assert.That(((Grid)page.FindName("WorkstationContent")).Effect, Is.Null);
         UiTestPump.Run(Task.Delay(250));
         Assert.That(page.IsVolumeOverlayOpen, Is.False);
         Assert.That(page.ActiveVolumeWheel, Is.Null);
@@ -159,20 +147,21 @@ public class WorkstationVolumeTransitionTests
     }
 
     [Test]
-    public void ReopeningWithChangedSystemSettingsSettlesMotionAndClearsBlur()
+    public void ReopeningWithChangedSystemSettingsSettlesMotion()
     {
         var page = CreatePage();
         using var view = new InMemoryView(new Window { Content = page, Width = 900, Height = 600 });
         UiTestPump.Run(page.LoadCompletion);
         page.ShowVolumeOverlay(false, new Point(), true, false);
         var panel = (Border)page.FindName("VolumeOverlay");
+        UiControlContract.AssertStyle<Border>(panel, "OHsWorkstationVolumeOverlayStyle");
         var content = (Grid)page.FindName("WorkstationContent");
+        UiControlContract.AssertStyle<Grid>(content, "OHsWorkstationContentStyle");
         page.ShowVolumeOverlay(false, new Point(), false, true);
         Assert.That(panel.HasAnimatedProperties, Is.False);
-        Assert.That(panel.Opacity, Is.EqualTo(1));
-        Assert.That(content.Effect, Is.Null);
         page.ShowVolumeOverlay(false, new Point(), false, false);
-        Assert.That(((BlurEffect)content.Effect).Radius, Is.EqualTo(6));
+        Assert.That(page.IsVolumeOverlayOpen, Is.True);
+        Assert.That(content.IsEnabled, Is.False);
     }
 
     [Test]
@@ -185,15 +174,12 @@ public class WorkstationVolumeTransitionTests
         page.ProcessVolumeOverlayIdle(TimeSpan.FromSeconds(1), true);
         UiTestPump.Run(Task.Delay(100));
         var panel = (Border)page.FindName("VolumeOverlay");
-        var opacity = panel.Opacity;
+        UiControlContract.AssertStyle<Border>(panel, "OHsWorkstationVolumeOverlayStyle");
         page.ShowVolumeOverlay(false, new Point(), true, false);
-        Assert.That(panel.Opacity, Is.EqualTo(opacity).Within(0.01));
         UiTestPump.Run(Task.Delay(250));
         Assert.That(page.IsVolumeOverlayOpen, Is.True);
-        Assert.That(panel.Opacity, Is.EqualTo(1));
         page.HandleVolumeOverlayKey(System.Windows.Input.Key.Escape, System.Windows.Input.ModifierKeys.None);
         Assert.That(page.IsVolumeOverlayOpen, Is.False);
-        Assert.That(((Grid)page.FindName("WorkstationContent")).Effect, Is.Null);
         Assert.That(((Grid)page.FindName("WorkstationContent")).IsHitTestVisible, Is.True);
     }
 

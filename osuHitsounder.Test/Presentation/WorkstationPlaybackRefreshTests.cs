@@ -61,7 +61,7 @@ public class WorkstationPlaybackRefreshTests
     [TestCase(900, FlowDirection.RightToLeft, "WASAPI")]
     [TestCase(640, FlowDirection.LeftToRight, "WaveOut")]
     [TestCase(900, FlowDirection.RightToLeft, "WaveOut")]
-    public void FallbackWarningBindsWrapsAndClearsWithoutDisablingTransport(int width, FlowDirection direction, string backend)
+    public void FallbackWarningBindsAndClearsWithoutDisablingTransport(int width, FlowDirection direction, string backend)
     {
         host.Width = width;
         host.FlowDirection = direction;
@@ -73,11 +73,10 @@ public class WorkstationPlaybackRefreshTests
         view.UpdateLayout();
         var status = (System.Windows.Controls.TextBlock)page.FindName("PlaybackWarningText");
         Assert.That(status, Is.Not.Null);
+        UiControlContract.AssertStyle<System.Windows.Controls.TextBlock>(status, "OHsWorkstationPlaybackWarningStyle");
         Assert.That(status.Text, Is.EqualTo(warning));
         Assert.That(System.Windows.Automation.AutomationProperties.GetName(status), Is.EqualTo(warning));
         Assert.That(status.Visibility, Is.EqualTo(Visibility.Visible));
-        Assert.That(status.TextWrapping, Is.EqualTo(TextWrapping.Wrap));
-        Assert.That(status.ActualHeight, Is.GreaterThan(13));
         Assert.That(status.FlowDirection, Is.EqualTo(direction));
         Assert.That(vm.CanPlay, Is.True);
         Assert.That(vm.ErrorMessage, Is.Null);

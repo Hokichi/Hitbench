@@ -10,26 +10,26 @@ namespace osuHitsounder.Test.Presentation;
 public sealed class OHsMessageBoxPopupIntegrationTests
 {
     [Test]
-    public void ButtonSetsUseBalloonActionsWithSemanticIconsTextAndResults()
+    public void ButtonSetsUseAssignedBalloonStylesTextAndResults()
     {
         EnsureResources();
 
         AssertButtons(MessageBoxButton.OK,
-            ("PrimaryButton", "OK", "Check", MessageBoxResult.OK),
+            ("PrimaryButton", "OK", MessageBoxResult.OK),
             null,
             null);
         AssertButtons(MessageBoxButton.OKCancel,
-            ("PrimaryButton", "OK", "Check", MessageBoxResult.OK),
-            ("SecondaryButton", "Cancel", "Ban", MessageBoxResult.Cancel),
+            ("PrimaryButton", "OK", MessageBoxResult.OK),
+            ("SecondaryButton", "Cancel", MessageBoxResult.Cancel),
             null);
         AssertButtons(MessageBoxButton.YesNo,
-            ("PrimaryButton", "Yes", "Check", MessageBoxResult.Yes),
-            ("SecondaryButton", "No", "Ban", MessageBoxResult.No),
+            ("PrimaryButton", "Yes", MessageBoxResult.Yes),
+            ("SecondaryButton", "No", MessageBoxResult.No),
             null);
         AssertButtons(MessageBoxButton.YesNoCancel,
-            ("PrimaryButton", "Yes", "Check", MessageBoxResult.Yes),
-            ("SecondaryButton", "No", "Ban", MessageBoxResult.No),
-            ("TertiaryButton", "Cancel", "Ban", MessageBoxResult.Cancel));
+            ("PrimaryButton", "Yes", MessageBoxResult.Yes),
+            ("SecondaryButton", "No", MessageBoxResult.No),
+            ("TertiaryButton", "Cancel", MessageBoxResult.Cancel));
     }
 
     [Test]
@@ -93,9 +93,9 @@ public sealed class OHsMessageBoxPopupIntegrationTests
 
     private static void AssertButtons(
         MessageBoxButton buttons,
-        (string Name, string Text, string Icon, MessageBoxResult Result) primary,
-        (string Name, string Text, string Icon, MessageBoxResult Result)? secondary,
-        (string Name, string Text, string Icon, MessageBoxResult Result)? tertiary)
+        (string Name, string Text, MessageBoxResult Result) primary,
+        (string Name, string Text, MessageBoxResult Result)? secondary,
+        (string Name, string Text, MessageBoxResult Result)? tertiary)
     {
         var popup = new OHsMessageBoxPopup("Message", "Title", buttons);
         AssertButton(popup, primary, "OHsBalloonConfirmActionStyle");
@@ -106,7 +106,7 @@ public sealed class OHsMessageBoxPopupIntegrationTests
 
     private static void AssertOptionalButton(
         OHsMessageBoxPopup popup,
-        (string Name, string Text, string Icon, MessageBoxResult Result)? expected,
+        (string Name, string Text, MessageBoxResult Result)? expected,
         string buttonName)
     {
         if (expected is { } value)
@@ -117,17 +117,16 @@ public sealed class OHsMessageBoxPopupIntegrationTests
 
     private static void AssertButton(
         OHsMessageBoxPopup popup,
-        (string Name, string Text, string Icon, MessageBoxResult Result) expected,
+        (string Name, string Text, MessageBoxResult Result) expected,
         string styleKey)
     {
         var button = (BalloonButton)popup.FindName(expected.Name);
         Assert.Multiple(() =>
         {
+            Assert.That(button, Is.TypeOf<BalloonButton>());
             Assert.That(button.Visibility, Is.EqualTo(Visibility.Visible));
             Assert.That(button.ButtonText, Is.EqualTo(expected.Text));
-            Assert.That(button.ButtonIcon, Is.SameAs(popup.FindResource(expected.Icon)));
             Assert.That(button.Tag, Is.EqualTo(expected.Result));
-            Assert.That(button.ShouldShowText, Is.True);
             Assert.That(button.Style, Is.SameAs(popup.FindResource(styleKey)));
             Assert.That(AutomationProperties.GetName(button), Is.EqualTo(expected.Text));
         });

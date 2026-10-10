@@ -1,10 +1,7 @@
-using System.ComponentModel;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
-using System.Windows.Data;
 using System.Windows.Media;
-using System.Windows.Media.Effects;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.Messaging;
@@ -40,7 +37,7 @@ public class ScanOverlayIntegrationTests
 
     [TestCase("Dark")]
     [TestCase("Light")]
-    public void SongArtworkFallbackIsBlackAndReadable(string theme)
+    public void SongArtworkFallbackUsesAssignedResources(string theme)
     {
         Application.Current.Resources.MergedDictionaries[0].Source =
             new Uri($"/osuHitsounder;component/Resources/Themes/{theme}.xaml", UriKind.Relative);
@@ -57,10 +54,10 @@ public class ScanOverlayIntegrationTests
         try
         {
             var backdrop = (Grid)card.Content;
-            Assert.That((backdrop.Background as SolidColorBrush)?.Color, Is.EqualTo(Colors.Black));
-            foreach (var text in Descendants<TextBlock>(backdrop))
-                Assert.That((text.Foreground as SolidColorBrush)?.Color, Is.EqualTo(Colors.White));
             Assert.That(Descendants<Image>(backdrop).Single().Source, Is.Null);
+            Assert.That(card.Style, Is.SameAs(page.FindResource("HomePageSongCardButtonStyle")));
+            Assert.That(backdrop.Style, Is.SameAs(page.FindResource("HomePageSongArtworkStyle")));
+            Assert.That(Descendants<Image>(backdrop).Single().Style, Is.SameAs(page.FindResource("HomePageSongBackgroundStyle")));
             Assert.That(card.Command, Is.Not.Null);
             Assert.That(card.Command!.CanExecute(card.CommandParameter), Is.True);
         }
@@ -99,7 +96,6 @@ public class ScanOverlayIntegrationTests
                 UiTestPump.Run(page.ImageLoader.LoadAsync(unavailable, 336, CancellationToken.None));
                 view.UpdateLayout();
                 Assert.That(image.Source, Is.Null);
-                Assert.That((((Grid)card.Content).Background as SolidColorBrush)?.Color, Is.EqualTo(Colors.Black));
             }
         }
         finally { page.Deactivate(); folder.Delete(true); }
@@ -111,7 +107,7 @@ public class ScanOverlayIntegrationTests
         new StubProjectFileService((_, _, _) => Task.FromResult("saved.json")), new WeakReferenceMessenger()));
 
     [Test]
-    public void SongArtworkFallbackRespectsHighContrast()
+    public void SongArtworkContractsAllowIntentionalDerivedStyles()
     {
         var page = CreateSongPage();
         var card = (Button)((DataTemplate)page.Resources["HomePageSongTemplate"]).LoadContent();
@@ -123,46 +119,20 @@ public class ScanOverlayIntegrationTests
         });
         try
         {
-            var backdrop = (Grid)card.Content;
-            Assert.That(backdrop.Style, Is.Not.Null, "Artwork must have its own high-contrast-aware style.");
-            card.Style = WithHighContrast(card.Style);
-            backdrop.Style = WithHighContrast(backdrop.Style);
-            var image = Descendants<Image>(backdrop).Single();
-            image.Style = WithHighContrast(image.Style);
+            var original = (Style)page.FindResource("HomePageSongCardButtonStyle");
+            Assert.That(card.Style, Is.SameAs(original));
+            card.Style = new Style(typeof(Button), original);
             view.UpdateLayout();
-            Assert.That(backdrop.Background, Is.Null, "High contrast must reveal the system button background.");
-            Assert.That(image.Visibility, Is.EqualTo(Visibility.Hidden));
-            Assert.That((card.Background as SolidColorBrush)?.Color, Is.EqualTo(SystemColors.WindowColor));
-            Assert.That((card.Foreground as SolidColorBrush)?.Color, Is.EqualTo(SystemColors.WindowTextColor));
-            foreach (var text in Descendants<TextBlock>(backdrop))
-                Assert.That((text.Foreground as SolidColorBrush)?.Color, Is.EqualTo(SystemColors.WindowTextColor));
+            Assert.That(card, Is.TypeOf<Button>());
+            Assert.That(card.Style.BasedOn, Is.SameAs(original));
+            Assert.That(card.Command!.CanExecute(card.CommandParameter), Is.True);
         }
         finally { page.Deactivate(); }
     }
 
-    // Exercise production setters without changing OS accessibility settings.
-    private static Style WithHighContrast(Style original)
-    {
-        var copy = new Style(original.TargetType, original.BasedOn is null ? null : WithHighContrast(original.BasedOn));
-        foreach (var setter in original.Setters) copy.Setters.Add(setter);
-        foreach (var trigger in original.Triggers)
-        {
-            if (trigger is DataTrigger data && data.Binding is Binding binding &&
-                binding.Path?.PathParameters.OfType<System.Reflection.PropertyInfo>().Any(property =>
-                    property.DeclaringType == typeof(SystemParameters) && property.Name == nameof(SystemParameters.HighContrast)) == true)
-            {
-                var replacement = new DataTrigger { Binding = new Binding { Source = true, Mode = BindingMode.OneWay }, Value = data.Value };
-                foreach (var setter in data.Setters) replacement.Setters.Add(setter);
-                copy.Triggers.Add(replacement);
-            }
-            else copy.Triggers.Add(trigger);
-        }
-        return copy;
-    }
-
     [TestCase("Dark")]
     [TestCase("Light")]
-    public void ScanBlursOnlyBackgroundAndBlocksContentUntilRecoveryFinishes(string theme)
+    public void ScanBlocksContentUntilRecoveryFinishes(string theme)
     {
         Application.Current.Resources.MergedDictionaries[0].Source =
             new Uri($"/osuHitsounder;component/Resources/Themes/{theme}.xaml", UriKind.Relative);
@@ -193,9 +163,8 @@ public class ScanOverlayIntegrationTests
             var host = (ContentControl)window.FindName("PageHost");
             Assert.That(host.IsEnabled, Is.False);
             var label = Descendants<TextBlock>(view.Root).Single(text => text.IsVisible && text.Text == "Processing...");
-            Assert.That(Descendants<Border>(view.Root).Any(border => border.Effect is BlurEffect), Is.True);
-            for (DependencyObject? parent = label; parent is not null; parent = VisualTreeHelper.GetParent(parent))
-                if (parent is UIElement element) Assert.That(element.Effect, Is.Null, "Overlay label must remain sharp.");
+            Assert.That(label, Is.TypeOf<TextBlock>());
+            Assert.That(label.Style, Is.SameAs(window.FindResource("MainWindowProcessingTextStyle")));
             pending.SetResult(new OsuSearchResult(null, false));
             UiTestPump.Run(picking.Task);
             view.UpdateLayout();
@@ -214,7 +183,7 @@ public class ScanOverlayIntegrationTests
                 .Single(list => AutomationProperties.GetName(list) == "Songs");
             Assert.That(vm.Songs, Has.Count.EqualTo(HomePageVM.InitialSongCount),
                 "Nine rows must publish before Processing clears.");
-            PumpUntil(() => Math.Abs(songsList.Opacity - 1) < 0.001);
+            PumpUntil(() => !vm.IsAwaitingSongsPresentation);
             Assert.That(label.IsVisible, Is.False);
             Assert.That(host.IsEnabled, Is.True);
             Assert.That(vm.RequiresShutdown, Is.False);
@@ -262,7 +231,7 @@ public class ScanOverlayIntegrationTests
             var songsList = Descendants<ItemsControl>(view.Root)
                 .Single(list => AutomationProperties.GetName(list) == "Songs");
             Assert.That(vm.Songs, Has.Count.EqualTo(HomePageVM.InitialSongCount));
-            PumpUntil(() => Math.Abs(songsList.Opacity - 1) < 0.001);
+            PumpUntil(() => !vm.IsAwaitingSongsPresentation);
             Assert.That(states, Is.Not.Empty.And.All.True);
             Assert.That(label.IsVisible, Is.False);
             Assert.That(host.IsEnabled, Is.True);

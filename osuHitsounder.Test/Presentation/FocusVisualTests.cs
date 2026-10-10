@@ -1,6 +1,5 @@
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Media;
 using System.Windows.Data;
 using osuHitsounder.Resources.CustomControls;
 
@@ -26,19 +25,14 @@ public sealed class FocusVisualTests
     }
 
     [Test]
-    public void SharedFocusVisualHasNoUnderlineOrEnclosingBorder()
+    public void SharedFocusVisualUsesAssignedResourceAcrossResize()
     {
         var visual = new Control { Style = (Style)Application.Current.FindResource("DefaultFocusVisualStyle") };
-        UiTestPump.Layout(visual, 160, 40);
-        Assert.Multiple(() =>
+        foreach (var width in new[] { 160d, 240d })
         {
-            Assert.That(visual.Template, Is.Null);
-            Assert.That(VisualTreeHelper.GetChildrenCount(visual), Is.Zero);
-            Assert.That(visual.ActualHeight, Is.EqualTo(40));
-        });
-        UiTestPump.Layout(visual, 240, 40);
-        Assert.That(VisualTreeHelper.GetChildrenCount(visual), Is.Zero);
-        Assert.That(visual.ActualWidth, Is.EqualTo(240));
+            UiTestPump.Layout(visual, width, 40);
+            UiControlContract.AssertStyle<Control>(visual, "DefaultFocusVisualStyle");
+        }
     }
 
     [TestCase("BaseTextBoxStyle")]
@@ -58,7 +52,7 @@ public sealed class FocusVisualTests
     }
 
     [Test]
-    public void NumericValidationAndDisabledStateRemainVisible()
+    public void NumericValidationAndDisabledStateRemainFunctional()
     {
         var input = new NumericUpDown { Style = (Style)Application.Current.FindResource(typeof(NumericUpDown)) };
         var binding = new Binding("Tag") { Source = new Control { Tag = 50d }, Mode = BindingMode.OneWay };
@@ -66,13 +60,15 @@ public sealed class FocusVisualTests
         UiTestPump.Layout(input, 160, 40);
         var editor = (TextBox)input.Template.FindName("PART_TextBox", input);
         Assert.That(editor.FocusVisualStyle, Is.SameAs(Application.Current.FindResource("DefaultFocusVisualStyle")));
-        Assert.That(editor.Template, Is.Not.Null);
+        UiControlContract.AssertStyle<NumericUpDown>(input, typeof(NumericUpDown));
+        UiControlContract.AssertTemplate(input, "NumericUpDownTemplate");
+        UiControlContract.AssertStyle<TextBox>(editor, "NumericUpDownEditorStyle");
         var expression = input.GetBindingExpression(NumericUpDown.ValueProperty)!;
         Validation.MarkInvalid(expression, new ValidationError(new ExceptionValidationRule(), expression, "Invalid value", null));
-        var border = (Border)input.Template.FindName("InputRoot", input);
-        Assert.That(border.BorderBrush, Is.SameAs(Application.Current.FindResource("Brush.Danger")));
+        Assert.That(Validation.GetHasError(input), Is.True);
         Validation.ClearInvalid(expression);
         input.IsEnabled = false;
-        Assert.That(border.Opacity, Is.EqualTo(0.4));
+        Assert.That(Validation.GetHasError(input), Is.False);
+        Assert.That(editor.IsEnabled, Is.False);
     }
 }

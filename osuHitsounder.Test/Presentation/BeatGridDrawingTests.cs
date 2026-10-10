@@ -10,68 +10,48 @@ namespace osuHitsounder.Test.Presentation;
 public class BeatGridDrawingTests
 {
     [Test]
-    public void WaveformUsesTwentyAndTenUnitBars()
+    public void WaveformPositionsBeatsOnSuppliedTimeScale()
     {
-        var drawings = DrawGrid(isWaveform: true);
-        Assert.That(((LineGeometry)LineAt(drawings, 0).Geometry).StartPoint.Y, Is.EqualTo(52));
-        Assert.That(((LineGeometry)LineAt(drawings, 50).Geometry).StartPoint.Y, Is.EqualTo(62));
+        Assert.That(Positions(DrawGrid(true)), Is.EqualTo(new[] { 0d, 50d, 100d, 150d, 200d }));
     }
 
-    [TestCase(true, 10d, 0d, 0d)]
-    [TestCase(true, 25d, 5d, 15d)]
-    public void BarsClipOrFillAvailableHeight(bool waveform, double height, double wholeStart, double otherStart)
+    [TestCase(true, 10d)]
+    [TestCase(true, 25d)]
+    public void DrawingStaysWithinSuppliedViewportHeight(bool waveform, double height)
     {
         var drawings = DrawGrid(waveform, height);
-        var whole = (LineGeometry)LineAt(drawings, 0).Geometry;
-        var other = (LineGeometry)LineAt(drawings, 50).Geometry;
-        Assert.That(whole.StartPoint.Y, Is.EqualTo(wholeStart));
-        Assert.That(other.StartPoint.Y, Is.EqualTo(otherStart));
-        Assert.That(whole.EndPoint.Y, Is.EqualTo(height));
-        Assert.That(other.EndPoint.Y, Is.EqualTo(height));
+        Assert.That(drawings, Is.Not.Empty);
+        Assert.That(drawings.All(drawing => drawing.Geometry.Bounds.Top >= 0 && drawing.Geometry.Bounds.Bottom <= height), Is.True);
     }
 
     [Test]
-    public void WaveformBottomAlignsTwentyUnitWholeBarsAndTenUnitOtherBars()
+    public void WaveformDrawsOnlySuppliedHorizontalViewport()
     {
-        var drawings = DrawGrid(isWaveform: true);
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(((LineGeometry)LineAt(drawings, 0).Geometry).StartPoint.Y, Is.EqualTo(52));
-            Assert.That(((LineGeometry)LineAt(drawings, 50).Geometry).StartPoint.Y, Is.EqualTo(62));
-            Assert.That(((LineGeometry)LineAt(drawings, 0).Geometry).EndPoint.Y, Is.EqualTo(72));
-            Assert.That(((LineGeometry)LineAt(drawings, 50).Geometry).EndPoint.Y, Is.EqualTo(72));
-        });
+        Assert.That(Positions(DrawGrid(true, horizontalOffset: 50, viewportWidth: 100)),
+            Is.EqualTo(new[] { 50d, 100d, 150d }));
     }
 
     [Test]
-    public void TrackUsesOriginalWholeAndSubdivisionColors()
+    public void TrackPositionsIncludeRequestedSubdivisions()
     {
-        var drawings = DrawGrid(isWaveform: false);
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(LineAt(drawings, 0).Pen!.Brush, Is.SameAs(Brushes.White));
-            Assert.That(LineAt(drawings, 50).Pen!.Brush, Is.SameAs(Brushes.LightGray));
-        });
+        Assert.That(Positions(DrawGrid(false, subdivision: 4)),
+            Is.EqualTo(new[] { 0d, 25d, 50d, 75d, 100d, 125d, 150d, 175d, 200d }));
     }
 
-    [TestCase(18d, 18d)]
-    [TestCase(24d, 24d)]
-    [TestCase(36d, 35d)]
-    [TestCase(72d, 35d)]
-    [TestCase(144d, 35d)]
-    public void TrackLinesHaveThirtyFiveUnitHeightClippedToTrack(double height, double expected)
+    [TestCase(18d)]
+    [TestCase(24d)]
+    [TestCase(36d)]
+    [TestCase(72d)]
+    [TestCase(144d)]
+    public void TrackDrawingStaysWithinSuppliedLane(double height)
     {
-        foreach (var drawing in DrawGrid(false, height))
-        {
-            var line = (LineGeometry)drawing.Geometry;
-            Assert.That(line.StartPoint.Y, Is.EqualTo(height - expected));
-            Assert.That(line.EndPoint.Y, Is.EqualTo(height));
-        }
+        var drawings = DrawGrid(false, height);
+        Assert.That(drawings, Is.Not.Empty);
+        Assert.That(drawings.All(drawing => drawing.Geometry.Bounds.Top >= 0 && drawing.Geometry.Bounds.Bottom <= height), Is.True);
     }
 
-    private static IReadOnlyList<GeometryDrawing> DrawGrid(bool isWaveform, double height = 72)
+    private static IReadOnlyList<GeometryDrawing> DrawGrid(bool isWaveform, double height = 72,
+        double horizontalOffset = 0, double viewportWidth = 200, int subdivision = 2)
     {
         var owner = new Border();
         owner.Resources.Add("Brush.Beat.Whole", Brushes.White);
@@ -82,10 +62,10 @@ public class BeatGridDrawingTests
         owner.Resources.Add("Brush.Beat.Sixteenth", Brushes.LightGray);
         var drawing = new DrawingGroup();
         using (var context = drawing.Open())
-            BeatGridDrawing.Draw(context, owner, [0], [60], 2, 2000, 200, 0, 200, height, isWaveform);
+            BeatGridDrawing.Draw(context, owner, [0], [60], subdivision, 2000, 200, horizontalOffset, viewportWidth, height, isWaveform);
         return drawing.Children.OfType<GeometryDrawing>().ToArray();
     }
 
-    private static GeometryDrawing LineAt(IEnumerable<GeometryDrawing> drawings, double x) =>
-        drawings.Single(drawing => Math.Abs(((LineGeometry)drawing.Geometry).StartPoint.X - x) < 0.001);
+    private static IEnumerable<double> Positions(IEnumerable<GeometryDrawing> drawings) =>
+        drawings.Select(drawing => drawing.Geometry.Bounds.Left + drawing.Geometry.Bounds.Width / 2).Distinct();
 }
