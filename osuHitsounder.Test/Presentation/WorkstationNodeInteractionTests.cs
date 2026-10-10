@@ -16,6 +16,96 @@ namespace osuHitsounder.Test.Presentation;
 public class WorkstationNodeInteractionTests
 {
     [Test]
+    public void ZoomDuringGestureUpdatesBoundHitGeometryWithoutChangingSamples()
+    {
+        var editor = CreateEditor(); using var view = editor.View;
+        var grid = Descendants<BeatGridView>(editor.Page).First();
+        grid.ContentWidth = 1000; grid.ViewportWidth = 500; grid.HorizontalOffset = 0;
+        editor.Page.BeginNodePointer(grid, new Point(100, 10), new Point());
+        editor.Page.UpdateNodePointer(new Point(20, 10), grid, new Point(125, 10));
+        for (var step = 0; step < 16; step++) editor.Vm.ZoomOutCommand.Execute(null);
+        Assert.That(grid.FindSampleAt(new Point(129, 10)), Is.SameAs(editor.Node));
+        Assert.That(grid.FindSampleAt(new Point(130, 10)), Is.Null);
+        Assert.That(editor.Vm.IsNodeDragActive, Is.True);
+        Assert.That(editor.Node.Timestamp, Is.EqualTo(1000));
+        editor.Page.CancelNodePointer();
+        Assert.That(grid.DragPreviewTimestamp, Is.Null);
+        UiTestPump.Run(editor.Page.DeactivateAsync());
+    }
+    [TestCase(false)]
+    [TestCase(true)]
+    public void DragPreviewTracksSnappedDestinationWithoutEditingSamples(bool crossTrack)
+    {
+        var editor = CreateEditor(); using var view = editor.View;
+        var grids = Descendants<BeatGridView>(editor.Page).ToArray();
+        foreach (var grid in grids) { grid.ContentWidth = 1000; grid.ViewportWidth = 500; grid.HorizontalOffset = 0; }
+        var target = grids[crossTrack ? 1 : 0];
+        editor.Page.BeginNodePointer(grids[0], new Point(100, 10), new Point());
+        editor.Page.UpdateNodePointer(new Point(1, 1), target, new Point(125, 10));
+        Assert.That(target.DragPreviewTimestamp, Is.Null);
+        editor.Page.UpdateNodePointer(new Point(20, 100), target, new Point(125, 10));
+        Assert.That(target.DragPreviewTimestamp, Is.EqualTo(1250));
+        Assert.That(editor.Node.Timestamp, Is.EqualTo(1000)); Assert.That(editor.Vm.CanUndo, Is.False);
+        Assert.That(editor.Vm.Tracks.Sum(track => track.Samples.Count), Is.EqualTo(1));
+        var complete = editor.Page.CompleteNodePointerAsync(); UiTestPump.Run(complete);
+        Assert.That(complete.GetAwaiter().GetResult(), Is.True);
+        Assert.That(target.DragPreviewTimestamp, Is.Null);
+        Assert.That(editor.Node.Timestamp, Is.EqualTo(1250));
+        UiTestPump.Run(editor.Page.DeactivateAsync());
+    }
+
+    [TestCase("leave")]
+    [TestCase("switch")]
+    [TestCase("recycle")]
+    [TestCase("unload")]
+    [TestCase("escape")]
+    [TestCase("overlay")]
+    [TestCase("capture")]
+    [TestCase("deactivate")]
+    public void ChangingInvalidOrRecycledTargetClearsTemporaryNode(string action)
+    {
+        var editor = CreateEditor(); using var view = editor.View;
+        var grids = Descendants<BeatGridView>(editor.Page).ToArray();
+        foreach (var grid in grids) { grid.ContentWidth = 1000; grid.ViewportWidth = 500; grid.HorizontalOffset = 0; }
+        editor.Page.BeginNodePointer(grids[0], new Point(100, 10), new Point());
+        editor.Page.UpdateNodePointer(new Point(20, 100), grids[1], new Point(125, 10));
+        Assert.That(grids[1].DragPreviewTimestamp, Is.EqualTo(1250));
+        switch (action)
+        {
+            case "leave": editor.Page.UpdateNodePointer(new Point(50, 500), null, default); break;
+            case "switch": editor.Page.UpdateNodePointer(new Point(50, 10), grids[0], new Point(150, 10)); break;
+            case "recycle": grids[1].DataContext = new osuHitsounder.Core.Entities.Track(); break;
+            case "unload": grids[1].RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent, grids[1])); break;
+            case "escape": editor.Page.HandlePlaybackKey(Key.Escape, ModifierKeys.None, false, grids[0]); break;
+            case "overlay": editor.Page.ShowVolumeOverlay(false, new Point(), false, false); break;
+            case "capture": editor.Page.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, 0) { RoutedEvent = Mouse.LostMouseCaptureEvent }); break;
+            case "deactivate": UiTestPump.Run(editor.Page.DeactivateAsync()); break;
+        }
+        Assert.That(grids[1].DragPreviewTimestamp, Is.Null);
+        if (action == "switch") Assert.That(grids[0].DragPreviewTimestamp, Is.EqualTo(1500));
+        editor.Page.CancelNodePointer();
+        Assert.That(grids[0].DragPreviewTimestamp, Is.Null);
+        Assert.That(editor.Node.Timestamp, Is.EqualTo(1000)); Assert.That(editor.Vm.CanUndo, Is.False);
+        UiTestPump.Run(editor.Page.DeactivateAsync());
+    }
+
+    [Test]
+    public void SelectedGroupDragCommitsAllNodesTogether()
+    {
+        var editor = CreateEditor(); using var view = editor.View;
+        var grid = Descendants<BeatGridView>(editor.Page).First(); grid.ContentWidth = 1000; grid.ViewportWidth = 500; grid.HorizontalOffset = 0;
+        var other = new Sample { Timestamp = 1500, FileName = "a.wav" }; editor.Vm.Tracks[0].Samples.Add(other);
+        editor.Vm.SetNodeSelection([editor.Node, other]);
+        editor.Page.BeginNodePointer(grid, new Point(100, 10), new Point());
+        editor.Page.UpdateNodePointer(new Point(20, 10), grid, new Point(125, 10));
+        Assert.That(other.Timestamp, Is.EqualTo(1500)); Assert.That(editor.Vm.CanUndo, Is.False);
+        UiTestPump.Run(editor.Page.CompleteNodePointerAsync());
+        Assert.That(editor.Node.Timestamp, Is.EqualTo(1250)); Assert.That(other.Timestamp, Is.EqualTo(1750));
+        editor.Vm.UndoCommand.Execute(null);
+        Assert.That(editor.Node.Timestamp, Is.EqualTo(1000)); Assert.That(other.Timestamp, Is.EqualTo(1500));
+        UiTestPump.Run(editor.Page.DeactivateAsync());
+    }
+    [Test]
     public void ControlClickTogglesAcrossTracksWithoutRearmingRemovedNode()
     {
         var editor = CreateEditor(); using var view = editor.View;

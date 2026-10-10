@@ -10,6 +10,24 @@ namespace osuHitsounder.Test.Presentation;
 [NonParallelizable]
 public class BeatGridNodeEditingTests
 {
+    [TestCase(8, 2.5)]
+    [TestCase(16, 5)]
+    [TestCase(32, 10)]
+    [TestCase(64, 10)]
+    [TestCase(128, 10)]
+    public void ZoomScaledHitTestingUsesTimestampCenteredFootprints(double zoom, double halfWidth)
+    {
+        var grid = CreateGrid(); grid.ZoomFactor = zoom;
+        var node = new Sample { Timestamp = 500 }; grid.Samples = [node];
+        Assert.That(grid.FindSampleAt(new Point(110 + halfWidth - .01, 10)), Is.SameAs(node));
+        Assert.That(grid.FindSampleAt(new Point(110 + halfWidth, 10)), Is.Null);
+        Assert.That(grid.RequestSampleRemoval(110 + halfWidth), Is.False);
+        Assert.That(grid.GetSamplesIntersecting(new Rect(110 + halfWidth + .1, 0, 1, 20)), Is.Empty);
+        grid.PreviewTimestamps = new Dictionary<Sample, int> { [node] = 250 };
+        Assert.That(grid.FindSampleAt(new Point(10, 10)), Is.SameAs(node));
+        Assert.That(grid.FindSampleAt(new Point(10 + halfWidth, 10)), Is.Null);
+        Assert.That(node.Timestamp, Is.EqualTo(500));
+    }
     private static BeatGridView CreateGrid(double height = 36)
     {
         var grid = new BeatGridView { Offsets = [0], Bpms = [60], Subdivision = 4, Duration = TimeSpan.FromSeconds(1),

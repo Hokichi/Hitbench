@@ -12,6 +12,7 @@ namespace osuHitsounder.Views.Pages;
 public partial class WorkstationPage
 {
     private BeatGridView? nodeSourceGrid;
+    private BeatGridView? nodeTargetGrid;
     private Sample? pointerNode;
     private Point pointerStart;
     private bool nodeDragging;
@@ -97,11 +98,46 @@ public partial class WorkstationPage
         nodeTargetValid = targetGrid is { DataContext: Track } && targetGrid.CanPlaceSamples &&
             targetPoint.X >= 0 && targetPoint.X < Math.Min(targetGrid.ActualWidth, targetGrid.ViewportWidth) && targetPoint.Y >= 0 && targetPoint.Y < targetGrid.ActualHeight &&
             targetGrid.ContentWidth > 0 && double.IsFinite(targetGrid.ContentWidth) && viewModel.Tracks.Contains((Track)targetGrid.DataContext) && double.IsFinite(targetPoint.X) && double.IsFinite(targetPoint.Y);
-        if (!nodeTargetValid) return;
+        if (!nodeTargetValid) { SetNodeDragTarget(null, null); return; }
         var time = (targetPoint.X + targetGrid!.HorizontalOffset) / targetGrid.ContentWidth * targetGrid.Duration.TotalMilliseconds;
-        if (!double.IsFinite(time) || time < 0 || time >= targetGrid.Duration.TotalMilliseconds) { nodeTargetValid = false; return; }
+        if (!double.IsFinite(time) || time < 0 || time >= targetGrid.Duration.TotalMilliseconds) { nodeTargetValid = false; SetNodeDragTarget(null, null); return; }
         viewModel.PreviewNodeDrag(time - pointerNode.Timestamp, (Track)targetGrid.DataContext);
-        if (viewModel.NodePreviewTimestamps.TryGetValue(pointerNode, out var snapped)) targetGrid.SetActivePosition(TimeSpan.FromMilliseconds(snapped));
+        if (pointerNode is not null && viewModel.NodePreviewTimestamps.TryGetValue(pointerNode, out var snapped)) SetNodeDragTarget(targetGrid, snapped);
+        else { nodeTargetValid = false; SetNodeDragTarget(null, null); }
+        UpdateNodeAdornerSize();
+    }
+
+    private void SetNodeDragTarget(BeatGridView? grid, int? timestamp)
+    {
+        if (!ReferenceEquals(nodeTargetGrid, grid))
+        {
+            if (nodeTargetGrid is not null)
+            {
+                nodeTargetGrid.DragPreviewTimestamp = null;
+                nodeTargetGrid.UpdatePointerPosition(null);
+                if (!ReferenceEquals(nodeTargetGrid, nodeSourceGrid))
+                {
+                    nodeTargetGrid.DataContextChanged -= OnNodeGridRecycled;
+                    nodeTargetGrid.Unloaded -= OnNodeGridUnloaded;
+                }
+            }
+            nodeTargetGrid = grid;
+            if (grid is not null && !ReferenceEquals(grid, nodeSourceGrid))
+            {
+                grid.DataContextChanged += OnNodeGridRecycled;
+                grid.Unloaded += OnNodeGridUnloaded;
+            }
+        }
+        if (grid is not null) grid.DragPreviewTimestamp = timestamp;
+    }
+
+    private void UpdateNodeAdornerSize()
+    {
+        if (nodeAdorner is null || pointerNode is null || (nodeTargetGrid ?? nodeSourceGrid) is not { } grid) return;
+        grid.GetBindingExpression(BeatGridView.ZoomFactorProperty)?.UpdateTarget();
+        nodeAdorner.NodeWidth = grid.GetDisplayedSampleBounds(pointerNode).Width;
+        nodeAdorner.NodeHeight = grid.ActualHeight;
+        nodeAdorner.InvalidateVisual();
     }
     private void OnNodePointerUp(object sender, MouseButtonEventArgs e)
     {
@@ -118,6 +154,7 @@ public partial class WorkstationPage
     }
     private void DetachNodePointer()
     {
+        SetNodeDragTarget(null, null);
         if (nodeSourceGrid is not null) { nodeSourceGrid.DataContextChanged -= OnNodeGridRecycled; nodeSourceGrid.Unloaded -= OnNodeGridUnloaded; nodeSourceGrid.PressedSample = null; nodeSourceGrid.SuppressPlacementFeedback = false; }
         if (nodeAdorner is not null) nodeLayer?.Remove(nodeAdorner);
         pointerNode = null; nodeSourceGrid = null; nodeAdorner = null; nodeLayer = null; nodeDragging = false; nodeTargetValid = false;
