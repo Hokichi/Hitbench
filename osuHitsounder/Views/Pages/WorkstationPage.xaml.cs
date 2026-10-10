@@ -44,6 +44,8 @@ public partial class WorkstationPage : UserControl
         InitializeComponent();
         KeyboardNavigationPolicy.EnableTabNavigation(ResnapAllSamplesButton);
         DataContext = viewModel;
+        InitializeNodeInteraction();
+        KeyboardNavigationPolicy.EnableTabNavigation(TrackList);
 
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
@@ -66,6 +68,7 @@ public partial class WorkstationPage : UserControl
     public Task DeactivateAsync()
     {
         if (deactivationStarted) return LoadCompletion;
+        CancelNodePointer();
         deactivationStarted = true;
         presentationReady.TrySetResult();
         UpdatePlaybackRefreshSubscription();
@@ -81,7 +84,7 @@ public partial class WorkstationPage : UserControl
             System.Windows.Automation.Peers.UIElementAutomationPeer.CreatePeerForElement(LoadingProjectText))?
             .RaiseAutomationEvent(System.Windows.Automation.Peers.AutomationEvents.LiveRegionChanged);
         ownerWindow = Window.GetWindow(this);
-        if (ownerWindow is not null) ownerWindow.StateChanged += OnOwnerStateChanged;
+        if (ownerWindow is not null) { ownerWindow.StateChanged += OnOwnerStateChanged; ownerWindow.Deactivated += OnNodeOwnerDeactivated; }
         UpdatePlaybackRefreshSubscription();
         LoadCompletion = LoadCoreAsync(projectPath);
         try { await LoadCompletion; }
@@ -113,10 +116,10 @@ public partial class WorkstationPage : UserControl
     private async Task DeactivateCoreAsync()
     {
         DismissVolumeOverlay();
-        try { await viewModel.DeactivateAsync(); await PlaybackInputCompletion; }
+        try { await viewModel.DeactivateAsync(); await PlaybackInputCompletion; await NodeInputCompletion; }
         finally
         {
-            if (ownerWindow is not null) ownerWindow.StateChanged -= OnOwnerStateChanged;
+            if (ownerWindow is not null) { ownerWindow.StateChanged -= OnOwnerStateChanged; ownerWindow.Deactivated -= OnNodeOwnerDeactivated; }
             Loaded -= OnLoaded;
             Unloaded -= OnUnloaded;
             IsVisibleChanged -= OnPlaybackVisibilityChanged;
@@ -347,6 +350,7 @@ public partial class WorkstationPage : UserControl
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (!viewModel.CanPlaceSamples || nodeDragging && !viewModel.IsNodeDragActive) CancelNodePointer();
         if (e.PropertyName == nameof(WorkstationPageVM.SampleFiles)) RefreshSampleSelectors(TrackList);
         if (e.PropertyName is nameof(WorkstationPageVM.IsPlaying) or nameof(WorkstationPageVM.LoadPhase))
             UpdatePlaybackRefreshSubscription();
@@ -412,6 +416,7 @@ public partial class WorkstationPage : UserControl
     internal bool HandlePlaybackKey(Key key, ModifierKeys modifiers, bool isRepeat, DependencyObject? origin)
     {
         if (IsVolumeOverlayOpen) return true;
+        if (HandleNodeKey(key, modifiers, isRepeat, origin)) return true;
         if (deactivationStarted || !viewModel.CanPlay) return false;
         if (modifiers == ModifierKeys.Control && key is Key.Z or Key.Y)
         {

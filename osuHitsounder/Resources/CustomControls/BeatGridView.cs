@@ -42,6 +42,9 @@ public sealed class BeatGridView : FrameworkElement
     public static readonly RoutedEvent SamplePlacementRequestedEvent = EventManager.RegisterRoutedEvent(nameof(SamplePlacementRequested), RoutingStrategy.Bubble, typeof(EventHandler<SamplePlacementRequestedEventArgs>), typeof(BeatGridView));
     public static readonly RoutedEvent SampleRemovalRequestedEvent = EventManager.RegisterRoutedEvent(nameof(SampleRemovalRequested), RoutingStrategy.Bubble, typeof(EventHandler<SampleRemovalRequestedEventArgs>), typeof(BeatGridView));
 
+    public static readonly RoutedEvent SampleSelectionRequestedEvent = EventManager.RegisterRoutedEvent(nameof(SampleSelectionRequested), RoutingStrategy.Bubble, typeof(EventHandler<SampleSelectionRequestedEventArgs>), typeof(BeatGridView));
+    public event EventHandler<SampleSelectionRequestedEventArgs> SampleSelectionRequested
+    { add => AddHandler(SampleSelectionRequestedEvent, value); remove => RemoveHandler(SampleSelectionRequestedEvent, value); }
     public IReadOnlyList<int>? Offsets { get => (IReadOnlyList<int>?)GetValue(OffsetsProperty); set => SetValue(OffsetsProperty, value); }
     public IReadOnlyList<int>? Bpms { get => (IReadOnlyList<int>?)GetValue(BpmsProperty); set => SetValue(BpmsProperty, value); }
     public int Subdivision { get => (int)GetValue(SubdivisionProperty); set => SetValue(SubdivisionProperty, value); }
@@ -95,7 +98,7 @@ public sealed class BeatGridView : FrameworkElement
 
     public Sample? FindActiveSample()
     {
-        if (pointerX is { } x) return FindSampleAt(new Point(x, ActualHeight / 2));
+        if (pointerX is { } x && FindSampleAt(new Point(x, ActualHeight / 2)) is { } hit) return hit;
         if (!CanPlaceSamples || Samples is null || ActiveInterval is not { } interval) return null;
         for (var index = Samples.Count - 1; index >= 0; index--)
         {
@@ -141,7 +144,8 @@ public sealed class BeatGridView : FrameworkElement
     public bool RequestSamplePlacement()
     {
         if (!CanPlaceSamples || ActiveInterval is not { } interval) return false;
-        RaiseEvent(new SamplePlacementRequestedEventArgs(SamplePlacementRequestedEvent, interval.StartMilliseconds));
+        if (FindActiveSample() is { } sample) RaiseEvent(new SampleSelectionRequestedEventArgs(SampleSelectionRequestedEvent, sample));
+        else RaiseEvent(new SamplePlacementRequestedEventArgs(SamplePlacementRequestedEvent, interval.StartMilliseconds));
         return true;
     }
 
@@ -356,7 +360,7 @@ public sealed class BeatGridView : FrameworkElement
         base.OnKeyDown(e);
         if (e.Key is Key.Left or Key.Right) e.Handled = MoveActiveInterval(e.Key == Key.Right);
         else if (e.Key == Key.Enter && !e.IsRepeat) e.Handled = RequestSamplePlacement();
-        else if (e.Key == Key.Delete && !e.IsRepeat) e.Handled = RequestActiveSampleRemoval();
+
     }
 
     private void DrawContent(DrawingContext context)

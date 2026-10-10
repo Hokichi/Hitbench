@@ -285,23 +285,58 @@
             </Style.Triggers>
         </Style>
 
+        <ControlTemplate x:Key="OHsWorkstationTrackItemTemplate" TargetType="ListBoxItem">
+            <Grid Style="{StaticResource BaseGridStyle}">
+            <Border Style="{StaticResource BaseBorderStyle}" BorderThickness="{TemplateBinding BorderThickness}" BorderBrush="{TemplateBinding BorderBrush}" Background="Transparent" Margin="0,0,0,12">
+                <Border Style="{StaticResource CardBorderStyle}" Background="{TemplateBinding Background}">
+                    <ContentPresenter Style="{StaticResource BaseContentPresenterStyle}" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" ContentTemplateSelector="{TemplateBinding ContentTemplateSelector}" ContentStringFormat="{TemplateBinding ContentStringFormat}" />
+                </Border>
+            </Border>
+            <Border x:Name="HighContrastHoverCue" Style="{StaticResource BaseBorderStyle}" Height="2" Margin="8,4,8,0" VerticalAlignment="Top" Background="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" Visibility="Collapsed" IsHitTestVisible="False" />
+            </Grid>
+            <ControlTemplate.Triggers>
+                <MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True" /><Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource Self}, Mode=OneWay}" Value="True" /></MultiDataTrigger.Conditions><Setter TargetName="HighContrastHoverCue" Property="Visibility" Value="Visible" /></MultiDataTrigger>
+            </ControlTemplate.Triggers>
+        </ControlTemplate>
+        <Style x:Key="OHsWorkstationTrackItemStyle" TargetType="ListBoxItem" BasedOn="{StaticResource PlainListBoxItemStyle}">
+            <Setter Property="Template" Value="{StaticResource OHsWorkstationTrackItemTemplate}" />
+            <Setter Property="BorderThickness" Value="2" />
+            <Setter Property="IsTabStop" Value="True" />
+            <Setter Property="Background" Value="{DynamicResource Brush.Background.Surface}" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="FocusVisualStyle" Value="{StaticResource OHsKeyboardFocusVisualStyle}" />
+            <Setter Property="AutomationProperties.Name" Value="Sample track" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{DynamicResource Brush.Background.Hover}" /></Trigger>
+                <Trigger Property="IsMouseCaptureWithin" Value="True"><Setter Property="Opacity" Value="0.75" /></Trigger>
+                <Trigger Property="IsSelected" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource Brush.Navy}" /></Trigger>
+                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True"><Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" /></DataTrigger>
+                <MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True" /><Condition Binding="{Binding IsSelected, RelativeSource={RelativeSource Self}, Mode=OneWay}" Value="True" /></MultiDataTrigger.Conditions><Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" /></MultiDataTrigger>
+            </Style.Triggers>
+        </Style>
         <ItemsPanelTemplate x:Key="OHsWorkstationTrackItemsPanel">
             <VirtualizingStackPanel />
         </ItemsPanelTemplate>
-        <ControlTemplate x:Key="OHsWorkstationTrackListTemplate" TargetType="ItemsControl">
+        <ControlTemplate x:Key="OHsWorkstationTrackListTemplate" TargetType="ListBox">
             <ScrollViewer
-                CanContentScroll="True"
-                HorizontalScrollBarVisibility="Disabled"
-                VerticalScrollBarVisibility="Auto">
+                Style="{StaticResource BaseScrollViewerStyle}"
+                CanContentScroll="{TemplateBinding ScrollViewer.CanContentScroll}"
+                HorizontalScrollBarVisibility="{TemplateBinding ScrollViewer.HorizontalScrollBarVisibility}"
+                VerticalScrollBarVisibility="{TemplateBinding ScrollViewer.VerticalScrollBarVisibility}">
                 <ItemsPresenter />
             </ScrollViewer>
         </ControlTemplate>
         <Style
             x:Key="OHsWorkstationTrackListStyle"
-            BasedOn="{StaticResource BaseItemsControlStyle}"
-            TargetType="ItemsControl">
+            BasedOn="{StaticResource BaseListBoxStyle}"
+            TargetType="ListBox">
             <Setter Property="Background" Value="Transparent" />
-            <Setter Property="Focusable" Value="False" />
+            <Setter Property="VirtualizingPanel.ScrollUnit" Value="Pixel" />
+            <Setter Property="ScrollViewer.CanContentScroll" Value="True" />
+            <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto" />
+            <Setter Property="ItemContainerStyle" Value="{StaticResource OHsWorkstationTrackItemStyle}" />
+            <Setter Property="FocusVisualStyle" Value="{StaticResource OHsKeyboardFocusVisualStyle}" />
+            <Setter Property="IsTabStop" Value="True" />
             <Setter Property="ItemsPanel" Value="{StaticResource OHsWorkstationTrackItemsPanel}" />
             <Setter Property="Template" Value="{StaticResource OHsWorkstationTrackListTemplate}" />
             <Setter Property="VirtualizingStackPanel.IsVirtualizing" Value="True" />
@@ -361,7 +396,6 @@
             </Style.Triggers>
         </Style>
         <DataTemplate x:Key="OHsWorkstationSampleTrackTemplate">
-            <Border Margin="0,0,0,12" Style="{StaticResource CardBorderStyle}">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -428,8 +462,9 @@
                     </WrapPanel>
                     <Border Grid.Row="1" Style="{StaticResource OHsWorkstationTimelineStyle}">
                         <customControls:BeatGridView
+                            KeyboardNavigation.IsTabStop="True"
                             Height="{Binding DataContext.TrackHeight, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
-                            AutomationProperties.HelpText="Use Left and Right to move playback and choose a beat interval, Enter to place the selected sample, and Delete to remove a sample in the active interval. Right-click a sample node to remove it."
+                            AutomationProperties.HelpText="Use Left and Right to move playback. Enter places or selects a node. Delete removes selected nodes; Control+C copies and Control+V pastes. Alt+Left or Right moves selected nodes; Alt+Up or Down changes tracks. Drag nodes to move them; Escape cancels."
                             AutomationProperties.Name="Track sample placement timeline"
                             Bpms="{Binding DataContext.Project.BPMs, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
                             CanPlaceSamples="{Binding DataContext.CanPlaceSamples, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
@@ -446,13 +481,16 @@
                             SamplePlacementRequested="OnSamplePlacementRequested"
                             SampleRemovalRequested="OnSampleRemovalRequested"
                             Samples="{Binding Samples, Mode=OneWay}"
+                            SelectedSamples="{Binding DataContext.SelectedSamples, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
+                            SelectionBrush="{DynamicResource Brush.Navy.Tint}"
+                            SelectionCueBrush="{DynamicResource Brush.Text.Primary}"
+                            SampleSelectionRequested="OnSampleSelectionRequested"
                             SamplesRevision="{Binding DataContext.SamplesRevision, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
                             Subdivision="{Binding DataContext.Subdivision, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
                             ViewportWidth="{Binding TimelineViewportWidth, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
                             Duration="{Binding DataContext.Waveform.Duration, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}" />
                     </Border>
                 </Grid>
-            </Border>
         </DataTemplate>
         <Style
             x:Key="OHsWorkstationLoadingOverlayStyle"
@@ -606,9 +644,11 @@
                         ShouldShowText="True"
                         Style="{StaticResource OHsWorkstationRetrySaveStyle}" />
                 </StackPanel>
-                <Grid Grid.Row="2">
-                    <ItemsControl
+                <AdornerDecorator Grid.Row="2"><Grid>
+                    <ListBox
                         x:Name="TrackList"
+                        SelectedItem="{Binding SelectedTrack, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                        SelectionMode="Single"
                         AutomationProperties.Name="Sample tracks"
                         ItemTemplate="{StaticResource OHsWorkstationSampleTrackTemplate}"
                         ItemsSource="{Binding Tracks, Mode=OneWay}"
@@ -619,7 +659,7 @@
                         AutomationProperties.LiveSetting="Polite"
                         Style="{StaticResource OHsWorkstationEmptyTracksStyle}"
                         Text="No tracks. Load a sample, then use + Sample Track to create one." />
-                </Grid>
+                </Grid></AdornerDecorator>
                 <Grid
                     x:Name="ZoomFooter"
                     Grid.Row="3"

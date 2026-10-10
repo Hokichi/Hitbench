@@ -30,6 +30,7 @@ public partial class WorkstationPage
     internal void ShowVolumeOverlay(bool keyboardInvoked, Point anchor, bool animate, bool highContrast)
     {
         if (deactivationStarted) return;
+        CancelNodePointer();
         var wasOpen = IsVolumeOverlayOpen;
         var settingsChanged = volumeAnimate != animate || volumeBlurRadius != (highContrast ? 0 : 6);
         volumeAnimate = animate;

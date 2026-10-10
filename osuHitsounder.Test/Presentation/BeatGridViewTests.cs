@@ -32,7 +32,7 @@ public class BeatGridViewTests
         grid.Resources["Brush.Border.Default"] = Brushes.Green;
         grid.PrepareDrawing();
         int? requested = null;
-        grid.SamplePlacementRequested += (_, args) => requested = (int)args.LeftBoundaryMilliseconds;
+        grid.SampleSelectionRequested += (_, args) => requested = args.Sample.Timestamp;
         grid.UpdatePointerPosition(30);
         Assert.That(grid, Is.TypeOf<BeatGridView>());
         Assert.That(grid.RequestSamplePlacement(), Is.True);
@@ -42,7 +42,7 @@ public class BeatGridViewTests
     [TestCase(60, 30d, 250)]
     [TestCase(123, 0d, 122)]
     [TestCase(60, 0d, 0)]
-    public void HoverAndPlacementUseSameSnappedTimestamp(int bpm, double pointer, int timestamp)
+    public void HoverAndOccupiedSelectionUseSameSnappedTimestamp(int bpm, double pointer, int timestamp)
     {
         var grid = CreateGrid();
         grid.Bpms = [bpm];
@@ -50,7 +50,7 @@ public class BeatGridViewTests
         grid.Samples = [new Sample { Timestamp = timestamp }];
         grid.UpdatePointerPosition(pointer);
         double? requested = null;
-        grid.SamplePlacementRequested += (_, args) => requested = args.LeftBoundaryMilliseconds;
+        grid.SampleSelectionRequested += (_, args) => requested = args.Sample.Timestamp;
         Assert.That(grid.RequestSamplePlacement(), Is.True);
         Assert.That(requested, Is.EqualTo(timestamp).Within(.5));
     }
@@ -87,6 +87,7 @@ public class BeatGridViewTests
     public void PlacementEventUsesActiveLeftBoundaryAndHonorsGate()
     {
         var grid = CreateGrid();
+        grid.Samples = [];
         double? requested = null;
         grid.SamplePlacementRequested += (_, args) => requested = args.LeftBoundaryMilliseconds;
         grid.UpdatePointerPosition(30);
