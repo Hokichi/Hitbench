@@ -121,7 +121,8 @@ public partial class SampleLoaderPopup : BasePopup
             while (!deactivated)
             {
                 var entry = entries.FirstOrDefault(item => item.IsDirectory && (SameFolder(item.FullPath, initialFolder!) ||
-                    initialFolder!.StartsWith(System.IO.Path.TrimEndingDirectorySeparator(item.FullPath) + System.IO.Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)));
+                    initialFolder!.StartsWith(System.IO.Path.EndsInDirectorySeparator(item.FullPath)
+                        ? item.FullPath : item.FullPath + System.IO.Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)));
                 if (entry is null) return;
                 owner.ApplyTemplate();
                 owner.UpdateLayout();

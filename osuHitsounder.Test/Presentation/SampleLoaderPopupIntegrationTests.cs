@@ -446,18 +446,24 @@ public sealed class SampleLoaderPopupIntegrationTests
         Assert.That(BindingOperations.IsDataBound(timeline, RangeBase.ValueProperty), Is.True);
     }
 
-    [TestCase(false)]
-    [TestCase(true)]
-    public void DeepInitialFolderIsAutomaticallyBroughtIntoViewportOnce(bool loadedBeforeLayout)
+    [TestCase(null, false)]
+    [TestCase(null, true)]
+    [TestCase(@"C:\", false)]
+    [TestCase(@"C:\", true)]
+    [TestCase(@"\\server\share\", false)]
+    [TestCase(@"\\server\share\", true)]
+    public void DeepInitialFolderIsAutomaticallyBroughtIntoViewportOnce(string? browserRoot, bool loadedBeforeLayout)
     {
         UiTestPump.Run(popup.DeactivateAsync());
         view.Dispose();
         popup.Close();
         browser = new();
-        var branches = Enumerable.Range(0, 120).Select(index => new SampleBrowserEntry(Path.Combine(browser.RootPath, $"Folder{index:000}"), $"Folder{index:000}", true)).ToArray();
+        var rootPath = browserRoot ?? browser.RootPath;
+        browser.RootEntries = [new(rootPath, "Root", true)];
+        var branches = Enumerable.Range(0, 120).Select(index => new SampleBrowserEntry(Path.Combine(rootPath, $"Folder{index:000}"), $"Folder{index:000}", true)).ToArray();
         var parent = branches[^1];
         var target = new SampleBrowserEntry(Path.Combine(parent.FullPath, "Beatmap"), "Beatmap", true);
-        browser.Entries[browser.RootPath] = branches;
+        browser.Entries[rootPath] = branches;
         browser.Entries[parent.FullPath] = [target];
         browser.Entries[target.FullPath] = [];
         vm = new(browser, new StubSamplePreviewService(), new ImmediateUiScheduler(), new PlaybackVolumeSettings());
@@ -472,7 +478,8 @@ public sealed class SampleLoaderPopupIntegrationTests
         view = new InMemoryView(popup, scheduleLayout: false);
         UiTestPump.Run(popup.Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle).Task);
         view.UpdateLayout();
-        var selected = Descendants(tree).OfType<TreeViewItem>().Single(item => ReferenceEquals(item.DataContext, target));
+        var selected = Descendants(tree).OfType<TreeViewItem>().SingleOrDefault(item => ReferenceEquals(item.DataContext, target));
+        Assert.That(selected, Is.Not.Null, "Initial beatmap folder must be realized and revealed from the browser root.");
         var header = (Border)selected.Template.FindName("Row", selected);
         var bounds = header.TransformToAncestor(tree).TransformBounds(new Rect(header.RenderSize));
         Assert.That(bounds.Top, Is.GreaterThanOrEqualTo(0));
