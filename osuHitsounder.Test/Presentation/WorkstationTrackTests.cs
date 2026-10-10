@@ -10,6 +10,42 @@ namespace osuHitsounder.Test.Presentation;
 public class WorkstationTrackTests
 {
     [Test]
+    public async Task MetadataEditsPersistOnlyReadyLiveTracks()
+    {
+        var track = new Track { SelectedSampleFileName = "kick.wav" };
+        var other = new Track();
+        var source = new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(
+            new WorkstationSource("map.osu", "audio.wav", new ProjectData { Tracks = [track] })) };
+        using var audio = new StubWorkstationAudioService();
+        var saves = new DelayedProjectFileService(); saves.Release();
+        var vm = new WorkstationPageVM(source, new osuHitsounder.Services.MarkerPlaybackCoordinator(audio, Task.Delay),
+            new ImmediateUiScheduler(), projectFiles: saves);
+        await vm.LoadAsync("project.json", CancellationToken.None);
+        vm.SetTrackSampleset(track, "Drum");
+        Assert.That(track.Sampleset, Is.EqualTo("Normal"));
+        vm.AcknowledgePresentationReady(vm.LoadGeneration);
+        var updates = audio.SampleUpdates.Count;
+        vm.SetTrackSampleset(other, "Drum"); vm.SetTrackAddition(other, "Drum");
+        vm.SetTrackSampleset(track, "None"); vm.SetTrackAddition(track, "unknown");
+        vm.SetTrackSampleset(track, "Soft"); vm.SetTrackSampleset(track, "Soft");
+        vm.SetTrackAddition(track, "Drum"); vm.SetTrackAddition(track, "Drum");
+        await vm.FlushSavesAsync();
+        Assert.That(saves.Snapshots.Select(json => ProjectDataSerializer.Deserialize(json).Tracks.Single().Sampleset),
+            Is.EqualTo(new[] { "Soft", "Soft" }));
+        Assert.That(saves.Snapshots.Select(json => ProjectDataSerializer.Deserialize(json).Tracks.Single().Addition),
+            Is.EqualTo(new[] { "None", "Drum" }));
+        Assert.That(other.Sampleset, Is.EqualTo("Normal"));
+        Assert.That(other.Addition, Is.EqualTo("None"));
+        Assert.That(track.SelectedSampleFileName, Is.EqualTo("kick.wav"));
+        Assert.That(audio.SampleUpdates, Has.Count.EqualTo(updates));
+        Assert.That(vm.CanUndo, Is.False);
+        await vm.DeactivateAsync();
+        vm.SetTrackSampleset(track, "Drum"); vm.SetTrackAddition(track, "Normal");
+        Assert.That(track.Sampleset, Is.EqualTo("Soft"));
+        Assert.That(track.Addition, Is.EqualTo("Drum"));
+    }
+
+    [Test]
     public async Task RenamingPersistsOrderedSnapshotsWithoutChangingAudioOrNodeHistory()
     {
         var track = new Track { SelectedSampleFileName = "kick.wav" };

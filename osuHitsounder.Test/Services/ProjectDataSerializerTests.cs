@@ -5,6 +5,48 @@ namespace osuHitsounder.Test.Services;
 
 public class ProjectDataSerializerTests
 {
+    [TestCase("{\"Tracks\":[{}]}")]
+    [TestCase("{\"Tracks\":[{\"Sampleset\":null,\"Addition\":null}]}")]
+    [TestCase("{\"Samples\":[{\"Path\":\"old.wav\",\"Timestamps\":[0]}]}")]
+    public void MetadataDefaultsForOldAndNullFields(string json)
+    {
+        var track = ProjectDataSerializer.Deserialize(json).Tracks.Single();
+        Assert.That(track.Sampleset, Is.EqualTo("Normal"));
+        Assert.That(track.Addition, Is.EqualTo("None"));
+    }
+
+    [TestCase("Normal", "None")]
+    [TestCase("Soft", "Normal")]
+    [TestCase("Drum", "Soft")]
+    [TestCase("Normal", "Drum")]
+    public void MetadataDefaultsAndRoundTripsAllChoices(string sampleset, string addition)
+    {
+        var project = new ProjectData { Tracks = [new Track { Sampleset = sampleset, Addition = addition,
+            Name = "Kick", SelectedSampleFileName = "kick.wav", Volume = 75,
+            Samples = [new Sample { FileName = "kick.wav", Timestamp = 125, Volume = 23 }] }] };
+        var track = ProjectDataSerializer.Deserialize(ProjectDataSerializer.Serialize(project)).Tracks.Single();
+        Assert.That(track.Sampleset, Is.EqualTo(sampleset));
+        Assert.That(track.Addition, Is.EqualTo(addition));
+        Assert.That(track.Name, Is.EqualTo("Kick"));
+        Assert.That(track.SelectedSampleFileName, Is.EqualTo("kick.wav"));
+        Assert.That(track.Volume, Is.EqualTo(75));
+        Assert.That(track.Samples.Single().Timestamp, Is.EqualTo(125));
+        Assert.That(track.Samples.Single().Volume, Is.EqualTo(23));
+    }
+
+    [TestCase("\"None\"")]
+    [TestCase("\"unknown\"")]
+    [TestCase("123")]
+    [TestCase("true")]
+    [TestCase("{}")]
+    [TestCase("[]")]
+    public void MetadataRejectsMalformedValuesEvenWithoutSamples(string value)
+    {
+        Assert.Throws<InvalidDataException>(() => ProjectDataSerializer.Deserialize("{\"Tracks\":[{\"Sampleset\":" + value + "}]}"));
+        if (value != "\"None\"")
+            Assert.Throws<InvalidDataException>(() => ProjectDataSerializer.Deserialize("{\"Tracks\":[{\"Addition\":" + value + ",\"Samples\":[]}]}"));
+    }
+
     [Test]
     public void TrackNamesDefaultEmptyAndRoundTripIndependentlyOfSample()
     {

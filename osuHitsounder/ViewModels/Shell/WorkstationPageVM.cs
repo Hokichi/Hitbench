@@ -514,6 +514,20 @@ public partial class WorkstationPageVM(
         QueueSave();
     }
 
+    public void SetTrackSampleset(Track track, string value)
+    {
+        if (!CanEditTracks || !tracks.Contains(track) || !Track.SamplesetOptions.Contains(value) || track.Sampleset == value) return;
+        track.Sampleset = value;
+        QueueSave();
+    }
+
+    public void SetTrackAddition(Track track, string value)
+    {
+        if (!CanEditTracks || !tracks.Contains(track) || !Track.AdditionOptions.Contains(value) || track.Addition == value) return;
+        track.Addition = value;
+        QueueSave();
+    }
+
     public void SetTrackVolume(Track track, int volume)
     {
         if (!CanEditTracks || !tracks.Contains(track)) return;

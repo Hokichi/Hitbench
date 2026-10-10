@@ -43,6 +43,8 @@ public static class ProjectDataSerializer
                 if (track["Name"] is { Type: JTokenType.Null }) track["Name"] = string.Empty;
                 if (track["SelectedSampleFileName"] is { Type: not (JTokenType.String or JTokenType.Null) })
                     throw new InvalidDataException("Track SelectedSampleFileName must be a string or null.");
+                NormalizeTrackOption(track, nameof(Track.Sampleset), "Normal", Track.SamplesetOptions);
+                NormalizeTrackOption(track, nameof(Track.Addition), "None", Track.AdditionOptions);
                 if (track["Samples"] is null) continue;
                 if (track["Samples"] is not JArray samples || samples.Any(sample => sample is not JObject))
                     throw new InvalidDataException("Track Samples must be an array of objects.");
@@ -55,6 +57,13 @@ public static class ProjectDataSerializer
     }
 
     public static string Serialize(ProjectData project) => JsonConvert.SerializeObject(project, Formatting.Indented);
+
+    private static void NormalizeTrackOption(JObject track, string property, string defaultValue, IReadOnlyList<string> options)
+    {
+        if (track[property] is null or { Type: JTokenType.Null }) track[property] = defaultValue;
+        else if (track[property] is not { Type: JTokenType.String } value || !options.Contains(value.Value<string>()!))
+            throw new InvalidDataException($"Track {property} must be one of: {string.Join(", ", options)}.");
+    }
 
     private static void NormalizeSamples(JObject track, JArray samples)
     {
