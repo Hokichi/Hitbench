@@ -17,6 +17,7 @@ public sealed partial class ManageSamplesPopupVM(SampleManagementContext context
     IMessenger messenger, IUiScheduler scheduler) : ObservableValidator
 {
     private CancellationTokenSource lifetime = new();
+    private CancellationToken ownerToken;
     private Task operation = Task.CompletedTask;
     private bool deactivated;
     public SampleManagementContext Context { get; } = context;
@@ -33,6 +34,7 @@ public sealed partial class ManageSamplesPopupVM(SampleManagementContext context
     { EditCommand.NotifyCanExecuteChanged(); DeleteCommand.NotifyCanExecuteChanged(); AddNewSampleCommand.NotifyCanExecuteChanged(); CancelEditCommand.NotifyCanExecuteChanged(); }
     public async Task InitializeAsync(CancellationToken token)
     {
+        ownerToken = token;
         lifetime.Dispose(); lifetime = CancellationTokenSource.CreateLinkedTokenSource(token);
         try { Replace(await files.ListAsync(Context.ProjectPath, lifetime.Token)); await PublishAsync(); }
         catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
@@ -125,7 +127,12 @@ public sealed partial class ManageSamplesPopupVM(SampleManagementContext context
     }
     public async Task<bool> PrepareToCloseAsync()
     {
-        if (IsBusy) { lifetime.Cancel(); await operation; }
+        if (IsBusy)
+        {
+            lifetime.Cancel(); await operation;
+            if (ActiveEdit is not null && !ownerToken.IsCancellationRequested)
+            { lifetime.Dispose(); lifetime = CancellationTokenSource.CreateLinkedTokenSource(ownerToken); return false; }
+        }
         return await CommitDraftAsync();
     }
     public async Task DeactivateAsync()

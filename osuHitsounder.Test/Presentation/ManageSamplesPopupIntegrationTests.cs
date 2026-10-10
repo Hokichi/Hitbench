@@ -8,6 +8,43 @@ namespace osuHitsounder.Test.Presentation;
 [Apartment(ApartmentState.STA)] [NonParallelizable]
 public sealed class ManageSamplesPopupIntegrationTests
 {
+    [Test] public void LongCatalogUsesVirtualizedContainers()
+    {
+        new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
+        var names = Enumerable.Range(0,2000).Select(i=>$"sample{i}.wav").ToArray(); var files=new StubSampleFileService(names);
+        var vm=new ManageSamplesPopupVM(new("project.json",null,Guid.NewGuid()),files,new(files),new StubSampleFileDialogService(Array.Empty<string>()),new StubSampleRemovalDialogService(),new WeakReferenceMessenger(),new ImmediateUiScheduler());
+        var popup=new ManageSamplesPopup(vm);
+        try
+        {
+            UiTestPump.Run(popup.InitializeAsync(default)); using var view=new InMemoryView(popup,scheduleLayout:false);
+            var list=(System.Windows.Controls.ItemsControl)popup.FindName("SampleRows");
+            Assert.That(list.Items.Count,Is.EqualTo(2000));
+            Assert.That(list.ItemContainerGenerator.ContainerFromIndex(1999),Is.Null);
+            Assert.That(list.ItemContainerGenerator.ContainerFromIndex(0),Is.Not.Null);
+        }
+        finally { UiTestPump.Run(popup.DeactivateAsync()); popup.Close(); }
+    }
+    [Test] public void RowEditUpdatesDraftThroughRealBinding()
+    {
+        new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
+        var files = new StubSampleFileService(["hit.wav"]);
+        var vm = new ManageSamplesPopupVM(new("project.json", null, Guid.NewGuid()), files, new(files), new StubSampleFileDialogService(Array.Empty<string>()),
+            new StubSampleRemovalDialogService(), new WeakReferenceMessenger(), new ImmediateUiScheduler());
+        var popup = new ManageSamplesPopup(vm);
+        try
+        {
+            UiTestPump.Run(popup.InitializeAsync(default)); using var view = new InMemoryView(popup, scheduleLayout:false);
+            var edit = Descendants(view.Root).OfType<BalloonButton>().Single(b => b.ButtonText == "Edit");
+            Assert.That(edit.Command, Is.SameAs(vm.EditCommand));
+            UiTestPump.Run(vm.EditCommand.ExecuteAsync(edit.CommandParameter)); view.UpdateLayout();
+            var input = Descendants(view.Root).OfType<System.Windows.Controls.TextBox>().Single();
+            input.Text = "kick"; Assert.That(vm.DraftStem, Is.EqualTo("kick"));
+            vm.CancelEditCommand.Execute(null); Assert.That(vm.Entries.Single().FileName, Is.EqualTo("hit.wav"));
+        }
+        finally { UiTestPump.Run(popup.DeactivateAsync()); popup.Close(); }
+    }
+    private static IEnumerable<System.Windows.DependencyObject> Descendants(System.Windows.DependencyObject root)
+    { yield return root; for(var i=0;i<System.Windows.Media.VisualTreeHelper.GetChildrenCount(root);i++) foreach(var c in Descendants(System.Windows.Media.VisualTreeHelper.GetChild(root,i))) yield return c; }
     [Test] public void AddActionAndRowsBindToManagerCommands()
     {
         new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
