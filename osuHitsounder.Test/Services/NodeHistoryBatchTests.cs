@@ -5,6 +5,40 @@ namespace osuHitsounder.Test.Services;
 
 public class NodeHistoryBatchTests
 {
+    [TestCase(false, false)]
+    [TestCase(false, true)]
+    [TestCase(true, false)]
+    [TestCase(true, true)]
+    public void RemovingEitherTransferTrackPrunesUndoAndRedo(bool removeDestination, bool redo)
+    {
+        var node = new Sample { Timestamp = 500, FileName = "b.wav" };
+        var source = new Track(); var destination = new Track { Samples = [node] };
+        var history = new NodeHistoryManager();
+        history.RecordBatch([new(source, node, 0, NodeHistoryOperation.Movement, 125, 500, destination, 0, "a.wav", "b.wav")]);
+        if (redo) Assert.That(history.Undo([source, destination]), Is.True);
+        history.RemoveTrack(removeDestination ? destination : source);
+        Assert.That(history.CanUndo, Is.False); Assert.That(history.CanRedo, Is.False);
+        Assert.That(source.Samples.Count, Is.EqualTo(redo ? 1 : 0));
+        Assert.That(destination.Samples.Count, Is.EqualTo(redo ? 0 : 1));
+    }
+    [Test]
+    public void TransferUndoRestoresSourceTrackTimeAndFile()
+    {
+        var sample = new Sample { Timestamp = 500, FileName = "b.wav", Volume = 37 };
+        var source = new Track { SelectedSampleFileName = "a.wav" };
+        var destination = new Track { SelectedSampleFileName = "b.wav", Samples = [sample] };
+        var history = new NodeHistoryManager();
+        history.RecordBatch([new(source, sample, 0, NodeHistoryOperation.Movement, 125, 500, destination, 0, "a.wav", "b.wav")]);
+        Assert.That(history.Undo([source, destination]), Is.True);
+        Assert.That(source.Samples.Single(), Is.SameAs(sample));
+        Assert.That(destination.Samples, Is.Empty);
+        Assert.That(sample.Timestamp, Is.EqualTo(125));
+        Assert.That(sample.FileName, Is.EqualTo("a.wav"));
+        Assert.That(history.Redo([source, destination]), Is.True);
+        Assert.That(destination.Samples.Single(), Is.SameAs(sample));
+        Assert.That(sample.Volume, Is.EqualTo(37));
+    }
+
     [Test]
     public void MovementReplaysWholeGroupWithOriginalIdentity()
     {

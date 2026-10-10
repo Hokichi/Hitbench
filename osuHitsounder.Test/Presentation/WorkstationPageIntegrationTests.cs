@@ -646,7 +646,7 @@ public class WorkstationPageIntegrationTests
         Assert.That(buttons.Length, Is.EqualTo(2));
         Assert.That(AutomationProperties.GetName(buttons[0]), Is.EqualTo("Zoom waveform out"));
         Assert.That(AutomationProperties.GetName(buttons[1]), Is.EqualTo("Zoom waveform in"));
-        Assert.That(buttons[0].IsEnabled, Is.False);
+        Assert.That(buttons[0].IsEnabled, Is.True);
         buttons[1].Command.Execute(null);
         view.UpdateLayout();
         Assert.That(vm.ZoomFactor, Is.EqualTo(33));
@@ -733,7 +733,7 @@ public class WorkstationPageIntegrationTests
 
         for (var index = 0; index < 40; index++) vm.ZoomOutCommand.Execute(null);
         view.UpdateLayout();
-        Assert.That(vm.ZoomFactor, Is.EqualTo(32));
+        Assert.That(vm.ZoomFactor, Is.EqualTo(8));
         Assert.That(scroll.HorizontalOffset, Is.EqualTo(scroll.ScrollableWidth).Within(1));
 
         osuHitsounder.Test.Presentation.UiTestPump.Run(vm.SeekCommand.ExecuteAsync(TimeSpan.FromSeconds(6)));

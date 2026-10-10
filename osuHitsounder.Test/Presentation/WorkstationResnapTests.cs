@@ -150,7 +150,7 @@ public class WorkstationResnapTests
     }
 
     [Test]
-    public void ActiveDragUsesCommittedTimestampsAndCancelsPreview()
+    public async Task ActiveDragUsesCommittedTimestampsAndCancelsPreview()
     {
         vm.SetNodeSelection([a]);
         vm.BeginNodeDrag(first, a);
@@ -159,7 +159,7 @@ public class WorkstationResnapTests
         Assert.That(a.Timestamp, Is.EqualTo(1125));
         Assert.That(vm.NodePreviewTimestamps, Is.Empty);
         Assert.That(vm.IsNodeDragActive, Is.False);
-        Assert.That(vm.CommitNodeDrag(), Is.False);
+        Assert.That(await vm.CommitNodeDragAsync(), Is.False);
     }
 
     [Test]

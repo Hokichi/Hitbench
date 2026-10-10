@@ -39,6 +39,9 @@ public partial class App : Application
         registrations.AddSingleton<ISampleFileDialogService>(provider =>
             new SampleFileDialogService(() => Current.MainWindow, Current.Dispatcher,
                 provider.GetRequiredService<Func<SampleLoaderPopupVM>>()));
+        registrations.AddSingleton<Func<NodePastePopupVM>>(_ => () => new NodePastePopupVM());
+        registrations.AddSingleton<INodePasteDialogService>(provider => new NodePasteDialogService(
+            () => Current.MainWindow, Current.Dispatcher, provider.GetRequiredService<Func<NodePastePopupVM>>()));
         registrations.AddSingleton<ITrackRemovalDialogService>(_ =>
             new TrackRemovalDialogService(() => Current.MainWindow, Current.Dispatcher));
         registrations.AddSingleton<Func<WorkstationPage>>(provider => () => new WorkstationPage(
@@ -46,7 +49,7 @@ public partial class App : Application
                 provider.GetRequiredService<ISampleFileService>(), provider.GetRequiredService<ISampleFileDialogService>(),
                 provider.GetRequiredService<IProjectFileService>(), provider.GetRequiredService<IMessenger>(),
                 provider.GetRequiredService<ITrackRemovalDialogService>(),
-                provider.GetRequiredService<PlaybackVolumeSettings>())));
+                provider.GetRequiredService<PlaybackVolumeSettings>(), nodePasteDialog: provider.GetRequiredService<INodePasteDialogService>())));
         registrations.AddSingleton<IHomeFolderService>(_ => new HomeFolderService(AppContext.BaseDirectory));
         registrations.AddSingleton<IAppSettingsService>(_ => new AppSettingsService(AppContext.BaseDirectory));
         registrations.AddSingleton<IUiScheduler>(_ => uiScheduler ?? new UiScheduler(Current.Dispatcher));

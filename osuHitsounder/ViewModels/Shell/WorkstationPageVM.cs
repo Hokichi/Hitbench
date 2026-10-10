@@ -23,7 +23,8 @@ public partial class WorkstationPageVM(
     IMessenger? messenger = null,
     ITrackRemovalDialogService? trackRemovalDialog = null,
     PlaybackVolumeSettings? playbackVolumes = null,
-    Func<TimeSpan, CancellationToken, Task>? zoomDelay = null) : ObservableObject
+    Func<TimeSpan, CancellationToken, Task>? zoomDelay = null,
+    INodePasteDialogService? nodePasteDialog = null) : ObservableObject
 {
     private readonly IWorkstationAudioService audioService = playback.Audio;
     private bool subscribedToPlayback;
@@ -65,12 +66,12 @@ public partial class WorkstationPageVM(
     public int SamplesRevision => samplesRevision;
     public int Subdivision => new[] { 1, 2, 3, 4, 5, 6, 8, 12, 16 }[SelectedSubdivisionIndex];
     public bool CanEditTracks => Project is not null && IsInteractionReady;
-    public bool CanImportSample => CanEditTracks && !importBusy && !removalBusy &&
+    public bool CanImportSample => !IsNodeEditBusy && CanEditTracks && !importBusy && !removalBusy &&
         sampleFiles is not null && sampleDialog is not null && projectPath is not null;
     public bool CanAddTrack => CanEditTracks && availableSamples.Count > 0;
-    public bool CanRemoveTrack => CanEditTracks && !importBusy && !removalBusy && trackRemovalDialog is not null;
-    public bool CanPlaceSamples => CanEditTracks && Waveform is not null && !importBusy && !removalBusy;
-    public bool HasPendingSaves => pendingZoom is not null || importBusy || removalBusy || !saveTail.IsCompleted || lastSaveError is not null;
+    public bool CanRemoveTrack => !IsNodeEditBusy && CanEditTracks && !importBusy && !removalBusy && trackRemovalDialog is not null;
+    public bool CanPlaceSamples => !IsNodeEditBusy && CanEditTracks && Waveform is not null && !importBusy && !removalBusy;
+    public bool HasPendingSaves => IsNodeEditBusy || pendingZoom is not null || importBusy || removalBusy || !saveTail.IsCompleted || lastSaveError is not null;
     [ObservableProperty] private string? saveError;
     private CancellationTokenSource? loadCancellation;
     private Task? activeLoad;
@@ -213,6 +214,7 @@ public partial class WorkstationPageVM(
             catch (OperationCanceledException) { }
         }
         if (activeRemoval is not null) await activeRemoval;
+        if (activeNodeEdit is not null) await activeNodeEdit;
         await playbackUpdates;
         if (messenger is not null) messenger.UnregisterAll(this);
         try { await FlushSavesAsync(); }
@@ -221,6 +223,8 @@ public partial class WorkstationPageVM(
             await playback.DisposeAsync();
             audioService.Stop();
             audioService.Dispose();
+            nodeEditCancellation?.Dispose();
+            nodeEditCancellation = null;
             loadCancellation?.Dispose();
             loadCancellation = null;
             playbackUpdateCancellation?.Dispose();
@@ -594,6 +598,7 @@ public partial class WorkstationPageVM(
         CommitPendingZoom();
         if (activeImport is not null) await activeImport;
         if (activeRemoval is not null) await activeRemoval;
+        if (activeNodeEdit is not null) await activeNodeEdit;
         await saveTail;
         if (lastSaveError is not null) throw new IOException("Could not save project.", lastSaveError);
     }
@@ -605,6 +610,7 @@ public partial class WorkstationPageVM(
 
     partial void OnIsReturningChanged(bool value)
     {
+        if (value) nodeEditCancellation?.Cancel();
         OnPropertyChanged(nameof(CanGoBack));
         OnPropertyChanged(nameof(IsInteractionReady));
         NotifyEditingState();
@@ -641,6 +647,7 @@ public partial class WorkstationPageVM(
             {
                 if (activeImport is not null) await WaitForReturnAsync(activeImport);
                 if (activeRemoval is not null) await WaitForReturnAsync(activeRemoval);
+                if (activeNodeEdit is not null) await WaitForReturnAsync(activeNodeEdit);
                 await WaitForReturnAsync(playbackUpdates);
                 CommitPendingZoom(false);
                 QueueSave();

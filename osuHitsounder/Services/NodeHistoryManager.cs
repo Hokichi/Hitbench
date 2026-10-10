@@ -19,7 +19,7 @@ public sealed class NodeHistoryManager
     public void RecordBatch(IReadOnlyList<NodeHistoryEntry> entries)
     {
         var batch = entries.Where(entry => entry.Operation != NodeHistoryOperation.Movement ||
-            entry.PreviousTimestamp != entry.NextTimestamp).ToArray();
+            entry.PreviousTimestamp != entry.NextTimestamp || entry.DestinationTrack is not null).ToArray();
         if (batch.Length == 0) return;
         undo.Push(batch);
         redo.Clear();
@@ -39,11 +39,36 @@ public sealed class NodeHistoryManager
         {
             if (!tracks.Any(track => ReferenceEquals(track, entry.Track))) return false;
             if (!shadows.TryGetValue(entry.Track, out var list)) shadows[entry.Track] = list = [.. entry.Track.Samples];
-            if (!Apply(entry, list, reverse, timestamps)) return false;
+            if (entry.DestinationTrack is { } target)
+            {
+                if (!tracks.Contains(target)) return false;
+                if (!shadows.TryGetValue(target, out var targetList)) shadows[target] = targetList = [.. target.Samples];
+                if (!ApplyTransfer(entry, list, targetList, reverse, timestamps)) return false;
+            }
+            else if (!Apply(entry, list, reverse, timestamps)) return false;
         }
-        foreach (var entry in entries) Apply(entry, entry.Track.Samples, reverse, null);
+        foreach (var entry in entries)
+            if (entry.DestinationTrack is { } target) ApplyTransfer(entry, entry.Track.Samples, target.Samples, reverse, null);
+            else Apply(entry, entry.Track.Samples, reverse, null);
         source.Pop();
         destination.Push(batch);
+        return true;
+    }
+
+    private static bool ApplyTransfer(NodeHistoryEntry entry, List<Sample> source, List<Sample> destination,
+        bool reverse, Dictionary<Sample, int>? preview)
+    {
+        var from = reverse ? destination : source;
+        var to = reverse ? source : destination;
+        var position = reverse ? entry.Index : entry.DestinationIndex;
+        var index = from.IndexOf(entry.Sample);
+        var current = preview is not null && preview.TryGetValue(entry.Sample, out var time) ? time : entry.Sample.Timestamp;
+        if (index < 0 || to.Contains(entry.Sample) || position < 0 || position > to.Count ||
+            current != (reverse ? entry.NextTimestamp : entry.PreviousTimestamp)) return false;
+        from.RemoveAt(index); to.Insert(position, entry.Sample);
+        var next = reverse ? entry.PreviousTimestamp : entry.NextTimestamp;
+        if (preview is not null) preview[entry.Sample] = next;
+        else { entry.Sample.Timestamp = next; entry.Sample.FileName = (reverse ? entry.PreviousFileName : entry.NextFileName) ?? entry.Sample.FileName; }
         return true;
     }
 
@@ -85,7 +110,7 @@ public sealed class NodeHistoryManager
 
     private static void Prune(Stack<IReadOnlyList<NodeHistoryEntry>> stack, Track track)
     {
-        var retained = stack.Select(batch => batch.Where(entry => !ReferenceEquals(entry.Track, track)).ToArray())
+        var retained = stack.Select(batch => batch.Any(entry => entry.DestinationTrack is not null && (ReferenceEquals(entry.Track, track) || ReferenceEquals(entry.DestinationTrack, track))) ? [] : batch.Where(entry => !ReferenceEquals(entry.Track, track)).ToArray())
             .Where(batch => batch.Length > 0).Reverse().ToArray();
         stack.Clear();
         foreach (var entry in retained) stack.Push(entry);

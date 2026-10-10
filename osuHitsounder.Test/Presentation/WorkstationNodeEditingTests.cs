@@ -27,9 +27,11 @@ public class WorkstationNodeEditingTests
         saves = new DelayedProjectFileService(); saves.Release();
         vm = new WorkstationPageVM(source, new MarkerPlaybackCoordinator(audio, Task.Delay), new ImmediateUiScheduler(),
             new StubSampleFileService(["a.wav", "b.wav"]), projectFiles: saves,
-            trackRemovalDialog: new StubTrackRemovalDialogService { Confirm = _ => Task.FromResult(true) });
+            trackRemovalDialog: new StubTrackRemovalDialogService { Confirm = _ => Task.FromResult(true) },
+            nodePasteDialog: new StubNodePasteDialogService());
         await vm.LoadAsync("project.json", CancellationToken.None);
         vm.AcknowledgePresentationReady(vm.LoadGeneration);
+        vm.SelectedTrack = first;
         await vm.FlushPlaybackUpdatesAsync(); await vm.FlushSavesAsync();
     }
 
@@ -60,28 +62,28 @@ public class WorkstationNodeEditingTests
     }
 
     [Test]
-    public async Task PastePreservesFormationFrozenValuesAndOriginalTracks()
+    public async Task PastePreservesFormationFrozenVolumeAndSelectedTrack()
     {
         vm.SetNodeSelection([a, b, c]);
         Assert.That(vm.CopySelectedNodes(), Is.True);
         a.Timestamp = 2000; a.Volume = 99; a.FileName = "b.wav";
         first.Samples.Remove(b);
         await vm.SeekCommand.ExecuteAsync(TimeSpan.FromMilliseconds(3010));
-        Assert.That(vm.PasteCopiedNodes(), Is.True);
+        Assert.That(await vm.PasteCopiedNodesAsync(), Is.True);
         Assert.That(vm.SelectedSamples.Select(n => n.Timestamp).Order(), Is.EqualTo(new[] { 3000, 3125, 3250 }));
         var earliest = vm.SelectedSamples.Single(n => n.Timestamp == 3000);
         Assert.That(earliest.FileName, Is.EqualTo("a.wav"));
         Assert.That(earliest.Volume, Is.EqualTo(37));
         Assert.That(first.Samples.Contains(earliest), Is.True);
-        Assert.That(second.Samples.Any(n => n.Timestamp == 3125), Is.True);
+        Assert.That(first.Samples.Any(n => n.Timestamp == 3125), Is.True);
         var copies = vm.SelectedSamples.ToArray();
-        Assert.That(vm.PasteCopiedNodes(), Is.True);
-        Assert.That(vm.SelectedSamples.Intersect(copies), Is.Empty);
+        Assert.That(await vm.PasteCopiedNodesAsync(), Is.False);
+        Assert.That(vm.SelectedSamples, Is.EquivalentTo(copies));
         vm.UndoCommand.Execute(null);
-        Assert.That(first.Samples.Count, Is.EqualTo(3));
-        Assert.That(second.Samples.Count, Is.EqualTo(2));
+        Assert.That(first.Samples.Count, Is.EqualTo(1));
+        Assert.That(second.Samples.Count, Is.EqualTo(1));
         vm.RedoCommand.Execute(null);
-        Assert.That(first.Samples.Count, Is.EqualTo(5));
+        Assert.That(first.Samples.Count, Is.EqualTo(4));
     }
 
     [TestCase("tail")]
@@ -93,15 +95,15 @@ public class WorkstationNodeEditingTests
         if (reason == "overflow") { a.Timestamp = int.MinValue; b.Timestamp = int.MaxValue; }
         vm.SetNodeSelection([a, b, c]); vm.CopySelectedNodes();
         if (reason == "tail") await vm.SeekCommand.ExecuteAsync(TimeSpan.FromMilliseconds(9900));
-        if (reason == "track") await vm.RemoveTrackCommand.ExecuteAsync(second);
-        if (reason == "file") vm.SampleFiles.Remove("b.wav");
+        if (reason == "track") vm.SelectedTrack = null;
+        if (reason == "file") vm.SampleFiles.Remove("a.wav");
         var before = vm.Tracks.SelectMany(t => t.Samples).ToArray();
         var revision = vm.SamplesRevision;
-        Assert.That(vm.PasteCopiedNodes(), Is.False);
+        Assert.That(await vm.PasteCopiedNodesAsync(), Is.False);
         Assert.That(vm.Tracks.SelectMany(t => t.Samples), Is.EqualTo(before));
         Assert.That(vm.SamplesRevision, Is.EqualTo(revision));
-        Assert.That(vm.ErrorMessage, Is.Not.Null.And.Not.Empty);
-        Assert.That(vm.CanPasteNodes, Is.True);
+        if (reason != "track") Assert.That(vm.ErrorMessage, Is.Not.Null.And.Not.Empty);
+        Assert.That(vm.CanPasteNodes, Is.EqualTo(reason != "track"));
     }
 
     [TestCase(260, 1250, 1500, 1375)]
@@ -118,7 +120,7 @@ public class WorkstationNodeEditingTests
         Assert.That(vm.NodePreviewTimestamps[a], Is.EqualTo(x));
         Assert.That(saves.Writes, Is.EqualTo(writes));
         Assert.That(audio.SampleUpdates.Count, Is.EqualTo(scheduled));
-        Assert.That(vm.CommitNodeDrag(), Is.True);
+        Assert.That(await vm.CommitNodeDragAsync(), Is.True);
         Assert.That(new[] { a.Timestamp, b.Timestamp, c.Timestamp }, Is.EqualTo(new[] { x, y, z }));
         Assert.That(vm.SamplesRevision, Is.EqualTo(revision + 1));
         await vm.FlushSavesAsync(); await vm.FlushPlaybackUpdatesAsync();
@@ -133,11 +135,11 @@ public class WorkstationNodeEditingTests
 
     [TestCase(false)]
     [TestCase(true)]
-    public void CancelOrZeroMovementLeavesHistoryAndRedoAlone(bool zero)
+    public async Task CancelOrZeroMovementLeavesHistoryAndRedoAlone(bool zero)
     {
         vm.PlaceSample(first, 500); vm.UndoCommand.Execute(null);
         vm.SetNodeSelection([a, c]); vm.BeginNodeDrag(first, a); vm.PreviewNodeDrag(zero ? 0 : 260);
-        if (zero) Assert.That(vm.CommitNodeDrag(), Is.False);
+        if (zero) Assert.That(await vm.CommitNodeDragAsync(), Is.False);
         else vm.CancelNodeDrag();
         Assert.That(a.Timestamp, Is.EqualTo(1000));
         Assert.That(vm.CanRedo, Is.True);
@@ -145,11 +147,11 @@ public class WorkstationNodeEditingTests
     }
 
     [Test]
-    public void StaleDragCannotCommitPartialMovement()
+    public async Task StaleDragCannotCommitPartialMovement()
     {
         vm.SetNodeSelection([a, c]); vm.BeginNodeDrag(first, a); vm.PreviewNodeDrag(250);
         c.Timestamp = 999;
-        Assert.That(vm.CommitNodeDrag(), Is.False);
+        Assert.That(await vm.CommitNodeDragAsync(), Is.False);
         Assert.That(a.Timestamp, Is.EqualTo(1000));
         Assert.That(c.Timestamp, Is.EqualTo(999));
         Assert.That(vm.CanUndo, Is.False);
@@ -185,31 +187,31 @@ public class WorkstationNodeEditingTests
         Assert.That(vm.SelectedSamples, Is.Empty);
         Assert.That(vm.CanPasteNodes, Is.False);
         Assert.That(vm.CopySelectedNodes(), Is.False);
-        Assert.That(vm.PasteCopiedNodes(), Is.False);
+        Assert.That(await vm.PasteCopiedNodesAsync(), Is.False);
     }
 
     [Test]
-    public void KeyboardMovesEarliestNodeWithoutDistortingFormation()
+    public async Task KeyboardMovesEarliestNodeWithoutDistortingFormation()
     {
         vm.SetNodeSelection([a, b, c]);
-        Assert.That(vm.MoveSelectedNodes(true), Is.True);
+        Assert.That(await vm.MoveSelectedNodesAsync(true), Is.True);
         Assert.That(new[] { a.Timestamp, b.Timestamp, c.Timestamp }, Is.EqualTo(new[] { 1125, 1375, 1250 }));
-        Assert.That(vm.MoveSelectedNodes(false), Is.True);
+        Assert.That(await vm.MoveSelectedNodesAsync(false), Is.True);
         Assert.That(a.Timestamp, Is.EqualTo(1000));
         vm.Project!.BPMs = [123]; a.Timestamp = 122; b.Timestamp = 366;
         vm.SetNodeSelection([a, b]);
-        Assert.That(vm.MoveSelectedNodes(false), Is.True);
+        Assert.That(await vm.MoveSelectedNodesAsync(false), Is.True);
         Assert.That(new[] { a.Timestamp, b.Timestamp }, Is.EqualTo(new[] { 0, 244 }));
     }
 
     [Test]
-    public void BusyReturnBlocksEditsAndCancelsDraft()
+    public async Task BusyReturnBlocksEditsAndCancelsDraft()
     {
         vm.SetNodeSelection([a, c]); vm.CopySelectedNodes(); vm.BeginNodeDrag(first, a); vm.PreviewNodeDrag(250);
         vm.IsReturning = true;
         Assert.That(vm.IsNodeDragActive, Is.False);
         Assert.That(vm.CanCopyNodes, Is.False);
-        Assert.That(vm.PasteCopiedNodes(), Is.False);
+        Assert.That(await vm.PasteCopiedNodesAsync(), Is.False);
         Assert.That(vm.RemoveSelectedNodes(), Is.False);
         Assert.That(a.Timestamp, Is.EqualTo(1000));
         vm.IsReturning = false;
