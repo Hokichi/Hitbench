@@ -11,15 +11,20 @@ public sealed class StubSampleBrowserService : ISampleBrowserService
     public Func<string, CancellationToken, Task<SampleFileMetadata>>? Metadata { get; set; }
     public string DefaultDirectory { get; set; } = "";
     public IReadOnlyList<SampleBrowserEntry>? RootEntries { get; set; }
+    public Func<CancellationToken, Task<IReadOnlyList<SampleBrowserEntry>>>? RootListing { get; set; }
+    public List<string> RequestedDirectories { get; } = [];
     public int DefaultDirectoryRequests { get; private set; }
-    public Task<IReadOnlyList<SampleBrowserEntry>> GetRootsAsync(CancellationToken token) => Task.FromResult<IReadOnlyList<SampleBrowserEntry>>(RootEntries ?? [new(RootPath, "Root", true)]);
+    public Task<IReadOnlyList<SampleBrowserEntry>> GetRootsAsync(CancellationToken token) => RootListing?.Invoke(token) ?? Task.FromResult<IReadOnlyList<SampleBrowserEntry>>(RootEntries ?? [new(RootPath, "Root", true)]);
     public Task<string> GetDefaultDirectoryAsync(CancellationToken token)
     {
         DefaultDirectoryRequests++;
         return Task.FromResult(DefaultDirectory);
     }
-    public Task<IReadOnlyList<SampleBrowserEntry>> GetEntriesAsync(string directory, CancellationToken token) => Listing?.Invoke(directory, token) ??
-        (Entries.TryGetValue(directory, out var entries) ? Task.FromResult(entries) : Task.FromException<IReadOnlyList<SampleBrowserEntry>>(new DirectoryNotFoundException("Folder unavailable")));
+    public Task<IReadOnlyList<SampleBrowserEntry>> GetEntriesAsync(string directory, CancellationToken token)
+    {
+        RequestedDirectories.Add(directory);
+        return Listing?.Invoke(directory, token) ?? (Entries.TryGetValue(directory, out var entries) ? Task.FromResult(entries) : Task.FromException<IReadOnlyList<SampleBrowserEntry>>(new DirectoryNotFoundException("Folder unavailable")));
+    }
     public Task<SampleFileMetadata> ReadMetadataAsync(string path, CancellationToken token) => Metadata?.Invoke(path, token) ??
         Task.FromResult(new SampleFileMetadata(path, Path.GetFileName(path), "WAV", 1000, TimeSpan.FromSeconds(1), 44_100, 1));
 }

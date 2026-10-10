@@ -25,6 +25,43 @@ public sealed class SampleLoaderPopupVMTests
     }
     [TearDown] public Task TearDown() => vm.DeactivateAsync();
 
+    [Test]
+    public async Task FailedDriveListingPreservesCheckedFolder()
+    {
+        await vm.SetCheckedAsync(first, true);
+        browser.RootListing = _ => Task.FromException<IReadOnlyList<SampleBrowserEntry>>(new IOException("Drives unavailable"));
+        await vm.NavigateCommand.ExecuteAsync(null);
+        Assert.That(vm.CurrentDirectory, Is.EqualTo(a.FullPath));
+        Assert.That(first.IsChecked, Is.True);
+        Assert.That(vm.DirectoryError, Is.EqualTo("Drives unavailable"));
+    }
+
+    [Test]
+    public async Task EmptyDriveListHasItsOwnStatus()
+    {
+        browser.RootEntries = [];
+        await vm.NavigateCommand.ExecuteAsync(null);
+        Assert.That(vm.IsFolderEmpty, Is.False);
+        Assert.That(vm.BrowserStatusText, Is.EqualTo("No drives to display"));
+    }
+
+    [Test]
+    public async Task InitialFolderDoesNotEnumerateAncestors()
+    {
+        Assert.That(browser.RequestedDirectories, Is.EqualTo(new[] { a.FullPath }));
+    }
+
+    [Test]
+    public async Task FlatBrowserShowsContentsAndBreadcrumbs()
+    {
+        Assert.That(vm.Entries.Single(), Is.SameAs(first));
+        Assert.That(vm.Breadcrumbs.First().Name, Is.EqualTo("This PC"));
+        Assert.That(vm.Breadcrumbs.Last().FullPath, Is.EqualTo(a.FullPath));
+        await vm.NavigateCommand.ExecuteAsync(null);
+        Assert.That(vm.IsThisPc, Is.True);
+        Assert.That(vm.Entries.Single().IsDirectory, Is.True);
+    }
+
     [TestCase(@"F:\", @"F:\Storage", @"F:\Other")]
     [TestCase(@"F:\", @"f:\Storage", @"F:\Other")]
     [TestCase(@"\\server\share\", @"\\server\share\Storage", @"\\server\share\Other")]
@@ -41,13 +78,9 @@ public sealed class SampleLoaderPopupVMTests
         try
         {
             await model.InitializeAsync(default);
-            model.DirectoryText = nextPath;
-            await model.NavigateCommand.ExecuteAsync(null);
-            model.DirectoryText = firstPath;
-            await model.NavigateCommand.ExecuteAsync(null);
-            Assert.That(model.Roots, Has.Count.EqualTo(1));
-            Assert.That(model.Roots.Single(), Is.SameAs(root));
-            Assert.That(root.Children, Does.Contain(firstFolder).And.Contain(nextFolder));
+        await model.NavigateCommand.ExecuteAsync(nextPath);
+        await model.NavigateCommand.ExecuteAsync(firstPath);
+            Assert.That(model.Breadcrumbs.Last().FullPath, Is.EqualTo(firstPath));
             Assert.That(model.CurrentDirectory, Is.EqualTo(firstPath));
             Assert.That(model.DirectoryError, Is.Null);
         }
@@ -61,10 +94,9 @@ public sealed class SampleLoaderPopupVMTests
         var folder = new SampleBrowserEntry(sibling, "AExtra", true);
         browser.Entries[browser.RootPath] = [a, b, folder];
         browser.Entries[sibling] = [];
-        vm.DirectoryText = sibling;
-        await vm.NavigateCommand.ExecuteAsync(null);
-        Assert.That(vm.Roots.Single().Children, Does.Contain(folder));
-        Assert.That(a.Children, Does.Not.Contain(folder));
+        await vm.NavigateCommand.ExecuteAsync(sibling);
+        Assert.That(vm.Breadcrumbs.Last().FullPath, Is.EqualTo(folder.FullPath));
+        Assert.That(vm.Entries, Is.Empty);
         Assert.That(vm.CurrentDirectory, Is.EqualTo(sibling));
     }
 
@@ -82,7 +114,7 @@ public sealed class SampleLoaderPopupVMTests
         {
             await model.InitializeAsync(requested, default);
             Assert.That(source.DefaultDirectoryRequests, Is.Zero);
-            Assert.That(model.DirectoryText, Is.EqualTo(requested));
+            Assert.That(model.IsThisPc, Is.EqualTo(unavailable));
             Assert.That(model.SelectedFile, Is.Null);
             Assert.That(model.CheckedCount, Is.Zero);
             if (unavailable)
@@ -100,15 +132,14 @@ public sealed class SampleLoaderPopupVMTests
     }
 
     [Test]
-    public async Task NavigationClearsChecksButExpansionAndSameFolderDoNot()
+    public async Task NavigationClearsChecksButSelectionAndSameFolderDoNot()
     {
         await vm.SetCheckedAsync(first, true);
-        await vm.ExpandAsync(b);
-        Assert.That(first.IsChecked, Is.True);
-        vm.DirectoryText = a.FullPath;
-        await vm.NavigateCommand.ExecuteAsync(null);
-        Assert.That(first.IsChecked, Is.True);
         await vm.SelectAsync(b);
+        Assert.That(first.IsChecked, Is.True);
+        await vm.NavigateCommand.ExecuteAsync(a.FullPath);
+        Assert.That(first.IsChecked, Is.True);
+        await vm.NavigateCommand.ExecuteAsync(b.FullPath);
         Assert.That(first.IsChecked, Is.False);
         Assert.That(vm.CheckedCount, Is.Zero);
     }
@@ -116,8 +147,7 @@ public sealed class SampleLoaderPopupVMTests
     public async Task InvalidPathPreservesCommittedFolderAndChecks()
     {
         await vm.SetCheckedAsync(first, true);
-        vm.DirectoryText = Path.Combine(browser.RootPath, "Missing");
-        await vm.NavigateCommand.ExecuteAsync(null);
+        await vm.NavigateCommand.ExecuteAsync(Path.Combine(browser.RootPath, "Missing"));
         Assert.That(vm.CurrentDirectory, Is.EqualTo(a.FullPath));
         Assert.That(first.IsChecked, Is.True);
         Assert.That(vm.DirectoryError, Is.Not.Empty);
@@ -126,7 +156,6 @@ public sealed class SampleLoaderPopupVMTests
     public async Task CheckingDifferentBranchNavigatesBeforeChecking()
     {
         await vm.SetCheckedAsync(first, true);
-        await vm.ExpandAsync(b);
         await vm.SetCheckedAsync(second, true);
         Assert.That(first.IsChecked, Is.False);
         Assert.That(vm.CurrentDirectory, Is.EqualTo(b.FullPath));
@@ -164,7 +193,7 @@ public sealed class SampleLoaderPopupVMTests
         await vm.SelectAsync(second);
         Assert.That(vm.IsPreviewPlaying, Is.False);
         await vm.TogglePreviewCommand.ExecuteAsync(null);
-        await vm.SelectAsync(a);
+        await vm.NavigateCommand.ExecuteAsync(a.FullPath);
         Assert.That(vm.IsPreviewPlaying, Is.False);
         await vm.SetCheckedAsync(first, true);
         await vm.TogglePreviewCommand.ExecuteAsync(null);
@@ -207,30 +236,28 @@ public sealed class SampleLoaderPopupVMTests
     }
 
     [Test]
-    public async Task LateAncestorListingCannotReplaceCurrentTree()
+    public async Task LateListingCannotReplaceNewerLocation()
     {
         var pending = new TaskCompletionSource<IReadOnlyList<SampleBrowserEntry>>();
-        vm.Roots.Single().IsLoaded = false;
-        browser.Listing = (path, _) => path == browser.RootPath ? pending.Task : Task.FromResult(browser.Entries[path]);
-        var obsolete = vm.SelectAsync(b);
-        await vm.SelectAsync(a);
-        pending.SetResult([new(a.FullPath, "A", true), new(b.FullPath, "B", true)]);
+        browser.Listing = (path, _) => path == b.FullPath ? pending.Task : Task.FromResult(browser.Entries[path]);
+        var obsolete = vm.NavigateCommand.ExecuteAsync(b.FullPath);
+        await vm.NavigateCommand.ExecuteAsync(a.FullPath);
+        pending.SetResult([second]);
         await obsolete;
-        Assert.That(vm.Roots.Single().Children[0], Is.SameAs(a));
         Assert.That(vm.CurrentDirectory, Is.EqualTo(a.FullPath));
+        Assert.That(vm.Entries.Single(), Is.SameAs(first));
     }
 
     [Test]
-    public async Task TypedNewFolderRefreshesItsAlreadyLoadedParent()
+    public async Task NavigationDoesNotRequireAncestorListings()
     {
         var folder = new SampleBrowserEntry(Path.Combine(browser.RootPath, "New"), "New", true);
         browser.Entries[browser.RootPath] = [a, b, folder];
         browser.Entries[folder.FullPath] = [];
-        vm.DirectoryText = folder.FullPath;
-        await vm.NavigateCommand.ExecuteAsync(null);
+        await vm.NavigateCommand.ExecuteAsync(folder.FullPath);
         Assert.That(vm.CurrentDirectory, Is.EqualTo(folder.FullPath));
         Assert.That(vm.DirectoryError, Is.Null);
-        Assert.That(vm.Roots.Single().Children, Does.Contain(folder));
+        Assert.That(vm.Breadcrumbs.Last().FullPath, Is.EqualTo(folder.FullPath));
     }
 
     [Test]
@@ -307,7 +334,7 @@ public sealed class SampleLoaderPopupVMTests
         preview.Seek = async token => { seekStarted.SetResult(); await Task.Delay(Timeout.Infinite, token); };
         var seeking = vm.SeekAsync(.7);
         await seekStarted.Task;
-        await vm.SelectAsync(a);
+        await vm.NavigateCommand.ExecuteAsync(a.FullPath);
         await seeking;
         Assert.That(vm.SelectedFile, Is.Null);
         Assert.That(vm.PlaybackPositionSeconds, Is.Zero);
@@ -340,9 +367,9 @@ public sealed class SampleLoaderPopupVMTests
     public async Task EmptyFolderGetsInformationalChild()
     {
         browser.Entries[b.FullPath] = [];
-        await vm.ExpandAsync(b);
-        Assert.That(b.Children.Single().Name, Is.EqualTo("No audio file found"));
-        Assert.That(b.Children.Single().IsPlaceholder, Is.True);
+        await vm.NavigateCommand.ExecuteAsync(b.FullPath);
+        Assert.That(vm.IsFolderEmpty, Is.True);
+        Assert.That(vm.Entries, Is.Empty);
     }
 
     [TestCase(false)]
@@ -426,33 +453,33 @@ public sealed class SampleLoaderPopupVMTests
         var inner = new SampleBrowserEntry(Path.Combine(b.FullPath, "inner"), "inner", true);
         browser.Entries[b.FullPath] = [inner];
         browser.Entries[inner.FullPath] = [new(Path.Combine(inner.FullPath, "hit.wav"), "hit.wav", false)];
-        await vm.ExpandAsync(b);
-        Assert.That(b.Children, Does.Contain(inner));
-        Assert.That(b.Children.Any(entry => entry.IsPlaceholder), Is.False);
-        await vm.SelectAsync(inner);
+        await vm.NavigateCommand.ExecuteAsync(b.FullPath);
+        Assert.That(vm.Entries, Does.Contain(inner));
+        Assert.That(vm.IsFolderEmpty, Is.False);
+        await vm.NavigateCommand.ExecuteAsync(inner.FullPath);
         Assert.That(vm.CurrentDirectory, Is.EqualTo(inner.FullPath));
     }
 
     [Test]
-    public async Task EmptyNestedLeafGetsMessageThroughExpansionAndNavigation()
+    public async Task EmptyNestedLeafHasNoContentRows()
     {
         var inner = new SampleBrowserEntry(Path.Combine(b.FullPath, "inner"), "inner", true);
         browser.Entries[b.FullPath] = [inner];
         browser.Entries[inner.FullPath] = [];
-        await vm.ExpandAsync(b);
-        Assert.That(b.Children, Is.EqualTo(new[] { inner }));
-        await vm.ExpandAsync(inner);
-        Assert.That(inner.Children.Single().IsPlaceholder, Is.True);
-        await vm.SelectAsync(inner);
-        Assert.That(inner.Children.Single().Name, Is.EqualTo("No audio file found"));
+        await vm.NavigateCommand.ExecuteAsync(b.FullPath);
+        Assert.That(vm.Entries, Is.EqualTo(new[] { inner }));
+        await vm.NavigateCommand.ExecuteAsync(inner.FullPath);
+        Assert.That(vm.IsFolderEmpty, Is.True);
+        await vm.NavigateCommand.ExecuteAsync(inner.FullPath);
+        Assert.That(vm.Entries, Is.Empty);
     }
 
     [Test]
-    public async Task InformationalChildCannotBeCheckedOrPreviewed()
+    public async Task EmptyFolderCannotBeImportedOrPreviewed()
     {
         browser.Entries[b.FullPath] = [];
-        await vm.SelectAsync(b);
-        var message = b.Children.Single();
+        await vm.NavigateCommand.ExecuteAsync(b.FullPath);
+        var message = b;
         await vm.SetCheckedAsync(message, true);
         await vm.SelectAsync(message);
         Assert.That(vm.CheckedCount, Is.Zero);
@@ -495,7 +522,7 @@ public sealed class SampleLoaderPopupVMTests
         Assert.That(vm.SelectedFile, Is.SameAs(second));
         Assert.That(vm.IsPreviewPlaying, Is.True);
         Assert.That(vm.PlaybackPositionSeconds, Is.Zero);
-        await vm.SelectAsync(a);
+        await vm.NavigateCommand.ExecuteAsync(a.FullPath);
         Assert.That(vm.IsPreviewPlaying, Is.False);
     }
 

@@ -21,10 +21,8 @@ public partial class SampleLoaderPopup : BasePopup
     private Window? sizingOwner;
     private bool deactivated;
     private DispatcherOperation? initialFocus;
-    private readonly CancellationTokenSource viewLifetime = new();
-    private string? initialFolder;
-    private Task? initialReveal;
-    private bool initialFolderRevealed, isScrubbing;
+    private bool navigationHadFocus;
+    private bool isScrubbing;
     private bool isSelectingFileRow;
     private SampleBrowserEntry? scrubbingFile;
     public IReadOnlyList<string> Result { get; private set; } = Array.Empty<string>();
@@ -39,11 +37,10 @@ public partial class SampleLoaderPopup : BasePopup
         this.completeDialog = completeDialog ?? (accepted => DialogResult = accepted);
         this.getWorkArea = getWorkArea ?? WindowWorkArea.GetClientSize;
         DataContext = viewModel;
+        viewModel.PropertyChanged += OnBrowserStateChanged;
         KeyboardNavigationPolicy.EnableTabNavigation(this);
         KeyboardNavigationPolicy.EnableTabNavigation((DependencyObject)Content);
         Loaded += OnPopupLoaded;
-        DirectoryTree.Loaded += OnTreeLoaded;
-        DirectoryTree.SizeChanged += OnTreeSizeChanged;
         PlaybackTimeline.ValueChanged += OnTimelineValueChanged;
         PlaybackTimeline.AddHandler(Thumb.DragStartedEvent, new DragStartedEventHandler(OnTimelineDragStarted));
         PlaybackTimeline.AddHandler(Thumb.DragCompletedEvent, new DragCompletedEventHandler(OnTimelineDragCompleted));
@@ -60,8 +57,6 @@ public partial class SampleLoaderPopup : BasePopup
         DpiChanged += OnPopupDpiChanged;
         UpdateSize();
         await viewModel.InitializeAsync(initialDirectory, token);
-        initialFolder = viewModel.CurrentDirectory;
-        if (DirectoryTree.IsLoaded) await RevealInitialFolderAsync();
     }
 
     public async Task DeactivateAsync()
@@ -69,18 +64,14 @@ public partial class SampleLoaderPopup : BasePopup
         if (deactivated) return;
         deactivated = true;
         initialFocus?.Abort();
-        viewLifetime.Cancel();
         Loaded -= OnPopupLoaded;
-        DirectoryTree.Loaded -= OnTreeLoaded;
-        DirectoryTree.SizeChanged -= OnTreeSizeChanged;
+        viewModel.PropertyChanged -= OnBrowserStateChanged;
         PlaybackTimeline.ValueChanged -= OnTimelineValueChanged;
         PlaybackTimeline.RemoveHandler(Thumb.DragStartedEvent, new DragStartedEventHandler(OnTimelineDragStarted));
         PlaybackTimeline.RemoveHandler(Thumb.DragCompletedEvent, new DragCompletedEventHandler(OnTimelineDragCompleted));
         DpiChanged -= OnPopupDpiChanged;
         if (sizingOwner is not null) sizingOwner.SizeChanged -= OnOwnerSizeChanged;
         await viewModel.DeactivateAsync();
-        if (initialReveal is not null) await initialReveal;
-        viewLifetime.Dispose();
     }
 
     private void UpdateSize()
@@ -96,74 +87,7 @@ public partial class SampleLoaderPopup : BasePopup
     private void OnOwnerSizeChanged(object sender, SizeChangedEventArgs e) => UpdateSize();
     private void OnPopupDpiChanged(object sender, DpiChangedEventArgs e) => UpdateSize();
     private void OnPopupLoaded(object sender, RoutedEventArgs e) => initialFocus = Dispatcher.BeginInvoke(
-        DispatcherPriority.Input, new Action(() => { if (!deactivated) DirectoryTextBox.Focus(); }));
-
-    private async void OnTreeLoaded(object sender, RoutedEventArgs e) =>
-        await HandleInteractionAsync(RevealInitialFolderAsync);
-
-    private async void OnTreeSizeChanged(object sender, SizeChangedEventArgs e) =>
-        await HandleInteractionAsync(RevealInitialFolderAsync);
-
-    internal Task RevealInitialFolderAsync()
-    {
-        if (deactivated || initialFolderRevealed || string.IsNullOrEmpty(initialFolder) ||
-            DirectoryTree.ActualWidth <= 0 || DirectoryTree.ActualHeight <= 0) return Task.CompletedTask;
-        if (initialReveal is { IsCompleted: false }) return initialReveal;
-        return initialReveal = RevealInitialFolderCoreAsync();
-    }
-
-    private async Task RevealInitialFolderCoreAsync()
-    {
-        try
-        {
-            ItemsControl owner = DirectoryTree;
-            var entries = viewModel.Roots.AsEnumerable();
-            while (!deactivated)
-            {
-                var entry = entries.FirstOrDefault(item => item.IsDirectory && (SameFolder(item.FullPath, initialFolder!) ||
-                    initialFolder!.StartsWith(System.IO.Path.EndsInDirectorySeparator(item.FullPath)
-                        ? item.FullPath : item.FullPath + System.IO.Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)));
-                if (entry is null) return;
-                owner.ApplyTemplate();
-                owner.UpdateLayout();
-                var index = owner.Items.IndexOf(entry);
-                if (owner.ItemContainerGenerator.ContainerFromIndex(index) is not TreeViewItem)
-                {
-                    var panel = Descendants(owner).OfType<VirtualizingStackPanel>().FirstOrDefault(value => ItemsControl.GetItemsOwner(value) == owner);
-                    panel?.BringIndexIntoViewPublic(index);
-                }
-                await Dispatcher.InvokeAsync(owner.UpdateLayout, DispatcherPriority.Loaded, viewLifetime.Token);
-                if (owner.ItemContainerGenerator.ContainerFromIndex(index) is not TreeViewItem container) return;
-                if (SameFolder(entry.FullPath, initialFolder!))
-                {
-                    var header = container.Template.FindName("Row", container) as FrameworkElement;
-                    (header ?? container).BringIntoView();
-                    await Dispatcher.InvokeAsync(DirectoryTree.UpdateLayout, DispatcherPriority.Loaded, viewLifetime.Token);
-                    var target = header ?? container;
-                    var bounds = target.TransformToAncestor(DirectoryTree).TransformBounds(new Rect(target.RenderSize));
-                    initialFolderRevealed = bounds.Height > 0 && bounds.Top >= 0 && bounds.Bottom <= DirectoryTree.ActualHeight;
-                    if (initialFolderRevealed) DirectoryTree.SizeChanged -= OnTreeSizeChanged;
-                    return;
-                }
-                owner = container;
-                entries = entry.Children;
-            }
-        }
-        catch (OperationCanceledException) { }
-    }
-
-    private static bool SameFolder(string left, string right) => string.Equals(
-        System.IO.Path.TrimEndingDirectorySeparator(left), System.IO.Path.TrimEndingDirectorySeparator(right), StringComparison.OrdinalIgnoreCase);
-
-    private static IEnumerable<DependencyObject> Descendants(DependencyObject parent)
-    {
-        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(parent); index++)
-        {
-            var child = VisualTreeHelper.GetChild(parent, index);
-            yield return child;
-            foreach (var descendant in Descendants(child)) yield return descendant;
-        }
-    }
+        DispatcherPriority.Input, new Action(() => { if (!deactivated) DirectoryContents.Focus(); }));
 
     private async void OnTimelineValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
@@ -197,54 +121,66 @@ public partial class SampleLoaderPopup : BasePopup
         }
     }
 
-    private async void OnFolderExpanded(object sender, RoutedEventArgs e)
+    private void OnBrowserStateChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.OriginalSource != sender || sender is not TreeViewItem { DataContext: SampleBrowserEntry entry }) return;
-        await HandleInteractionAsync(() => viewModel.ExpandAsync(entry));
-    }
-
-    private async void OnTreeSelectionChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
-    {
-        if (isSelectingFileRow) return;
-        if (e.NewValue is SampleBrowserEntry entry)
+        if (e.PropertyName != nameof(SampleLoaderPopupVM.IsNavigating)) return;
+        if (viewModel.IsNavigating)
+            navigationHadFocus |= DirectoryContents.IsKeyboardFocusWithin || DirectoryBreadcrumbs.IsKeyboardFocusWithin;
+        else if (navigationHadFocus)
         {
-            if (ReferenceEquals(entry, viewModel.SelectedFile) || entry.IsDirectory &&
-                string.Equals(entry.FullPath, viewModel.CurrentDirectory, StringComparison.OrdinalIgnoreCase)) return;
-            await HandleInteractionAsync(() => viewModel.SelectAsync(entry));
+            navigationHadFocus = false;
+            initialFocus = Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() => { if (!deactivated) DirectoryContents.Focus(); }));
         }
     }
 
-    private async void OnFileRowMouseDown(object sender, MouseButtonEventArgs e)
+    private async void OnContentsSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (isSelectingFileRow) return;
+        if (DirectoryContents.SelectedItem is SampleBrowserEntry entry)
+            await HandleInteractionAsync(() => viewModel.SelectAsync(entry));
+    }
+    private async void OnContentsKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter || Keyboard.Modifiers != ModifierKeys.None) return;
+        e.Handled = true;
+        await HandleInteractionAsync(ActivateSelectedEntryAsync);
+    }
+    internal Task ActivateSelectedEntryAsync() => DirectoryContents.SelectedItem is SampleBrowserEntry entry
+        ? entry.IsDirectory ? viewModel.NavigateCommand.ExecuteAsync(entry.FullPath) : viewModel.SetCheckedAsync(entry, true)
+        : Task.CompletedTask;
+
+    private async void OnEntryRowMouseDown(object sender, MouseButtonEventArgs e)
     {
         if (e.Handled || e.OriginalSource is not DependencyObject source ||
-            !ReferenceEquals(sender, GetFileRow(source))) return;
+            !ReferenceEquals(sender, GetEntryRow(source))) return;
         e.Handled = true;
-        await HandleFileRowClickAsync(source, e.ClickCount);
+        await HandleEntryRowClickAsync(source, e.ClickCount);
     }
 
-    internal Task HandleFileRowClickAsync(DependencyObject source, int clickCount)
+    internal Task HandleEntryRowClickAsync(DependencyObject source, int clickCount)
     {
-        if (deactivated || clickCount is not (1 or 2) || GetFileRow(source) is not { DataContext: SampleBrowserEntry entry } row)
+        if (deactivated || clickCount is not (1 or 2) || GetEntryRow(source) is not { DataContext: SampleBrowserEntry entry } row)
             return Task.CompletedTask;
         isSelectingFileRow = true;
         try
         {
             row.Focus();
-            row.SetCurrentValue(TreeViewItem.IsSelectedProperty, true);
+            row.SetCurrentValue(ListBoxItem.IsSelectedProperty, true);
         }
         finally { isSelectingFileRow = false; }
+        if (entry.IsDirectory) return HandleInteractionAsync(() => clickCount == 2 ? viewModel.NavigateCommand.ExecuteAsync(entry.FullPath) : viewModel.SelectAsync(entry));
         return HandleInteractionAsync(() => clickCount == 2
             ? viewModel.SetCheckedAsync(entry, true) : viewModel.ActivateFileAsync(entry));
     }
 
-    private TreeViewItem? GetFileRow(DependencyObject source)
+    private ListBoxItem? GetEntryRow(DependencyObject source)
     {
         for (DependencyObject? current = source; current is not null; current = DependencyObjectTree.GetParent(current))
         {
             if (current is ToggleButton) return null;
-            if (current is TreeViewItem row)
-                return row is { IsEnabled: true, DataContext: SampleBrowserEntry { IsDirectory: false, IsPlaceholder: false } } &&
-                    DependencyObjectTree.IsDescendantOf(row, DirectoryTree) ? row : null;
+            if (current is ListBoxItem row)
+                return row is { IsEnabled: true, DataContext: SampleBrowserEntry } &&
+                    DependencyObjectTree.IsDescendantOf(row, DirectoryContents) ? row : null;
         }
         return null;
     }
@@ -257,18 +193,11 @@ public partial class SampleLoaderPopup : BasePopup
         await HandleInteractionAsync(() => viewModel.SetCheckedAsync(entry, value));
     }
 
-    private async void OnDirectoryKeyDown(object sender, KeyEventArgs e)
-    {
-        if (e.Key != Key.Enter || Keyboard.Modifiers != ModifierKeys.None) return;
-        e.Handled = true;
-        await HandleInteractionAsync(() => viewModel.NavigateCommand.ExecuteAsync(null));
-    }
-
     protected override void OnKeyDown(KeyEventArgs e)
     {
         base.OnKeyDown(e);
         if (!e.Handled && e.Key == Key.Enter && Keyboard.Modifiers == ModifierKeys.None &&
-            e.OriginalSource is not TextBox && e.OriginalSource is not TreeViewItem && e.OriginalSource is not CheckBox &&
+            e.OriginalSource is not BalloonButton && e.OriginalSource is not TextBox && e.OriginalSource is not ListBoxItem && e.OriginalSource is not CheckBox &&
             e.OriginalSource is not Slider && e.OriginalSource is not Thumb &&
             e.OriginalSource is not System.Windows.Controls.Primitives.ToggleButton)
         {

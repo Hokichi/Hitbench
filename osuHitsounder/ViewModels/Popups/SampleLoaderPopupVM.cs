@@ -27,10 +27,11 @@ public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, I
     private bool isStartingPreview;
     private double playbackPositionSeconds;
     private bool isSeeking;
-    private SampleBrowserEntry? currentFolder;
-    public ObservableCollection<SampleBrowserEntry> Roots { get; } = [];
+    public ObservableCollection<SampleBrowserEntry> Entries { get; } = [];
+    public ObservableCollection<SampleBrowserBreadcrumb> Breadcrumbs { get; } = [];
+    public bool IsThisPc => CurrentDirectory.Length == 0;
+    public bool IsFolderEmpty => !IsNavigating && !IsThisPc && Entries.Count == 0;
 
-    [ObservableProperty] private string directoryText = "";
     [ObservableProperty] private string currentDirectory = "";
     [ObservableProperty] private SampleBrowserEntry? selectedFile;
     [ObservableProperty] private SampleFileMetadata? metadata;
@@ -51,11 +52,12 @@ public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, I
     public string PlaybackTimeText => string.Format(CultureInfo.CurrentCulture, "{0:0.000} / {1:0.000} s",
         PlaybackPositionSeconds, PlaybackDurationSeconds);
 
-    public int CheckedCount => currentFolder?.Children.Count(entry => !entry.IsDirectory && !entry.IsPlaceholder && entry.IsChecked) ?? 0;
+    public int CheckedCount => Entries.Count(entry => !entry.IsDirectory && entry.IsChecked);
     public string CheckedCountText => string.Format(CultureInfo.CurrentCulture, "{0:N0} files checked", CheckedCount);
+    public bool CanNavigate => !deactivated && !IsConfirming;
     public bool CanImport => !deactivated && !IsNavigating && !IsConfirming && CheckedCount > 0;
     public bool CanPreview => !deactivated && !IsNavigating && !IsConfirming && !IsMetadataLoading && !isStartingPreview && !IsSeeking && Metadata is not null;
-    public string BrowserStatusText => IsNavigating ? "Loading folder..." : CurrentDirectory.Length == 0 ? "Choose a folder." : "";
+    public string BrowserStatusText => IsNavigating ? "Loading folder..." : CurrentDirectory.Length == 0 ? Entries.Count == 0 ? "No drives to display" : "Choose a drive." : "";
     public string PreviewActionText => IsPreviewPlaying ? "Stop" : "Play";
     public string MetadataStatusText => IsMetadataLoading ? "Reading metadata..." : SelectedFile is null ? "Select a file to inspect and preview." : "";
     public string SizeText => Metadata is { } data ? string.Format(CultureInfo.CurrentCulture, "{0:N1} KiB", data.Length / 1024d) : "";
@@ -68,33 +70,18 @@ public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, I
         externalCancellation = token.Register(lifetime.Cancel);
         try
         {
-            var roots = await browser.GetRootsAsync(lifetime.Token);
-            await UpdateAsync(() => { foreach (var root in roots) { Roots.Add(root); Observe(root); } });
             var folder = string.IsNullOrWhiteSpace(initialDirectory)
                 ? await browser.GetDefaultDirectoryAsync(lifetime.Token) : initialDirectory;
-            await UpdateAsync(() => DirectoryText = folder);
             await NavigateToAsync(folder);
+            if (CurrentDirectory.Length == 0 && DirectoryError is { } failure)
+            { await NavigateToAsync(""); await UpdateAsync(() => DirectoryError = failure); }
         }
         catch (OperationCanceledException) { }
-        catch (Exception error) { await ReportAsync(() => DirectoryError = error.Message); }
+        catch (Exception error) { await NavigateToAsync(""); await ReportAsync(() => { if (Breadcrumbs.Count == 0) BuildBreadcrumbs(""); DirectoryError = error.Message; }); }
     });
 
-    public Task ExpandAsync(SampleBrowserEntry entry) => OwnAsync(async () =>
-    {
-        if (deactivated || !entry.IsDirectory || entry.IsLoaded || entry.IsLoading) return;
-        await UpdateAsync(() => { entry.IsLoading = true; entry.Error = null; });
-        try
-        {
-            var children = await browser.GetEntriesAsync(entry.FullPath, lifetime.Token);
-            await UpdateAsync(() => { ReplaceChildren(entry, children); entry.IsExpanded = true; });
-        }
-        catch (OperationCanceledException) { }
-        catch (Exception error) { await ReportAsync(() => entry.Error = error.Message); }
-        finally { await ReportAsync(() => entry.IsLoading = false); }
-    });
-
-    [RelayCommand]
-    private Task NavigateAsync() => OwnAsync(() => NavigateToAsync(DirectoryText));
+    [RelayCommand(CanExecute = nameof(CanNavigate))]
+    private Task NavigateAsync(string? path) => OwnAsync(() => NavigateToAsync(path ?? ""));
 
     private async Task NavigateToAsync(string path)
     {
@@ -106,31 +93,25 @@ public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, I
         await UpdateAsync(() => { IsNavigating = true; DirectoryError = null; NotifyState(); });
         try
         {
-            path = Path.TrimEndingDirectorySeparator(Path.GetFullPath(path.Trim()));
-            if (SamePath(path, CurrentDirectory))
+            path = string.IsNullOrWhiteSpace(path) ? "" : Path.TrimEndingDirectorySeparator(Path.GetFullPath(path.Trim()));
+            if (SamePath(path, CurrentDirectory) && Breadcrumbs.Count > 0)
             {
-                await UpdateAsync(() => { DirectoryText = CurrentDirectory; if (currentFolder is not null) currentFolder.IsSelected = true; });
+
                 return;
             }
-            var children = await browser.GetEntriesAsync(path, cancellation.Token);
-            if (request != navigationGeneration || deactivated) return;
-            var folder = await MaterializeDirectoryAsync(path, cancellation.Token);
+            var children = path.Length == 0 ? await browser.GetRootsAsync(cancellation.Token) : await browser.GetEntriesAsync(path, cancellation.Token);
             if (request != navigationGeneration || deactivated) return;
             ++selectionGeneration;
             metadataCancellation?.Cancel();
             await StopPreviewAsync();
             await UpdateAsync(() =>
             {
-                if (request != navigationGeneration) return;
-                if (currentFolder is not null)
-                    foreach (var entry in currentFolder.Children) entry.IsChecked = false;
-                foreach (var entry in observed.ToArray()) { entry.IsChecked = false; entry.IsSelected = false; }
-                ReplaceChildren(folder, children);
-                currentFolder = folder;
+                if (request != navigationGeneration || deactivated || cancellation.IsCancellationRequested) return;
+                foreach (var entry in observed.ToArray()) { entry.IsChecked = false; entry.IsSelected = false; Forget(entry); }
+                Entries.Clear();
+                foreach (var child in children) { Entries.Add(child); Observe(child); }
+                BuildBreadcrumbs(path);
                 CurrentDirectory = path;
-                DirectoryText = path;
-                folder.IsExpanded = true;
-                folder.IsSelected = true;
                 SelectedFile = null;
                 Metadata = null;
                 MetadataError = null;
@@ -139,49 +120,30 @@ public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, I
             });
         }
         catch (OperationCanceledException) { }
-        catch (Exception error) { if (request == navigationGeneration) await ReportAsync(() => DirectoryError = error.Message); }
+        catch (Exception error) { if (request == navigationGeneration) await ReportAsync(() => { if (request == navigationGeneration) DirectoryError = error.Message; }); }
         finally { if (request == navigationGeneration) await ReportAsync(() => { IsNavigating = false; NotifyState(); }); }
     }
 
-    private async Task<SampleBrowserEntry> MaterializeDirectoryAsync(string path, CancellationToken token)
+    private void BuildBreadcrumbs(string path)
     {
-        var root = Roots.Where(entry => IsAncestor(entry.FullPath, path)).OrderByDescending(entry => entry.FullPath.Length).FirstOrDefault();
-        if (root is null)
+        Breadcrumbs.Clear();
+        Breadcrumbs.Add(new(null, "This PC", path.Length == 0));
+        if (path.Length == 0) return;
+        var root = Path.GetPathRoot(path)!;
+        Breadcrumbs.Add(new(root, root, SamePath(root, path)));
+        var current = root;
+        foreach (var part in path[root.Length..].Split([Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar], StringSplitOptions.RemoveEmptyEntries))
         {
-            var rootPath = Path.GetPathRoot(path) ?? path;
-            root = Roots.FirstOrDefault(entry => SamePath(entry.FullPath, rootPath));
-            if (root is null)
-            {
-                root = new(rootPath, rootPath, true);
-                await uiScheduler.InvokeAsync(() => { Roots.Add(root); Observe(root); }, token);
-            }
+            current = Path.Combine(current, part);
+            Breadcrumbs.Add(new(current, part, SamePath(current, path)));
         }
-        var node = root;
-        var relative = Path.GetRelativePath(root.FullPath, path);
-        foreach (var part in relative.Split([Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar], StringSplitOptions.RemoveEmptyEntries))
-        {
-            if (part == ".") continue;
-            token.ThrowIfCancellationRequested();
-            if (!node.IsLoaded || !node.Children.Any(entry => entry.IsDirectory && string.Equals(entry.Name, part, StringComparison.OrdinalIgnoreCase)))
-            {
-                var children = await browser.GetEntriesAsync(node.FullPath, token);
-                token.ThrowIfCancellationRequested();
-                var parent = node;
-                await uiScheduler.InvokeAsync(() => ReplaceChildren(parent, children), token);
-            }
-            var parentNode = node;
-            await uiScheduler.InvokeAsync(() => parentNode.IsExpanded = true, token);
-            node = node.Children.FirstOrDefault(entry => entry.IsDirectory && string.Equals(entry.Name, part, StringComparison.OrdinalIgnoreCase))
-                ?? throw new DirectoryNotFoundException("The folder is no longer available.");
-        }
-        return node;
     }
 
     public Task SelectAsync(SampleBrowserEntry entry) => OwnAsync(() => SelectCoreAsync(entry));
 
     public Task ActivateFileAsync(SampleBrowserEntry entry) => OwnAsync(async () =>
     {
-        if (deactivated || IsConfirming || entry.IsDirectory || entry.IsPlaceholder) return;
+        if (deactivated || IsConfirming || entry.IsDirectory) return;
         if (!SamePath(SelectedFile?.FullPath, entry.FullPath))
         {
             await SelectCoreAsync(entry);
@@ -196,12 +158,12 @@ public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, I
 
     private async Task SelectCoreAsync(SampleBrowserEntry entry)
     {
-        if (deactivated || IsConfirming || entry.IsPlaceholder) return;
-        if (entry.IsDirectory) { await NavigateToAsync(entry.FullPath); return; }
+        if (deactivated || IsConfirming) return;
+        if (entry.IsDirectory) { ++selectionGeneration; metadataCancellation?.Cancel(); await StopPreviewAsync(); await UpdateAsync(() => { SelectedFile = null; Metadata = null; MetadataError = null; IsMetadataLoading = false; NotifyState(); }); return; }
         var parent = Path.GetDirectoryName(entry.FullPath)!;
         if (!SamePath(parent, CurrentDirectory)) await NavigateToAsync(parent);
         if (deactivated || !SamePath(parent, CurrentDirectory)) return;
-        var actual = currentFolder?.Children.FirstOrDefault(child => SamePath(child.FullPath, entry.FullPath));
+        var actual = Entries.FirstOrDefault(child => SamePath(child.FullPath, entry.FullPath));
         if (actual is null || actual.IsDirectory || SamePath(SelectedFile?.FullPath, actual.FullPath)) return;
         var request = ++selectionGeneration;
         metadataCancellation?.Cancel();
@@ -233,11 +195,11 @@ public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, I
 
     public Task SetCheckedAsync(SampleBrowserEntry entry, bool value) => OwnAsync(async () =>
     {
-        if (entry.IsDirectory || entry.IsPlaceholder || deactivated || IsConfirming) return;
+        if (entry.IsDirectory || deactivated || IsConfirming) return;
         await SelectCoreAsync(entry);
         await UpdateAsync(() =>
         {
-            var actual = currentFolder?.Children.FirstOrDefault(child => SamePath(child.FullPath, entry.FullPath));
+            var actual = Entries.FirstOrDefault(child => SamePath(child.FullPath, entry.FullPath));
             if (actual is not null && !actual.IsDirectory) actual.IsChecked = value;
             NotifyState();
         });
@@ -361,34 +323,18 @@ public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, I
         if (!CanImport) return Array.Empty<string>();
         IsConfirming = true;
         NotifyState();
-        var result = currentFolder!.Children.Where(entry => !entry.IsDirectory && !entry.IsPlaceholder && entry.IsChecked).Select(entry => entry.FullPath).ToArray();
+        var result = Entries.Where(entry => !entry.IsDirectory && entry.IsChecked).Select(entry => entry.FullPath).ToArray();
         try { await StopPreviewAsync(); return deactivated ? Array.Empty<string>() : Array.AsReadOnly(result); }
         catch (Exception error) { PreviewError = error.Message; IsConfirming = false; NotifyState(); return Array.Empty<string>(); }
     }
 
-    private void ReplaceChildren(SampleBrowserEntry entry, IReadOnlyList<SampleBrowserEntry> children)
-    {
-        foreach (var child in entry.Children) Forget(child);
-        entry.Children.Clear();
-        foreach (var child in children) { entry.Children.Add(child); Observe(child); }
-        if (!children.Any(child => !child.IsPlaceholder))
-        {
-            var empty = new SampleBrowserEntry("", "No audio file found", false, true);
-            entry.Children.Add(empty);
-            Observe(empty);
-        }
-        entry.IsLoaded = true;
-        entry.Error = null;
-    }
     private void Observe(SampleBrowserEntry entry)
     {
         if (observed.Add(entry)) entry.PropertyChanged += EntryChanged;
-        foreach (var child in entry.Children) Observe(child);
     }
     private void Forget(SampleBrowserEntry entry)
     {
         if (observed.Remove(entry)) entry.PropertyChanged -= EntryChanged;
-        foreach (var child in entry.Children) Forget(child);
     }
     private void EntryChanged(object? sender, PropertyChangedEventArgs args)
     {
@@ -398,8 +344,9 @@ public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, I
     {
         foreach (var name in new[] { nameof(CheckedCount), nameof(CheckedCountText), nameof(CanImport), nameof(CanPreview), nameof(BrowserStatusText),
             nameof(PreviewActionText), nameof(MetadataStatusText), nameof(SizeText), nameof(DurationText),
-            nameof(PlaybackPositionSeconds), nameof(PlaybackDurationSeconds), nameof(PlaybackTimeText), nameof(CanSeek), nameof(IsSeeking) }) OnPropertyChanged(name);
+            nameof(PlaybackPositionSeconds), nameof(PlaybackDurationSeconds), nameof(PlaybackTimeText), nameof(CanSeek), nameof(IsSeeking), nameof(IsThisPc), nameof(IsFolderEmpty) }) OnPropertyChanged(name);
         TogglePreviewCommand.NotifyCanExecuteChanged();
+        NavigateCommand.NotifyCanExecuteChanged();
     }
     private Task UpdateAsync(Action action) => uiScheduler.InvokeAsync(action, lifetime.Token);
     private Task ReportAsync(Action action) => deactivated ? Task.CompletedTask : uiScheduler.InvokeAsync(action, CancellationToken.None);
@@ -413,8 +360,6 @@ public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, I
     }
     private static bool SamePath(string? left, string? right) => left is not null && right is not null &&
         string.Equals(Path.TrimEndingDirectorySeparator(left), Path.TrimEndingDirectorySeparator(right), StringComparison.OrdinalIgnoreCase);
-    private static bool IsAncestor(string parent, string path) => SamePath(parent, path) ||
-        path.StartsWith(Path.EndsInDirectorySeparator(parent) ? parent : parent + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
 
     public Task DeactivateAsync() => deactivation ??= DeactivateCoreAsync();
     private async Task DeactivateCoreAsync()
@@ -431,7 +376,7 @@ public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, I
             await previewMonitor;
             try { await preview.StopAsync(CancellationToken.None); }
             finally { await preview.DisposeAsync(); }
-            foreach (var root in Roots) Forget(root);
+            foreach (var entry in observed.ToArray()) Forget(entry);
             await uiScheduler.InvokeAsync(() => { IsPreviewPlaying = false; IsNavigating = false; IsMetadataLoading = false; NotifyState(); }, CancellationToken.None);
             externalCancellation.Dispose();
             navigationCancellation?.Dispose(); metadataCancellation?.Dispose(); playCancellation?.Dispose(); lifetime.Dispose();
