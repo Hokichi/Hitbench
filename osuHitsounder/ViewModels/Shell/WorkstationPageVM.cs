@@ -73,6 +73,7 @@ public partial class WorkstationPageVM(
     public bool CanPlaceSamples => !IsNodeEditBusy && CanEditTracks && Waveform is not null && !importBusy && !removalBusy;
     public bool HasPendingSaves => IsNodeEditBusy || pendingZoom is not null || importBusy || removalBusy || !saveTail.IsCompleted || lastSaveError is not null;
     [ObservableProperty] private string? saveError;
+    [ObservableProperty] private bool scrollWithMarker = true;
     private CancellationTokenSource? loadCancellation;
     private Task? activeLoad;
     private int loadGeneration;

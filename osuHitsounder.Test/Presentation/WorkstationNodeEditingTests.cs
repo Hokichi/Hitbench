@@ -7,6 +7,36 @@ namespace osuHitsounder.Test.Presentation;
 
 public class WorkstationNodeEditingTests
 {
+    [Test]
+    public void SelectingNodesDisablesFollowingEvenForUnchangedSelection()
+    {
+        vm.ScrollWithMarker = true; vm.SelectNode(first, a, false);
+        Assert.That(vm.ScrollWithMarker, Is.False);
+        vm.ScrollWithMarker = true; vm.SelectNode(first, a, false);
+        Assert.That(vm.ScrollWithMarker, Is.False);
+        vm.ScrollWithMarker = true; vm.SelectNode(second, c, true);
+        Assert.That(vm.ScrollWithMarker, Is.False);
+    }
+    [Test]
+    public void InvalidSelectionAndClearingDoNotEnableFollowing()
+    {
+        vm.ScrollWithMarker = true;
+        Assert.That(vm.SelectNode(first, new Sample(), false), Is.False);
+        Assert.That(vm.ScrollWithMarker, Is.True);
+        vm.SetNodeSelection([a]); vm.ClearNodeSelection();
+        Assert.That(vm.ScrollWithMarker, Is.False);
+    }
+    [Test]
+    public void PlacingAndRestoringSelectionDisablesFollowing()
+    {
+        vm.ScrollWithMarker = true; Assert.That(vm.PlaceSample(first, 1500), Is.True);
+        Assert.That(vm.ScrollWithMarker, Is.False);
+        var selected = vm.SelectedSamples.ToArray();
+        vm.ClearNodeSelection(); vm.ScrollWithMarker = true;
+        vm.RestoreNodeSelection(selected, vm.LoadGeneration);
+        Assert.That(vm.SelectedSamples, Has.Count.EqualTo(1));
+        Assert.That(vm.ScrollWithMarker, Is.False);
+    }
     private WorkstationPageVM vm = null!;
     private StubWorkstationAudioService audio = null!;
     private DelayedProjectFileService saves = null!;

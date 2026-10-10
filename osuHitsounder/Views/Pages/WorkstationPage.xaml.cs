@@ -43,6 +43,7 @@ public partial class WorkstationPage : UserControl
         this.viewModel = viewModel;
         InitializeComponent();
         KeyboardNavigationPolicy.EnableTabNavigation(ResnapAllSamplesButton);
+        KeyboardNavigationPolicy.EnableTabNavigation(ScrollWithMarkerCheckBox);
         DataContext = viewModel;
         InitializeNodeInteraction();
         KeyboardNavigationPolicy.EnableTabNavigation(TrackList);
@@ -372,6 +373,11 @@ public partial class WorkstationPage : UserControl
             UpdatePlaybackRefreshSubscription();
         if (e.PropertyName == nameof(WorkstationPageVM.ZoomFactor)) ApplyPendingZoomAnchor();
         if (e.PropertyName == nameof(WorkstationPageVM.Position) && viewModel.IsPlaying) FollowPlaybackPosition();
+        if (e.PropertyName == nameof(WorkstationPageVM.ScrollWithMarker) && viewModel.ScrollWithMarker && viewModel.IsPlaying)
+        {
+            viewModel.RefreshPlayback();
+            FollowPlaybackPosition();
+        }
         if (e.PropertyName == nameof(WorkstationPageVM.StatusText))
             (System.Windows.Automation.Peers.UIElementAutomationPeer.FromElement(LoadingProjectText) ??
              System.Windows.Automation.Peers.UIElementAutomationPeer.CreatePeerForElement(LoadingProjectText))?
@@ -511,7 +517,7 @@ public partial class WorkstationPage : UserControl
 
     private void FollowPlaybackPosition()
     {
-        if (!playbackReady || deactivationStarted || !IsVisible || ownerWindow?.WindowState == WindowState.Minimized) return;
+        if (!viewModel.ScrollWithMarker || !playbackReady || deactivationStarted || !IsVisible || ownerWindow?.WindowState == WindowState.Minimized) return;
         var duration = viewModel.Waveform?.Duration.TotalSeconds ?? 0;
         if (duration <= 0) return;
         var offset = GetPlaybackPageOffset(viewModel.Position.TotalSeconds / duration * WaveformDisplay.ActualWidth,

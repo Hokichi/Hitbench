@@ -41,16 +41,26 @@ public partial class WorkstationPage
     private void OnNodePointerDown(object sender, MouseButtonEventArgs e)
     {
         var grid = FindAncestor<BeatGridView>(e.OriginalSource as DependencyObject);
-        if (grid is null || !BeginNodePointer(grid, e.GetPosition(grid), e.GetPosition(this))) return;
-        grid.Focus();
-        if (!CaptureMouse()) CancelNodePointer();
+        if (!BeginNodePointer(grid, grid is null ? default : e.GetPosition(grid), e.GetPosition(this), Keyboard.Modifiers)) return;
+        grid!.Focus();
+        if (pointerNode is not null && !CaptureMouse()) CancelNodePointer();
         e.Handled = true;
     }
-    internal bool BeginNodePointer(BeatGridView grid, Point gridPoint, Point pagePoint)
+    internal bool BeginNodePointer(BeatGridView? grid, Point gridPoint, Point pagePoint, ModifierKeys modifiers = ModifierKeys.None)
     {
         CancelNodePointer();
-        if (!double.IsFinite(pagePoint.X) || !double.IsFinite(pagePoint.Y) || IsVolumeOverlayOpen || deactivationStarted || grid.DataContext is not Track track || grid.FindSampleAt(gridPoint) is not { } sample ||
-            !viewModel.SelectNode(track, sample, false)) return false;
+        if (!double.IsFinite(pagePoint.X) || !double.IsFinite(pagePoint.Y) || deactivationStarted) return false;
+        if (grid is null) { viewModel.ClearNodeSelection(); return false; }
+        if (!double.IsFinite(gridPoint.X) || !double.IsFinite(gridPoint.Y)) return false;
+        var sample = grid.FindSampleAt(gridPoint);
+        if (sample is null) { viewModel.ClearNodeSelection(); return false; }
+        if (IsVolumeOverlayOpen || !viewModel.CanPlaceSamples || grid.DataContext is not Track track || !viewModel.Tracks.Contains(track)) return false;
+        if (modifiers.HasFlag(ModifierKeys.Control) || !viewModel.SelectedSamples.Contains(sample))
+        {
+            if (!viewModel.SelectNode(track, sample, modifiers.HasFlag(ModifierKeys.Control))) return false;
+        }
+        else { viewModel.SelectedTrack = track; viewModel.SetNodeSelection(viewModel.SelectedSamples); }
+        if (!viewModel.SelectedSamples.Contains(sample)) return true;
         nodeSourceGrid = grid; pointerNode = sample; pointerStart = pagePoint;
         grid.PressedSample = sample; grid.SuppressPlacementFeedback = true;
         grid.DataContextChanged += OnNodeGridRecycled;
@@ -125,6 +135,16 @@ public partial class WorkstationPage
     {
         if (key == Key.Escape && pointerNode is not null) { CancelNodePointer(); return true; }
         if (FindAncestor<TextBoxBase>(origin) is not null || FindAncestor<PasswordBox>(origin) is not null || FindAncestor<ComboBox>(origin)?.IsEditable == true) return false;
+        if (key == Key.Escape && modifiers == ModifierKeys.None && viewModel.SelectedSamples.Count > 0)
+        {
+            if (!isRepeat) viewModel.ClearNodeSelection();
+            return true;
+        }
+        if (key == Key.Enter && modifiers == ModifierKeys.Control && FindAncestor<BeatGridView>(origin) is { CanPlaceSamples: true, DataContext: Track track } grid)
+        {
+            if (!isRepeat && grid.FindActiveSample() is { } sample) viewModel.SelectNode(track, sample, true);
+            return true;
+        }
         System.Windows.Input.ICommand? command = modifiers == ModifierKeys.Control ? key switch
         { Key.C => viewModel.CopyNodesCommand, Key.V => viewModel.PasteNodesCommand, _ => null } :
             modifiers == ModifierKeys.None && key == Key.Delete ? viewModel.DeleteSelectedNodesCommand : null;

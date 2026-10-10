@@ -44,6 +44,7 @@ public partial class WorkstationPageVM
     public bool SelectNode(Track track, Sample sample, bool toggle)
     {
         if (!CanPlaceSamples || !tracks.Contains(track) || !track.Samples.Contains(sample)) return false;
+        ScrollWithMarker = false;
         SelectedTrack = track;
         SetNodeSelection(toggle ? selectedNodes.Contains(sample) ? selectedNodes.Where(node => !ReferenceEquals(node, sample))
             : selectedNodes.Append(sample) : [sample]);
@@ -61,6 +62,7 @@ public partial class WorkstationPageVM
     {
         var live = tracks.SelectMany(track => track.Samples).ToHashSet();
         var next = samples.Where(live.Contains).Distinct().ToArray();
+        if (next.Length > 0) ScrollWithMarker = false;
         if (selectedNodes.SequenceEqual(next)) return;
         selectedNodes = Array.AsReadOnly(next);
         OnPropertyChanged(nameof(SelectedSamples));

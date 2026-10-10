@@ -44,6 +44,26 @@
             <Setter Property="FocusVisualStyle" Value="{StaticResource OHsKeyboardFocusVisualStyle}" />
             <Setter Property="IsTabStop" Value="True" />
         </Style>
+        <Style x:Key="OHsWorkstationScrollWithMarkerStyle"
+               BasedOn="{StaticResource {x:Type customControls:BalloonCheckBox}}"
+               TargetType="customControls:BalloonCheckBox">
+            <Setter Property="ButtonSize" Value="40" />
+            <Setter Property="Margin" Value="0,0,8,0" />
+            <Setter Property="ShouldShowText" Value="True" />
+            <Setter Property="IsTabStop" Value="True" />
+            <Setter Property="FocusVisualStyle" Value="{StaticResource OHsKeyboardFocusVisualStyle}" />
+            <Setter Property="DefaultBackground" Value="{DynamicResource Brush.BalloonButton.Background.Neutral}" />
+            <Setter Property="HoveredBackground" Value="{DynamicResource Brush.BalloonButton.Background.Neutral.Hovered}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
+                    <Setter Property="DefaultBackground" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
+                    <Setter Property="CheckedBackground" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
+                    <Setter Property="HoveredBackground" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
+                    <Setter Property="StrokeBrush" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+                    <Setter Property="StrokeThickness" Value="1" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
         <Style
             x:Key="OHsWorkstationPlayPauseStyle"
             BasedOn="{StaticResource OHsWorkstationTransportButtonStyle}"
@@ -514,7 +534,7 @@
                         <customControls:BeatGridView
                             KeyboardNavigation.IsTabStop="True"
                             Height="{Binding DataContext.TrackHeight, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
-                            AutomationProperties.HelpText="Use Left and Right to move playback. Enter places or selects a node. Delete removes selected nodes; Control+C copies and Control+V pastes. Alt+Left or Right moves selected nodes; Alt+Up or Down changes tracks. Drag nodes to move them; Escape cancels."
+                            AutomationProperties.HelpText="Use Left and Right to move playback. Enter places or selects a node. Control+click or Control+Enter toggles node selection. Click outside nodes or press Escape to clear selection. Selecting nodes disables Scroll with marker. Delete removes selected nodes; Control+C copies and Control+V pastes. Alt+Left or Right moves selected nodes; Alt+Up or Down changes tracks. Drag nodes to move them; Escape cancels dragging."
                             AutomationProperties.Name="Track sample placement timeline"
                             Bpms="{Binding DataContext.Project.BPMs, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
                             CanPlaceSamples="{Binding DataContext.CanPlaceSamples, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
@@ -630,6 +650,17 @@
                                     Command="{Binding ResnapAllSamplesCommand, Mode=OneWay}"
                                     Style="{StaticResource OHsWorkstationResnapButtonStyle}"
                                     ToolTip="Snap every sample to the nearest beat in the current subdivision" />
+                                <customControls:BalloonCheckBox
+                                    x:Name="ScrollWithMarkerCheckBox"
+                                    AutomationProperties.Name="Scroll with marker"
+                                    AutomationProperties.HelpText="Follow the current playback marker. Selecting a node turns this off."
+                                    ButtonIcon="{StaticResource CheckboxBlankOutline}"
+                                    CheckedIcon="{StaticResource Check}"
+                                    ButtonText="Scroll with marker"
+                                    IsChecked="{Binding ScrollWithMarker, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                    IsEnabled="{Binding CanPlay, Mode=OneWay}"
+                                    Style="{StaticResource OHsWorkstationScrollWithMarkerStyle}"
+                                    ToolTip="Follow the current playback marker. Selecting a node turns this off." />
                                 <TextBlock
                                     AutomationProperties.Name="Elapsed audio time"
                                     Style="{StaticResource OHsWorkstationElapsedStyle}"

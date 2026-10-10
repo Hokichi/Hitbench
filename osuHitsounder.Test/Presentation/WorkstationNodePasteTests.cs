@@ -31,7 +31,9 @@ public class WorkstationNodePasteTests
         node.Timestamp = 2000; node.Volume = 99;
         vm.SelectedTrack = destination; dialogs.Choice = timing;
         await vm.SeekCommand.ExecuteAsync(TimeSpan.FromMilliseconds(3010));
+        vm.ScrollWithMarker = true;
         Assert.That(await vm.PasteCopiedNodesAsync(), Is.True);
+        Assert.That(vm.ScrollWithMarker, Is.False);
         var copy = destination.Samples.Single();
         Assert.That(copy.Timestamp, Is.EqualTo(expected));
         Assert.That(copy.FileName, Is.EqualTo("b.wav")); Assert.That(copy.Volume, Is.EqualTo(37));

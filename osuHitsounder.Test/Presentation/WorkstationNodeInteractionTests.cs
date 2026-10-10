@@ -15,6 +15,69 @@ namespace osuHitsounder.Test.Presentation;
 [NonParallelizable]
 public class WorkstationNodeInteractionTests
 {
+    [Test]
+    public void ControlClickTogglesAcrossTracksWithoutRearmingRemovedNode()
+    {
+        var editor = CreateEditor(); using var view = editor.View;
+        var grids = Descendants<BeatGridView>(editor.Page).ToArray();
+        foreach (var grid in grids) { grid.ContentWidth = 1000; grid.ViewportWidth = 500; grid.HorizontalOffset = 0; }
+        var other = new Sample { Timestamp = 1500, FileName = "b.wav" }; editor.Vm.Tracks[1].Samples.Add(other);
+        editor.Page.BeginNodePointer(grids[0], new Point(100, 10), new Point());
+        editor.Page.BeginNodePointer(grids[1], new Point(150, 10), new Point(), ModifierKeys.Control);
+        Assert.That(editor.Vm.SelectedSamples, Is.EquivalentTo(new[] { editor.Node, other }));
+        Assert.That(editor.Page.BeginNodePointer(grids[1], new Point(150, 10), new Point(), ModifierKeys.Control), Is.True);
+        editor.Page.UpdateNodePointer(new Point(20, 20), grids[1], new Point(200, 10));
+        var completion = editor.Page.CompleteNodePointerAsync(); UiTestPump.Run(completion);
+        Assert.That(completion.GetAwaiter().GetResult(), Is.False);
+        Assert.That(editor.Vm.SelectedSamples.Single(), Is.SameAs(editor.Node));
+        Assert.That(other.Timestamp, Is.EqualTo(1500)); Assert.That(editor.Vm.CanUndo, Is.False);
+        UiTestPump.Run(editor.Page.DeactivateAsync());
+    }
+    [Test]
+    public void PlainClickPreservesSelectedDragGroup()
+    {
+        var editor = CreateEditor(); using var view = editor.View;
+        var grid = Descendants<BeatGridView>(editor.Page).First();
+        grid.ContentWidth = 1000; grid.ViewportWidth = 500; grid.HorizontalOffset = 0;
+        var other = new Sample { Timestamp = 1500, FileName = "a.wav" }; editor.Vm.Tracks[0].Samples.Add(other);
+        editor.Vm.SetNodeSelection([editor.Node, other]); editor.Vm.ScrollWithMarker = true;
+        editor.Page.BeginNodePointer(grid, new Point(100, 10), new Point());
+        Assert.That(editor.Vm.SelectedSamples, Is.EquivalentTo(new[] { editor.Node, other }));
+        Assert.That(editor.Vm.ScrollWithMarker, Is.False);
+        UiTestPump.Run(editor.Page.DeactivateAsync());
+    }
+    [TestCase(ModifierKeys.None)]
+    [TestCase(ModifierKeys.Control)]
+    public void OutsideClickClearsSelectionWithoutHandlingOtherInput(ModifierKeys modifiers)
+    {
+        var editor = CreateEditor(); using var view = editor.View;
+        editor.Vm.SelectNode(editor.Vm.Tracks[0], editor.Node, false);
+        Assert.That(editor.Page.BeginNodePointer(null, new Point(), new Point(), modifiers), Is.False);
+        Assert.That(editor.Vm.SelectedSamples, Is.Empty);
+        var name = Descendants<TextBox>(editor.Page).First();
+        editor.Vm.SelectNode(editor.Vm.Tracks[0], editor.Node, false);
+        var click = new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, MouseButton.Left) { RoutedEvent = Mouse.PreviewMouseDownEvent };
+        name.RaiseEvent(click);
+        Assert.That(editor.Vm.SelectedSamples, Is.Empty); Assert.That(click.Handled, Is.False);
+        UiTestPump.Run(editor.Page.DeactivateAsync());
+    }
+    [Test]
+    public void KeyboardToggleAndEscapeRespectTextEditing()
+    {
+        var editor = CreateEditor(); using var view = editor.View;
+        var grid = Descendants<BeatGridView>(editor.Page).First(); grid.SetActivePosition(TimeSpan.FromMilliseconds(1000));
+        Assert.That(editor.Page.HandlePlaybackKey(Key.Enter, ModifierKeys.Control, false, grid), Is.True);
+        Assert.That(editor.Vm.SelectedSamples.Single(), Is.SameAs(editor.Node));
+        Assert.That(editor.Page.HandlePlaybackKey(Key.Enter, ModifierKeys.Control, true, grid), Is.True);
+        Assert.That(editor.Vm.SelectedSamples, Has.Count.EqualTo(1));
+        Assert.That(editor.Page.HandlePlaybackKey(Key.Escape, ModifierKeys.None, false, new TextBox()), Is.False);
+        Assert.That(editor.Page.HandlePlaybackKey(Key.Escape, ModifierKeys.None, false, grid), Is.True);
+        Assert.That(editor.Vm.SelectedSamples, Is.Empty);
+        grid.SetActivePosition(TimeSpan.FromMilliseconds(2000));
+        Assert.That(editor.Page.HandlePlaybackKey(Key.Enter, ModifierKeys.Control, false, grid), Is.True);
+        Assert.That(editor.Vm.Tracks[0].Samples, Has.Count.EqualTo(1));
+        UiTestPump.Run(editor.Page.DeactivateAsync());
+    }
     [SetUp] public void Setup() => new VolumeWheelTests().SetUp();
     [Test]
     public void TrackCardsExposeNativeSingleSelection()
