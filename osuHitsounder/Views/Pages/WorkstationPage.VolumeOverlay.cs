@@ -192,7 +192,7 @@ public partial class WorkstationPage
 
     internal void ProcessVolumeOverlayIdle(TimeSpan idleFor, bool animate)
     {
-        if (!IsVolumeOverlayOpen || volumeFading || idleFor < TimeSpan.FromSeconds(1)) return;
+        if (!IsVolumeOverlayOpen || volumeFading || idleFor < TimeSpan.FromMilliseconds(500)) return;
         volumeIdleTimer?.Stop();
         if (!animate) { DismissVolumeOverlay(); return; }
         AnimateVolumeOverlay(false, true);

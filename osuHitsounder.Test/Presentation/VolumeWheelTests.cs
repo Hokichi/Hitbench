@@ -63,18 +63,18 @@ public class VolumeWheelTests
     }
 
     [Test]
-    public void IdleDismissalWaitsOneSecondAfterPointerActivity()
+    public void IdleDismissalStartsAt500Milliseconds()
     {
         var (page, _, view) = CreateLoadedPage();
         using (view)
         {
             page.ShowVolumeOverlay(false, new Point());
-            page.ProcessVolumeOverlayIdle(TimeSpan.FromMilliseconds(999), false);
+            page.ProcessVolumeOverlayIdle(TimeSpan.FromMilliseconds(499), false);
             Assert.That(page.IsVolumeOverlayOpen, Is.True);
             page.ApplicationVolumeWheel.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, MouseButton.Left) { RoutedEvent = Mouse.MouseDownEvent });
             page.ActivateVolumeWheel(page.SongVolumeWheel);
             Assert.That(page.ActiveVolumeWheel, Is.SameAs(page.SongVolumeWheel));
-            page.ProcessVolumeOverlayIdle(TimeSpan.FromSeconds(1), false);
+            page.ProcessVolumeOverlayIdle(TimeSpan.FromMilliseconds(500), false);
             Assert.That(page.IsVolumeOverlayOpen, Is.False);
         }
     }
@@ -86,7 +86,7 @@ public class VolumeWheelTests
         using (view)
         {
             page.ShowVolumeOverlay(false, new Point());
-            page.ProcessVolumeOverlayIdle(TimeSpan.FromSeconds(1), true);
+            page.ProcessVolumeOverlayIdle(TimeSpan.FromMilliseconds(500), true);
             var overlay = (Border)page.FindName("VolumeOverlay");
             Assert.That(overlay.HasAnimatedProperties, Is.True);
             page.RecordVolumeActivity();
@@ -107,7 +107,7 @@ public class VolumeWheelTests
         using (view)
         {
             page.ShowVolumeOverlay(false, new Point());
-            page.ProcessVolumeOverlayIdle(TimeSpan.FromSeconds(1), true);
+            page.ProcessVolumeOverlayIdle(TimeSpan.FromMilliseconds(500), true);
             var overlay = (Border)page.FindName("VolumeOverlay");
             overlay.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, 0) { RoutedEvent = Mouse.PreviewMouseMoveEvent });
             Assert.That(overlay.HasAnimatedProperties, Is.EqualTo(SystemParameters.ClientAreaAnimation));

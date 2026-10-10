@@ -27,14 +27,14 @@ public class WorkstationVolumeTransitionTests
         AssertLocked();
         UiTestPump.Run(Task.Delay(150));
         AssertLocked();
-        page.ProcessVolumeOverlayIdle(TimeSpan.FromSeconds(1), true);
+        page.ProcessVolumeOverlayIdle(TimeSpan.FromMilliseconds(500), true);
         UiTestPump.Run(Task.Delay(100));
         AssertLocked();
         page.RecordVolumeActivity();
         AssertLocked();
         UiTestPump.Run(Task.Delay(250));
         AssertLocked();
-        page.ProcessVolumeOverlayIdle(TimeSpan.FromSeconds(1), true);
+        page.ProcessVolumeOverlayIdle(TimeSpan.FromMilliseconds(500), true);
         UiTestPump.Run(Task.Delay(250));
         Assert.That(content.IsEnabled, Is.True);
         Assert.That(content.IsHitTestVisible, Is.True);
@@ -81,7 +81,7 @@ public class WorkstationVolumeTransitionTests
         page.RecordVolumeActivity();
         UiTestPump.Run(Task.Delay(100));
         UiTestPump.Run(Task.Delay(150));
-        page.ProcessVolumeOverlayIdle(TimeSpan.FromSeconds(1), true);
+        page.ProcessVolumeOverlayIdle(TimeSpan.FromMilliseconds(500), true);
         UiTestPump.Run(Task.Delay(100));
         Assert.That(page.IsVolumeOverlayOpen, Is.True);
         UiTestPump.Run(Task.Delay(150));
@@ -97,7 +97,7 @@ public class WorkstationVolumeTransitionTests
         UiTestPump.Run(page.LoadCompletion);
         page.ShowVolumeOverlay(false, new Point(), true, false);
         UiTestPump.Run(Task.Delay(250));
-        page.ProcessVolumeOverlayIdle(TimeSpan.FromSeconds(1), true);
+        page.ProcessVolumeOverlayIdle(TimeSpan.FromMilliseconds(500), true);
         UiTestPump.Run(Task.Delay(100));
         var panel = (Border)page.FindName("VolumeOverlay");
         UiControlContract.AssertStyle<Border>(panel, "OHsWorkstationVolumeOverlayStyle");
@@ -121,9 +121,9 @@ public class WorkstationVolumeTransitionTests
         var content = (Grid)page.FindName("WorkstationContent");
         UiControlContract.AssertStyle<Grid>(content, "OHsWorkstationContentStyle");
         Assert.That(panel.HasAnimatedProperties, Is.False);
-        page.ProcessVolumeOverlayIdle(TimeSpan.FromMilliseconds(999), false);
+        page.ProcessVolumeOverlayIdle(TimeSpan.FromMilliseconds(499), false);
         Assert.That(page.IsVolumeOverlayOpen, Is.True);
-        page.ProcessVolumeOverlayIdle(TimeSpan.FromSeconds(1), false);
+        page.ProcessVolumeOverlayIdle(TimeSpan.FromMilliseconds(500), false);
         Assert.That(page.IsVolumeOverlayOpen, Is.False);
     }
 
@@ -171,7 +171,7 @@ public class WorkstationVolumeTransitionTests
         using var view = new InMemoryView(new Window { Content = page, Width = 900, Height = 600 });
         UiTestPump.Run(page.LoadCompletion);
         page.ShowVolumeOverlay(false, new Point(), false, false);
-        page.ProcessVolumeOverlayIdle(TimeSpan.FromSeconds(1), true);
+        page.ProcessVolumeOverlayIdle(TimeSpan.FromMilliseconds(500), true);
         UiTestPump.Run(Task.Delay(100));
         var panel = (Border)page.FindName("VolumeOverlay");
         UiControlContract.AssertStyle<Border>(panel, "OHsWorkstationVolumeOverlayStyle");
