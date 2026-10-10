@@ -8,6 +8,31 @@ namespace osuHitsounder.Test.Presentation;
 
 public sealed class ManageSamplesPopupVMTests
 {
+    [Test] public async Task PlayUsesProjectSampleAndRetiresPreviewBeforeRenameAndClose()
+    {
+        var preview=new StubSamplePreviewService(); var files=new StubSampleFileService(["hit.wav"]);
+        var project=Path.Combine(Path.GetTempPath(),"preview-project","project.json");
+        var vm=new ManageSamplesPopupVM(new(project,null,Guid.NewGuid()),files,new(files),new StubSampleFileDialogService(Array.Empty<string>()),
+            new StubSampleRemovalDialogService(),new WeakReferenceMessenger(),new ImmediateUiScheduler(),preview);
+        await vm.InitializeAsync(default); var entry=vm.Entries.Single();
+        await vm.PlayCommand.ExecuteAsync(entry);
+        Assert.That(preview.PlayedPaths.Single(),Is.EqualTo(Path.Combine(Path.GetDirectoryName(project)!,"Samples","hit.wav")));
+        Assert.That(preview.Playing,Is.True);
+        files.Rename=(_,_,_,_)=> { Assert.That(preview.Playing,Is.False);return Task.FromResult("kick.wav"); };
+        files.List=(_,_)=>Task.FromResult<IReadOnlyList<string>>(["kick.wav"]);
+        await vm.EditCommand.ExecuteAsync(entry); vm.DraftStem="kick"; await vm.CommitRenameCommand.ExecuteAsync(null);
+        await vm.PlayCommand.ExecuteAsync(vm.Entries.Single()); await vm.DeactivateAsync();
+        Assert.That(preview.Playing,Is.False); Assert.That(preview.Disposed,Is.True);
+    }
+    [Test] public async Task PlaybackFailureRestoresActionsAndShowsError()
+    {
+        var preview=new StubSamplePreviewService{Play=_=>Task.FromException(new IOException("Playback failed"))}; var files=new StubSampleFileService(["hit.wav"]);
+        var vm=new ManageSamplesPopupVM(new("project.json",null,Guid.NewGuid()),files,new(files),new StubSampleFileDialogService(Array.Empty<string>()),
+            new StubSampleRemovalDialogService(),new WeakReferenceMessenger(),new ImmediateUiScheduler(),preview);
+        await vm.InitializeAsync(default); await vm.PlayCommand.ExecuteAsync(vm.Entries.Single());
+        Assert.That(vm.ErrorMessage,Is.EqualTo("Playback failed")); Assert.That(vm.IsBusy,Is.False);
+        Assert.That(vm.PlayCommand.CanExecute(vm.Entries.Single()),Is.True); await vm.DeactivateAsync();
+    }
     [Test] public async Task ConfirmedDeletePublishesKnownRemovalDespiteRefreshFailure()
     {
         var files=new StubSampleFileService(["hit.wav"]); var messenger=new WeakReferenceMessenger(); var received=new List<ProjectSamplesChangedMessage>();

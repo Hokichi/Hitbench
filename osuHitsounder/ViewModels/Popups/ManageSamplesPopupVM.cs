@@ -6,6 +6,7 @@ using osuHitsounder.Resources.Messages;
 using osuHitsounder.Services.FileSystem;
 using osuHitsounder.Services.Dialogs;
 using osuHitsounder.Services.Ui;
+using osuHitsounder.Services;
 using System.Collections.ObjectModel;
 using System.ComponentModel.DataAnnotations;
 using System.IO;
@@ -14,7 +15,8 @@ namespace osuHitsounder.ViewModels.Popups;
 
 public sealed partial class ManageSamplesPopupVM(SampleManagementContext context, ISampleFileService files,
     SampleImportBatch imports, ISampleFileDialogService picker, ISampleRemovalDialogService removal,
-    IMessenger messenger, IUiScheduler scheduler) : ObservableValidator
+    IMessenger messenger, IUiScheduler scheduler, ISamplePreviewService? preview = null,
+    PlaybackVolumeSettings? playbackVolumes = null) : ObservableValidator
 {
     private CancellationTokenSource lifetime = new();
     private CancellationToken ownerToken;
@@ -30,8 +32,18 @@ public sealed partial class ManageSamplesPopupVM(SampleManagementContext context
     [ObservableProperty] private string? errorMessage;
     [ObservableProperty] private bool isBusy;
     private bool CanAct() => !deactivated && !IsBusy;
+    private bool CanPlay(SampleManagementEntry? entry) => CanAct() && preview is not null && entry is not null && Entries.Contains(entry);
     partial void OnIsBusyChanged(bool value)
-    { EditCommand.NotifyCanExecuteChanged(); DeleteCommand.NotifyCanExecuteChanged(); AddNewSampleCommand.NotifyCanExecuteChanged(); CancelEditCommand.NotifyCanExecuteChanged(); }
+    { PlayCommand.NotifyCanExecuteChanged(); EditCommand.NotifyCanExecuteChanged(); DeleteCommand.NotifyCanExecuteChanged(); AddNewSampleCommand.NotifyCanExecuteChanged(); CancelEditCommand.NotifyCanExecuteChanged(); }
+    [RelayCommand(CanExecute = nameof(CanPlay))]
+    private async Task PlayAsync(SampleManagementEntry entry)
+    {
+        if (!CanPlay(entry) || !await CommitDraftAsync()) return;
+        operation = MutateAsync(() => preview!.PlayAsync(
+            Path.Combine(Path.GetDirectoryName(Path.GetFullPath(Context.ProjectPath))!, "Samples", entry.FileName),
+            playbackVolumes?.ApplicationVolume ?? 100, lifetime.Token));
+        await operation;
+    }
     public async Task InitializeAsync(CancellationToken token)
     {
         ownerToken = token;
@@ -89,7 +101,7 @@ public sealed partial class ManageSamplesPopupVM(SampleManagementContext context
     private async Task MutateAsync(Func<Task> action)
     {
         IsBusy = true; ErrorMessage = null;
-        try { await action(); }
+        try { if (preview is not null) await preview.StopAsync(CancellationToken.None); await action(); }
         catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
         catch (Exception error) { ErrorMessage = error.Message; }
         finally { IsBusy = false; }
@@ -138,7 +150,9 @@ public sealed partial class ManageSamplesPopupVM(SampleManagementContext context
     public async Task DeactivateAsync()
     {
         if (deactivated) return;
-        lifetime.Cancel(); await operation; deactivated = true; lifetime.Dispose();
+        lifetime.Cancel(); await operation; deactivated = true;
+        try { if (preview is not null) await preview.DisposeAsync(); }
+        finally { lifetime.Dispose(); PlayCommand.NotifyCanExecuteChanged(); }
     }
 }
 

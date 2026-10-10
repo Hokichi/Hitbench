@@ -8,6 +8,24 @@ namespace osuHitsounder.Test.Presentation;
 [Apartment(ApartmentState.STA)] [NonParallelizable]
 public sealed class ManageSamplesPopupIntegrationTests
 {
+    [Test] public void RowPlayBindsToPreviewAndRowUsesHoverContract()
+    {
+        new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
+        var files=new StubSampleFileService(["hit.wav"]); var preview=new StubSamplePreviewService();
+        var vm=new ManageSamplesPopupVM(new("project.json",null,Guid.NewGuid()),files,new(files),new StubSampleFileDialogService(Array.Empty<string>()),new StubSampleRemovalDialogService(),new WeakReferenceMessenger(),new ImmediateUiScheduler(),preview);
+        var popup=new ManageSamplesPopup(vm);
+        try
+        {
+            UiTestPump.Run(popup.InitializeAsync(default)); using var view=new InMemoryView(popup,scheduleLayout:false);
+            var play=Descendants(view.Root).OfType<BalloonButton>().Single(b=>b.ButtonText=="Play");
+            Assert.That(play.Command,Is.SameAs(vm.PlayCommand)); Assert.That(play.CommandParameter,Is.SameAs(vm.Entries.Single()));
+            Assert.That(play.ButtonIcon,Is.SameAs(popup.FindResource("MediaPlay")));
+            UiTestPump.Run(vm.PlayCommand.ExecuteAsync(play.CommandParameter)); Assert.That(preview.Playing,Is.True);
+            var row=Descendants(view.Root).OfType<System.Windows.Controls.Border>().Single(b=>ReferenceEquals(b.DataContext,vm.Entries.Single()) && b.Style==popup.FindResource("OHsManageSamplesRowStyle"));
+            Assert.That(row.Style.BasedOn,Is.SameAs(popup.FindResource("BaseBorderStyle")));
+        }
+        finally { UiTestPump.Run(popup.DeactivateAsync()); popup.Close(); }
+    }
     [Test] public void LongCatalogUsesVirtualizedContainers()
     {
         new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
