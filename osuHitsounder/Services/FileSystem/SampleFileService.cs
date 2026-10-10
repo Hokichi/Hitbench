@@ -6,6 +6,34 @@ public sealed class SampleFileService : ISampleFileService
 {
     private static readonly HashSet<string> Extensions = new(StringComparer.OrdinalIgnoreCase) { ".wav", ".ogg", ".mp3" };
 
+    public Task<string> RenameAsync(string projectPath, string fileName, string newStem, CancellationToken token) => Task.Run(() =>
+    {
+        token.ThrowIfCancellationRequested();
+        if (SampleFileNames.GetFileNameError(fileName) is { } error) throw new ArgumentException(error, nameof(fileName));
+        if (SampleFileNames.GetStemError(newStem) is { } stemError) throw new ArgumentException(stemError, nameof(newStem));
+        var folder = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(projectPath))!, "Samples");
+        var original = Directory.EnumerateFiles(folder).FirstOrDefault(path =>
+            string.Equals(Path.GetFileName(path), fileName, StringComparison.OrdinalIgnoreCase))
+            ?? throw new FileNotFoundException("Sample file was not found.", fileName);
+        var result = newStem + Path.GetExtension(original);
+        if (Path.GetFileName(original) == result) return result;
+        if (Directory.EnumerateFileSystemEntries(folder).Any(path => path != original &&
+            string.Equals(Path.GetFileName(path), result, StringComparison.OrdinalIgnoreCase)))
+            throw new IOException("A file or folder with that name already exists.");
+        token.ThrowIfCancellationRequested();
+        File.Move(original, Path.Combine(folder, result));
+        return result;
+    }, token);
+
+    public Task DeleteAsync(string projectPath, string fileName, CancellationToken token) => Task.Run(() =>
+    {
+        token.ThrowIfCancellationRequested();
+        if (SampleFileNames.GetFileNameError(fileName) is { } error) throw new ArgumentException(error, nameof(fileName));
+        var folder = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(projectPath))!, "Samples");
+        token.ThrowIfCancellationRequested();
+        File.Delete(Path.Combine(folder, fileName));
+    }, token);
+
     public Task<IReadOnlyList<string>> ListAsync(string projectPath, CancellationToken token) => Task.Run<IReadOnlyList<string>>(() =>
     {
         token.ThrowIfCancellationRequested();
