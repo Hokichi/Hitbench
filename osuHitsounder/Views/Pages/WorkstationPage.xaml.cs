@@ -204,7 +204,7 @@ public partial class WorkstationPage : UserControl
 
     private void OnSampleSelectorLoaded(object sender, RoutedEventArgs e)
     {
-        if (sender is ComboBox selector && selector.DataContext is Track track)
+        if (sender is ComboBox { Name: "TrackSampleFileSelector", DataContext: Track track } selector)
         {
             selector.Tag = true;
             var saved = track.SelectedSampleFileName;
@@ -217,7 +217,8 @@ public partial class WorkstationPage : UserControl
 
     private void OnTrackControlDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
-        if (sender is ComboBox selector) OnSampleSelectorLoaded(selector, new RoutedEventArgs());
+        if (sender is ComboBox { Name: "TrackSampleFileSelector" } selector) OnSampleSelectorLoaded(selector, new RoutedEventArgs());
+        else if (sender is ComboBox metadata) OnTrackMetadataSelectorLoaded(metadata, new RoutedEventArgs());
         else if (sender is Slider slider) OnVolumeSliderLoaded(slider, new RoutedEventArgs());
         else if (sender is TextBox input) OnTrackNameLoaded(input, new RoutedEventArgs());
     }
@@ -238,7 +239,7 @@ public partial class WorkstationPage : UserControl
 
     private void RefreshSampleSelectors(DependencyObject root)
     {
-        if (root is ComboBox { DataContext: Track } selector)
+        if (root is ComboBox { Name: "TrackSampleFileSelector", DataContext: Track } selector)
         {
             OnSampleSelectorLoaded(selector, new RoutedEventArgs());
             return;
@@ -256,6 +257,21 @@ public partial class WorkstationPage : UserControl
                 viewModel.SelectSample(track, fileName);
             UpdateMissingSampleCue(selector, track);
         }
+    }
+
+    private void OnTrackMetadataSelectorLoaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is not ComboBox { DataContext: Track track } selector) return;
+        selector.Tag = true;
+        selector.SetCurrentValue(ComboBox.SelectedItemProperty, selector.Name == "TrackSamplesetSelector" ? track.Sampleset : track.Addition);
+        selector.Tag = false;
+    }
+
+    private void OnTrackMetadataSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (sender is not ComboBox { IsLoaded: true, DataContext: Track track, SelectedItem: string value } selector || selector.Tag is true) return;
+        if (selector.Name == "TrackSamplesetSelector") viewModel.SetTrackSampleset(track, value);
+        else if (selector.Name == "TrackAdditionSelector") viewModel.SetTrackAddition(track, value);
     }
 
     private void OnVolumeSliderLoaded(object sender, RoutedEventArgs e)

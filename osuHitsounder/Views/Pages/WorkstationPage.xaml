@@ -3,6 +3,7 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:customControls="clr-namespace:osuHitsounder.Resources.CustomControls"
+    xmlns:entities="clr-namespace:osuHitsounder.Core.Entities;assembly=osuHitsounder.Core"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:pages="clr-namespace:osuHitsounder.Views.Pages"
@@ -395,6 +396,34 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
+        <Style x:Key="OHsWorkstationTrackMetadataComboBoxStyle"
+               BasedOn="{StaticResource OHsComboBoxStyle}" TargetType="ComboBox">
+            <Setter Property="IsTabStop" Value="True" />
+            <Setter Property="FocusVisualStyle" Value="{StaticResource OHsKeyboardFocusVisualStyle}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
+                    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+                </DataTrigger>
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True" />
+                        <Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource Self}, Mode=OneWay}" Value="True" />
+                    </MultiDataTrigger.Conditions>
+                    <Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
+                </MultiDataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="OHsWorkstationTrackMetadataLabelStyle"
+               BasedOn="{StaticResource FieldLabelTextStyle}" TargetType="TextBlock">
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
+                    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
         <DataTemplate x:Key="OHsWorkstationSampleTrackTemplate">
                 <Grid>
                     <Grid.RowDefinitions>
@@ -431,6 +460,7 @@
                             Style="{StaticResource FieldLabelTextStyle}"
                             Text="Sample" />
                         <ComboBox
+                            x:Name="TrackSampleFileSelector"
                             Width="220"
                             AutomationProperties.Name="Track sample"
                             DataContextChanged="OnTrackControlDataContextChanged"
@@ -445,6 +475,26 @@
                             VerticalAlignment="Center"
                             Style="{StaticResource BaseTextBlockStyle}"
                             Visibility="Collapsed" />
+                        <TextBlock Margin="12,0,8,0" VerticalAlignment="Center"
+                                   Style="{StaticResource OHsWorkstationTrackMetadataLabelStyle}" Text="Sampleset" />
+                        <ComboBox x:Name="TrackSamplesetSelector" Width="120"
+                                  AutomationProperties.Name="Sampleset"
+                                  DataContextChanged="OnTrackControlDataContextChanged"
+                                  IsEnabled="{Binding DataContext.CanEditTracks, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
+                                  ItemsSource="{x:Static entities:Track.SamplesetOptions}"
+                                  Loaded="OnTrackMetadataSelectorLoaded"
+                                  SelectionChanged="OnTrackMetadataSelectionChanged"
+                                  Style="{StaticResource OHsWorkstationTrackMetadataComboBoxStyle}" />
+                        <TextBlock Margin="12,0,8,0" VerticalAlignment="Center"
+                                   Style="{StaticResource OHsWorkstationTrackMetadataLabelStyle}" Text="Addition" />
+                        <ComboBox x:Name="TrackAdditionSelector" Width="120"
+                                  AutomationProperties.Name="Addition"
+                                  DataContextChanged="OnTrackControlDataContextChanged"
+                                  IsEnabled="{Binding DataContext.CanEditTracks, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
+                                  ItemsSource="{x:Static entities:Track.AdditionOptions}"
+                                  Loaded="OnTrackMetadataSelectorLoaded"
+                                  SelectionChanged="OnTrackMetadataSelectionChanged"
+                                  Style="{StaticResource OHsWorkstationTrackMetadataComboBoxStyle}" />
                         <TextBlock
                             Margin="12,0,8,0"
                             VerticalAlignment="Center"

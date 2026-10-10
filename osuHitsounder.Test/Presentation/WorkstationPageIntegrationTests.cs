@@ -15,6 +15,7 @@ using osuHitsounder.Services.FileSystem;
 using osuHitsounder.Services.ProjectFiles;
 using CommunityToolkit.Mvvm.Messaging;
 using osuHitsounder.Services.Ui;
+using Track = osuHitsounder.Core.Entities.Track;
 
 namespace osuHitsounder.Test.Presentation;
 
@@ -22,6 +23,76 @@ namespace osuHitsounder.Test.Presentation;
 [NonParallelizable]
 public class WorkstationPageIntegrationTests
 {
+    [Test]
+    public void FileRefreshPreservesMetadataOptionsAndSampleIdentity()
+    {
+        EnsureResources("Dark");
+        var track = new Track { SelectedSampleFileName = "kick.wav", Sampleset = "Drum", Addition = "Soft",
+            Samples = [new Sample { FileName = "kick.wav" }] };
+        IReadOnlyList<string> choices = ["kick.wav"];
+        var files = new StubSampleFileService([]) { List = (_, _) => Task.FromResult(choices) };
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(
+            new WorkstationSource("map.osu", "audio.wav", new ProjectData { Tracks = [track] })) },
+            new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay),
+            new ImmediateUiScheduler(), files, new StubSampleFileDialogService("snare.wav"));
+        var page = new WorkstationPage(vm); page.SetProjectPath("project.json");
+        using var view = new InMemoryView(new Window { Content = page, Width = 1100, Height = 900 });
+        UiTestPump.Run(page.LoadCompletion); view.UpdateLayout();
+        choices = ["kick.wav", "snare.wav"];
+        UiTestPump.Run(vm.ImportSamplesAsync());
+        var selectors = FindVisualChildren<ComboBox>(page).Where(box => ReferenceEquals(box.DataContext, track)).ToArray();
+        Assert.That(selectors.Single(box => box.Name == "TrackSamplesetSelector").SelectedItem, Is.EqualTo("Drum"));
+        Assert.That(selectors.Single(box => box.Name == "TrackAdditionSelector").SelectedItem, Is.EqualTo("Soft"));
+        Assert.That(selectors.Single(box => box.Name == "TrackSamplesetSelector").Items.Cast<string>(),
+            Is.EqualTo(new[] { "Normal", "Soft", "Drum" }));
+        Assert.That(track.SelectedSampleFileName, Is.EqualTo("kick.wav"));
+        Assert.That(track.Samples.Single().FileName, Is.EqualTo("kick.wav"));
+        UiTestPump.Run(page.DeactivateAsync());
+    }
+
+    [TestCase(480d, FlowDirection.LeftToRight, "Dark")]
+    [TestCase(1100d, FlowDirection.RightToLeft, "Light")]
+    public void TrackMetadataSelectorsInitializeEditAndRecycleIndependently(double width, FlowDirection direction, string theme)
+    {
+        EnsureResources(theme);
+        var node = new Sample { FileName = "kick.wav", Timestamp = 125 };
+        var first = new Track { SelectedSampleFileName = "kick.wav", Sampleset = "Drum", Addition = "Soft", Samples = [node] };
+        var second = new Track { Sampleset = "Normal", Addition = "None" };
+        var source = new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(
+            new WorkstationSource("map.osu", "audio.wav", new ProjectData { Tracks = [first, second] })) };
+        var saves = new DelayedProjectFileService(); saves.Release();
+        var vm = new WorkstationPageVM(source, new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay),
+            new ImmediateUiScheduler(), new StubSampleFileService(["kick.wav"]), projectFiles: saves);
+        var page = new WorkstationPage(vm); page.SetProjectPath("project.json");
+        using var view = new InMemoryView(new Window { Content = page, Width = width, Height = 900, FlowDirection = direction });
+        UiTestPump.Run(page.LoadCompletion); view.UpdateLayout();
+        var selectors = FindVisualChildren<ComboBox>(page).Where(box => ReferenceEquals(box.DataContext, first)).ToArray();
+        Assert.That(selectors.Select(box => box.Name), Does.Contain("TrackSamplesetSelector"));
+        var sampleset = selectors.Single(box => box.Name == "TrackSamplesetSelector");
+        var addition = selectors.Single(box => box.Name == "TrackAdditionSelector");
+        Assert.That(sampleset.Items.Cast<string>(), Is.EqualTo(new[] { "Normal", "Soft", "Drum" }));
+        Assert.That(addition.Items.Cast<string>(), Is.EqualTo(new[] { "Normal", "Soft", "Drum", "None" }));
+        Assert.That(sampleset.SelectedItem, Is.EqualTo("Drum"));
+        Assert.That(addition.SelectedItem, Is.EqualTo("Soft"));
+        Assert.That(sampleset.Style, Is.SameAs(page.FindResource("OHsWorkstationTrackMetadataComboBoxStyle")));
+        Assert.That(sampleset.Style.BasedOn, Is.SameAs(page.FindResource("OHsComboBoxStyle")));
+        Assert.That(sampleset.IsTabStop, Is.True);
+        Assert.That(saves.Writes, Is.Zero);
+        sampleset.SelectedItem = "Soft"; addition.SelectedItem = "None";
+        UiTestPump.Run(vm.FlushSavesAsync());
+        Assert.That(first.Sampleset, Is.EqualTo("Soft")); Assert.That(first.Addition, Is.EqualTo("None"));
+        Assert.That(second.Sampleset, Is.EqualTo("Normal")); Assert.That(node.FileName, Is.EqualTo("kick.wav"));
+        var writes = saves.Writes;
+        sampleset.DataContext = second; addition.DataContext = second;
+        Assert.That(sampleset.SelectedItem, Is.EqualTo("Normal")); Assert.That(addition.SelectedItem, Is.EqualTo("None"));
+        Assert.That(saves.Writes, Is.EqualTo(writes));
+        page.ShowVolumeOverlay(false, new Point(), false, false);
+        Assert.That(sampleset.IsEnabled, Is.False); Assert.That(addition.IsEnabled, Is.False);
+        page.DismissVolumeOverlay();
+        Assert.That(sampleset.IsEnabled, Is.True);
+        UiTestPump.Run(page.DeactivateAsync());
+    }
+
     [TestCase(480d, FlowDirection.LeftToRight, "Dark")]
     [TestCase(1100d, FlowDirection.RightToLeft, "Light")]
     public void TrackNameFieldInitializesEditsSavesAndRebindsWithoutSpuriousWrites(double width, FlowDirection direction, string theme)
