@@ -10,6 +10,23 @@ namespace osuHitsounder.Test.Presentation;
 public sealed class OHsMessageBoxPopupIntegrationTests
 {
     [Test]
+    public void SampleDeletionUsesSpecificActionWithSafeDefault()
+    {
+        EnsureResources();
+        var popup = new OHsMessageBoxPopup("Delete hit.wav?", "Delete sample?", MessageBoxButton.OKCancel,
+            MessageBoxImage.Warning, true, "Delete Sample", "Delete sample", "Delete");
+        try
+        {
+            var primary = (BalloonButton)popup.FindName("PrimaryButton");
+            Assert.That(primary.ButtonText, Is.EqualTo("Delete Sample"));
+            Assert.That(primary.ButtonIcon, Is.SameAs(popup.FindResource("Delete")));
+            using var source = new InMemoryPresentationSource();
+            popup.RaiseEvent(CreateKeyEvent(source, Key.Enter));
+            Assert.That(popup.Result, Is.EqualTo(MessageBoxResult.Cancel));
+        }
+        finally { popup.Close(); }
+    }
+    [Test]
     public void ButtonSetsUseAssignedBalloonStylesTextAndResults()
     {
         EnsureResources();

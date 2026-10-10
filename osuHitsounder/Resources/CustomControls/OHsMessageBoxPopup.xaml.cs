@@ -14,7 +14,9 @@ public partial class OHsMessageBoxPopup : BasePopup
     protected override bool ShouldBubbleApplicationClose => false;
 
     public OHsMessageBoxPopup(string message, string title, MessageBoxButton buttons = MessageBoxButton.OK,
-        MessageBoxImage icon = MessageBoxImage.None, bool destructiveConfirmation = false)
+        MessageBoxImage icon = MessageBoxImage.None, bool destructiveConfirmation = false,
+        string? destructiveButtonText = null, string? destructiveButtonAutomationName = null,
+        string? destructiveButtonIconKey = null)
     {
         InitializeComponent();
         this.destructiveConfirmation = destructiveConfirmation && buttons == MessageBoxButton.OKCancel;
@@ -25,10 +27,10 @@ public partial class OHsMessageBoxPopup : BasePopup
         ConfigureButtons(buttons);
         if (this.destructiveConfirmation)
         {
-            PrimaryButton.ButtonText = "Remove Track";
-            PrimaryButton.ButtonIcon = FindResource("Close");
+            PrimaryButton.ButtonText = destructiveButtonText ?? "Remove Track";
+            PrimaryButton.ButtonIcon = FindResource(destructiveButtonIconKey ?? "Close");
             PrimaryButton.Style = (Style)FindResource("OHsBalloonDestructiveActionStyle");
-            AutomationProperties.SetName(PrimaryButton, "Remove track");
+            AutomationProperties.SetName(PrimaryButton, destructiveButtonAutomationName ?? "Remove track");
             SecondaryButton.Style = (Style)FindResource("OHsBalloonNeutralActionStyle");
             defaultButton = SecondaryButton;
             Loaded += (_, _) => Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Input,
