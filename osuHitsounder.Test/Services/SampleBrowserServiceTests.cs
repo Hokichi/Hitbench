@@ -37,6 +37,19 @@ public sealed class SampleBrowserServiceTests
     }
 
     [Test]
+    public async Task UnsupportedOnlyLeafReturnsNoBrowserEntries()
+    {
+        var root = Directory.CreateTempSubdirectory();
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(root.FullName, "notes.txt"), "Not audio");
+            var entries = await new SampleBrowserService().GetEntriesAsync(root.FullName, default);
+            Assert.That(entries, Is.Empty);
+        }
+        finally { root.Delete(true); }
+    }
+
+    [Test]
     public void RejectsMissingDirectoryAndHonoursCancellation()
     {
         var service = new SampleBrowserService();

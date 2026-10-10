@@ -25,6 +25,7 @@ public partial class SampleLoaderPopup : BasePopup
     private string? initialFolder;
     private Task? initialReveal;
     private bool initialFolderRevealed, isScrubbing;
+    private bool isSelectingFileRow;
     private SampleBrowserEntry? scrubbingFile;
     public IReadOnlyList<string> Result { get; private set; } = Array.Empty<string>();
 
@@ -42,6 +43,7 @@ public partial class SampleLoaderPopup : BasePopup
         KeyboardNavigationPolicy.EnableTabNavigation((DependencyObject)Content);
         Loaded += OnPopupLoaded;
         DirectoryTree.Loaded += OnTreeLoaded;
+        DirectoryTree.SizeChanged += OnTreeSizeChanged;
         PlaybackTimeline.ValueChanged += OnTimelineValueChanged;
         PlaybackTimeline.AddHandler(Thumb.DragStartedEvent, new DragStartedEventHandler(OnTimelineDragStarted));
         PlaybackTimeline.AddHandler(Thumb.DragCompletedEvent, new DragCompletedEventHandler(OnTimelineDragCompleted));
@@ -70,6 +72,7 @@ public partial class SampleLoaderPopup : BasePopup
         viewLifetime.Cancel();
         Loaded -= OnPopupLoaded;
         DirectoryTree.Loaded -= OnTreeLoaded;
+        DirectoryTree.SizeChanged -= OnTreeSizeChanged;
         PlaybackTimeline.ValueChanged -= OnTimelineValueChanged;
         PlaybackTimeline.RemoveHandler(Thumb.DragStartedEvent, new DragStartedEventHandler(OnTimelineDragStarted));
         PlaybackTimeline.RemoveHandler(Thumb.DragCompletedEvent, new DragCompletedEventHandler(OnTimelineDragCompleted));
@@ -98,10 +101,15 @@ public partial class SampleLoaderPopup : BasePopup
     private async void OnTreeLoaded(object sender, RoutedEventArgs e) =>
         await HandleInteractionAsync(RevealInitialFolderAsync);
 
+    private async void OnTreeSizeChanged(object sender, SizeChangedEventArgs e) =>
+        await HandleInteractionAsync(RevealInitialFolderAsync);
+
     internal Task RevealInitialFolderAsync()
     {
-        if (deactivated || initialFolderRevealed || string.IsNullOrEmpty(initialFolder)) return Task.CompletedTask;
-        return initialReveal ??= RevealInitialFolderCoreAsync();
+        if (deactivated || initialFolderRevealed || string.IsNullOrEmpty(initialFolder) ||
+            DirectoryTree.ActualWidth <= 0 || DirectoryTree.ActualHeight <= 0) return Task.CompletedTask;
+        if (initialReveal is { IsCompleted: false }) return initialReveal;
+        return initialReveal = RevealInitialFolderCoreAsync();
     }
 
     private async Task RevealInitialFolderCoreAsync()
@@ -129,7 +137,11 @@ public partial class SampleLoaderPopup : BasePopup
                 {
                     var header = container.Template.FindName("Row", container) as FrameworkElement;
                     (header ?? container).BringIntoView();
-                    initialFolderRevealed = true;
+                    await Dispatcher.InvokeAsync(DirectoryTree.UpdateLayout, DispatcherPriority.Loaded, viewLifetime.Token);
+                    var target = header ?? container;
+                    var bounds = target.TransformToAncestor(DirectoryTree).TransformBounds(new Rect(target.RenderSize));
+                    initialFolderRevealed = bounds.Height > 0 && bounds.Top >= 0 && bounds.Bottom <= DirectoryTree.ActualHeight;
+                    if (initialFolderRevealed) DirectoryTree.SizeChanged -= OnTreeSizeChanged;
                     return;
                 }
                 owner = container;
@@ -192,12 +204,48 @@ public partial class SampleLoaderPopup : BasePopup
 
     private async void OnTreeSelectionChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
     {
+        if (isSelectingFileRow) return;
         if (e.NewValue is SampleBrowserEntry entry)
         {
             if (ReferenceEquals(entry, viewModel.SelectedFile) || entry.IsDirectory &&
                 string.Equals(entry.FullPath, viewModel.CurrentDirectory, StringComparison.OrdinalIgnoreCase)) return;
             await HandleInteractionAsync(() => viewModel.SelectAsync(entry));
         }
+    }
+
+    private async void OnFileRowMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.Handled || e.OriginalSource is not DependencyObject source ||
+            !ReferenceEquals(sender, GetFileRow(source))) return;
+        e.Handled = true;
+        await HandleFileRowClickAsync(source, e.ClickCount);
+    }
+
+    internal Task HandleFileRowClickAsync(DependencyObject source, int clickCount)
+    {
+        if (deactivated || clickCount is not (1 or 2) || GetFileRow(source) is not { DataContext: SampleBrowserEntry entry } row)
+            return Task.CompletedTask;
+        isSelectingFileRow = true;
+        try
+        {
+            row.Focus();
+            row.SetCurrentValue(TreeViewItem.IsSelectedProperty, true);
+        }
+        finally { isSelectingFileRow = false; }
+        return HandleInteractionAsync(() => clickCount == 2
+            ? viewModel.SetCheckedAsync(entry, true) : viewModel.ActivateFileAsync(entry));
+    }
+
+    private TreeViewItem? GetFileRow(DependencyObject source)
+    {
+        for (DependencyObject? current = source; current is not null; current = DependencyObjectTree.GetParent(current))
+        {
+            if (current is ToggleButton) return null;
+            if (current is TreeViewItem row)
+                return row is { IsEnabled: true, DataContext: SampleBrowserEntry { IsDirectory: false, IsPlaceholder: false } } &&
+                    DependencyObjectTree.IsDescendantOf(row, DirectoryTree) ? row : null;
+        }
+        return null;
     }
 
     private async void OnFileCheckClick(object sender, RoutedEventArgs e)

@@ -287,6 +287,7 @@
             <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
             <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
             <EventSetter Event="Expanded" Handler="OnFolderExpanded" />
+            <EventSetter Event="PreviewMouseLeftButtonDown" Handler="OnFileRowMouseDown" />
             <Style.Triggers>
                 <Trigger Property="IsSelected" Value="True">
                     <Setter Property="Background" Value="{DynamicResource Brush.Navy.Tint}" />
@@ -556,13 +557,6 @@
                                 Margin="0,0,12,0"
                                 Orientation="Horizontal"
                                 Style="{StaticResource BaseStackPanelStyle}">
-                                <TextBlock Style="{StaticResource SampleLoaderMetadataLabelStyle}" Text="Format" />
-                                <TextBlock Style="{StaticResource SampleLoaderTextStyle}" Text="{Binding Metadata.Format, Mode=OneWay}" />
-                            </StackPanel>
-                            <StackPanel
-                                Margin="0,0,12,0"
-                                Orientation="Horizontal"
-                                Style="{StaticResource BaseStackPanelStyle}">
                                 <TextBlock Style="{StaticResource SampleLoaderMetadataLabelStyle}" Text="Size" />
                                 <TextBlock Style="{StaticResource SampleLoaderTextStyle}" Text="{Binding SizeText, Mode=OneWay}" />
                             </StackPanel>
@@ -572,17 +566,6 @@
                                 Style="{StaticResource BaseStackPanelStyle}">
                                 <TextBlock Style="{StaticResource SampleLoaderMetadataLabelStyle}" Text="Duration" />
                                 <TextBlock Style="{StaticResource SampleLoaderTextStyle}" Text="{Binding DurationText, Mode=OneWay}" />
-                            </StackPanel>
-                            <StackPanel
-                                Margin="0,0,12,0"
-                                Orientation="Horizontal"
-                                Style="{StaticResource BaseStackPanelStyle}">
-                                <TextBlock Style="{StaticResource SampleLoaderMetadataLabelStyle}" Text="Sample rate" />
-                                <TextBlock Style="{StaticResource SampleLoaderTextStyle}" Text="{Binding SampleRateText, Mode=OneWay}" />
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal" Style="{StaticResource BaseStackPanelStyle}">
-                                <TextBlock Style="{StaticResource SampleLoaderMetadataLabelStyle}" Text="Channels" />
-                                <TextBlock Style="{StaticResource SampleLoaderTextStyle}" Text="{Binding ChannelsText, Mode=OneWay}" />
                             </StackPanel>
                         </WrapPanel>
                         <TextBlock Style="{StaticResource SampleLoaderStatusStyle}" Text="{Binding MetadataStatusText, Mode=OneWay}" />

@@ -345,17 +345,106 @@ public sealed class SampleLoaderPopupVMTests
         Assert.That(b.Children.Single().IsPlaceholder, Is.True);
     }
 
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task RepeatedFileActivationRestartsFromZero(bool playing)
+    {
+        await vm.ActivateFileAsync(first);
+        await vm.SeekAsync(.5);
+        if (!playing) await vm.TogglePreviewCommand.ExecuteAsync(null);
+        await vm.ActivateFileAsync(first);
+        Assert.That(preview.PlayedPaths, Is.EqualTo(new[] { first.FullPath, first.FullPath }));
+        Assert.That(preview.StartPosition, Is.EqualTo(TimeSpan.Zero));
+        Assert.That(vm.PlaybackPositionSeconds, Is.Zero);
+        Assert.That(vm.IsPreviewPlaying, Is.True);
+        Assert.That(first.IsChecked, Is.False);
+    }
+
     [Test]
-    public async Task FolderWithOnlySubfoldersRetainsThemAndEmptyMessage()
+    public async Task DisabledAutoPlayActivationDoesNotPlay()
+    {
+        vm.AutoPlaySamples = false;
+        await vm.ActivateFileAsync(first);
+        await vm.SeekAsync(.5);
+        await vm.ActivateFileAsync(first);
+        Assert.That(vm.SelectedFile, Is.SameAs(first));
+        Assert.That(vm.Metadata!.Name, Is.EqualTo(first.Name));
+        Assert.That(vm.PlaybackPositionSeconds, Is.EqualTo(.5));
+        Assert.That(preview.PlayedPaths, Is.Empty);
+    }
+
+    [Test]
+    public async Task CheckingSelectedFileDoesNotReplay()
+    {
+        await vm.ActivateFileAsync(first);
+        await vm.SeekAsync(.5);
+        await vm.SetCheckedAsync(first, true);
+        await vm.SetCheckedAsync(first, true);
+        Assert.That(first.IsChecked, Is.True);
+        Assert.That(vm.CheckedCount, Is.EqualTo(1));
+        Assert.That(vm.PlaybackPositionSeconds, Is.EqualTo(.5));
+        Assert.That(preview.PlayedPaths, Is.EqualTo(new[] { first.FullPath }));
+    }
+
+    [Test]
+    public async Task PendingActivationMetadataCannotRestoreOldSelection()
+    {
+        var pending = new TaskCompletionSource<SampleFileMetadata>();
+        browser.Metadata = (path, _) => path == first.FullPath ? pending.Task :
+            Task.FromResult(new SampleFileMetadata(path, second.Name, "WAV", 1000, TimeSpan.FromSeconds(1), 44100, 1));
+        var activating = vm.ActivateFileAsync(first);
+        await vm.SelectAsync(second);
+        pending.SetResult(new(first.FullPath, first.Name, "WAV", 1000, TimeSpan.FromSeconds(1), 44100, 1));
+        await activating;
+        Assert.That(vm.SelectedFile, Is.SameAs(second));
+        Assert.That(vm.Metadata!.Name, Is.EqualTo(second.Name));
+        Assert.That(preview.PlayedPaths, Is.EqualTo(new[] { second.FullPath }));
+    }
+
+    [Test]
+    public async Task PendingReplayCannotRestartSupersedingSelection()
+    {
+        var snapshotStarted = new TaskCompletionSource();
+        var release = new TaskCompletionSource<SamplePreviewSnapshot>();
+        preview.Snapshot = _ => { snapshotStarted.TrySetResult(); return release.Task; };
+        await vm.ActivateFileAsync(first);
+        await snapshotStarted.Task;
+        var replaying = vm.ActivateFileAsync(first);
+        var selecting = vm.SelectAsync(second);
+        preview.Snapshot = null;
+        release.SetResult(new(true, null, null, TimeSpan.FromSeconds(.5), TimeSpan.FromSeconds(1)));
+        await Task.WhenAll(replaying, selecting).WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.That(vm.SelectedFile, Is.SameAs(second));
+        Assert.That(vm.Metadata!.Name, Is.EqualTo(second.Name));
+        Assert.That(vm.PlaybackPositionSeconds, Is.Zero);
+        Assert.That(preview.PlayedPaths, Is.EqualTo(new[] { first.FullPath, second.FullPath }));
+    }
+
+    [Test]
+    public async Task FolderWithOnlySubfoldersRetainsThemWithoutEmptyMessage()
     {
         var inner = new SampleBrowserEntry(Path.Combine(b.FullPath, "inner"), "inner", true);
         browser.Entries[b.FullPath] = [inner];
         browser.Entries[inner.FullPath] = [new(Path.Combine(inner.FullPath, "hit.wav"), "hit.wav", false)];
         await vm.ExpandAsync(b);
         Assert.That(b.Children, Does.Contain(inner));
-        Assert.That(b.Children.Single(entry => entry.IsPlaceholder).Name, Is.EqualTo("No audio file found"));
+        Assert.That(b.Children.Any(entry => entry.IsPlaceholder), Is.False);
         await vm.SelectAsync(inner);
         Assert.That(vm.CurrentDirectory, Is.EqualTo(inner.FullPath));
+    }
+
+    [Test]
+    public async Task EmptyNestedLeafGetsMessageThroughExpansionAndNavigation()
+    {
+        var inner = new SampleBrowserEntry(Path.Combine(b.FullPath, "inner"), "inner", true);
+        browser.Entries[b.FullPath] = [inner];
+        browser.Entries[inner.FullPath] = [];
+        await vm.ExpandAsync(b);
+        Assert.That(b.Children, Is.EqualTo(new[] { inner }));
+        await vm.ExpandAsync(inner);
+        Assert.That(inner.Children.Single().IsPlaceholder, Is.True);
+        await vm.SelectAsync(inner);
+        Assert.That(inner.Children.Single().Name, Is.EqualTo("No audio file found"));
     }
 
     [Test]
@@ -378,7 +467,7 @@ public sealed class SampleLoaderPopupVMTests
         var started = new TaskCompletionSource();
         var release = new TaskCompletionSource();
         preview.Play = _ => { started.TrySetResult(); return release.Task; };
-        var selecting = vm.SelectAsync(first);
+        var selecting = vm.ActivateFileAsync(first);
         await started.Task;
         var next = vm.SelectAsync(second);
         release.SetResult();

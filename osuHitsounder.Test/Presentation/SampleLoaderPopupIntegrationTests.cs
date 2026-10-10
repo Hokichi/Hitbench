@@ -99,6 +99,19 @@ public sealed class SampleLoaderPopupIntegrationTests
     }
 
     [Test]
+    public void SelectedSummaryContainsOnlyFourFileFields()
+    {
+        UiTestPump.Run(vm.SelectAsync(file));
+        view.UpdateLayout();
+        var summary = (Grid)popup.FindName("SelectedFileDetails");
+        var fields = Descendants(summary).OfType<TextBlock>().Select(block => block.Text).ToArray();
+        Assert.That(fields, Does.Contain("hit.wav").And.Contain(file.FullPath));
+        Assert.That(fields, Does.Contain("Size").And.Contain("Duration"));
+        Assert.That(fields, Does.Contain("1.0 KiB").And.Contain("1.000 s"));
+        Assert.That(fields, Does.Not.Contain("Format").And.Not.Contain("Sample rate").And.Not.Contain("Channels"));
+    }
+
+    [Test]
     public void CheckboxAndRowSelectionRemainIndependent()
     {
         UiTestPump.Run(vm.SelectAsync(file));
@@ -110,6 +123,68 @@ public sealed class SampleLoaderPopupIntegrationTests
         view.UpdateLayout();
         Assert.That(file.IsChecked, Is.True);
         Assert.That(vm.SelectedFile, Is.SameAs(file));
+    }
+
+    [Test]
+    public void SeparateRowClicksReplayExactlyOnceEach()
+    {
+        vm.AutoPlaySamples = true;
+        var row = Descendants(view.Root).OfType<TreeViewItem>().Single(item => ReferenceEquals(item.DataContext, file));
+        var text = Descendants(row).OfType<TextBlock>().First(block => block.Text == file.Name);
+        UiTestPump.Run(popup.HandleFileRowClickAsync(text, 1));
+        UiTestPump.Run(vm.SeekAsync(.5));
+        UiTestPump.Run(popup.HandleFileRowClickAsync(text, 1));
+        Assert.That(preview.PlayedPaths, Is.EqualTo(new[] { file.FullPath, file.FullPath }));
+        Assert.That(vm.SelectedFile, Is.SameAs(file));
+        Assert.That(preview.StartPosition, Is.EqualTo(TimeSpan.Zero));
+        Assert.That(file.IsChecked, Is.False);
+        Assert.That(completion, Is.Null);
+    }
+
+    [Test]
+    public void DoubleClickChecksWithoutRestartingOrUnchecking()
+    {
+        vm.AutoPlaySamples = true;
+        var row = Descendants(view.Root).OfType<TreeViewItem>().Single(item => ReferenceEquals(item.DataContext, file));
+        UiTestPump.Run(popup.HandleFileRowClickAsync(row, 1));
+        UiTestPump.Run(vm.SeekAsync(.5));
+        UiTestPump.Run(popup.HandleFileRowClickAsync(row, 2));
+        UiTestPump.Run(popup.HandleFileRowClickAsync(row, 2));
+        view.UpdateLayout();
+        var checkbox = Descendants(row).OfType<CheckBox>().Single();
+        Assert.That(file.IsChecked, Is.True);
+        Assert.That(checkbox.IsChecked, Is.True);
+        Assert.That(vm.CheckedCount, Is.EqualTo(1));
+        Assert.That(preview.PlayedPaths, Is.EqualTo(new[] { file.FullPath }));
+        Assert.That(vm.PlaybackPositionSeconds, Is.EqualTo(.5));
+        Assert.That(completion, Is.Null);
+    }
+
+    [Test]
+    public void RowGestureIgnoresNestedControlsFoldersAndPlaceholders()
+    {
+        vm.AutoPlaySamples = true;
+        var checkbox = Descendants(view.Root).OfType<CheckBox>().Single(box => ReferenceEquals(box.DataContext, file));
+        var root = Descendants(view.Root).OfType<TreeViewItem>().Single(item => item.DataContext is SampleBrowserEntry { Name: "Root" });
+        var expander = Descendants(root).OfType<ToggleButton>().First(button => button.Name == "Expander");
+        UiTestPump.Run(popup.HandleFileRowClickAsync(checkbox, 1));
+        UiTestPump.Run(popup.HandleFileRowClickAsync(expander, 2));
+        UiTestPump.Run(popup.HandleFileRowClickAsync(root, 2));
+        Assert.That(vm.SelectedFile, Is.Null);
+        Assert.That(file.IsChecked, Is.False);
+        Assert.That(preview.PlayedPaths, Is.Empty);
+        checkbox.SetCurrentValue(ToggleButton.IsCheckedProperty, true);
+        checkbox.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
+        Assert.That(file.IsChecked, Is.True);
+        var empty = browser.Entries[browser.RootPath].Single(entry => entry.IsDirectory);
+        UiTestPump.Run(vm.SelectAsync(empty));
+        view.UpdateLayout();
+        var placeholder = Descendants(view.Root).OfType<TreeViewItem>().Single(item => item.DataContext is SampleBrowserEntry { IsPlaceholder: true });
+        var plays = preview.PlayedPaths.Count;
+        UiTestPump.Run(popup.HandleFileRowClickAsync(placeholder, 2));
+        Assert.That(vm.CheckedCount, Is.Zero);
+        Assert.That(vm.SelectedFile, Is.Null);
+        Assert.That(preview.PlayedPaths, Has.Count.EqualTo(plays));
     }
 
     [Test]
@@ -395,8 +470,9 @@ public sealed class SampleLoaderPopupIntegrationTests
         Assert.That(BindingOperations.IsDataBound(timeline, RangeBase.ValueProperty), Is.True);
     }
 
-    [Test]
-    public void DeepInitialFolderIsBroughtIntoViewportOnce()
+    [TestCase(false)]
+    [TestCase(true)]
+    public void DeepInitialFolderIsAutomaticallyBroughtIntoViewportOnce(bool loadedBeforeLayout)
     {
         UiTestPump.Run(popup.DeactivateAsync());
         view.Dispose();
@@ -411,10 +487,15 @@ public sealed class SampleLoaderPopupIntegrationTests
         vm = new(browser, new StubSamplePreviewService(), new ImmediateUiScheduler(), new PlaybackVolumeSettings());
         popup = new(vm, _ => { }, _ => new Size(640, 360));
         UiTestPump.Run(popup.InitializeAsync(target.FullPath, default));
-        view = new InMemoryView(popup, scheduleLayout: false);
-        UiTestPump.Run(popup.RevealInitialFolderAsync());
-        view.UpdateLayout();
         var tree = (TreeView)popup.FindName("DirectoryTree");
+        if (loadedBeforeLayout)
+        {
+            tree.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent, tree));
+            UiTestPump.Run(popup.Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle).Task);
+        }
+        view = new InMemoryView(popup, scheduleLayout: false);
+        UiTestPump.Run(popup.Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle).Task);
+        view.UpdateLayout();
         var selected = Descendants(tree).OfType<TreeViewItem>().Single(item => ReferenceEquals(item.DataContext, target));
         var header = (Border)selected.Template.FindName("Row", selected);
         var bounds = header.TransformToAncestor(tree).TransformBounds(new Rect(header.RenderSize));
@@ -426,15 +507,42 @@ public sealed class SampleLoaderPopupIntegrationTests
         UiTestPump.Run(popup.RevealInitialFolderAsync());
         Assert.That(scroll.VerticalOffset, Is.Zero);
         Assert.That(VirtualizingPanel.GetIsVirtualizing(tree), Is.True);
+        Assert.That(VirtualizingPanel.GetVirtualizationMode(tree), Is.EqualTo(VirtualizationMode.Recycling));
     }
 
     [Test]
     public void DeactivateCancelsPendingInitialReveal()
     {
+        UiTestPump.Run(popup.DeactivateAsync());
+        view.Dispose();
+        popup.Close();
+        vm = new(browser, preview, new ImmediateUiScheduler(), new PlaybackVolumeSettings());
+        popup = new(vm, _ => { }, _ => new Size(640, 360));
+        UiTestPump.Run(popup.InitializeAsync(default));
+        view = new InMemoryView(popup, scheduleLayout: false);
         var revealing = popup.RevealInitialFolderAsync();
+        Assert.That(revealing.IsCompleted, Is.False);
         UiTestPump.Run(popup.DeactivateAsync());
         UiTestPump.Run(revealing);
         Assert.That(vm.CanPreview, Is.False);
+    }
+
+    [Test]
+    public void UnavailableInitialFolderKeepsErrorAndTreeUsable()
+    {
+        UiTestPump.Run(popup.DeactivateAsync());
+        view.Dispose();
+        popup.Close();
+        vm = new(browser, new StubSamplePreviewService(), new ImmediateUiScheduler(), new PlaybackVolumeSettings());
+        popup = new(vm, _ => { }, _ => new Size(640, 360));
+        UiTestPump.Run(popup.InitializeAsync(Path.Combine(browser.RootPath, "missing"), default));
+        view = new InMemoryView(popup, scheduleLayout: false);
+        UiTestPump.Run(popup.Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle).Task);
+        Assert.That(vm.DirectoryError, Is.EqualTo("Folder unavailable"));
+        Assert.That(vm.CurrentDirectory, Is.Empty);
+        Assert.That(vm.Roots, Has.Count.EqualTo(1));
+        Assert.That(((BalloonButton)popup.FindName("ImportButton")).IsEnabled, Is.False);
+        Assert.That(Descendants(view.Root).OfType<TextBlock>().Any(block => block.Text == "Folder unavailable"), Is.True);
     }
 
     private static Style WithHighContrast(Style original)

@@ -60,8 +60,6 @@ public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, I
     public string MetadataStatusText => IsMetadataLoading ? "Reading metadata..." : SelectedFile is null ? "Select a file to inspect and preview." : "";
     public string SizeText => Metadata is { } data ? string.Format(CultureInfo.CurrentCulture, "{0:N1} KiB", data.Length / 1024d) : "";
     public string DurationText => Metadata is { } data ? string.Format(CultureInfo.CurrentCulture, "{0:N3} s", data.Duration.TotalSeconds) : "";
-    public string SampleRateText => Metadata is { } data ? string.Format(CultureInfo.CurrentCulture, "{0:N0} Hz", data.SampleRate) : "";
-    public string ChannelsText => Metadata?.Channels.ToString(CultureInfo.CurrentCulture) ?? "";
 
     public Task InitializeAsync(CancellationToken token) => InitializeAsync(null, token);
 
@@ -180,6 +178,21 @@ public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, I
     }
 
     public Task SelectAsync(SampleBrowserEntry entry) => OwnAsync(() => SelectCoreAsync(entry));
+
+    public Task ActivateFileAsync(SampleBrowserEntry entry) => OwnAsync(async () =>
+    {
+        if (deactivated || IsConfirming || entry.IsDirectory || entry.IsPlaceholder) return;
+        if (!SamePath(SelectedFile?.FullPath, entry.FullPath))
+        {
+            await SelectCoreAsync(entry);
+            return;
+        }
+        if (!AutoPlaySamples || !CanPreview) return;
+        var request = selectionGeneration;
+        await StopPreviewAsync();
+        if (request == selectionGeneration && !deactivated && AutoPlaySamples)
+            await StartPreviewAsync();
+    });
 
     private async Task SelectCoreAsync(SampleBrowserEntry entry)
     {
@@ -358,7 +371,7 @@ public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, I
         foreach (var child in entry.Children) Forget(child);
         entry.Children.Clear();
         foreach (var child in children) { entry.Children.Add(child); Observe(child); }
-        if (!children.Any(child => !child.IsDirectory && !child.IsPlaceholder))
+        if (!children.Any(child => !child.IsPlaceholder))
         {
             var empty = new SampleBrowserEntry("", "No audio file found", false, true);
             entry.Children.Add(empty);
@@ -384,7 +397,7 @@ public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, I
     private void NotifyState()
     {
         foreach (var name in new[] { nameof(CheckedCount), nameof(CheckedCountText), nameof(CanImport), nameof(CanPreview), nameof(BrowserStatusText),
-            nameof(PreviewActionText), nameof(MetadataStatusText), nameof(SizeText), nameof(DurationText), nameof(SampleRateText), nameof(ChannelsText),
+            nameof(PreviewActionText), nameof(MetadataStatusText), nameof(SizeText), nameof(DurationText),
             nameof(PlaybackPositionSeconds), nameof(PlaybackDurationSeconds), nameof(PlaybackTimeText), nameof(CanSeek), nameof(IsSeeking) }) OnPropertyChanged(name);
         TogglePreviewCommand.NotifyCanExecuteChanged();
     }
