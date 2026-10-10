@@ -491,6 +491,20 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
+        <BlurEffect x:Key="OHsWorkstationMissingBlur" Radius="4" />
+        <Style x:Key="OHsWorkstationGridContentStyle" TargetType="Grid" BasedOn="{StaticResource BaseGridStyle}">
+            <Style.Triggers>
+                <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.4"/><Setter Property="Effect" Value="{StaticResource OHsWorkstationMissingBlur}"/></Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="OHsWorkstationMissingStatusStyle" TargetType="TextBlock" BasedOn="{StaticResource CenteredEmptyStateTextStyle}">
+            <Setter Property="TextWrapping" Value="Wrap"/><Setter Property="AutomationProperties.LiveSetting" Value="Polite"/>
+            <Setter Property="Visibility" Value="Collapsed"/>
+            <Style.Triggers><Trigger Property="Text" Value="Sample not found."><Setter Property="Visibility" Value="Visible"/></Trigger>
+                <Trigger Property="Text" Value="No sample selected. Choose a sample or use Manage Sample."><Setter Property="Visibility" Value="Visible"/></Trigger>
+                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast),Mode=OneWay}" Value="True"><Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}"/></DataTrigger>
+            </Style.Triggers>
+        </Style>
         <DataTemplate x:Key="OHsWorkstationSampleTrackTemplate">
             <Grid>
                 <Grid.RowDefinitions>
@@ -588,6 +602,8 @@
                         ValueChanged="OnVolumeValueChanged" />
                 </WrapPanel>
                 <Border Grid.Row="1" Style="{StaticResource OHsWorkstationTimelineStyle}">
+                    <Grid x:Name="TrackGridHost" Loaded="OnTrackGridHostLoaded" DataContextChanged="OnTrackGridHostDataContextChanged" Style="{StaticResource BaseGridStyle}">
+                    <Grid x:Name="TrackGridContent" Style="{StaticResource OHsWorkstationGridContentStyle}">
                     <customControls:BeatGridView
                         Height="{Binding DataContext.TrackHeight, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
                         AutomationProperties.HelpText="Use Left and Right to move playback. Enter places or selects a node. Control+click or Control+Enter toggles node selection. Click outside nodes or press Escape to clear selection. Selecting nodes disables Scroll with marker. Delete removes selected nodes; Control+C copies and Control+V pastes. Alt+Left or Right moves selected nodes; Alt+Up or Down changes tracks. Drag nodes to move them; Escape cancels dragging."
@@ -618,6 +634,8 @@
                         ViewportWidth="{Binding TimelineViewportWidth, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
                         ZoomFactor="{Binding DataContext.ZoomFactor, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
                         Duration="{Binding DataContext.Waveform.Duration, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}" />
+                    </Grid><TextBlock x:Name="MissingGridStatus" IsHitTestVisible="False" Style="{StaticResource OHsWorkstationMissingStatusStyle}"/>
+                    </Grid>
                 </Border>
             </Grid>
         </DataTemplate>

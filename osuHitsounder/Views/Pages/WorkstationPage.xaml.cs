@@ -307,14 +307,7 @@ public partial class WorkstationPage : UserControl
 
     private void UpdateMissingSampleCue(ComboBox selector, Track track)
     {
-        var container = ItemsControl.ContainerFromElement(TrackList, selector) as FrameworkElement;
-        var cue = container is null ? null : FindVisualChild<TextBlock>(container, "MissingSampleText");
-        if (cue is null) return;
-        var selected = track.SelectedSampleFileName;
-        cue.Text = selected is null ? "No sample selected. Use Load Sample in the header."
-            : viewModel.SampleFiles.Any(name => string.Equals(name, selected, StringComparison.OrdinalIgnoreCase))
-                ? string.Empty : $"Missing sample: {selected}";
-        cue.Visibility = cue.Text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
+        RefreshTrackSamplePresentation();
     }
 
     private static T? FindVisualChild<T>(DependencyObject root, string? name = null) where T : DependencyObject
@@ -369,6 +362,7 @@ public partial class WorkstationPage : UserControl
     {
         if (!viewModel.CanPlaceSamples || nodeDragging && !viewModel.IsNodeDragActive) CancelNodePointer();
         if (e.PropertyName == nameof(WorkstationPageVM.SampleFiles)) RefreshSampleSelectors(TrackList);
+        if (e.PropertyName is nameof(WorkstationPageVM.SampleFiles) or nameof(WorkstationPageVM.SamplesRevision)) RefreshTrackSamplePresentation();
         if (e.PropertyName is nameof(WorkstationPageVM.IsPlaying) or nameof(WorkstationPageVM.LoadPhase))
             UpdatePlaybackRefreshSubscription();
         if (e.PropertyName == nameof(WorkstationPageVM.ZoomFactor)) { ApplyPendingZoomAnchor(); UpdateNodeAdornerSize(); }

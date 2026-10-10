@@ -564,7 +564,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
 
     private void OnEnterThreadModal(object? sender, EventArgs e) => CancelBackgroundDrag();
 
-    private void OnLoadSampleClick(object sender, RoutedEventArgs e) => messenger.Send(new LoadSampleRequestedMessage());
+    private void OnManageSamplesClick(object sender, RoutedEventArgs e) => messenger.Send(new ManageSamplesRequestedMessage());
     private async void OnGoBackClick(object sender, RoutedEventArgs e) => await ReturnHomeAsync();
     private void OnAddSampleTrackClick(object sender, RoutedEventArgs e) => messenger.Send(new AddSampleTrackRequestedMessage());
     private void OnAddPianoTrackClick(object sender, RoutedEventArgs e) => messenger.Send(new AddPianoTrackRequestedMessage());

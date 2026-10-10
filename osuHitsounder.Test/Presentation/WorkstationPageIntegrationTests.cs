@@ -486,9 +486,9 @@ public class WorkstationPageIntegrationTests
             Assert.That(FindVisualChild<ComboBox>(cards[0])!.SelectedItem, Is.EqualTo("Kick.wav"));
             Assert.That(FindVisualChild<ComboBox>(cards[1])!.SelectedItem, Is.EqualTo("Snare.wav"));
             foreach (var card in cards.Take(2))
-                Assert.That(FindVisualChildren<TextBlock>(card).Single(block => block.Name == "MissingSampleText").Visibility, Is.EqualTo(Visibility.Collapsed));
+                Assert.That(FindVisualChildren<TextBlock>(card).Single(block => block.Name == "MissingGridStatus").Visibility, Is.EqualTo(Visibility.Collapsed));
             Assert.That(FindVisualChild<ComboBox>(cards[2])!.SelectedItem, Is.Null);
-            Assert.That(FindVisualChildren<TextBlock>(cards[2]).Single(block => block.Name == "MissingSampleText").Text, Does.Contain("missing.wav"));
+            Assert.That(FindVisualChildren<TextBlock>(cards[2]).Single(block => block.Name == "MissingGridStatus").Text, Is.EqualTo("Sample not found."));
             Assert.That(tracks[0].Samples.Single().FileName, Is.EqualTo("kick.wav"));
             Assert.That(tracks[1].Samples.Single().FileName, Is.EqualTo("Snare.wav"));
             Assert.That(tracks[2].Samples.Single().FileName, Is.EqualTo("missing.wav"));
@@ -504,7 +504,7 @@ public class WorkstationPageIntegrationTests
         {
             Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav", new ProjectData { Tracks = [track] }))
         };
-        var vm = new WorkstationPageVM(source, new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
+        var vm = new WorkstationPageVM(source, new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler(), new StubSampleFileService([]));
         var page = new WorkstationPage(vm);
         page.SetProjectPath("project.json");
         var window = new Window { Content = page, Width = 880, Height = 600 };
@@ -513,8 +513,8 @@ public class WorkstationPageIntegrationTests
         view.UpdateLayout();
         var list = (ItemsControl)page.FindName("TrackList");
         var card = (FrameworkElement)list.ItemContainerGenerator.ContainerFromIndex(0)!;
-        var cue = FindVisualChildren<TextBlock>(card).Single(block => block.Name == "MissingSampleText");
-        Assert.That(cue.Text, Does.Contain("missing.wav"));
+        var cue = FindVisualChildren<TextBlock>(card).Single(block => block.Name == "MissingGridStatus");
+        Assert.That(cue.Text, Is.EqualTo("Sample not found."));
         Assert.That(track.Samples.Single().FileName, Is.EqualTo("missing.wav"));
     }
 

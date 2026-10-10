@@ -198,11 +198,12 @@
                                 Style="{StaticResource OHsMainWindowGoBackStyle}"
                                 ToolTip="Save project and return to home" />
                             <customControls:BalloonButton
-                                AutomationProperties.Name="Load sample"
-                                ButtonIcon="{StaticResource PlusSolid}"
-                                ButtonText="Load Sample"
-                                Click="OnLoadSampleClick"
-                                IsEnabled="{Binding ElementName=PageHost, Path=Content.DataContext.CanImportSample, Mode=OneWay}"
+                                AutomationProperties.Name="Manage Sample"
+                                ButtonIcon="{StaticResource BarsSolid}"
+                                ButtonText="Manage Sample"
+                                ToolTip="Manage project samples"
+                                Click="OnManageSamplesClick"
+                                IsEnabled="{Binding ElementName=PageHost, Path=Content.DataContext.CanManageSamples, Mode=OneWay}"
                                 ShouldShowText="True"
                                 Style="{StaticResource OHsBalloonNeutralActionStyle}" />
                             <customControls:BalloonButton
