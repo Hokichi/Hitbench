@@ -500,15 +500,6 @@
                     Grid.ColumnSpan="5"
                     VerticalAlignment="Bottom"
                     Style="{StaticResource OHsWorkstationTrackSeparatorStyle}" />
-                <Border
-                    x:Name="TrackEdgeCue"
-                    Grid.ColumnSpan="5"
-                    Width="3"
-                    HorizontalAlignment="Left"
-                    Background="{DynamicResource Brush.Navy}"
-                    IsHitTestVisible="False"
-                    Style="{StaticResource BaseBorderStyle}"
-                    Visibility="Collapsed" />
             </Grid>
             <ControlTemplate.Triggers>
                 <Trigger Property="IsSelected" Value="True">
@@ -517,9 +508,6 @@
                 <Trigger Property="IsMouseOver" Value="True">
                     <Setter TargetName="TrackEdgeCue" Property="Visibility" Value="Visible" />
                 </Trigger>
-                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
-                    <Setter TargetName="TrackEdgeCue" Property="Background" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
-                </DataTrigger>
             </ControlTemplate.Triggers>
         </ControlTemplate>
         <Style
@@ -838,9 +826,7 @@
                         Text="{Binding Name, Mode=OneWay, UpdateSourceTrigger=Explicit}"
                         TextChanged="OnTrackNameTextChanged"
                         ToolTip="Track name" />
-                    <StackPanel
-                        x:Name="TrackLeftExpandedControls"
-                        Style="{StaticResource OHsWorkstationExpandedTrackControlsStyle}">
+                    <StackPanel x:Name="TrackLeftExpandedControls" Style="{StaticResource OHsWorkstationExpandedTrackControlsStyle}">
                         <customControls:SpacedUniformGrid
                             Margin="0,0,0,8"
                             Columns="3"
@@ -908,6 +894,7 @@
                                 FocusBrush="{DynamicResource Brush.Text.Primary}"
                                 HorizontalOffset="{Binding TimelineHorizontalOffset, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
                                 HoverBrush="{DynamicResource Brush.Background.Hover}"
+                                IsNodeDragActive="{Binding DataContext.IsNodeDragActive, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
                                 KeyboardNavigation.IsTabStop="True"
                                 MarkerBrush="{DynamicResource Brush.Navy.Muted}"
                                 Offsets="{Binding DataContext.Project.Offsets, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
@@ -915,7 +902,6 @@
                                 PlaybackMarkerOutlineBrush="{DynamicResource Brush.Navy.Muted}"
                                 Position="{Binding DataContext.Position, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
                                 PressedBrush="{DynamicResource Brush.Navy}"
-                                IsNodeDragActive="{Binding DataContext.IsNodeDragActive, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
                                 SamplePlacementRequested="OnSamplePlacementRequested"
                                 SampleRemovalRequested="OnSampleRemovalRequested"
                                 SampleSelectionRequested="OnSampleSelectionRequested"
@@ -953,9 +939,7 @@
                         SelectionChanged="OnSampleSelectionChanged"
                         Style="{StaticResource OHsWorkstationSampleFileSelectorStyle}"
                         ToolTip="{Binding SelectedItem, RelativeSource={RelativeSource Self}, Mode=OneWay}" />
-                    <StackPanel
-                        x:Name="TrackRightExpandedControls"
-                        Style="{StaticResource OHsWorkstationExpandedTrackControlsStyle}">
+                    <StackPanel x:Name="TrackRightExpandedControls" Style="{StaticResource OHsWorkstationExpandedTrackControlsStyle}">
                         <customControls:SpacedUniformGrid
                             Margin="0,0,0,8"
                             Columns="2"

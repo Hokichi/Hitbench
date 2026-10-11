@@ -74,7 +74,9 @@ public sealed class BeatGridView : FrameworkElement
     public bool SuppressPlacementFeedback { get => (bool)GetValue(SuppressPlacementFeedbackProperty); set => SetValue(SuppressPlacementFeedbackProperty, value); }
     public BeatInterval? ActiveInterval { get; private set; }
 
-    public Rect GetDisplayedSampleBounds(Sample sample) => IsNodeDragActive && SelectedSamples?.Contains(sample) == true
+    private bool IsSampleHidden(Sample sample) => IsNodeDragActive && SelectedSamples?.Contains(sample) == true;
+
+    public Rect GetDisplayedSampleBounds(Sample sample) => IsSampleHidden(sample)
         ? Rect.Empty : GetSampleBounds(sample.Timestamp);
 
     private Rect SampleViewport => new(0, 0, Math.Max(0, Math.Min(ActualWidth, ViewportWidth)), Math.Max(0, ActualHeight));
@@ -107,7 +109,7 @@ public sealed class BeatGridView : FrameworkElement
         for (var index = Samples.Count - 1; index >= 0; index--)
         {
             var sample = Samples[index];
-            if (GetDisplayedSampleBounds(sample).IsEmpty) continue;
+            if (IsSampleHidden(sample)) continue;
             var timestamp = sample.Timestamp;
             if (timestamp >= interval.StartMilliseconds && timestamp < interval.EndMilliseconds) return sample;
         }
@@ -180,7 +182,7 @@ public sealed class BeatGridView : FrameworkElement
         for (var index = Samples.Count - 1; index >= 0; index--)
         {
             var sample = Samples[index];
-            if (GetDisplayedSampleBounds(sample).IsEmpty) continue;
+            if (IsSampleHidden(sample)) continue;
             var timestamp = sample.Timestamp;
             if (timestamp >= interval.StartMilliseconds && timestamp < interval.EndMilliseconds) return RequestSampleRemoval(sample);
         }
@@ -387,7 +389,7 @@ public sealed class BeatGridView : FrameworkElement
         BeatGridDrawing.Draw(context, this, Offsets, Bpms, Subdivision, Duration.TotalMilliseconds,
             ContentWidth, HorizontalOffset, ViewportWidth, ActualHeight, false);
         context.Pop();
-        if (!SuppressPlacementFeedback && AllowNodeCreation && ActiveInterval is { } active)
+        if (!IsNodeDragActive && !SuppressPlacementFeedback && AllowNodeCreation && ActiveInterval is { } active)
         {
             var rect = Inset(GetSampleBounds((int)Math.Round(active.StartMilliseconds, MidpointRounding.AwayFromZero)));
             context.DrawRoundedRectangle(hover, null, rect, 4, 4);

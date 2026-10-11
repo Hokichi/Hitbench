@@ -32,6 +32,24 @@ public class BeatGridNodeEditingTests
         Assert.That(moving.Timestamp, Is.EqualTo(250));
     }
 
+    [Test]
+    public void ActiveSampleActionsDoNotRequireMeasuredNodeGeometry()
+    {
+        var node = new Sample { Timestamp = 250 };
+        var grid = new BeatGridView { Offsets = [0], Bpms = [60], Subdivision = 4,
+            Duration = TimeSpan.FromSeconds(1), CanPlaceSamples = true, Samples = [node], SelectedSamples = [node] };
+        grid.SetActivePosition(TimeSpan.FromMilliseconds(250));
+        Assert.That(grid.FindActiveSample(), Is.SameAs(node));
+        grid.IsNodeDragActive = true;
+        Assert.That(grid.FindActiveSample(), Is.Null);
+        Assert.That(grid.RequestActiveSampleRemoval(), Is.False);
+        grid.IsNodeDragActive = false;
+        Sample? removed = null;
+        grid.SampleRemovalRequested += (_, args) => removed = args.Sample;
+        Assert.That(grid.RequestActiveSampleRemoval(), Is.True);
+        Assert.That(removed, Is.SameAs(node));
+    }
+
     [TestCase(-1, 50d)]
     [TestCase(250, 5d)]
     [TestCase(275, 20d)]
