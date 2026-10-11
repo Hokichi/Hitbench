@@ -557,7 +557,6 @@ public partial class WorkstationPage : UserControl
 
     internal bool HandleWaveformWheel(ModifierKeys modifiers, int delta)
     {
-        if (delta != 0 && viewModel.IsInteractionReady && !deactivationStarted) viewModel.ScrollWithMarker = false;
         if (IsVolumeOverlayOpen)
         {
             wheelMode = ModifierKeys.None;
@@ -566,7 +565,7 @@ public partial class WorkstationPage : UserControl
         }
         if (modifiers is not ModifierKeys.Control and not ModifierKeys.Alt and not ModifierKeys.Shift and
             not (ModifierKeys.Control | ModifierKeys.Shift) ||
-            !viewModel.CanZoom)
+            !viewModel.CanZoom || deactivationStarted)
         {
             wheelMode = ModifierKeys.None;
             wheelRemainder = 0;
@@ -584,6 +583,7 @@ public partial class WorkstationPage : UserControl
         wheelRemainder %= Mouse.MouseWheelDeltaForOneLine;
         if (modifiers == ModifierKeys.Shift)
         {
+            if (delta != 0) viewModel.ScrollWithMarker = false;
             for (var index = 0; index < Math.Abs(steps); index++)
             {
                 if (steps > 0) WaveformScrollViewer.LineLeft();

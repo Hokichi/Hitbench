@@ -23,6 +23,124 @@ namespace osuHitsounder.Test.Presentation;
 [NonParallelizable]
 public class WorkstationPageIntegrationTests
 {
+    [TestCase(FlowDirection.LeftToRight, "Dark")]
+    [TestCase(FlowDirection.RightToLeft, "Light")]
+    public void EditingModeControlsUpdateRealizedGrid(FlowDirection direction, string theme)
+    {
+        EnsureResources(theme);
+        var track = new Track { SelectedSampleFileName = "a.wav" };
+        var source = new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav",
+            new ProjectData { Offsets = [0], BPMs = [120], Tracks = [track] })) };
+        var vm = new WorkstationPageVM(source, new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), new StubSampleFileService(["a.wav"]));
+        var page = new WorkstationPage(vm); page.SetProjectPath("project.json");
+        using var view = new InMemoryView(new Window { Content = page, Width = 1100, Height = 800, FlowDirection = direction });
+        UiTestPump.Run(page.LoadCompletion); view.UpdateLayout();
+        var selection = (RadioButton)page.FindName("SelectionModeButton");
+        var addition = (RadioButton)page.FindName("AdditionModeButton");
+        var grid = FindVisualChild<BeatGridView>(page)!;
+        foreach (var mode in new[] { selection, addition, selection })
+        {
+            mode.SetCurrentValue(ToggleButton.IsCheckedProperty, true);
+            view.UpdateLayout();
+            Assert.That(selection.IsChecked, Is.EqualTo(vm.IsSelectionMode));
+            Assert.That(addition.IsChecked, Is.EqualTo(vm.IsAdditionMode));
+            Assert.That(grid.AllowNodeCreation, Is.EqualTo(vm.IsAdditionMode));
+            UiControlContract.AssertStyle<RadioButton>(mode, "OHsWorkstationModeButtonStyle");
+        }
+        Assert.That(AutomationProperties.GetName(selection), Is.EqualTo("Selection Mode"));
+        Assert.That(AutomationProperties.GetName(addition), Is.EqualTo("Addition Mode"));
+        vm.SelectedTrack = track;
+        vm.IsAdditionMode = true; view.UpdateLayout();
+        Assert.That(vm.SelectedTrack, Is.SameAs(track));
+        UiControlContract.AssertStyle<ListBoxItem>((ListBoxItem)((ListBox)page.FindName("TrackList")).ItemContainerGenerator.ContainerFromIndex(0), "OHsWorkstationTrackItemStyle");
+        vm.IsReturning = true; view.UpdateLayout();
+        Assert.That(selection.IsEnabled, Is.False);
+        Assert.That(addition.IsEnabled, Is.False);
+        UiTestPump.Run(page.DeactivateAsync());
+    }
+
+    [TestCase("page", false)]
+    [TestCase("SongAudioCard", false)]
+    [TestCase("PlayPauseButton", false)]
+    [TestCase("ZoomFooter", true)]
+    [TestCase("track", true)]
+    public void TracksCardBoundaryControlsPointerDeselection(string originName, bool inside)
+    {
+        var node = new Sample { Timestamp = 1000, FileName = "a.wav" };
+        var track = new Track { SelectedSampleFileName = "a.wav", Samples = [node] };
+        var source = new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav",
+            new ProjectData { Offsets = [0], BPMs = [120], Tracks = [track] })) };
+        var vm = new WorkstationPageVM(source, new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), new StubSampleFileService(["a.wav"]));
+        var page = new WorkstationPage(vm); page.SetProjectPath("project.json");
+        using var view = new InMemoryView(new Window { Content = page, Width = 1100, Height = 800 });
+        UiTestPump.Run(page.LoadCompletion); view.UpdateLayout();
+        vm.SelectNode(track, node, false);
+        var list = (ListBox)page.FindName("TrackList");
+        var origin = originName switch
+        {
+            "page" => (UIElement)page,
+            "track" => FindVisualChildren<TextBox>(page).Single(input => ReferenceEquals(input.DataContext, track)),
+            _ => (UIElement)page.FindName(originName)
+        };
+        var click = new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left)
+            { RoutedEvent = Mouse.PreviewMouseDownEvent };
+        origin.RaiseEvent(click);
+        Assert.That(vm.SelectedTrack, inside ? Is.SameAs(track) : Is.Null);
+        Assert.That(list.SelectedItem, inside ? Is.SameAs(track) : Is.Null);
+        Assert.That(vm.SelectedSamples, Is.Empty);
+        Assert.That(click.Handled, Is.False);
+        UiTestPump.Run(page.DeactivateAsync());
+    }
+
+    [TestCase(ModifierKeys.None)]
+    [TestCase(ModifierKeys.Control)]
+    [TestCase(ModifierKeys.Alt)]
+    [TestCase(ModifierKeys.Shift)]
+    [TestCase(ModifierKeys.Control | ModifierKeys.Shift)]
+    [TestCase(ModifierKeys.Control | ModifierKeys.Alt)]
+    public void OnlyShiftWheelDisablesMarkerFollow(ModifierKeys modifiers)
+    {
+        EnsureResources("Dark");
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler());
+        var page = new WorkstationPage(vm); page.SetProjectPath("project.json");
+        using var view = new InMemoryView(new Window { Content = page, Width = 900, Height = 700 });
+        UiTestPump.Run(page.LoadCompletion);
+        foreach (var delta in new[] { 120, 60, -60, 0 })
+        {
+            vm.ScrollWithMarker = true;
+            page.HandleWaveformWheel(modifiers, delta);
+            Assert.That(vm.ScrollWithMarker, Is.EqualTo(!(modifiers == ModifierKeys.Shift && delta != 0)), $"Direct: {modifiers}, {delta}");
+            vm.ScrollWithMarker = true;
+            page.HandleContextWheel(modifiers, delta, page.SongAudioCard);
+            Assert.That(vm.ScrollWithMarker, Is.EqualTo(!(modifiers == ModifierKeys.Shift && delta != 0)), $"Context: {modifiers}, {delta}");
+        }
+        if (modifiers == ModifierKeys.Alt)
+        {
+            vm.ScrollWithMarker = true;
+            page.HandleContextWheel(modifiers, 120, page);
+            page.HandleContextWheel(modifiers, 120, page);
+            Assert.That(vm.ScrollWithMarker, Is.True);
+        }
+        UiTestPump.Run(page.DeactivateAsync());
+    }
+
+    [Test]
+    public void UnreadyAndDeactivatedWheelPreservesMarkerFollow()
+    {
+        EnsureResources("Dark");
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler());
+        var page = new WorkstationPage(vm);
+        page.HandleContextWheel(ModifierKeys.Shift, 120, page);
+        Assert.That(vm.ScrollWithMarker, Is.True);
+        page.SetProjectPath("project.json");
+        using var view = new InMemoryView(new Window { Content = page, Width = 900, Height = 700 });
+        UiTestPump.Run(page.LoadCompletion);
+        UiTestPump.Run(page.DeactivateAsync());
+        vm.ScrollWithMarker = true;
+        page.HandleContextWheel(ModifierKeys.Shift, 120, page);
+        Assert.That(vm.ScrollWithMarker, Is.True);
+    }
+
     [Test]
     public void EditingModesAndScrollDragKeepPublicContracts()
     {
@@ -827,7 +945,7 @@ public class WorkstationPageIntegrationTests
             Assert.That(selector.Minimum, Is.Zero);
             Assert.That(selector.Maximum, Is.EqualTo(8));
             Assert.That(selector.Value, Is.EqualTo(3));
-            Assert.That(selector.DisplayText, Is.EqualTo("4"));
+            Assert.That(selector.DisplayText, Is.EqualTo("1/4"));
             Assert.That(AutomationProperties.GetName(selector), Is.EqualTo("Beat subdivision"));
         });
         selector.Value = 8;
@@ -1165,7 +1283,7 @@ public class WorkstationPageIntegrationTests
         UiTestPump.Run(page.LoadCompletion);
 
         Assert.That(page.HandleWaveformWheel(ModifierKeys.Control, 60), Is.True);
-        Assert.That(vm.ScrollWithMarker, Is.False);
+        Assert.That(vm.ScrollWithMarker, Is.True);
         Assert.That(vm.ZoomFactor, Is.EqualTo(32));
         Assert.That(page.HandleWaveformWheel(ModifierKeys.Control, 60), Is.True);
         Assert.That(vm.ZoomFactor, Is.EqualTo(33));

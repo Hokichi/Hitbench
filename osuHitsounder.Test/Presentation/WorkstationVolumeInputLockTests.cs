@@ -57,8 +57,12 @@ public class WorkstationVolumeInputLockTests
             var height = vm.TrackHeight;
             var subdivision = vm.SelectedSubdivisionIndex;
             page.ShowVolumeOverlay(false, new Point(), false, false);
+            vm.ScrollWithMarker = true;
             Assert.That(page.HandleContextWheel(modifiers, 120, page), Is.True);
+            Assert.That(vm.ScrollWithMarker, Is.True);
+            vm.ScrollWithMarker = true;
             Assert.That(page.HandleWaveformWheel(modifiers, 120), Is.True);
+            Assert.That(vm.ScrollWithMarker, Is.True);
             Assert.That(vm.ZoomFactor, Is.EqualTo(zoom));
             Assert.That(vm.TrackHeight, Is.EqualTo(height));
             Assert.That(vm.SelectedSubdivisionIndex, Is.EqualTo(subdivision));

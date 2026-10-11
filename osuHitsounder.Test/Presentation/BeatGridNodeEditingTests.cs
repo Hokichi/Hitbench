@@ -10,6 +10,72 @@ namespace osuHitsounder.Test.Presentation;
 [NonParallelizable]
 public class BeatGridNodeEditingTests
 {
+    [TestCase(-1, 50d)]
+    [TestCase(250, 5d)]
+    [TestCase(275, 20d)]
+    [TestCase(400, 50d)]
+    public void SelectionModeNeverAddsHoverPlacementFeedback(int timestamp, double pointer)
+    {
+        var grid = CreateGrid();
+        grid.AllowNodeCreation = false;
+        grid.Samples = timestamp < 0 ? [] : [new Sample { Timestamp = timestamp }];
+        grid.PrepareDrawing();
+        var idleCommands = CountDrawingCommands(grid.ContentDrawing!);
+        grid.UpdatePointerPosition(pointer);
+        grid.PrepareDrawing();
+        Assert.That(CountDrawingCommands(grid.ContentDrawing!), Is.EqualTo(idleCommands));
+        if (grid.Samples.Count > 0)
+        {
+            var node = grid.Samples[0];
+            var bounds = grid.GetDisplayedSampleBounds(node);
+            Assert.That(grid.FindSampleAt(new Point(bounds.Left + bounds.Width / 2, grid.ActualHeight / 2)), Is.SameAs(node));
+            Sample? selected = null;
+            grid.SampleSelectionRequested += (_, args) => selected = args.Sample;
+            grid.SetActivePosition(TimeSpan.FromMilliseconds(timestamp));
+            Assert.That(grid.RequestSamplePlacement(), Is.True);
+            Assert.That(selected, Is.SameAs(node));
+        }
+        else Assert.That(grid.RequestSamplePlacement(), Is.False);
+    }
+
+    [Test]
+    public void ModeChangeInvalidatesStationaryPointerPlacementFeedback()
+    {
+        var grid = CreateGrid();
+        grid.Samples = [new Sample { Timestamp = 400 }];
+        grid.PrepareDrawing();
+        var idleCommands = CountDrawingCommands(grid.ContentDrawing!);
+        grid.UpdatePointerPosition(50);
+        for (var repeat = 0; repeat < 3; repeat++)
+        {
+            grid.AllowNodeCreation = true;
+            grid.PrepareDrawing();
+            Assert.That(CountDrawingCommands(grid.ContentDrawing!), Is.GreaterThan(idleCommands));
+            var additionDrawing = grid.ContentDrawing;
+            grid.AllowNodeCreation = false;
+            grid.PrepareDrawing();
+            Assert.That(grid.ContentDrawing, Is.Not.SameAs(additionDrawing));
+            Assert.That(CountDrawingCommands(grid.ContentDrawing!), Is.EqualTo(idleCommands));
+        }
+        grid.HorizontalOffset = 80;
+        grid.ZoomFactor = 16;
+        grid.UpdatePointerPosition(null); grid.PrepareDrawing();
+        idleCommands = CountDrawingCommands(grid.ContentDrawing!);
+        grid.UpdatePointerPosition(60); grid.PrepareDrawing();
+        Assert.That(CountDrawingCommands(grid.ContentDrawing!), Is.EqualTo(idleCommands));
+        grid.DragPreviewTimestamp = 500; grid.PrepareDrawing();
+        Assert.That(CountDrawingCommands(grid.ContentDrawing!), Is.GreaterThan(idleCommands));
+        grid.DataContext = new Track(); grid.PrepareDrawing();
+        Assert.That(grid.DragPreviewTimestamp, Is.Null);
+        Assert.That(grid.ActiveInterval, Is.Null);
+        Assert.That(CountDrawingCommands(grid.ContentDrawing!), Is.EqualTo(idleCommands));
+        grid.UpdatePointerPosition(60); grid.PrepareDrawing();
+        Assert.That(CountDrawingCommands(grid.ContentDrawing!), Is.EqualTo(idleCommands));
+    }
+
+    private static int CountDrawingCommands(Drawing drawing) => drawing is DrawingGroup group
+        ? group.Children.Sum(CountDrawingCommands) : 1;
+
     [TestCase(8, 2.5)]
     [TestCase(16, 5)]
     [TestCase(32, 10)]

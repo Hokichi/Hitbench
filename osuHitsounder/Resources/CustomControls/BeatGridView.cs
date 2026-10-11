@@ -396,7 +396,7 @@ public sealed class BeatGridView : FrameworkElement
         BeatGridDrawing.Draw(context, this, Offsets, Bpms, Subdivision, Duration.TotalMilliseconds,
             ContentWidth, HorizontalOffset, ViewportWidth, ActualHeight, false);
         context.Pop();
-        if (!SuppressPlacementFeedback && (AllowNodeCreation || FindActiveSample() is not null) && ActiveInterval is { } active)
+        if (!SuppressPlacementFeedback && AllowNodeCreation && ActiveInterval is { } active)
         {
             var rect = Inset(GetSampleBounds((int)Math.Round(active.StartMilliseconds, MidpointRounding.AwayFromZero)));
             context.DrawRoundedRectangle(hover, null, rect, 4, 4);

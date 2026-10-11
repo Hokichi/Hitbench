@@ -41,7 +41,9 @@ public partial class WorkstationPage
     }
     private void OnNodePointerDown(object sender, MouseButtonEventArgs e)
     {
-        var grid = FindAncestor<BeatGridView>(e.OriginalSource as DependencyObject);
+        var origin = e.OriginalSource as DependencyObject;
+        if (!deactivationStarted && !IsWithin(origin, TracksCard)) viewModel.SelectedTrack = null;
+        var grid = FindAncestor<BeatGridView>(origin);
         if (!BeginNodePointer(grid, grid is null ? default : e.GetPosition(grid), e.GetPosition(this), Keyboard.Modifiers)) return;
         grid!.Focus();
         if (pointerNode is not null && !CaptureMouse()) CancelNodePointer();
