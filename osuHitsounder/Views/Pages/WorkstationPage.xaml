@@ -473,6 +473,16 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
+        <Style x:Key="OHsWorkstationTrackSeparatorStyle" TargetType="Border" BasedOn="{StaticResource BaseBorderStyle}">
+            <Setter Property="Height" Value="1" />
+            <Setter Property="Background" Value="{DynamicResource Brush.Beat.Whole}" />
+            <Setter Property="IsHitTestVisible" Value="False" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
         <ControlTemplate x:Key="OHsWorkstationTrackItemTemplate" TargetType="ListBoxItem">
             <Grid Style="{StaticResource BaseGridStyle}">
                 <Grid.ColumnDefinitions>
@@ -496,11 +506,8 @@
                     ContentTemplateSelector="{TemplateBinding ContentTemplateSelector}"
                     Style="{StaticResource BaseContentPresenterStyle}" />
                 <Border
-                    Height="1"
                     VerticalAlignment="Bottom"
-                    Background="{DynamicResource Brush.Border.Subtle}"
-                    IsHitTestVisible="False"
-                    Style="{StaticResource BaseBorderStyle}"
+                    Style="{StaticResource OHsWorkstationTrackSeparatorStyle}"
                     Grid.ColumnSpan="5" />
                 <Border
                     x:Name="SelectionCue"
@@ -790,13 +797,6 @@
             BasedOn="{StaticResource OHsWorkstationTrackMetadataComboBoxStyle}">
             <Setter Property="ItemTemplate" Value="{StaticResource OHsWorkstationCompactOptionTemplate}" />
         </Style>
-        <Style
-            x:Key="OHsWorkstationFooterSubdivisionStyle"
-            TargetType="customControls:ValueSlider"
-            BasedOn="{StaticResource OHsWorkstationSubdivisionStyle}">
-            <Setter Property="Width" Value="Auto" />
-            <Setter Property="MaxWidth" Value="160" />
-        </Style>
         <DataTemplate x:Key="OHsWorkstationSampleTrackTemplate">
             <Grid Style="{StaticResource BaseGridStyle}">
                 <Grid.ColumnDefinitions>
@@ -924,76 +924,48 @@
                     Loaded="OnTrackControlStackLoaded"
                     SizeChanged="OnTrackControlStackSizeChanged"
                     Style="{StaticResource BaseStackPanelStyle}">
-                    <customControls:SpacedUniformGrid
-                        Columns="2"
-                        HorizontalGap="4"
-                        VerticalGap="4"
-                        Margin="0,0,0,8">
-                        <StackPanel>
-                            <TextBlock
-                                Text="Sampleset"
-                                Style="{StaticResource FieldLabelTextStyle}"
-                                TextTrimming="CharacterEllipsis"
-                                Margin="0,0,0,4" />
-                            <ComboBox
-                                x:Name="TrackSamplesetSelector"
-                                AutomationProperties.Name="Sampleset"
-                                DataContextChanged="OnTrackControlDataContextChanged"
-                                IsEnabled="{Binding DataContext.CanEditTracks, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
-                                ItemsSource="{x:Static entities:Track.SamplesetOptions}"
-                                Loaded="OnTrackMetadataSelectorLoaded"
-                                SelectionChanged="OnTrackMetadataSelectionChanged"
-                                Style="{StaticResource OHsWorkstationCompactMetadataStyle}"
-                                ToolTip="Sampleset" />
-                        </StackPanel>
-                        <StackPanel>
-                            <TextBlock
-                                Text="Addition"
-                                Style="{StaticResource FieldLabelTextStyle}"
-                                TextTrimming="CharacterEllipsis"
-                                Margin="0,0,0,4" />
-                            <ComboBox
-                                x:Name="TrackAdditionSelector"
-                                AutomationProperties.Name="Addition"
-                                DataContextChanged="OnTrackControlDataContextChanged"
-                                IsEnabled="{Binding DataContext.CanEditTracks, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
-                                ItemsSource="{x:Static entities:Track.AdditionOptions}"
-                                Loaded="OnTrackMetadataSelectorLoaded"
-                                SelectionChanged="OnTrackMetadataSelectionChanged"
-                                Style="{StaticResource OHsWorkstationCompactMetadataStyle}"
-                                ToolTip="Addition" />
-                        </StackPanel>
-                    </customControls:SpacedUniformGrid>
-                    <StackPanel Margin="0,0,0,8">
-                        <TextBlock
-                            Text="Sample type"
-                            Style="{StaticResource FieldLabelTextStyle}"
-                            Margin="0,0,0,4" />
+                    <customControls:SpacedUniformGrid Columns="2" HorizontalGap="4" VerticalGap="4" Margin="0,0,0,8">
                         <ComboBox
-                            x:Name="TrackSampleTypeSelector"
-                            AutomationProperties.Name="Track sample type"
-                            ToolTip="Track sample type"
-                            DataContextChanged="OnTrackControlDataContextChanged"
-                            Loaded="OnTrackMetadataSelectorLoaded"
-                            SelectionChanged="OnTrackMetadataSelectionChanged"
-                            ItemsSource="{x:Static entities:Track.SampleTypeOptions}"
-                            IsEnabled="{Binding DataContext.CanEditTracks, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
-                            Style="{StaticResource OHsWorkstationTrackMetadataComboBoxStyle}" />
-                    </StackPanel>
-                    <TextBlock
-                        Text="Sample"
-                        Style="{StaticResource FieldLabelTextStyle}"
-                        Margin="0,0,0,4" />
-                    <ComboBox
-                        x:Name="TrackSampleFileSelector"
-                        AutomationProperties.Name="Track sample"
+                        x:Name="TrackSamplesetSelector"
+                        AutomationProperties.Name="Sampleset"
                         DataContextChanged="OnTrackControlDataContextChanged"
-                        IsEnabled="{Binding DataContext.CanImportSample, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
-                        ItemsSource="{Binding DataContext.SampleFiles, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
-                        Loaded="OnSampleSelectorLoaded"
-                        SelectionChanged="OnSampleSelectionChanged"
-                        Style="{StaticResource OHsWorkstationTrackMetadataComboBoxStyle}"
-                        ToolTip="{Binding SelectedItem, RelativeSource={RelativeSource Self}, Mode=OneWay}" />
+                        IsEnabled="{Binding DataContext.CanEditTracks, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
+                        ItemsSource="{x:Static entities:Track.SamplesetOptions}"
+                        Loaded="OnTrackMetadataSelectorLoaded"
+                        SelectionChanged="OnTrackMetadataSelectionChanged"
+                        Style="{StaticResource OHsWorkstationCompactMetadataStyle}"
+                        ToolTip="Sampleset" />
+                        <ComboBox
+                        x:Name="TrackAdditionSelector"
+                        AutomationProperties.Name="Addition"
+                        DataContextChanged="OnTrackControlDataContextChanged"
+                        IsEnabled="{Binding DataContext.CanEditTracks, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
+                        ItemsSource="{x:Static entities:Track.AdditionOptions}"
+                        Loaded="OnTrackMetadataSelectorLoaded"
+                        SelectionChanged="OnTrackMetadataSelectionChanged"
+                        Style="{StaticResource OHsWorkstationCompactMetadataStyle}"
+                        ToolTip="Addition" />
+                    </customControls:SpacedUniformGrid>
+                    <ComboBox Margin="0,0,0,8"
+                    x:Name="TrackSampleTypeSelector"
+                    AutomationProperties.Name="Track sample type"
+                    ToolTip="Track sample type"
+                    DataContextChanged="OnTrackControlDataContextChanged"
+                    Loaded="OnTrackMetadataSelectorLoaded"
+                    SelectionChanged="OnTrackMetadataSelectionChanged"
+                    ItemsSource="{x:Static entities:Track.SampleTypeOptions}"
+                    IsEnabled="{Binding DataContext.CanEditTracks, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
+                    Style="{StaticResource OHsWorkstationTrackMetadataComboBoxStyle}" />
+                    <ComboBox
+                    x:Name="TrackSampleFileSelector"
+                    AutomationProperties.Name="Track sample"
+                    DataContextChanged="OnTrackControlDataContextChanged"
+                    IsEnabled="{Binding DataContext.CanImportSample, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
+                    ItemsSource="{Binding DataContext.SampleFiles, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
+                    Loaded="OnSampleSelectorLoaded"
+                    SelectionChanged="OnSampleSelectionChanged"
+                    Style="{StaticResource OHsWorkstationTrackMetadataComboBoxStyle}"
+                    ToolTip="{Binding SelectedItem, RelativeSource={RelativeSource Self}, Mode=OneWay}" />
                 </StackPanel>
             </Grid>
         </DataTemplate>
@@ -1044,7 +1016,7 @@
     <Grid Style="{StaticResource BaseGridStyle}">
         <Grid
             x:Name="WorkstationRoot"
-            Margin="16,16,16,12"
+            Margin="16,16,16,0"
             IsEnabled="{Binding IsInteractionReady, Mode=OneWay}"
             SizeChanged="OnVolumeOverlayHostSizeChanged">
             <Grid x:Name="WorkstationContent" Style="{StaticResource OHsWorkstationContentStyle}">
@@ -1053,8 +1025,7 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
-                    <RowDefinition Height="12" />
-                    <RowDefinition Height="80" />
+
                 </Grid.RowDefinitions>
                 <Border
                     x:Name="SongAudioCard"
@@ -1271,69 +1242,80 @@
                                     Style="{StaticResource OHsWorkstationTrackListStyle}" />
                             </Grid>
                         </AdornerDecorator>
+                        <Border
+                            Grid.Row="1"
+                            Margin="0,8,0,0"
+                            Padding="{Binding Padding, ElementName=SongAudioCard, Mode=OneWay}"
+                            BorderThickness="{Binding BorderThickness, ElementName=SongAudioCard, Mode=OneWay}"
+                            Style="{StaticResource BaseBorderStyle}">
+                            <Grid x:Name="ZoomFooter" Style="{StaticResource BaseGridStyle}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock
+                                    AutomationProperties.Name="Elapsed audio time"
+                                    Style="{StaticResource OHsWorkstationElapsedStyle}"
+                                    Text="{Binding ElapsedText, Mode=OneWay}"
+                                    Grid.Column="0"
+                                    HorizontalAlignment="Left"
+                                    VerticalAlignment="Bottom"
+                                    Margin="0,0,12,0"
+                                    TextTrimming="CharacterEllipsis" />
+                                <Grid
+                                    x:Name="FooterControlsHost"
+                                    Grid.Column="1"
+                                    Style="{StaticResource BaseGridStyle}">
+                                    <WrapPanel
+                                        MaxWidth="{Binding ActualWidth, ElementName=FooterControlsHost, Mode=OneWay}"
+                                        Margin="0,8,0,0"
+                                        HorizontalAlignment="Right"
+                                        VerticalAlignment="Center"
+                                        FlowDirection="{Binding FlowDirection, ElementName=WorkstationRoot, Mode=OneWay}">
+                                        <StackPanel
+                                            x:Name="SubdivisionPanel"
+                                            Margin="0,0,12,0"
+                                            VerticalAlignment="Center"
+                                            Orientation="Horizontal">
+                                            <TextBlock Style="{StaticResource OHsWorkstationSubdivisionLabelStyle}" Text="Subdivision" />
+                                            <customControls:ValueSlider
+                                                x:Name="SubdivisionSelector"
+                                                AutomationProperties.Name="Beat subdivision"
+                                                DisplayText="{Binding Subdivision, Mode=OneWay}"
+                                                IsSnapToTickEnabled="True"
+                                                LargeChange="1"
+                                                Maximum="8"
+                                                Minimum="0"
+                                                SmallChange="1"
+                                                Style="{StaticResource OHsWorkstationSubdivisionStyle}"
+                                                TickFrequency="1"
+                                                Value="{Binding SelectedSubdivisionIndex, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                        </StackPanel>
+                                        <StackPanel
+                                            x:Name="ZoomControls"
+                                            VerticalAlignment="Center"
+                                            FlowDirection="{Binding RelativeSource={RelativeSource AncestorType=UserControl}, Path=FlowDirection, Mode=OneWay}"
+                                            Orientation="Horizontal">
+                                            <customControls:BalloonButton
+                                                AutomationProperties.Name="Zoom waveform out"
+                                                ButtonIcon="{StaticResource Minus}"
+                                                Command="{Binding ZoomOutCommand, Mode=OneWay}"
+                                                Style="{StaticResource OHsWorkstationIconButtonStyle}"
+                                                ToolTip="Zoom waveform out" />
+                                            <customControls:BalloonButton
+                                                AutomationProperties.Name="Zoom waveform in"
+                                                ButtonIcon="{StaticResource PlusSolid}"
+                                                Command="{Binding ZoomInCommand, Mode=OneWay}"
+                                                Style="{StaticResource OHsWorkstationIconButtonStyle}"
+                                                ToolTip="Zoom waveform in" />
+                                        </StackPanel>
+                                    </WrapPanel>
+                                </Grid>
+                            </Grid>
+                        </Border>
                     </Grid>
                 </Border>
-                <Border
-                    Grid.Row="5"
-                    Margin="0"
-                    Style="{StaticResource BaseBorderStyle}">
-                    <Grid
-                        x:Name="ZoomFooter"
-                        HorizontalAlignment="Stretch"
-                        Style="{StaticResource BaseGridStyle}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <Grid Margin="0,0,12,0" VerticalAlignment="Center">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Style="{StaticResource OHsWorkstationSubdivisionLabelStyle}" Text="Subdivision" />
-                            <customControls:ValueSlider
-                                x:Name="SubdivisionSelector"
-                                AutomationProperties.Name="Beat subdivision"
-                                DisplayText="{Binding Subdivision, Mode=OneWay}"
-                                IsSnapToTickEnabled="True"
-                                LargeChange="1"
-                                Maximum="8"
-                                Minimum="0"
-                                SmallChange="1"
-                                Style="{StaticResource OHsWorkstationFooterSubdivisionStyle}"
-                                TickFrequency="1"
-                                Value="{Binding SelectedSubdivisionIndex, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                Grid.Column="1" />
-                        </Grid>
-                        <StackPanel
-                            x:Name="ZoomControls"
-                            VerticalAlignment="Center"
-                            FlowDirection="{Binding RelativeSource={RelativeSource AncestorType=UserControl}, Path=FlowDirection, Mode=OneWay}"
-                            Orientation="Horizontal"
-                            Grid.Column="1"
-                            Margin="0,0,12,0">
-                            <customControls:BalloonButton
-                                AutomationProperties.Name="Zoom waveform out"
-                                ButtonIcon="{StaticResource Minus}"
-                                Command="{Binding ZoomOutCommand, Mode=OneWay}"
-                                Style="{StaticResource OHsWorkstationIconButtonStyle}"
-                                ToolTip="Zoom waveform out" />
-                            <customControls:BalloonButton
-                                AutomationProperties.Name="Zoom waveform in"
-                                ButtonIcon="{StaticResource PlusSolid}"
-                                Command="{Binding ZoomInCommand, Mode=OneWay}"
-                                Style="{StaticResource OHsWorkstationIconButtonStyle}"
-                                ToolTip="Zoom waveform in" />
-                        </StackPanel>
-                        <TextBlock
-                            AutomationProperties.Name="Elapsed audio time"
-                            Style="{StaticResource OHsWorkstationElapsedStyle}"
-                            Text="{Binding ElapsedText, Mode=OneWay}"
-                            Grid.Column="2"
-                            HorizontalAlignment="Right" />
-                    </Grid>
-                </Border>
+
             </Grid>
             <Border
                 x:Name="VolumeOverlay"

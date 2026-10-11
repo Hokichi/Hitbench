@@ -1365,7 +1365,7 @@ public class WorkstationPageIntegrationTests
             window.Height = height + cardHeight - 200;
             view.UpdateLayout();
             var selector = (ValueSlider)page.FindName("SubdivisionSelector");
-            UiControlContract.AssertStyle<ValueSlider>(selector, "OHsWorkstationFooterSubdivisionStyle");
+            UiControlContract.AssertStyle<ValueSlider>(selector, "OHsWorkstationSubdivisionStyle");
             Assert.That(selector.Value, Is.EqualTo(vm.SelectedSubdivisionIndex));
         }
     }
