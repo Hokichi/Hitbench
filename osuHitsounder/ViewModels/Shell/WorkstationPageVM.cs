@@ -123,8 +123,11 @@ public partial class WorkstationPageVM(
     private double zoomFactor = 32;
     private double trackHeight = 36;
     private double minimumTrackHeight = 36;
+    private bool areTracksCollapsed;
+    private double expandedTrackGrowth;
+    public bool AreTracksCollapsed => areTracksCollapsed;
     public double MinimumTrackHeight => minimumTrackHeight;
-    public double MaximumTrackHeight => minimumTrackHeight + 108;
+    public double MaximumTrackHeight => minimumTrackHeight + (AreTracksCollapsed ? 0 : 108);
     private int selectedSubdivisionIndex = 3;
 
     public double ZoomFactor => zoomFactor;
@@ -397,6 +400,17 @@ public partial class WorkstationPageVM(
 
     [RelayCommand(CanExecute = nameof(CanDecreaseTrackHeight))]
     private void DecreaseTrackHeight() => SetTrackHeight(trackHeight - 6);
+
+    [RelayCommand(CanExecute = nameof(CanEditTracks))]
+    private void ToggleTracksCollapsed()
+    {
+        if (!CanEditTracks) return;
+        if (!AreTracksCollapsed) expandedTrackGrowth = Math.Clamp(trackHeight - minimumTrackHeight, 0, 108);
+        SetProperty(ref areTracksCollapsed, !AreTracksCollapsed, nameof(AreTracksCollapsed));
+        OnPropertyChanged(nameof(MaximumTrackHeight));
+        SetProperty(ref trackHeight, minimumTrackHeight + (AreTracksCollapsed ? 0 : expandedTrackGrowth), nameof(TrackHeight));
+        NotifyCommandState();
+    }
 
     [RelayCommand(CanExecute = nameof(CanIncreaseSubdivision))]
     private void IncreaseSubdivision()
@@ -938,7 +952,7 @@ public partial class WorkstationPageVM(
     public void SetTrackHeightMinimum(double minimum)
     {
         if (deactivated || !double.IsFinite(minimum) || minimum <= 0 || minimum == minimumTrackHeight) return;
-        var growth = Math.Clamp(trackHeight - minimumTrackHeight, 0, 108);
+        var growth = AreTracksCollapsed ? 0 : Math.Clamp(trackHeight - minimumTrackHeight, 0, 108);
         minimumTrackHeight = minimum;
         OnPropertyChanged(nameof(MinimumTrackHeight));
         OnPropertyChanged(nameof(MaximumTrackHeight));
@@ -961,6 +975,7 @@ public partial class WorkstationPageVM(
         ZoomOutCommand.NotifyCanExecuteChanged();
         IncreaseTrackHeightCommand.NotifyCanExecuteChanged();
         DecreaseTrackHeightCommand.NotifyCanExecuteChanged();
+        ToggleTracksCollapsedCommand.NotifyCanExecuteChanged();
         IncreaseSubdivisionCommand.NotifyCanExecuteChanged();
         DecreaseSubdivisionCommand.NotifyCanExecuteChanged();
         AddSampleTrackCommand.NotifyCanExecuteChanged();
@@ -976,6 +991,7 @@ public partial class WorkstationPageVM(
         NotifyNodeEditingState();
         NotifyHistoryState();
         OnPropertyChanged(nameof(CanEditTracks));
+        ToggleTracksCollapsedCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(CanImportSample));
         OnPropertyChanged(nameof(CanAddTrack));
         OnPropertyChanged(nameof(CanRemoveTrack));

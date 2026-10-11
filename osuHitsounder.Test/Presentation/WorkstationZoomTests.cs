@@ -9,6 +9,67 @@ namespace osuHitsounder.Test.Presentation;
 public class WorkstationZoomTests
 {
     [Test]
+    public async Task CollapsePreservesExpandedGrowthAcrossMinimumChanges()
+    {
+        var (vm, saves) = Create((_, token) => Task.Delay(Timeout.Infinite, token));
+        await Load(vm);
+        vm.SetTrackHeightMinimum(200);
+        vm.IncreaseTrackHeightCommand.Execute(null);
+        vm.IncreaseTrackHeightCommand.Execute(null);
+        vm.ToggleTracksCollapsedCommand.Execute(null);
+        vm.SetTrackHeightMinimum(56);
+        Assert.Multiple(() =>
+        {
+            Assert.That(vm.AreTracksCollapsed, Is.True);
+            Assert.That(vm.TrackHeight, Is.EqualTo(56));
+            Assert.That(vm.MaximumTrackHeight, Is.EqualTo(56));
+            Assert.That(vm.IncreaseTrackHeightCommand.CanExecute(null), Is.False);
+            Assert.That(vm.DecreaseTrackHeightCommand.CanExecute(null), Is.False);
+        });
+        vm.IncreaseTrackHeightCommand.Execute(null);
+        vm.DecreaseTrackHeightCommand.Execute(null);
+        Assert.That(vm.TrackHeight, Is.EqualTo(56));
+        vm.ToggleTracksCollapsedCommand.Execute(null);
+        vm.SetTrackHeightMinimum(240);
+        Assert.That(vm.TrackHeight, Is.EqualTo(252));
+        vm.ToggleTracksCollapsedCommand.Execute(null);
+        Assert.That(vm.TrackHeight, Is.EqualTo(240));
+        vm.ToggleTracksCollapsedCommand.Execute(null);
+        Assert.Multiple(() =>
+        {
+            Assert.That(vm.AreTracksCollapsed, Is.False);
+            Assert.That(vm.TrackHeight, Is.EqualTo(252));
+            Assert.That(vm.HasPendingSaves, Is.False);
+            Assert.That(saves.Writes, Is.Zero);
+        });
+        await vm.DeactivateAsync();
+    }
+
+    [Test]
+    public async Task CollapseCommandFollowsLifecycle()
+    {
+        var (vm, _) = Create((_, token) => Task.Delay(Timeout.Infinite, token));
+        Assert.That(vm.AreTracksCollapsed, Is.False);
+        Assert.That(vm.ToggleTracksCollapsedCommand.CanExecute(null), Is.False);
+        vm.ToggleTracksCollapsedCommand.Execute(null);
+        Assert.That(vm.AreTracksCollapsed, Is.False);
+        await Load(vm);
+        Assert.That(vm.Tracks, Is.Empty);
+        Assert.That(vm.ToggleTracksCollapsedCommand.CanExecute(null), Is.True);
+        vm.IsReturning = true;
+        Assert.That(vm.ToggleTracksCollapsedCommand.CanExecute(null), Is.False);
+        vm.ToggleTracksCollapsedCommand.Execute(null);
+        Assert.That(vm.AreTracksCollapsed, Is.False);
+        vm.IsReturning = false;
+        vm.ToggleTracksCollapsedCommand.Execute(null);
+        Assert.That(vm.AreTracksCollapsed, Is.True);
+        await vm.DeactivateAsync();
+        Assert.That(vm.ToggleTracksCollapsedCommand.CanExecute(null), Is.False);
+        vm.ToggleTracksCollapsedCommand.Execute(null);
+        Assert.That(vm.AreTracksCollapsed, Is.True);
+    }
+
+    [Test]
     public async Task TrackHeightUsesConfiguredMinimumAndSixUnitSteps()
     {
         var (vm, _) = Create((_, token) => Task.Delay(Timeout.Infinite, token));

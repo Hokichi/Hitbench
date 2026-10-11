@@ -45,6 +45,7 @@ public partial class WorkstationPage : UserControl
         WaveformScrollBar.AddHandler(Thumb.DragStartedEvent, new DragStartedEventHandler(OnWaveformScrollBarDragStarted));
         KeyboardNavigationPolicy.EnableTabNavigation(ResnapAllSamplesButton);
         KeyboardNavigationPolicy.EnableTabNavigation(ScrollWithMarkerCheckBox);
+        KeyboardNavigationPolicy.EnableTabNavigation(TrackActionsHost);
         DataContext = viewModel;
         InitializeNodeInteraction();
         KeyboardNavigationPolicy.EnableTabNavigation(TrackList);
@@ -365,6 +366,9 @@ public partial class WorkstationPage : UserControl
 
     private void OnViewModelPropertyChanging(object? sender, PropertyChangingEventArgs e)
     {
+        if (e.PropertyName == nameof(WorkstationPageVM.AreTracksCollapsed) && !viewModel.AreTracksCollapsed)
+            RestoreTrackFocusBeforeCollapse(Keyboard.FocusedElement as DependencyObject ??
+                FocusManager.GetFocusedElement(FocusManager.GetFocusScope(ToggleTracksCollapsedButton)) as DependencyObject);
         if (e.PropertyName != nameof(WorkstationPageVM.ZoomFactor) || hasPendingZoomAnchor) return;
         var duration = viewModel.Waveform?.Duration.TotalSeconds ?? 0;
         var extent = WaveformDisplay.ActualWidth;

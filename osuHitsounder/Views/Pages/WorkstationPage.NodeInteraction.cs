@@ -42,6 +42,7 @@ public partial class WorkstationPage
     private void OnNodePointerDown(object sender, MouseButtonEventArgs e)
     {
         var origin = e.OriginalSource as DependencyObject;
+        if (IsWithin(origin, ToggleTracksCollapsedButton)) return;
         if (!deactivationStarted && !IsWithin(origin, TracksCard)) viewModel.SelectedTrack = null;
         var grid = FindAncestor<BeatGridView>(origin);
         if (!BeginNodePointer(grid, grid is null ? default : e.GetPosition(grid), e.GetPosition(this), Keyboard.Modifiers)) return;

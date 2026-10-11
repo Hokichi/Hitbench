@@ -206,26 +206,6 @@
                                 IsEnabled="{Binding ElementName=PageHost, Path=Content.DataContext.CanManageSamples, Mode=OneWay}"
                                 ShouldShowText="True"
                                 Style="{StaticResource OHsBalloonNeutralActionStyle}" />
-                            <customControls:BalloonButton
-                                Margin="8,0,0,0"
-                                AutomationProperties.Name="Add sample track"
-                                ButtonIcon="{StaticResource PlusSolid}"
-                                ButtonText="Sample Track"
-                                Click="OnAddSampleTrackClick"
-                                IsEnabled="{Binding ElementName=PageHost, Path=Content.DataContext.CanAddTrack, Mode=OneWay}"
-                                ShouldShowText="True"
-                                Style="{StaticResource OHsBalloonNeutralActionStyle}" />
-                            <customControls:BalloonButton
-                                Margin="8,0,0,0"
-                                AutomationProperties.HelpText="Instrumental track creation is not implemented yet."
-                                AutomationProperties.Name="Add instrumental track"
-                                ButtonIcon="{StaticResource PlusSolid}"
-                                ButtonText="Instrumental Track"
-                                Click="OnAddPianoTrackClick"
-                                IsEnabled="{Binding ElementName=PageHost, Path=Content.DataContext.CanAddTrack, Mode=OneWay}"
-                                ShouldShowText="True"
-                                Style="{StaticResource OHsBalloonNeutralActionStyle}"
-                                ToolTip="Instrumental track creation is coming later" />
                         </WrapPanel>
                         <StackPanel Grid.Column="2" Orientation="Horizontal">
                             <customControls:BalloonButton
