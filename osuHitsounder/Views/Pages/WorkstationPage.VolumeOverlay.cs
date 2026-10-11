@@ -144,15 +144,7 @@ public partial class WorkstationPage
             return true;
         }
         if (key == Key.Tab && modifiers is ModifierKeys.None or ModifierKeys.Shift)
-        {
-            var wheels = new[] { SongVolumeWheel, ApplicationVolumeWheel, SamplesVolumeWheel };
-            var current = Array.IndexOf(wheels, ActiveVolumeWheel);
-            var next = modifiers == ModifierKeys.Shift ? (current + wheels.Length - 1) % wheels.Length : (current + 1) % wheels.Length;
-            ActivateVolumeWheel(wheels[next]);
-            wheels[next].Focus();
-            wheels[next].BringIntoView();
             return true;
-        }
         if (key is not (Key.Up or Key.Right or Key.Down or Key.Left) || modifiers != ModifierKeys.None ||
             ActiveVolumeWheel is not { IsEnabled: true } active) return false;
         var direction = key is Key.Up or Key.Right ? 1 : -1;

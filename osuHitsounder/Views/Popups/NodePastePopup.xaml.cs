@@ -1,7 +1,6 @@
 using System.Windows;
 using System.Windows.Input;
 using osuHitsounder.Resources.CustomControls;
-using osuHitsounder.Resources.Helpers;
 using osuHitsounder.Services;
 using osuHitsounder.ViewModels.Popups;
 
@@ -18,10 +17,6 @@ public partial class NodePastePopup : BasePopup
         this.vm = vm;
         this.complete = complete ?? (accepted => DialogResult = accepted);
         InitializeComponent(); DataContext = vm;
-        KeyboardNavigationPolicy.EnableTabNavigation(this);
-        KeyboardNavigationPolicy.EnableTabNavigation((DependencyObject)Content);
-        KeyboardNavigationPolicy.EnableTabNavigation(PasteButton);
-        KeyboardNavigationPolicy.EnableTabNavigation(CancelButton);
         Loaded += (_, _) => Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.ContextIdle, new Action(() => MarkerChoice.Focus()));
     }
     protected override bool ShouldBubbleApplicationClose => false;

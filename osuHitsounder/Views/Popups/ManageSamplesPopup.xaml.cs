@@ -16,7 +16,6 @@ public partial class ManageSamplesPopup : BasePopup
     public ManageSamplesPopup(ManageSamplesPopupVM viewModel)
     {
         InitializeComponent(); this.viewModel = viewModel; DataContext = viewModel;
-        KeyboardNavigationPolicy.EnableTabNavigation(this); KeyboardNavigationPolicy.EnableTabNavigation((DependencyObject)Content);
     }
     protected override bool ShouldBubbleApplicationClose => false;
     public async Task InitializeAsync(CancellationToken token)

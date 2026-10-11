@@ -346,10 +346,12 @@ public class VolumeWheelTests
 
             Assert.That(page.HandleVolumeShortcut(Key.V, ModifierKeys.Alt, page), Is.True);
             Assert.That(page.IsVolumeOverlayOpen, Is.True);
+            var active = page.ActiveVolumeWheel;
             Assert.That(page.HandleVolumeOverlayKey(Key.Tab, ModifierKeys.None), Is.True);
-            Assert.That(page.ActiveVolumeWheel, Is.SameAs(page.SamplesVolumeWheel));
+            Assert.That(page.ActiveVolumeWheel, Is.SameAs(active));
             Assert.That(page.HandleVolumeOverlayKey(Key.Down, ModifierKeys.None), Is.True);
-            Assert.That(vm.SamplesVolume, Is.EqualTo(95));
+            Assert.That(vm.ApplicationVolume, Is.EqualTo(95));
+            Assert.That(vm.SamplesVolume, Is.EqualTo(100));
             Assert.That(page.HandleVolumeOverlayKey(Key.Escape, ModifierKeys.None), Is.True);
             Assert.That(page.IsVolumeOverlayOpen, Is.False);
         }

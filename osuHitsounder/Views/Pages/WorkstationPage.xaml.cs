@@ -9,7 +9,6 @@ using System.ComponentModel;
 using System.Collections.Specialized;
 using osuHitsounder.ViewModels.Shell;
 using osuHitsounder.Resources.CustomControls;
-using osuHitsounder.Resources.Helpers;
 using Track = osuHitsounder.Core.Entities.Track;
 
 namespace osuHitsounder.Views.Pages;
@@ -43,12 +42,8 @@ public partial class WorkstationPage : UserControl
         this.viewModel = viewModel;
         InitializeComponent();
         WaveformScrollBar.AddHandler(Thumb.DragStartedEvent, new DragStartedEventHandler(OnWaveformScrollBarDragStarted));
-        KeyboardNavigationPolicy.EnableTabNavigation(ResnapAllSamplesButton);
-        KeyboardNavigationPolicy.EnableTabNavigation(ScrollWithMarkerCheckBox);
-        KeyboardNavigationPolicy.EnableTabNavigation(TrackActionsHost);
         DataContext = viewModel;
         InitializeNodeInteraction();
-        KeyboardNavigationPolicy.EnableTabNavigation(TrackList);
 
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;

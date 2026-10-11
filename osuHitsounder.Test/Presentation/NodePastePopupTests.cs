@@ -29,7 +29,8 @@ public class NodePastePopupTests
         foreach (var radio in radios)
         {
             Assert.That(radio.Style, Is.SameAs(popup.FindResource("OHsNodePasteTimingChoiceStyle")));
-            Assert.That(radio.IsTabStop, Is.True);
+            Assert.That(radio.IsTabStop, Is.False);
+            Assert.That(radio.Focusable, Is.True);
         }
         radios[0].IsChecked = true;
         popup.Dispatcher.Invoke(() => { }, DispatcherPriority.DataBind);

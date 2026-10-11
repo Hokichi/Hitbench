@@ -49,7 +49,8 @@ public class WorkstationTrackCollapseTests
             });
             foreach (var action in new[] { sample, instrument, toggle })
             {
-                Assert.That(KeyboardNavigation.GetIsTabStop(action), Is.True);
+                Assert.That(KeyboardNavigation.GetIsTabStop(action), Is.False);
+                Assert.That(action.Focusable, Is.True);
                 Assert.That(action.FocusVisualStyle, Is.SameAs(page.FindResource("OHsKeyboardFocusVisualStyle")));
                 Assert.That(ToolTipService.GetShowsToolTipOnKeyboardFocus(action), Is.True);
                 Assert.That(action.IsEnabled, Is.True);

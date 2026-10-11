@@ -72,15 +72,14 @@ public sealed class MainWindowPopupHostTests
     }
 
     [Test]
-    public void ModalResourcesProvideAccessibleFocusAndHighContrastContracts()
+    public void ModalResourcesReuseGlobalFocusContract()
     {
         new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
         var app = Application.Current!;
         var focus = (Style)app.FindResource("OHsKeyboardFocusVisualStyle");
-        Assert.That(focus.BasedOn, Is.SameAs(app.FindResource("BaseControlStyle")));
+        Assert.That(focus.BasedOn, Is.SameAs(app.FindResource("DefaultFocusVisualStyle")));
         var cue = new Control { Style = focus };
-        Assert.That(cue.ApplyTemplate(), Is.True);
-        Assert.That(cue.Template, Is.Not.Null);
+        UiControlContract.AssertStyle<Control>(cue, "OHsKeyboardFocusVisualStyle");
         var close = new osuHitsounder.Resources.CustomControls.BalloonButton
         { Style = (Style)app.FindResource("OHsPopupCloseActionStyle") };
         UiControlContract.AssertStyle<osuHitsounder.Resources.CustomControls.BalloonButton>(close, "OHsPopupCloseActionStyle");

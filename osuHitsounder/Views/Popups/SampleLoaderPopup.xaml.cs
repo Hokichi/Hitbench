@@ -38,8 +38,6 @@ public partial class SampleLoaderPopup : BasePopup
         this.getWorkArea = getWorkArea ?? WindowWorkArea.GetClientSize;
         DataContext = viewModel;
         viewModel.PropertyChanged += OnBrowserStateChanged;
-        KeyboardNavigationPolicy.EnableTabNavigation(this);
-        KeyboardNavigationPolicy.EnableTabNavigation((DependencyObject)Content);
         Loaded += OnPopupLoaded;
         PlaybackTimeline.ValueChanged += OnTimelineValueChanged;
         PlaybackTimeline.AddHandler(Thumb.DragStartedEvent, new DragStartedEventHandler(OnTimelineDragStarted));

@@ -229,7 +229,7 @@ public class WorkstationPageIntegrationTests
         var mute = FindVisualChildren<ToggleButton>(page).Single(control => control.Name == "TrackMuteToggle" && ReferenceEquals(control.DataContext, a));
         var solo = FindVisualChildren<ToggleButton>(page).Single(control => control.Name == "TrackSoloToggle" && ReferenceEquals(control.DataContext, a));
         Assert.That(mute.GetType(), Is.EqualTo(typeof(ToggleButton)));
-        Assert.That(mute.IsTabStop, Is.True);
+        Assert.That(mute.IsTabStop, Is.False);
         Assert.That(mute.Style, Is.SameAs(page.FindResource("OHsWorkstationTrackToggleStyle")));
         Assert.That(mute.Style.BasedOn, Is.SameAs(page.FindResource("BaseToggleButtonStyle")));
         Assert.That(mute.Template, Is.SameAs(page.FindResource("OHsWorkstationTrackToggleTemplate")));
@@ -325,7 +325,7 @@ public class WorkstationPageIntegrationTests
         Assert.That(addition.SelectedItem, Is.EqualTo("Soft"));
         Assert.That(sampleset.Style, Is.SameAs(page.FindResource("OHsWorkstationCompactMetadataStyle")));
         Assert.That(sampleset.Style.BasedOn, Is.SameAs(page.FindResource("OHsWorkstationTrackMetadataComboBoxStyle")));
-        Assert.That(sampleset.IsTabStop, Is.True);
+        Assert.That(sampleset.IsTabStop, Is.False);
         Assert.That(saves.Writes, Is.Zero);
         sampleset.SelectedItem = "Soft"; addition.SelectedItem = "None";
         UiTestPump.Run(vm.FlushSavesAsync());
@@ -364,7 +364,8 @@ public class WorkstationPageIntegrationTests
             AutomationProperties.GetName(box) == "Track name" && ReferenceEquals(box.DataContext, first));
         Assert.That(input.Text, Is.EqualTo(first.Name));
         Assert.That(input.IsEnabled, Is.True);
-        Assert.That(input.IsTabStop, Is.True);
+        Assert.That(input.IsTabStop, Is.False);
+        Assert.That(input.Focusable, Is.True);
         Assert.That(input.Style, Is.SameAs(page.FindResource("OHsWorkstationTrackNameStyle")));
         Assert.That(input.Style.BasedOn, Is.SameAs(page.FindResource("RoundedTextInputStyle")));
         Assert.That(saves.Writes, Is.Zero);
@@ -1523,7 +1524,8 @@ public class WorkstationPageIntegrationTests
             Assert.That(button.Command, Is.SameAs(vm.ResnapAllSamplesCommand));
             Assert.That(button.IsEnabled, Is.True);
             Assert.That(button.ButtonText, Is.EqualTo("Resnap all samples"));
-            Assert.That(button.Focusable && button.IsTabStop, Is.True);
+            Assert.That(button.Focusable, Is.True);
+            Assert.That(button.IsTabStop, Is.False);
             Assert.That(button.FocusVisualStyle, Is.SameAs(page.FindResource("OHsKeyboardFocusVisualStyle")));
             Assert.That(button.ToolTip, Is.EqualTo("Snap every sample to the nearest beat in the current subdivision"));
             Assert.That(AutomationProperties.GetHelpText(button), Is.EqualTo(button.ToolTip));

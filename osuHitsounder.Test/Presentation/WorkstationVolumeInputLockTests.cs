@@ -22,6 +22,8 @@ public class WorkstationVolumeInputLockTests
     [TestCase(Key.Home, ModifierKeys.Control)]
     [TestCase(Key.End, ModifierKeys.Control)]
     [TestCase(Key.Right, ModifierKeys.None)]
+    [TestCase(Key.D3, ModifierKeys.Control)]
+    [TestCase(Key.NumPad8, ModifierKeys.Control)]
     public void BackgroundShortcutsAreConsumedWithoutChangingState(Key key, ModifierKeys modifiers)
     {
         var (page, vm, view) = CreatePage();
@@ -30,6 +32,7 @@ public class WorkstationVolumeInputLockTests
             vm.PlaceSample(vm.Tracks.Single(), 125);
             UiTestPump.Run(vm.PlayPauseCommand.ExecuteAsync(null));
             var position = vm.Position;
+            var subdivision = vm.Subdivision;
             page.ShowVolumeOverlay(false, new Point(), false, false);
             foreach (var fading in new[] { false, true })
             {
@@ -38,6 +41,7 @@ public class WorkstationVolumeInputLockTests
                 UiTestPump.Run(page.PlaybackInputCompletion);
                 Assert.That(vm.IsPlaying, Is.True);
                 Assert.That(vm.Position, Is.EqualTo(position));
+                Assert.That(vm.Subdivision, Is.EqualTo(subdivision));
                 Assert.That(vm.CanUndo, Is.True);
                 Assert.That(vm.CanRedo, Is.False);
                 Assert.That(vm.Tracks.Single().Samples, Has.Count.EqualTo(1));
@@ -84,10 +88,11 @@ public class WorkstationVolumeInputLockTests
             Assert.That(vm.ApplicationVolume, Is.EqualTo(95));
             Assert.That(page.HandleVolumeOverlayKey(Key.Down, ModifierKeys.None), Is.True);
             Assert.That(vm.ApplicationVolume, Is.EqualTo(90));
+            var active = page.ActiveVolumeWheel;
             Assert.That(page.HandleVolumeOverlayKey(Key.Tab, ModifierKeys.None), Is.True);
-            Assert.That(page.ActiveVolumeWheel, Is.SameAs(page.SamplesVolumeWheel));
+            Assert.That(page.ActiveVolumeWheel, Is.SameAs(active));
             Assert.That(page.HandleVolumeOverlayKey(Key.Tab, ModifierKeys.Shift), Is.True);
-            Assert.That(page.ActiveVolumeWheel, Is.SameAs(page.ApplicationVolumeWheel));
+            Assert.That(page.ActiveVolumeWheel, Is.SameAs(active));
             Assert.That(page.HandleVolumeOverlayKey(Key.Escape, ModifierKeys.None), Is.True);
             Assert.That(page.IsVolumeOverlayOpen, Is.False);
             Assert.That(((Grid)page.FindName("WorkstationContent")).IsEnabled, Is.True);

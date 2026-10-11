@@ -35,6 +35,14 @@ public sealed class FocusVisualTests
         }
     }
 
+    [Test]
+    public void KeyboardFocusVisualInheritsDefaultFocusContract()
+    {
+        var visual = new Control { Style = (Style)Application.Current.FindResource("OHsKeyboardFocusVisualStyle") };
+        UiControlContract.AssertStyle<Control>(visual, "OHsKeyboardFocusVisualStyle");
+        Assert.That(visual.Style.BasedOn, Is.SameAs(Application.Current.FindResource("DefaultFocusVisualStyle")));
+    }
+
     [TestCase("BaseTextBoxStyle")]
     [TestCase("BasePasswordBoxStyle")]
     [TestCase("BaseNumericUpDownStyle")]

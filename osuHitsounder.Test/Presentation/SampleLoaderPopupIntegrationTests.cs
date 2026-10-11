@@ -275,12 +275,12 @@ public sealed class SampleLoaderPopupIntegrationTests
     }
 
     [Test]
-    public void PopupAllowsTabStopsWhileOtherScreensKeepTheirKeyboardPolicy()
+    public void PopupAndOtherScreensKeepTabStopsDisabled()
     {
-        Assert.That(Descendants(view.Root).OfType<BalloonButton>().First(button => button.DataContext is SampleBrowserBreadcrumb).IsTabStop, Is.True);
-        Assert.That(((BalloonButton)popup.FindName("ImportButton")).IsTabStop, Is.True);
+        Assert.That(Descendants(view.Root).OfType<BalloonButton>().First(button => button.DataContext is SampleBrowserBreadcrumb).IsTabStop, Is.False);
+        Assert.That(((BalloonButton)popup.FindName("ImportButton")).IsTabStop, Is.False);
         var checkbox = Descendants(view.Root).OfType<CheckBox>().Single(box => ReferenceEquals(box.DataContext, file));
-        Assert.That(checkbox.IsTabStop, Is.True);
+        Assert.That(checkbox.IsTabStop, Is.False);
         var shellAction = new BalloonButton { Style = (Style)popup.FindResource("OHsBalloonNeutralActionStyle") };
         Assert.That(shellAction.IsTabStop, Is.False);
     }
@@ -321,7 +321,7 @@ public sealed class SampleLoaderPopupIntegrationTests
         Assert.That(checkbox.Content, Is.EqualTo("Auto-play samples"));
         checkbox.SetCurrentValue(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, true);
         Assert.That(vm.AutoPlaySamples, Is.True);
-        Assert.That(checkbox.IsTabStop, Is.True);
+        Assert.That(checkbox.IsTabStop, Is.False);
         Assert.That(System.Windows.Automation.AutomationProperties.GetName(checkbox), Is.EqualTo("Auto-play samples"));
     }
 
@@ -338,7 +338,7 @@ public sealed class SampleLoaderPopupIntegrationTests
         Assert.That(timeline.Maximum, Is.EqualTo(1));
         Assert.That(timeline.Value, Is.EqualTo(.35));
         Assert.That(timeline.IsEnabled, Is.True);
-        Assert.That(timeline.IsTabStop, Is.True);
+        Assert.That(timeline.IsTabStop, Is.False);
         Assert.That(((TextBlock)popup.FindName("PlaybackTimeTextBlock")).Text, Is.EqualTo(vm.PlaybackTimeText));
     }
 
