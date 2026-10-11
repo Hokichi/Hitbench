@@ -93,6 +93,7 @@ public class WorkstationTrackAuditionTests
         vm.SetTrackMuted(old, false);
         Assert.That(old.IsTrackMuted, Is.True);
         Assert.That(vm.IsTrackMuted(vm.Tracks[0]), Is.True);
+        Assert.That(vm.HasMutedTracks && vm.HasSoloedTracks, Is.True);
         Assert.That(vm.IsTrackSoloed(vm.Tracks[1]), Is.True);
         Assert.That(audio.SampleUpdates.Last().Select(e => e.FileName), Is.EqualTo(new[] { "b.wav" }));
         Assert.That(saves.Writes, Is.Zero);
@@ -112,6 +113,8 @@ public class WorkstationTrackAuditionTests
         Assert.That(audio.SampleUpdates.Last().Select(e => e.FileName), Is.EqualTo(new[] { "b.wav" }));
         Assert.That(ProjectDataSerializer.Deserialize(saves.LatestJson!).Tracks.Single().IsTrackSoloed, Is.False);
         Assert.That(a.IsTrackSoloed, Is.True);
+        Assert.That(vm.HasSoloedTracks, Is.False);
+        Assert.That(vm.ClearTrackSolosCommand.CanExecute(null), Is.False);
         await vm.DeactivateAsync();
     }
 
@@ -188,6 +191,26 @@ public class WorkstationTrackAuditionTests
         Assert.That(b.IsTrackMuted, Is.True); Assert.That(b.IsTrackSoloed, Is.False);
         choice.SetResult(null); await paste;
         Assert.That(saves.Writes, Is.Zero);
+        await vm.DeactivateAsync();
+    }
+
+    [Test]
+    public async Task ClearFlagsBatchesUpdatesAndPreservesOtherGroup()
+    {
+        var a = TrackWithSample("a.wav"); var b = TrackWithSample("b.wav");
+        a.IsTrackMuted = b.IsTrackMuted = true; a.IsTrackSoloed = true;
+        var (vm, audio, saves) = await CreateReadyAsync(a, b);
+        var updates = audio.SampleUpdates.Count; var revision = vm.TrackAuditionRevision;
+        vm.ClearTrackMutesCommand.Execute(null); await vm.FlushSavesAsync();
+        Assert.That(vm.HasMutedTracks, Is.False); Assert.That(vm.HasSoloedTracks, Is.True);
+        Assert.That(audio.SampleUpdates.Count, Is.EqualTo(updates + 1));
+        Assert.That(vm.TrackAuditionRevision, Is.EqualTo(revision + 1));
+        Assert.That(saves.Writes, Is.EqualTo(1));
+        vm.ClearTrackMutesCommand.Execute(null); await vm.FlushSavesAsync();
+        Assert.That(saves.Writes, Is.EqualTo(1));
+        vm.ClearTrackSolosCommand.Execute(null); await vm.FlushSavesAsync();
+        Assert.That(vm.HasSoloedTracks, Is.False);
+        Assert.That(vm.ClearTrackSolosCommand.CanExecute(null), Is.False);
         await vm.DeactivateAsync();
     }
 

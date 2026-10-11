@@ -121,16 +121,16 @@ public class WorkstationShortcutTests
         Assert.That(page.HandlePlaybackKey(Key.Right, ModifierKeys.None, false, origin), Is.True);
         UiTestPump.Run(page.PlaybackInputCompletion);
         Assert.That(vm.Position, Is.EqualTo(TimeSpan.FromMilliseconds(125)));
-        var editsText = kind is "text" or "password";
-        Assert.That(page.HandlePlaybackKey(Key.Space, ModifierKeys.None, false, origin), Is.EqualTo(!editsText));
+
+        Assert.That(page.HandlePlaybackKey(Key.Space, ModifierKeys.None, false, origin), Is.True);
         UiTestPump.Run(page.PlaybackInputCompletion);
-        Assert.That(vm.IsPlaying, Is.EqualTo(!editsText));
-        Assert.That(page.HandlePlaybackKey(Key.Space, ModifierKeys.None, true, origin), Is.EqualTo(!editsText));
-        Assert.That(vm.IsPlaying, Is.EqualTo(!editsText));
-        Assert.That(page.HandlePlaybackKey(Key.Space, ModifierKeys.Shift, false, origin), Is.EqualTo(!editsText));
+        Assert.That(vm.IsPlaying, Is.True);
+        Assert.That(page.HandlePlaybackKey(Key.Space, ModifierKeys.None, true, origin), Is.True);
+        Assert.That(vm.IsPlaying, Is.True);
+        Assert.That(page.HandlePlaybackKey(Key.Space, ModifierKeys.Shift, false, origin), Is.True);
         UiTestPump.Run(page.PlaybackInputCompletion);
         Assert.That(vm.IsPlaying, Is.False);
-        Assert.That(vm.Position, Is.EqualTo(editsText ? TimeSpan.FromMilliseconds(125) : TimeSpan.Zero));
+        Assert.That(vm.Position, Is.EqualTo(TimeSpan.Zero));
         Assert.That(page.HandlePlaybackKey(Key.End, ModifierKeys.Control, false, origin), Is.True);
         UiTestPump.Run(page.PlaybackInputCompletion);
         Assert.That(vm.Position, Is.EqualTo(vm.Waveform!.Duration));

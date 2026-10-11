@@ -16,6 +16,15 @@ public partial class WorkstationPage
         set => SetValue(TrackScrollBarGutterProperty, value);
     }
 
+    private void OnClearTrackMutesUnchecked(object sender, RoutedEventArgs e)
+    {
+        if (viewModel.ClearTrackMutesCommand.CanExecute(null)) viewModel.ClearTrackMutesCommand.Execute(null);
+    }
+    private void OnClearTrackSolosUnchecked(object sender, RoutedEventArgs e)
+    {
+        if (viewModel.ClearTrackSolosCommand.CanExecute(null)) viewModel.ClearTrackSolosCommand.Execute(null);
+    }
+
     private void OnTrackAuditionLoaded(object sender, RoutedEventArgs e)
     {
         if (sender is not ToggleButton { DataContext: Track track } toggle) return;

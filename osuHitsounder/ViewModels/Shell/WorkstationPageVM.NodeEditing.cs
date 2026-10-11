@@ -325,6 +325,7 @@ public partial class WorkstationPageVM
     private void ResetNodeEditing() { nodeEditCancellation?.Cancel(); SelectedTrack = null; CancelNodeDrag(); copiedNodes = []; ClearNodeSelection(); NotifyNodeEditingState(); }
     private void NotifyNodeEditingState()
     {
+        NotifyTrackAuditionState();
         if (!CanPlaceSamples) CancelNodeDrag();
         OnPropertyChanged(nameof(CanCopyNodes)); OnPropertyChanged(nameof(CanPasteNodes)); OnPropertyChanged(nameof(CanDeleteNodes));
         CopyNodesCommand.NotifyCanExecuteChanged(); PasteNodesCommand.NotifyCanExecuteChanged();

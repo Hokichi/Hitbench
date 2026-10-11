@@ -216,7 +216,7 @@ public sealed class BeatGridView : FrameworkElement
         if (Duration <= TimeSpan.Zero || ContentWidth <= 0 || ActualHeight <= 0) return Rect.Empty;
         var zoom = double.IsFinite(ZoomFactor) && ZoomFactor > 0 ? Math.Clamp(ZoomFactor, 8, 128) : 32;
         var width = 20 * Math.Min(zoom / 32, 1);
-        return new Rect(timestampMilliseconds / Duration.TotalMilliseconds * ContentWidth - HorizontalOffset - width / 2, 0, width, ActualHeight);
+        return new Rect(timestampMilliseconds / Duration.TotalMilliseconds * ContentWidth - HorizontalOffset - width / 2, ActualHeight / 4, width, ActualHeight / 2);
     }
 
     public double? GetPlaybackMarkerX()

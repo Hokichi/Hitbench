@@ -20,7 +20,7 @@ public class WorkstationTextInputTests
     [TestCase("password")]
     [TestCase("visual")]
     [TestCase("content")]
-    public void TextOriginSpaceIsUnhandledAndPreservesPlayback(string kind)
+    public void SpaceControlsPlaybackFromTextDescendants(string kind)
     {
         var vm = new WorkstationPageVM(new StubWorkstationSourceService(),
             new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler());
@@ -39,18 +39,15 @@ public class WorkstationTextInputTests
             "content" => run,
             _ => text
         };
-        foreach (var playing in new[] { false, true })
-        {
-            if (playing) UiTestPump.Run(vm.PlayPauseCommand.ExecuteAsync(null));
-            var position = vm.Position;
-            foreach (var modifier in new[] { ModifierKeys.None, ModifierKeys.Shift })
-            foreach (var repeat in new[] { false, true })
-            {
-                Assert.That(page.HandlePlaybackKey(Key.Space, modifier, repeat, origin), Is.False);
-                Assert.That(vm.IsPlaying, Is.EqualTo(playing));
-                Assert.That(vm.Position, Is.EqualTo(position));
-            }
-        }
+        Assert.That(page.HandlePlaybackKey(Key.Space, ModifierKeys.None, false, origin), Is.True);
+        UiTestPump.Run(page.PlaybackInputCompletion);
+        Assert.That(vm.IsPlaying, Is.True);
+        Assert.That(page.HandlePlaybackKey(Key.Space, ModifierKeys.None, true, origin), Is.True);
+        Assert.That(vm.IsPlaying, Is.True);
+        Assert.That(page.HandlePlaybackKey(Key.Space, ModifierKeys.Shift, false, origin), Is.True);
+        UiTestPump.Run(page.PlaybackInputCompletion);
+        Assert.That(vm.IsPlaying, Is.False);
+        Assert.That(run.Text, Is.EqualTo("Track name"));
         GC.KeepAlive(rich);
     }
 }

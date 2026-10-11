@@ -249,10 +249,11 @@ public class SongsResponsiveLayoutTests
             UiTestPump.Run(workstationPage.PlaybackInputCompletion);
             Assert.That(workstationViewModel.IsPlaying, Is.False);
             workstationPage.DismissVolumeOverlay();
-            Assert.That(window.HandleWorkstationInput(true, key, ModifierKeys.None), Is.False);
+            Assert.That(window.HandleWorkstationInput(true, key, ModifierKeys.None), Is.True);
+            UiTestPump.Run(workstationPage.PlaybackInputCompletion);
             key.Handled = true;
             Assert.That(window.HandleWorkstationInput(true, key, ModifierKeys.None), Is.False);
-            Assert.That(workstationViewModel.IsPlaying, Is.False);
+            Assert.That(workstationViewModel.IsPlaying, Is.True);
         }
         finally
         {

@@ -22,7 +22,7 @@ public class WorkstationNodeInteractionTests
         var grid = Descendants<BeatGridView>(editor.Page).First();
         grid.ContentWidth = 1000; grid.ViewportWidth = 500; grid.HorizontalOffset = 0;
         editor.Vm.SelectNode(editor.Vm.Tracks[0], editor.Node, false);
-        Assert.That(editor.Page.BeginNodePointer(grid, new Point(111, 10), new Point()), Is.False);
+        Assert.That(editor.Page.BeginNodePointer(grid, new Point(111, editor.Vm.TrackHeight / 2), new Point()), Is.False);
         Assert.That(editor.Vm.SelectedSamples, Is.Empty);
         grid.UpdatePointerPosition(111);
         Assert.That(grid.RequestPointerSamplePlacement(), Is.True);
@@ -39,11 +39,11 @@ public class WorkstationNodeInteractionTests
         var editor = CreateEditor(); using var view = editor.View;
         var grid = Descendants<BeatGridView>(editor.Page).First();
         grid.ContentWidth = 1000; grid.ViewportWidth = 500; grid.HorizontalOffset = 0;
-        editor.Page.BeginNodePointer(grid, new Point(100, 10), new Point());
-        editor.Page.UpdateNodePointer(new Point(20, 10), grid, new Point(125, 10));
+        editor.Page.BeginNodePointer(grid, new Point(100, editor.Vm.TrackHeight / 2), new Point());
+        editor.Page.UpdateNodePointer(new Point(20, editor.Vm.TrackHeight / 2), grid, new Point(125, editor.Vm.TrackHeight / 2));
         for (var step = 0; step < 16; step++) editor.Vm.ZoomOutCommand.Execute(null);
-        Assert.That(grid.FindSampleAt(new Point(129, 10)), Is.SameAs(editor.Node));
-        Assert.That(grid.FindSampleAt(new Point(130, 10)), Is.Null);
+        Assert.That(grid.FindSampleAt(new Point(129, editor.Vm.TrackHeight / 2)), Is.SameAs(editor.Node));
+        Assert.That(grid.FindSampleAt(new Point(130, editor.Vm.TrackHeight / 2)), Is.Null);
         Assert.That(editor.Vm.IsNodeDragActive, Is.True);
         Assert.That(editor.Node.Timestamp, Is.EqualTo(1000));
         editor.Page.CancelNodePointer();
@@ -58,10 +58,10 @@ public class WorkstationNodeInteractionTests
         var grids = Descendants<BeatGridView>(editor.Page).ToArray();
         foreach (var grid in grids) { grid.ContentWidth = 1000; grid.ViewportWidth = 500; grid.HorizontalOffset = 0; }
         var target = grids[crossTrack ? 1 : 0];
-        editor.Page.BeginNodePointer(grids[0], new Point(100, 10), new Point());
-        editor.Page.UpdateNodePointer(new Point(1, 1), target, new Point(125, 10));
+        editor.Page.BeginNodePointer(grids[0], new Point(100, editor.Vm.TrackHeight / 2), new Point());
+        editor.Page.UpdateNodePointer(new Point(1, 1), target, new Point(125, editor.Vm.TrackHeight / 2));
         Assert.That(target.DragPreviewTimestamp, Is.Null);
-        editor.Page.UpdateNodePointer(new Point(20, 100), target, new Point(125, 10));
+        editor.Page.UpdateNodePointer(new Point(20, 100), target, new Point(125, editor.Vm.TrackHeight / 2));
         Assert.That(target.DragPreviewTimestamp, Is.EqualTo(1250));
         Assert.That(editor.Node.Timestamp, Is.EqualTo(1000)); Assert.That(editor.Vm.CanUndo, Is.False);
         Assert.That(editor.Vm.Tracks.Sum(track => track.Samples.Count), Is.EqualTo(1));
@@ -85,13 +85,13 @@ public class WorkstationNodeInteractionTests
         var editor = CreateEditor(); using var view = editor.View;
         var grids = Descendants<BeatGridView>(editor.Page).ToArray();
         foreach (var grid in grids) { grid.ContentWidth = 1000; grid.ViewportWidth = 500; grid.HorizontalOffset = 0; }
-        editor.Page.BeginNodePointer(grids[0], new Point(100, 10), new Point());
-        editor.Page.UpdateNodePointer(new Point(20, 100), grids[1], new Point(125, 10));
+        editor.Page.BeginNodePointer(grids[0], new Point(100, editor.Vm.TrackHeight / 2), new Point());
+        editor.Page.UpdateNodePointer(new Point(20, 100), grids[1], new Point(125, editor.Vm.TrackHeight / 2));
         Assert.That(grids[1].DragPreviewTimestamp, Is.EqualTo(1250));
         switch (action)
         {
             case "leave": editor.Page.UpdateNodePointer(new Point(50, 500), null, default); break;
-            case "switch": editor.Page.UpdateNodePointer(new Point(50, 10), grids[0], new Point(150, 10)); break;
+            case "switch": editor.Page.UpdateNodePointer(new Point(50, editor.Vm.TrackHeight / 2), grids[0], new Point(150, editor.Vm.TrackHeight / 2)); break;
             case "recycle": grids[1].DataContext = new osuHitsounder.Core.Entities.Track(); break;
             case "unload": grids[1].RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent, grids[1])); break;
             case "escape": editor.Page.HandlePlaybackKey(Key.Escape, ModifierKeys.None, false, grids[0]); break;
@@ -114,8 +114,8 @@ public class WorkstationNodeInteractionTests
         var grid = Descendants<BeatGridView>(editor.Page).First(); grid.ContentWidth = 1000; grid.ViewportWidth = 500; grid.HorizontalOffset = 0;
         var other = new Sample { Timestamp = 1500, FileName = "a.wav" }; editor.Vm.Tracks[0].Samples.Add(other);
         editor.Vm.SetNodeSelection([editor.Node, other]);
-        editor.Page.BeginNodePointer(grid, new Point(100, 10), new Point());
-        editor.Page.UpdateNodePointer(new Point(20, 10), grid, new Point(125, 10));
+        editor.Page.BeginNodePointer(grid, new Point(100, editor.Vm.TrackHeight / 2), new Point());
+        editor.Page.UpdateNodePointer(new Point(20, editor.Vm.TrackHeight / 2), grid, new Point(125, editor.Vm.TrackHeight / 2));
         Assert.That(other.Timestamp, Is.EqualTo(1500)); Assert.That(editor.Vm.CanUndo, Is.False);
         UiTestPump.Run(editor.Page.CompleteNodePointerAsync());
         Assert.That(editor.Node.Timestamp, Is.EqualTo(1250)); Assert.That(other.Timestamp, Is.EqualTo(1750));
@@ -130,11 +130,11 @@ public class WorkstationNodeInteractionTests
         var grids = Descendants<BeatGridView>(editor.Page).ToArray();
         foreach (var grid in grids) { grid.ContentWidth = 1000; grid.ViewportWidth = 500; grid.HorizontalOffset = 0; }
         var other = new Sample { Timestamp = 1500, FileName = "b.wav" }; editor.Vm.Tracks[1].Samples.Add(other);
-        editor.Page.BeginNodePointer(grids[0], new Point(100, 10), new Point());
-        editor.Page.BeginNodePointer(grids[1], new Point(150, 10), new Point(), ModifierKeys.Control);
+        editor.Page.BeginNodePointer(grids[0], new Point(100, editor.Vm.TrackHeight / 2), new Point());
+        editor.Page.BeginNodePointer(grids[1], new Point(150, editor.Vm.TrackHeight / 2), new Point(), ModifierKeys.Control);
         Assert.That(editor.Vm.SelectedSamples, Is.EquivalentTo(new[] { editor.Node, other }));
-        Assert.That(editor.Page.BeginNodePointer(grids[1], new Point(150, 10), new Point(), ModifierKeys.Control), Is.True);
-        editor.Page.UpdateNodePointer(new Point(20, 20), grids[1], new Point(200, 10));
+        Assert.That(editor.Page.BeginNodePointer(grids[1], new Point(150, editor.Vm.TrackHeight / 2), new Point(), ModifierKeys.Control), Is.True);
+        editor.Page.UpdateNodePointer(new Point(20, 20), grids[1], new Point(200, editor.Vm.TrackHeight / 2));
         var completion = editor.Page.CompleteNodePointerAsync(); UiTestPump.Run(completion);
         Assert.That(completion.GetAwaiter().GetResult(), Is.False);
         Assert.That(editor.Vm.SelectedSamples.Single(), Is.SameAs(editor.Node));
@@ -149,7 +149,7 @@ public class WorkstationNodeInteractionTests
         grid.ContentWidth = 1000; grid.ViewportWidth = 500; grid.HorizontalOffset = 0;
         var other = new Sample { Timestamp = 1500, FileName = "a.wav" }; editor.Vm.Tracks[0].Samples.Add(other);
         editor.Vm.SetNodeSelection([editor.Node, other]); editor.Vm.ScrollWithMarker = true;
-        editor.Page.BeginNodePointer(grid, new Point(100, 10), new Point());
+        editor.Page.BeginNodePointer(grid, new Point(100, editor.Vm.TrackHeight / 2), new Point());
         Assert.That(editor.Vm.SelectedSamples, Is.EquivalentTo(new[] { editor.Node, other }));
         Assert.That(editor.Vm.ScrollWithMarker, Is.False);
         UiTestPump.Run(editor.Page.DeactivateAsync());
@@ -234,11 +234,11 @@ public class WorkstationNodeInteractionTests
         var editor = CreateEditor(); using var view = editor.View;
         var grids = Descendants<BeatGridView>(editor.Page).ToArray(); Assert.That(grids.Length, Is.EqualTo(2));
         foreach (var grid in grids) { grid.ContentWidth = 1000; grid.ViewportWidth = 500; grid.HorizontalOffset = 0; }
-        Assert.That(editor.Page.BeginNodePointer(grids[0], new Point(100, 10), new Point(0, 0)), Is.True);
+        Assert.That(editor.Page.BeginNodePointer(grids[0], new Point(100, editor.Vm.TrackHeight / 2), new Point(0, 0)), Is.True);
         var list = (ListBox)editor.Page.FindName("TrackList"); var layer = AdornerLayer.GetAdornerLayer(list)!;
-        editor.Page.UpdateNodePointer(new Point(1, 1), grids[1], new Point(125, 10));
+        editor.Page.UpdateNodePointer(new Point(1, 1), grids[1], new Point(125, editor.Vm.TrackHeight / 2));
         Assert.That(layer.GetAdorners(list), Is.Null);
-        editor.Page.UpdateNodePointer(new Point(20, 100), grids[1], new Point(125, 10));
+        editor.Page.UpdateNodePointer(new Point(20, 100), grids[1], new Point(125, editor.Vm.TrackHeight / 2));
         Assert.That(layer.GetAdorners(list)!.Single(), Is.TypeOf<OHsSampleNodeDragAdorner>());
         Assert.That(layer.GetAdorners(list)!.Single().IsHitTestVisible, Is.False);
         Assert.That(editor.Node.Timestamp, Is.EqualTo(1000));
@@ -257,8 +257,8 @@ public class WorkstationNodeInteractionTests
         var editor = CreateEditor(); using var view = editor.View;
         var grid = Descendants<BeatGridView>(editor.Page).First();
         grid.ContentWidth = 1000; grid.ViewportWidth = 500; grid.HorizontalOffset = 0;
-        Assert.That(editor.Page.BeginNodePointer(grid, new Point(100, 10), new Point(0, 0)), Is.True);
-        editor.Page.UpdateNodePointer(new Point(invalid, 10), grid, new Point(100, 10));
+        Assert.That(editor.Page.BeginNodePointer(grid, new Point(100, editor.Vm.TrackHeight / 2), new Point(0, 0)), Is.True);
+        editor.Page.UpdateNodePointer(new Point(invalid, editor.Vm.TrackHeight / 2), grid, new Point(100, editor.Vm.TrackHeight / 2));
         Assert.That(editor.Vm.IsNodeDragActive, Is.False);
         Assert.That(editor.Node.Timestamp, Is.EqualTo(1000));
         Assert.That(editor.Vm.CanUndo, Is.False);
@@ -271,8 +271,8 @@ public class WorkstationNodeInteractionTests
         var editor = CreateEditor(); using var view = editor.View;
         var grid = Descendants<BeatGridView>(editor.Page).First();
         grid.ContentWidth = 1000; grid.ViewportWidth = 500; grid.HorizontalOffset = 0;
-        editor.Page.BeginNodePointer(grid, new Point(100, 10), new Point(0, 0));
-        editor.Page.UpdateNodePointer(new Point(20, 20), grid, new Point(125, 10));
+        editor.Page.BeginNodePointer(grid, new Point(100, editor.Vm.TrackHeight / 2), new Point(0, 0));
+        editor.Page.UpdateNodePointer(new Point(20, 20), grid, new Point(125, editor.Vm.TrackHeight / 2));
         var list = (ListBox)editor.Page.FindName("TrackList"); var layer = AdornerLayer.GetAdornerLayer(list)!;
         Assert.That(editor.Page.HandlePlaybackKey(key, modifiers, false, grid), Is.True);
         UiTestPump.Run(editor.Page.NodeInputCompletion);
@@ -288,8 +288,8 @@ public class WorkstationNodeInteractionTests
         var editor = CreateEditor(); using var view = editor.View;
         var grid = Descendants<BeatGridView>(editor.Page).First();
         grid.ContentWidth = 1000; grid.ViewportWidth = 500; grid.HorizontalOffset = 0;
-        editor.Page.BeginNodePointer(grid, new Point(100, 10), new Point(0, 0));
-        editor.Page.UpdateNodePointer(new Point(20, 20), grid, new Point(125, 10));
+        editor.Page.BeginNodePointer(grid, new Point(100, editor.Vm.TrackHeight / 2), new Point(0, 0));
+        editor.Page.UpdateNodePointer(new Point(20, 20), grid, new Point(125, editor.Vm.TrackHeight / 2));
         grid.RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent, grid));
         Assert.That(editor.Vm.IsNodeDragActive, Is.False);
         Assert.That(editor.Node.Timestamp, Is.EqualTo(1000));

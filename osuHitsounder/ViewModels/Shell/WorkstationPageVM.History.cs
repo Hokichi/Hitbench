@@ -35,6 +35,7 @@ public partial class WorkstationPageVM
 
     private void NotifyHistoryState()
     {
+        NotifyTrackAuditionState();
         OnPropertyChanged(nameof(CanUndo));
         OnPropertyChanged(nameof(CanRedo));
         UndoCommand.NotifyCanExecuteChanged();

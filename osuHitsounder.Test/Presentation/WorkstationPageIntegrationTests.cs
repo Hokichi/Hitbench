@@ -112,7 +112,7 @@ public class WorkstationPageIntegrationTests
     }
 
     [Test]
-    public void TrackToggleSpaceDoesNotTriggerTransport()
+    public void TrackToggleSpaceControlsTransport()
     {
         var track = new Track(); var audio = new StubWorkstationAudioService();
         var source = new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(
@@ -122,12 +122,14 @@ public class WorkstationPageIntegrationTests
         using var view = new InMemoryView(new Window { Content = page, Width = 900, Height = 700 });
         UiTestPump.Run(page.LoadCompletion);
         var toggle = new ToggleButton { DataContext = track };
-        Assert.That(page.HandlePlaybackKey(Key.Space, ModifierKeys.None, false, toggle), Is.False);
-        Assert.That(audio.Snapshot.IsPlaying, Is.False);
+        Assert.That(page.HandlePlaybackKey(Key.Space, ModifierKeys.None, false, toggle), Is.True);
+        UiTestPump.Run(page.PlaybackInputCompletion);
+        Assert.That(audio.Snapshot.IsPlaying, Is.True);
         var mute = FindVisualChildren<ToggleButton>(page).Single(control => control.Name == "TrackMuteToggle");
         ((System.Windows.Automation.Provider.IToggleProvider)new System.Windows.Automation.Peers.ToggleButtonAutomationPeer(mute)).Toggle();
         Assert.That(track.IsTrackMuted, Is.True);
-        Assert.That(audio.Snapshot.IsPlaying, Is.False);
+        UiTestPump.Run(page.PlaybackInputCompletion);
+        Assert.That(audio.Snapshot.IsPlaying, Is.True);
         UiTestPump.Run(page.DeactivateAsync());
     }
 
@@ -983,9 +985,9 @@ public class WorkstationPageIntegrationTests
         UiTestPump.Run(page.PlaybackInputCompletion);
             Assert.That(page.HandlePlaybackKey(Key.Enter, ModifierKeys.None, false, page), Is.False);
         UiTestPump.Run(page.PlaybackInputCompletion);
-            Assert.That(page.HandlePlaybackKey(Key.Space, ModifierKeys.None, false, new TextBox()), Is.False);
+            Assert.That(page.HandlePlaybackKey(Key.Space, ModifierKeys.None, false, new TextBox()), Is.True);
         UiTestPump.Run(page.PlaybackInputCompletion);
-            Assert.That(page.HandlePlaybackKey(Key.Space, ModifierKeys.None, false, new PasswordBox()), Is.False);
+            Assert.That(page.HandlePlaybackKey(Key.Space, ModifierKeys.None, false, new PasswordBox()), Is.True);
         UiTestPump.Run(page.PlaybackInputCompletion);
         });
 
@@ -1364,9 +1366,7 @@ public class WorkstationPageIntegrationTests
         using var view = new InMemoryView(new Window { Content = page, Width = width, Height = 720, FlowDirection = direction });
         try
         {
-            var panel = (WrapPanel)page.FindName("TransportPanel");
-            var action = panel.Children.OfType<BalloonButton>().SingleOrDefault(button =>
-                AutomationProperties.GetName(button) == "Resnap all samples");
+            var action = page.FindName("ResnapAllSamplesButton") as BalloonButton;
             Assert.That(action, Is.Not.Null, "The workstation header must expose the resnap action.");
             var button = action!;
             Assert.That(button.IsEnabled, Is.False);

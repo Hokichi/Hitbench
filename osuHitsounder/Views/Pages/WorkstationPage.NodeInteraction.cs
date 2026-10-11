@@ -91,7 +91,7 @@ public partial class WorkstationPage
             if (!viewModel.BeginNodeDrag(source, pointerNode)) { CancelNodePointer(); return; }
             nodeLayer = AdornerLayer.GetAdornerLayer(TrackList);
             if (nodeLayer is null) { CancelNodePointer(); return; }
-            nodeAdorner = new OHsSampleNodeDragAdorner(TrackList) { IsHitTestVisible = false, NodeHeight = nodeSourceGrid.ActualHeight, NodeWidth = nodeSourceGrid.GetDisplayedSampleBounds(pointerNode).Width };
+            nodeAdorner = new OHsSampleNodeDragAdorner(TrackList) { IsHitTestVisible = false, NodeHeight = nodeSourceGrid.GetDisplayedSampleBounds(pointerNode).Height, NodeWidth = nodeSourceGrid.GetDisplayedSampleBounds(pointerNode).Width };
             nodeLayer.Add(nodeAdorner); nodeDragging = true;
         }
         nodeAdorner!.CursorPosition = TranslatePoint(pagePoint, TrackList);
@@ -136,7 +136,7 @@ public partial class WorkstationPage
         if (nodeAdorner is null || pointerNode is null || (nodeTargetGrid ?? nodeSourceGrid) is not { } grid) return;
         grid.GetBindingExpression(BeatGridView.ZoomFactorProperty)?.UpdateTarget();
         nodeAdorner.NodeWidth = grid.GetDisplayedSampleBounds(pointerNode).Width;
-        nodeAdorner.NodeHeight = grid.ActualHeight;
+        nodeAdorner.NodeHeight = grid.GetDisplayedSampleBounds(pointerNode).Height;
         nodeAdorner.InvalidateVisual();
     }
     private void OnNodePointerUp(object sender, MouseButtonEventArgs e)

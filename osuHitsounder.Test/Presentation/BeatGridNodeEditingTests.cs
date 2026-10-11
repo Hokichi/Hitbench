@@ -28,6 +28,16 @@ public class BeatGridNodeEditingTests
         Assert.That(grid.FindSampleAt(new Point(10 + halfWidth, 10)), Is.Null);
         Assert.That(node.Timestamp, Is.EqualTo(500));
     }
+    [TestCase(18d)]
+    [TestCase(36d)]
+    [TestCase(144d)]
+    public void LanePaddingDoesNotHitNode(double height)
+    {
+        var grid = CreateGrid(height); var node = new Sample { Timestamp = 250 }; grid.Samples = [node];
+        Assert.That(grid.FindSampleAt(new Point(10, height / 2)), Is.SameAs(node));
+        Assert.That(grid.FindSampleAt(new Point(10, height / 8)), Is.Null);
+        Assert.That(grid.GetSamplesIntersecting(new Rect(9, height / 8, 2, 1)), Is.Empty);
+    }
     private static BeatGridView CreateGrid(double height = 36)
     {
         var grid = new BeatGridView { Offsets = [0], Bpms = [60], Subdivision = 4, Duration = TimeSpan.FromSeconds(1),
@@ -75,7 +85,7 @@ public class BeatGridNodeEditingTests
         grid.Samples = [node]; grid.SelectedSamples = [node]; grid.PressedSample = node;
         grid.UpdatePointerPosition(5); grid.SuppressPlacementFeedback = true; grid.PrepareDrawing();
         var bounds = grid.GetSampleBounds(250);
-        Assert.That(grid.FindSampleAt(new Point(bounds.Left + bounds.Width / 2, bounds.Height / 2)), Is.SameAs(node));
+        Assert.That(grid.FindSampleAt(new Point(bounds.Left + bounds.Width / 2, bounds.Top + bounds.Height / 2)), Is.SameAs(node));
         var peer = UIElementAutomationPeer.CreatePeerForElement(grid)!;
         Assert.That(peer.GetItemStatus(), Does.Contain("1"));
         Assert.That(peer.IsEnabled(), Is.True);

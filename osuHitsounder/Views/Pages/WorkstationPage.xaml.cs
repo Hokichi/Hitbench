@@ -441,7 +441,6 @@ public partial class WorkstationPage : UserControl
     internal bool HandlePlaybackKey(Key key, ModifierKeys modifiers, bool isRepeat, DependencyObject? origin)
     {
         if (IsVolumeOverlayOpen) return true;
-        if (key == Key.Space && FindAncestor<ButtonBase>(origin) is { DataContext: Track }) return false;
         if (HandleNodeKey(key, modifiers, isRepeat, origin)) return true;
         if (deactivationStarted || !viewModel.CanPlay) return false;
         if (modifiers == ModifierKeys.Control && key is Key.Z or Key.Y)
@@ -455,7 +454,6 @@ public partial class WorkstationPage : UserControl
         }
         if (key == Key.Space)
         {
-            if (FindAncestor<TextBoxBase>(origin) is not null || FindAncestor<PasswordBox>(origin) is not null) return false;
             if (modifiers is not (ModifierKeys.None or ModifierKeys.Shift)) return false;
             var transport = modifiers == ModifierKeys.Shift ? viewModel.StopCommand : viewModel.PlayPauseCommand;
             if (!transport.CanExecute(null)) return false;
