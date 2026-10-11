@@ -76,6 +76,10 @@ public partial class WorkstationPageVM(
     public bool HasPendingSaves => managingSamples || IsNodeEditBusy || pendingZoom is not null || importBusy || removalBusy || !saveTail.IsCompleted || lastSaveError is not null;
     [ObservableProperty] private string? saveError;
     [ObservableProperty] private bool scrollWithMarker = true;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsSelectionMode))]
+    private bool isAdditionMode = true;
+    public bool IsSelectionMode => !IsAdditionMode;
     private CancellationTokenSource? loadCancellation;
     private Task? activeLoad;
     private int loadGeneration;
@@ -489,6 +493,7 @@ public partial class WorkstationPageVM(
         var timestamp = (int)Math.Round(leftBoundaryMilliseconds, MidpointRounding.AwayFromZero);
         var existing = track.Samples.LastOrDefault(node => node.Timestamp == timestamp);
         if (existing is not null) return SelectNode(track, existing, false);
+        if (!IsAdditionMode) return false;
         var fileName = availableSamples.FirstOrDefault(name =>
             string.Equals(name, track.SelectedSampleFileName, StringComparison.OrdinalIgnoreCase));
         if (fileName is null) return false;

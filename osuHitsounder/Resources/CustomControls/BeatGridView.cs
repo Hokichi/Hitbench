@@ -25,6 +25,8 @@ public sealed class BeatGridView : FrameworkElement
     public static readonly DependencyProperty ViewportWidthProperty = DependencyProperty.Register(nameof(ViewportWidth), typeof(double), typeof(BeatGridView), RenderMetadata(0d));
     public static readonly DependencyProperty SamplesProperty = DependencyProperty.Register(nameof(Samples), typeof(IReadOnlyList<Sample>), typeof(BeatGridView), RenderMetadata());
     public static readonly DependencyProperty SamplesRevisionProperty = DependencyProperty.Register(nameof(SamplesRevision), typeof(int), typeof(BeatGridView), RenderMetadata(0));
+    public static readonly DependencyProperty AllowNodeCreationProperty = DependencyProperty.Register(nameof(AllowNodeCreation), typeof(bool), typeof(BeatGridView), RenderMetadata(true));
+    public bool AllowNodeCreation { get => (bool)GetValue(AllowNodeCreationProperty); set => SetValue(AllowNodeCreationProperty, value); }
     public static readonly DependencyProperty CanPlaceSamplesProperty = DependencyProperty.Register(nameof(CanPlaceSamples), typeof(bool), typeof(BeatGridView), new FrameworkPropertyMetadata(false, OnCanPlaceChanged));
     public static readonly DependencyProperty HoverBrushProperty = DependencyProperty.Register(nameof(HoverBrush), typeof(Brush), typeof(BeatGridView), RenderMetadata());
     public static readonly DependencyProperty MarkerBrushProperty = DependencyProperty.Register(nameof(MarkerBrush), typeof(Brush), typeof(BeatGridView), RenderMetadata());
@@ -149,6 +151,7 @@ public sealed class BeatGridView : FrameworkElement
     {
         if (!CanPlaceSamples || ActiveInterval is not { } interval) return false;
         if (FindActiveSample() is { } sample) RaiseEvent(new SampleSelectionRequestedEventArgs(SampleSelectionRequestedEvent, sample));
+        else if (!AllowNodeCreation) return false;
         else RaiseEvent(new SamplePlacementRequestedEventArgs(SamplePlacementRequestedEvent, interval.StartMilliseconds));
         return true;
     }
@@ -393,7 +396,7 @@ public sealed class BeatGridView : FrameworkElement
         BeatGridDrawing.Draw(context, this, Offsets, Bpms, Subdivision, Duration.TotalMilliseconds,
             ContentWidth, HorizontalOffset, ViewportWidth, ActualHeight, false);
         context.Pop();
-        if (!SuppressPlacementFeedback && ActiveInterval is { } active)
+        if (!SuppressPlacementFeedback && (AllowNodeCreation || FindActiveSample() is not null) && ActiveInterval is { } active)
         {
             var rect = Inset(GetSampleBounds((int)Math.Round(active.StartMilliseconds, MidpointRounding.AwayFromZero)));
             context.DrawRoundedRectangle(hover, null, rect, 4, 4);

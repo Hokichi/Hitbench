@@ -273,13 +273,15 @@ public partial class WorkstationPage : UserControl
     {
         if (sender is not ComboBox { DataContext: Track track } selector) return;
         selector.Tag = true;
-        selector.SetCurrentValue(ComboBox.SelectedItemProperty, selector.Name == "TrackSamplesetSelector" ? track.Sampleset : track.Addition);
+        selector.SetCurrentValue(ComboBox.SelectedItemProperty, selector.Name switch { "TrackSamplesetSelector" => (object)track.Sampleset, "TrackSampleTypeSelector" => track.SampleType, _ => track.Addition });
         selector.Tag = false;
     }
 
     private void OnTrackMetadataSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (sender is not ComboBox { IsLoaded: true, DataContext: Track track, SelectedItem: string value } selector || selector.Tag is true) return;
+        if (sender is not ComboBox { IsLoaded: true, DataContext: Track track } selector || selector.Tag is true) return;
+        if (selector.Name == "TrackSampleTypeSelector" && selector.SelectedItem is osuHitsounder.Core.Enums.SampleType type) { viewModel.SetTrackSampleType(track, type); return; }
+        if (selector.SelectedItem is not string value) return;
         if (selector.Name == "TrackSamplesetSelector") viewModel.SetTrackSampleset(track, value);
         else if (selector.Name == "TrackAdditionSelector") viewModel.SetTrackAddition(track, value);
     }
@@ -343,6 +345,11 @@ public partial class WorkstationPage : UserControl
     }
 
     public void CancelReturn() => viewModel.CancelReturn();
+
+    private void OnEditingModeChecked(object sender, RoutedEventArgs e)
+    {
+        if (sender is RadioButton radio) viewModel.IsAdditionMode = radio.Name == "AdditionModeButton";
+    }
 
     private void OnWaveformScrollBarDragStarted(object sender, DragStartedEventArgs e)
     {

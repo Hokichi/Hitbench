@@ -8,6 +8,19 @@ namespace osuHitsounder.Test.Presentation;
 public class WorkstationNodeEditingTests
 {
     [Test]
+    public void SelectionModePreventsCreationButKeepsEditing()
+    {
+        Assert.That(vm.IsAdditionMode, Is.True);
+        vm.IsAdditionMode = false;
+        Assert.That(vm.PlaceSample(first, 1500), Is.False);
+        Assert.That(vm.PlaceSample(first, a.Timestamp), Is.True);
+        Assert.That(vm.BeginNodeDrag(first, a), Is.True);
+        vm.CancelNodeDrag();
+        Assert.That(vm.CanPlaceSamples, Is.True);
+        vm.IsAdditionMode = true;
+        Assert.That(vm.PlaceSample(first, 1500), Is.True);
+    }
+    [Test]
     public void SelectingNodesDisablesFollowingEvenForUnchangedSelection()
     {
         vm.ScrollWithMarker = true; vm.SelectNode(first, a, false);

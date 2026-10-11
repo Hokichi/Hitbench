@@ -24,6 +24,27 @@ namespace osuHitsounder.Test.Presentation;
 public class WorkstationPageIntegrationTests
 {
     [Test]
+    public void EditingModesAndScrollDragKeepPublicContracts()
+    {
+        EnsureResources("Dark");
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler());
+        var page = new WorkstationPage(vm); page.SetProjectPath("project.json");
+        using var view = new InMemoryView(new Window { Content = page, Width = 900, Height = 700 });
+        UiTestPump.Run(page.LoadCompletion);
+        var addition = (RadioButton)page.FindName("AdditionModeButton");
+        var selection = (RadioButton)page.FindName("SelectionModeButton");
+        Assert.That(addition.IsChecked, Is.True);
+        UiControlContract.AssertStyle<RadioButton>(selection, "OHsWorkstationModeButtonStyle");
+        selection.SetCurrentValue(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, true);
+        Assert.That(vm.IsSelectionMode, Is.True);
+        Assert.That(addition.IsChecked, Is.False);
+        var bar = (ScrollBar)page.FindName("WaveformScrollBar");
+        vm.ScrollWithMarker = true;
+        bar.RaiseEvent(new System.Windows.Controls.Primitives.DragStartedEventArgs(0, 0) { RoutedEvent = System.Windows.Controls.Primitives.Thumb.DragStartedEvent });
+        Assert.That(vm.ScrollWithMarker, Is.False);
+        UiTestPump.Run(page.DeactivateAsync());
+    }
+    [Test]
     public void NarrowWorkstationLoadsAndRecoversTimelineOnResize()
     {
         var audio = new StubWorkstationAudioService();
@@ -184,8 +205,8 @@ public class WorkstationPageIntegrationTests
         Assert.That(addition.Items.Cast<string>(), Is.EqualTo(new[] { "Normal", "Soft", "Drum", "None" }));
         Assert.That(sampleset.SelectedItem, Is.EqualTo("Drum"));
         Assert.That(addition.SelectedItem, Is.EqualTo("Soft"));
-        Assert.That(sampleset.Style, Is.SameAs(page.FindResource("OHsWorkstationTrackMetadataComboBoxStyle")));
-        Assert.That(sampleset.Style.BasedOn, Is.SameAs(page.FindResource("OHsComboBoxStyle")));
+        Assert.That(sampleset.Style, Is.SameAs(page.FindResource("OHsWorkstationCompactMetadataStyle")));
+        Assert.That(sampleset.Style.BasedOn, Is.SameAs(page.FindResource("OHsWorkstationTrackMetadataComboBoxStyle")));
         Assert.That(sampleset.IsTabStop, Is.True);
         Assert.That(saves.Writes, Is.Zero);
         sampleset.SelectedItem = "Soft"; addition.SelectedItem = "None";
@@ -532,7 +553,7 @@ public class WorkstationPageIntegrationTests
             view.UpdateLayout();
             var list = (ItemsControl)page.FindName("TrackList");
             var otherCard = (FrameworkElement)list.ItemContainerGenerator.ContainerFromIndex(1)!;
-            var selector = FindVisualChild<ComboBox>(otherCard)!;
+            var selector = FindVisualChildren<ComboBox>(otherCard).Single(box => box.Name == "TrackSampleFileSelector");
             Assert.That(selector.SelectedItem, Is.EqualTo("a.wav"));
             UiTestPump.Run(vm.ImportSamplesAsync());
             view.UpdateLayout();
@@ -582,25 +603,25 @@ public class WorkstationPageIntegrationTests
             new UiScheduler(Dispatcher.CurrentDispatcher), files);
         var page = new WorkstationPage(vm);
         page.SetProjectPath("project.json");
-        using var view = new InMemoryView(new Window { Content = page, Width = 880, Height = 800 });
+        using var view = new InMemoryView(new Window { Content = page, Width = 880, Height = 1200 });
         UiTestPump.Run(listing.Task);
         view.UpdateLayout();
         var list = (ItemsControl)page.FindName("TrackList");
         var cards = Enumerable.Range(0, 3).Select(index => (FrameworkElement)list.ItemContainerGenerator.ContainerFromIndex(index)!).ToArray();
         Assert.That(cards, Has.All.Not.Null);
         UiTestPump.Run(Dispatcher.CurrentDispatcher.InvokeAsync(() => { }, DispatcherPriority.ContextIdle).Task);
-        Assert.That(FindVisualChild<ComboBox>(cards[0])!.SelectedItem, Is.Null);
+        Assert.That(FindVisualChildren<ComboBox>(cards[0]).Single(box => box.Name == "TrackSampleFileSelector").SelectedItem, Is.Null);
         choices.SetResult(["Kick.wav", "Snare.wav"]);
         UiTestPump.Run(page.LoadCompletion);
         view.UpdateLayout();
 
         Assert.Multiple(() =>
         {
-            Assert.That(FindVisualChild<ComboBox>(cards[0])!.SelectedItem, Is.EqualTo("Kick.wav"));
-            Assert.That(FindVisualChild<ComboBox>(cards[1])!.SelectedItem, Is.EqualTo("Snare.wav"));
+            Assert.That(FindVisualChildren<ComboBox>(cards[0]).Single(box => box.Name == "TrackSampleFileSelector").SelectedItem, Is.EqualTo("Kick.wav"));
+            Assert.That(FindVisualChildren<ComboBox>(cards[1]).Single(box => box.Name == "TrackSampleFileSelector").SelectedItem, Is.EqualTo("Snare.wav"));
             foreach (var card in cards.Take(2))
                 Assert.That(FindVisualChildren<TextBlock>(card).Single(block => block.Name == "MissingGridStatus").Visibility, Is.EqualTo(Visibility.Collapsed));
-            Assert.That(FindVisualChild<ComboBox>(cards[2])!.SelectedItem, Is.Null);
+            Assert.That(FindVisualChildren<ComboBox>(cards[2]).Single(box => box.Name == "TrackSampleFileSelector").SelectedItem, Is.Null);
             Assert.That(FindVisualChildren<TextBlock>(cards[2]).Single(block => block.Name == "MissingGridStatus").Text, Is.EqualTo("Sample not found."));
             Assert.That(tracks[0].Samples.Single().FileName, Is.EqualTo("kick.wav"));
             Assert.That(tracks[1].Samples.Single().FileName, Is.EqualTo("Snare.wav"));
@@ -1344,7 +1365,7 @@ public class WorkstationPageIntegrationTests
             window.Height = height + cardHeight - 200;
             view.UpdateLayout();
             var selector = (ValueSlider)page.FindName("SubdivisionSelector");
-            UiControlContract.AssertStyle<ValueSlider>(selector, "OHsWorkstationSubdivisionStyle");
+            UiControlContract.AssertStyle<ValueSlider>(selector, "OHsWorkstationFooterSubdivisionStyle");
             Assert.That(selector.Value, Is.EqualTo(vm.SelectedSubdivisionIndex));
         }
     }
@@ -1377,7 +1398,7 @@ public class WorkstationPageIntegrationTests
             }));
             UiTestPump.Run(page.LoadCompletion);
             view.UpdateLayout();
-            UiControlContract.AssertStyle<BalloonButton>(button, "OHsWorkstationResnapButtonStyle");
+            UiControlContract.AssertStyle<BalloonButton>(button, "OHsWorkstationToolbarResnapStyle");
             Assert.That(button.Command, Is.SameAs(vm.ResnapAllSamplesCommand));
             Assert.That(button.IsEnabled, Is.True);
             Assert.That(button.ButtonText, Is.EqualTo("Resnap all samples"));

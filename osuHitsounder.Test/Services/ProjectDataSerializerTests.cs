@@ -5,6 +5,17 @@ namespace osuHitsounder.Test.Services;
 
 public class ProjectDataSerializerTests
 {
+    [TestCase(0)]
+    [TestCase(1)]
+    [TestCase(2)]
+    [TestCase(3)]
+    public void SampleTypesRoundTrip(int type)
+    {
+        var original = new Track { SampleType = (osuHitsounder.Core.Enums.SampleType)type };
+        var restored = ProjectDataSerializer.Deserialize(ProjectDataSerializer.Serialize(new ProjectData { Tracks = [original] })).Tracks.Single();
+        Assert.That(restored.SampleType, Is.EqualTo(original.SampleType));
+        Assert.That(ProjectDataSerializer.Deserialize("{\"Tracks\":[{\"SampleType\":null}]}").Tracks.Single().SampleType, Is.EqualTo(osuHitsounder.Core.Enums.SampleType.Normal));
+    }
     [TestCase("99")]
     [TestCase("true")]
     public void InvalidSampleTypeIsRejected(string token) =>
