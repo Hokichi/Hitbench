@@ -20,11 +20,12 @@ public class WorkstationNodeInteractionTests
     {
         var editor = CreateEditor(); using var view = editor.View;
         var grid = Descendants<BeatGridView>(editor.Page).First();
-        grid.ContentWidth = 1000; grid.ViewportWidth = 500; grid.HorizontalOffset = 0;
+        grid.ContentWidth = 4000; grid.ViewportWidth = 500; grid.HorizontalOffset = 0;
         editor.Vm.SelectNode(editor.Vm.Tracks[0], editor.Node, false);
-        Assert.That(editor.Page.BeginNodePointer(grid, new Point(111, editor.Vm.TrackHeight / 2), new Point()), Is.False);
+        var blankX = grid.GetSampleBounds(editor.Node.Timestamp).Right + 1;
+        Assert.That(editor.Page.BeginNodePointer(grid, new Point(blankX, editor.Vm.TrackHeight / 2), new Point()), Is.False);
         Assert.That(editor.Vm.SelectedSamples, Is.Empty);
-        grid.UpdatePointerPosition(111);
+        grid.UpdatePointerPosition(blankX);
         Assert.That(grid.RequestPointerSamplePlacement(), Is.True);
         Assert.That(editor.Vm.SelectedSamples, Is.Empty);
         Assert.That(editor.Vm.Tracks[0].Samples, Has.Count.EqualTo(1));
@@ -34,7 +35,7 @@ public class WorkstationNodeInteractionTests
         UiTestPump.Run(editor.Page.DeactivateAsync());
     }
     [Test]
-    public void ZoomDuringGestureUpdatesBoundHitGeometryWithoutChangingSamples()
+    public void ZoomDuringGestureKeepsSourcesHiddenAndRestoresHitTesting()
     {
         var editor = CreateEditor(); using var view = editor.View;
         var grid = Descendants<BeatGridView>(editor.Page).First();
@@ -42,12 +43,15 @@ public class WorkstationNodeInteractionTests
         editor.Page.BeginNodePointer(grid, new Point(100, editor.Vm.TrackHeight / 2), new Point());
         editor.Page.UpdateNodePointer(new Point(20, editor.Vm.TrackHeight / 2), grid, new Point(125, editor.Vm.TrackHeight / 2));
         for (var step = 0; step < 16; step++) editor.Vm.ZoomOutCommand.Execute(null);
-        Assert.That(grid.FindSampleAt(new Point(129, editor.Vm.TrackHeight / 2)), Is.SameAs(editor.Node));
-        Assert.That(grid.FindSampleAt(new Point(130, editor.Vm.TrackHeight / 2)), Is.Null);
+        Assert.That(grid.GetDisplayedSampleBounds(editor.Node).IsEmpty, Is.True);
+        Assert.That(grid.FindSampleAt(new Point(100, editor.Vm.TrackHeight / 2)), Is.Null);
         Assert.That(editor.Vm.IsNodeDragActive, Is.True);
         Assert.That(editor.Node.Timestamp, Is.EqualTo(1000));
         editor.Page.CancelNodePointer();
-        Assert.That(grid.DragPreviewTimestamp, Is.Null);
+        var bounds = grid.GetDisplayedSampleBounds(editor.Node);
+        Assert.That(bounds.IsEmpty, Is.False);
+        Assert.That(grid.FindSampleAt(new Point(100, editor.Vm.TrackHeight / 2)), Is.SameAs(editor.Node));
+        Assert.That(grid.FindSampleAt(new Point(bounds.Right, editor.Vm.TrackHeight / 2)), Is.Null);
         UiTestPump.Run(editor.Page.DeactivateAsync());
     }
     [TestCase(false)]
@@ -60,15 +64,19 @@ public class WorkstationNodeInteractionTests
         var target = grids[crossTrack ? 1 : 0];
         editor.Page.BeginNodePointer(grids[0], new Point(100, editor.Vm.TrackHeight / 2), new Point());
         editor.Page.UpdateNodePointer(new Point(1, 1), target, new Point(125, editor.Vm.TrackHeight / 2));
-        Assert.That(target.DragPreviewTimestamp, Is.Null);
+        Assert.That(editor.Vm.IsNodeDragActive, Is.False);
+        Assert.That(grids[0].FindSampleAt(new Point(100, editor.Vm.TrackHeight / 2)), Is.SameAs(editor.Node));
         editor.Page.UpdateNodePointer(new Point(20, 100), target, new Point(125, editor.Vm.TrackHeight / 2));
-        Assert.That(target.DragPreviewTimestamp, Is.EqualTo(1250));
+        Assert.That(editor.Vm.NodePreviewTimestamps[editor.Node], Is.EqualTo(1250));
+        Assert.That(grids[0].GetDisplayedSampleBounds(editor.Node).IsEmpty, Is.True);
+        Assert.That(grids[0].FindSampleAt(new Point(100, editor.Vm.TrackHeight / 2)), Is.Null);
         Assert.That(editor.Node.Timestamp, Is.EqualTo(1000)); Assert.That(editor.Vm.CanUndo, Is.False);
         Assert.That(editor.Vm.Tracks.Sum(track => track.Samples.Count), Is.EqualTo(1));
         var complete = editor.Page.CompleteNodePointerAsync(); UiTestPump.Run(complete);
         Assert.That(complete.GetAwaiter().GetResult(), Is.True);
-        Assert.That(target.DragPreviewTimestamp, Is.Null);
+        Assert.That(editor.Vm.IsNodeDragActive, Is.False);
         Assert.That(editor.Node.Timestamp, Is.EqualTo(1250));
+        Assert.That(target.FindSampleAt(new Point(125, editor.Vm.TrackHeight / 2)), Is.SameAs(editor.Node));
         UiTestPump.Run(editor.Page.DeactivateAsync());
     }
 
@@ -87,7 +95,8 @@ public class WorkstationNodeInteractionTests
         foreach (var grid in grids) { grid.ContentWidth = 1000; grid.ViewportWidth = 500; grid.HorizontalOffset = 0; }
         editor.Page.BeginNodePointer(grids[0], new Point(100, editor.Vm.TrackHeight / 2), new Point());
         editor.Page.UpdateNodePointer(new Point(20, 100), grids[1], new Point(125, editor.Vm.TrackHeight / 2));
-        Assert.That(grids[1].DragPreviewTimestamp, Is.EqualTo(1250));
+        Assert.That(editor.Vm.NodePreviewTimestamps[editor.Node], Is.EqualTo(1250));
+        Assert.That(grids[0].GetDisplayedSampleBounds(editor.Node).IsEmpty, Is.True);
         switch (action)
         {
             case "leave": editor.Page.UpdateNodePointer(new Point(50, 500), null, default); break;
@@ -99,26 +108,34 @@ public class WorkstationNodeInteractionTests
             case "capture": editor.Page.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, 0) { RoutedEvent = Mouse.LostMouseCaptureEvent }); break;
             case "deactivate": UiTestPump.Run(editor.Page.DeactivateAsync()); break;
         }
-        Assert.That(grids[1].DragPreviewTimestamp, Is.Null);
-        if (action == "switch") Assert.That(grids[0].DragPreviewTimestamp, Is.EqualTo(1500));
+        if (action is "switch" or "leave") Assert.That(grids[0].GetDisplayedSampleBounds(editor.Node).IsEmpty, Is.True);
+        if (action == "switch") Assert.That(editor.Vm.NodePreviewTimestamps[editor.Node], Is.EqualTo(1500));
         editor.Page.CancelNodePointer();
-        Assert.That(grids[0].DragPreviewTimestamp, Is.Null);
+        Assert.That(grids[0].GetDisplayedSampleBounds(editor.Node).IsEmpty, Is.False);
         Assert.That(editor.Node.Timestamp, Is.EqualTo(1000)); Assert.That(editor.Vm.CanUndo, Is.False);
         UiTestPump.Run(editor.Page.DeactivateAsync());
     }
 
-    [Test]
-    public void SelectedGroupDragCommitsAllNodesTogether()
+    [TestCase(false)]
+    [TestCase(true)]
+    public void SelectedGroupDragCommitsAllNodesTogether(bool crossTrack)
     {
         var editor = CreateEditor(); using var view = editor.View;
-        var grid = Descendants<BeatGridView>(editor.Page).First(); grid.ContentWidth = 1000; grid.ViewportWidth = 500; grid.HorizontalOffset = 0;
+        var grids = Descendants<BeatGridView>(editor.Page).ToArray();
+        foreach (var item in grids) { item.ContentWidth = 1000; item.ViewportWidth = 500; item.HorizontalOffset = 0; }
+        var grid = grids[0];
+        var target = grids[crossTrack ? 1 : 0];
         var other = new Sample { Timestamp = 1500, FileName = "a.wav" }; editor.Vm.Tracks[0].Samples.Add(other);
         editor.Vm.SetNodeSelection([editor.Node, other]);
         editor.Page.BeginNodePointer(grid, new Point(100, editor.Vm.TrackHeight / 2), new Point());
-        editor.Page.UpdateNodePointer(new Point(20, editor.Vm.TrackHeight / 2), grid, new Point(125, editor.Vm.TrackHeight / 2));
+        editor.Page.UpdateNodePointer(new Point(20, editor.Vm.TrackHeight / 2), target, new Point(125, editor.Vm.TrackHeight / 2));
+        Assert.That(grid.GetDisplayedSampleBounds(editor.Node).IsEmpty, Is.True);
+        Assert.That(grid.GetDisplayedSampleBounds(other).IsEmpty, Is.True);
         Assert.That(other.Timestamp, Is.EqualTo(1500)); Assert.That(editor.Vm.CanUndo, Is.False);
         UiTestPump.Run(editor.Page.CompleteNodePointerAsync());
         Assert.That(editor.Node.Timestamp, Is.EqualTo(1250)); Assert.That(other.Timestamp, Is.EqualTo(1750));
+        Assert.That(editor.Vm.Tracks[crossTrack ? 1 : 0].Samples, Is.EquivalentTo(new[] { editor.Node, other }));
+        Assert.That(target.GetDisplayedSampleBounds(other).IsEmpty, Is.False);
         editor.Vm.UndoCommand.Execute(null);
         Assert.That(editor.Node.Timestamp, Is.EqualTo(1000)); Assert.That(other.Timestamp, Is.EqualTo(1500));
         UiTestPump.Run(editor.Page.DeactivateAsync());
@@ -248,6 +265,7 @@ public class WorkstationNodeInteractionTests
         Assert.That(editor.Vm.IsNodeDragActive, Is.False);
         Assert.That(editor.Node.Timestamp, Is.EqualTo(cancel ? 1000 : 1250));
         Assert.That(editor.Vm.Tracks[cancel ? 0 : 1].Samples.Contains(editor.Node), Is.True);
+        Assert.That(grids[cancel ? 0 : 1].GetDisplayedSampleBounds(editor.Node).IsEmpty, Is.False);
         UiTestPump.Run(editor.Page.DeactivateAsync());
     }
     [TestCase(double.NaN)]
@@ -262,6 +280,48 @@ public class WorkstationNodeInteractionTests
         Assert.That(editor.Vm.IsNodeDragActive, Is.False);
         Assert.That(editor.Node.Timestamp, Is.EqualTo(1000));
         Assert.That(editor.Vm.CanUndo, Is.False);
+        UiTestPump.Run(editor.Page.DeactivateAsync());
+    }
+
+    [Test]
+    public void CollisionRestoresSourcesAndRemovesCursorGhost()
+    {
+        var editor = CreateEditor(); using var view = editor.View;
+        var grids = Descendants<BeatGridView>(editor.Page).ToArray();
+        foreach (var grid in grids) { grid.ContentWidth = 1000; grid.ViewportWidth = 500; grid.HorizontalOffset = 0; }
+        var occupied = new Sample { Timestamp = 1250, FileName = "b.wav" };
+        editor.Vm.Tracks[1].Samples.Add(occupied);
+        editor.Page.BeginNodePointer(grids[0], new Point(100, editor.Vm.TrackHeight / 2), new Point());
+        editor.Page.UpdateNodePointer(new Point(20, 100), grids[1], new Point(125, editor.Vm.TrackHeight / 2));
+        Assert.That(grids[0].GetDisplayedSampleBounds(editor.Node).IsEmpty, Is.True);
+        var complete = editor.Page.CompleteNodePointerAsync(); UiTestPump.Run(complete);
+        Assert.That(complete.Result, Is.False);
+        Assert.That(grids[0].FindSampleAt(new Point(100, editor.Vm.TrackHeight / 2)), Is.SameAs(editor.Node));
+        Assert.That(editor.Node.Timestamp, Is.EqualTo(1000));
+        Assert.That(editor.Vm.Tracks[1].Samples.Single(), Is.SameAs(occupied));
+        var list = (ListBox)editor.Page.FindName("TrackList");
+        Assert.That(AdornerLayer.GetAdornerLayer(list)!.GetAdorners(list), Is.Null);
+        Assert.That(editor.Vm.CanUndo, Is.False);
+        UiTestPump.Run(editor.Page.DeactivateAsync());
+    }
+
+    [Test]
+    public void MissingAdornerLayerCancelsDragAndKeepsSourceVisible()
+    {
+        var editor = CreateEditor(); using var view = editor.View;
+        var detached = new WorkstationPage(editor.Vm);
+        UiTestPump.Layout(detached, 900, 600);
+        Descendants<AdornerDecorator>(detached).Single().Child = null;
+        var grid = new BeatGridView { DataContext = editor.Vm.Tracks[0], Samples = editor.Vm.Tracks[0].Samples,
+            CanPlaceSamples = true, Duration = TimeSpan.FromSeconds(10), ContentWidth = 1000, ViewportWidth = 500 };
+        UiTestPump.Layout(grid, 500, 36);
+        Assert.That(AdornerLayer.GetAdornerLayer((ListBox)detached.FindName("TrackList")), Is.Null);
+        Assert.That(detached.BeginNodePointer(grid, new Point(100, 18), new Point()), Is.True);
+        detached.UpdateNodePointer(new Point(20, 20), grid, new Point(125, 18));
+        Assert.That(editor.Vm.IsNodeDragActive, Is.False);
+        Assert.That(grid.FindSampleAt(new Point(100, 18)), Is.SameAs(editor.Node));
+        Assert.That(editor.Node.Timestamp, Is.EqualTo(1000));
+        UiTestPump.Run(detached.DeactivateAsync());
         UiTestPump.Run(editor.Page.DeactivateAsync());
     }
     [TestCase(Key.Delete, ModifierKeys.None)]

@@ -933,7 +933,7 @@
                                 PlaybackMarkerOutlineBrush="{DynamicResource Brush.Navy.Muted}"
                                 Position="{Binding DataContext.Position, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
                                 PressedBrush="{DynamicResource Brush.Navy}"
-                                PreviewTimestamps="{Binding DataContext.NodePreviewTimestamps, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
+                                IsNodeDragActive="{Binding DataContext.IsNodeDragActive, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
                                 SamplePlacementRequested="OnSamplePlacementRequested"
                                 SampleRemovalRequested="OnSampleRemovalRequested"
                                 SampleSelectionRequested="OnSampleSelectionRequested"

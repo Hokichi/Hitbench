@@ -10,6 +10,28 @@ namespace osuHitsounder.Test.Presentation;
 [NonParallelizable]
 public class BeatGridNodeEditingTests
 {
+    [Test]
+    public void DraggedSamplesAreHiddenFromNodeInteraction()
+    {
+        var grid = CreateGrid();
+        var moving = new Sample { Timestamp = 250 };
+        var stationary = new Sample { Timestamp = 500 };
+        grid.Samples = [moving, stationary]; grid.SelectedSamples = [moving];
+        grid.IsNodeDragActive = true;
+        grid.SetActivePosition(TimeSpan.FromMilliseconds(250));
+        Assert.That(grid.GetDisplayedSampleBounds(moving).IsEmpty, Is.True);
+        Assert.That(grid.FindSampleAt(new Point(10, grid.ActualHeight / 2)), Is.Null);
+        Assert.That(grid.GetSamplesIntersecting(new Rect(0, 0, 200, 36)), Is.EqualTo(new[] { stationary }));
+        Assert.That(grid.FindActiveSample(), Is.Null);
+        Assert.That(grid.RequestSampleRemoval(10), Is.False);
+        Assert.That(grid.RequestActiveSampleRemoval(), Is.False);
+        Assert.That(grid.FindSampleAt(new Point(110, grid.ActualHeight / 2)), Is.SameAs(stationary));
+        grid.IsNodeDragActive = false;
+        Assert.That(grid.FindSampleAt(new Point(10, grid.ActualHeight / 2)), Is.SameAs(moving));
+        Assert.That(grid.FindActiveSample(), Is.SameAs(moving));
+        Assert.That(moving.Timestamp, Is.EqualTo(250));
+    }
+
     [TestCase(-1, 50d)]
     [TestCase(250, 5d)]
     [TestCase(275, 20d)]
@@ -63,10 +85,7 @@ public class BeatGridNodeEditingTests
         idleCommands = CountDrawingCommands(grid.ContentDrawing!);
         grid.UpdatePointerPosition(60); grid.PrepareDrawing();
         Assert.That(CountDrawingCommands(grid.ContentDrawing!), Is.EqualTo(idleCommands));
-        grid.DragPreviewTimestamp = 500; grid.PrepareDrawing();
-        Assert.That(CountDrawingCommands(grid.ContentDrawing!), Is.GreaterThan(idleCommands));
         grid.DataContext = new Track(); grid.PrepareDrawing();
-        Assert.That(grid.DragPreviewTimestamp, Is.Null);
         Assert.That(grid.ActiveInterval, Is.Null);
         Assert.That(CountDrawingCommands(grid.ContentDrawing!), Is.EqualTo(idleCommands));
         grid.UpdatePointerPosition(60); grid.PrepareDrawing();
@@ -76,22 +95,21 @@ public class BeatGridNodeEditingTests
     private static int CountDrawingCommands(Drawing drawing) => drawing is DrawingGroup group
         ? group.Children.Sum(CountDrawingCommands) : 1;
 
-    [TestCase(8, 2.5)]
-    [TestCase(16, 5)]
-    [TestCase(32, 10)]
-    [TestCase(64, 10)]
-    [TestCase(128, 10)]
-    public void ZoomScaledHitTestingUsesTimestampCenteredFootprints(double zoom, double halfWidth)
+    [TestCase(8)]
+    [TestCase(16)]
+    [TestCase(32)]
+    [TestCase(64)]
+    [TestCase(128)]
+    public void ZoomScaledHitTestingUsesTimestampCenteredFootprints(double zoom)
     {
         var grid = CreateGrid(); grid.ZoomFactor = zoom;
         var node = new Sample { Timestamp = 500 }; grid.Samples = [node];
-        Assert.That(grid.FindSampleAt(new Point(110 + halfWidth - .01, 10)), Is.SameAs(node));
-        Assert.That(grid.FindSampleAt(new Point(110 + halfWidth, 10)), Is.Null);
-        Assert.That(grid.RequestSampleRemoval(110 + halfWidth), Is.False);
-        Assert.That(grid.GetSamplesIntersecting(new Rect(110 + halfWidth + .1, 0, 1, 20)), Is.Empty);
-        grid.PreviewTimestamps = new Dictionary<Sample, int> { [node] = 250 };
-        Assert.That(grid.FindSampleAt(new Point(10, 10)), Is.SameAs(node));
-        Assert.That(grid.FindSampleAt(new Point(10 + halfWidth, 10)), Is.Null);
+        var bounds = grid.GetSampleBounds(node.Timestamp);
+        Assert.That(bounds.Left + bounds.Width / 2, Is.EqualTo(110));
+        Assert.That(grid.FindSampleAt(new Point(bounds.Right - .01, 10)), Is.SameAs(node));
+        Assert.That(grid.FindSampleAt(new Point(bounds.Right, 10)), Is.Null);
+        Assert.That(grid.RequestSampleRemoval(bounds.Right), Is.False);
+        Assert.That(grid.GetSamplesIntersecting(new Rect(bounds.Right + .1, 0, 1, 20)), Is.Empty);
         Assert.That(node.Timestamp, Is.EqualTo(500));
     }
     [TestCase(18d)]
@@ -117,14 +135,14 @@ public class BeatGridNodeEditingTests
     [TestCase(18)]
     [TestCase(36)]
     [TestCase(144)]
-    public void PreviewChangesDrawingAndHitsWithoutChangingModel(double height)
+    public void DragStateRestoresCommittedHitPositionWithoutChangingModel(double height)
     {
         var grid = CreateGrid(height); var node = new Sample { Timestamp = 250 };
-        grid.Samples = [node]; grid.PreviewTimestamps = new Dictionary<Sample, int> { [node] = 500 };
-        var previewBounds = grid.GetDisplayedSampleBounds(node);
-        Assert.That(previewBounds.Left + previewBounds.Width / 2, Is.EqualTo(110));
-        Assert.That(grid.FindSampleAt(new Point(110, height / 2)), Is.SameAs(node));
+        grid.Samples = [node]; grid.SelectedSamples = [node]; grid.IsNodeDragActive = true;
+        Assert.That(grid.GetDisplayedSampleBounds(node).IsEmpty, Is.True);
         Assert.That(grid.FindSampleAt(new Point(10, height / 2)), Is.Null);
+        grid.IsNodeDragActive = false;
+        Assert.That(grid.FindSampleAt(new Point(10, height / 2)), Is.SameAs(node));
         Assert.That(node.Timestamp, Is.EqualTo(250));
     }
 

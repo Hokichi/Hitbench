@@ -19,7 +19,7 @@ public sealed class OHsSampleNodeDragAdorner : Adorner
     }
     private Point cursorPosition;
     public Point CursorPosition { get => cursorPosition; set { cursorPosition = value; InvalidateVisual(); } }
-    public double NodeWidth { get; set; } = 20;
+    public double NodeWidth { get; set; } = 40;
     public double NodeHeight { get; set; } = 36;
     protected override void OnRender(DrawingContext drawingContext)
     {
