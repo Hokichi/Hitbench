@@ -12,6 +12,92 @@ namespace osuHitsounder.Test.Presentation;
 [NonParallelizable]
 public class WorkstationShortcutTests
 {
+    [TestCase(Key.D1, 1, 0)]
+    [TestCase(Key.D2, 2, 1)]
+    [TestCase(Key.D3, 3, 2)]
+    [TestCase(Key.D4, 4, 3)]
+    [TestCase(Key.D5, 5, 4)]
+    [TestCase(Key.D6, 6, 5)]
+    [TestCase(Key.D8, 8, 6)]
+    [TestCase(Key.NumPad1, 1, 0)]
+    [TestCase(Key.NumPad2, 2, 1)]
+    [TestCase(Key.NumPad3, 3, 2)]
+    [TestCase(Key.NumPad4, 4, 3)]
+    [TestCase(Key.NumPad5, 5, 4)]
+    [TestCase(Key.NumPad6, 6, 5)]
+    [TestCase(Key.NumPad8, 8, 6)]
+    public void ExistingDivisorShortcutSelectsMatchingValue(Key key, int divisor, int index)
+    {
+        var (page, vm, view) = CreateShortcutPage();
+        using (view)
+        {
+            Assert.That(page.HandlePlaybackKey(key, ModifierKeys.Control, false, page), Is.True);
+            Assert.That(vm.Subdivision, Is.EqualTo(divisor));
+            Assert.That(vm.SelectedSubdivisionIndex, Is.EqualTo(index));
+            Assert.That(((ValueSlider)page.FindName("SubdivisionSelector")).Value, Is.EqualTo(index));
+            foreach (var grid in Descendants(page).OfType<BeatGridView>())
+                Assert.That(grid.Subdivision, Is.EqualTo(divisor));
+            UiTestPump.Run(page.DeactivateAsync());
+        }
+    }
+
+    [TestCase(Key.D0, ModifierKeys.Control, false, false)]
+    [TestCase(Key.D7, ModifierKeys.Control, false, false)]
+    [TestCase(Key.D9, ModifierKeys.Control, false, false)]
+    [TestCase(Key.NumPad0, ModifierKeys.Control, false, false)]
+    [TestCase(Key.NumPad7, ModifierKeys.Control, false, false)]
+    [TestCase(Key.NumPad9, ModifierKeys.Control, false, false)]
+    [TestCase(Key.D3, ModifierKeys.None, false, false)]
+    [TestCase(Key.D3, ModifierKeys.Shift, false, false)]
+    [TestCase(Key.D3, ModifierKeys.Control | ModifierKeys.Shift, false, false)]
+    [TestCase(Key.D3, ModifierKeys.Control | ModifierKeys.Alt, false, false)]
+    [TestCase(Key.D3, ModifierKeys.Control, true, true)]
+    public void UnsupportedOrRepeatedDivisorShortcutPreservesSelection(Key key, ModifierKeys modifiers, bool repeat, bool handled)
+    {
+        var (page, vm, view) = CreateShortcutPage();
+        using (view)
+        {
+            Assert.That(page.HandlePlaybackKey(key, modifiers, repeat, page), Is.EqualTo(handled));
+            Assert.That(vm.Subdivision, Is.EqualTo(4));
+            UiTestPump.Run(page.DeactivateAsync());
+            Assert.That(page.HandlePlaybackKey(Key.D3, ModifierKeys.Control, false, page), Is.False);
+            Assert.That(vm.Subdivision, Is.EqualTo(4));
+        }
+    }
+
+    [Test]
+    public void DivisorShortcutIsUnavailableWhileLoading()
+    {
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(),
+            new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler());
+        var page = new WorkstationPage(vm);
+        Assert.That(page.HandlePlaybackKey(Key.D3, ModifierKeys.Control, false, page), Is.False);
+        Assert.That(vm.Subdivision, Is.EqualTo(4));
+        UiTestPump.Run(page.DeactivateAsync());
+    }
+
+    private static (WorkstationPage Page, WorkstationPageVM Vm, InMemoryView View) CreateShortcutPage()
+    {
+        var track = new osuHitsounder.Core.Entities.Track { SelectedSampleFileName = "a.wav" };
+        var source = new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(
+            new osuHitsounder.Core.Entities.WorkstationSource("map.osu", "audio.wav",
+                new osuHitsounder.Core.Entities.ProjectData { Offsets = [0], BPMs = [120], Tracks = [track] })) };
+        var vm = new WorkstationPageVM(source, new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay),
+            new ImmediateUiScheduler(), new StubSampleFileService(["a.wav"]));
+        var page = new WorkstationPage(vm);
+        page.SetProjectPath("project.json");
+        var view = new InMemoryView(new Window { Content = page, Width = 900, Height = 600 });
+        UiTestPump.Run(page.LoadCompletion);
+        return (page, vm, view);
+    }
+
+    private static IEnumerable<DependencyObject> Descendants(DependencyObject root)
+    {
+        yield return root;
+        for (var i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(root); i++)
+            foreach (var child in Descendants(System.Windows.Media.VisualTreeHelper.GetChild(root, i))) yield return child;
+    }
+
     [TestCase("text")]
     [TestCase("password")]
     [TestCase("selector")]

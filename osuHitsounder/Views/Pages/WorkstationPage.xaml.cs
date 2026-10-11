@@ -456,11 +456,27 @@ public partial class WorkstationPage : UserControl
         e.Handled = true;
     }
 
+    private bool HandleBeatDivisorKey(Key key, ModifierKeys modifiers, bool isRepeat, DependencyObject? origin)
+    {
+        if (modifiers != ModifierKeys.Control || FindAncestor<TextBoxBase>(origin) is not null ||
+            FindAncestor<PasswordBox>(origin) is not null || FindAncestor<ComboBox>(origin)?.IsEditable == true) return false;
+        var index = key switch
+        {
+            Key.D1 or Key.NumPad1 => 0, Key.D2 or Key.NumPad2 => 1, Key.D3 or Key.NumPad3 => 2,
+            Key.D4 or Key.NumPad4 => 3, Key.D5 or Key.NumPad5 => 4, Key.D6 or Key.NumPad6 => 5,
+            Key.D8 or Key.NumPad8 => 6, _ => -1
+        };
+        if (index < 0) return false;
+        if (!isRepeat) viewModel.SelectedSubdivisionIndex = index;
+        return true;
+    }
+
     internal bool HandlePlaybackKey(Key key, ModifierKeys modifiers, bool isRepeat, DependencyObject? origin)
     {
         if (IsVolumeOverlayOpen) return true;
         if (HandleNodeKey(key, modifiers, isRepeat, origin)) return true;
         if (deactivationStarted || !viewModel.CanPlay) return false;
+        if (HandleBeatDivisorKey(key, modifiers, isRepeat, origin)) return true;
         if (modifiers == ModifierKeys.Control && key is Key.Z or Key.Y)
         {
             if (!viewModel.CanPlaceSamples) return false;
