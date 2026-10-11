@@ -42,6 +42,7 @@ public partial class WorkstationPage : UserControl
     {
         this.viewModel = viewModel;
         InitializeComponent();
+        WaveformScrollBar.AddHandler(Thumb.DragStartedEvent, new DragStartedEventHandler(OnWaveformScrollBarDragStarted));
         KeyboardNavigationPolicy.EnableTabNavigation(ResnapAllSamplesButton);
         KeyboardNavigationPolicy.EnableTabNavigation(ScrollWithMarkerCheckBox);
         DataContext = viewModel;
@@ -343,9 +344,15 @@ public partial class WorkstationPage : UserControl
 
     public void CancelReturn() => viewModel.CancelReturn();
 
+    private void OnWaveformScrollBarDragStarted(object sender, DragStartedEventArgs e)
+    {
+        if (viewModel.CanPlay && !deactivationStarted) viewModel.ScrollWithMarker = false;
+    }
+
     private void OnWaveformScrollBarScroll(object sender, ScrollEventArgs e)
     {
         if (!viewModel.CanPlay || deactivationStarted) return;
+        viewModel.ScrollWithMarker = false;
         WaveformScrollViewer.ScrollToHorizontalOffset(e.NewValue);
     }
 
@@ -543,6 +550,7 @@ public partial class WorkstationPage : UserControl
 
     internal bool HandleWaveformWheel(ModifierKeys modifiers, int delta)
     {
+        if (delta != 0 && viewModel.IsInteractionReady && !deactivationStarted) viewModel.ScrollWithMarker = false;
         if (IsVolumeOverlayOpen)
         {
             wheelMode = ModifierKeys.None;

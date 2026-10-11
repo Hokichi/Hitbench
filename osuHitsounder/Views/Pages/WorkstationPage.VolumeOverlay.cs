@@ -92,6 +92,7 @@ public partial class WorkstationPage
 
     internal bool HandleContextWheel(ModifierKeys modifiers, int delta, DependencyObject? origin)
     {
+        if (delta != 0 && viewModel.IsInteractionReady && !deactivationStarted) viewModel.ScrollWithMarker = false;
         if (IsVolumeOverlayOpen && modifiers == ModifierKeys.None && IsVolumeOverlayElement(origin)) return false;
         if (modifiers != ModifierKeys.Alt)
         {

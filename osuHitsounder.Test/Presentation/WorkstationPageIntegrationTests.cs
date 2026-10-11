@@ -1144,6 +1144,7 @@ public class WorkstationPageIntegrationTests
         UiTestPump.Run(page.LoadCompletion);
 
         Assert.That(page.HandleWaveformWheel(ModifierKeys.Control, 60), Is.True);
+        Assert.That(vm.ScrollWithMarker, Is.False);
         Assert.That(vm.ZoomFactor, Is.EqualTo(32));
         Assert.That(page.HandleWaveformWheel(ModifierKeys.Control, 60), Is.True);
         Assert.That(vm.ZoomFactor, Is.EqualTo(33));
