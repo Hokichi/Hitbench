@@ -76,7 +76,19 @@ public sealed class BeatGridView : FrameworkElement
     public bool SuppressPlacementFeedback { get => (bool)GetValue(SuppressPlacementFeedbackProperty); set => SetValue(SuppressPlacementFeedbackProperty, value); }
     public BeatInterval? ActiveInterval { get; private set; }
 
-    private bool IsSampleHidden(Sample sample) => IsNodeDragActive && SelectedSamples?.Contains(sample) == true;
+    private bool IsSampleSelected(Sample sample) => SelectedSamples?.Contains(sample) == true;
+    private bool IsSampleHidden(Sample sample) => IsNodeDragActive && IsSampleSelected(sample);
+
+    private IEnumerable<Sample> SamplesInHitOrder()
+    {
+        if (Samples is null) yield break;
+        for (var layer = 0; layer < 2; layer++)
+            for (var index = Samples.Count - 1; index >= 0; index--)
+            {
+                var sample = Samples[index];
+                if (IsSampleSelected(sample) == (layer == 0) && !IsSampleHidden(sample)) yield return sample;
+            }
+    }
 
     public Rect GetDisplayedSampleBounds(Sample sample) => IsSampleHidden(sample)
         ? Rect.Empty : GetSampleBounds(sample.Timestamp);
@@ -87,11 +99,11 @@ public sealed class BeatGridView : FrameworkElement
     {
         if (!CanPlaceSamples || Samples is null || !double.IsFinite(point.X) || !double.IsFinite(point.Y) ||
             point.X < 0 || point.X >= SampleViewport.Width || point.Y < 0 || point.Y >= ActualHeight) return null;
-        for (var index = Samples.Count - 1; index >= 0; index--)
+        foreach (var sample in SamplesInHitOrder())
         {
-            var bounds = GetDisplayedSampleBounds(Samples[index]);
+            var bounds = GetDisplayedSampleBounds(sample);
             if (!bounds.IsEmpty && point.X >= bounds.Left && point.X < bounds.Right &&
-                point.Y >= bounds.Top && point.Y < bounds.Bottom) return Samples[index];
+                point.Y >= bounds.Top && point.Y < bounds.Bottom) return sample;
         }
         return null;
     }
@@ -108,10 +120,8 @@ public sealed class BeatGridView : FrameworkElement
     {
         if (pointerX is { } x && FindSampleAt(new Point(x, ActualHeight / 2)) is { } hit) return hit;
         if (!CanPlaceSamples || Samples is null || ActiveInterval is not { } interval) return null;
-        for (var index = Samples.Count - 1; index >= 0; index--)
+        foreach (var sample in SamplesInHitOrder())
         {
-            var sample = Samples[index];
-            if (IsSampleHidden(sample)) continue;
             var timestamp = sample.Timestamp;
             if (timestamp >= interval.StartMilliseconds && timestamp < interval.EndMilliseconds) return sample;
         }
@@ -168,9 +178,8 @@ public sealed class BeatGridView : FrameworkElement
     public bool RequestSampleRemoval(double viewportX)
     {
         if (!CanPlaceSamples || Samples is null || viewportX < 0 || viewportX >= Math.Min(ActualWidth, ViewportWidth)) return false;
-        for (var index = Samples.Count - 1; index >= 0; index--)
+        foreach (var sample in SamplesInHitOrder())
         {
-            var sample = Samples[index];
             var bounds = GetDisplayedSampleBounds(sample);
             if (bounds.IsEmpty || viewportX < bounds.Left || viewportX >= bounds.Right) continue;
             return RequestSampleRemoval(sample);
@@ -181,10 +190,8 @@ public sealed class BeatGridView : FrameworkElement
     public bool RequestActiveSampleRemoval()
     {
         if (!CanPlaceSamples || Samples is null || ActiveInterval is not { } interval) return false;
-        for (var index = Samples.Count - 1; index >= 0; index--)
+        foreach (var sample in SamplesInHitOrder())
         {
-            var sample = Samples[index];
-            if (IsSampleHidden(sample)) continue;
             var timestamp = sample.Timestamp;
             if (timestamp >= interval.StartMilliseconds && timestamp < interval.EndMilliseconds) return RequestSampleRemoval(sample);
         }
@@ -398,27 +405,31 @@ public sealed class BeatGridView : FrameworkElement
             if (pressedInterval is not null && pressed is not null)
                 context.DrawRoundedRectangle(null, new Pen(pressed, 1), rect, 4, 4);
         }
-        if (marker is not null && Samples is not null)
-            foreach (var sample in Samples)
-            {
-                var rect = GetDisplayedSampleBounds(sample);
-                if (rect.IsEmpty) continue;
-                rect = Inset(rect);
-                var selected = SelectedSamples?.Contains(sample) == true;
-                context.DrawRoundedRectangle(selected ? selection : marker, selected ? selectedBorder : nodeBorder, rect, 4, 4);
-            }
-        if (Samples is not null)
-            foreach (var sample in Samples)
-            {
-                var bounds = GetDisplayedSampleBounds(sample);
-                if (bounds.IsEmpty) continue;
-                var rect = Inset(bounds);
-                var selected = SelectedSamples?.Contains(sample) == true;
-                if (ReferenceEquals(PressedSample, sample) && pressed is not null)
-                    context.DrawRoundedRectangle(null, new Pen(pressed, 2), rect, 4, 4);
-                if (selected && selectionCue is not null)
-                    context.DrawRoundedRectangle(null, selectedBorder, rect, 4, 4);
-            }
+        for (var layer = 0; layer < 2; layer++)
+        {
+            var selectedLayer = layer == 1;
+            if (marker is not null && Samples is not null)
+                foreach (var sample in Samples)
+                {
+                    if (IsSampleSelected(sample) != selectedLayer) continue;
+                    var rect = GetDisplayedSampleBounds(sample);
+                    if (rect.IsEmpty) continue;
+                    rect = Inset(rect);
+                    context.DrawRoundedRectangle(selectedLayer ? selection : marker, selectedLayer ? selectedBorder : nodeBorder, rect, 4, 4);
+                }
+            if (Samples is not null)
+                foreach (var sample in Samples)
+                {
+                    if (IsSampleSelected(sample) != selectedLayer) continue;
+                    var bounds = GetDisplayedSampleBounds(sample);
+                    if (bounds.IsEmpty) continue;
+                    var rect = Inset(bounds);
+                    if (ReferenceEquals(PressedSample, sample) && pressed is not null)
+                        context.DrawRoundedRectangle(null, new Pen(pressed, 2), rect, 4, 4);
+                    if (selectedLayer && selectionCue is not null)
+                        context.DrawRoundedRectangle(null, selectedBorder, rect, 4, 4);
+                }
+        }
         if (DragPreviewTimestamp is { } preview)
         {
             var bounds = GetSampleBounds(preview);

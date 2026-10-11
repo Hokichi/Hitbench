@@ -73,6 +73,76 @@ public class BeatGridNodeEditingTests
         Assert.That(removed, Is.SameAs(node));
     }
 
+    [Test]
+    public void SelectionChangesOverlappingNodePriorityWithoutReorderingSamples()
+    {
+        var grid = CreateGrid();
+        var a = new Sample { Timestamp = 250 };
+        var b = new Sample { Timestamp = 275 };
+        grid.Samples = [a, b];
+        grid.UpdatePointerPosition(15);
+        Sample? requested = null;
+        grid.SampleRemovalRequested += (_, args) => requested = args.Sample;
+        foreach (var (selected, expected) in new (Sample[], Sample)[] { ([], b), ([a], a), ([a, b], b), ([], b) })
+        {
+            grid.SelectedSamples = selected;
+            Assert.That(grid.FindSampleAt(new Point(15, grid.ActualHeight / 2)), Is.SameAs(expected));
+            Assert.That(grid.FindActiveSample(), Is.SameAs(expected));
+            requested = null;
+            Assert.That(grid.RequestSampleRemoval(15), Is.True);
+            Assert.That(requested, Is.SameAs(expected));
+            requested = null;
+            Assert.That(grid.RequestActiveSampleRemoval(), Is.True);
+            Assert.That(requested, Is.SameAs(expected));
+            Assert.That(grid.Samples, Is.EqualTo(new[] { a, b }));
+            Assert.That(a.Timestamp, Is.EqualTo(250));
+            Assert.That(b.Timestamp, Is.EqualTo(275));
+        }
+    }
+
+    [Test]
+    public void HiddenSelectedNodeDoesNotOccludeVisibleNode()
+    {
+        var grid = CreateGrid();
+        var a = new Sample { Timestamp = 250 };
+        var b = new Sample { Timestamp = 275 };
+        grid.Samples = [a, b]; grid.SelectedSamples = [a];
+        grid.IsNodeDragActive = true;
+        grid.UpdatePointerPosition(15);
+        Assert.That(grid.FindSampleAt(new Point(15, grid.ActualHeight / 2)), Is.SameAs(b));
+        Assert.That(grid.FindActiveSample(), Is.SameAs(b));
+        Sample? requested = null;
+        grid.SampleRemovalRequested += (_, args) => requested = args.Sample;
+        Assert.That(grid.RequestSampleRemoval(15), Is.True);
+        Assert.That(requested, Is.SameAs(b));
+        grid.IsNodeDragActive = false;
+        Assert.That(grid.FindSampleAt(new Point(15, grid.ActualHeight / 2)), Is.SameAs(a));
+        Assert.That(grid.FindActiveSample(), Is.SameAs(a));
+    }
+
+    [Test]
+    public void PreLayoutActiveActionsFollowSelectionPriority()
+    {
+        var a = new Sample { Timestamp = 250 };
+        var b = new Sample { Timestamp = 275 };
+        var grid = new BeatGridView { Offsets = [0], Bpms = [60], Subdivision = 4,
+            Duration = TimeSpan.FromSeconds(1), CanPlaceSamples = true, Samples = [a, b] };
+        grid.SetActivePosition(TimeSpan.FromMilliseconds(250));
+        Sample? requested = null;
+        grid.SampleRemovalRequested += (_, args) => requested = args.Sample;
+        foreach (var (selected, expected) in new (Sample[], Sample)[] { ([], b), ([a], a), ([a, b], b), ([], b) })
+        {
+            grid.SelectedSamples = selected;
+            Assert.That(grid.FindActiveSample(), Is.SameAs(expected));
+            requested = null;
+            Assert.That(grid.RequestActiveSampleRemoval(), Is.True);
+            Assert.That(requested, Is.SameAs(expected));
+        }
+        grid.SelectedSamples = [a]; grid.IsNodeDragActive = true;
+        Assert.That(grid.FindActiveSample(), Is.SameAs(b));
+        Assert.That(grid.Samples, Is.EqualTo(new[] { a, b }));
+    }
+
     [TestCase(-1, 50d)]
     [TestCase(250, 5d)]
     [TestCase(275, 20d)]
