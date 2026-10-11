@@ -146,7 +146,10 @@ public partial class WorkstationPage : UserControl
         lastPresentationFrame = frameTime;
         if (viewModel.LoadPhase == osuHitsounder.Services.ProjectLoadPhase.AwaitingPresentation)
         {
-            if (!IsMeasureValid || !IsArrangeValid || WaveformScrollViewer.ViewportWidth <= 0 ||
+            var boundary = WaveformScrollViewer.BorderThickness;
+            var padding = WaveformScrollViewer.Padding;
+            var hasWaveformSpace = WaveformScrollViewer.ActualWidth > boundary.Left + boundary.Right + padding.Left + padding.Right;
+            if (!IsMeasureValid || !IsArrangeValid || (hasWaveformSpace && WaveformScrollViewer.ViewportWidth <= 0) ||
                 !WaveformDisplay.IsMeasureValid || !WaveformDisplay.IsArrangeValid || !TrackList.IsArrangeValid)
             { readinessCandidate = null; return; }
             WaveformDisplay.PrepareDrawing();
@@ -186,7 +189,11 @@ public partial class WorkstationPage : UserControl
 
     private void OnWaveformViewportSizeChanged(object sender, SizeChangedEventArgs e)
     {
-        WaveformDisplay.ViewportWidth = Math.Max(0, e.NewSize.Width);
+        // Bootstrap measurement before the ScrollViewer has a nonzero viewport.
+        var inset = WaveformScrollViewer.BorderThickness;
+        var padding = WaveformScrollViewer.Padding;
+        WaveformDisplay.SetCurrentValue(WaveformView.ViewportWidthProperty,
+            Math.Max(0, e.NewSize.Width - inset.Left - inset.Right - padding.Left - padding.Right));
         TimelineViewportWidth = WaveformScrollViewer.ViewportWidth;
     }
     private void OnWaveformDisplaySizeChanged(object sender, SizeChangedEventArgs e)
@@ -196,7 +203,7 @@ public partial class WorkstationPage : UserControl
     }
     private void OnWaveformScrollChanged(object sender, ScrollChangedEventArgs e)
     {
-        WaveformDisplay.HorizontalOffset = e.HorizontalOffset;
+        if (e.ViewportWidth > 0) WaveformDisplay.SetCurrentValue(WaveformView.ViewportWidthProperty, e.ViewportWidth);
         TimelineHorizontalOffset = e.HorizontalOffset;
         TimelineViewportWidth = e.ViewportWidth;
         WaveformScrollBar.Value = e.HorizontalOffset;
@@ -218,6 +225,7 @@ public partial class WorkstationPage : UserControl
 
     private void OnTrackControlDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
+        if (sender is ToggleButton toggle) { OnTrackAuditionLoaded(toggle, new RoutedEventArgs()); return; }
         if (sender is ComboBox { Name: "TrackSampleFileSelector" } selector) OnSampleSelectorLoaded(selector, new RoutedEventArgs());
         else if (sender is ComboBox metadata) OnTrackMetadataSelectorLoaded(metadata, new RoutedEventArgs());
         else if (sender is Slider slider) OnVolumeSliderLoaded(slider, new RoutedEventArgs());
@@ -360,6 +368,7 @@ public partial class WorkstationPage : UserControl
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(WorkstationPageVM.TrackAuditionRevision)) RefreshTrackAuditionControls(TrackList);
         if (!viewModel.CanPlaceSamples || nodeDragging && !viewModel.IsNodeDragActive) CancelNodePointer();
         if (e.PropertyName == nameof(WorkstationPageVM.SampleFiles)) RefreshSampleSelectors(TrackList);
         if (e.PropertyName is nameof(WorkstationPageVM.SampleFiles) or nameof(WorkstationPageVM.SamplesRevision)) RefreshTrackSamplePresentation();
@@ -432,6 +441,7 @@ public partial class WorkstationPage : UserControl
     internal bool HandlePlaybackKey(Key key, ModifierKeys modifiers, bool isRepeat, DependencyObject? origin)
     {
         if (IsVolumeOverlayOpen) return true;
+        if (key == Key.Space && FindAncestor<ButtonBase>(origin) is { DataContext: Track }) return false;
         if (HandleNodeKey(key, modifiers, isRepeat, origin)) return true;
         if (deactivationStarted || !viewModel.CanPlay) return false;
         if (modifiers == ModifierKeys.Control && key is Key.Z or Key.Y)

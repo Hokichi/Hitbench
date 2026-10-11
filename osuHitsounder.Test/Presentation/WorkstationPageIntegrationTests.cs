@@ -24,6 +24,114 @@ namespace osuHitsounder.Test.Presentation;
 public class WorkstationPageIntegrationTests
 {
     [Test]
+    public void NarrowWorkstationLoadsAndRecoversTimelineOnResize()
+    {
+        var audio = new StubWorkstationAudioService();
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(),
+            new osuHitsounder.Services.MarkerPlaybackCoordinator(audio, Task.Delay), new ImmediateUiScheduler());
+        var page = new WorkstationPage(vm); page.SetProjectPath("project.json");
+        var window = new Window { Content = page, Width = 180, Height = 600 };
+        using var view = new InMemoryView(window);
+        UiTestPump.Run(page.LoadCompletion);
+        Assert.That(vm.CanPlay, Is.True);
+        window.Width = 600; view.UpdateLayout();
+        UiTestPump.Run(vm.SeekCommand.ExecuteAsync(TimeSpan.FromSeconds(1)));
+        Assert.That(audio.Snapshot.Position, Is.EqualTo(TimeSpan.FromSeconds(1)));
+        Assert.That(vm.CanPlay, Is.True);
+        UiTestPump.Run(page.DeactivateAsync());
+    }
+
+    [Test]
+    public void TrackCollectionRecyclesAuditionStateAndSharesTimelineInputs()
+    {
+        var tracks = Enumerable.Range(0, 100).Select(i => new Track { Name = i.ToString(), IsTrackMuted = i == 99,
+            IsTrackSoloed = i == 99 }).ToList();
+        var source = new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(
+            new WorkstationSource("map.osu", "audio.wav", new ProjectData { Tracks = tracks, Offsets = [0], BPMs = [120] })) };
+        var saves = new DelayedProjectFileService(); saves.Release();
+        var vm = new WorkstationPageVM(source, new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay),
+            new ImmediateUiScheduler(), projectFiles: saves);
+        var page = new WorkstationPage(vm); page.SetProjectPath("project.json");
+        using var view = new InMemoryView(new Window { Content = page, Width = 600, Height = 600 });
+        UiTestPump.Run(page.LoadCompletion);
+        var list = (ListBox)page.FindName("TrackList");
+        Assert.That(list.ItemContainerGenerator.ContainerFromIndex(99), Is.Null);
+        list.ScrollIntoView(tracks[99]); view.UpdateLayout();
+        var container = (ListBoxItem)list.ItemContainerGenerator.ContainerFromIndex(99)!;
+        Assert.That(container, Is.Not.Null);
+        var mute = FindVisualChildren<ToggleButton>(container).Single(control => control.Name == "TrackMuteToggle");
+        Assert.That(mute.IsChecked, Is.True);
+        page.TimelineViewportWidth = 210; page.TimelineContentWidth = 1678; page.TimelineHorizontalOffset = 123.75;
+        var grid = FindVisualChild<BeatGridView>(container)!;
+        Assert.That(grid.ViewportWidth, Is.EqualTo(210));
+        Assert.That(grid.ContentWidth, Is.EqualTo(1678));
+        Assert.That(grid.HorizontalOffset, Is.EqualTo(123.75));
+        Assert.That(saves.Writes, Is.Zero);
+        UiTestPump.Run(page.DeactivateAsync());
+    }
+
+    [TestCase(480d, FlowDirection.RightToLeft, "Light")]
+    [TestCase(1100d, FlowDirection.LeftToRight, "Dark")]
+    public void TrackAuditionControlsUseExpectedResourcesAndRecycleWithoutMutation(double width, FlowDirection direction, string theme)
+    {
+        EnsureResources(theme);
+        var a = new Track { Name = "กลอง " + new string('a', 100), IsTrackMuted = true, IsTrackSoloed = true };
+        var b = new Track { Name = "Snare", IsTrackSoloed = true };
+        var json = ProjectDataSerializer.Serialize(new ProjectData { Tracks = [a, b], Offsets = [0], BPMs = [120] });
+        var source = new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(
+            new WorkstationSource("map.osu", "audio.wav", ProjectDataSerializer.Deserialize(json))) };
+        var audio = new StubWorkstationAudioService(); var saves = new DelayedProjectFileService(); saves.Release();
+        var vm = new WorkstationPageVM(source, new osuHitsounder.Services.MarkerPlaybackCoordinator(audio, Task.Delay),
+            new ImmediateUiScheduler(), projectFiles: saves);
+        var page = new WorkstationPage(vm); page.SetProjectPath("project.json");
+        using var view = new InMemoryView(new Window { Content = page, Width = width, Height = 900, FlowDirection = direction });
+        UiTestPump.Run(page.LoadCompletion); view.UpdateLayout();
+        a = vm.Tracks[0]; b = vm.Tracks[1];
+        var mute = FindVisualChildren<ToggleButton>(page).Single(control => control.Name == "TrackMuteToggle" && ReferenceEquals(control.DataContext, a));
+        var solo = FindVisualChildren<ToggleButton>(page).Single(control => control.Name == "TrackSoloToggle" && ReferenceEquals(control.DataContext, a));
+        Assert.That(mute.GetType(), Is.EqualTo(typeof(ToggleButton)));
+        Assert.That(mute.IsTabStop, Is.True);
+        Assert.That(mute.Style, Is.SameAs(page.FindResource("OHsWorkstationTrackToggleStyle")));
+        Assert.That(mute.Style.BasedOn, Is.SameAs(page.FindResource("BaseToggleButtonStyle")));
+        Assert.That(mute.Template, Is.SameAs(page.FindResource("OHsWorkstationTrackToggleTemplate")));
+        Assert.That(mute.IsChecked, Is.True); Assert.That(solo.IsChecked, Is.True);
+        var remove = FindVisualChildren<BalloonButton>(page).Single(control => ReferenceEquals(control.DataContext, a) &&
+            AutomationProperties.GetName(control) == "Remove track");
+        Assert.That(remove.Style, Is.SameAs(page.FindResource("OHsWorkstationRemoveTrackStyle")));
+        Assert.That(remove.Style.BasedOn, Is.SameAs(page.FindResource("OHsBalloonDestructiveActionStyle")));
+        Assert.That(remove.CommandParameter, Is.SameAs(a));
+        var updates = audio.SampleUpdates.Count;
+        mute.DataContext = b; solo.DataContext = b;
+        Assert.That(mute.IsChecked, Is.False); Assert.That(solo.IsChecked, Is.True);
+        Assert.That(AutomationProperties.GetName(mute), Is.EqualTo("Mute track"));
+        Assert.That(saves.Writes, Is.Zero); Assert.That(audio.SampleUpdates.Count, Is.EqualTo(updates));
+        mute.IsChecked = true; UiTestPump.Run(vm.FlushSavesAsync());
+        Assert.That(b.IsTrackMuted, Is.True);
+        Assert.That(ProjectDataSerializer.Deserialize(saves.LatestJson!).Tracks[1].IsTrackMuted, Is.True);
+        UiTestPump.Run(page.DeactivateAsync());
+    }
+
+    [Test]
+    public void TrackToggleSpaceDoesNotTriggerTransport()
+    {
+        var track = new Track(); var audio = new StubWorkstationAudioService();
+        var source = new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(
+            new WorkstationSource("map.osu", "audio.wav", new ProjectData { Tracks = [track], Offsets = [0], BPMs = [120] })) };
+        var vm = new WorkstationPageVM(source, new osuHitsounder.Services.MarkerPlaybackCoordinator(audio, Task.Delay), new ImmediateUiScheduler());
+        var page = new WorkstationPage(vm); page.SetProjectPath("project.json");
+        using var view = new InMemoryView(new Window { Content = page, Width = 900, Height = 700 });
+        UiTestPump.Run(page.LoadCompletion);
+        var toggle = new ToggleButton { DataContext = track };
+        Assert.That(page.HandlePlaybackKey(Key.Space, ModifierKeys.None, false, toggle), Is.False);
+        Assert.That(audio.Snapshot.IsPlaying, Is.False);
+        var mute = FindVisualChildren<ToggleButton>(page).Single(control => control.Name == "TrackMuteToggle");
+        ((System.Windows.Automation.Provider.IToggleProvider)new System.Windows.Automation.Peers.ToggleButtonAutomationPeer(mute)).Toggle();
+        Assert.That(track.IsTrackMuted, Is.True);
+        Assert.That(audio.Snapshot.IsPlaying, Is.False);
+        UiTestPump.Run(page.DeactivateAsync());
+    }
+
+    [Test]
     public void FileRefreshPreservesMetadataOptionsAndSampleIdentity()
     {
         EnsureResources("Dark");
@@ -115,8 +223,9 @@ public class WorkstationPageIntegrationTests
             AutomationProperties.GetName(box) == "Track name" && ReferenceEquals(box.DataContext, first));
         Assert.That(input.Text, Is.EqualTo(first.Name));
         Assert.That(input.IsEnabled, Is.True);
-        Assert.That(input.IsTabStop, Is.False);
-        Assert.That(input.Style, Is.SameAs(page.FindResource("RoundedTextInputStyle")));
+        Assert.That(input.IsTabStop, Is.True);
+        Assert.That(input.Style, Is.SameAs(page.FindResource("OHsWorkstationTrackNameStyle")));
+        Assert.That(input.Style.BasedOn, Is.SameAs(page.FindResource("RoundedTextInputStyle")));
         Assert.That(saves.Writes, Is.Zero);
 
         input.Text = "กลอง";
@@ -212,13 +321,15 @@ public class WorkstationPageIntegrationTests
         UiTestPump.Run(page.LoadCompletion);
         view.UpdateLayout();
         var button = FindVisualChildren<BalloonButton>(page)
-            .Single(action => action.ButtonText == "Remove Track");
+            .Single(action => AutomationProperties.GetName(action) == "Remove track");
         Assert.That(button.CommandParameter, Is.SameAs(track));
-        Assert.That(button.Style, Is.SameAs(page.FindResource("OHsBalloonDestructiveActionStyle")));
+        Assert.That(button.Style, Is.SameAs(page.FindResource("OHsWorkstationRemoveTrackStyle")));
+        Assert.That(button.Style.BasedOn, Is.SameAs(page.FindResource("OHsBalloonDestructiveActionStyle")));
         Assert.That(AutomationProperties.GetName(button), Is.EqualTo("Remove track"));
         UiTestPump.Run(vm.RemoveTrackCommand.ExecuteAsync(button.CommandParameter));
         view.UpdateLayout();
-        Assert.That(((TextBlock)page.FindName("EmptyTracksText")).Visibility, Is.EqualTo(Visibility.Visible));
+        Assert.That(FindVisualChildren<TextBlock>(page).Single(text =>
+            text.Text == "No tracks. Load a sample, then use + Sample Track to create one.").Visibility, Is.EqualTo(Visibility.Visible));
     }
 
     [Test]
@@ -238,7 +349,7 @@ public class WorkstationPageIntegrationTests
         UiTestPump.Run(page.LoadCompletion);
         view.UpdateLayout();
         var button = FindVisualChildren<BalloonButton>(page)
-            .Single(action => action.ButtonText == "Remove Track");
+            .Single(action => AutomationProperties.GetName(action) == "Remove track");
         Assert.That(button.IsEnabled, Is.True);
         UiTestPump.Run(page.DeactivateAsync());
         view.UpdateLayout();
@@ -1068,25 +1179,26 @@ public class WorkstationPageIntegrationTests
         using var view = new InMemoryView(new Window { Content = page, Width = 900, Height = 600 });
         UiTestPump.Run(page.LoadCompletion);
         var zoom = vm.ZoomFactor;
-        var waveformHeight = ((FrameworkElement)page.FindName("WaveformDisplay")).ActualHeight;
+        var position = vm.Position;
+        vm.SetTrackHeightMinimum(200);
 
         Assert.That(page.HandleWaveformWheel(ModifierKeys.Control | ModifierKeys.Shift, 60), Is.True);
-        Assert.That(vm.TrackHeight, Is.EqualTo(36));
+        Assert.That(vm.TrackHeight, Is.EqualTo(200));
         Assert.That(page.HandleWaveformWheel(ModifierKeys.Control | ModifierKeys.Shift, 60), Is.True);
         view.UpdateLayout();
 
         Assert.Multiple(() =>
         {
-            Assert.That(vm.TrackHeight, Is.EqualTo(42));
+            Assert.That(vm.TrackHeight, Is.EqualTo(206));
             Assert.That(vm.ZoomFactor, Is.EqualTo(zoom));
-            Assert.That(((FrameworkElement)page.FindName("WaveformDisplay")).ActualHeight, Is.EqualTo(waveformHeight));
+            Assert.That(vm.Position, Is.EqualTo(position));
         });
 
         for (var index = 0; index < 100; index++) vm.DecreaseTrackHeightCommand.Execute(null);
-        Assert.That(vm.TrackHeight, Is.EqualTo(18));
+        Assert.That(vm.TrackHeight, Is.EqualTo(200));
         Assert.That(vm.DecreaseTrackHeightCommand.CanExecute(null), Is.False);
         for (var index = 0; index < 100; index++) vm.IncreaseTrackHeightCommand.Execute(null);
-        Assert.That(vm.TrackHeight, Is.EqualTo(144));
+        Assert.That(vm.TrackHeight, Is.EqualTo(308));
         Assert.That(vm.IncreaseTrackHeightCommand.CanExecute(null), Is.False);
     }
 

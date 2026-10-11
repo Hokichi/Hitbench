@@ -10,4 +10,6 @@ public class Track
     public string? SelectedSampleFileName { get; set; }
     public List<Sample> Samples { get; set; } = [];
     public int Volume { get; set; } = 100;
+    public bool IsTrackMuted { get; set; }
+    public bool IsTrackSoloed { get; set; }
 }

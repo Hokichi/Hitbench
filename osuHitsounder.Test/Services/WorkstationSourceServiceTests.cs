@@ -6,6 +6,21 @@ namespace osuHitsounder.Test.Services;
 
 public class WorkstationSourceServiceTests
 {
+    [Test]
+    public async Task LoadsPersistedTrackFlagsWithoutRewritingProject()
+    {
+        File.WriteAllText(Path.Combine(songFolder, "a.osu"), "[General]\nAudioFilename: song.wav\n[TimingPoints]\n0,500,4,1,0,100,1,0\n");
+        File.WriteAllText(Path.Combine(songFolder, "song.wav"), "audio");
+        var json = JsonConvert.SerializeObject(new { BeatmapPath = songFolder,
+            Tracks = new[] { new { IsTrackMuted = true, IsTrackSoloed = true } } });
+        File.WriteAllText(projectPath, json);
+        var result = await new WorkstationSourceService().LoadAsync(projectPath, CancellationToken.None);
+        Assert.That(result.Project.Tracks.Single().IsTrackMuted, Is.True);
+        Assert.That(result.Project.Tracks.Single().IsTrackSoloed, Is.True);
+        Assert.That(File.ReadAllText(projectPath), Is.EqualTo(json));
+        Assert.That(result.Project.BPMs, Is.EqualTo(new[] { 120 }));
+    }
+
     private string root = null!;
     private string songFolder = null!;
     private string projectPath = null!;

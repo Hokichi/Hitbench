@@ -118,6 +118,9 @@ public partial class WorkstationPageVM(
     private int songVolume = 100;
     private double zoomFactor = 32;
     private double trackHeight = 36;
+    private double minimumTrackHeight = 36;
+    public double MinimumTrackHeight => minimumTrackHeight;
+    public double MaximumTrackHeight => minimumTrackHeight + 108;
     private int selectedSubdivisionIndex = 3;
 
     public double ZoomFactor => zoomFactor;
@@ -742,6 +745,7 @@ public partial class WorkstationPageVM(
 
     private IReadOnlyList<SamplePlaybackEvent> CreatePlaybackEvents()
     {
+        var hasSolo = tracks.Any(track => track.IsTrackSoloed);
         var currentSamples = tracks.SelectMany(track => track.Samples).ToHashSet(ReferenceEqualityComparer.Instance);
         foreach (var removed in sampleEventIds.Keys.Where(sample => !currentSamples.Contains(sample)).ToArray())
             sampleEventIds.Remove(removed);
@@ -749,6 +753,7 @@ public partial class WorkstationPageVM(
         foreach (var track in tracks)
         foreach (var sample in track.Samples)
         {
+            if (track.IsTrackMuted || hasSolo && !track.IsTrackSoloed) continue;
             if (sampleFiles is not null && GetSampleAvailability(track) != Resources.DataModels.TrackSampleAvailability.Available) continue;
             if (!sampleEventIds.TryGetValue(sample, out var id))
             {
@@ -906,16 +911,27 @@ public partial class WorkstationPageVM(
         }, token);
 
     private bool CanUseTransport() => CanPlay && !managingSamples;
-    private bool CanIncreaseTrackHeight() => CanZoom && TrackHeight < 144;
-    private bool CanDecreaseTrackHeight() => CanZoom && TrackHeight > 18;
+    private bool CanIncreaseTrackHeight() => CanZoom && TrackHeight < MaximumTrackHeight;
+    private bool CanDecreaseTrackHeight() => CanZoom && TrackHeight > MinimumTrackHeight;
     private bool CanIncreaseSubdivision() => IsInteractionReady && SelectedSubdivisionIndex < 8;
     private bool CanDecreaseSubdivision() => IsInteractionReady && SelectedSubdivisionIndex > 0;
 
     private void SetTrackHeight(double value)
     {
         if (!CanZoom) return;
-        if (SetProperty(ref trackHeight, Math.Clamp(value, 18, 144), nameof(TrackHeight)))
+        if (SetProperty(ref trackHeight, Math.Clamp(value, MinimumTrackHeight, MaximumTrackHeight), nameof(TrackHeight)))
             NotifyCommandState();
+    }
+
+    public void SetTrackHeightMinimum(double minimum)
+    {
+        if (deactivated || !double.IsFinite(minimum) || minimum <= 0 || minimum == minimumTrackHeight) return;
+        var growth = Math.Clamp(trackHeight - minimumTrackHeight, 0, 108);
+        minimumTrackHeight = minimum;
+        OnPropertyChanged(nameof(MinimumTrackHeight));
+        OnPropertyChanged(nameof(MaximumTrackHeight));
+        SetProperty(ref trackHeight, minimum + growth, nameof(TrackHeight));
+        NotifyCommandState();
     }
 
     private void NotifyCommandState()

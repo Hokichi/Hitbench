@@ -45,6 +45,10 @@ public static class ProjectDataSerializer
                     throw new InvalidDataException("Track SelectedSampleFileName must be a string or null.");
                 NormalizeTrackOption(track, nameof(Track.Sampleset), "Normal", Track.SamplesetOptions);
                 NormalizeTrackOption(track, nameof(Track.Addition), "None", Track.AdditionOptions);
+                foreach (var property in new[] { nameof(Track.IsTrackMuted), nameof(Track.IsTrackSoloed) })
+                    if (track.Properties().Any(member => string.Equals(member.Name, property, StringComparison.OrdinalIgnoreCase) &&
+                        member.Value.Type != JTokenType.Boolean))
+                        throw new InvalidDataException($"Track {property} must be a boolean.");
                 if (track["Samples"] is null) continue;
                 if (track["Samples"] is not JArray samples || samples.Any(sample => sample is not JObject))
                     throw new InvalidDataException("Track Samples must be an array of objects.");

@@ -9,6 +9,39 @@ namespace osuHitsounder.Test.Presentation;
 public class WorkstationZoomTests
 {
     [Test]
+    public async Task TrackHeightUsesConfiguredMinimumAndSixUnitSteps()
+    {
+        var (vm, _) = Create((_, token) => Task.Delay(Timeout.Infinite, token));
+        await Load(vm);
+        vm.SetTrackHeightMinimum(200);
+        Assert.That(vm.TrackHeight, Is.EqualTo(200));
+        vm.IncreaseTrackHeightCommand.Execute(null);
+        Assert.That(vm.TrackHeight, Is.EqualTo(206));
+        for (var i = 0; i < 100; i++) vm.DecreaseTrackHeightCommand.Execute(null);
+        Assert.That(vm.TrackHeight, Is.EqualTo(200));
+        Assert.That(vm.DecreaseTrackHeightCommand.CanExecute(null), Is.False);
+        for (var i = 0; i < 100; i++) vm.IncreaseTrackHeightCommand.Execute(null);
+        Assert.That(vm.TrackHeight, Is.EqualTo(308));
+        Assert.That(vm.IncreaseTrackHeightCommand.CanExecute(null), Is.False);
+        await vm.DeactivateAsync();
+    }
+
+    [Test]
+    public async Task ChangingMinimumPreservesUserGrowthAndRejectsInvalidInputs()
+    {
+        var (vm, _) = Create((_, token) => Task.Delay(Timeout.Infinite, token));
+        await Load(vm);
+        vm.SetTrackHeightMinimum(200);
+        vm.IncreaseTrackHeightCommand.Execute(null); vm.IncreaseTrackHeightCommand.Execute(null);
+        vm.SetTrackHeightMinimum(240);
+        Assert.That(vm.TrackHeight, Is.EqualTo(252));
+        foreach (var value in new[] { double.NaN, double.PositiveInfinity, 0d, -1d }) vm.SetTrackHeightMinimum(value);
+        Assert.That(vm.MinimumTrackHeight, Is.EqualTo(240));
+        Assert.That(vm.TrackHeight, Is.EqualTo(252));
+        await vm.DeactivateAsync();
+    }
+
+    [Test]
     public async Task ScrollingCommitsOnlyLatestValueAfterIdle()
     {
         var delays = new List<TaskCompletionSource>();

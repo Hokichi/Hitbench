@@ -5,6 +5,45 @@ namespace osuHitsounder.Test.Services;
 
 public class ProjectDataSerializerTests
 {
+    [TestCase(false, false)]
+    [TestCase(false, true)]
+    [TestCase(true, false)]
+    [TestCase(true, true)]
+    public void TrackFlagsRoundTripAllCombinations(bool muted, bool soloed)
+    {
+        var project = new ProjectData { Tracks = [new Track { IsTrackMuted = muted, IsTrackSoloed = soloed,
+            Name = "Kick", Volume = 70, Samples = [new Sample { FileName = "kick.wav", Timestamp = 125 }] }] };
+        var track = ProjectDataSerializer.Deserialize(ProjectDataSerializer.Serialize(project)).Tracks.Single();
+        Assert.That(track.IsTrackMuted, Is.EqualTo(muted));
+        Assert.That(track.IsTrackSoloed, Is.EqualTo(soloed));
+        Assert.That(track.Name, Is.EqualTo("Kick"));
+        Assert.That(track.Volume, Is.EqualTo(70));
+        Assert.That(track.Samples.Single().Timestamp, Is.EqualTo(125));
+    }
+
+    [TestCase("{\"Tracks\":[{}]}", false, false)]
+    [TestCase("{\"Tracks\":[{\"IsTrackMuted\":true}]}", true, false)]
+    [TestCase("{\"Tracks\":[{\"IsTrackSoloed\":true}]}", false, true)]
+    [TestCase("{\"Samples\":[{\"Path\":\"old.wav\",\"Timestamps\":[0]}]}", false, false)]
+    public void OlderAndLegacyProjectsDefaultTrackFlagsToFalse(string json, bool muted, bool soloed)
+    {
+        var track = ProjectDataSerializer.Deserialize(json).Tracks.Single();
+        Assert.That(track.IsTrackMuted, Is.EqualTo(muted));
+        Assert.That(track.IsTrackSoloed, Is.EqualTo(soloed));
+    }
+
+    [TestCase("null")]
+    [TestCase("\"true\"")]
+    [TestCase("1")]
+    [TestCase("[]")]
+    [TestCase("{}")]
+    public void TrackFlagsRejectNonBooleanJson(string token)
+    {
+        foreach (var property in new[] { "IsTrackMuted", "IsTrackSoloed", "isTrackMuted", "istracksoloed" })
+            Assert.Throws<InvalidDataException>(() =>
+                ProjectDataSerializer.Deserialize("{\"Tracks\":[{\"" + property + "\":" + token + "}]}"));
+    }
+
     [TestCase("{\"Tracks\":[{}]}")]
     [TestCase("{\"Tracks\":[{\"Sampleset\":null,\"Addition\":null}]}")]
     [TestCase("{\"Samples\":[{\"Path\":\"old.wav\",\"Timestamps\":[0]}]}")]
