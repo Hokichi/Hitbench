@@ -22,6 +22,10 @@ public sealed partial class ManageSamplesPopupVM(SampleManagementContext context
     private CancellationToken ownerToken;
     private Task operation = Task.CompletedTask;
     private bool deactivated;
+    private CancellationTokenSource? previewCancellation;
+    private Task previewOperation = Task.CompletedTask;
+    private Task previewMonitor = Task.CompletedTask;
+    private int previewGeneration;
     public SampleManagementContext Context { get; } = context;
     public ObservableCollection<SampleManagementEntry> Entries { get; } = [];
     public bool IsEmpty => Entries.Count == 0;
@@ -35,14 +39,67 @@ public sealed partial class ManageSamplesPopupVM(SampleManagementContext context
     private bool CanPlay(SampleManagementEntry? entry) => CanAct() && preview is not null && entry is not null && Entries.Contains(entry);
     partial void OnIsBusyChanged(bool value)
     { PlayCommand.NotifyCanExecuteChanged(); EditCommand.NotifyCanExecuteChanged(); DeleteCommand.NotifyCanExecuteChanged(); AddNewSampleCommand.NotifyCanExecuteChanged(); CancelEditCommand.NotifyCanExecuteChanged(); }
-    [RelayCommand(CanExecute = nameof(CanPlay))]
+    [RelayCommand(CanExecute = nameof(CanPlay), AllowConcurrentExecutions = true)]
     private async Task PlayAsync(SampleManagementEntry entry)
     {
         if (!CanPlay(entry) || !await CommitDraftAsync()) return;
-        operation = MutateAsync(() => preview!.PlayAsync(
-            Path.Combine(Path.GetDirectoryName(Path.GetFullPath(Context.ProjectPath))!, "Samples", entry.FileName),
-            playbackVolumes?.ApplicationVolume ?? 100, lifetime.Token));
-        await operation;
+        var play = !entry.IsPlaying;
+        var generation = ++previewGeneration;
+        previewCancellation?.Cancel(); previewCancellation?.Dispose();
+        previewCancellation = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);
+        foreach (var row in Entries) row.IsPlaying = play && ReferenceEquals(row, entry);
+        ErrorMessage = null;
+        previewOperation = ChangePreviewAsync(previewOperation, entry, play, generation, previewCancellation.Token);
+        await previewOperation;
+    }
+    private async Task ChangePreviewAsync(Task previous, SampleManagementEntry entry, bool play, int generation, CancellationToken token)
+    {
+        try
+        {
+            await previous; await previewMonitor;
+            if (generation != previewGeneration || token.IsCancellationRequested) return;
+            await preview!.StopAsync(CancellationToken.None);
+            if (!play) return;
+            await preview.PlayAsync(Path.Combine(Path.GetDirectoryName(Path.GetFullPath(Context.ProjectPath))!, "Samples", entry.FileName),
+                playbackVolumes?.ApplicationVolume ?? 100, token);
+            if (generation != previewGeneration || token.IsCancellationRequested) { await preview.StopAsync(CancellationToken.None); return; }
+            previewMonitor = MonitorPreviewAsync(entry, generation, token);
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested) { }
+        catch (Exception error)
+        {
+            await scheduler.InvokeAsync(() => { if (generation == previewGeneration) { entry.IsPlaying = false; ErrorMessage = error.Message; } }, CancellationToken.None);
+        }
+    }
+    private async Task MonitorPreviewAsync(SampleManagementEntry entry, int generation, CancellationToken token)
+    {
+        try
+        {
+            while (!token.IsCancellationRequested)
+            {
+                var state = await preview!.GetSnapshotAsync(token);
+                await scheduler.InvokeAsync(() =>
+                {
+                    if (generation != previewGeneration || token.IsCancellationRequested) return;
+                    entry.IsPlaying = state.IsPlaying;
+                    if (state.Error is not null) ErrorMessage = state.Error;
+                }, token);
+                if (!state.IsPlaying) return;
+                await Task.Delay(50, token);
+            }
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested) { }
+        catch (Exception error)
+        {
+            await scheduler.InvokeAsync(() => { if (generation == previewGeneration) { entry.IsPlaying = false; ErrorMessage = error.Message; } }, CancellationToken.None);
+        }
+    }
+    private async Task StopPreviewAsync()
+    {
+        ++previewGeneration; previewCancellation?.Cancel();
+        await previewOperation; await previewMonitor;
+        if (preview is not null) await preview.StopAsync(CancellationToken.None);
+        await scheduler.InvokeAsync(() => { foreach (var entry in Entries) entry.IsPlaying = false; }, CancellationToken.None);
     }
     public async Task InitializeAsync(CancellationToken token)
     {
@@ -101,7 +158,7 @@ public sealed partial class ManageSamplesPopupVM(SampleManagementContext context
     private async Task MutateAsync(Func<Task> action)
     {
         IsBusy = true; ErrorMessage = null;
-        try { if (preview is not null) await preview.StopAsync(CancellationToken.None); await action(); }
+        try { await StopPreviewAsync(); await action(); }
         catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
         catch (Exception error) { ErrorMessage = error.Message; }
         finally { IsBusy = false; }
@@ -151,8 +208,8 @@ public sealed partial class ManageSamplesPopupVM(SampleManagementContext context
     {
         if (deactivated) return;
         lifetime.Cancel(); await operation; deactivated = true;
-        try { if (preview is not null) await preview.DisposeAsync(); }
-        finally { lifetime.Dispose(); PlayCommand.NotifyCanExecuteChanged(); }
+        try { await StopPreviewAsync(); if (preview is not null) await preview.DisposeAsync(); }
+        finally { previewCancellation?.Dispose(); lifetime.Dispose(); await scheduler.InvokeAsync(PlayCommand.NotifyCanExecuteChanged, CancellationToken.None); }
     }
 }
 

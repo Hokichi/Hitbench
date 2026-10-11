@@ -25,6 +25,11 @@
   </Style>
   <Style x:Key="OHsManageSamplesActionStyle" TargetType="c:BalloonButton" BasedOn="{StaticResource OHsBalloonNeutralActionStyle}"><Setter Property="FocusVisualStyle" Value="{StaticResource OHsKeyboardFocusVisualStyle}"/><Setter Property="IsTabStop" Value="True"/></Style>
   <Style x:Key="OHsManageSamplesDeleteStyle" TargetType="c:BalloonButton" BasedOn="{StaticResource OHsBalloonDestructiveActionStyle}"><Setter Property="FocusVisualStyle" Value="{StaticResource OHsKeyboardFocusVisualStyle}"/><Setter Property="IsTabStop" Value="True"/></Style>
+  <Style x:Key="OHsManageSamplesPlayStyle" TargetType="c:BalloonButton" BasedOn="{StaticResource OHsManageSamplesActionStyle}">
+   <Setter Property="ButtonIcon" Value="{StaticResource MediaPlay}"/><Setter Property="ButtonText" Value="Play"/>
+   <Setter Property="ToolTip" Value="{Binding FileName,Mode=OneWay,StringFormat=Play {0}}"/><Setter Property="AutomationProperties.Name" Value="{Binding FileName,Mode=OneWay,StringFormat=Play {0}}"/>
+   <Style.Triggers><DataTrigger Binding="{Binding IsPlaying,Mode=OneWay}" Value="True"><Setter Property="ButtonIcon" Value="{StaticResource MediaPause}"/><Setter Property="ButtonText" Value="Pause"/><Setter Property="ToolTip" Value="{Binding FileName,Mode=OneWay,StringFormat=Pause {0}}"/><Setter Property="AutomationProperties.Name" Value="{Binding FileName,Mode=OneWay,StringFormat=Pause {0}}"/></DataTrigger></Style.Triggers>
+  </Style>
   <Style x:Key="OHsManageSamplesRowStyle" TargetType="Border" BasedOn="{StaticResource BaseBorderStyle}">
    <Setter Property="Background" Value="Transparent"/><Setter Property="BorderBrush" Value="Transparent"/><Setter Property="BorderThickness" Value="1"/>
    <Setter Property="CornerRadius" Value="8"/><Setter Property="Padding" Value="8,4"/><Setter Property="Margin" Value="0,4"/>
@@ -46,7 +51,7 @@
      <TextBox Grid.Column="1" AutomationProperties.Name="Sample filename stem" Text="{Binding DataContext.DraftStem,RelativeSource={RelativeSource AncestorType=ItemsControl},Mode=TwoWay,UpdateSourceTrigger=PropertyChanged,ValidatesOnNotifyDataErrors=True}" Style="{StaticResource OHsManageSamplesEditorStyle}" IsVisibleChanged="OnEditorVisibilityChanged" PreviewKeyDown="OnEditorKeyDown" LostKeyboardFocus="OnEditorLostFocus"/>
      <TextBlock Grid.Column="2" Margin="8,0,0,0" VerticalAlignment="Center" Text="{Binding Extension,Mode=OneWay}" Style="{StaticResource OHsManageSamplesTextStyle}"/>
     </Grid>
-<c:BalloonButton Grid.Column="1" ButtonText="Play" ButtonIcon="{StaticResource MediaPlay}" ToolTip="{Binding FileName,Mode=OneWay,StringFormat=Play {0}}" AutomationProperties.Name="{Binding FileName,Mode=OneWay,StringFormat=Play {0}}" Command="{Binding DataContext.PlayCommand,RelativeSource={RelativeSource AncestorType=ItemsControl},Mode=OneWay}" CommandParameter="{Binding Mode=OneWay}" Style="{StaticResource OHsManageSamplesActionStyle}"/>
+<c:BalloonButton Grid.Column="1" Command="{Binding DataContext.PlayCommand,RelativeSource={RelativeSource AncestorType=ItemsControl},Mode=OneWay}" CommandParameter="{Binding Mode=OneWay}" Style="{StaticResource OHsManageSamplesPlayStyle}"/>
     <c:BalloonButton Grid.Column="2" Margin="8,0,0,0" ButtonText="Edit" ButtonIcon="{StaticResource Pen}" ToolTip="{Binding FileName,Mode=OneWay,StringFormat=Edit {0}}" AutomationProperties.Name="{Binding FileName,Mode=OneWay,StringFormat=Edit {0}}" Command="{Binding DataContext.EditCommand,RelativeSource={RelativeSource AncestorType=ItemsControl},Mode=OneWay}" CommandParameter="{Binding Mode=OneWay}" Style="{StaticResource OHsManageSamplesActionStyle}"/>
     <c:BalloonButton Grid.Column="3" Margin="8,0,0,0" ButtonText="Delete" ButtonIcon="{StaticResource Delete}" ToolTip="{Binding FileName,Mode=OneWay,StringFormat=Delete {0}}" AutomationProperties.Name="{Binding FileName,Mode=OneWay,StringFormat=Delete {0}}" Command="{Binding DataContext.DeleteCommand,RelativeSource={RelativeSource AncestorType=ItemsControl},Mode=OneWay}" CommandParameter="{Binding Mode=OneWay}" Style="{StaticResource OHsManageSamplesDeleteStyle}"/>
    </Grid>

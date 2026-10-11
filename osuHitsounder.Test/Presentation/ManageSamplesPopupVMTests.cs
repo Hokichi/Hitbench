@@ -8,6 +8,25 @@ namespace osuHitsounder.Test.Presentation;
 
 public sealed class ManageSamplesPopupVMTests
 {
+    [Test] public async Task PreviewStartupKeepsEditAndDeleteEnabledAndTogglesPause()
+    {
+        var pending=new TaskCompletionSource(); var preview=new StubSamplePreviewService{Play=_=>pending.Task}; var files=new StubSampleFileService(["hit.wav"]);
+        var vm=new ManageSamplesPopupVM(new("project.json",null,Guid.NewGuid()),files,new(files),new StubSampleFileDialogService(Array.Empty<string>()),new StubSampleRemovalDialogService(),new WeakReferenceMessenger(),new ImmediateUiScheduler(),preview);
+        await vm.InitializeAsync(default); var entry=vm.Entries.Single(); var playing=vm.PlayCommand.ExecuteAsync(entry);
+        Assert.That(vm.IsBusy,Is.False); Assert.That(vm.EditCommand.CanExecute(entry),Is.True); Assert.That(vm.DeleteCommand.CanExecute(entry),Is.True);
+        pending.SetResult(); await playing; Assert.That(entry.IsPlaying,Is.True);
+        await vm.PlayCommand.ExecuteAsync(entry); Assert.That(entry.IsPlaying,Is.False); Assert.That(preview.Playing,Is.False);
+        await vm.DeactivateAsync();
+    }
+    [Test] public async Task PreviewCompletionRestoresPlayState()
+    {
+        var preview=new StubSamplePreviewService(); var files=new StubSampleFileService(["hit.wav"]);
+        var vm=new ManageSamplesPopupVM(new("project.json",null,Guid.NewGuid()),files,new(files),new StubSampleFileDialogService(Array.Empty<string>()),new StubSampleRemovalDialogService(),new WeakReferenceMessenger(),new ImmediateUiScheduler(),preview);
+        await vm.InitializeAsync(default); var entry=vm.Entries.Single(); await vm.PlayCommand.ExecuteAsync(entry);
+        await preview.StopAsync(default);
+        await StubWorkstationAudioService.WaitUntilAsync(()=>!entry.IsPlaying);
+        Assert.That(vm.IsBusy,Is.False); await vm.DeactivateAsync();
+    }
     [Test] public async Task PlayUsesProjectSampleAndRetiresPreviewBeforeRenameAndClose()
     {
         var preview=new StubSamplePreviewService(); var files=new StubSampleFileService(["hit.wav"]);

@@ -12,7 +12,7 @@ public sealed class ManageSamplesPopupIntegrationTests
     {
         new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
         var files=new StubSampleFileService(["hit.wav"]); var preview=new StubSamplePreviewService();
-        var vm=new ManageSamplesPopupVM(new("project.json",null,Guid.NewGuid()),files,new(files),new StubSampleFileDialogService(Array.Empty<string>()),new StubSampleRemovalDialogService(),new WeakReferenceMessenger(),new ImmediateUiScheduler(),preview);
+        var vm=new ManageSamplesPopupVM(new("project.json",null,Guid.NewGuid()),files,new(files),new StubSampleFileDialogService(Array.Empty<string>()),new StubSampleRemovalDialogService(),new WeakReferenceMessenger(),new osuHitsounder.Services.Ui.UiScheduler(System.Windows.Threading.Dispatcher.CurrentDispatcher),preview);
         var popup=new ManageSamplesPopup(vm);
         try
         {
@@ -21,6 +21,10 @@ public sealed class ManageSamplesPopupIntegrationTests
             Assert.That(play.Command,Is.SameAs(vm.PlayCommand)); Assert.That(play.CommandParameter,Is.SameAs(vm.Entries.Single()));
             Assert.That(play.ButtonIcon,Is.SameAs(popup.FindResource("MediaPlay")));
             UiTestPump.Run(vm.PlayCommand.ExecuteAsync(play.CommandParameter)); Assert.That(preview.Playing,Is.True);
+            Assert.That(play.ButtonIcon,Is.SameAs(popup.FindResource("MediaPause")));
+            Assert.That(play.ButtonText,Is.EqualTo("Pause"));
+            Assert.That(Descendants(view.Root).OfType<BalloonButton>().Single(b=>b.ButtonText=="Edit").IsEnabled,Is.True);
+            Assert.That(Descendants(view.Root).OfType<BalloonButton>().Single(b=>b.ButtonText=="Delete").IsEnabled,Is.True);
             var row=Descendants(view.Root).OfType<System.Windows.Controls.Border>().Single(b=>ReferenceEquals(b.DataContext,vm.Entries.Single()) && b.Style==popup.FindResource("OHsManageSamplesRowStyle"));
             Assert.That(row.Style.BasedOn,Is.SameAs(popup.FindResource("BaseBorderStyle")));
         }
@@ -30,7 +34,7 @@ public sealed class ManageSamplesPopupIntegrationTests
     {
         new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
         var names = Enumerable.Range(0,2000).Select(i=>$"sample{i}.wav").ToArray(); var files=new StubSampleFileService(names);
-        var vm=new ManageSamplesPopupVM(new("project.json",null,Guid.NewGuid()),files,new(files),new StubSampleFileDialogService(Array.Empty<string>()),new StubSampleRemovalDialogService(),new WeakReferenceMessenger(),new ImmediateUiScheduler());
+        var vm=new ManageSamplesPopupVM(new("project.json",null,Guid.NewGuid()),files,new(files),new StubSampleFileDialogService(Array.Empty<string>()),new StubSampleRemovalDialogService(),new WeakReferenceMessenger(),new osuHitsounder.Services.Ui.UiScheduler(System.Windows.Threading.Dispatcher.CurrentDispatcher));
         var popup=new ManageSamplesPopup(vm);
         try
         {
@@ -47,7 +51,7 @@ public sealed class ManageSamplesPopupIntegrationTests
         new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
         var files = new StubSampleFileService(["hit.wav"]);
         var vm = new ManageSamplesPopupVM(new("project.json", null, Guid.NewGuid()), files, new(files), new StubSampleFileDialogService(Array.Empty<string>()),
-            new StubSampleRemovalDialogService(), new WeakReferenceMessenger(), new ImmediateUiScheduler());
+            new StubSampleRemovalDialogService(), new WeakReferenceMessenger(), new osuHitsounder.Services.Ui.UiScheduler(System.Windows.Threading.Dispatcher.CurrentDispatcher));
         var popup = new ManageSamplesPopup(vm);
         try
         {
@@ -68,7 +72,7 @@ public sealed class ManageSamplesPopupIntegrationTests
         new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
         var files = new StubSampleFileService([]);
         var vm = new ManageSamplesPopupVM(new("project.json", null, Guid.NewGuid()), files, new(files),
-            new StubSampleFileDialogService(Array.Empty<string>()), new StubSampleRemovalDialogService(), new WeakReferenceMessenger(), new ImmediateUiScheduler());
+            new StubSampleFileDialogService(Array.Empty<string>()), new StubSampleRemovalDialogService(), new WeakReferenceMessenger(), new osuHitsounder.Services.Ui.UiScheduler(System.Windows.Threading.Dispatcher.CurrentDispatcher));
         var popup = new ManageSamplesPopup(vm);
         try
         {

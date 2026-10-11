@@ -7,5 +7,6 @@ public sealed partial class SampleManagementEntry(string fileName) : ObservableO
 {
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(Extension))] private string fileName = fileName;
     [ObservableProperty] private bool isEditing;
+    [ObservableProperty] private bool isPlaying;
     public string Extension => Path.GetExtension(FileName);
 }
