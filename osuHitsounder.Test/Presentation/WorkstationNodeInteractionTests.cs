@@ -66,8 +66,14 @@ public class WorkstationNodeInteractionTests
         editor.Page.UpdateNodePointer(new Point(1, 1), target, new Point(125, editor.Vm.TrackHeight / 2));
         Assert.That(editor.Vm.IsNodeDragActive, Is.False);
         Assert.That(grids[0].FindSampleAt(new Point(100, editor.Vm.TrackHeight / 2)), Is.SameAs(editor.Node));
+        Assert.That(target.DragPreviewTimestamp, Is.Null);
         editor.Page.UpdateNodePointer(new Point(20, 100), target, new Point(125, editor.Vm.TrackHeight / 2));
         Assert.That(editor.Vm.NodePreviewTimestamps[editor.Node], Is.EqualTo(1250));
+        Assert.That(target.DragPreviewTimestamp, Is.EqualTo(1250));
+        editor.Page.UpdateNodePointer(new Point(30, 100), target, new Point(150, editor.Vm.TrackHeight / 2));
+        Assert.That(target.DragPreviewTimestamp, Is.EqualTo(1500));
+        editor.Page.UpdateNodePointer(new Point(20, 100), target, new Point(125, editor.Vm.TrackHeight / 2));
+        Assert.That(target.DragPreviewTimestamp, Is.EqualTo(1250));
         Assert.That(grids[0].GetDisplayedSampleBounds(editor.Node).IsEmpty, Is.True);
         Assert.That(grids[0].FindSampleAt(new Point(100, editor.Vm.TrackHeight / 2)), Is.Null);
         Assert.That(editor.Node.Timestamp, Is.EqualTo(1000)); Assert.That(editor.Vm.CanUndo, Is.False);
@@ -75,6 +81,7 @@ public class WorkstationNodeInteractionTests
         var complete = editor.Page.CompleteNodePointerAsync(); UiTestPump.Run(complete);
         Assert.That(complete.GetAwaiter().GetResult(), Is.True);
         Assert.That(editor.Vm.IsNodeDragActive, Is.False);
+        Assert.That(target.DragPreviewTimestamp, Is.Null);
         Assert.That(editor.Node.Timestamp, Is.EqualTo(1250));
         Assert.That(target.FindSampleAt(new Point(125, editor.Vm.TrackHeight / 2)), Is.SameAs(editor.Node));
         UiTestPump.Run(editor.Page.DeactivateAsync());
@@ -96,6 +103,7 @@ public class WorkstationNodeInteractionTests
         editor.Page.BeginNodePointer(grids[0], new Point(100, editor.Vm.TrackHeight / 2), new Point());
         editor.Page.UpdateNodePointer(new Point(20, 100), grids[1], new Point(125, editor.Vm.TrackHeight / 2));
         Assert.That(editor.Vm.NodePreviewTimestamps[editor.Node], Is.EqualTo(1250));
+        Assert.That(grids[1].DragPreviewTimestamp, Is.EqualTo(1250));
         Assert.That(grids[0].GetDisplayedSampleBounds(editor.Node).IsEmpty, Is.True);
         switch (action)
         {
@@ -109,8 +117,15 @@ public class WorkstationNodeInteractionTests
             case "deactivate": UiTestPump.Run(editor.Page.DeactivateAsync()); break;
         }
         if (action is "switch" or "leave") Assert.That(grids[0].GetDisplayedSampleBounds(editor.Node).IsEmpty, Is.True);
-        if (action == "switch") Assert.That(editor.Vm.NodePreviewTimestamps[editor.Node], Is.EqualTo(1500));
+        Assert.That(grids[1].DragPreviewTimestamp, Is.Null);
+        if (action == "switch")
+        {
+            Assert.That(editor.Vm.NodePreviewTimestamps[editor.Node], Is.EqualTo(1500));
+            Assert.That(grids[0].DragPreviewTimestamp, Is.EqualTo(1500));
+        }
         editor.Page.CancelNodePointer();
+        Assert.That(grids[0].DragPreviewTimestamp, Is.Null);
+        Assert.That(grids[1].DragPreviewTimestamp, Is.Null);
         Assert.That(grids[0].GetDisplayedSampleBounds(editor.Node).IsEmpty, Is.False);
         Assert.That(editor.Node.Timestamp, Is.EqualTo(1000)); Assert.That(editor.Vm.CanUndo, Is.False);
         UiTestPump.Run(editor.Page.DeactivateAsync());
@@ -266,6 +281,8 @@ public class WorkstationNodeInteractionTests
         Assert.That(editor.Node.Timestamp, Is.EqualTo(cancel ? 1000 : 1250));
         Assert.That(editor.Vm.Tracks[cancel ? 0 : 1].Samples.Contains(editor.Node), Is.True);
         Assert.That(grids[cancel ? 0 : 1].GetDisplayedSampleBounds(editor.Node).IsEmpty, Is.False);
+        Assert.That(grids[0].DragPreviewTimestamp, Is.Null);
+        Assert.That(grids[1].DragPreviewTimestamp, Is.Null);
         UiTestPump.Run(editor.Page.DeactivateAsync());
     }
     [TestCase(double.NaN)]
@@ -296,6 +313,8 @@ public class WorkstationNodeInteractionTests
         Assert.That(grids[0].GetDisplayedSampleBounds(editor.Node).IsEmpty, Is.True);
         var complete = editor.Page.CompleteNodePointerAsync(); UiTestPump.Run(complete);
         Assert.That(complete.Result, Is.False);
+        Assert.That(grids[0].DragPreviewTimestamp, Is.Null);
+        Assert.That(grids[1].DragPreviewTimestamp, Is.Null);
         Assert.That(grids[0].FindSampleAt(new Point(100, editor.Vm.TrackHeight / 2)), Is.SameAs(editor.Node));
         Assert.That(editor.Node.Timestamp, Is.EqualTo(1000));
         Assert.That(editor.Vm.Tracks[1].Samples.Single(), Is.SameAs(occupied));

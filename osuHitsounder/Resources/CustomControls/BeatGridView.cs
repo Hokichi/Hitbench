@@ -10,7 +10,9 @@ namespace osuHitsounder.Resources.CustomControls;
 public sealed class BeatGridView : FrameworkElement
 {
     public static readonly DependencyProperty ZoomFactorProperty = DependencyProperty.Register(nameof(ZoomFactor), typeof(double), typeof(BeatGridView), RenderMetadata(32d));
+    public static readonly DependencyProperty DragPreviewTimestampProperty = DependencyProperty.Register(nameof(DragPreviewTimestamp), typeof(int?), typeof(BeatGridView), RenderMetadata());
     public double ZoomFactor { get => (double)GetValue(ZoomFactorProperty); set => SetValue(ZoomFactorProperty, value); }
+    public int? DragPreviewTimestamp { get => (int?)GetValue(DragPreviewTimestampProperty); set => SetValue(DragPreviewTimestampProperty, value); }
     private static FrameworkPropertyMetadata RenderMetadata(object? value = null) =>
         new(value, FrameworkPropertyMetadataOptions.AffectsRender, OnGeometryChanged);
 
@@ -417,6 +419,11 @@ public sealed class BeatGridView : FrameworkElement
                 if (selected && selectionCue is not null)
                     context.DrawRoundedRectangle(null, selectedBorder, rect, 4, 4);
             }
+        if (DragPreviewTimestamp is { } preview)
+        {
+            var bounds = GetSampleBounds(preview);
+            if (!bounds.IsEmpty) context.DrawRoundedRectangle(hover, null, Inset(bounds), 4, 4);
+        }
         context.Pop();
     }
 
@@ -442,6 +449,7 @@ public sealed class BeatGridView : FrameworkElement
         pointerX = null;
         pressedInterval = null;
         SetCurrentValue(PressedSampleProperty, null);
+        SetCurrentValue(DragPreviewTimestampProperty, null);
         ActiveInterval = null;
         if (IsMouseCaptured) ReleaseMouseCapture();
         InvalidateContent();

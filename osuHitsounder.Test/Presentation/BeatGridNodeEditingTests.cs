@@ -10,6 +10,29 @@ namespace osuHitsounder.Test.Presentation;
 [NonParallelizable]
 public class BeatGridNodeEditingTests
 {
+    [TestCase("recycle")]
+    [TestCase("disable")]
+    [TestCase("unload")]
+    public void DropPreviewIsDecorativeAndClearsWithInteraction(string action)
+    {
+        var grid = CreateGrid();
+        grid.Samples = [];
+        grid.DragPreviewTimestamp = 250;
+        grid.SetActivePosition(TimeSpan.FromMilliseconds(250));
+        Assert.That(grid.FindSampleAt(new Point(10, grid.ActualHeight / 2)), Is.Null);
+        Assert.That(grid.FindActiveSample(), Is.Null);
+        Assert.That(grid.RequestSampleRemoval(10), Is.False);
+        Assert.That(grid.RequestActiveSampleRemoval(), Is.False);
+        Assert.That(grid.Samples, Is.Empty);
+        switch (action)
+        {
+            case "recycle": grid.DataContext = new Track(); break;
+            case "disable": grid.CanPlaceSamples = false; break;
+            case "unload": grid.RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent, grid)); break;
+        }
+        Assert.That(grid.DragPreviewTimestamp, Is.Null);
+    }
+
     [Test]
     public void DraggedSamplesAreHiddenFromNodeInteraction()
     {

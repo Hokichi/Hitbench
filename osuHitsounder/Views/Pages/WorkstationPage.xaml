@@ -501,14 +501,6 @@
                     VerticalAlignment="Bottom"
                     Style="{StaticResource OHsWorkstationTrackSeparatorStyle}" />
             </Grid>
-            <ControlTemplate.Triggers>
-                <Trigger Property="IsSelected" Value="True">
-                    <Setter TargetName="TrackEdgeCue" Property="Visibility" Value="Visible" />
-                </Trigger>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter TargetName="TrackEdgeCue" Property="Visibility" Value="Visible" />
-                </Trigger>
-            </ControlTemplate.Triggers>
         </ControlTemplate>
         <Style
             x:Key="OHsWorkstationTrackItemStyle"
