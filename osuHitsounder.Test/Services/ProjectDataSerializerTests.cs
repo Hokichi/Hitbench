@@ -5,6 +5,11 @@ namespace osuHitsounder.Test.Services;
 
 public class ProjectDataSerializerTests
 {
+    [TestCase("99")]
+    [TestCase("true")]
+    public void InvalidSampleTypeIsRejected(string token) =>
+        Assert.Throws<InvalidDataException>(() => ProjectDataSerializer.Deserialize("{\"Tracks\":[{\"SampleType\":" + token + "}]}"));
+
     [TestCase(false, false)]
     [TestCase(false, true)]
     [TestCase(true, false)]

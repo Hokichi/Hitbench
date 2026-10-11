@@ -523,6 +523,13 @@ public partial class WorkstationPageVM(
         QueueSave();
     }
 
+    public void SetTrackSampleType(Track track, osuHitsounder.Core.Enums.SampleType value)
+    {
+        if (!CanEditTracks || !tracks.Contains(track) || !Enum.IsDefined(value) || track.SampleType == value) return;
+        track.SampleType = value;
+        QueueSave();
+    }
+
     public void SetTrackSampleset(Track track, string value)
     {
         if (!CanEditTracks || !tracks.Contains(track) || !Track.SamplesetOptions.Contains(value) || track.Sampleset == value) return;

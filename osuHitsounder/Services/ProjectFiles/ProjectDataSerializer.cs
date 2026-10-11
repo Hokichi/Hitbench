@@ -43,6 +43,15 @@ public static class ProjectDataSerializer
                 if (track["Name"] is { Type: JTokenType.Null }) track["Name"] = string.Empty;
                 if (track["SelectedSampleFileName"] is { Type: not (JTokenType.String or JTokenType.Null) })
                     throw new InvalidDataException("Track SelectedSampleFileName must be a string or null.");
+                foreach (var member in track.Properties().Where(p => string.Equals(p.Name, nameof(Track.SampleType), StringComparison.OrdinalIgnoreCase)).ToArray())
+                {
+                    var value = member.Value;
+                    if (value.Type == JTokenType.Null) member.Value = 0;
+                    else if (value.Type == JTokenType.Integer && value.Value<long>() is >= 0 and <= 3) { }
+                    else if (value.Type == JTokenType.String && Enum.GetNames<osuHitsounder.Core.Enums.SampleType>().Contains(value.Value<string>()))
+                        member.Value = (int)Enum.Parse<osuHitsounder.Core.Enums.SampleType>(value.Value<string>()!);
+                    else throw new InvalidDataException("Track SampleType must be Normal, Clap, Finish, or Whistle.");
+                }
                 NormalizeTrackOption(track, nameof(Track.Sampleset), "Normal", Track.SamplesetOptions);
                 NormalizeTrackOption(track, nameof(Track.Addition), "None", Track.AdditionOptions);
                 foreach (var property in new[] { nameof(Track.IsTrackMuted), nameof(Track.IsTrackSoloed) })
