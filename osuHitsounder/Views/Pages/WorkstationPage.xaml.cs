@@ -383,6 +383,7 @@ public partial class WorkstationPage : UserControl
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(WorkstationPageVM.IsSelectionMode) && nodeSourceGrid is not null && pointerNode is null) CancelNodePointer();
         if (e.PropertyName == nameof(WorkstationPageVM.TrackAuditionRevision)) RefreshTrackAuditionControls(TrackList);
         if (!viewModel.CanPlaceSamples || nodeDragging && !viewModel.IsNodeDragActive) CancelNodePointer();
         if (e.PropertyName == nameof(WorkstationPageVM.SampleFiles)) RefreshSampleSelectors(TrackList);

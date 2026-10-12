@@ -111,6 +111,7 @@ public partial class WorkstationPage
         if (pointerNode is null)
         {
             if (!pointerMoved && !pastThreshold) return;
+            if (!viewModel.IsSelectionMode) { CancelNodePointer(); return; }
             pointerMoved = true;
             if (regionAdorner is null)
             {
@@ -193,7 +194,7 @@ public partial class WorkstationPage
     private void UpdateRegionSelection(Point pagePoint)
     {
         if (regionAdorner is null) return;
-        if (nodeSourceGrid?.DataContext is not Track source || !viewModel.CanPlaceSamples || !viewModel.CanEditTrackGrid(source))
+        if (nodeSourceGrid?.DataContext is not Track source || !viewModel.IsSelectionMode || !viewModel.CanPlaceSamples || !viewModel.CanEditTrackGrid(source))
         { CancelNodePointer(); return; }
         var clip = GetTimelineViewportBounds();
         var bounds = new Rect(TranslatePoint(pointerStart, TrackList), TranslatePoint(pagePoint, TrackList));

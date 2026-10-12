@@ -36,6 +36,7 @@ public class WorkstationRegionSelectionTests
         page = new WorkstationPage(vm); page.SetProjectPath("project.json");
         view = new InMemoryView(new Window { Content = page, Width = 1100, Height = 800 });
         UiTestPump.Run(page.LoadCompletion); view.UpdateLayout();
+        vm.IsAdditionMode = false;
         grids = Descendants<BeatGridView>(page).ToArray();
         foreach (var grid in grids) { grid.ContentWidth = 1000; grid.ViewportWidth = 500; grid.HorizontalOffset = 0; }
     }
@@ -73,6 +74,35 @@ public class WorkstationRegionSelectionTests
         Release(); Assert.That(page.IsRegionSelectionActive, Is.False); AssertNoAdorner();
         Assert.That(vm.SelectedSamples, Is.EquivalentTo(new[] { first, second }));
         Assert.That(vm.Tracks.Sum(t => t.Samples.Count), Is.EqualTo(2));
+    }
+    [Test]
+    public void AdditionModeDragDoesNotStartRectangleOrChangeSelection()
+    {
+        vm.IsAdditionMode = true; vm.SetNodeSelection([first]);
+        StartBox();
+        Assert.That(page.IsRegionSelectionActive, Is.False);
+        Assert.That(vm.SelectedSamples.Single(), Is.SameAs(first));
+        Release(); AssertNoAdorner();
+        Assert.That(vm.Tracks.Sum(t => t.Samples.Count), Is.EqualTo(2));
+        Assert.That(vm.CanUndo, Is.False);
+    }
+    [TestCase(false)]
+    [TestCase(true)]
+    public void ModeChangeCancelsSelectionGestureWithoutPlacingNodes(bool activeBox)
+    {
+        if (activeBox) StartBox();
+        else
+        {
+            vm.SetNodeSelection([first, second]);
+            var start = PagePoint(0, 300, 1);
+            page.BeginNodePointer(grids[0], new Point(300, 1), start);
+        }
+        vm.IsAdditionMode = true;
+        Assert.That(page.IsRegionSelectionActive, Is.False);
+        Assert.That(vm.SelectedSamples, Is.EquivalentTo(new[] { first, second }));
+        Release(); AssertNoAdorner();
+        Assert.That(vm.Tracks.Sum(t => t.Samples.Count), Is.EqualTo(2));
+        Assert.That(vm.CanUndo, Is.False);
     }
     [Test]
     public void PartialIntersectionSelectsNode()
