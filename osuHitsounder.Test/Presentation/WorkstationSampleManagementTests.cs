@@ -9,6 +9,54 @@ namespace osuHitsounder.Test.Presentation;
 
 public sealed class WorkstationSampleManagementTests
 {
+    [Test]
+    public async Task OpeningManagerPreservesPlayingSnapshotAndTransport()
+    {
+        var audio = new StubWorkstationAudioService(); var closed = new TaskCompletionSource(); var presented = new TaskCompletionSource();
+        var manager = new StubSampleManagementDialogService { Present = (_, token) => { presented.SetResult(); return closed.Task.WaitAsync(token); } };
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new MarkerPlaybackCoordinator(audio, Task.Delay), new ImmediateUiScheduler(),
+            new StubSampleFileService(["hit.wav"]), new StubSampleFileDialogService([]), sampleManagementDialog: manager);
+        try
+        {
+            await vm.LoadAsync("project.json", default); vm.AcknowledgePresentationReady(vm.LoadGeneration);
+            await vm.SeekCommand.ExecuteAsync(TimeSpan.FromSeconds(3)); await vm.PlayPauseCommand.ExecuteAsync(null);
+            var managing = vm.ManageSamplesCommand.ExecuteAsync(null); await presented.Task.WaitAsync(TimeSpan.FromSeconds(3));
+            Assert.That(audio.Snapshot.IsPlaying, Is.True); Assert.That(audio.Snapshot.Position, Is.EqualTo(TimeSpan.FromSeconds(3)));
+            Assert.That(vm.PlayPauseCommand.CanExecute(null), Is.True); Assert.That(vm.StopCommand.CanExecute(null), Is.True);
+            Assert.That(vm.SeekCommand.CanExecute(TimeSpan.FromSeconds(4)), Is.True);
+            Assert.That(vm.ManageSamplesCommand.CanExecute(null), Is.False); Assert.That(vm.CanImportSample, Is.False);
+            await vm.PlayPauseCommand.ExecuteAsync(null); Assert.That(audio.Snapshot.IsPlaying, Is.False);
+            await vm.PlayPauseCommand.ExecuteAsync(null); Assert.That(audio.Snapshot.IsPlaying, Is.True);
+            closed.SetResult(); await managing;
+            Assert.That(audio.Snapshot.IsPlaying, Is.True); Assert.That(audio.Snapshot.Position, Is.EqualTo(TimeSpan.FromSeconds(3)));
+        }
+        finally { closed.TrySetResult(); await vm.DeactivateAsync(); }
+    }
+
+    [Test]
+    public async Task OpeningManagerDoesNotCancelPendingPlay()
+    {
+        var audio = new StubWorkstationAudioService(); var closed = new TaskCompletionSource(); var presented = new TaskCompletionSource();
+        var prepared = new TaskCompletionSource(); var preparing = new TaskCompletionSource();
+        var manager = new StubSampleManagementDialogService { Present = (_, token) => { presented.SetResult(); return closed.Task.WaitAsync(token); } };
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new MarkerPlaybackCoordinator(audio, Task.Delay), new ImmediateUiScheduler(),
+            new StubSampleFileService(["hit.wav"]), new StubSampleFileDialogService([]), sampleManagementDialog: manager);
+        try
+        {
+            await vm.LoadAsync("project.json", default); vm.AcknowledgePresentationReady(vm.LoadGeneration); await vm.FlushPlaybackUpdatesAsync();
+            audio.PrepareSamplesAsync = token => { preparing.TrySetResult(); return prepared.Task.WaitAsync(token); };
+            vm.AddSampleTrackCommand.Execute(null);
+            Assert.That(vm.PlaceSample(vm.Tracks.Single(), 0), Is.True);
+            await preparing.Task.WaitAsync(TimeSpan.FromSeconds(3));
+            var playing = vm.PlayPauseCommand.ExecuteAsync(null);
+            var managing = vm.ManageSamplesCommand.ExecuteAsync(null); await presented.Task.WaitAsync(TimeSpan.FromSeconds(3));
+            prepared.SetResult(); await playing;
+            Assert.That(audio.Snapshot.IsPlaying, Is.True);
+            closed.SetResult(); await managing; Assert.That(audio.Snapshot.IsPlaying, Is.True);
+        }
+        finally { prepared.TrySetResult(); closed.TrySetResult(); await vm.DeactivateAsync(); }
+    }
+
     [Test] public async Task PreviousSessionCannotChangeReloadedProject()
     {
         var messenger=new WeakReferenceMessenger(); var manager=new StubSampleManagementDialogService();

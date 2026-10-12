@@ -4,6 +4,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using osuHitsounder.Resources.CustomControls;
+using osuHitsounder.Resources.Helpers;
 
 namespace osuHitsounder.Test.Presentation;
 
@@ -11,6 +12,34 @@ namespace osuHitsounder.Test.Presentation;
 [NonParallelizable]
 public class KeyboardNavigationPolicyTests
 {
+    [Test]
+    public void ExplicitOptInHonorsRequestedTabStopAndCanBeRemoved()
+    {
+        var input = new TextBox();
+        KeyboardNavigation.SetIsTabStop(input, true);
+        Assert.That(input.IsTabStop, Is.False);
+        KeyboardNavigationPolicy.SetAllowTabNavigation(input, true);
+        Assert.That(input.IsTabStop, Is.True);
+        KeyboardNavigation.SetIsTabStop(input, false);
+        Assert.That(input.IsTabStop, Is.False);
+        KeyboardNavigation.SetIsTabStop(input, true);
+        KeyboardNavigationPolicy.SetAllowTabNavigation(input, false);
+        Assert.That(input.IsTabStop, Is.False);
+        Assert.That(new BalloonButton().IsTabStop, Is.False);
+    }
+
+    [Test]
+    public void ManagerFocusStyleUsesNamedTemplateAndPreservesDefaultFocusPolicy()
+    {
+        new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
+        var focus = new Control();
+        focus.Style = (Style)Application.Current.FindResource("OHsSampleManagerKeyboardFocusStyle");
+        Assert.That(focus.Style.BasedOn, Is.SameAs(focus.FindResource("DefaultFocusVisualStyle")));
+        Assert.That(focus.Template, Is.SameAs(focus.FindResource("OHsSampleManagerKeyboardFocusTemplate")));
+        var ordinary = new Control { Style = (Style)focus.FindResource("DefaultFocusVisualStyle") };
+        Assert.That(ordinary.Template, Is.Null);
+    }
+
     [Test]
     public void NativeAndCustomControlsCannotBecomeTabStops()
     {

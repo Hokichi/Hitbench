@@ -936,7 +936,7 @@ public partial class WorkstationPageVM(
             if (generation == loadGeneration && !deactivated) action();
         }, token);
 
-    private bool CanUseTransport() => CanPlay && !managingSamples;
+    private bool CanUseTransport() => CanPlay;
     private bool CanIncreaseTrackHeight() => CanZoom && TrackHeight < MaximumTrackHeight;
     private bool CanDecreaseTrackHeight() => CanZoom && TrackHeight > MinimumTrackHeight;
     private bool CanIncreaseSubdivision() => IsInteractionReady && SelectedSubdivisionIndex < 8;

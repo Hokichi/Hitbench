@@ -21,19 +21,17 @@ public sealed class SampleManagementDialogService(Func<Window?> getOwner, Dispat
         {
             if (token.IsCancellationRequested) return;
             var owner = getOwner();
-            if (present is null && owner?.IsVisible != true) return;
-            ManageSamplesPopup? popup = null;
-            var picker = new SampleFileDialogService(() => popup, dispatcher, createLoader);
-            var removal = new SampleRemovalDialogService(() => popup, dispatcher);
+            if (present is null && (owner is not MainWindow || !owner.IsVisible)) return;
+            var picker = new SampleFileDialogService(() => owner, dispatcher, createLoader);
+            var removal = new SampleRemovalDialogService(() => owner, dispatcher);
             var vm = createManager(context, picker, removal);
             try
             {
-                if (present is not null) { await vm.InitializeAsync(token); await present(vm, token); return; }
-                popup = new ManageSamplesPopup(vm) { Owner = owner, FlowDirection = owner!.FlowDirection };
-                using var registration = token.Register(() => dispatcher.BeginInvoke(new Action(() => { if (popup.IsVisible) popup.Close(); })));
-                await popup.InitializeAsync(token);
-                if (!token.IsCancellationRequested) popup.ShowDialog();
+                await vm.InitializeAsync(token);
+                if (token.IsCancellationRequested) return;
+                if (present is not null) await present(vm, token);
+                else await ((MainWindow)owner!).PresentSampleManagerAsync(new ManageSamplesDrawer(vm), token);
             }
-            finally { if (popup is not null) await popup.DeactivateAsync(); else await vm.DeactivateAsync(); }
+            finally { await vm.DeactivateAsync(); }
         }).Task.Unwrap();
 }

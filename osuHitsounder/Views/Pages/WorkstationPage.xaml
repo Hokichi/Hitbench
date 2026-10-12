@@ -4,6 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:converters="clr-namespace:osuHitsounder.Resources.Converters"
     xmlns:customControls="clr-namespace:osuHitsounder.Resources.CustomControls"
+    xmlns:helpers="clr-namespace:osuHitsounder.Resources.Helpers"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:entities="clr-namespace:osuHitsounder.Core.Entities;assembly=osuHitsounder.Core"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -680,6 +681,11 @@
             <Setter Property="FocusVisualStyle" Value="{StaticResource OHsKeyboardFocusVisualStyle}" />
             <Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="True" />
         </Style>
+        <Style x:Key="OHsWorkstationManageSamplesButtonStyle" TargetType="customControls:BalloonButton"
+               BasedOn="{StaticResource OHsWorkstationToolbarButtonStyle}">
+            <Setter Property="helpers:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
+            <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
+        </Style>
         <Style
             x:Key="OHsWorkstationCollapseTracksStyle"
             BasedOn="{StaticResource OHsWorkstationToolbarButtonStyle}"
@@ -1195,6 +1201,14 @@
                                     x:Name="ToggleTracksCollapsedButton"
                                     Command="{Binding ToggleTracksCollapsedCommand, Mode=OneWay}"
                                     Style="{StaticResource OHsWorkstationCollapseTracksStyle}" />
+                                <customControls:BalloonButton
+                                    x:Name="ManageSamplesButton"
+                                    AutomationProperties.Name="Manage Samples"
+                                    ButtonIcon="{StaticResource BarsSolid}"
+                                    ButtonText="Manage Samples"
+                                    Command="{Binding ManageSamplesCommand, Mode=OneWay}"
+                                    Style="{StaticResource OHsWorkstationManageSamplesButtonStyle}"
+                                    ToolTip="Manage project samples" />
                                 <customControls:BalloonButton
                                     x:Name="AddSampleTrackButton"
                                     AutomationProperties.Name="Add New Sample Track"

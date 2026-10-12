@@ -221,6 +221,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
     internal async Task<bool> PrepareProjectForCloseAsync()
     {
         closeRequested = true;
+        if (SampleManagerHost.Content is osuHitsounder.Views.Popups.ManageSamplesDrawer drawer) DismissSampleManager(drawer);
         try
         {
             await returnHome;
@@ -304,6 +305,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
 
     protected override void OnClosed(EventArgs e)
     {
+        clearSampleFocusRestore?.Invoke();
         CancelBackgroundDrag();
         ComponentDispatcher.EnterThreadModal -= OnEnterThreadModal;
         ShellRoot.MouseMove -= OnBackgroundMouseMove;
@@ -564,7 +566,6 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
 
     private void OnEnterThreadModal(object? sender, EventArgs e) => CancelBackgroundDrag();
 
-    private void OnManageSamplesClick(object sender, RoutedEventArgs e) => messenger.Send(new ManageSamplesRequestedMessage());
     private async void OnGoBackClick(object sender, RoutedEventArgs e) => await ReturnHomeAsync();
 
     private void OnPreProcessInput(object sender, PreProcessInputEventArgs e)

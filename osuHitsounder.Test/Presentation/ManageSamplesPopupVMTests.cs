@@ -8,6 +8,115 @@ namespace osuHitsounder.Test.Presentation;
 
 public sealed class ManageSamplesPopupVMTests
 {
+    [Test]
+    public async Task EditLocksOtherRowsAndMutations()
+    {
+        var files = new StubSampleFileService(["hit.wav", "kick.wav"]);
+        var vm = CreateManager(files);
+        try
+        {
+            await vm.InitializeAsync(default);
+            var first = vm.Entries[0]; var second = vm.Entries[1];
+            await vm.EditCommand.ExecuteAsync(first);
+            Assert.That(vm.EditCommand.CanExecute(second), Is.False);
+            Assert.That(vm.DeleteCommand.CanExecute(first), Is.False);
+            Assert.That(vm.AddNewSampleCommand.CanExecute(null), Is.False);
+            await vm.EditCommand.ExecuteAsync(second);
+            Assert.That(vm.ActiveEdit, Is.SameAs(first));
+            vm.CancelEditCommand.Execute(null);
+            Assert.That(vm.EditCommand.CanExecute(second), Is.True);
+            Assert.That(vm.DeleteCommand.CanExecute(first), Is.True);
+            Assert.That(vm.AddNewSampleCommand.CanExecute(null), Is.True);
+        }
+        finally { await vm.DeactivateAsync(); }
+    }
+
+    [TestCase("")][TestCase(" ")][TestCase("CON")][TestCase("bad/name")]
+    [TestCase("bad\\name")][TestCase("name.")][TestCase("name ")]
+    public async Task InvalidDraftDisablesSaveUntilCorrected(string invalid)
+    {
+        var vm = CreateManager(new StubSampleFileService(["hit.wav"]));
+        try
+        {
+            await vm.InitializeAsync(default); var row = vm.Entries.Single();
+            await vm.EditCommand.ExecuteAsync(row); vm.DraftStem = invalid;
+            Assert.That(vm.CommitRenameCommand.CanExecute(null), Is.False);
+            Assert.That(vm.EditCommand.CanExecute(row), Is.False);
+            Assert.That(vm.HasErrors, Is.True);
+            Assert.That(vm.ErrorMessage, Is.Not.Null.And.Not.Empty);
+            vm.DraftStem = "kick";
+            Assert.That(vm.CommitRenameCommand.CanExecute(null), Is.True);
+            Assert.That(vm.EditCommand.CanExecute(row), Is.True);
+            Assert.That(vm.HasErrors, Is.False);
+            Assert.That(vm.ErrorMessage, Is.Null);
+        }
+        finally { await vm.DeactivateAsync(); }
+    }
+
+    [Test]
+    public async Task CloseRefusesDraftWithoutSaving()
+    {
+        var renameCalls = 0;
+        var vm = CreateManager(new StubSampleFileService(["hit.wav"])
+        { Rename = (_, _, _, _) => { renameCalls++; return Task.FromResult("kick.wav"); } });
+        try
+        {
+            await vm.InitializeAsync(default); await vm.EditCommand.ExecuteAsync(vm.Entries.Single()); vm.DraftStem = "kick";
+            Assert.That(await vm.PrepareToCloseAsync(), Is.False);
+            Assert.That(renameCalls, Is.Zero);
+            Assert.That(vm.ActiveEdit, Is.Not.Null);
+            vm.CancelEditCommand.Execute(null);
+            Assert.That(await vm.PrepareToCloseAsync(), Is.True);
+        }
+        finally { await vm.DeactivateAsync(); }
+    }
+
+    [Test]
+    public async Task UnchangedDraftExitsEditingWithoutRename()
+    {
+        var vm = CreateManager(new StubSampleFileService(["hit.wav"])
+        { Rename = (_, _, _, _) => throw new AssertionException("Unchanged filename must not rename") });
+        try
+        {
+            await vm.InitializeAsync(default); var row = vm.Entries.Single(); await vm.EditCommand.ExecuteAsync(row);
+            await vm.EditCommand.ExecuteAsync(row);
+            Assert.That(vm.ActiveEdit, Is.Null); Assert.That(row.IsEditing, Is.False);
+            Assert.That(vm.ErrorMessage, Is.Null);
+        }
+        finally { await vm.DeactivateAsync(); }
+    }
+
+    [Test]
+    public async Task FailedRenameRetainsDraftAndAllowsRetry()
+    {
+        var files = new StubSampleFileService(["hit.wav"]) { Rename = (_, _, _, _) => Task.FromException<string>(new IOException("Denied")) };
+        var vm = CreateManager(files);
+        try
+        {
+            await vm.InitializeAsync(default); var row = vm.Entries.Single(); await vm.EditCommand.ExecuteAsync(row); vm.DraftStem = "kick";
+            await vm.EditCommand.ExecuteAsync(row);
+            Assert.That(vm.ActiveEdit, Is.SameAs(row)); Assert.That(vm.DraftStem, Is.EqualTo("kick"));
+            Assert.That(vm.ErrorMessage, Is.EqualTo("Denied")); Assert.That(vm.EditCommand.CanExecute(row), Is.True);
+            var pending = new TaskCompletionSource<string>(); files.Rename = (_, _, _, _) => pending.Task;
+            files.List = (_, _) => Task.FromResult<IReadOnlyList<string>>(["kick.wav"]);
+            var saving = vm.EditCommand.ExecuteAsync(row);
+            try
+            {
+                Assert.That(vm.CommitRenameCommand.CanExecute(null), Is.False);
+                Assert.That(vm.CancelEditCommand.CanExecute(null), Is.False);
+                var closing = vm.PrepareToCloseAsync();
+                Assert.That(closing.IsCompletedSuccessfully, Is.True);
+                Assert.That(await closing, Is.False);
+            }
+            finally { pending.TrySetResult("kick.wav"); await saving; }
+            Assert.That(vm.ActiveEdit, Is.Null); Assert.That(row.FileName, Is.EqualTo("kick.wav"));
+        }
+        finally { await vm.DeactivateAsync(); }
+    }
+
+    private static ManageSamplesPopupVM CreateManager(StubSampleFileService files) => new(new("project.json", null, Guid.NewGuid()), files, new(files),
+        new StubSampleFileDialogService([]), new StubSampleRemovalDialogService(), new WeakReferenceMessenger(), new ImmediateUiScheduler());
+
     [Test] public async Task PreviewStartupKeepsEditAndDeleteEnabledAndTogglesPause()
     {
         var pending=new TaskCompletionSource(); var preview=new StubSamplePreviewService{Play=_=>pending.Task}; var files=new StubSampleFileService(["hit.wav"]);

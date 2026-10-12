@@ -13,6 +13,15 @@
     WindowStartupLocation="CenterScreen"
     WindowStyle="None">
     <Window.Resources>
+        <Style x:Key="OHsMainWindowSampleManagerHostStyle" TargetType="ContentControl" BasedOn="{StaticResource BaseContentControlStyle}">
+            <Setter Property="HorizontalAlignment" Value="Right" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="VerticalContentAlignment" Value="Stretch" />
+            <Setter Property="Width" Value="720" />
+            <Setter Property="MaxWidth" Value="{Binding ActualWidth, ElementName=WorkspaceHost, Mode=OneWay}" />
+            <Setter Property="Focusable" Value="False" />
+            <Style.Triggers><Trigger Property="Content" Value="{x:Null}"><Setter Property="Visibility" Value="Collapsed" /></Trigger></Style.Triggers>
+        </Style>
         <SolidColorBrush x:Key="OHsMainWindowAcrylicBackground" Color="Transparent" />
         <Style
             x:Key="OHsMainWindowGoBackStyle"
@@ -197,15 +206,6 @@
                                 IsEnabled="{Binding ElementName=PageHost, Path=Content.DataContext.CanGoBack, Mode=OneWay}"
                                 Style="{StaticResource OHsMainWindowGoBackStyle}"
                                 ToolTip="Save project and return to home" />
-                            <customControls:BalloonButton
-                                AutomationProperties.Name="Manage Sample"
-                                ButtonIcon="{StaticResource BarsSolid}"
-                                ButtonText="Manage Sample"
-                                ToolTip="Manage project samples"
-                                Click="OnManageSamplesClick"
-                                IsEnabled="{Binding ElementName=PageHost, Path=Content.DataContext.CanManageSamples, Mode=OneWay}"
-                                ShouldShowText="True"
-                                Style="{StaticResource OHsBalloonNeutralActionStyle}" />
                         </WrapPanel>
                         <StackPanel Grid.Column="2" Orientation="Horizontal">
                             <customControls:BalloonButton
@@ -234,11 +234,13 @@
                                 ToolTip="Close" />
                         </StackPanel>
                     </Grid>
-                    <Grid Grid.Row="1">
-                        <Border Style="{StaticResource MainWindowScanContentStyle}">
+                    <Grid x:Name="WorkspaceHost" Grid.Row="1" FlowDirection="LeftToRight">
+                        <Border Style="{StaticResource MainWindowScanContentStyle}" FlowDirection="{Binding FlowDirection, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}">
                             <ContentControl x:Name="PageHost" />
                         </Border>
-                        <Border Style="{StaticResource MainWindowProcessingOverlayStyle}">
+                        <ContentControl x:Name="SampleManagerHost" Style="{StaticResource OHsMainWindowSampleManagerHostStyle}"
+                                        FlowDirection="{Binding FlowDirection, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}" />
+                        <Border Style="{StaticResource MainWindowProcessingOverlayStyle}" FlowDirection="{Binding FlowDirection, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}">
                             <Border Style="{StaticResource MainWindowProcessingSurfaceStyle}">
                                 <TextBlock
                                     x:Name="ProcessingText"

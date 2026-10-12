@@ -1,7 +1,7 @@
-<c:BasePopup x:Class="osuHitsounder.Views.Popups.ManageSamplesPopup"
+<UserControl x:Class="osuHitsounder.Views.Popups.ManageSamplesDrawer"
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
- xmlns:c="clr-namespace:osuHitsounder.Resources.CustomControls" Width="720" Height="480" SizeToContent="Manual" Mode="None" PopupTitle="Manage Sample" KeyboardNavigation.TabNavigation="Cycle">
- <c:BasePopup.Resources>
+ xmlns:c="clr-namespace:osuHitsounder.Resources.CustomControls" xmlns:h="clr-namespace:osuHitsounder.Resources.Helpers" Style="{StaticResource BaseControlStyle}">
+ <UserControl.Resources>
   <Style x:Key="OHsManageSamplesTextStyle" TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlockStyle}">
    <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}"/><Setter Property="TextWrapping" Value="Wrap"/>
    <Style.Triggers><DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast),Mode=OneWay}" Value="True"><Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}"/></DataTrigger></Style.Triggers>
@@ -18,13 +18,15 @@
    <Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding IsEditing,Mode=OneWay}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers>
   </Style>
   <Style x:Key="OHsManageSamplesEditorStyle" TargetType="TextBox" BasedOn="{StaticResource RoundedTextInputStyle}">
-   <Setter Property="FocusVisualStyle" Value="{StaticResource OHsKeyboardFocusVisualStyle}"/>
+   <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}"/>
+   <Setter Property="IsTabStop" Value="True"/><Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True"/>
    <Style.Triggers><Trigger Property="Validation.HasError" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource Brush.Danger}"/></Trigger>
+    <Trigger Property="IsEnabled" Value="False"><Setter Property="Cursor" Value="Arrow"/></Trigger>
     <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast),Mode=OneWay}" Value="True"><Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}"/><Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}"/></DataTrigger>
    </Style.Triggers>
   </Style>
-  <Style x:Key="OHsManageSamplesActionStyle" TargetType="c:BalloonButton" BasedOn="{StaticResource OHsBalloonNeutralActionStyle}"><Setter Property="FocusVisualStyle" Value="{StaticResource OHsKeyboardFocusVisualStyle}"/><Setter Property="IsTabStop" Value="True"/></Style>
-  <Style x:Key="OHsManageSamplesDeleteStyle" TargetType="c:BalloonButton" BasedOn="{StaticResource OHsBalloonDestructiveActionStyle}"><Setter Property="FocusVisualStyle" Value="{StaticResource OHsKeyboardFocusVisualStyle}"/><Setter Property="IsTabStop" Value="True"/></Style>
+  <Style x:Key="OHsManageSamplesActionStyle" TargetType="c:BalloonButton" BasedOn="{StaticResource OHsBalloonNeutralActionStyle}"><Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}"/><Setter Property="IsTabStop" Value="True"/><Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True"/><Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="True"/><Setter Property="ShouldExpand" Value="False"/></Style>
+  <Style x:Key="OHsManageSamplesDeleteStyle" TargetType="c:BalloonButton" BasedOn="{StaticResource OHsBalloonDestructiveActionStyle}"><Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}"/><Setter Property="IsTabStop" Value="True"/><Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True"/><Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="True"/><Setter Property="ShouldExpand" Value="False"/></Style>
   <Style x:Key="OHsManageSamplesPlayStyle" TargetType="c:BalloonButton" BasedOn="{StaticResource OHsManageSamplesActionStyle}">
    <Setter Property="ButtonIcon" Value="{StaticResource MediaPlay}"/><Setter Property="ButtonText" Value="Play"/>
    <Setter Property="ToolTip" Value="{Binding FileName,Mode=OneWay,StringFormat=Play {0}}"/><Setter Property="AutomationProperties.Name" Value="{Binding FileName,Mode=OneWay,StringFormat=Play {0}}"/>
@@ -40,22 +42,35 @@
     <MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding IsKeyboardFocusWithin,RelativeSource={RelativeSource Self},Mode=OneWay}" Value="True"/><Condition Binding="{Binding Path=(SystemParameters.HighContrast),Mode=OneWay}" Value="True"/></MultiDataTrigger.Conditions><Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}"/></MultiDataTrigger>
    </Style.Triggers>
   </Style>
+  <Style x:Key="OHsManageSamplesSurfaceStyle" TargetType="Border" BasedOn="{StaticResource CardBorderStyle}">
+   <Style.Triggers><DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast),Mode=OneWay}" Value="True"><Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}"/><Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}"/></DataTrigger></Style.Triggers>
+  </Style>
+  <Style x:Key="OHsManageSamplesEditStyle" TargetType="c:BalloonButton" BasedOn="{StaticResource OHsManageSamplesActionStyle}">
+   <Setter Property="ButtonText" Value="Edit"/><Setter Property="ButtonIcon" Value="{StaticResource Pen}"/>
+   <Setter Property="ToolTip" Value="{Binding FileName,Mode=OneWay,StringFormat=Edit {0}}"/><Setter Property="AutomationProperties.Name" Value="{Binding FileName,Mode=OneWay,StringFormat=Edit {0}}"/>
+  </Style>
+  <Style x:Key="OHsManageSamplesSaveStyle" TargetType="c:BalloonButton" BasedOn="{StaticResource OHsBalloonConfirmActionStyle}">
+   <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}"/><Setter Property="IsTabStop" Value="True"/><Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True"/><Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="True"/><Setter Property="ShouldExpand" Value="False"/>
+   <Setter Property="ButtonText" Value="Save"/><Setter Property="ButtonIcon" Value="{StaticResource Check}"/>
+   <Setter Property="ToolTip" Value="{Binding FileName,Mode=OneWay,StringFormat=Save {0}}"/><Setter Property="AutomationProperties.Name" Value="{Binding FileName,Mode=OneWay,StringFormat=Save {0}}"/>
+  </Style>
   <DataTemplate x:Key="OHsManageSamplesRowTemplate">
-   <Border Style="{StaticResource OHsManageSamplesRowStyle}">
+   <Border Style="{StaticResource OHsManageSamplesRowStyle}" IsEnabled="{Binding IsInteractionEnabled,Mode=OneWay}">
    <Grid MinHeight="48" Style="{StaticResource BaseGridStyle}">
     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
     <TextBlock Text="{Binding FileName,Mode=OneWay}" ToolTip="{Binding FileName,Mode=OneWay}" VerticalAlignment="Center" Style="{StaticResource OHsManageSamplesNameStyle}"/>
     <Grid Style="{StaticResource OHsManageSamplesEditorHostStyle}" Margin="0,0,8,0">
      <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
      <TextBlock Text="Filename" VerticalAlignment="Center" Margin="0,0,8,0" Style="{StaticResource OHsManageSamplesTextStyle}"/>
-     <TextBox Grid.Column="1" AutomationProperties.Name="Sample filename stem" Text="{Binding DataContext.DraftStem,RelativeSource={RelativeSource AncestorType=ItemsControl},Mode=TwoWay,UpdateSourceTrigger=PropertyChanged,ValidatesOnNotifyDataErrors=True}" Style="{StaticResource OHsManageSamplesEditorStyle}" IsVisibleChanged="OnEditorVisibilityChanged" PreviewKeyDown="OnEditorKeyDown" LostKeyboardFocus="OnEditorLostFocus"/>
+     <TextBox Grid.Column="1" AutomationProperties.Name="Sample filename stem" IsEnabled="{Binding DataContext.CanEditDraft,RelativeSource={RelativeSource AncestorType=ItemsControl},Mode=OneWay}" Text="{Binding DataContext.DraftStem,RelativeSource={RelativeSource AncestorType=ItemsControl},Mode=TwoWay,UpdateSourceTrigger=PropertyChanged,ValidatesOnNotifyDataErrors=True}" Style="{StaticResource OHsManageSamplesEditorStyle}" IsVisibleChanged="OnEditorVisibilityChanged" PreviewKeyDown="OnEditorKeyDown"/>
      <TextBlock Grid.Column="2" Margin="8,0,0,0" VerticalAlignment="Center" Text="{Binding Extension,Mode=OneWay}" Style="{StaticResource OHsManageSamplesTextStyle}"/>
     </Grid>
 <c:BalloonButton Grid.Column="1" Command="{Binding DataContext.PlayCommand,RelativeSource={RelativeSource AncestorType=ItemsControl},Mode=OneWay}" CommandParameter="{Binding Mode=OneWay}" Style="{StaticResource OHsManageSamplesPlayStyle}"/>
-    <c:BalloonButton Grid.Column="2" Margin="8,0,0,0" ButtonText="Edit" ButtonIcon="{StaticResource Pen}" ToolTip="{Binding FileName,Mode=OneWay,StringFormat=Edit {0}}" AutomationProperties.Name="{Binding FileName,Mode=OneWay,StringFormat=Edit {0}}" Command="{Binding DataContext.EditCommand,RelativeSource={RelativeSource AncestorType=ItemsControl},Mode=OneWay}" CommandParameter="{Binding Mode=OneWay}" Style="{StaticResource OHsManageSamplesActionStyle}"/>
+    <c:BalloonButton x:Name="EditAction" Grid.Column="2" Margin="8,0,0,0" Click="OnEditActionClick" Command="{Binding DataContext.EditCommand,RelativeSource={RelativeSource AncestorType=ItemsControl},Mode=OneWay}" CommandParameter="{Binding Mode=OneWay}" Style="{StaticResource OHsManageSamplesEditStyle}"/>
     <c:BalloonButton Grid.Column="3" Margin="8,0,0,0" ButtonText="Delete" ButtonIcon="{StaticResource Delete}" ToolTip="{Binding FileName,Mode=OneWay,StringFormat=Delete {0}}" AutomationProperties.Name="{Binding FileName,Mode=OneWay,StringFormat=Delete {0}}" Command="{Binding DataContext.DeleteCommand,RelativeSource={RelativeSource AncestorType=ItemsControl},Mode=OneWay}" CommandParameter="{Binding Mode=OneWay}" Style="{StaticResource OHsManageSamplesDeleteStyle}"/>
    </Grid>
    </Border>
+   <DataTemplate.Triggers><DataTrigger Binding="{Binding IsEditing,Mode=OneWay}" Value="True"><Setter TargetName="EditAction" Property="Style" Value="{StaticResource OHsManageSamplesSaveStyle}"/></DataTrigger></DataTemplate.Triggers>
   </DataTemplate>
   <ItemsPanelTemplate x:Key="OHsManageSamplesPanel"><VirtualizingStackPanel/></ItemsPanelTemplate>
   <ControlTemplate x:Key="OHsManageSamplesListTemplate" TargetType="ItemsControl"><ScrollViewer CanContentScroll="True" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"><ItemsPresenter/></ScrollViewer></ControlTemplate>
@@ -63,14 +78,15 @@
    <Setter Property="ItemsPanel" Value="{StaticResource OHsManageSamplesPanel}"/><Setter Property="ItemTemplate" Value="{StaticResource OHsManageSamplesRowTemplate}"/><Setter Property="Template" Value="{StaticResource OHsManageSamplesListTemplate}"/><Setter Property="VirtualizingPanel.IsVirtualizing" Value="True"/><Setter Property="VirtualizingPanel.VirtualizationMode" Value="Recycling"/>
   </Style>
   <Style x:Key="OHsManageSamplesEmptyStyle" TargetType="TextBlock" BasedOn="{StaticResource CenteredEmptyStateTextStyle}"><Setter Property="TextWrapping" Value="Wrap"/><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding IsEmpty,Mode=OneWay}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger><DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast),Mode=OneWay}" Value="True"><Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}"/></DataTrigger></Style.Triggers></Style>
- </c:BasePopup.Resources>
- <Grid Margin="24" Style="{StaticResource BaseGridStyle}">
-  <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-  <Grid Style="{StaticResource BaseGridStyle}"><ItemsControl x:Name="SampleRows" ItemsSource="{Binding Entries,Mode=OneWay}" Style="{StaticResource OHsManageSamplesListStyle}"/><TextBlock Text="No samples in this project. Add a new sample to get started." Style="{StaticResource OHsManageSamplesEmptyStyle}"/></Grid>
-  <TextBlock Grid.Row="1" Margin="0,8,0,0" Text="{Binding ErrorMessage,Mode=OneWay}" Style="{StaticResource OHsManageSamplesErrorStyle}"/>
-  <Grid Grid.Row="2" Margin="0,16,0,0" Style="{StaticResource BaseGridStyle}"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+ </UserControl.Resources>
+ <Border Style="{StaticResource OHsManageSamplesSurfaceStyle}"><Grid Style="{StaticResource BaseGridStyle}">
+  <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+<Grid Margin="0,0,0,12" Style="{StaticResource BaseGridStyle}"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="Manage Samples" VerticalAlignment="Center" Style="{StaticResource OHsPopupTitleTextStyle}"/><c:BalloonButton x:Name="CloseDrawerButton" Grid.Column="1" ButtonText="Close" ButtonIcon="{StaticResource Close}" ToolTip="Close Manage Samples" AutomationProperties.Name="Close Manage Samples" IsEnabled="{Binding CanClose,Mode=OneWay}" Click="OnCloseClick" Style="{StaticResource OHsManageSamplesDeleteStyle}"/></Grid>
+  <Grid Grid.Row="1" Style="{StaticResource BaseGridStyle}"><ItemsControl x:Name="SampleRows" ItemsSource="{Binding Entries,Mode=OneWay}" Style="{StaticResource OHsManageSamplesListStyle}"/><TextBlock Text="No samples in this project. Add a new sample to get started." Style="{StaticResource OHsManageSamplesEmptyStyle}"/></Grid>
+  <TextBlock Grid.Row="2" Margin="0,8,0,0" Text="{Binding ErrorMessage,Mode=OneWay}" Style="{StaticResource OHsManageSamplesErrorStyle}"/>
+  <Grid Grid.Row="3" Margin="0,16,0,0" Style="{StaticResource BaseGridStyle}"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
    <c:BalloonButton x:Name="AddNewSampleButton" Grid.Column="1" ButtonText="Add New Sample" ButtonIcon="{StaticResource PlusSolid}" ShouldShowText="True" AutomationProperties.Name="Add new sample" Command="{Binding AddNewSampleCommand,Mode=OneWay}" Style="{StaticResource OHsManageSamplesActionStyle}"/>
   </Grid>
- </Grid>
-</c:BasePopup>
+ </Grid></Border>
+</UserControl>
 

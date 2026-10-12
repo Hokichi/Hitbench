@@ -19,7 +19,6 @@ public sealed partial class ManageSamplesPopupVM(SampleManagementContext context
     PlaybackVolumeSettings? playbackVolumes = null) : ObservableValidator
 {
     private CancellationTokenSource lifetime = new();
-    private CancellationToken ownerToken;
     private Task operation = Task.CompletedTask;
     private bool deactivated;
     private CancellationTokenSource? previewCancellation;
@@ -31,18 +30,50 @@ public sealed partial class ManageSamplesPopupVM(SampleManagementContext context
     public bool IsEmpty => Entries.Count == 0;
     public string EditExtension => ActiveEdit?.Extension ?? string.Empty;
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(EditExtension))] private SampleManagementEntry? activeEdit;
-    [ObservableProperty] [NotifyDataErrorInfo] [CustomValidation(typeof(SampleFileNames), nameof(SampleFileNames.ValidateStem))]
+    [ObservableProperty] [CustomValidation(typeof(SampleFileNames), nameof(SampleFileNames.ValidateStem))]
     private string draftStem = string.Empty;
     [ObservableProperty] private string? errorMessage;
     [ObservableProperty] private bool isBusy;
-    private bool CanAct() => !deactivated && !IsBusy;
+    private bool CanInteract() => !deactivated && !lifetime.IsCancellationRequested && !IsBusy;
+    private bool CanAct() => CanInteract() && ActiveEdit is null;
+    public bool CanClose => CanAct();
+    public bool CanEditDraft => CanInteract() && ActiveEdit is not null;
+    public bool CanCommitRename => CanEditDraft && !HasErrors && SampleFileNames.GetStemError(DraftStem) is null;
+    private bool CanEdit(SampleManagementEntry? entry) => CanInteract() && entry is not null && Entries.Contains(entry) &&
+        (ActiveEdit is null || ReferenceEquals(ActiveEdit, entry) && CanCommitRename);
+    private bool CanDelete(SampleManagementEntry? entry) => CanAct() && entry is not null && Entries.Contains(entry);
     private bool CanPlay(SampleManagementEntry? entry) => CanAct() && preview is not null && entry is not null && Entries.Contains(entry);
-    partial void OnIsBusyChanged(bool value)
-    { PlayCommand.NotifyCanExecuteChanged(); EditCommand.NotifyCanExecuteChanged(); DeleteCommand.NotifyCanExecuteChanged(); AddNewSampleCommand.NotifyCanExecuteChanged(); CancelEditCommand.NotifyCanExecuteChanged(); }
+    partial void OnIsBusyChanged(bool value) => NotifyEditingState();
+    partial void OnActiveEditChanged(SampleManagementEntry? value)
+    {
+        if (value is not null) ValidateDraft();
+        NotifyEditingState();
+    }
+    partial void OnDraftStemChanged(string value)
+    {
+        if (ActiveEdit is not null) ValidateDraft();
+        NotifyEditingState();
+    }
+    private void ValidateDraft()
+    {
+        ValidateProperty(DraftStem, nameof(DraftStem));
+        ErrorMessage = SampleFileNames.GetStemError(DraftStem);
+    }
+    private void NotifyEditingState()
+    {
+        foreach (var row in Entries)
+        {
+            row.IsEditing = ReferenceEquals(row, ActiveEdit);
+            row.IsInteractionEnabled = CanInteract() && (ActiveEdit is null || row.IsEditing);
+        }
+        OnPropertyChanged(nameof(CanClose)); OnPropertyChanged(nameof(CanEditDraft)); OnPropertyChanged(nameof(CanCommitRename));
+        PlayCommand.NotifyCanExecuteChanged(); EditCommand.NotifyCanExecuteChanged(); DeleteCommand.NotifyCanExecuteChanged();
+        AddNewSampleCommand.NotifyCanExecuteChanged(); CancelEditCommand.NotifyCanExecuteChanged(); CommitRenameCommand.NotifyCanExecuteChanged();
+    }
     [RelayCommand(CanExecute = nameof(CanPlay), AllowConcurrentExecutions = true)]
     private async Task PlayAsync(SampleManagementEntry entry)
     {
-        if (!CanPlay(entry) || !await CommitDraftAsync()) return;
+        if (!CanPlay(entry)) return;
         var play = !entry.IsPlaying;
         var generation = ++previewGeneration;
         previewCancellation?.Cancel(); previewCancellation?.Dispose();
@@ -103,9 +134,8 @@ public sealed partial class ManageSamplesPopupVM(SampleManagementContext context
     }
     public async Task InitializeAsync(CancellationToken token)
     {
-        ownerToken = token;
         lifetime.Dispose(); lifetime = CancellationTokenSource.CreateLinkedTokenSource(token);
-        try { Replace(await files.ListAsync(Context.ProjectPath, lifetime.Token)); await PublishAsync(); }
+        try { var names = await files.ListAsync(Context.ProjectPath, lifetime.Token); lifetime.Token.ThrowIfCancellationRequested(); Replace(names); await PublishAsync(); }
         catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
         catch (Exception error) { ErrorMessage = error.Message; }
     }
@@ -116,6 +146,7 @@ public sealed partial class ManageSamplesPopupVM(SampleManagementContext context
         foreach (var name in names.OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ThenBy(n => n, StringComparer.Ordinal))
         { var entry = current.GetValueOrDefault(name) ?? new(name); entry.FileName = name; Entries.Add(entry); }
         OnPropertyChanged(nameof(IsEmpty));
+        NotifyEditingState();
     }
     private Task PublishAsync(string? oldName = null, string? newName = null) => scheduler.InvokeAsync(() =>
         messenger.Send(new ProjectSamplesChangedMessage(Context, Entries.Select(e => e.FileName).ToArray(), oldName, newName)), CancellationToken.None);
@@ -125,31 +156,31 @@ public sealed partial class ManageSamplesPopupVM(SampleManagementContext context
         catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
         catch (Exception error) { ErrorMessage = $"Could not refresh samples: {error.Message}"; }
     }
-    [RelayCommand(CanExecute = nameof(CanAct))]
+    [RelayCommand(CanExecute = nameof(CanEdit))]
     private async Task EditAsync(SampleManagementEntry entry)
     {
-        if (!CanAct() || !Entries.Contains(entry) || !await CommitDraftAsync()) return;
-        ActiveEdit = entry; DraftStem = Path.GetFileNameWithoutExtension(entry.FileName); entry.IsEditing = true; ErrorMessage = null;
+        if (!CanEdit(entry)) return;
+        if (ReferenceEquals(ActiveEdit, entry)) { await CommitDraftAsync(); return; }
+        DraftStem = Path.GetFileNameWithoutExtension(entry.FileName); ActiveEdit = entry;
     }
-    [RelayCommand(CanExecute = nameof(CanAct))]
+    [RelayCommand(CanExecute = nameof(CanEditDraft))]
     private void CancelEdit()
     {
+        if (!CanEditDraft) return;
         if (ActiveEdit is { } entry) { DraftStem = Path.GetFileNameWithoutExtension(entry.FileName); entry.IsEditing = false; }
         ActiveEdit = null; ClearErrors(); ErrorMessage = null;
     }
-    [RelayCommand]
-    private Task CommitRenameAsync() => CommitDraftAsync();
+    [RelayCommand(CanExecute = nameof(CanCommitRename))]
+    private Task CommitRenameAsync() => CanCommitRename ? CommitDraftAsync() : Task.CompletedTask;
     private async Task<bool> CommitDraftAsync()
     {
-        if (IsBusy) { await operation; return ActiveEdit is null; }
-        if (ActiveEdit is not { } entry) return true;
-        ValidateProperty(DraftStem, nameof(DraftStem));
-        if (HasErrors) { ErrorMessage = SampleFileNames.GetStemError(DraftStem); return false; }
+        if (!CanCommitRename || ActiveEdit is not { } entry) return false;
         if (Path.GetFileNameWithoutExtension(entry.FileName) == DraftStem) { CancelEdit(); return true; }
+        var stem = DraftStem;
         operation = MutateAsync(async () =>
         {
             var old = entry.FileName;
-            var renamed = await files.RenameAsync(Context.ProjectPath, old, DraftStem, lifetime.Token);
+            var renamed = await files.RenameAsync(Context.ProjectPath, old, stem, lifetime.Token);
             entry.FileName = renamed; entry.IsEditing = false; ActiveEdit = null;
             await PublishAsync(old, renamed); await RefreshAsync();
         });
@@ -163,10 +194,10 @@ public sealed partial class ManageSamplesPopupVM(SampleManagementContext context
         catch (Exception error) { ErrorMessage = error.Message; }
         finally { IsBusy = false; }
     }
-    [RelayCommand(CanExecute = nameof(CanAct))]
+    [RelayCommand(CanExecute = nameof(CanDelete))]
     private async Task DeleteAsync(SampleManagementEntry entry)
     {
-        if (!CanAct() || !Entries.Contains(entry) || !await CommitDraftAsync()) return;
+        if (!CanDelete(entry)) return;
         operation = MutateAsync(async () =>
         {
             if (!await removal.ConfirmAsync(entry.FileName, lifetime.Token)) return;
@@ -180,7 +211,7 @@ public sealed partial class ManageSamplesPopupVM(SampleManagementContext context
     [RelayCommand(CanExecute = nameof(CanAct))]
     private async Task AddNewSampleAsync()
     {
-        if (!CanAct() || !await CommitDraftAsync()) return;
+        if (!CanAct()) return;
         operation = MutateAsync(async () =>
         {
             var selected = await picker.SelectAsync(Context.InitialDirectory, lifetime.Token);
@@ -194,22 +225,14 @@ public sealed partial class ManageSamplesPopupVM(SampleManagementContext context
         });
         await operation;
     }
-    public async Task<bool> PrepareToCloseAsync()
-    {
-        if (IsBusy)
-        {
-            lifetime.Cancel(); await operation;
-            if (ActiveEdit is not null && !ownerToken.IsCancellationRequested)
-            { lifetime.Dispose(); lifetime = CancellationTokenSource.CreateLinkedTokenSource(ownerToken); return false; }
-        }
-        return await CommitDraftAsync();
-    }
+    public Task<bool> PrepareToCloseAsync() => Task.FromResult(CanClose);
     public async Task DeactivateAsync()
     {
         if (deactivated) return;
-        lifetime.Cancel(); await operation; deactivated = true;
+        deactivated = true; lifetime.Cancel(); NotifyEditingState(); await operation;
+        ActiveEdit = null; ClearErrors();
         try { await StopPreviewAsync(); if (preview is not null) await preview.DisposeAsync(); }
-        finally { previewCancellation?.Dispose(); lifetime.Dispose(); await scheduler.InvokeAsync(PlayCommand.NotifyCanExecuteChanged, CancellationToken.None); }
+        finally { previewCancellation?.Dispose(); lifetime.Dispose(); await scheduler.InvokeAsync(NotifyEditingState, CancellationToken.None); }
     }
 }
 

@@ -30,7 +30,6 @@ public partial class WorkstationPageVM
     {
         try
         {
-            pendingPlayCancellation?.Cancel(); await playback.PauseAsync(token); RefreshPlayback();
             await sampleManagementDialog!.ShowAsync(context, token); await sampleChangeNotifications;
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { }
