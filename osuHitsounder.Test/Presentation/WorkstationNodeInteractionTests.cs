@@ -156,7 +156,8 @@ public class WorkstationNodeInteractionTests
         grid.ContentWidth = 4000; grid.ViewportWidth = 500; grid.HorizontalOffset = 0;
         editor.Vm.SelectNode(editor.Vm.Tracks[0], editor.Node, false);
         var blankX = grid.GetSampleBounds(editor.Node.Timestamp).Right + 1;
-        Assert.That(editor.Page.BeginNodePointer(grid, new Point(blankX, editor.Vm.TrackHeight / 2), new Point()), Is.False);
+        Assert.That(editor.Page.BeginNodePointer(grid, new Point(blankX, editor.Vm.TrackHeight / 2), new Point()), Is.True);
+        UiTestPump.Run(editor.Page.CompleteNodePointerAsync());
         Assert.That(editor.Vm.SelectedSamples, Is.Empty);
         grid.UpdatePointerPosition(blankX);
         Assert.That(grid.RequestPointerSamplePlacement(), Is.True);
@@ -307,12 +308,13 @@ public class WorkstationNodeInteractionTests
         var other = new Sample { Timestamp = 1500, FileName = "b.wav" }; editor.Vm.Tracks[1].Samples.Add(other);
         editor.Page.BeginNodePointer(grids[0], new Point(100, editor.Vm.TrackHeight / 2), new Point());
         editor.Page.BeginNodePointer(grids[1], new Point(150, editor.Vm.TrackHeight / 2), new Point(), ModifierKeys.Control);
+        UiTestPump.Run(editor.Page.CompleteNodePointerAsync());
         Assert.That(editor.Vm.SelectedSamples, Is.EquivalentTo(new[] { editor.Node, other }));
         Assert.That(editor.Page.BeginNodePointer(grids[1], new Point(150, editor.Vm.TrackHeight / 2), new Point(), ModifierKeys.Control), Is.True);
         editor.Page.UpdateNodePointer(new Point(20, 20), grids[1], new Point(200, editor.Vm.TrackHeight / 2));
         var completion = editor.Page.CompleteNodePointerAsync(); UiTestPump.Run(completion);
         Assert.That(completion.GetAwaiter().GetResult(), Is.False);
-        Assert.That(editor.Vm.SelectedSamples.Single(), Is.SameAs(editor.Node));
+        Assert.That(editor.Vm.SelectedSamples, Is.EquivalentTo(new[] { editor.Node, other }));
         Assert.That(other.Timestamp, Is.EqualTo(1500)); Assert.That(editor.Vm.CanUndo, Is.False);
         UiTestPump.Run(editor.Page.DeactivateAsync());
     }
