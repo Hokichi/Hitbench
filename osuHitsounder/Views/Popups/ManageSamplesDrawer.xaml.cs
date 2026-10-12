@@ -8,7 +8,7 @@ using osuHitsounder.ViewModels.Popups;
 
 namespace osuHitsounder.Views.Popups;
 
-public partial class ManageSamplesDrawer : UserControl
+public partial class ManageSamplesDrawer : UserControl,IOHsShellDrawer
 {
     private readonly ManageSamplesPopupVM viewModel;
     private BalloonButton? editAction;
@@ -21,6 +21,7 @@ public partial class ManageSamplesDrawer : UserControl
 
     public event EventHandler? CloseRequested;
     public bool CanDismiss => viewModel.CanClose;
+    public bool TryPrepareClose() => CanDismiss;
 
     private void OnCloseClick(object sender, RoutedEventArgs e)
     {

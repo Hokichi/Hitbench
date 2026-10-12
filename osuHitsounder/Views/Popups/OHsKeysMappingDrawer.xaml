@@ -1,0 +1,84 @@
+<UserControl x:Class="osuHitsounder.Views.Popups.OHsKeysMappingDrawer"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:c="clr-namespace:osuHitsounder.Resources.CustomControls">
+ <UserControl.Resources>
+  <Style x:Key="OHsKeysActionStyle" TargetType="c:BalloonButton" BasedOn="{StaticResource OHsBalloonNeutralActionStyle}">
+   <Setter Property="ShouldShowText" Value="True"/><Setter Property="IsTabStop" Value="True"/>
+   <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}"/>
+   <Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="True"/>
+  </Style>
+  <Style x:Key="OHsKeysCloseStyle" TargetType="c:BalloonButton" BasedOn="{StaticResource OHsBalloonDestructiveActionStyle}">
+   <Setter Property="ShouldShowText" Value="True"/><Setter Property="IsTabStop" Value="True"/>
+   <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}"/>
+   <Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="True"/>
+  </Style>
+  <Style x:Key="OHsKeysInputStyle" TargetType="TextBox" BasedOn="{StaticResource RoundedTextInputStyle}">
+   <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}"/>
+   <Style.Triggers><DataTrigger Binding="{Binding HasError,Mode=OneWay}" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource Brush.Danger}"/></DataTrigger>
+    <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast),Mode=OneWay}" Value="True">
+     <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}"/>
+     <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}"/>
+    </DataTrigger>
+   </Style.Triggers>
+  </Style>
+  <Style x:Key="OHsKeysTextStyle" TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlockStyle}">
+   <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}"/><Setter Property="TextWrapping" Value="Wrap"/>
+   <Style.Triggers><DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast),Mode=OneWay}" Value="True">
+    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}"/>
+   </DataTrigger></Style.Triggers>
+  </Style>
+  <Style x:Key="OHsKeysErrorStyle" TargetType="TextBlock" BasedOn="{StaticResource OHsKeysTextStyle}">
+   <Setter Property="Foreground" Value="{DynamicResource Brush.Danger}"/><Setter Property="AutomationProperties.LiveSetting" Value="Polite"/>
+   <Style.Triggers><Trigger Property="Text" Value="{x:Null}"><Setter Property="Visibility" Value="Collapsed"/></Trigger>
+    <Trigger Property="Text" Value=""><Setter Property="Visibility" Value="Collapsed"/></Trigger></Style.Triggers>
+  </Style>
+  <Style x:Key="OHsKeysWarningStyle" TargetType="TextBlock" BasedOn="{StaticResource OHsKeysTextStyle}">
+   <Setter Property="Foreground" Value="{DynamicResource Brush.Warning}"/><Setter Property="FontSize" Value="11"/>
+  </Style>
+  <ItemsPanelTemplate x:Key="OHsKeysPanel"><VirtualizingStackPanel/></ItemsPanelTemplate>
+  <ControlTemplate x:Key="OHsKeysItemsTemplate" TargetType="ItemsControl">
+   <ScrollViewer CanContentScroll="True" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Style="{StaticResource BaseScrollViewerStyle}"><ItemsPresenter/></ScrollViewer>
+  </ControlTemplate>
+  <Style x:Key="OHsKeysItemsStyle" TargetType="ItemsControl" BasedOn="{StaticResource BaseItemsControlStyle}">
+   <Setter Property="Template" Value="{StaticResource OHsKeysItemsTemplate}"/><Setter Property="ItemsPanel" Value="{StaticResource OHsKeysPanel}"/>
+   <Setter Property="VirtualizingPanel.IsVirtualizing" Value="True"/><Setter Property="VirtualizingPanel.VirtualizationMode" Value="Recycling"/>
+  </Style>
+  <DataTemplate x:Key="OHsKeysRowTemplate">
+   <Grid Margin="0,8,8,0" Style="{StaticResource BaseGridStyle}">
+    <Grid.ColumnDefinitions><ColumnDefinition Width="48"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+    <TextBlock Text="{Binding Key,Mode=OneWay}" VerticalAlignment="Center" Style="{StaticResource OHsKeysTextStyle}"/>
+    <StackPanel Grid.Column="1" Margin="0,0,8,0" Style="{StaticResource BaseStackPanelStyle}">
+     <TextBox Text="{Binding DraftFileName,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource OHsKeysInputStyle}"
+      AutomationProperties.Name="{Binding Key,Mode=OneWay,StringFormat=Sample file for {0}}" LostKeyboardFocus="OnMappingLostFocus" PreviewKeyDown="OnMappingKeyDown"/>
+     <TextBlock Text="{Binding Error,Mode=OneWay}" Style="{StaticResource OHsKeysErrorStyle}"/>
+     <TextBlock Text="{Binding AvailabilityText,Mode=OneWay}" Style="{StaticResource OHsKeysWarningStyle}"/>
+    </StackPanel>
+    <c:BalloonButton Grid.Column="2" VerticalAlignment="Top" ButtonText="Open" ButtonIcon="{StaticResource PlusSolid}" Style="{StaticResource OHsKeysActionStyle}"
+     AutomationProperties.Name="{Binding Key,Mode=OneWay,StringFormat=Open sample for {0}}" ToolTip="Choose a sample for this key"
+     Command="{Binding DataContext.OpenKeyCommand,RelativeSource={RelativeSource AncestorType=UserControl},Mode=OneWay}" CommandParameter="{Binding Key,Mode=OneWay}"/>
+   </Grid>
+  </DataTemplate>
+ </UserControl.Resources>
+ <Border Style="{StaticResource OHsPopupSurfaceBorderStyle}" Padding="16">
+  <Grid Style="{StaticResource BaseGridStyle}">
+   <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+   <Grid Style="{StaticResource BaseGridStyle}">
+    <c:BalloonButton HorizontalAlignment="Left" ButtonText="Open" ButtonIcon="{StaticResource PlusSolid}" Style="{StaticResource OHsKeysActionStyle}" IsEnabled="False"
+     AutomationProperties.Name="Open key mapping preset" AutomationProperties.HelpText="Bulk mapping is not available yet." ToolTip="Bulk mapping is not available yet."/>
+    <c:BalloonButton HorizontalAlignment="Right" ButtonText="Close" ButtonIcon="{StaticResource Close}" Style="{StaticResource OHsKeysCloseStyle}"
+     AutomationProperties.Name="Close Keys Mapping" ToolTip="Close (Esc)" Click="OnCloseClick" IsEnabled="{Binding CanClose,Mode=OneWay}"/>
+   </Grid>
+   <StackPanel Grid.Row="1" Margin="0,16,0,12" Style="{StaticResource BaseStackPanelStyle}">
+    <TextBlock Text="Keys Mapping" Style="{StaticResource OHsPopupTitleTextStyle}"/>
+    <TextBlock Text="{Binding TrackName,Mode=OneWay}" Style="{StaticResource OHsKeysTextStyle}" TextTrimming="CharacterEllipsis"/>
+    <TextBlock Text="C1–B9 · Project sample filenames · PageUp/PageDown scroll keys; Alt+Home/End go to first/last key." Style="{StaticResource OHsKeysTextStyle}"/>
+   </StackPanel>
+   <ItemsControl x:Name="KeyRows" Grid.Row="2" IsEnabled="{Binding CanEditMapping,Mode=OneWay}" ItemsSource="{Binding Rows,Mode=OneWay}" ItemTemplate="{StaticResource OHsKeysRowTemplate}" Style="{StaticResource OHsKeysItemsStyle}"/>
+   <StackPanel Grid.Row="3" Margin="0,12,0,0" Style="{StaticResource BaseStackPanelStyle}">
+    <TextBlock Text="{Binding SaveStatus,Mode=OneWay}" Style="{StaticResource OHsKeysTextStyle}"/>
+    <TextBlock Text="{Binding SaveError,Mode=OneWay}" Style="{StaticResource OHsKeysErrorStyle}"/>
+    <TextBlock Text="{Binding ErrorMessage,Mode=OneWay}" Style="{StaticResource OHsKeysErrorStyle}"/>
+   </StackPanel>
+  </Grid>
+ </Border>
+</UserControl>

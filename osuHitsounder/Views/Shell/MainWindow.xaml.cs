@@ -221,7 +221,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
     internal async Task<bool> PrepareProjectForCloseAsync()
     {
         closeRequested = true;
-        if (SampleManagerHost.Content is osuHitsounder.Views.Popups.ManageSamplesDrawer drawer) DismissSampleManager(drawer);
+        if (SampleManagerHost.Content is System.Windows.Controls.UserControl drawer) DismissSampleManager(drawer);
         try
         {
             await returnHome;

@@ -1,0 +1,39 @@
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Media;
+using osuHitsounder.Resources.CustomControls;
+using osuHitsounder.Resources.DataModels;
+using osuHitsounder.ViewModels.Popups;
+namespace osuHitsounder.Views.Popups;
+public partial class OHsKeysMappingDrawer : UserControl,IOHsShellDrawer
+{
+ private readonly KeysMappingDrawerVM viewModel;
+ public OHsKeysMappingDrawer(KeysMappingDrawerVM viewModel)
+ {InitializeComponent();this.viewModel=viewModel;DataContext=viewModel;KeyboardNavigation.SetTabNavigation(this,KeyboardNavigationMode.Cycle);}
+ public event EventHandler? CloseRequested;
+ public bool CanDismiss => viewModel.CanClose;
+ public bool TryPrepareClose(){if(!CanDismiss)return false;viewModel.PrepareClose();return true;}
+ public void FocusInitialAction()
+ {KeyRows.UpdateLayout();Descendants(KeyRows).OfType<TextBox>().FirstOrDefault(t=>t.IsEnabled)?.Focus();}
+ private static IEnumerable<DependencyObject> Descendants(DependencyObject root)
+ {yield return root;for(var i=0;i<VisualTreeHelper.GetChildrenCount(root);i++)foreach(var child in Descendants(VisualTreeHelper.GetChild(root,i)))yield return child;}
+ internal bool HandleNavigationKey(Key key,ModifierKeys modifiers)
+ {
+  var scroll=Descendants(KeyRows).OfType<ScrollViewer>().FirstOrDefault();if(scroll is null)return false;
+  if(modifiers==ModifierKeys.Alt && key==Key.End)scroll.ScrollToEnd();
+  else if(modifiers==ModifierKeys.Alt && key==Key.Home)scroll.ScrollToHome();
+  else if(modifiers==ModifierKeys.None && key==Key.PageDown)scroll.PageDown();
+  else if(modifiers==ModifierKeys.None && key==Key.PageUp)scroll.PageUp();
+  else return false;
+  KeyRows.UpdateLayout();FocusInitialAction();return true;
+ }
+ private void OnCloseClick(object sender,RoutedEventArgs e){if(CanDismiss)CloseRequested?.Invoke(this,EventArgs.Empty);}
+ private void OnMappingLostFocus(object sender,KeyboardFocusChangedEventArgs e)
+ {if(sender is TextBox {DataContext:KeyMappingEntry row} input)viewModel.CommitMapping(row.Key,input.Text);}
+ private void OnMappingKeyDown(object sender,KeyEventArgs e)
+ {if(e.Key==Key.Enter && sender is TextBox {DataContext:KeyMappingEntry row} input){e.Handled=true;viewModel.CommitMapping(row.Key,input.Text);}}
+ protected override void OnPreviewKeyDown(KeyEventArgs e)
+ {if(e.Key==Key.Escape){e.Handled=true;if(CanDismiss)CloseRequested?.Invoke(this,EventArgs.Empty);return;}
+  if(HandleNavigationKey(e.Key,Keyboard.Modifiers)){e.Handled=true;return;}base.OnPreviewKeyDown(e);}
+}

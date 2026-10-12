@@ -1,5 +1,7 @@
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Controls;
+using osuHitsounder.Resources.CustomControls;
 using osuHitsounder.Views.Pages;
 using osuHitsounder.Views.Popups;
 using osuHitsounder.Resources.DataModels;
@@ -27,20 +29,23 @@ public partial class MainWindow
     private async void OnSampleManagerBackdropClick(object sender, MouseButtonEventArgs e)
     {
         e.Handled = true;
-        if (SampleManagerHost.Content is not ManageSamplesDrawer drawer) return;
+        if (SampleManagerHost.Content is not UserControl drawer || drawer is not IOHsShellDrawer) return;
         try { await RequestSampleManagerCloseAsync(drawer); }
         catch (Exception error) { System.Diagnostics.Trace.TraceError("Sample drawer close failed: {0}", error); DismissSampleManager(drawer); }
     }
 
-    internal Task RequestSampleManagerCloseAsync(ManageSamplesDrawer drawer)
+    internal Task RequestSampleManagerCloseAsync(UserControl drawer)
     {
         if (!ReferenceEquals(SampleManagerHost.Content, drawer) || IsPopupOverlayVisible) return Task.CompletedTask;
-        if (SampleManagerPhase != OHsSampleDrawerPhase.Closing && !drawer.CanDismiss) return Task.CompletedTask;
+        if (SampleManagerPhase != OHsSampleDrawerPhase.Closing && (drawer is not IOHsShellDrawer lifecycle || !lifecycle.CanDismiss || !lifecycle.TryPrepareClose())) return Task.CompletedTask;
         return closeSampleManager?.Invoke() ?? Task.CompletedTask;
     }
 
-    internal async Task PresentSampleManagerAsync(ManageSamplesDrawer drawer, CancellationToken token,
+    internal Task PresentSampleManagerAsync(ManageSamplesDrawer drawer, CancellationToken token,
+        Func<bool,CancellationToken,Task>? transition=null) => PresentDrawerAsync(drawer,token,transition);
+    internal async Task PresentDrawerAsync<T>(T drawer, CancellationToken token,
         Func<bool, CancellationToken, Task>? transition = null)
+        where T:UserControl,IOHsShellDrawer
     {
         if (sampleManagerCompletion is not null) throw new InvalidOperationException("The sample manager is already open.");
         if (token.IsCancellationRequested || closed) return;
@@ -133,7 +138,7 @@ public partial class MainWindow
         }
     }
 
-    internal void DismissSampleManager(ManageSamplesDrawer drawer)
+    internal void DismissSampleManager(UserControl drawer)
     {
         if (!ReferenceEquals(SampleManagerHost.Content, drawer)) return;
         sampleManagerCancellation?.Cancel();
