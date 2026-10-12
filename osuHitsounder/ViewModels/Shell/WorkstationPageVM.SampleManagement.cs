@@ -16,7 +16,7 @@ public partial class WorkstationPageVM
     public TrackSampleAvailability GetSampleAvailability(Track track) => track.SelectedSampleFileName is null
         ? TrackSampleAvailability.Unselected : sampleFiles is null || availableSamples.Any(n => string.Equals(n, track.SelectedSampleFileName, StringComparison.OrdinalIgnoreCase))
             ? TrackSampleAvailability.Available : TrackSampleAvailability.Missing;
-    public bool CanEditTrackGrid(Track track) => tracks.Contains(track) && (sampleFiles is null || GetSampleAvailability(track) == TrackSampleAvailability.Available);
+    public bool CanEditTrackGrid(Track track) => track is not InstrumentalTrack && tracks.Contains(track) && (sampleFiles is null || GetSampleAvailability(track) == TrackSampleAvailability.Available);
     [RelayCommand(CanExecute = nameof(CanManageSamples))]
     private Task ManageSamplesAsync()
     {

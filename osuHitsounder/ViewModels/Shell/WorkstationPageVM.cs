@@ -26,7 +26,8 @@ public partial class WorkstationPageVM(
     Func<TimeSpan, CancellationToken, Task>? zoomDelay = null,
     INodePasteDialogService? nodePasteDialog = null,
     ISampleManagementDialogService? sampleManagementDialog = null,
-    SampleImportBatch? sampleImports = null) : ObservableObject
+    SampleImportBatch? sampleImports = null,
+    IInstrumentalTrackDialogService? instrumentDialogs = null) : ObservableObject
 {
     private readonly IWorkstationAudioService audioService = playback.Audio;
     private bool subscribedToPlayback;
@@ -68,12 +69,12 @@ public partial class WorkstationPageVM(
     public int SamplesRevision => samplesRevision;
     public int Subdivision => new[] { 1, 2, 3, 4, 5, 6, 8, 12, 16 }[SelectedSubdivisionIndex];
     public bool CanEditTracks => Project is not null && IsInteractionReady;
-    public bool CanImportSample => !managingSamples && !IsNodeEditBusy && CanEditTracks && !importBusy && !removalBusy &&
+    public bool CanImportSample => !instrumentBusy && !managingSamples && !IsNodeEditBusy && CanEditTracks && !importBusy && !removalBusy &&
         sampleFiles is not null && sampleDialog is not null && projectPath is not null;
     public bool CanAddTrack => CanEditTracks && availableSamples.Count > 0;
-    public bool CanRemoveTrack => !managingSamples && !IsNodeEditBusy && CanEditTracks && !importBusy && !removalBusy && trackRemovalDialog is not null;
+    public bool CanRemoveTrack => !instrumentBusy && !managingSamples && !IsNodeEditBusy && CanEditTracks && !importBusy && !removalBusy && trackRemovalDialog is not null;
     public bool CanPlaceSamples => !managingSamples && !IsNodeEditBusy && CanEditTracks && Waveform is not null && !importBusy && !removalBusy;
-    public bool HasPendingSaves => managingSamples || IsNodeEditBusy || pendingZoom is not null || importBusy || removalBusy || !saveTail.IsCompleted || lastSaveError is not null;
+    public bool HasPendingSaves => instrumentBusy || managingSamples || IsNodeEditBusy || pendingZoom is not null || importBusy || removalBusy || !saveTail.IsCompleted || lastSaveError is not null;
     [ObservableProperty] private string? saveError;
     [ObservableProperty] private bool scrollWithMarker = true;
     [ObservableProperty]
@@ -184,8 +185,11 @@ public partial class WorkstationPageVM(
     public async Task LoadAsync(string projectPath, CancellationToken token)
     {
         if (deactivated) return;
+        await SettleInstrumentalEditorAsync();
+        await DrainProjectSaveQueueAsync();
         await SettleSampleManagerAsync();
         sampleSession = Guid.NewGuid();
+        instrumentIds.Clear(); instrumentNoteIds.Clear(); instrumentRevision=0;
         ResetNodeEditing();
         history.Clear();
         NotifyHistoryState();
@@ -208,6 +212,7 @@ public partial class WorkstationPageVM(
     private async Task DeactivateCoreAsync()
     {
         if (deactivated) return;
+        await SettleInstrumentalEditorAsync();
         await SettleSampleManagerAsync();
         deactivated = true;
         ResetNodeEditing();
@@ -437,8 +442,13 @@ public partial class WorkstationPageVM(
         QueueSave();
     }
 
-    [RelayCommand(CanExecute = nameof(CanAddTrack))]
-    private static void AddPianoTrack() { }
+    [RelayCommand(CanExecute = nameof(CanAddInstrumentalTrack))]
+    private void AddPianoTrack()
+    {
+        if (!CanAddInstrumentalTrack) return;
+        var track=new InstrumentalTrack();
+        Project!.Tracks.Add(track); tracks.Add(track); SelectedTrack=track; QueueSave();
+    }
 
     [RelayCommand]
     private Task RemoveTrackAsync(Track track)
@@ -459,7 +469,7 @@ public partial class WorkstationPageVM(
         OnPropertyChanged(nameof(CanPlaceSamples));
         try
         {
-            if (track.Samples.Count > 0 && !await trackRemovalDialog!.ConfirmAsync(loadCancellation?.Token ?? CancellationToken.None)) return;
+            if ((track.Samples.Count > 0 || track is InstrumentalTrack { Notes.Count: >0 }) && !await trackRemovalDialog!.ConfirmAsync(loadCancellation?.Token ?? CancellationToken.None)) return;
             if (deactivated || generation != loadGeneration || !ReferenceEquals(Project, project) ||
                 project is null || !tracks.Contains(track)) return;
             var removedIndex = tracks.IndexOf(track);
@@ -487,6 +497,7 @@ public partial class WorkstationPageVM(
 
     public void SelectSample(Track track, string fileName)
     {
+        if (track is InstrumentalTrack) return;
         if (!CanEditTracks || !tracks.Contains(track) || string.IsNullOrWhiteSpace(fileName) ||
             sampleFiles is not null && !availableSamples.Any(name => string.Equals(name, fileName, StringComparison.OrdinalIgnoreCase))) return;
         if (string.Equals(track.SelectedSampleFileName, fileName, StringComparison.OrdinalIgnoreCase)) return;
@@ -544,6 +555,7 @@ public partial class WorkstationPageVM(
 
     public void SetTrackSampleType(Track track, osuHitsounder.Core.Enums.SampleType value)
     {
+        if (track is InstrumentalTrack) return;
         if (!CanEditTracks || !tracks.Contains(track) || !Enum.IsDefined(value) || track.SampleType == value) return;
         track.SampleType = value;
         QueueSave();
@@ -551,6 +563,7 @@ public partial class WorkstationPageVM(
 
     public void SetTrackSampleset(Track track, string value)
     {
+        if (track is InstrumentalTrack) return;
         if (!CanEditTracks || !tracks.Contains(track) || !Track.SamplesetOptions.Contains(value) || track.Sampleset == value) return;
         track.Sampleset = value;
         QueueSave();
@@ -558,6 +571,7 @@ public partial class WorkstationPageVM(
 
     public void SetTrackAddition(Track track, string value)
     {
+        if (track is InstrumentalTrack) return;
         if (!CanEditTracks || !tracks.Contains(track) || !Track.AdditionOptions.Contains(value) || track.Addition == value) return;
         track.Addition = value;
         QueueSave();
@@ -638,6 +652,7 @@ public partial class WorkstationPageVM(
 
     public async Task FlushSavesAsync()
     {
+        if(instrumentWorkflow is { } workflow) await workflow;
         if (activeManager is not null) await activeManager;
         await sampleChangeNotifications;
         CommitPendingZoom();
@@ -676,6 +691,7 @@ public partial class WorkstationPageVM(
     public async Task<bool> PrepareToReturnAsync(CancellationToken token)
     {
         if (deactivated || IsReturning || token.IsCancellationRequested) return false;
+        await SettleInstrumentalEditorAsync();
         await SettleSampleManagerAsync();
         IsReturning = true;
         var prepared = false;
@@ -805,6 +821,7 @@ public partial class WorkstationPageVM(
         if (projectFiles is null || projectPath is null || Project is null) return;
         var json = ProjectDataSerializer.Serialize(Project);
         var previous = saveTail;
+        pendingProjectWrites++; PublishInstrumentSaveState();
         saveTail = SaveSnapshotAsync(previous, projectPath, json);
     }
 
@@ -819,7 +836,7 @@ public partial class WorkstationPageVM(
         }
         while (availableSamples.Count > choices.Count) availableSamples.RemoveAt(availableSamples.Count - 1);
         if (initializeSelections)
-            foreach (var track in tracks)
+            foreach (var track in tracks.Where(t=>t is not InstrumentalTrack))
                 track.SelectedSampleFileName ??= track.Samples.FirstOrDefault()?.FileName ?? availableSamples.FirstOrDefault();
         OnPropertyChanged(nameof(SampleFiles));
         OnPropertyChanged(nameof(CanAddTrack));
@@ -841,6 +858,7 @@ public partial class WorkstationPageVM(
             lastSaveError = error;
             SaveError = error.Message;
         }
+        finally { pendingProjectWrites--; PublishInstrumentSaveState(); }
     }
 
     private async Task LoadCoreAsync(string projectPath, int generation, CancellationToken token)
@@ -867,10 +885,13 @@ public partial class WorkstationPageVM(
             await playback.StopAsync(token);
             var source = await sourceService.LoadAsync(projectPath, token);
             var waveform = await audioService.AnalyzeAsync(source.AudioPath, token);
+            if(source.Project.Tracks.OfType<InstrumentalTrack>().SelectMany(t=>t.Notes).Any(n=>n.Timestamp>=waveform.Duration.TotalMilliseconds))
+                throw new InvalidDataException("Instrumental note lies beyond the song duration.");
             token.ThrowIfCancellationRequested();
             await CommitAsync(generation, token, () =>
             {
                 audioService.Open(source.AudioPath);
+                instrumentAudioPath=source.AudioPath;
                 audioService.SetSongVolume(SongVolume);
                 audioService.SetApplicationVolume(ApplicationVolume);
                 audioService.SetSamplesVolume(SamplesVolume);
@@ -896,6 +917,7 @@ public partial class WorkstationPageVM(
                     messenger.Register<LoadSampleRequestedMessage>(this, (_, _) => LoadSampleCommand.Execute(null));
                     messenger.Register<ManageSamplesRequestedMessage>(this, (_, _) => ManageSamplesCommand.Execute(null));
                     messenger.Register<ProjectSamplesChangedMessage>(this, (_, change) => ReceiveSampleChange(change));
+                    RegisterInstrumentMessages();
                 }
             });
             await playback.ConfigureAsync(markerClock, waveform.Duration, token);
@@ -987,6 +1009,8 @@ public partial class WorkstationPageVM(
 
     private void NotifyEditingState()
     {
+        OnPropertyChanged(nameof(CanAddInstrumentalTrack)); OnPropertyChanged(nameof(CanOpenInstrumentalEditor));
+        ViewArrangementCommand.NotifyCanExecuteChanged(); KeysMappingCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(CanManageSamples)); ManageSamplesCommand.NotifyCanExecuteChanged();
         NotifyNodeEditingState();
         NotifyHistoryState();
