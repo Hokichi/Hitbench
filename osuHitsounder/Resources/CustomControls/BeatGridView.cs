@@ -229,10 +229,7 @@ public sealed class BeatGridView : FrameworkElement
 
     public Rect GetSampleBounds(int timestampMilliseconds)
     {
-        if (Duration <= TimeSpan.Zero || ContentWidth <= 0 || ActualHeight <= 0) return Rect.Empty;
-        var zoom = double.IsFinite(ZoomFactor) && ZoomFactor > 0 ? Math.Clamp(ZoomFactor, 8, 128) : 32;
-        var width = 40 * Math.Min(zoom / 32, 1);
-        return new Rect(timestampMilliseconds / Duration.TotalMilliseconds * ContentWidth - HorizontalOffset - width / 2, ActualHeight / 4, width, ActualHeight / 2);
+        return OHsSampleNodeDrawing.GetBounds(timestampMilliseconds,Duration,ContentWidth,HorizontalOffset,0,ActualHeight,ZoomFactor);
     }
 
     public double? GetPlaybackMarkerX()
@@ -403,9 +400,9 @@ public sealed class BeatGridView : FrameworkElement
         if (!IsNodeDragActive && !SuppressPlacementFeedback && AllowNodeCreation && ActiveInterval is { } active)
         {
             var rect = Inset(GetSampleBounds((int)Math.Round(active.StartMilliseconds, MidpointRounding.AwayFromZero)));
-            context.DrawRoundedRectangle(hover, null, rect, 4, 4);
+            OHsSampleNodeDrawing.Draw(context,hover, null, rect);
             if (pressedInterval is not null && pressed is not null)
-                context.DrawRoundedRectangle(null, new Pen(pressed, 1), rect, 4, 4);
+                OHsSampleNodeDrawing.Draw(context,null, new Pen(pressed, 1), rect);
         }
         for (var layer = 0; layer < 2; layer++)
         {
@@ -417,7 +414,7 @@ public sealed class BeatGridView : FrameworkElement
                     var rect = GetDisplayedSampleBounds(sample);
                     if (rect.IsEmpty) continue;
                     rect = Inset(rect);
-                    context.DrawRoundedRectangle(selectedLayer ? selection : marker, selectedLayer ? selectedBorder : nodeBorder, rect, 4, 4);
+                    OHsSampleNodeDrawing.Draw(context,selectedLayer ? selection : marker, selectedLayer ? selectedBorder : nodeBorder, rect);
                 }
             if (Samples is not null)
                 foreach (var sample in Samples)
@@ -427,16 +424,16 @@ public sealed class BeatGridView : FrameworkElement
                     if (bounds.IsEmpty) continue;
                     var rect = Inset(bounds);
                     if (ReferenceEquals(PressedSample, sample) && pressed is not null)
-                        context.DrawRoundedRectangle(null, new Pen(pressed, 2), rect, 4, 4);
+                        OHsSampleNodeDrawing.Draw(context,null, new Pen(pressed, 2), rect);
                     if (selectedLayer && selectionCue is not null)
-                        context.DrawRoundedRectangle(null, selectedBorder, rect, 4, 4);
+                        OHsSampleNodeDrawing.Draw(context,null, selectedBorder, rect);
                 }
         }
         if (DragPreviewTimestamps is { } previews)
             foreach (var preview in previews)
             {
                 var bounds = GetSampleBounds(preview);
-                if (!bounds.IsEmpty) context.DrawRoundedRectangle(hover, null, Inset(bounds), 4, 4);
+                if (!bounds.IsEmpty) OHsSampleNodeDrawing.Draw(context,hover, null, Inset(bounds));
             }
         context.Pop();
     }
@@ -455,8 +452,7 @@ public sealed class BeatGridView : FrameworkElement
         return true;
     }
 
-    private static Rect Inset(Rect rect) => rect.Width > 1 && rect.Height > 1
-        ? new Rect(rect.X + 0.5, rect.Y + 0.5, rect.Width - 1, rect.Height - 1) : rect;
+    private static Rect Inset(Rect rect) => OHsSampleNodeDrawing.Inset(rect);
 
     private void ClearInteraction()
     {

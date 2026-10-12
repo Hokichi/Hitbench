@@ -31,7 +31,7 @@ public sealed class OHsSampleNodeDragAdorner : Adorner
         {
             var translated = bounds;
             translated.Offset(CursorPosition.X, CursorPosition.Y);
-            drawingContext.DrawRoundedRectangle(brush, pen, translated, 4, 4);
+            OHsSampleNodeDrawing.Draw(drawingContext,brush, pen, translated);
         }
     }
 }
