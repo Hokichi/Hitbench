@@ -18,7 +18,7 @@
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
             <Setter Property="VerticalContentAlignment" Value="Stretch" />
             <Setter Property="Width" Value="720" />
-            <Setter Property="MaxWidth" Value="{Binding ActualWidth, ElementName=WorkspaceHost, Mode=OneWay}" />
+            <Setter Property="MaxWidth" Value="{Binding ActualWidth, ElementName=SampleManagerLayer, Mode=OneWay}" />
             <Setter Property="Focusable" Value="False" />
             <Style.Triggers><Trigger Property="Content" Value="{x:Null}"><Setter Property="Visibility" Value="Collapsed" /></Trigger></Style.Triggers>
         </Style>
@@ -143,6 +143,29 @@
             </Style.Triggers>
         </Style>
         <BlurEffect x:Key="MainWindowModalBlur" Radius="8" />
+        <Style x:Key="OHsMainWindowSampleManagerContentStyle" TargetType="Border" BasedOn="{StaticResource BaseBorderStyle}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsSampleManagerVisible, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}" Value="True">
+                    <Setter Property="Effect" Value="{StaticResource MainWindowModalBlur}" />
+                    <Setter Property="IsEnabled" Value="False" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="OHsMainWindowSampleManagerLayerStyle" TargetType="Grid" BasedOn="{StaticResource BaseGridStyle}">
+            <Setter Property="FlowDirection" Value="LeftToRight" />
+            <Setter Property="ClipToBounds" Value="True" />
+            <Setter Property="Visibility" Value="Collapsed" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsSampleManagerVisible, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}" Value="True">
+                    <Setter Property="Visibility" Value="Visible" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="OHsMainWindowSampleManagerBackdropStyle" TargetType="Border" BasedOn="{StaticResource BaseBorderStyle}">
+            <Setter Property="Background" Value="{DynamicResource Brush.Overlay}" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="AutomationProperties.Name" Value="Dismiss Manage Samples" />
+        </Style>
         <Style
             x:Key="MainWindowModalContentStyle"
             BasedOn="{StaticResource BaseBorderStyle}"
@@ -177,12 +200,14 @@
         Style="{StaticResource MainWindowRootStyle}">
         <Grid>
             <Border x:Name="ModalShellContent" Style="{StaticResource MainWindowModalContentStyle}">
+                <Grid Style="{StaticResource BaseGridStyle}">
+                <Border x:Name="SampleManagerAppContent" Style="{StaticResource OHsMainWindowSampleManagerContentStyle}">
                 <Grid x:Name="ShellLayout">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" MinHeight="40" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
-                    <Grid>
+                    <Grid x:Name="ShellHeader">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
@@ -234,12 +259,10 @@
                                 ToolTip="Close" />
                         </StackPanel>
                     </Grid>
-                    <Grid x:Name="WorkspaceHost" Grid.Row="1" FlowDirection="LeftToRight">
+                    <Grid Grid.Row="1" FlowDirection="LeftToRight">
                         <Border Style="{StaticResource MainWindowScanContentStyle}" FlowDirection="{Binding FlowDirection, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}">
                             <ContentControl x:Name="PageHost" />
                         </Border>
-                        <ContentControl x:Name="SampleManagerHost" Style="{StaticResource OHsMainWindowSampleManagerHostStyle}"
-                                        FlowDirection="{Binding FlowDirection, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}" />
                         <Border Style="{StaticResource MainWindowProcessingOverlayStyle}" FlowDirection="{Binding FlowDirection, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}">
                             <Border Style="{StaticResource MainWindowProcessingSurfaceStyle}">
                                 <TextBlock
@@ -249,6 +272,20 @@
                             </Border>
                         </Border>
                     </Grid>
+                </Grid>
+                </Border>
+                <Grid x:Name="SampleManagerLayer" Style="{StaticResource OHsMainWindowSampleManagerLayerStyle}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="{Binding ActualHeight, ElementName=ShellHeader, Mode=OneWay}" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <Border x:Name="SampleManagerBackdrop" Grid.RowSpan="2" Style="{StaticResource OHsMainWindowSampleManagerBackdropStyle}"
+                            MouseLeftButtonDown="OnSampleManagerBackdropClick" />
+                    <Grid x:Name="SampleManagerMotionHost" Grid.Row="1" Style="{StaticResource BaseGridStyle}">
+                    <ContentControl x:Name="SampleManagerHost" Style="{StaticResource OHsMainWindowSampleManagerHostStyle}"
+                                    FlowDirection="{Binding FlowDirection, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}" />
+                    </Grid>
+                </Grid>
                 </Grid>
             </Border>
             <Border x:Name="ModalShellOverlay" Style="{StaticResource MainWindowModalOverlayStyle}" />

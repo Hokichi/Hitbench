@@ -16,9 +16,11 @@ public partial class ManageSamplesDrawer : UserControl
     public ManageSamplesDrawer(ManageSamplesPopupVM viewModel)
     {
         InitializeComponent(); this.viewModel = viewModel; DataContext = viewModel;
+        KeyboardNavigation.SetTabNavigation(this, KeyboardNavigationMode.Cycle);
     }
 
     public event EventHandler? CloseRequested;
+    public bool CanDismiss => viewModel.CanClose;
 
     private void OnCloseClick(object sender, RoutedEventArgs e)
     {

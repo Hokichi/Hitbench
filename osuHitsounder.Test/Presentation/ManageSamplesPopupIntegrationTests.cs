@@ -77,7 +77,7 @@ public sealed class ManageSamplesPopupIntegrationTests
             Assert.That(vm.ActiveEdit, Is.Not.Null); Assert.That(vm.Entries.Single().FileName, Is.EqualTo("hit.wav"));
             Assert.That(drawer.HandleEscape(), Is.True); Assert.That(vm.ActiveEdit, Is.Null); Assert.That(closeRequests, Is.Zero);
             Assert.That(drawer.HandleEscape(), Is.True); Assert.That(closeRequests, Is.EqualTo(1));
-            Assert.That(System.Windows.Input.KeyboardNavigation.GetTabNavigation(drawer), Is.EqualTo(System.Windows.Input.KeyboardNavigationMode.Continue));
+            Assert.That(System.Windows.Input.KeyboardNavigation.GetTabNavigation(drawer), Is.EqualTo(System.Windows.Input.KeyboardNavigationMode.Cycle));
         }
         finally { UiTestPump.Run(vm.DeactivateAsync()); host.Close(); }
     }
