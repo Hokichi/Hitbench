@@ -47,7 +47,7 @@ public sealed partial class InstrumentalArrangementPopupVM : ObservableObject
     public bool CanEdit => !closed && Waveform.Duration > TimeSpan.Zero && new PlaybackMarkerClock(Offsets, Bpms).IsValid;
     public string EditingHint => !CanEdit ? "Note editing requires a song with valid BPM timing data."
         : Notes.Count == 0 ? "No notes yet. Click the piano roll or press Enter to place a note." : "";
-    public bool CanPlay => CanEdit && configured && !preparing;
+    public bool CanPlay => CanEdit && configured && !preparing && playback.Audio.IsPrepared;
     public int SelectedSubdivisionIndex { get => subdivisionIndex; set { if (SetProperty(ref subdivisionIndex, Math.Clamp(value, 0, 8))) OnPropertyChanged(nameof(Subdivision)); } }
     public int Subdivision => new[] { 1, 2, 3, 4, 5, 6, 8, 12, 16 }[SelectedSubdivisionIndex];
     public double ZoomFactor { get => zoomFactor; set { if (double.IsFinite(value)) SetProperty(ref zoomFactor, Math.Clamp(value, 8, 128)); } }

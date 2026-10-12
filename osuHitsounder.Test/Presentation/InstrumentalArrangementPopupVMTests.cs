@@ -9,6 +9,18 @@ namespace osuHitsounder.Test.Presentation;
 public class InstrumentalArrangementPopupVMTests
 {
     [Test]
+    public async Task UnpreparedSongDisablesTransportButKeepsNoteEditing()
+    {
+        var context = new InstrumentalTrackContext("project.json", null, Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
+        var snapshot = new InstrumentalTrackSnapshot(context, "Piano", 100, new Dictionary<string, string>(), [], null, 0);
+        var audio = new StubWorkstationAudioService { IsPrepared = false, Snapshot = new(TimeSpan.Zero, false, "Unable to prepare audio") };
+        var messenger = new WeakReferenceMessenger(); var requests = 0;
+        messenger.Register<PlaceInstrumentalNoteRequestedMessage>(this, (_, _) => requests++);
+        var vm = new InstrumentalArrangementPopupVM(new(snapshot, "song", new(TimeSpan.FromSeconds(10), [.5f]), [0], [120], TimeSpan.Zero, 4, 32, 100, 100, 100), new MarkerPlaybackCoordinator(audio, Task.Delay), messenger, new ImmediateUiScheduler());
+        try { await vm.InitializeAsync(default); Assert.That(vm.CanPlay, Is.False); Assert.That(vm.CanEdit, Is.True); vm.PlaceNote("C4", 125); Assert.That(requests, Is.EqualTo(1)); }
+        finally { await vm.DeactivateAsync(); messenger.UnregisterAll(this); }
+    }
+    [Test]
     public async Task DecoderWarningsRemainVisibleWithUsableSongTransport()
     {
         var context = new InstrumentalTrackContext("project.json", null, Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());

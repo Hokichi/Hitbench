@@ -6,6 +6,18 @@ namespace osuHitsounder.Test.Services;
 
 public class WorkstationAudioServiceTests
 {
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task ReadinessFollowsSongPreparationAndOpenReset(bool decoderFails)
+    {
+        using var project=new TestProjectFolder();
+        using var service=new WorkstationAudioService(_=>decoderFails?throw new IOException("decode failed"):CreateStream(new float[16],44_100,2),()=>new StubWavePlayer());
+        Assert.That(service.IsPrepared,Is.False);
+        service.Open("song.wav");
+        await service.UpdateSamplesAsync(project.ProjectPath,[],default);
+        Assert.That(service.IsPrepared,Is.EqualTo(!decoderFails));
+        service.Open("another.wav");Assert.That(service.IsPrepared,Is.False);
+    }
     [Test]
     public async Task PreparedPlaybackAppliesSongAndSampleGainIndependently()
     {

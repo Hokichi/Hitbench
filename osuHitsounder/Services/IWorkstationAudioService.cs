@@ -4,6 +4,7 @@ namespace osuHitsounder.Services;
 
 public interface IWorkstationAudioService : IDisposable
 {
+    bool IsPrepared { get; }
     Task<WaveformData> AnalyzeAsync(string audioPath, CancellationToken token);
     void Open(string audioPath);
     void Play();

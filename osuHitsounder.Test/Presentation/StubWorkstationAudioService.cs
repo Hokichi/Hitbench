@@ -17,6 +17,7 @@ public sealed class StubWorkstationAudioService : IWorkstationAudioService
     }
     public string? OpenedPath { get; private set; }
     public bool Disposed { get; private set; }
+    public bool IsPrepared { get; set; } = true;
     public int SongVolume { get; private set; } = 100;
     public int SamplesVolume { get; private set; } = 100;
     public int ApplicationVolume { get; private set; } = 100;

@@ -34,6 +34,7 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
     private float applicationVolume = 1;
     private TimeSpan currentPosition;
     private TimeSpan playbackOrigin;
+    public bool IsPrepared { get { lock (sync) return !disposed && preparedSong is not null; } }
 
     public WorkstationAudioService() : this(AudioDecoder.Open, new AudioOutputFactory().CreateCandidates(null)) { }
 
