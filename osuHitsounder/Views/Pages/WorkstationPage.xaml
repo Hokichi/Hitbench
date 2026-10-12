@@ -4,9 +4,9 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:converters="clr-namespace:osuHitsounder.Resources.Converters"
     xmlns:customControls="clr-namespace:osuHitsounder.Resources.CustomControls"
-    xmlns:helpers="clr-namespace:osuHitsounder.Resources.Helpers"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:entities="clr-namespace:osuHitsounder.Core.Entities;assembly=osuHitsounder.Core"
+    xmlns:helpers="clr-namespace:osuHitsounder.Resources.Helpers"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:pages="clr-namespace:osuHitsounder.Views.Pages"
     d:DesignHeight="600"
@@ -681,8 +681,10 @@
             <Setter Property="FocusVisualStyle" Value="{StaticResource OHsKeyboardFocusVisualStyle}" />
             <Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="True" />
         </Style>
-        <Style x:Key="OHsWorkstationManageSamplesButtonStyle" TargetType="customControls:BalloonButton"
-               BasedOn="{StaticResource OHsWorkstationToolbarButtonStyle}">
+        <Style
+            x:Key="OHsWorkstationManageSamplesButtonStyle"
+            BasedOn="{StaticResource OHsWorkstationToolbarButtonStyle}"
+            TargetType="customControls:BalloonButton">
             <Setter Property="helpers:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
             <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
         </Style>
@@ -1045,19 +1047,6 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" MinHeight="128" />
                         </Grid.RowDefinitions>
-                        <Grid Grid.Row="0" Style="{StaticResource BaseGridStyle}">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
-                            <TextBlock Style="{StaticResource OHsWorkstationErrorStyle}" Text="{Binding ErrorMessage, Mode=OneWay}" />
-                            <TextBlock
-                                x:Name="PlaybackWarningText"
-                                Grid.Row="1"
-                                AutomationProperties.Name="{Binding PlaybackWarning, Mode=OneWay}"
-                                Style="{StaticResource OHsWorkstationPlaybackWarningStyle}"
-                                Text="{Binding PlaybackWarning, Mode=OneWay}" />
-                        </Grid>
                         <Grid Grid.Row="1" Style="{StaticResource BaseGridStyle}">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="{StaticResource OHsWorkstationSideColumnWidth}" />

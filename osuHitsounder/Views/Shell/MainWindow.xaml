@@ -13,14 +13,21 @@
     WindowStartupLocation="CenterScreen"
     WindowStyle="None">
     <Window.Resources>
-        <Style x:Key="OHsMainWindowSampleManagerHostStyle" TargetType="ContentControl" BasedOn="{StaticResource BaseContentControlStyle}">
+        <Style
+            x:Key="OHsMainWindowSampleManagerHostStyle"
+            BasedOn="{StaticResource BaseContentControlStyle}"
+            TargetType="ContentControl">
             <Setter Property="HorizontalAlignment" Value="Right" />
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
             <Setter Property="VerticalContentAlignment" Value="Stretch" />
             <Setter Property="Width" Value="720" />
             <Setter Property="MaxWidth" Value="{Binding ActualWidth, ElementName=SampleManagerLayer, Mode=OneWay}" />
             <Setter Property="Focusable" Value="False" />
-            <Style.Triggers><Trigger Property="Content" Value="{x:Null}"><Setter Property="Visibility" Value="Collapsed" /></Trigger></Style.Triggers>
+            <Style.Triggers>
+                <Trigger Property="Content" Value="{x:Null}">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                </Trigger>
+            </Style.Triggers>
         </Style>
         <SolidColorBrush x:Key="OHsMainWindowAcrylicBackground" Color="Transparent" />
         <Style
@@ -143,7 +150,10 @@
             </Style.Triggers>
         </Style>
         <BlurEffect x:Key="MainWindowModalBlur" Radius="8" />
-        <Style x:Key="OHsMainWindowSampleManagerContentStyle" TargetType="Border" BasedOn="{StaticResource BaseBorderStyle}">
+        <Style
+            x:Key="OHsMainWindowSampleManagerContentStyle"
+            BasedOn="{StaticResource BaseBorderStyle}"
+            TargetType="Border">
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsSampleManagerVisible, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}" Value="True">
                     <Setter Property="Effect" Value="{StaticResource MainWindowModalBlur}" />
@@ -151,7 +161,10 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
-        <Style x:Key="OHsMainWindowSampleManagerLayerStyle" TargetType="Grid" BasedOn="{StaticResource BaseGridStyle}">
+        <Style
+            x:Key="OHsMainWindowSampleManagerLayerStyle"
+            BasedOn="{StaticResource BaseGridStyle}"
+            TargetType="Grid">
             <Setter Property="FlowDirection" Value="LeftToRight" />
             <Setter Property="ClipToBounds" Value="True" />
             <Setter Property="Visibility" Value="Collapsed" />
@@ -161,7 +174,10 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
-        <Style x:Key="OHsMainWindowSampleManagerBackdropStyle" TargetType="Border" BasedOn="{StaticResource BaseBorderStyle}">
+        <Style
+            x:Key="OHsMainWindowSampleManagerBackdropStyle"
+            BasedOn="{StaticResource BaseBorderStyle}"
+            TargetType="Border">
             <Setter Property="Background" Value="{DynamicResource Brush.Overlay}" />
             <Setter Property="Focusable" Value="False" />
             <Setter Property="AutomationProperties.Name" Value="Dismiss Manage Samples" />
@@ -201,91 +217,99 @@
         <Grid>
             <Border x:Name="ModalShellContent" Style="{StaticResource MainWindowModalContentStyle}">
                 <Grid Style="{StaticResource BaseGridStyle}">
-                <Border x:Name="SampleManagerAppContent" Style="{StaticResource OHsMainWindowSampleManagerContentStyle}">
-                <Grid x:Name="ShellLayout">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" MinHeight="40" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
-                    <Grid x:Name="ShellHeader">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <TextBlock
-                            Margin="12,0"
-                            Style="{StaticResource MainWindowTitleStyle}"
-                            Text="osuHitsounder" />
-                        <WrapPanel
-                            x:Name="WorkstationActions"
-                            Grid.Column="1"
-                            Visibility="Collapsed">
-                            <customControls:BalloonButton
-                                x:Name="GoBackButton"
-                                Margin="0,0,8,0"
-                                AutomationProperties.Name="Go Back"
-                                ButtonIcon="{StaticResource Home}"
-                                ButtonText="Go Back"
-                                Click="OnGoBackClick"
-                                IsEnabled="{Binding ElementName=PageHost, Path=Content.DataContext.CanGoBack, Mode=OneWay}"
-                                Style="{StaticResource OHsMainWindowGoBackStyle}"
-                                ToolTip="Save project and return to home" />
-                        </WrapPanel>
-                        <StackPanel Grid.Column="2" Orientation="Horizontal">
-                            <customControls:BalloonButton
-                                x:Name="MinimizeButton"
-                                AutomationProperties.Name="Minimize"
-                                ButtonIcon="{StaticResource Minus}"
-                                ButtonText="Minimize"
-                                Click="OnMinimizeClick"
-                                Style="{StaticResource OHsBalloonNeutralActionStyle}"
-                                ToolTip="Minimize" />
-                            <customControls:BalloonButton
-                                x:Name="MaximizeRestoreButton"
-                                AutomationProperties.Name="Maximize"
-                                ButtonIcon="{StaticResource ExpandAlt}"
-                                ButtonText="Maximize"
-                                Click="OnMaximizeRestoreClick"
-                                Style="{StaticResource OHsBalloonNeutralActionStyle}"
-                                ToolTip="Maximize" />
-                            <customControls:BalloonButton
-                                x:Name="CloseButton"
-                                AutomationProperties.Name="Close"
-                                ButtonIcon="{StaticResource Close}"
-                                ButtonText="Close"
-                                Click="OnCloseClick"
-                                Style="{StaticResource OHsBalloonDestructiveActionStyle}"
-                                ToolTip="Close" />
-                        </StackPanel>
-                    </Grid>
-                    <Grid Grid.Row="1" FlowDirection="LeftToRight">
-                        <Border Style="{StaticResource MainWindowScanContentStyle}" FlowDirection="{Binding FlowDirection, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}">
-                            <ContentControl x:Name="PageHost" />
-                        </Border>
-                        <Border Style="{StaticResource MainWindowProcessingOverlayStyle}" FlowDirection="{Binding FlowDirection, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}">
-                            <Border Style="{StaticResource MainWindowProcessingSurfaceStyle}">
+                    <Border x:Name="SampleManagerAppContent" Style="{StaticResource OHsMainWindowSampleManagerContentStyle}">
+                        <Grid x:Name="ShellLayout">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" MinHeight="40" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <Grid x:Name="ShellHeader">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
                                 <TextBlock
-                                    x:Name="ProcessingText"
-                                    Style="{StaticResource MainWindowProcessingTextStyle}"
-                                    Text="Processing..." />
-                            </Border>
-                        </Border>
+                                    Margin="12,0"
+                                    Style="{StaticResource MainWindowTitleStyle}"
+                                    Text="osuHitsounder" />
+                                <WrapPanel
+                                    x:Name="WorkstationActions"
+                                    Grid.Column="1"
+                                    Visibility="Collapsed">
+                                    <customControls:BalloonButton
+                                        x:Name="GoBackButton"
+                                        Margin="0,0,8,0"
+                                        AutomationProperties.Name="Go Back"
+                                        ButtonIcon="{StaticResource Home}"
+                                        ButtonText="Go Back"
+                                        Click="OnGoBackClick"
+                                        IsEnabled="{Binding ElementName=PageHost, Path=Content.DataContext.CanGoBack, Mode=OneWay}"
+                                        Style="{StaticResource OHsMainWindowGoBackStyle}"
+                                        ToolTip="Save project and return to home" />
+                                </WrapPanel>
+                                <StackPanel Grid.Column="2" Orientation="Horizontal">
+                                    <customControls:BalloonButton
+                                        x:Name="MinimizeButton"
+                                        AutomationProperties.Name="Minimize"
+                                        ButtonIcon="{StaticResource Minus}"
+                                        ButtonText="Minimize"
+                                        Click="OnMinimizeClick"
+                                        Style="{StaticResource OHsBalloonNeutralActionStyle}"
+                                        ToolTip="Minimize" />
+                                    <customControls:BalloonButton
+                                        x:Name="MaximizeRestoreButton"
+                                        AutomationProperties.Name="Maximize"
+                                        ButtonIcon="{StaticResource ExpandAlt}"
+                                        ButtonText="Maximize"
+                                        Click="OnMaximizeRestoreClick"
+                                        Style="{StaticResource OHsBalloonNeutralActionStyle}"
+                                        ToolTip="Maximize" />
+                                    <customControls:BalloonButton
+                                        x:Name="CloseButton"
+                                        AutomationProperties.Name="Close"
+                                        ButtonIcon="{StaticResource Close}"
+                                        ButtonText="Close"
+                                        Click="OnCloseClick"
+                                        Style="{StaticResource OHsBalloonDestructiveActionStyle}"
+                                        ToolTip="Close" />
+                                </StackPanel>
+                            </Grid>
+                            <Grid Grid.Row="1" FlowDirection="LeftToRight">
+                                <Border FlowDirection="{Binding FlowDirection, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}" Style="{StaticResource MainWindowScanContentStyle}">
+                                    <ContentControl x:Name="PageHost" />
+                                </Border>
+                                <Border FlowDirection="{Binding FlowDirection, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}" Style="{StaticResource MainWindowProcessingOverlayStyle}">
+                                    <Border Style="{StaticResource MainWindowProcessingSurfaceStyle}">
+                                        <TextBlock
+                                            x:Name="ProcessingText"
+                                            Style="{StaticResource MainWindowProcessingTextStyle}"
+                                            Text="Processing..." />
+                                    </Border>
+                                </Border>
+                            </Grid>
+                        </Grid>
+                    </Border>
+                    <Grid x:Name="SampleManagerLayer" Style="{StaticResource OHsMainWindowSampleManagerLayerStyle}">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="{Binding ActualHeight, ElementName=ShellHeader, Mode=OneWay}" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <Border
+                            x:Name="SampleManagerBackdrop"
+                            Grid.RowSpan="2"
+                            MouseLeftButtonDown="OnSampleManagerBackdropClick"
+                            Style="{StaticResource OHsMainWindowSampleManagerBackdropStyle}" />
+                        <Grid
+                            x:Name="SampleManagerMotionHost"
+                            Grid.Row="1"
+                            Style="{StaticResource BaseGridStyle}">
+                            <ContentControl
+                                x:Name="SampleManagerHost"
+                                FlowDirection="{Binding FlowDirection, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}"
+                                Style="{StaticResource OHsMainWindowSampleManagerHostStyle}" />
+                        </Grid>
                     </Grid>
-                </Grid>
-                </Border>
-                <Grid x:Name="SampleManagerLayer" Style="{StaticResource OHsMainWindowSampleManagerLayerStyle}">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="{Binding ActualHeight, ElementName=ShellHeader, Mode=OneWay}" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
-                    <Border x:Name="SampleManagerBackdrop" Grid.RowSpan="2" Style="{StaticResource OHsMainWindowSampleManagerBackdropStyle}"
-                            MouseLeftButtonDown="OnSampleManagerBackdropClick" />
-                    <Grid x:Name="SampleManagerMotionHost" Grid.Row="1" Style="{StaticResource BaseGridStyle}">
-                    <ContentControl x:Name="SampleManagerHost" Style="{StaticResource OHsMainWindowSampleManagerHostStyle}"
-                                    FlowDirection="{Binding FlowDirection, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}" />
-                    </Grid>
-                </Grid>
                 </Grid>
             </Border>
             <Border x:Name="ModalShellOverlay" Style="{StaticResource MainWindowModalOverlayStyle}" />
