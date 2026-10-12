@@ -215,11 +215,13 @@ public sealed class BeatGridView : FrameworkElement
         return true;
     }
 
-    public void SetActivePosition(TimeSpan position)
+    public void SetActivePosition(TimeSpan position) => SetActivePosition(position.TotalMilliseconds);
+
+    internal void SetActivePosition(double positionMilliseconds)
     {
         if (!CanPlaceSamples || Offsets is null || Bpms is null) return;
         ActiveInterval = BeatGridCalculator.GetContainingInterval(Offsets, Bpms, Subdivision,
-            position.TotalMilliseconds, Duration.TotalMilliseconds);
+            positionMilliseconds, Duration.TotalMilliseconds);
         pointerX = null;
         pressedInterval = null;
         InvalidateContent();

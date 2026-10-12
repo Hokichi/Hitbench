@@ -148,6 +148,58 @@ public class WorkstationNodeInteractionTests
 
     private static Point Center(Rect bounds) => new(bounds.X + bounds.Width / 2, bounds.Y + bounds.Height / 2);
 
+    [TestCase(123, 1, 0, 1000d, 0d, false)]
+    [TestCase(123, 2, 0, 1000d, 0d, false)]
+    [TestCase(123, 3, 0, 1000d, 0d, false)]
+    [TestCase(123, 4, 0, 1000d, 0d, false)]
+    [TestCase(123, 5, 0, 1000d, 0d, false)]
+    [TestCase(123, 6, 0, 1000d, 0d, false)]
+    [TestCase(123, 8, 0, 1000d, 0d, false)]
+    [TestCase(123, 12, 0, 1000d, 0d, false)]
+    [TestCase(123, 16, 0, 1000d, 0d, false)]
+    [TestCase(120, 4, 0, 1000d, 0d, false)]
+    [TestCase(123, 4, 73, 2000d, 20d, false)]
+    [TestCase(137, 12, 700, 3000d, 200d, false)]
+    [TestCase(123, 4, 0, 4000d, 0d, true)]
+    public void NewNodePlacementMatchesCapturedBeat(int bpm, int subdivision, int offset,
+        double contentWidth, double horizontalOffset, bool occupyPreviousBeat)
+    {
+        var editor = CreateEditor(bpm: bpm, offset: offset); using var view = editor.View;
+        try
+        {
+            var vm = editor.Vm; var track = vm.Tracks[1];
+            vm.SelectedSubdivisionIndex = Array.IndexOf(new[] { 1, 2, 3, 4, 5, 6, 8, 12, 16 }, subdivision);
+            var grid = Descendants<BeatGridView>(editor.Page).Single(g => ReferenceEquals(g.DataContext, track));
+            grid.Offsets = [offset]; grid.Bpms = [bpm]; grid.Subdivision = subdivision;
+            grid.ContentWidth = contentWidth; grid.ViewportWidth = 500; grid.HorizontalOffset = horizontalOffset;
+            if (occupyPreviousBeat) track.Samples.Add(new Sample { Timestamp = offset, FileName = "b.wav" });
+            var initialCount = track.Samples.Count;
+            var step = 60000d / bpm / subdivision;
+            var pointer = new Point((offset + 1.5 * step) / grid.Duration.TotalMilliseconds * contentWidth - horizontalOffset,
+                grid.ActualHeight / 2);
+            grid.UpdatePointerPosition(pointer.X);
+            Assert.That(grid.ActiveInterval, Is.Not.Null);
+            var captured = grid.ActiveInterval!.Value;
+            Assert.That(captured.StartMilliseconds, Is.EqualTo(offset + step).Within(1e-9));
+            var expected = (int)Math.Round(captured.StartMilliseconds, MidpointRounding.AwayFromZero);
+            Assert.That(editor.Page.BeginNodePointer(grid, pointer, new Point()), Is.True);
+            var completion = editor.Page.CompleteNodePointerAsync(); UiTestPump.Run(completion);
+            Assert.That(completion.Result, Is.True);
+            var placed = vm.SelectedSamples.Single();
+            Assert.That(placed.Timestamp, Is.EqualTo(expected));
+            Assert.That(track.Samples.Count, Is.EqualTo(initialCount + 1));
+            Assert.That(vm.CanUndo, Is.True);
+            vm.UndoCommand.Execute(null);
+            Assert.That(track.Samples.Contains(placed), Is.False);
+            Assert.That(track.Samples.Count, Is.EqualTo(initialCount));
+            Assert.That(vm.CanUndo, Is.False);
+            vm.RedoCommand.Execute(null);
+            Assert.That(track.Samples.Contains(placed), Is.True);
+            Assert.That(placed.Timestamp, Is.EqualTo(expected));
+        }
+        finally { UiTestPump.Run(editor.Page.DeactivateAsync()); }
+    }
+
     [Test]
     public void BlankClickInOccupiedIntervalDoesNotReselectOnRelease()
     {
@@ -374,10 +426,10 @@ public class WorkstationNodeInteractionTests
         Assert.That(list.Style, Is.SameAs(page.FindResource("OHsWorkstationTrackListStyle")));
     }
 
-    private static (WorkstationPage Page, WorkstationPageVM Vm, Sample Node, InMemoryView View) CreateEditor(int trackCount = 2)
+    private static (WorkstationPage Page, WorkstationPageVM Vm, Sample Node, InMemoryView View) CreateEditor(int trackCount = 2, int bpm = 120, int offset = 0)
     {
         var node = new Sample { Timestamp = 1000, FileName = "a.wav" };
-        var data = new ProjectData { Offsets = [0], BPMs = [120], Tracks = [new Track { SelectedSampleFileName = "a.wav", Samples = [node] }, new Track { SelectedSampleFileName = "b.wav" }] };
+        var data = new ProjectData { Offsets = [offset], BPMs = [bpm], Tracks = [new Track { SelectedSampleFileName = "a.wav", Samples = [node] }, new Track { SelectedSampleFileName = "b.wav" }] };
         data.Tracks.AddRange(Enumerable.Range(2, trackCount - 2).Select(_ => new Track { SelectedSampleFileName = "b.wav" }));
         var vm = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav", data)) },
             new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), new StubSampleFileService(["a.wav", "b.wav"]), nodePasteDialog: new StubNodePasteDialogService());

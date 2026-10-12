@@ -287,7 +287,7 @@ public partial class WorkstationPage
         if (sample is not null) return false;
         viewModel.ClearNodeSelection();
         if (interval is null) return false;
-        grid.SetActivePosition(TimeSpan.FromMilliseconds(interval.Value.StartMilliseconds));
+        grid.SetActivePosition(interval.Value.StartMilliseconds);
         return grid.FindActiveSample() is null && grid.RequestSamplePlacement();
     }
     private void DetachNodePointer()
