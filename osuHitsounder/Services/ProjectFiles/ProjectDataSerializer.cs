@@ -2,6 +2,8 @@ using System.IO;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using osuHitsounder.Core.Entities;
+using osuHitsounder.Core.Constants;
+using osuHitsounder.Services.FileSystem;
 
 namespace osuHitsounder.Services.ProjectFiles;
 
@@ -38,6 +40,10 @@ public static class ProjectDataSerializer
             foreach (var item in trackNodes)
             {
                 if (item is not JObject track) throw new InvalidDataException("Track must be an object.");
+                var kind = InstrumentMember(track, "Kind");
+                if (kind is not null && (kind.Type != JTokenType.String || kind.Value<string>() is not ("Instrumental" or "Sample")))
+                    throw new InvalidDataException("Track Kind must be Sample or Instrumental.");
+                if (kind?.Value<string>() == "Instrumental") NormalizeInstrument(track);
                 if (track["Name"] is { Type: not (JTokenType.String or JTokenType.Null) })
                     throw new InvalidDataException("Track Name must be a string or null.");
                 if (track["Name"] is { Type: JTokenType.Null }) track["Name"] = string.Empty;
@@ -65,11 +71,65 @@ public static class ProjectDataSerializer
             }
         }
 
-        try { return root.ToObject<ProjectData>() ?? throw new InvalidDataException("Project JSON is empty."); }
+        try
+        {
+            var nodes = (root["Tracks"] as JArray)?.ToArray() ?? [];
+            root.Remove("Tracks");
+            var result = root.ToObject<ProjectData>() ?? throw new InvalidDataException("Project JSON is empty.");
+            result.Tracks = nodes.Select(node => ((JObject)node)["Kind"]?.Value<string>() == "Instrumental"
+                ? (Track)node.ToObject<InstrumentalTrack>()! : node.ToObject<Track>()!).ToList();
+            return result;
+        }
         catch (JsonException error) { throw new InvalidDataException("Project data is invalid.", error); }
     }
 
-    public static string Serialize(ProjectData project) => JsonConvert.SerializeObject(project, Formatting.Indented);
+    public static string Serialize(ProjectData project)
+    {
+        var root=JObject.FromObject(project);
+        var nodes=(JArray)root["Tracks"]!;
+        for (var i=0;i<project.Tracks.Count;i++)
+            if (project.Tracks[i] is InstrumentalTrack)
+            { var node=(JObject)nodes[i]; node["Kind"]="Instrumental"; NormalizeInstrument(node); }
+        return root.ToString(Formatting.Indented);
+    }
+
+    private static JToken? InstrumentMember(JObject node,string name)
+    {
+        var members=node.Properties().Where(p=>string.Equals(p.Name,name,StringComparison.OrdinalIgnoreCase)).ToArray();
+        if (members.Length>1) throw new InvalidDataException($"Duplicate instrumental field: {name}.");
+        if (members.Length==0) return null;
+        var value=members[0].Value;
+        if (members[0].Name!=name) { members[0].Remove(); node[name]=value; }
+        return value;
+    }
+    private static void NormalizeInstrument(JObject track)
+    {
+        foreach (var name in new[] { "Sampleset","Addition","SampleType","SelectedSampleFileName","Samples" }) InstrumentMember(track,name);
+        track["Sampleset"]="Soft"; track["Addition"]="None"; track["SampleType"]=3; track["SelectedSampleFileName"]=null;
+        if (track["Samples"] is JArray inherited && inherited.Count==0 || track["Samples"] is null) track["Samples"]=new JArray();
+        else throw new InvalidDataException("Instrumental tracks cannot contain sample-grid nodes.");
+        var keys=InstrumentMember(track,"KeyFiles");
+        if (keys is null) track["KeyFiles"]=keys=new JObject();
+        if (keys is not JObject mappings) throw new InvalidDataException("Instrumental KeyFiles must be an object.");
+        foreach (var pair in mappings.Properties())
+            if (!InstrumentalKeys.TryGetIndex(pair.Name,out _) || pair.Value.Type!=JTokenType.String ||
+                SampleFileNames.GetFileNameError(pair.Value.Value<string>()!) is not null)
+                throw new InvalidDataException($"Invalid instrumental key mapping: {pair.Name}.");
+        var notes=InstrumentMember(track,"Notes");
+        if (notes is null) track["Notes"]=notes=new JArray();
+        if (notes is not JArray list) throw new InvalidDataException("Instrumental Notes must be an array.");
+        var seen=new HashSet<(string,int)>();
+        foreach (var item in list)
+        {
+            if (item is not JObject note) throw new InvalidDataException("Instrumental note must be an object.");
+            var key=InstrumentMember(note,"Key"); var time=InstrumentMember(note,"Timestamp"); var volume=InstrumentMember(note,"Volume");
+            if (key?.Type!=JTokenType.String || !InstrumentalKeys.TryGetIndex(key.Value<string>()!,out _) ||
+                time?.Type!=JTokenType.Integer || time.Value<long>() is <0 or >int.MaxValue ||
+                volume is not null && (volume.Type!=JTokenType.Integer || volume.Value<long>() is <0 or >100))
+                throw new InvalidDataException("Instrumental note needs a valid key, integer timestamp, and volume 0–100.");
+            if (!seen.Add((key.Value<string>()!,time.Value<int>()))) throw new InvalidDataException("Duplicate instrumental note key/timestamp.");
+        }
+    }
 
     private static void NormalizeTrackOption(JObject track, string property, string defaultValue, IReadOnlyList<string> options)
     {
