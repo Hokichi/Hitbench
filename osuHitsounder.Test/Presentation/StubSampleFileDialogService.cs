@@ -7,9 +7,11 @@ public sealed class StubSampleFileDialogService(IReadOnlyList<string> selectedPa
     public StubSampleFileDialogService(string? selectedPath) : this(selectedPath is null ? Array.Empty<string>() : new[] { selectedPath }) { }
     public Func<CancellationToken, Task<IReadOnlyList<string>>>? Selection { get; set; }
     public string? InitialDirectory { get; private set; }
-    public Task<IReadOnlyList<string>> SelectAsync(string? initialDirectory, CancellationToken token)
+    public osuHitsounder.Resources.DataModels.SampleSelectionMode Mode { get; private set; }
+    public Task<IReadOnlyList<string>> SelectAsync(string? initialDirectory, CancellationToken token, osuHitsounder.Resources.DataModels.SampleSelectionMode mode=osuHitsounder.Resources.DataModels.SampleSelectionMode.Multiple)
     {
         InitialDirectory = initialDirectory;
+        Mode=mode;
         return Selection?.Invoke(token) ?? Task.FromResult(selectedPaths);
     }
 }

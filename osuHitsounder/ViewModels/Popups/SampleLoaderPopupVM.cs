@@ -28,6 +28,8 @@ public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, I
     private double playbackPositionSeconds;
     private bool isSeeking;
     public ObservableCollection<SampleBrowserEntry> Entries { get; } = [];
+    public SampleSelectionMode SelectionMode { get; private set; }
+    public void ConfigureSelectionMode(SampleSelectionMode mode) => SelectionMode=mode;
     public ObservableCollection<SampleBrowserBreadcrumb> Breadcrumbs { get; } = [];
     public bool IsThisPc => CurrentDirectory.Length == 0;
     public bool IsFolderEmpty => !IsNavigating && !IsThisPc && Entries.Count == 0;
@@ -55,7 +57,7 @@ public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, I
     public int CheckedCount => Entries.Count(entry => !entry.IsDirectory && entry.IsChecked);
     public string CheckedCountText => string.Format(CultureInfo.CurrentCulture, "{0:N0} files checked", CheckedCount);
     public bool CanNavigate => !deactivated && !IsConfirming;
-    public bool CanImport => !deactivated && !IsNavigating && !IsConfirming && CheckedCount > 0;
+    public bool CanImport => !deactivated && !IsNavigating && !IsConfirming && CheckedCount > 0 && (SelectionMode!=SampleSelectionMode.Single || CheckedCount==1);
     public bool CanPreview => !deactivated && !IsNavigating && !IsConfirming && !IsMetadataLoading && !isStartingPreview && !IsSeeking && Metadata is not null;
     public string BrowserStatusText => IsNavigating ? "Loading folder..." : CurrentDirectory.Length == 0 ? Entries.Count == 0 ? "No drives to display" : "Choose a drive." : "";
     public string PreviewActionText => IsPreviewPlaying ? "Stop" : "Play";
@@ -200,6 +202,8 @@ public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, I
         await UpdateAsync(() =>
         {
             var actual = Entries.FirstOrDefault(child => SamePath(child.FullPath, entry.FullPath));
+            if(value && SelectionMode==SampleSelectionMode.Single)
+                foreach(var other in Entries.Where(child=>!ReferenceEquals(child,actual))) other.IsChecked=false;
             if (actual is not null && !actual.IsDirectory) actual.IsChecked = value;
             NotifyState();
         });

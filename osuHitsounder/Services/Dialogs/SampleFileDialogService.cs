@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Threading;
 using osuHitsounder.ViewModels.Popups;
 using osuHitsounder.Views.Popups;
+using osuHitsounder.Resources.DataModels;
 
 namespace osuHitsounder.Services.Dialogs;
 
@@ -25,15 +26,16 @@ public sealed class SampleFileDialogService : ISampleFileDialogService
         this.select = select;
     }
 
-    public async Task<IReadOnlyList<string>> SelectAsync(string? initialDirectory, CancellationToken token) =>
-        await dispatcher.InvokeAsync(() => SelectCoreAsync(initialDirectory, token)).Task.Unwrap();
+    public async Task<IReadOnlyList<string>> SelectAsync(string? initialDirectory, CancellationToken token, SampleSelectionMode mode=SampleSelectionMode.Multiple) =>
+        await dispatcher.InvokeAsync(() => SelectCoreAsync(initialDirectory, token, mode)).Task.Unwrap();
 
-    private async Task<IReadOnlyList<string>> SelectCoreAsync(string? initialDirectory, CancellationToken token)
+    private async Task<IReadOnlyList<string>> SelectCoreAsync(string? initialDirectory, CancellationToken token, SampleSelectionMode mode)
     {
         if (token.IsCancellationRequested) return Array.Empty<string>();
         var owner = select is null ? getOwner() : null;
         if (select is null && (owner is null || !owner.IsVisible)) return Array.Empty<string>();
         var vm = createViewModel();
+        vm.ConfigureSelectionMode(mode);
         SampleLoaderPopup? popup = null;
         try
         {
@@ -56,6 +58,7 @@ public sealed class SampleFileDialogService : ISampleFileDialogService
                 paths = popup.ShowDialog() == true ? popup.Result : Array.Empty<string>();
             }
             token.ThrowIfCancellationRequested();
+            if(mode==SampleSelectionMode.Single && paths.Count>1) throw new InvalidOperationException("Select one sample for this key.");
             return Array.AsReadOnly(paths.ToArray());
         }
         catch (OperationCanceledException) { return Array.Empty<string>(); }
