@@ -19,6 +19,7 @@ public sealed partial class KeysMappingDrawerVM : ObservableObject
  private readonly ISampleFileDialogService picker;
  private readonly CancellationTokenSource lifetime=new();
  private Task? import;
+ private Task? deactivation;
  private bool closed,closing,pickerActive;
  private long saveVersion=-1;
  private Guid pendingId;
@@ -104,6 +105,11 @@ public sealed partial class KeysMappingDrawerVM : ObservableObject
   if(closed)return;closing=true;lifetime.Cancel();OnPropertyChanged(nameof(CanEditMapping));
   foreach(var row in Rows.Where(r=>r.DraftFileName!=(r.FileName??"")))CommitMapping(row.Key,row.DraftFileName);
  }
- public async Task DeactivateAsync()
- {if(closed)return;PrepareClose();closed=true;messenger.UnregisterAll(this);if(import is not null)await import;lifetime.Dispose();}
+ public Task DeactivateAsync()=>deactivation??=DeactivateCoreAsync();
+ private async Task DeactivateCoreAsync()
+ {
+  PrepareClose();closed=true;messenger.UnregisterAll(this);
+  try {if(import is not null)await import;}
+  finally {lifetime.Dispose();}
+ }
 }

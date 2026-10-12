@@ -1,0 +1,48 @@
+using System.Windows.Threading;
+using CommunityToolkit.Mvvm.Messaging;
+using osuHitsounder.Resources.DataModels;
+using osuHitsounder.Services;
+using osuHitsounder.Services.Dialogs;
+using osuHitsounder.ViewModels.Popups;
+
+namespace osuHitsounder.Test.Presentation;
+
+[Apartment(ApartmentState.STA), NonParallelizable]
+public sealed class InstrumentalTrackDialogServiceTests
+{
+    [Test]
+    public void FailedPresenterAlwaysDisposesLocalOutput()
+    {
+        var messenger = new WeakReferenceMessenger();
+        var audio = new StubWorkstationAudioService();
+        var snapshot = Snapshot();
+        var context = new InstrumentalEditorContext(snapshot, "song.wav", new(TimeSpan.FromSeconds(10), [.5f]),
+            [0], [120], TimeSpan.Zero, 4, 32, 100, 100, 100);
+        var service = new InstrumentalTrackDialogService(() => null, Dispatcher.CurrentDispatcher,
+            data => new(data, new MarkerPlaybackCoordinator(audio, Task.Delay), messenger, new ImmediateUiScheduler()),
+            _ => throw new AssertionException("Mapping factory should not run."),
+            (_, _) => Task.FromException(new InvalidOperationException("presenter failed")));
+        Assert.Throws<InvalidOperationException>(() => UiTestPump.Run(service.ShowArrangementAsync(context, default)));
+        Assert.That(audio.Disposed, Is.True);
+        Assert.That(audio.Snapshot.IsPlaying, Is.False);
+    }
+
+    [Test]
+    public void CancelledMappingPresenterSettlesBeforeReturning()
+    {
+        var messenger = new WeakReferenceMessenger();
+        KeysMappingDrawerVM? vm = null;
+        using var cancel = new CancellationTokenSource();
+        var service = new InstrumentalTrackDialogService(() => null, Dispatcher.CurrentDispatcher,
+            _ => throw new AssertionException("Arrangement factory should not run."),
+            snapshot => vm = new(snapshot, messenger, new ImmediateUiScheduler(), new StubSampleFileService([]), new StubSampleFileDialogService((string?)null)),
+            presentMapping: async (_, token) => { cancel.Cancel(); await Task.Delay(Timeout.Infinite, token); });
+        Assert.Throws<TaskCanceledException>(() => UiTestPump.Run(service.ShowKeysMappingAsync(Snapshot(), cancel.Token)));
+        Assert.That(vm!.CanEditMapping, Is.False);
+        Assert.That(vm.CanOpenKey, Is.False);
+    }
+
+    private static InstrumentalTrackSnapshot Snapshot() => new(
+        new("project.json", null, Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid()), "Piano", 100,
+        new Dictionary<string, string>(), [], [], 0);
+}

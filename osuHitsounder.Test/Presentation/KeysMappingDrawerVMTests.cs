@@ -6,6 +6,23 @@ using osuHitsounder.ViewModels.Popups;
 namespace osuHitsounder.Test.Presentation;
 public class KeysMappingDrawerVMTests
 {
+ [Test] public async Task ConcurrentTeardownWaitsForCancelledImport()
+ {
+  var context=new osuHitsounder.Resources.DataModels.InstrumentalTrackContext("project.json",null,Guid.NewGuid(),Guid.NewGuid(),Guid.NewGuid());
+  var snapshot=new osuHitsounder.Resources.DataModels.InstrumentalTrackSnapshot(context,"Piano",100,new Dictionary<string,string>(),[],[],0);
+  var release=new TaskCompletionSource<IReadOnlyList<string>>(TaskCreationOptions.RunContinuationsAsynchronously);
+  var picker=new StubSampleFileDialogService((string?)null){Selection=_=>release.Task};
+  var messenger=new WeakReferenceMessenger();
+  var requests=0;
+  messenger.Register<osuHitsounder.Resources.Messages.SetInstrumentalKeyMappingRequestedMessage>(this,(_,_)=>requests++);
+  var vm=new KeysMappingDrawerVM(snapshot,messenger,new ImmediateUiScheduler(),new StubSampleFileService([]),picker);
+  var import=vm.OpenKeyAsync("C4",default);
+  var first=vm.DeactivateAsync();
+  var second=vm.DeactivateAsync();
+  try {Assert.That(first.IsCompleted,Is.False);Assert.That(second.IsCompleted,Is.False);}
+  finally {release.SetResult(["late.wav"]);await Task.WhenAll(first,second,import);messenger.UnregisterAll(this);}
+  Assert.That(requests,Is.Zero);
+ }
  [Test] public async Task ValidMappingAutosavesAndInvalidDraftPreservesOldFile()
  {
   var track=new InstrumentalTrack { KeyFiles=new(){["C1"]="old.wav"} };

@@ -32,6 +32,8 @@ public sealed class MainWindowPopupHostTests
         vm.IsInteractionBlocked = true;
         var content = (Border)window.FindName("ModalShellContent");
         Assert.That(content.Style, Is.SameAs(window.FindResource("MainWindowModalContentStyle")));
+        window.ApplyTemplate();
+        UiTestPump.Run(window.Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.ContextIdle).Task);
         UiTestPump.Layout((FrameworkElement)window.Content, 1280, 720);
         window.ShowPopupOverlay();
         UiTestPump.Layout((FrameworkElement)window.Content, 1280, 720);

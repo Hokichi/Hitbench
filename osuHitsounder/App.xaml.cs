@@ -42,6 +42,13 @@ public partial class App : Application
         registrations.AddSingleton<ISampleFileDialogService>(provider =>
             new SampleFileDialogService(() => Current.MainWindow, Current.Dispatcher,
                 provider.GetRequiredService<Func<SampleLoaderPopupVM>>()));
+        registrations.AddSingleton<IInstrumentalTrackDialogService>(provider => new InstrumentalTrackDialogService(
+            () => Current.MainWindow, Current.Dispatcher,
+            context => new InstrumentalArrangementPopupVM(context,
+                new MarkerPlaybackCoordinator(provider.GetRequiredService<Func<IWorkstationAudioService>>()(),MarkerPlaybackCoordinator.DelayAsync),
+                provider.GetRequiredService<IMessenger>(),provider.GetRequiredService<IUiScheduler>()),
+            snapshot => new KeysMappingDrawerVM(snapshot,provider.GetRequiredService<IMessenger>(),provider.GetRequiredService<IUiScheduler>(),
+                provider.GetRequiredService<ISampleFileService>(),provider.GetRequiredService<ISampleFileDialogService>())));
         registrations.AddSingleton<INodePasteDialogService>(_ => new NodePasteDialogService(
             () => Current.MainWindow, Current.Dispatcher));
         registrations.AddSingleton<ITrackRemovalDialogService>(_ =>
@@ -51,7 +58,7 @@ public partial class App : Application
                 provider.GetRequiredService<ISampleFileService>(), provider.GetRequiredService<ISampleFileDialogService>(),
                 provider.GetRequiredService<IProjectFileService>(), provider.GetRequiredService<IMessenger>(),
                 provider.GetRequiredService<ITrackRemovalDialogService>(),
-                provider.GetRequiredService<PlaybackVolumeSettings>(), nodePasteDialog: provider.GetRequiredService<INodePasteDialogService>(), sampleManagementDialog: provider.GetRequiredService<ISampleManagementDialogService>(), sampleImports: provider.GetRequiredService<SampleImportBatch>())));
+                provider.GetRequiredService<PlaybackVolumeSettings>(), nodePasteDialog: provider.GetRequiredService<INodePasteDialogService>(), sampleManagementDialog: provider.GetRequiredService<ISampleManagementDialogService>(), sampleImports: provider.GetRequiredService<SampleImportBatch>(), instrumentDialogs: provider.GetRequiredService<IInstrumentalTrackDialogService>())));
         registrations.AddSingleton<IHomeFolderService>(_ => new HomeFolderService(AppContext.BaseDirectory));
         registrations.AddSingleton<IAppSettingsService>(_ => new AppSettingsService(AppContext.BaseDirectory));
         registrations.AddSingleton<IUiScheduler>(_ => uiScheduler ?? new UiScheduler(Current.Dispatcher));

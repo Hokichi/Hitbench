@@ -68,11 +68,13 @@ public partial class WorkstationPage
 
     private void UpdateTrackHeightMinimum(object sender)
     {
-        if (deactivationStarted || sender is not StackPanel { Parent: Grid row }) return;
+        if (deactivationStarted || sender is not StackPanel stack) return;
+        var row=FindAncestor<Grid>(stack);
+        if(row is null)return;
         var left = FindVisualChild<StackPanel>(row, "TrackLeftControls");
         var right = FindVisualChild<StackPanel>(row, "TrackRightControls");
-        if (left is not null && right is not null)
-            viewModel.SetTrackHeightMinimum(Math.Max(left.DesiredSize.Height, right.DesiredSize.Height));
+        if (left is not null && (right is not null || stack.DataContext is osuHitsounder.Core.Entities.InstrumentalTrack))
+            viewModel.SetTrackHeightMinimum(Math.Max(left.DesiredSize.Height, right?.DesiredSize.Height??0));
     }
 
     private void OnTrackListViewportChanged(object sender, ScrollChangedEventArgs e)

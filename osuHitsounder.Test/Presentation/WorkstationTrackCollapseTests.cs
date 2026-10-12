@@ -35,7 +35,7 @@ public class WorkstationTrackCollapseTests
             var toggle = (BalloonButton)page.FindName("ToggleTracksCollapsedButton");
             Assert.That(sample, Is.Not.Null, "Audio card needs sample creation action");
             UiControlContract.AssertStyle<BalloonButton>(sample, "OHsWorkstationToolbarButtonStyle");
-            UiControlContract.AssertStyle<BalloonButton>(instrument, "OHsWorkstationToolbarButtonStyle");
+            UiControlContract.AssertStyle<BalloonButton>(instrument, "OHsWorkstationAddInstrumentStyle");
             UiControlContract.AssertStyle<BalloonButton>(toggle, "OHsWorkstationCollapseTracksStyle");
             Assert.Multiple(() =>
             {
@@ -44,21 +44,21 @@ public class WorkstationTrackCollapseTests
                 Assert.That(toggle.Command, Is.SameAs(vm.ToggleTracksCollapsedCommand));
                 Assert.That(AutomationProperties.GetName(sample), Is.EqualTo("Add New Sample Track"));
                 Assert.That(AutomationProperties.GetName(instrument), Is.EqualTo("Add New Instrument"));
-                Assert.That(AutomationProperties.GetHelpText(instrument), Does.Contain("not implemented"));
+                Assert.That(AutomationProperties.GetHelpText(instrument), Does.Contain("instrumental arrangement"));
                 Assert.That(AutomationProperties.GetName(toggle), Is.EqualTo("Collapse all tracks"));
             });
             foreach (var action in new[] { sample, instrument, toggle })
             {
-                Assert.That(KeyboardNavigation.GetIsTabStop(action), Is.False);
+                Assert.That(KeyboardNavigation.GetIsTabStop(action), Is.EqualTo(ReferenceEquals(action,instrument)));
                 Assert.That(action.Focusable, Is.True);
-                Assert.That(action.FocusVisualStyle, Is.SameAs(page.FindResource("OHsKeyboardFocusVisualStyle")));
+                Assert.That(action.FocusVisualStyle, Is.SameAs(page.FindResource(ReferenceEquals(action,instrument)?"OHsSampleManagerKeyboardFocusStyle":"OHsKeyboardFocusVisualStyle")));
                 Assert.That(ToolTipService.GetShowsToolTipOnKeyboardFocus(action), Is.True);
                 Assert.That(action.IsEnabled, Is.True);
             }
             PressEnter(sample);
             Assert.That(vm.Tracks, Has.Count.EqualTo(1));
             PressEnter(instrument);
-            Assert.That(vm.Tracks, Has.Count.EqualTo(1));
+            Assert.That(vm.Tracks, Has.Count.EqualTo(2));
             PressEnter(toggle);
             view.UpdateLayout();
             Assert.That(vm.AreTracksCollapsed, Is.True);

@@ -227,6 +227,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
             await returnHome;
             if (PageHost.Content is WorkstationPage workstation)
             {
+                await workstation.SettleInstrumentalEditorAsync();
                 await workstation.FlushSavesAsync();
                 await workstation.DeactivateAsync();
             }
@@ -590,7 +591,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
     internal bool HandleWindowKeyDown(bool isActive, Key key, ModifierKeys modifiers, bool isRepeat,
         DependencyObject? origin)
     {
-        if (!isActive || IsSampleManagerVisible || PageHost.Content is not WorkstationPage workstationPage) return false;
+        if (!isActive || IsPopupOverlayVisible || IsSampleManagerVisible || PageHost.Content is not WorkstationPage workstationPage) return false;
 
         return workstationPage.HandleVolumeShortcut(key, modifiers, origin) ||
                workstationPage.HandlePlaybackKey(key, modifiers, isRepeat, origin);
@@ -599,7 +600,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
     internal bool HandleWindowMouseWheel(bool isActive, ModifierKeys modifiers, int delta,
         DependencyObject? origin = null)
     {
-        if (!isActive || IsSampleManagerVisible || PageHost.Content is not WorkstationPage workstationPage) return false;
+        if (!isActive || IsPopupOverlayVisible || IsSampleManagerVisible || PageHost.Content is not WorkstationPage workstationPage) return false;
 
         return workstationPage.HandleContextWheel(modifiers, delta, origin);
     }

@@ -19,6 +19,7 @@ public class InstrumentalArrangementPopupVMTests
    var updates=audio.SampleUpdates.Count;messenger.Send(new InstrumentalSaveStateChangedMessage(ctx,1,true,null));
    Assert.That(audio.SampleUpdates.Count,Is.EqualTo(updates));
    await vm.SeekCommand.ExecuteAsync(TimeSpan.FromSeconds(2));Assert.That(vm.Position,Is.EqualTo(TimeSpan.FromSeconds(2)));
+   await vm.NextGridCommand.ExecuteAsync(null);Assert.That(vm.Position,Is.EqualTo(TimeSpan.FromMilliseconds(2125)));
    await vm.StopCommand.ExecuteAsync(null);Assert.That(vm.Position,Is.EqualTo(TimeSpan.Zero));
   } finally {await vm.DeactivateAsync();}
   Assert.That(audio.Disposed,Is.True);

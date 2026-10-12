@@ -30,8 +30,9 @@
             x:Key="OHsWorkstationTrackNameStyle"
             BasedOn="{StaticResource RoundedTextInputStyle}"
             TargetType="TextBox">
+            <Setter Property="helpers:KeyboardNavigationPolicy.AllowTabNavigation" Value="True"/>
             <Setter Property="IsTabStop" Value="True" />
-            <Setter Property="FocusVisualStyle" Value="{StaticResource OHsKeyboardFocusVisualStyle}" />
+            <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
             <Setter Property="Margin" Value="0,0,0,8" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding DataContext.AreTracksCollapsed, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}" Value="True">
@@ -48,10 +49,11 @@
             x:Key="OHsWorkstationRemoveTrackStyle"
             BasedOn="{StaticResource OHsBalloonDestructiveActionStyle}"
             TargetType="customControls:BalloonButton">
+            <Setter Property="helpers:KeyboardNavigationPolicy.AllowTabNavigation" Value="True"/>
             <Setter Property="ButtonIcon" Value="{StaticResource Delete}" />
             <Setter Property="ShouldShowText" Value="False" />
             <Setter Property="ShouldExpand" Value="False" />
-            <Setter Property="FocusVisualStyle" Value="{StaticResource OHsKeyboardFocusVisualStyle}" />
+            <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
             <Setter Property="IsTabStop" Value="True" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
@@ -86,6 +88,7 @@
             x:Key="OHsWorkstationTrackToggleStyle"
             BasedOn="{StaticResource BaseToggleButtonStyle}"
             TargetType="ToggleButton">
+            <Setter Property="helpers:KeyboardNavigationPolicy.AllowTabNavigation" Value="True"/>
             <Setter Property="IsTabStop" Value="True" />
             <Setter Property="Width" Value="40" />
             <Setter Property="Height" Value="40" />
@@ -93,7 +96,7 @@
             <Setter Property="FontSize" Value="13" />
             <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
             <Setter Property="Background" Value="{DynamicResource Brush.Background.Elevated}" />
-            <Setter Property="FocusVisualStyle" Value="{StaticResource OHsKeyboardFocusVisualStyle}" />
+            <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
             <Setter Property="Template" Value="{StaticResource OHsWorkstationTrackToggleTemplate}" />
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
@@ -416,6 +419,7 @@
             x:Key="OHsWorkstationVolumeStyle"
             BasedOn="{StaticResource OHsValueSliderStyle}"
             TargetType="customControls:ValueSlider">
+            <Setter Property="helpers:KeyboardNavigationPolicy.AllowTabNavigation" Value="True"/>
             <Setter Property="IsTabStop" Value="True" />
             <Setter Property="IsMoveToPointEnabled" Value="True" />
             <Setter Property="Minimum" Value="5" />
@@ -425,7 +429,7 @@
             <Setter Property="SmallChange" Value="1" />
             <Setter Property="LargeChange" Value="5" />
             <Setter Property="Height" Value="40" />
-            <Setter Property="FocusVisualStyle" Value="{StaticResource OHsKeyboardFocusVisualStyle}" />
+            <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
         </Style>
         <Style
             x:Key="OHsWorkstationPlaybackWarningStyle"
@@ -512,7 +516,7 @@
             <Setter Property="IsTabStop" Value="True" />
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
             <Setter Property="FocusVisualStyle" Value="{StaticResource OHsKeyboardFocusVisualStyle}" />
-            <Setter Property="AutomationProperties.Name" Value="Sample track" />
+            <Setter Property="AutomationProperties.Name" Value="Track" />
             <Style.Triggers>
                 <MultiDataTrigger>
                     <MultiDataTrigger.Conditions>
@@ -564,7 +568,7 @@
                 <TextBlock
                     AutomationProperties.LiveSetting="Polite"
                     Style="{StaticResource OHsWorkstationEmptyTracksStyle}"
-                    Text="No tracks. Load a sample, then use Add New Sample Track beside the waveform to create one." />
+                    Text="No tracks. Use Add Instrument, or load a sample and use Add New Sample Track beside the waveform." />
             </Grid>
         </ControlTemplate>
         <Style
@@ -801,15 +805,7 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
-        <DataTemplate x:Key="OHsWorkstationSampleTrackTemplate">
-            <Grid Style="{StaticResource BaseGridStyle}">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="{StaticResource OHsWorkstationSideColumnWidth}" />
-                    <ColumnDefinition Width="{StaticResource OHsWorkstationColumnGap}" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="{StaticResource OHsWorkstationColumnGap}" />
-                    <ColumnDefinition Width="{StaticResource OHsWorkstationSideColumnWidth}" />
-                </Grid.ColumnDefinitions>
+        <DataTemplate x:Key="OHsWorkstationTrackLeftTemplate">
                 <StackPanel
                     x:Name="TrackLeftControls"
                     Margin="0,8"
@@ -876,6 +872,17 @@
                             ValueChanged="OnVolumeValueChanged" />
                     </StackPanel>
                 </StackPanel>
+        </DataTemplate>
+        <DataTemplate x:Key="OHsWorkstationSampleTrackTemplate">
+            <Grid Style="{StaticResource BaseGridStyle}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="{StaticResource OHsWorkstationSideColumnWidth}" />
+                    <ColumnDefinition Width="{StaticResource OHsWorkstationColumnGap}" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="{StaticResource OHsWorkstationColumnGap}" />
+                    <ColumnDefinition Width="{StaticResource OHsWorkstationSideColumnWidth}" />
+                </Grid.ColumnDefinitions>
+                <ContentPresenter Content="{Binding Mode=OneWay}" ContentTemplate="{StaticResource OHsWorkstationTrackLeftTemplate}" Style="{StaticResource BaseContentPresenterStyle}" />
                 <Border Grid.Column="2" Style="{StaticResource OHsWorkstationTimelineStyle}">
                     <Grid
                         x:Name="TrackGridHost"
@@ -1023,6 +1030,42 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
+
+        <Style x:Key="OHsWorkstationInstrumentActionStyle" TargetType="customControls:BalloonButton" BasedOn="{StaticResource OHsBalloonNeutralActionStyle}">
+            <Setter Property="helpers:KeyboardNavigationPolicy.AllowTabNavigation" Value="True"/>
+            <Setter Property="DefaultBackground" Value="{DynamicResource Brush.BalloonButton.Background.NavInfo}" />
+            <Setter Property="HoveredBackground" Value="{DynamicResource Brush.BalloonButton.Background.NavInfo.Hovered}" />
+            <Setter Property="ShouldShowText" Value="True" />
+            <Setter Property="IsTabStop" Value="True" />
+            <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
+            <Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="True" />
+        </Style>
+        <Style x:Key="OHsWorkstationKeysMappingStyle" TargetType="customControls:BalloonButton" BasedOn="{StaticResource OHsWorkstationInstrumentActionStyle}">
+            <Setter Property="Height" Value="Auto" /><Setter Property="VerticalAlignment" Value="Stretch" />
+        </Style>
+        <Style x:Key="OHsWorkstationAddInstrumentStyle" TargetType="customControls:BalloonButton" BasedOn="{StaticResource OHsWorkstationToolbarButtonStyle}">
+            <Setter Property="helpers:KeyboardNavigationPolicy.AllowTabNavigation" Value="True"/>
+            <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
+        </Style>
+        <DataTemplate x:Key="OHsWorkstationInstrumentalTrackTemplate">
+            <Grid Style="{StaticResource BaseGridStyle}" Height="{Binding DataContext.TrackHeight,RelativeSource={RelativeSource AncestorType=pages:WorkstationPage},Mode=OneWay}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="{StaticResource OHsWorkstationSideColumnWidth}" />
+                    <ColumnDefinition Width="{StaticResource OHsWorkstationColumnGap}" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="{StaticResource OHsWorkstationColumnGap}" />
+                    <ColumnDefinition Width="Auto" MinWidth="128" />
+                </Grid.ColumnDefinitions>
+                <ContentPresenter Content="{Binding Mode=OneWay}" ContentTemplate="{StaticResource OHsWorkstationTrackLeftTemplate}" Style="{StaticResource BaseContentPresenterStyle}" />
+                <customControls:BalloonButton Grid.Column="2" HorizontalAlignment="Center" VerticalAlignment="Center" ButtonText="View Arrangement" ButtonIcon="{StaticResource Eye}"
+                    Style="{StaticResource OHsWorkstationInstrumentActionStyle}" AutomationProperties.Name="View Arrangement" ToolTip="Edit instrumental notes"
+                    Command="{Binding DataContext.ViewArrangementCommand,RelativeSource={RelativeSource AncestorType=pages:WorkstationPage},Mode=OneWay}" CommandParameter="{Binding Mode=OneWay}" />
+                <customControls:BalloonButton Grid.Column="4" ButtonText="Keys Mapping" ButtonIcon="{StaticResource KeyboardBoxFill}" Style="{StaticResource OHsWorkstationKeysMappingStyle}"
+                    AutomationProperties.Name="Keys Mapping" ToolTip="Map samples to instrument keys"
+                    Command="{Binding DataContext.KeysMappingCommand,RelativeSource={RelativeSource AncestorType=pages:WorkstationPage},Mode=OneWay}" CommandParameter="{Binding Mode=OneWay}" />
+            </Grid>
+        </DataTemplate>
+        <helpers:WorkstationTrackTemplateSelector x:Key="OHsWorkstationTrackTemplateSelector" SampleTrackTemplate="{StaticResource OHsWorkstationSampleTrackTemplate}" InstrumentalTrackTemplate="{StaticResource OHsWorkstationInstrumentalTrackTemplate}" />
     </UserControl.Resources>
     <Grid Background="Transparent" Style="{StaticResource BaseGridStyle}">
         <Grid
@@ -1208,13 +1251,13 @@
                                     ToolTip="Add New Sample Track" />
                                 <customControls:BalloonButton
                                     x:Name="AddInstrumentButton"
-                                    AutomationProperties.HelpText="Instrumental track creation is not implemented yet."
+                                    AutomationProperties.HelpText="Create an instrumental arrangement with mapped samples."
                                     AutomationProperties.Name="Add New Instrument"
                                     ButtonIcon="{StaticResource MusicNotesPlusFill}"
                                     ButtonText="Add New Instrument"
                                     Command="{Binding AddPianoTrackCommand, Mode=OneWay}"
-                                    Style="{StaticResource OHsWorkstationToolbarButtonStyle}"
-                                    ToolTip="Instrumental track creation is coming later" />
+                                    Style="{StaticResource OHsWorkstationAddInstrumentStyle}"
+                                    ToolTip="Add New Instrument" />
                             </customControls:SpacedUniformGrid>
                         </Grid>
                     </Grid>
@@ -1273,8 +1316,8 @@
                             <Grid>
                                 <ListBox
                                     x:Name="TrackList"
-                                    AutomationProperties.Name="Sample tracks"
-                                    ItemTemplate="{StaticResource OHsWorkstationSampleTrackTemplate}"
+                                    AutomationProperties.Name="Tracks"
+                                    ItemTemplateSelector="{StaticResource OHsWorkstationTrackTemplateSelector}"
                                     ItemsSource="{Binding Tracks, Mode=OneWay}"
                                     SelectedItem="{Binding SelectedTrack, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                     SelectionMode="Single"

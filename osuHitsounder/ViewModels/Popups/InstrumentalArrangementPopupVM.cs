@@ -113,7 +113,7 @@ public sealed partial class InstrumentalArrangementPopupVM : ObservableObject
  private void OnPlaybackChanged()=>notifications=RefreshNotificationAsync(notifications);
  private async Task RefreshNotificationAsync(Task previous){await previous;if(!closed)await scheduler.InvokeAsync(()=>{if(!closed)RefreshPlayback();},CancellationToken.None);}
  public void RefreshPlayback(){if(closed)return;var state=playback.Latest.Playback;Position=state.Position;IsPlaying=state.IsPlaying;if(state.Error is not null)ErrorMessage=state.Error;}
- private void NotifyTransport(){OnPropertyChanged(nameof(CanPlay));OnPropertyChanged(nameof(CanEdit));PlayPauseCommand.NotifyCanExecuteChanged();StopCommand.NotifyCanExecuteChanged();SeekCommand.NotifyCanExecuteChanged();}
+ private void NotifyTransport(){OnPropertyChanged(nameof(CanPlay));OnPropertyChanged(nameof(CanEdit));PlayPauseCommand.NotifyCanExecuteChanged();StopCommand.NotifyCanExecuteChanged();SeekCommand.NotifyCanExecuteChanged();NextGridCommand.NotifyCanExecuteChanged();PreviousGridCommand.NotifyCanExecuteChanged();}
  [RelayCommand(CanExecute=nameof(CanPlay))]
  private async Task PlayPauseAsync()
  {try{await AwaitPreparationsAsync();if(IsPlaying)await playback.PauseAsync(lifetime.Token);else await playback.PlayAsync(lifetime.Token);RefreshPlayback();}catch(OperationCanceledException)when(lifetime.IsCancellationRequested){}catch(Exception e){ErrorMessage=e.Message;}}
@@ -122,6 +122,9 @@ public sealed partial class InstrumentalArrangementPopupVM : ObservableObject
  [RelayCommand(CanExecute=nameof(CanPlay))]
  private async Task SeekAsync(TimeSpan value){try{await playback.SeekAsync(value,lifetime.Token);RefreshPlayback();}catch(OperationCanceledException)when(lifetime.IsCancellationRequested){}catch(Exception e){ErrorMessage=e.Message;}}
  [RelayCommand] private void ZoomIn()=>ZoomFactor*=1.25;
+ [RelayCommand(CanExecute=nameof(CanPlay))] private Task NextGridAsync()=>NavigateAsync(true);
+ [RelayCommand(CanExecute=nameof(CanPlay))] private Task PreviousGridAsync()=>NavigateAsync(false);
+ private Task NavigateAsync(bool forward)=>BeatGridCalculator.GetAdjacentPosition(Offsets,Bpms,Subdivision,Position,Waveform.Duration,forward) is {} next?SeekAsync(next):Task.CompletedTask;
  [RelayCommand] private void ZoomOut()=>ZoomFactor/=1.25;
  public void SelectNote(Guid? id)=>SelectedNoteId=id is null||Notes.Any(n=>n.Id==id)?id:null;
  public void PlaceNote(string key,double ms){if(!CanEdit)return;pendingRequest=Guid.NewGuid();messenger.Send(new PlaceInstrumentalNoteRequestedMessage(snapshot.Context,pendingRequest,key,ms,Subdivision));}
