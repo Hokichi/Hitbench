@@ -794,6 +794,8 @@ public partial class WorkstationPageVM(
         foreach (var removed in sampleEventIds.Keys.Where(sample => !currentSamples.Contains(sample)).ToArray())
             sampleEventIds.Remove(removed);
         var events = new List<SamplePlaybackEvent>(currentSamples.Count);
+        foreach(var removed in instrumentIds.Keys.Where(t=>!tracks.Contains(t)).ToArray())
+            instrumentIds.Remove(removed);
         var alive = tracks.OfType<InstrumentalTrack>().SelectMany(t=>t.Notes).ToHashSet();
         foreach(var removed in instrumentNoteIds.Keys.Where(n=>!alive.Contains(n)).ToArray())
         { instrumentEventIds.Remove(instrumentNoteIds[removed]); instrumentNoteIds.Remove(removed); }

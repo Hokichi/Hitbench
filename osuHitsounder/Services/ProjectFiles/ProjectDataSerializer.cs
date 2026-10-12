@@ -124,12 +124,17 @@ public static class ProjectDataSerializer
             if (item is not JObject note) throw new InvalidDataException("Instrumental note must be an object.");
             var key=InstrumentMember(note,"Key"); var time=InstrumentMember(note,"Timestamp"); var volume=InstrumentMember(note,"Volume");
             if (key?.Type!=JTokenType.String || !InstrumentalKeys.TryGetIndex(key.Value<string>()!,out _) ||
-                time?.Type!=JTokenType.Integer || time.Value<long>() is <0 or >int.MaxValue ||
-                volume is not null && (volume.Type!=JTokenType.Integer || volume.Value<long>() is <0 or >100))
+                !IsIntegerInRange(time,int.MaxValue) ||
+                volume is not null && !IsIntegerInRange(volume,100))
                 throw new InvalidDataException("Instrumental note needs a valid key, integer timestamp, and volume 0–100.");
-            if (!seen.Add((key.Value<string>()!,time.Value<int>()))) throw new InvalidDataException("Duplicate instrumental note key/timestamp.");
+            if (!seen.Add((key.Value<string>()!,time!.Value<int>()))) throw new InvalidDataException("Duplicate instrumental note key/timestamp.");
         }
     }
+
+    private static bool IsIntegerInRange(JToken? value,int maximum) =>
+        value?.Type==JTokenType.Integer && long.TryParse(value.ToString(Formatting.None),
+            System.Globalization.NumberStyles.Integer,System.Globalization.CultureInfo.InvariantCulture,out var number) &&
+        number>=0 && number<=maximum;
 
     private static void NormalizeTrackOption(JObject track, string property, string defaultValue, IReadOnlyList<string> options)
     {

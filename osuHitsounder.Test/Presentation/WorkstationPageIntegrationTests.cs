@@ -229,7 +229,7 @@ public class WorkstationPageIntegrationTests
         var mute = FindVisualChildren<ToggleButton>(page).Single(control => control.Name == "TrackMuteToggle" && ReferenceEquals(control.DataContext, a));
         var solo = FindVisualChildren<ToggleButton>(page).Single(control => control.Name == "TrackSoloToggle" && ReferenceEquals(control.DataContext, a));
         Assert.That(mute.GetType(), Is.EqualTo(typeof(ToggleButton)));
-        Assert.That(mute.IsTabStop, Is.False);
+        Assert.That(mute.IsTabStop, Is.True);
         Assert.That(mute.Style, Is.SameAs(page.FindResource("OHsWorkstationTrackToggleStyle")));
         Assert.That(mute.Style.BasedOn, Is.SameAs(page.FindResource("BaseToggleButtonStyle")));
         Assert.That(mute.Template, Is.SameAs(page.FindResource("OHsWorkstationTrackToggleTemplate")));
@@ -364,7 +364,7 @@ public class WorkstationPageIntegrationTests
             AutomationProperties.GetName(box) == "Track name" && ReferenceEquals(box.DataContext, first));
         Assert.That(input.Text, Is.EqualTo(first.Name));
         Assert.That(input.IsEnabled, Is.True);
-        Assert.That(input.IsTabStop, Is.False);
+        Assert.That(input.IsTabStop, Is.True);
         Assert.That(input.Focusable, Is.True);
         Assert.That(input.Style, Is.SameAs(page.FindResource("OHsWorkstationTrackNameStyle")));
         Assert.That(input.Style.BasedOn, Is.SameAs(page.FindResource("RoundedTextInputStyle")));

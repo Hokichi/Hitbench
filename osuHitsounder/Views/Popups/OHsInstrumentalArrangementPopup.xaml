@@ -94,8 +94,10 @@
    ViewportSize="{Binding ViewportWidth,ElementName=WaveformScroll,Mode=OneWay}" ValueChanged="OnHorizontalChanged" AutomationProperties.Name="Arrangement timeline position"/>
   <ScrollViewer Grid.Row="4" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Style="{StaticResource OHsArrangementStatusScroll}" AutomationProperties.Name="Arrangement status messages">
   <StackPanel Style="{StaticResource BaseStackPanelStyle}">
+   <TextBlock Text="{Binding EditingHint,Mode=OneWay}" Style="{StaticResource OHsArrangementText}"/>
    <TextBlock Text="C1–B9 · Enter places; Alt+arrows move; Delete removes. Ctrl+Left/Right seeks; Ctrl+Home/End goes to song start/end." Style="{StaticResource OHsArrangementText}"/>
    <TextBlock Text="{Binding MappingStatus,Mode=OneWay}" Style="{StaticResource OHsArrangementWarning}"/>
+   <TextBlock Text="{Binding PlaybackWarning,Mode=OneWay}" Style="{StaticResource OHsArrangementWarning}"/>
    <TextBlock Text="{Binding SaveStatus,Mode=OneWay}" Style="{StaticResource OHsArrangementText}"/>
    <TextBlock Text="{Binding SaveError,Mode=OneWay}" Style="{StaticResource OHsArrangementError}"/>
    <TextBlock Text="{Binding ErrorMessage,Mode=OneWay}" Style="{StaticResource OHsArrangementError}"/>

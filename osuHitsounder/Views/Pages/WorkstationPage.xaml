@@ -450,6 +450,16 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
+        <Style x:Key="OHsWorkstationPlaybackWarningScrollStyle" TargetType="ScrollViewer" BasedOn="{StaticResource {x:Type ScrollViewer}}">
+            <Setter Property="MaxHeight" Value="120" />
+            <Setter Property="Focusable" Value="True" />
+            <Setter Property="helpers:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
+            <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding PlaybackWarning, Mode=OneWay}" Value="{x:Null}"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+                <DataTrigger Binding="{Binding PlaybackWarning, Mode=OneWay}" Value=""><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+            </Style.Triggers>
+        </Style>
         <Style
             x:Key="OHsWorkstationVolumeOverlayStyle"
             BasedOn="{StaticResource BaseBorderStyle}"
@@ -1090,6 +1100,12 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" MinHeight="128" />
                         </Grid.RowDefinitions>
+                        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                            Style="{StaticResource OHsWorkstationPlaybackWarningScrollStyle}" AutomationProperties.Name="Playback diagnostics">
+                            <TextBlock x:Name="PlaybackWarningText" Text="{Binding PlaybackWarning,Mode=OneWay}"
+                                AutomationProperties.Name="{Binding PlaybackWarning,Mode=OneWay}" AutomationProperties.LiveSetting="Polite"
+                                Style="{StaticResource OHsWorkstationPlaybackWarningStyle}" />
+                        </ScrollViewer>
                         <Grid Grid.Row="1" Style="{StaticResource BaseGridStyle}">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="{StaticResource OHsWorkstationSideColumnWidth}" />
