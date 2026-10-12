@@ -189,7 +189,7 @@ public partial class WorkstationPageVM(
         await DrainProjectSaveQueueAsync();
         await SettleSampleManagerAsync();
         sampleSession = Guid.NewGuid();
-        instrumentIds.Clear(); instrumentNoteIds.Clear(); instrumentRevision=0;
+        instrumentIds.Clear(); instrumentNoteIds.Clear(); instrumentEventIds.Clear(); instrumentRevision=0;
         ResetNodeEditing();
         history.Clear();
         NotifyHistoryState();
@@ -551,6 +551,7 @@ public partial class WorkstationPageVM(
         if (!CanEditTracks || !tracks.Contains(track) || string.Equals(track.Name, name, StringComparison.Ordinal)) return;
         track.Name = name;
         QueueSave();
+        instrumentRevision++; PublishInstrumentSnapshot();
     }
 
     public void SetTrackSampleType(Track track, osuHitsounder.Core.Enums.SampleType value)
@@ -585,6 +586,7 @@ public partial class WorkstationPageVM(
         track.Volume = next;
         QueuePlaybackUpdate();
         QueueSave();
+        instrumentRevision++; PublishInstrumentSnapshot();
     }
 
     [RelayCommand(CanExecute = nameof(CanImportSample))]
@@ -792,6 +794,15 @@ public partial class WorkstationPageVM(
         foreach (var removed in sampleEventIds.Keys.Where(sample => !currentSamples.Contains(sample)).ToArray())
             sampleEventIds.Remove(removed);
         var events = new List<SamplePlaybackEvent>(currentSamples.Count);
+        var alive = tracks.OfType<InstrumentalTrack>().SelectMany(t=>t.Notes).ToHashSet();
+        foreach(var removed in instrumentNoteIds.Keys.Where(n=>!alive.Contains(n)).ToArray())
+        { instrumentEventIds.Remove(instrumentNoteIds[removed]); instrumentNoteIds.Remove(removed); }
+        foreach(var instrument in tracks.OfType<InstrumentalTrack>())
+        {
+            if(instrument.IsTrackMuted || hasSolo && !instrument.IsTrackSoloed) continue;
+            events.AddRange(InstrumentalPlaybackEvents.Build(instrument.KeyFiles,NoteSnapshots(instrument),instrument.Volume,
+                sampleFiles is null ? null : availableSamples.ToArray(),InstrumentEventId));
+        }
         foreach (var track in tracks)
         foreach (var sample in track.Samples)
         {
@@ -906,7 +917,7 @@ public partial class WorkstationPageVM(
                 tracks.Clear();
                 foreach (var track in source.Project.Tracks)
                 {
-                    track.SelectedSampleFileName ??= track.Samples.FirstOrDefault()?.FileName;
+                    if(track is not InstrumentalTrack) track.SelectedSampleFileName ??= track.Samples.FirstOrDefault()?.FileName;
                     tracks.Add(track);
                 }
                 if (messenger is not null)

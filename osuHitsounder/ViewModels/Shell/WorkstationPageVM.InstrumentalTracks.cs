@@ -14,6 +14,9 @@ public partial class WorkstationPageVM
 {
     private readonly Dictionary<InstrumentalTrack,Guid> instrumentIds=new(ReferenceEqualityComparer.Instance);
     private readonly Dictionary<InstrumentalNote,Guid> instrumentNoteIds=new(ReferenceEqualityComparer.Instance);
+    private readonly Dictionary<Guid,long> instrumentEventIds=[];
+    private long InstrumentEventId(Guid id)
+    { if(!instrumentEventIds.TryGetValue(id,out var value)) instrumentEventIds[id]=value=nextSampleEventId++; return value; }
     private InstrumentalTrackContext? activeInstrumentContext;
     private CancellationTokenSource? instrumentCancellation;
     private Task? instrumentWorkflow;

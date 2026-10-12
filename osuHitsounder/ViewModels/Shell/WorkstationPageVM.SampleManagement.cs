@@ -54,6 +54,9 @@ public partial class WorkstationPageVM
             {
                 foreach (var track in tracks)
                 {
+                    if(track is InstrumentalTrack instrument)
+                        foreach(var key in instrument.KeyFiles.Keys.ToArray())
+                            if(string.Equals(instrument.KeyFiles[key],oldName,StringComparison.OrdinalIgnoreCase)) instrument.KeyFiles[key]=newName;
                     if (string.Equals(track.SelectedSampleFileName, oldName, StringComparison.OrdinalIgnoreCase)) track.SelectedSampleFileName = newName;
                     foreach (var node in track.Samples)
                         if (string.Equals(node.FileName, oldName, StringComparison.OrdinalIgnoreCase)) node.FileName = newName;
@@ -62,6 +65,7 @@ public partial class WorkstationPageVM
             }
             RefreshAvailableSamples(change.Files, false); CancelNodeDrag(); PruneNodeSelection();
             samplesRevision++; OnPropertyChanged(nameof(SamplesRevision)); NotifyHistoryState(); QueuePlaybackUpdate(); QueueSave();
+            instrumentRevision++; PublishInstrumentSnapshot();
         }, CancellationToken.None);
     }
 }
