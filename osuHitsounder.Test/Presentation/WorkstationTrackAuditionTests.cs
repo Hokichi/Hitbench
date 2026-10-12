@@ -176,8 +176,8 @@ public class WorkstationTrackAuditionTests
     public async Task AuditionRejectsPendingNodeEditWithoutClearingFlags()
     {
         var a = TrackWithSample("a.wav"); var b = TrackWithSample("b.wav"); b.IsTrackMuted = true;
-        var choice = new TaskCompletionSource<NodePasteTiming?>();
-        var dialog = new StubNodePasteDialogService { Choose = _ => choice.Task };
+        var collision = new TaskCompletionSource();
+        var dialog = new StubNodePasteDialogService { Collision = _ => collision.Task };
         var saves = new DelayedProjectFileService(); saves.Release();
         var vm = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(
             new WorkstationSource("map.osu", "audio.wav", Project([a, b]))) },
@@ -185,11 +185,12 @@ public class WorkstationTrackAuditionTests
             new StubSampleFileService(["a.wav", "b.wav"]), projectFiles: saves, nodePasteDialog: dialog);
         await vm.LoadAsync("project.json", default); vm.AcknowledgePresentationReady(vm.LoadGeneration);
         vm.SelectNode(a, a.Samples.Single(), false); vm.CopySelectedNodes(); vm.SelectedTrack = b;
+        await vm.SeekCommand.ExecuteAsync(TimeSpan.FromMilliseconds(125));
         var paste = vm.PasteCopiedNodesAsync();
         Assert.That(vm.IsNodeEditBusy, Is.True);
         vm.SetTrackMuted(b, false); vm.SetTrackSoloed(b, true);
         Assert.That(b.IsTrackMuted, Is.True); Assert.That(b.IsTrackSoloed, Is.False);
-        choice.SetResult(null); await paste;
+        collision.SetResult(); await paste;
         Assert.That(saves.Writes, Is.Zero);
         await vm.DeactivateAsync();
     }

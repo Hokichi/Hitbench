@@ -1,5 +1,4 @@
 using osuHitsounder.Services.Dialogs;
-using osuHitsounder.ViewModels.Popups;
 
 namespace osuHitsounder.Test.Presentation;
 
@@ -7,12 +6,18 @@ namespace osuHitsounder.Test.Presentation;
 public class NodePasteDialogServiceTests
 {
     [Test]
-    public void MissingOwnerCancelsChoiceWithoutOpeningDialog()
+    public void MissingOwnerCompletesCollisionWithoutOpeningDialog()
     {
-        var service = new NodePasteDialogService(() => null, System.Windows.Threading.Dispatcher.CurrentDispatcher, () => new NodePastePopupVM());
-        var choice = service.ChooseTimingAsync(CancellationToken.None);
-        UiTestPump.Run(choice);
-        Assert.That(choice.Result, Is.Null);
-        UiTestPump.Run(service.ShowCollisionAsync(CancellationToken.None));
+        var service = new NodePasteDialogService(() => null, System.Windows.Threading.Dispatcher.CurrentDispatcher);
+        var collision = service.ShowCollisionAsync(CancellationToken.None);
+        UiTestPump.Run(collision);
+        Assert.That(collision.IsCompletedSuccessfully, Is.True);
+    }
+    [Test]
+    public void CancelledCollisionDoesNotOpenDialog()
+    {
+        var service = new NodePasteDialogService(() => null, System.Windows.Threading.Dispatcher.CurrentDispatcher);
+        var task = service.ShowCollisionAsync(new CancellationToken(true));
+        Assert.That(() => UiTestPump.Run(task), Throws.InstanceOf<OperationCanceledException>());
     }
 }

@@ -142,6 +142,23 @@ public class WorkstationNodePasteTests
         vm.UndoCommand.Execute(null); vm.RedoCommand.Execute(null);
         Assert.That(copy.FileName, Is.EqualTo("a.wav"));
     }
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task PendingCollisionRejectsSecondPasteAndCannotMutateAfterLifecycleChange(bool deactivate)
+    {
+        var collision = new TaskCompletionSource();
+        dialogs.Collision = token => collision.Task.WaitAsync(token);
+        vm.SelectNode(source, node, false); vm.CopySelectedNodes();
+        await vm.SeekCommand.ExecuteAsync(TimeSpan.FromMilliseconds(1000));
+        var paste = vm.PasteCopiedNodesAsync();
+        Assert.That(vm.IsNodeEditBusy, Is.True); Assert.That(await vm.PasteCopiedNodesAsync(), Is.False);
+        if (deactivate) await vm.DeactivateAsync();
+        else { await vm.LoadAsync("other.json", CancellationToken.None); vm.AcknowledgePresentationReady(vm.LoadGeneration); }
+        collision.TrySetResult(); Assert.That(await paste, Is.False);
+        Assert.That(source.Samples.Single(), Is.SameAs(node));
+        Assert.That(vm.SelectedSamples, Is.Empty); Assert.That(vm.CanUndo, Is.False);
+        Assert.That(vm.IsNodeEditBusy, Is.False);
+    }
     [TestCase(0, true)]
     [TestCase(125, false)]
     public async Task TransferAdoptsSampleOrRejectsOccupiedTimestamp(int delta, bool succeeds)

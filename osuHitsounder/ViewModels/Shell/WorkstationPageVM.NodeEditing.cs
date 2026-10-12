@@ -88,7 +88,7 @@ public partial class WorkstationPageVM
         if (entries.Length == 0) return false;
         var first = entries.Min(entry => entry.Sample.Timestamp);
         copiedNodes = entries.Select(entry => new CopiedSampleNode(entry.Track, entry.Sample.FileName, entry.Sample.Volume,
-            (long)entry.Sample.Timestamp - first, entry.Sample.Timestamp)).ToArray();
+            (long)entry.Sample.Timestamp - first)).ToArray();
         NotifyNodeEditingState();
         return true;
     }

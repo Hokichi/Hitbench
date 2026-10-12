@@ -42,9 +42,8 @@ public partial class App : Application
         registrations.AddSingleton<ISampleFileDialogService>(provider =>
             new SampleFileDialogService(() => Current.MainWindow, Current.Dispatcher,
                 provider.GetRequiredService<Func<SampleLoaderPopupVM>>()));
-        registrations.AddSingleton<Func<NodePastePopupVM>>(_ => () => new NodePastePopupVM());
-        registrations.AddSingleton<INodePasteDialogService>(provider => new NodePasteDialogService(
-            () => Current.MainWindow, Current.Dispatcher, provider.GetRequiredService<Func<NodePastePopupVM>>()));
+        registrations.AddSingleton<INodePasteDialogService>(_ => new NodePasteDialogService(
+            () => Current.MainWindow, Current.Dispatcher));
         registrations.AddSingleton<ITrackRemovalDialogService>(_ =>
             new TrackRemovalDialogService(() => Current.MainWindow, Current.Dispatcher));
         registrations.AddSingleton<Func<WorkstationPage>>(provider => () => new WorkstationPage(
