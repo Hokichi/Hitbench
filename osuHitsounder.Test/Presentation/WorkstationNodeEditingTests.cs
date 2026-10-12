@@ -118,7 +118,7 @@ public class WorkstationNodeEditingTests
         Assert.That(earliest.FileName, Is.EqualTo("a.wav"));
         Assert.That(earliest.Volume, Is.EqualTo(37));
         Assert.That(first.Samples.Contains(earliest), Is.True);
-        Assert.That(first.Samples.Any(n => n.Timestamp == 3125), Is.True);
+        Assert.That(second.Samples.Any(n => n.Timestamp == 3125), Is.True);
         var copies = vm.SelectedSamples.ToArray();
         Assert.That(await vm.PasteCopiedNodesAsync(), Is.False);
         Assert.That(vm.SelectedSamples, Is.EquivalentTo(copies));
@@ -126,27 +126,22 @@ public class WorkstationNodeEditingTests
         Assert.That(first.Samples.Count, Is.EqualTo(1));
         Assert.That(second.Samples.Count, Is.EqualTo(1));
         vm.RedoCommand.Execute(null);
-        Assert.That(first.Samples.Count, Is.EqualTo(4));
+        Assert.That(first.Samples.Count, Is.EqualTo(3));
     }
 
-    [TestCase("tail")]
-    [TestCase("track")]
-    [TestCase("file")]
-    [TestCase("overflow")]
-    public async Task InvalidPasteNeverPartiallyChangesProject(string reason)
+    [Test]
+    public async Task PastePublishesOneSaveAndPlaybackRefresh()
     {
-        if (reason == "overflow") { a.Timestamp = int.MinValue; b.Timestamp = int.MaxValue; }
-        vm.SetNodeSelection([a, b, c]); vm.CopySelectedNodes();
-        if (reason == "tail") await vm.SeekCommand.ExecuteAsync(TimeSpan.FromMilliseconds(9900));
-        if (reason == "track") vm.SelectedTrack = null;
-        if (reason == "file") vm.SampleFiles.Remove("a.wav");
-        var before = vm.Tracks.SelectMany(t => t.Samples).ToArray();
-        var revision = vm.SamplesRevision;
-        Assert.That(await vm.PasteCopiedNodesAsync(), Is.False);
-        Assert.That(vm.Tracks.SelectMany(t => t.Samples), Is.EqualTo(before));
-        Assert.That(vm.SamplesRevision, Is.EqualTo(revision));
-        if (reason != "track") Assert.That(vm.ErrorMessage, Is.Not.Null.And.Not.Empty);
-        Assert.That(vm.CanPasteNodes, Is.EqualTo(reason != "track"));
+        vm.SetNodeSelection([a, c]); vm.CopySelectedNodes();
+        await vm.SeekCommand.ExecuteAsync(TimeSpan.FromMilliseconds(3000));
+        await vm.FlushSavesAsync(); await vm.FlushPlaybackUpdatesAsync();
+        var writes = saves.Writes; var scheduled = audio.SampleUpdates.Count; var revision = vm.SamplesRevision;
+        Assert.That(await vm.PasteCopiedNodesAsync(), Is.True);
+        await vm.FlushSavesAsync(); await vm.FlushPlaybackUpdatesAsync();
+        Assert.That(vm.SamplesRevision, Is.EqualTo(revision + 1));
+        Assert.That(saves.Writes, Is.EqualTo(writes + 1));
+        Assert.That(audio.SampleUpdates.Count, Is.EqualTo(scheduled + 1));
+        Assert.That(ProjectDataSerializer.Deserialize(saves.LatestJson!).Tracks[1].Samples.Last().Timestamp, Is.EqualTo(3125));
     }
 
     [TestCase(260, 1250, 1500, 1375)]

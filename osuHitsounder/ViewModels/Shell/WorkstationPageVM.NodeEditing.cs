@@ -39,8 +39,7 @@ public partial class WorkstationPageVM
     public IReadOnlyDictionary<Sample, int> NodePreviewTimestamps => nodePreview;
     public bool IsNodeDragActive => dragAnchor is not null;
     public bool CanCopyNodes => CanPlaceSamples && selectedNodes.Count > 0;
-    public bool CanPasteNodes => CanPlaceSamples && SelectedTrack is not null && tracks.Contains(SelectedTrack) && copiedNodes.Length > 0 &&
-        (nodePasteDialog is not null || copiedNodes.All(node => ReferenceEquals(node.Track, SelectedTrack)));
+    public bool CanPasteNodes => CanPlaceSamples && copiedNodes.Length > 0;
     public bool CanDeleteNodes => CanCopyNodes;
 
     public bool SelectNode(Track track, Sample sample, bool toggle)
@@ -123,35 +122,32 @@ public partial class WorkstationPageVM
 
     private async Task<bool> PasteNodesCoreAsync()
     {
-        var destination = SelectedTrack!;
         var copied = copiedNodes.ToArray();
         var project = Project!; var path = projectPath!; var generation = loadGeneration;
         var marker = Position.TotalMilliseconds;
         var token = nodeEditCancellation?.Token ?? loadCancellation?.Token ?? CancellationToken.None;
-        NodePasteTiming? timing = NodePasteTiming.PlaybackMarker;
-        if (copied.Any(node => !ReferenceEquals(node.Track, destination)))
-        {
-            if (nodePasteDialog is null) return false;
-            timing = await nodePasteDialog.ChooseTimingAsync(token);
-        }
-        if (timing is not (NodePasteTiming.SourceTimestamps or NodePasteTiming.PlaybackMarker) || !IsCurrentProject(path, project, generation) || !tracks.Contains(destination) || !CanEditTracks || importBusy || removalBusy) return false;
-        var file = availableSamples.FirstOrDefault(name => string.Equals(name, destination.SelectedSampleFileName, StringComparison.OrdinalIgnoreCase));
-        if (file is null) return RejectPaste("The destination sample file is unavailable.");
+        if (!IsCurrentProject(path, project, generation) || !CanEditTracks || importBusy || removalBusy) return false;
         var anchor = BeatGridCalculator.GetNearestTimestamp(project.Offsets, project.BPMs, Subdivision, marker, Waveform!.Duration.TotalMilliseconds);
         if (anchor is null) return RejectPaste("No usable grid beat for pasting samples.");
         var batch = new List<NodeHistoryEntry>();
+        var nextIndexes = new Dictionary<Track, int>();
         foreach (var node in copied)
         {
-            var candidate = timing == NodePasteTiming.SourceTimestamps ? node.Timestamp : (long)anchor!.Value + node.RelativeTimestamp;
+            var candidate = (long)anchor.Value + node.RelativeTimestamp;
+            if (candidate >= Waveform.Duration.TotalMilliseconds) continue;
             if (!ValidNodeTimestamp(candidate)) return RejectPaste("The copied formation does not fit within the song.");
-            var timestamp = timing == NodePasteTiming.SourceTimestamps ? node.Timestamp : BeatGridCalculator.GetNearestTimestamp(project.Offsets, project.BPMs, Subdivision, candidate, Waveform.Duration.TotalMilliseconds);
-            if (timestamp is null) return RejectPaste("No usable grid beat for copied samples.");
-            var sample = new Sample { FileName = file, Volume = node.Volume, Timestamp = timestamp.Value };
-            batch.Add(new(destination, sample, destination.Samples.Count + batch.Count, NodeHistoryOperation.Placement));
+            if (!CanEditTrackGrid(node.Track)) return RejectPaste("The original track is unavailable.");
+            if (!availableSamples.Any(file => string.Equals(file, node.FileName, StringComparison.OrdinalIgnoreCase)))
+                return RejectPaste("The copied sample file is unavailable.");
+            var sample = new Sample { FileName = node.FileName, Volume = node.Volume, Timestamp = (int)candidate };
+            var index = nextIndexes.GetValueOrDefault(node.Track, node.Track.Samples.Count);
+            nextIndexes[node.Track] = index + 1;
+            batch.Add(new(node.Track, sample, index, NodeHistoryOperation.Placement, NextFileName: node.FileName));
         }
+        if (batch.Count == 0) return false;
         CancelNodeDrag();
         if (HasNodeCollisions(batch.Select(entry => (entry.Track, entry.Sample, entry.Sample.Timestamp)), [])) return await CollisionAsync(token);
-        foreach (var entry in batch) destination.Samples.Add(entry.Sample);
+        foreach (var entry in batch) entry.Track.Samples.Add(entry.Sample);
         history.RecordBatch(batch); SetNodeSelectionCore(batch.Select(entry => entry.Sample));
         PublishNodeChange(); ErrorMessage = null; return true;
     }

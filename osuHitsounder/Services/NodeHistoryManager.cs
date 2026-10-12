@@ -91,7 +91,9 @@ public sealed class NodeHistoryManager
         if (insert)
         {
             if (index >= 0 || entry.Index < 0 || entry.Index > samples.Count) return false;
-            if (preview is null) entry.Sample.FileName = entry.Track.SelectedSampleFileName ?? entry.Sample.FileName;
+            if (preview is null) entry.Sample.FileName =
+                (entry.Operation == NodeHistoryOperation.Placement ? entry.NextFileName : null) ??
+                entry.Track.SelectedSampleFileName ?? entry.Sample.FileName;
             samples.Insert(entry.Index, entry.Sample);
         }
         else

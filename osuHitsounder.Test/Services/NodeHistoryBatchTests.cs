@@ -22,6 +22,17 @@ public class NodeHistoryBatchTests
         Assert.That(destination.Samples.Count, Is.EqualTo(redo ? 0 : 1));
     }
     [Test]
+    public void PinnedPlacementRedoKeepsCopiedFile()
+    {
+        var sample = new Sample { Timestamp = 500, FileName = "a.wav", Volume = 37 };
+        var track = new Track { Samples = [sample], SelectedSampleFileName = "b.wav" };
+        var history = new NodeHistoryManager();
+        history.RecordBatch([new(track, sample, 0, NodeHistoryOperation.Placement, NextFileName: "a.wav")]);
+        Assert.That(history.Undo([track]), Is.True); Assert.That(history.Redo([track]), Is.True);
+        Assert.That(sample.FileName, Is.EqualTo("a.wav")); Assert.That(sample.Volume, Is.EqualTo(37));
+    }
+
+    [Test]
     public void TransferUndoRestoresSourceTrackTimeAndFile()
     {
         var sample = new Sample { Timestamp = 500, FileName = "b.wav", Volume = 37 };
