@@ -197,6 +197,7 @@ public partial class WorkstationPage : UserControl
     {
         TimelineContentWidth = e.NewSize.Width;
         ApplyPendingZoomAnchor();
+        UpdateNodeAdornerGeometry();
     }
     private void OnWaveformScrollChanged(object sender, ScrollChangedEventArgs e)
     {
@@ -205,6 +206,7 @@ public partial class WorkstationPage : UserControl
         TimelineViewportWidth = e.ViewportWidth;
         WaveformScrollBar.Value = e.HorizontalOffset;
         ApplyPendingZoomAnchor();
+        UpdateNodeAdornerGeometry();
     }
 
     private void OnSampleSelectorLoaded(object sender, RoutedEventArgs e)
@@ -387,7 +389,7 @@ public partial class WorkstationPage : UserControl
         if (e.PropertyName is nameof(WorkstationPageVM.SampleFiles) or nameof(WorkstationPageVM.SamplesRevision)) RefreshTrackSamplePresentation();
         if (e.PropertyName is nameof(WorkstationPageVM.IsPlaying) or nameof(WorkstationPageVM.LoadPhase))
             UpdatePlaybackRefreshSubscription();
-        if (e.PropertyName == nameof(WorkstationPageVM.ZoomFactor)) { ApplyPendingZoomAnchor(); UpdateNodeAdornerSize(); }
+        if (e.PropertyName == nameof(WorkstationPageVM.ZoomFactor)) { ApplyPendingZoomAnchor(); UpdateNodeAdornerGeometry(); }
         if (e.PropertyName == nameof(WorkstationPageVM.Position) && viewModel.IsPlaying) FollowPlaybackPosition();
         if (e.PropertyName == nameof(WorkstationPageVM.ScrollWithMarker) && viewModel.ScrollWithMarker && viewModel.IsPlaying)
         {

@@ -84,5 +84,6 @@ public partial class WorkstationPage
             TrackScrollBarGutter = gutter;
             readinessCandidate = null;
         }
+        UpdateNodeAdornerGeometry();
     }
 }

@@ -16,6 +16,139 @@ namespace osuHitsounder.Test.Presentation;
 public class WorkstationNodeInteractionTests
 {
     [Test]
+    public void SelectedGroupAdornerDrawsEveryNode()
+    {
+        var editor = CreateEditor(); using var view = editor.View;
+        var grids = Descendants<BeatGridView>(editor.Page).ToArray();
+        foreach (var grid in grids) { grid.ContentWidth = 1000; grid.ViewportWidth = 500; grid.HorizontalOffset = 0; }
+        var other = new Sample { Timestamp = 1500, FileName = "b.wav" };
+        editor.Vm.Tracks[1].Samples.Add(other); editor.Vm.SetNodeSelection([editor.Node, other]);
+        editor.Page.BeginNodePointer(grids[0], new Point(100, editor.Vm.TrackHeight / 2), new Point());
+        editor.Page.UpdateNodePointer(new Point(200, 200), grids[0], new Point(125, editor.Vm.TrackHeight / 2));
+        var list = (ListBox)editor.Page.FindName("TrackList");
+        var adorner = AdornerLayer.GetAdornerLayer(list)!.GetAdorners(list)!.Single();
+        UiTestPump.Layout(adorner, list.ActualWidth, list.ActualHeight);
+        var drawing = VisualTreeHelper.GetDrawing(adorner);
+        Assert.That(drawing, Is.Not.Null);
+        Assert.That(NodeDrawings(drawing!).Select(d => d.Geometry.Bounds).Distinct().Count(), Is.EqualTo(2));
+        Assert.That(grids[0].GetDisplayedSampleBounds(editor.Node).IsEmpty, Is.True);
+        Assert.That(grids[1].GetDisplayedSampleBounds(other).IsEmpty, Is.True);
+        Assert.That(editor.Vm.CanUndo, Is.False);
+        editor.Page.CancelNodePointer(); UiTestPump.Run(editor.Page.DeactivateAsync());
+    }
+
+    private static IEnumerable<GeometryDrawing> NodeDrawings(Drawing drawing)
+    {
+        if (drawing is GeometryDrawing geometry) yield return geometry;
+        if (drawing is DrawingGroup group)
+            foreach (var child in group.Children)
+                foreach (var geometryChild in NodeDrawings(child)) yield return geometryChild;
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public void InvalidGroupTargetClearsPlaceholderAndRecovers(bool recover)
+    {
+        var editor = CreateEditor(6); using var view = editor.View;
+        editor.Vm.ToggleTracksCollapsedCommand.Execute(null); view.UpdateLayout();
+        var grids = Descendants<BeatGridView>(editor.Page).ToDictionary(g => (osuHitsounder.Core.Entities.Track)g.DataContext);
+        foreach (var grid in grids.Values) { grid.ContentWidth = 1000; grid.ViewportWidth = 500; grid.HorizontalOffset = 0; }
+        var other = new Sample { Timestamp = 1500, FileName = "b.wav" }; editor.Vm.Tracks[3].Samples.Add(other);
+        editor.Vm.SetNodeSelection([editor.Node, other]);
+        var source = grids[editor.Vm.Tracks[3]]; var valid = grids[editor.Vm.Tracks[5]]; var invalid = grids[editor.Vm.Tracks[0]];
+        editor.Page.BeginNodePointer(source, new Point(150, source.ActualHeight / 2), new Point());
+        editor.Page.UpdateNodePointer(new Point(30, 100), valid, new Point(175, valid.ActualHeight / 2));
+        Assert.That(valid.DragPreviewTimestamp, Is.EqualTo(1750));
+        editor.Page.UpdateNodePointer(new Point(30, 120), invalid, new Point(175, invalid.ActualHeight / 2));
+        Assert.That(valid.DragPreviewTimestamp, Is.Null); Assert.That(invalid.DragPreviewTimestamp, Is.Null);
+        Assert.That(editor.Vm.IsNodeDragActive, Is.True);
+        if (recover) editor.Page.UpdateNodePointer(new Point(30, 100), valid, new Point(175, valid.ActualHeight / 2));
+        var complete = editor.Page.CompleteNodePointerAsync(); UiTestPump.Run(complete);
+        Assert.That(complete.Result, Is.EqualTo(recover));
+        Assert.That(editor.Vm.Tracks[recover ? 2 : 0].Samples.Contains(editor.Node), Is.True);
+        Assert.That(editor.Vm.Tracks[recover ? 5 : 3].Samples.Contains(other), Is.True);
+        Assert.That(editor.Node.Timestamp, Is.EqualTo(recover ? 1250 : 1000));
+        Assert.That(other.Timestamp, Is.EqualTo(recover ? 1750 : 1500));
+        Assert.That(valid.DragPreviewTimestamp, Is.Null);
+        Assert.That(AdornerLayer.GetAdornerLayer((ListBox)editor.Page.FindName("TrackList"))!.GetAdorners((ListBox)editor.Page.FindName("TrackList")), Is.Null);
+        UiTestPump.Run(editor.Page.DeactivateAsync());
+    }
+
+    [TestCase(FlowDirection.LeftToRight, false)]
+    [TestCase(FlowDirection.LeftToRight, true)]
+    [TestCase(FlowDirection.RightToLeft, false)]
+    [TestCase(FlowDirection.RightToLeft, true)]
+    public void SelectedGroupGeometryFollowsAnchorAndFlowDirection(FlowDirection direction, bool laterAnchor)
+    {
+        var editor = CreateEditor(); using var view = editor.View;
+        editor.Page.FlowDirection = direction; view.UpdateLayout();
+        var grids = Descendants<BeatGridView>(editor.Page).ToArray();
+        foreach (var grid in grids) { grid.ContentWidth = 1000; grid.ViewportWidth = 500; grid.HorizontalOffset = 0; }
+        var other = new Sample { Timestamp = 1000, FileName = "b.wav" }; editor.Vm.Tracks[1].Samples.Add(other);
+        var sameTrack = new Sample { Timestamp = 1500, FileName = "a.wav" }; editor.Vm.Tracks[0].Samples.Add(sameTrack);
+        editor.Vm.SetNodeSelection([editor.Node, sameTrack, other]);
+        var source = grids[laterAnchor ? 1 : 0]; var anchor = laterAnchor ? other : editor.Node;
+        editor.Page.BeginNodePointer(source, new Point(100, source.ActualHeight / 2), new Point());
+        editor.Page.UpdateNodePointer(new Point(200, 200), source, new Point(125, source.ActualHeight / 2));
+        var list = (ListBox)editor.Page.FindName("TrackList");
+        var adorner = (OHsSampleNodeDragAdorner)AdornerLayer.GetAdornerLayer(list)!.GetAdorners(list)!.Single();
+        Assert.That(adorner.NodeBounds, Has.Count.EqualTo(3));
+        var anchorCenter = source.TranslatePoint(Center(source.GetSampleBounds(anchor.Timestamp)), list);
+        var expected = new[] { grids[0].TranslatePoint(Center(grids[0].GetSampleBounds(1000)), list),
+            grids[0].TranslatePoint(Center(grids[0].GetSampleBounds(1500)), list),
+            grids[1].TranslatePoint(Center(grids[1].GetSampleBounds(1000)), list) };
+        Assert.That(adorner.NodeBounds.Select(Center), Is.EqualTo(expected.Select(p => new Point(p.X - anchorCenter.X, p.Y - anchorCenter.Y))));
+        editor.Page.CancelNodePointer(); UiTestPump.Run(editor.Page.DeactivateAsync());
+    }
+
+    [Test]
+    public void GroupAdornerRefreshesWithZoomAndTrackSizing()
+    {
+        var editor = CreateEditor(); using var view = editor.View;
+        var grids = Descendants<BeatGridView>(editor.Page).ToArray();
+        foreach (var grid in grids) { grid.ContentWidth = 1000; grid.ViewportWidth = 500; grid.HorizontalOffset = 0; }
+        var other = new Sample { Timestamp = 1500, FileName = "b.wav" }; editor.Vm.Tracks[1].Samples.Add(other);
+        editor.Vm.SetNodeSelection([editor.Node, other]);
+        editor.Page.BeginNodePointer(grids[0], new Point(100, grids[0].ActualHeight / 2), new Point());
+        editor.Page.UpdateNodePointer(new Point(200, 200), grids[0], new Point(125, grids[0].ActualHeight / 2));
+        var list = (ListBox)editor.Page.FindName("TrackList");
+        var adorner = (OHsSampleNodeDragAdorner)AdornerLayer.GetAdornerLayer(list)!.GetAdorners(list)!.Single();
+        var before = Center(adorner.NodeBounds[1]) - Center(adorner.NodeBounds[0]);
+        editor.Vm.ZoomInCommand.Execute(null);
+        foreach (var grid in grids) grid.ContentWidth = 2000;
+        editor.Vm.IncreaseTrackHeightCommand.Execute(null); view.UpdateLayout();
+        var after = Center(adorner.NodeBounds[1]) - Center(adorner.NodeBounds[0]);
+        Assert.That(after.X, Is.EqualTo(before.X * 2).Within(.001));
+        var expectedY = grids[1].TranslatePoint(new Point(), list).Y - grids[0].TranslatePoint(new Point(), list).Y;
+        Assert.That(after.Y, Is.EqualTo(expectedY).Within(.001));
+        Assert.That(after.Y, Is.GreaterThan(before.Y));
+        editor.Page.CancelNodePointer(); UiTestPump.Run(editor.Page.DeactivateAsync());
+    }
+
+    [Test]
+    public void VirtualizedSelectionRemainsInAdorner()
+    {
+        var editor = CreateEditor(100); using var view = editor.View;
+        var grid = Descendants<BeatGridView>(editor.Page).First();
+        grid.ContentWidth = 1000; grid.ViewportWidth = 500; grid.HorizontalOffset = 0;
+        var distant = new Sample { Timestamp = 1500, FileName = "b.wav" }; editor.Vm.Tracks[99].Samples.Add(distant);
+        var list = (ListBox)editor.Page.FindName("TrackList");
+        Assert.That(list.ItemContainerGenerator.ContainerFromIndex(99), Is.Null);
+        editor.Vm.SetNodeSelection([editor.Node, distant]);
+        editor.Page.BeginNodePointer(grid, new Point(100, grid.ActualHeight / 2), new Point());
+        editor.Page.UpdateNodePointer(new Point(200, 200), grid, new Point(125, grid.ActualHeight / 2));
+        var adorner = (OHsSampleNodeDragAdorner)AdornerLayer.GetAdornerLayer(list)!.GetAdorners(list)!.Single();
+        Assert.That(adorner.NodeBounds, Has.Count.EqualTo(2));
+        var container = (ListBoxItem)list.ItemContainerGenerator.ContainerFromIndex(0);
+        var pitch = container.ActualHeight + container.Margin.Top + container.Margin.Bottom;
+        Assert.That(Center(adorner.NodeBounds[1]).Y - Center(adorner.NodeBounds[0]).Y, Is.EqualTo(99 * pitch).Within(.001));
+        Assert.That(list.ItemContainerGenerator.ContainerFromIndex(99), Is.Null);
+        editor.Page.CancelNodePointer(); UiTestPump.Run(editor.Page.DeactivateAsync());
+    }
+
+    private static Point Center(Rect bounds) => new(bounds.X + bounds.Width / 2, bounds.Y + bounds.Height / 2);
+
+    [Test]
     public void BlankClickInOccupiedIntervalDoesNotReselectOnRelease()
     {
         var editor = CreateEditor(); using var view = editor.View;
@@ -91,15 +224,19 @@ public class WorkstationNodeInteractionTests
     [TestCase("switch")]
     [TestCase("recycle")]
     [TestCase("unload")]
+    [TestCase("source-recycle")]
+    [TestCase("source-unload")]
     [TestCase("escape")]
     [TestCase("overlay")]
     [TestCase("capture")]
     [TestCase("deactivate")]
     public void ChangingInvalidOrRecycledTargetClearsTemporaryNode(string action)
     {
-        var editor = CreateEditor(); using var view = editor.View;
+        var editor = CreateEditor(3); using var view = editor.View;
         var grids = Descendants<BeatGridView>(editor.Page).ToArray();
         foreach (var grid in grids) { grid.ContentWidth = 1000; grid.ViewportWidth = 500; grid.HorizontalOffset = 0; }
+        var other = new Sample { Timestamp = 1500, FileName = "b.wav" }; editor.Vm.Tracks[1].Samples.Add(other);
+        editor.Vm.SetNodeSelection([editor.Node, other]);
         editor.Page.BeginNodePointer(grids[0], new Point(100, editor.Vm.TrackHeight / 2), new Point());
         editor.Page.UpdateNodePointer(new Point(20, 100), grids[1], new Point(125, editor.Vm.TrackHeight / 2));
         Assert.That(editor.Vm.NodePreviewTimestamps[editor.Node], Is.EqualTo(1250));
@@ -111,6 +248,8 @@ public class WorkstationNodeInteractionTests
             case "switch": editor.Page.UpdateNodePointer(new Point(50, editor.Vm.TrackHeight / 2), grids[0], new Point(150, editor.Vm.TrackHeight / 2)); break;
             case "recycle": grids[1].DataContext = new osuHitsounder.Core.Entities.Track(); break;
             case "unload": grids[1].RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent, grids[1])); break;
+            case "source-recycle": grids[0].DataContext = new osuHitsounder.Core.Entities.Track(); break;
+            case "source-unload": grids[0].RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent, grids[0])); break;
             case "escape": editor.Page.HandlePlaybackKey(Key.Escape, ModifierKeys.None, false, grids[0]); break;
             case "overlay": editor.Page.ShowVolumeOverlay(false, new Point(), false, false); break;
             case "capture": editor.Page.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, 0) { RoutedEvent = Mouse.LostMouseCaptureEvent }); break;
@@ -127,6 +266,10 @@ public class WorkstationNodeInteractionTests
         Assert.That(grids[0].DragPreviewTimestamp, Is.Null);
         Assert.That(grids[1].DragPreviewTimestamp, Is.Null);
         Assert.That(grids[0].GetDisplayedSampleBounds(editor.Node).IsEmpty, Is.False);
+        if (action is not ("recycle" or "unload")) Assert.That(grids[1].GetDisplayedSampleBounds(other).IsEmpty, Is.False);
+        Assert.That(other.Timestamp, Is.EqualTo(1500));
+        var list = (ListBox)editor.Page.FindName("TrackList");
+        Assert.That(AdornerLayer.GetAdornerLayer(list)!.GetAdorners(list), Is.Null);
         Assert.That(editor.Node.Timestamp, Is.EqualTo(1000)); Assert.That(editor.Vm.CanUndo, Is.False);
         UiTestPump.Run(editor.Page.DeactivateAsync());
     }
@@ -229,10 +372,11 @@ public class WorkstationNodeInteractionTests
         Assert.That(list.Style, Is.SameAs(page.FindResource("OHsWorkstationTrackListStyle")));
     }
 
-    private static (WorkstationPage Page, WorkstationPageVM Vm, Sample Node, InMemoryView View) CreateEditor()
+    private static (WorkstationPage Page, WorkstationPageVM Vm, Sample Node, InMemoryView View) CreateEditor(int trackCount = 2)
     {
         var node = new Sample { Timestamp = 1000, FileName = "a.wav" };
         var data = new ProjectData { Offsets = [0], BPMs = [120], Tracks = [new Track { SelectedSampleFileName = "a.wav", Samples = [node] }, new Track { SelectedSampleFileName = "b.wav" }] };
+        data.Tracks.AddRange(Enumerable.Range(2, trackCount - 2).Select(_ => new Track { SelectedSampleFileName = "b.wav" }));
         var vm = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav", data)) },
             new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), new StubSampleFileService(["a.wav", "b.wav"]), nodePasteDialog: new StubNodePasteDialogService());
         var page = new WorkstationPage(vm); page.SetProjectPath("project.json");

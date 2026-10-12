@@ -10,6 +10,8 @@ public partial class WorkstationPageVM
     private IReadOnlyCollection<Sample> selectedNodes = Array.AsReadOnly(Array.Empty<Sample>());
     private CopiedSampleNode[] copiedNodes = [];
     private NodeHistoryEntry[] dragNodes = [];
+    private Track[] dragTrackOrder = [];
+    private bool dragPreviewValid;
     private Sample? dragAnchor;
     private long dragDelta;
     public Track? DragDestinationTrack { get; private set; }
@@ -179,18 +181,46 @@ public partial class WorkstationPageVM
         var entries = SelectedNodeEntries(NodeHistoryOperation.Movement);
         if (entries.Length == 0 || entries.Any(entry => !ValidNodeTimestamp(entry.PreviousTimestamp))) return false;
         dragNodes = entries;
+        dragTrackOrder = tracks.ToArray();
         dragAnchor = anchor;
         dragDelta = 0;
         OnPropertyChanged(nameof(IsNodeDragActive));
         return true;
     }
 
-    public void PreviewNodeDrag(double deltaMilliseconds, Track? destinationTrack = null)
+    private bool TryGetNodeDragDestinations(out Track[] destinations)
     {
-        if (!IsNodeDragActive) return;
-        if (destinationTrack is not null && !CanEditTrackGrid(destinationTrack)) { CancelNodeDrag(); return; }
+        destinations = [];
+        if (!IsNodeDragActive || !tracks.SequenceEqual(dragTrackOrder)) return false;
+        var anchorTrack = dragNodes.Single(entry => ReferenceEquals(entry.Sample, dragAnchor)).Track;
+        var shift = DragDestinationTrack is null ? 0 : Array.IndexOf(dragTrackOrder, DragDestinationTrack) - Array.IndexOf(dragTrackOrder, anchorTrack);
+        if (DragDestinationTrack is not null && !tracks.Contains(DragDestinationTrack)) return false;
+        var targets = new Track[dragNodes.Length];
+        for (var i = 0; i < dragNodes.Length; i++)
+        {
+            var entry = dragNodes[i];
+            var index = Array.IndexOf(dragTrackOrder, entry.Track) + shift;
+            if (index < 0 || index >= dragTrackOrder.Length || !CanEditTrackGrid(entry.Track) ||
+                !entry.Track.Samples.Contains(entry.Sample) || entry.Sample.Timestamp != entry.PreviousTimestamp ||
+                !CanEditTrackGrid(dragTrackOrder[index])) return false;
+            targets[i] = dragTrackOrder[index];
+        }
+        destinations = targets;
+        return true;
+    }
+
+    public bool PreviewNodeDrag(double deltaMilliseconds, Track? destinationTrack = null)
+    {
+        if (!IsNodeDragActive) return false;
         DragDestinationTrack = destinationTrack;
-        if (!CanPlaceSamples || !double.IsFinite(deltaMilliseconds)) { CancelNodeDrag(); return; }
+        dragPreviewValid = false;
+        if (!CanPlaceSamples || !double.IsFinite(deltaMilliseconds)) { CancelNodeDrag(); return false; }
+        if (!TryGetNodeDragDestinations(out _))
+        {
+            nodePreview = new ReadOnlyDictionary<Sample, int>(new Dictionary<Sample, int>());
+            OnPropertyChanged(nameof(NodePreviewTimestamps));
+            return false;
+        }
         var anchor = dragNodes.Single(entry => ReferenceEquals(entry.Sample, dragAnchor)).PreviousTimestamp;
         var minimum = anchor - dragNodes.Min(entry => entry.PreviousTimestamp);
         var last = (int)Math.Min(int.MaxValue, Math.Ceiling(Waveform!.Duration.TotalMilliseconds) - 1);
@@ -198,9 +228,11 @@ public partial class WorkstationPageVM
         var snapped = BeatGridCalculator.GetNearestTimestamp(Project!.Offsets, Project.BPMs, Subdivision,
             anchor + deltaMilliseconds, Waveform.Duration.TotalMilliseconds, minimum, maximum);
         dragDelta = snapped is null ? 0 : (long)snapped.Value - anchor;
-        nodePreview = new ReadOnlyDictionary<Sample, int>(dragNodes.ToDictionary(entry => entry.Sample,
-            entry => (int)(entry.PreviousTimestamp + dragDelta)));
+        dragPreviewValid = snapped is not null;
+        nodePreview = new ReadOnlyDictionary<Sample, int>(dragPreviewValid ? dragNodes.ToDictionary(entry => entry.Sample,
+            entry => (int)(entry.PreviousTimestamp + dragDelta)) : new Dictionary<Sample, int>());
         OnPropertyChanged(nameof(NodePreviewTimestamps));
+        return dragPreviewValid;
     }
 
     public Task<bool> CommitNodeDragAsync()
@@ -213,31 +245,36 @@ public partial class WorkstationPageVM
     {
         if (!IsNodeDragActive) return false;
         var destination = DragDestinationTrack;
+        if (!CanPlaceSamples || !dragPreviewValid || !TryGetNodeDragDestinations(out var destinations)) { CancelNodeDrag(); return false; }
         var entries = dragNodes.Select(entry =>
         {
             var candidate = entry.PreviousTimestamp + dragDelta;
             var next = destination is null ? (int?)candidate : BeatGridCalculator.GetNearestTimestamp(Project!.Offsets, Project.BPMs, Subdivision, candidate, Waveform!.Duration.TotalMilliseconds);
             return entry with { NextTimestamp = next ?? -1 };
         }).ToArray();
-        var valid = CanPlaceSamples && (dragDelta != 0 || destination is not null && entries.Any(entry => !ReferenceEquals(entry.Track, destination))) &&
-            entries.All(entry => tracks.Contains(entry.Track) && entry.Track.Samples.Contains(entry.Sample) && entry.Sample.Timestamp == entry.PreviousTimestamp && ValidNodeTimestamp(entry.NextTimestamp));
+        var valid = (dragDelta != 0 || entries.Where((entry, i) => !ReferenceEquals(entry.Track, destinations[i])).Any()) &&
+            entries.All(entry => ValidNodeTimestamp(entry.NextTimestamp));
         CancelNodeDrag();
-        if (!valid || destination is not null && !tracks.Contains(destination)) return false;
-        var destinationFile = destination is null ? null : availableSamples.FirstOrDefault(file => string.Equals(file, destination.SelectedSampleFileName, StringComparison.OrdinalIgnoreCase));
-        if (destination is not null && destinationFile is null) return RejectPaste("The destination sample file is unavailable.");
-        if (HasNodeCollisions(entries.Select(entry => (destination ?? entry.Track, entry.Sample, entry.NextTimestamp)), entries.Select(entry => entry.Sample)))
+        if (!valid) return false;
+        var destinationFiles = destinations.Select(track => availableSamples.FirstOrDefault(file =>
+            string.Equals(file, track.SelectedSampleFileName, StringComparison.OrdinalIgnoreCase))).ToArray();
+        if (entries.Where((entry, i) => !ReferenceEquals(entry.Track, destinations[i]) && destinationFiles[i] is null).Any())
+            return RejectPaste("The destination sample file is unavailable.");
+        if (HasNodeCollisions(entries.Select((entry, i) => (destinations[i], entry.Sample, entry.NextTimestamp)), entries.Select(entry => entry.Sample)))
             return await CollisionAsync(nodeEditCancellation?.Token ?? loadCancellation?.Token ?? CancellationToken.None);
         var batch = new List<NodeHistoryEntry>();
-        foreach (var entry in entries)
+        for (var i = 0; i < entries.Length; i++)
         {
-            if (destination is not null && !ReferenceEquals(entry.Track, destination))
+            var entry = entries[i];
+            var target = destinations[i];
+            if (!ReferenceEquals(entry.Track, target))
             {
                 var sourceIndex = entry.Track.Samples.IndexOf(entry.Sample);
-                var targetIndex = destination.Samples.Count;
-                batch.Add(entry with { Index = sourceIndex, DestinationTrack = destination, DestinationIndex = targetIndex,
-                    PreviousFileName = entry.Sample.FileName, NextFileName = destinationFile });
-                entry.Track.Samples.Remove(entry.Sample); destination.Samples.Add(entry.Sample);
-                entry.Sample.FileName = destinationFile!;
+                var targetIndex = target.Samples.Count;
+                batch.Add(entry with { Index = sourceIndex, DestinationTrack = target, DestinationIndex = targetIndex,
+                    PreviousFileName = entry.Sample.FileName, NextFileName = destinationFiles[i] });
+                entry.Track.Samples.Remove(entry.Sample); target.Samples.Add(entry.Sample);
+                entry.Sample.FileName = destinationFiles[i]!;
             }
             else batch.Add(entry);
             entry.Sample.Timestamp = entry.NextTimestamp;
@@ -249,7 +286,7 @@ public partial class WorkstationPageVM
     public void CancelNodeDrag()
     {
         var active = IsNodeDragActive;
-        dragAnchor = null; dragNodes = []; dragDelta = 0; DragDestinationTrack = null;
+        dragAnchor = null; dragNodes = []; dragTrackOrder = []; dragPreviewValid = false; dragDelta = 0; DragDestinationTrack = null;
         if (nodePreview.Count > 0)
         {
             nodePreview = new ReadOnlyDictionary<Sample, int>(new Dictionary<Sample, int>());
