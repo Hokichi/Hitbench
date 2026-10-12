@@ -26,6 +26,7 @@
                 <ResourceDictionary Source="Resources/Styles/Border.xaml" />
                 <ResourceDictionary Source="Resources/Styles/ContentPresenter.xaml" />
                 <ResourceDictionary Source="Resources/Styles/Button.xaml" />
+                <ResourceDictionary Source="Resources/Styles/PianoRollView.xaml" />
                 <ResourceDictionary Source="Resources/Styles/ToolTip.xaml" />
                 <ResourceDictionary Source="Resources/Styles/Window.xaml" />
                 <ResourceDictionary Source="Resources/Styles/ListBox.xaml" />

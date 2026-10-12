@@ -2,11 +2,14 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using osuHitsounder.Core.Entities;
+using osuHitsounder.Services;
 
 namespace osuHitsounder.Resources.CustomControls;
 
 public sealed class WaveformView : FrameworkElement
 {
+    public static readonly DependencyProperty ShowBeatRulerProperty=DependencyProperty.Register(nameof(ShowBeatRuler),typeof(bool),typeof(WaveformView),new FrameworkPropertyMetadata(false,FrameworkPropertyMetadataOptions.AffectsRender));
+    public bool ShowBeatRuler {get=>(bool)GetValue(ShowBeatRulerProperty);set=>SetValue(ShowBeatRulerProperty,value);}
     public static readonly DependencyProperty DataProperty = DependencyProperty.Register(
         nameof(Data), typeof(WaveformData), typeof(WaveformView), new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
     public static readonly DependencyProperty PositionProperty = DependencyProperty.Register(
@@ -140,8 +143,9 @@ public sealed class WaveformView : FrameworkElement
         var offset = double.IsFinite(HorizontalOffset) ? Math.Clamp(HorizontalOffset, 0, Math.Max(0, width - viewport)) : 0;
         var waveformBrush = SystemParameters.HighContrast ? SystemColors.HighlightBrush : WaveformBrush;
         var textBrush = SystemParameters.HighContrast ? SystemColors.WindowTextBrush : TextBrush;
-        var baselineY = Math.Max(12, (height - 22) / 2);
-        var amplitude = Math.Max(0, baselineY - 8);
+        var rulerHeight=ShowBeatRuler?24:0;
+        var baselineY = rulerHeight+Math.Max(12, (height-rulerHeight - 22) / 2);
+        var amplitude = Math.Max(0, baselineY-rulerHeight - 8);
         var waveformPen = new Pen(waveformBrush, 1);
         var baselinePen = new Pen(textBrush, 1) { DashStyle = DashStyles.Dot };
 
@@ -161,6 +165,17 @@ public sealed class WaveformView : FrameworkElement
             drawingContext.DrawLine(waveformPen, new Point(pixel + 0.5, baselineY - extent), new Point(pixel + 0.5, baselineY + extent));
         }
 
+        if(ShowBeatRuler && Offsets is not null && Bpms is not null)
+        {
+            foreach(var beat in BeatGridCalculator.GetLines(Offsets,Bpms,1,offset/width*data.Duration.TotalMilliseconds,(offset+viewport)/width*data.Duration.TotalMilliseconds))
+            {
+                var label=new FormattedText(string.Format(System.Globalization.CultureInfo.CurrentCulture,"{0:0.###} s",beat.Milliseconds/1000),
+                    System.Globalization.CultureInfo.CurrentCulture,FlowDirection.LeftToRight,
+                    new Typeface(FontFamily??TryFindResource("Regular") as FontFamily??SystemFonts.MessageFontFamily,FontStyles.Normal,FontWeights.Normal,FontStretches.Normal),
+                    11,textBrush,VisualTreeHelper.GetDpi(this).PixelsPerDip);
+                drawingContext.DrawText(label,new Point(beat.Milliseconds/data.Duration.TotalMilliseconds*width+4,4));
+            }
+        }
         drawingContext.Pop();
     }
 
