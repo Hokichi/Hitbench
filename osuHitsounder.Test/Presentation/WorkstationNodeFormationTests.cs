@@ -39,6 +39,64 @@ public class WorkstationNodeFormationTests
     public async Task Cleanup() { await vm.DeactivateAsync(); audio.Dispose(); }
 
     [Test]
+    public async Task PreviewGroupsEveryNodeByMappedTrack()
+    {
+        var c = new Sample { Timestamp = 1250, FileName = "t1.wav" }; tracks[0].Samples.Add(c);
+        vm.SetNodeSelection([a, c, b]);
+        var revision = vm.SamplesRevision; var writes = saves.Writes; var updates = audio.SampleUpdates.Count;
+        vm.BeginNodeDrag(tracks[3], b);
+        Assert.That(vm.PreviewNodeDrag(250, tracks[5]), Is.True);
+        Assert.That(vm.NodePreviewByTrack[tracks[2]], Is.EqualTo(new[] { 1250, 1500 }));
+        Assert.That(vm.NodePreviewByTrack[tracks[5]], Is.EqualTo(new[] { 1750 }));
+        Assert.That(vm.NodePreviewByTrack.Values.Sum(nodes => nodes.Count), Is.EqualTo(3));
+        Assert.That(new[] { a.Timestamp, c.Timestamp, b.Timestamp }, Is.EqualTo(new[] { 1000, 1250, 1500 }));
+        await vm.FlushSavesAsync(); await vm.FlushPlaybackUpdatesAsync();
+        Assert.That(vm.SamplesRevision, Is.EqualTo(revision)); Assert.That(vm.CanUndo, Is.False);
+        Assert.That(saves.Writes, Is.EqualTo(writes)); Assert.That(audio.SampleUpdates, Has.Count.EqualTo(updates));
+    }
+
+    [Test]
+    public void SameTimestampPreviewKeepsDifferentTracks()
+    {
+        b.Timestamp = a.Timestamp; vm.BeginNodeDrag(tracks[3], b); vm.PreviewNodeDrag(250, tracks[5]);
+        Assert.That(vm.NodePreviewByTrack, Has.Count.EqualTo(2));
+        Assert.That(vm.NodePreviewByTrack[tracks[2]], Is.EqualTo(new[] { 1250 }));
+        Assert.That(vm.NodePreviewByTrack[tracks[5]], Is.EqualTo(new[] { 1250 }));
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task ClearingPreviewKeepsGestureAndRejectsStaleCommit(bool recover)
+    {
+        vm.BeginNodeDrag(tracks[3], b); vm.PreviewNodeDrag(250, tracks[5]);
+        vm.ClearNodeDragPreview();
+        Assert.That(vm.NodePreviewByTrack, Is.Empty); Assert.That(vm.NodePreviewTimestamps, Is.Empty);
+        Assert.That(vm.IsNodeDragActive, Is.True);
+        if (recover) Assert.That(vm.PreviewNodeDrag(250, tracks[5]), Is.True);
+        Assert.That(await vm.CommitNodeDragAsync(), Is.EqualTo(recover));
+        if (recover) { Assert.That(tracks[2].Samples.Single(), Is.SameAs(a)); Assert.That(tracks[5].Samples.Single(), Is.SameAs(b)); }
+        else AssertOriginalFormation();
+        Assert.That(vm.NodePreviewByTrack, Is.Empty); Assert.That(vm.NodePreviewTimestamps, Is.Empty);
+    }
+
+    [TestCase("invalid")]
+    [TestCase("cancel")]
+    [TestCase("reload")]
+    [TestCase("deactivate")]
+    public async Task InvalidTargetAndCancelClearEveryPreview(string action)
+    {
+        vm.BeginNodeDrag(tracks[3], b); vm.PreviewNodeDrag(250, tracks[5]);
+        switch (action)
+        {
+            case "invalid": Assert.That(vm.PreviewNodeDrag(250, tracks[0]), Is.False); break;
+            case "cancel": vm.CancelNodeDrag(); break;
+            case "reload": await vm.LoadAsync("project.json", CancellationToken.None); break;
+            case "deactivate": await vm.DeactivateAsync(); break;
+        }
+        Assert.That(vm.NodePreviewByTrack, Is.Empty); Assert.That(vm.NodePreviewTimestamps, Is.Empty);
+    }
+
+    [Test]
     public async Task DraggingLaterTrackPreservesFormation()
     {
         var revision = vm.SamplesRevision; var writes = saves.Writes; var updates = audio.SampleUpdates.Count;

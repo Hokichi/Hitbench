@@ -17,7 +17,7 @@ public class BeatGridNodeEditingTests
     {
         var grid = CreateGrid();
         grid.Samples = [];
-        grid.DragPreviewTimestamp = 250;
+        grid.DragPreviewTimestamps = [250, 500];
         grid.SetActivePosition(TimeSpan.FromMilliseconds(250));
         Assert.That(grid.FindSampleAt(new Point(10, grid.ActualHeight / 2)), Is.Null);
         Assert.That(grid.FindActiveSample(), Is.Null);
@@ -30,7 +30,7 @@ public class BeatGridNodeEditingTests
             case "disable": grid.CanPlaceSamples = false; break;
             case "unload": grid.RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent, grid)); break;
         }
-        Assert.That(grid.DragPreviewTimestamp, Is.Null);
+        Assert.That(grid.DragPreviewTimestamps, Is.Null);
     }
 
     [Test]

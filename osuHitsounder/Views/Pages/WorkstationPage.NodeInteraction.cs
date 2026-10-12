@@ -142,21 +142,21 @@ public partial class WorkstationPage
         nodeTargetValid = targetGrid is { DataContext: Track } && targetGrid.CanPlaceSamples &&
             targetPoint.X >= 0 && targetPoint.X < Math.Min(targetGrid.ActualWidth, targetGrid.ViewportWidth) && targetPoint.Y >= 0 && targetPoint.Y < targetGrid.ActualHeight &&
             targetGrid.ContentWidth > 0 && double.IsFinite(targetGrid.ContentWidth) && viewModel.Tracks.Contains((Track)targetGrid.DataContext) && double.IsFinite(targetPoint.X) && double.IsFinite(targetPoint.Y);
-        if (!nodeTargetValid) { SetNodeDragTarget(null, null); return; }
+        if (!nodeTargetValid) { viewModel.ClearNodeDragPreview(); SetNodeDragTarget(null); return; }
         var time = (targetPoint.X + targetGrid!.HorizontalOffset) / targetGrid.ContentWidth * targetGrid.Duration.TotalMilliseconds;
-        if (!double.IsFinite(time) || time < 0 || time >= targetGrid.Duration.TotalMilliseconds) { nodeTargetValid = false; SetNodeDragTarget(null, null); return; }
+        if (!double.IsFinite(time) || time < 0 || time >= targetGrid.Duration.TotalMilliseconds) { nodeTargetValid = false; viewModel.ClearNodeDragPreview(); SetNodeDragTarget(null); return; }
         nodeTargetValid = viewModel.PreviewNodeDrag(time - pointerNode.Timestamp, (Track)targetGrid.DataContext);
-        if (nodeTargetValid && pointerNode is not null && viewModel.NodePreviewTimestamps.TryGetValue(pointerNode, out var snapped)) SetNodeDragTarget(targetGrid, snapped);
-        else { nodeTargetValid = false; SetNodeDragTarget(null, null); }
+        if (nodeTargetValid && pointerNode is not null && viewModel.NodePreviewTimestamps.ContainsKey(pointerNode)) SetNodeDragTarget(targetGrid);
+        else { nodeTargetValid = false; SetNodeDragTarget(null); }
     }
 
-    private void SetNodeDragTarget(BeatGridView? grid, int? timestamp)
+    private void SetNodeDragTarget(BeatGridView? grid)
     {
         if (!ReferenceEquals(nodeTargetGrid, grid))
         {
             if (nodeTargetGrid is not null)
             {
-                nodeTargetGrid.DragPreviewTimestamp = null;
+                nodeTargetGrid.DragPreviewTimestamps = null;
                 nodeTargetGrid.UpdatePointerPosition(null);
                 if (!ReferenceEquals(nodeTargetGrid, nodeSourceGrid))
                 {
@@ -171,10 +171,26 @@ public partial class WorkstationPage
                 grid.Unloaded += OnNodeGridUnloaded;
             }
         }
-        if (grid is not null) grid.DragPreviewTimestamp = timestamp;
+        UpdateNodeDragPlaceholders();
     }
 
-    private void OnNodeDragLayoutUpdated(object? sender, EventArgs e) => UpdateNodeAdornerGeometry();
+    private void UpdateNodeDragPlaceholders()
+    {
+        foreach (var grid in RealizedTrackGrids(TrackList))
+        {
+            var timestamps = nodeDragging && nodeTargetValid && nodeTargetGrid is not null && viewModel.IsNodeDragActive &&
+                grid.IsEnabled && grid.CanPlaceSamples && grid.DataContext is Track track && viewModel.NodePreviewByTrack.TryGetValue(track, out var preview)
+                ? preview : null;
+            if (grid.DragPreviewTimestamps is null ? timestamps is null : timestamps is not null && grid.DragPreviewTimestamps.SequenceEqual(timestamps)) continue;
+            grid.DragPreviewTimestamps = timestamps;
+        }
+    }
+
+    private void OnNodeDragLayoutUpdated(object? sender, EventArgs e)
+    {
+        UpdateNodeAdornerGeometry();
+        UpdateNodeDragPlaceholders();
+    }
 
     private void OnRegionLayoutUpdated(object? sender, EventArgs e) => UpdateRegionSelection(pointerLast);
 
@@ -278,7 +294,7 @@ public partial class WorkstationPage
     {
         TrackList.LayoutUpdated -= OnNodeDragLayoutUpdated;
         TrackList.LayoutUpdated -= OnRegionLayoutUpdated;
-        SetNodeDragTarget(null, null);
+        SetNodeDragTarget(null);
         if (nodeSourceGrid is not null) { nodeSourceGrid.DataContextChanged -= OnNodeGridRecycled; nodeSourceGrid.Unloaded -= OnNodeGridUnloaded; nodeSourceGrid.PressedSample = null; nodeSourceGrid.SuppressPlacementFeedback = false; }
         if (nodeAdorner is not null) nodeLayer?.Remove(nodeAdorner);
         if (regionAdorner is not null) nodeLayer?.Remove(regionAdorner);

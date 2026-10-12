@@ -141,7 +141,10 @@
 
             </Style.Triggers>
         </Style>
-        <Style x:Key="SampleLoaderBreadcrumbButtonStyle" TargetType="c:BalloonButton" BasedOn="{StaticResource OHsBalloonActionStyle}">
+        <Style
+            x:Key="SampleLoaderBreadcrumbButtonStyle"
+            BasedOn="{StaticResource OHsBalloonActionStyle}"
+            TargetType="c:BalloonButton">
             <Setter Property="ShouldShowText" Value="True" />
             <Setter Property="IsTabStop" Value="True" />
             <Setter Property="ButtonIcon" Value="{StaticResource AngleRight}" />
@@ -149,18 +152,35 @@
             <Setter Property="DefaultBackground" Value="{DynamicResource Brush.BalloonButton.Background.NavInfo}" />
             <Setter Property="HoveredBackground" Value="{DynamicResource Brush.BalloonButton.Background.NavInfo.Hovered}" />
             <Setter Property="FontFamily" Value="{DynamicResource Regular}" />
-            <Style.Triggers><DataTrigger Binding="{Binding IsCurrent, Mode=OneWay}" Value="True"><Setter Property="FontFamily" Value="{DynamicResource Bold}" /></DataTrigger></Style.Triggers>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsCurrent, Mode=OneWay}" Value="True">
+                    <Setter Property="FontFamily" Value="{DynamicResource Bold}" />
+                </DataTrigger>
+            </Style.Triggers>
         </Style>
         <DataTemplate x:Key="SampleLoaderBreadcrumbTemplate">
-            <c:BalloonButton ButtonText="{Binding Name, Mode=OneWay}" AutomationProperties.Name="{Binding Name, Mode=OneWay}" ToolTip="{Binding FullPath, Mode=OneWay}"
-                Command="{Binding DataContext.NavigateCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}, Mode=OneWay}" CommandParameter="{Binding FullPath, Mode=OneWay}" Style="{StaticResource SampleLoaderBreadcrumbButtonStyle}" />
+            <c:BalloonButton
+                AutomationProperties.Name="{Binding Name, Mode=OneWay}"
+                ButtonText="{Binding Name, Mode=OneWay}"
+                Command="{Binding DataContext.NavigateCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}, Mode=OneWay}"
+                CommandParameter="{Binding FullPath, Mode=OneWay}"
+                Style="{StaticResource SampleLoaderBreadcrumbButtonStyle}"
+                ToolTip="{Binding FullPath, Mode=OneWay}" />
         </DataTemplate>
         <ControlTemplate x:Key="SampleLoaderContentItemTemplate" TargetType="ListBoxItem">
-            <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}" Style="{StaticResource BaseBorderStyle}">
+            <Border
+                Padding="{TemplateBinding Padding}"
+                Background="{TemplateBinding Background}"
+                BorderBrush="{TemplateBinding BorderBrush}"
+                BorderThickness="{TemplateBinding BorderThickness}"
+                Style="{StaticResource BaseBorderStyle}">
                 <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
             </Border>
         </ControlTemplate>
-        <Style x:Key="SampleLoaderContentItemStyle" TargetType="ListBoxItem" BasedOn="{StaticResource PlainListBoxItemStyle}">
+        <Style
+            x:Key="SampleLoaderContentItemStyle"
+            BasedOn="{StaticResource PlainListBoxItemStyle}"
+            TargetType="ListBoxItem">
             <Setter Property="Template" Value="{StaticResource SampleLoaderContentItemTemplate}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="IsTabStop" Value="True" />
@@ -172,11 +192,20 @@
             <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
             <EventSetter Event="PreviewMouseLeftButtonDown" Handler="OnEntryRowMouseDown" />
             <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{DynamicResource Brush.Background.Hover}" /></Trigger>
-                <Trigger Property="IsSelected" Value="True"><Setter Property="Background" Value="{DynamicResource Brush.Navy.Tint}" /><Setter Property="BorderBrush" Value="{DynamicResource Brush.Navy}" /></Trigger>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource Brush.Background.Hover}" />
+                </Trigger>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource Brush.Navy.Tint}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Navy}" />
+                </Trigger>
 
-                <Trigger Property="IsSelected" Value="True"><Setter Property="FontFamily" Value="{DynamicResource Bold}" /></Trigger>
-                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True"><Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" /></DataTrigger>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="FontFamily" Value="{DynamicResource Bold}" />
+                </Trigger>
+                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
+                    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+                </DataTrigger>
                 <MultiDataTrigger>
                     <MultiDataTrigger.Conditions>
                         <Condition Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True" />
@@ -190,22 +219,54 @@
         </Style>
         <DataTemplate x:Key="SampleLoaderEntryTemplate">
             <Grid MinHeight="40" Style="{StaticResource BaseGridStyle}">
-                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                <CheckBox AutomationProperties.Name="{Binding Name, Mode=OneWay}" Click="OnFileCheckClick" IsChecked="{Binding IsChecked, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource SampleLoaderCheckStyle}" />
-                <TextBlock Grid.Column="1" VerticalAlignment="Center" Text="{Binding Name, Mode=OneWay}" ToolTip="{Binding FullPath, Mode=OneWay}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}, Mode=OneWay}" FontFamily="{Binding FontFamily, RelativeSource={RelativeSource AncestorType=ListBoxItem}, Mode=OneWay}" Style="{StaticResource SampleLoaderTextStyle}" />
-                <TextBlock Grid.Column="2" Margin="8,0,0,0" VerticalAlignment="Center" Text="{Binding KindText, Mode=OneWay}" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}, Mode=OneWay}" Style="{StaticResource SampleLoaderCaptionStyle}" />
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <CheckBox
+                    AutomationProperties.Name="{Binding Name, Mode=OneWay}"
+                    Click="OnFileCheckClick"
+                    IsChecked="{Binding IsChecked, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                    Style="{StaticResource SampleLoaderCheckStyle}" />
+                <TextBlock
+                    Grid.Column="1"
+                    VerticalAlignment="Center"
+                    FontFamily="{Binding FontFamily, RelativeSource={RelativeSource AncestorType=ListBoxItem}, Mode=OneWay}"
+                    Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}, Mode=OneWay}"
+                    Style="{StaticResource SampleLoaderTextStyle}"
+                    Text="{Binding Name, Mode=OneWay}"
+                    TextTrimming="CharacterEllipsis"
+                    TextWrapping="NoWrap"
+                    ToolTip="{Binding FullPath, Mode=OneWay}" />
             </Grid>
         </DataTemplate>
-        <Style x:Key="SampleLoaderContentsStyle" TargetType="ListBox" BasedOn="{StaticResource BaseListBoxStyle}">
+        <Style
+            x:Key="SampleLoaderContentsStyle"
+            BasedOn="{StaticResource BaseListBoxStyle}"
+            TargetType="ListBox">
             <Setter Property="ItemContainerStyle" Value="{StaticResource SampleLoaderContentItemStyle}" />
             <Setter Property="ItemTemplate" Value="{StaticResource SampleLoaderEntryTemplate}" />
-            <Setter Property="Background" Value="Transparent" /><Setter Property="BorderThickness" Value="0" />
-            <Setter Property="VirtualizingPanel.IsVirtualizing" Value="True" /><Setter Property="VirtualizingPanel.VirtualizationMode" Value="Recycling" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="VirtualizingPanel.IsVirtualizing" Value="True" />
+            <Setter Property="VirtualizingPanel.VirtualizationMode" Value="Recycling" />
             <Setter Property="ScrollViewer.CanContentScroll" Value="True" />
         </Style>
-        <Style x:Key="SampleLoaderFolderEmptyStyle" TargetType="TextBlock" BasedOn="{StaticResource CenteredEmptyStateTextStyle}">
-            <Setter Property="Visibility" Value="Collapsed" /><Setter Property="TextWrapping" Value="Wrap" />
-            <Style.Triggers><DataTrigger Binding="{Binding IsFolderEmpty, Mode=OneWay}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger><DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True"><Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" /></DataTrigger></Style.Triggers>
+        <Style
+            x:Key="SampleLoaderFolderEmptyStyle"
+            BasedOn="{StaticResource CenteredEmptyStateTextStyle}"
+            TargetType="TextBlock">
+            <Setter Property="Visibility" Value="Collapsed" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsFolderEmpty, Mode=OneWay}" Value="True">
+                    <Setter Property="Visibility" Value="Visible" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
+                    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+                </DataTrigger>
+            </Style.Triggers>
         </Style>
         <Style
             x:Key="SampleLoaderPreviewStyle"
@@ -352,16 +413,36 @@
                         VerticalAlignment="Center"
                         Style="{StaticResource SampleLoaderMetadataLabelStyle}"
                         Text="Current directory" />
-                    <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-                        <ItemsControl x:Name="DirectoryBreadcrumbs" ItemsSource="{Binding Breadcrumbs, Mode=OneWay}" ItemTemplate="{StaticResource SampleLoaderBreadcrumbTemplate}" ItemsPanel="{StaticResource HorizontalStackItemsPanelTemplate}" Style="{StaticResource BaseItemsControlStyle}" />
+                    <ScrollViewer
+                        Grid.Column="1"
+                        HorizontalScrollBarVisibility="Auto"
+                        VerticalScrollBarVisibility="Disabled">
+                        <ItemsControl
+                            x:Name="DirectoryBreadcrumbs"
+                            ItemTemplate="{StaticResource SampleLoaderBreadcrumbTemplate}"
+                            ItemsPanel="{StaticResource HorizontalStackItemsPanelTemplate}"
+                            ItemsSource="{Binding Breadcrumbs, Mode=OneWay}"
+                            Style="{StaticResource BaseItemsControlStyle}" />
                     </ScrollViewer>
                 </Grid>
                 <TextBlock
                     Grid.Row="1"
                     Style="{StaticResource SampleLoaderErrorStyle}"
                     Text="{Binding DirectoryError, Mode=OneWay}" />
-                <ListBox x:Name="DirectoryContents" Grid.Row="2" Margin="0,8,0,0" AutomationProperties.Name="Folders and audio files" ItemsSource="{Binding Entries, Mode=OneWay}" SelectionChanged="OnContentsSelectionChanged" PreviewKeyDown="OnContentsKeyDown" Style="{StaticResource SampleLoaderContentsStyle}" />
-                <TextBlock x:Name="FolderEmptyPrompt" Grid.Row="2" Text="No audio file to display" Style="{StaticResource SampleLoaderFolderEmptyStyle}" />
+                <ListBox
+                    x:Name="DirectoryContents"
+                    Grid.Row="2"
+                    Margin="0,8,0,0"
+                    AutomationProperties.Name="Folders and audio files"
+                    ItemsSource="{Binding Entries, Mode=OneWay}"
+                    PreviewKeyDown="OnContentsKeyDown"
+                    SelectionChanged="OnContentsSelectionChanged"
+                    Style="{StaticResource SampleLoaderContentsStyle}" />
+                <TextBlock
+                    x:Name="FolderEmptyPrompt"
+                    Grid.Row="2"
+                    Style="{StaticResource SampleLoaderFolderEmptyStyle}"
+                    Text="No audio file to display" />
                 <TextBlock
                     Grid.Row="3"
                     Style="{StaticResource SampleLoaderStatusStyle}"

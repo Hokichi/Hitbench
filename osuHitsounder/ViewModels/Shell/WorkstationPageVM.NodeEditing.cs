@@ -34,9 +34,11 @@ public partial class WorkstationPageVM
         return false;
     }
     private IReadOnlyDictionary<Sample, int> nodePreview = new ReadOnlyDictionary<Sample, int>(new Dictionary<Sample, int>());
+    private IReadOnlyDictionary<Track, IReadOnlyList<int>> nodePreviewByTrack = new ReadOnlyDictionary<Track, IReadOnlyList<int>>(new Dictionary<Track, IReadOnlyList<int>>());
 
     public IReadOnlyCollection<Sample> SelectedSamples => selectedNodes;
     public IReadOnlyDictionary<Sample, int> NodePreviewTimestamps => nodePreview;
+    public IReadOnlyDictionary<Track, IReadOnlyList<int>> NodePreviewByTrack => nodePreviewByTrack;
     public bool IsNodeDragActive => dragAnchor is not null;
     public bool CanCopyNodes => CanPlaceSamples && selectedNodes.Count > 0;
     public bool CanPasteNodes => CanPlaceSamples && copiedNodes.Length > 0;
@@ -211,10 +213,9 @@ public partial class WorkstationPageVM
         DragDestinationTrack = destinationTrack;
         dragPreviewValid = false;
         if (!CanPlaceSamples || !double.IsFinite(deltaMilliseconds)) { CancelNodeDrag(); return false; }
-        if (!TryGetNodeDragDestinations(out _))
+        if (!TryGetNodeDragDestinations(out var destinations))
         {
-            nodePreview = new ReadOnlyDictionary<Sample, int>(new Dictionary<Sample, int>());
-            OnPropertyChanged(nameof(NodePreviewTimestamps));
+            ClearNodeDragPreview();
             return false;
         }
         var anchor = dragNodes.Single(entry => ReferenceEquals(entry.Sample, dragAnchor)).PreviousTimestamp;
@@ -223,11 +224,17 @@ public partial class WorkstationPageVM
         var maximum = last - (dragNodes.Max(entry => entry.PreviousTimestamp) - anchor);
         var snapped = BeatGridCalculator.GetNearestTimestamp(Project!.Offsets, Project.BPMs, Subdivision,
             anchor + deltaMilliseconds, Waveform.Duration.TotalMilliseconds, minimum, maximum);
-        dragDelta = snapped is null ? 0 : (long)snapped.Value - anchor;
-        dragPreviewValid = snapped is not null;
-        nodePreview = new ReadOnlyDictionary<Sample, int>(dragPreviewValid ? dragNodes.ToDictionary(entry => entry.Sample,
-            entry => (int)(entry.PreviousTimestamp + dragDelta)) : new Dictionary<Sample, int>());
+        if (snapped is null) { ClearNodeDragPreview(); return false; }
+        dragDelta = (long)snapped.Value - anchor;
+        dragPreviewValid = true;
+        nodePreview = new ReadOnlyDictionary<Sample, int>(dragNodes.ToDictionary(entry => entry.Sample,
+            entry => (int)(entry.PreviousTimestamp + dragDelta)));
+        nodePreviewByTrack = new ReadOnlyDictionary<Track, IReadOnlyList<int>>(dragNodes
+            .Select((entry, i) => (Track: destinations[i], Timestamp: nodePreview[entry.Sample]))
+            .GroupBy(node => node.Track).ToDictionary(group => group.Key,
+                group => (IReadOnlyList<int>)Array.AsReadOnly(group.Select(node => node.Timestamp).ToArray())));
         OnPropertyChanged(nameof(NodePreviewTimestamps));
+        OnPropertyChanged(nameof(NodePreviewByTrack));
         return dragPreviewValid;
     }
 
@@ -279,15 +286,21 @@ public partial class WorkstationPageVM
         PublishNodeChange(); return true;
     }
 
+    public void ClearNodeDragPreview()
+    {
+        dragPreviewValid = false;
+        if (nodePreview.Count == 0 && nodePreviewByTrack.Count == 0) return;
+        nodePreview = new ReadOnlyDictionary<Sample, int>(new Dictionary<Sample, int>());
+        nodePreviewByTrack = new ReadOnlyDictionary<Track, IReadOnlyList<int>>(new Dictionary<Track, IReadOnlyList<int>>());
+        OnPropertyChanged(nameof(NodePreviewTimestamps));
+        OnPropertyChanged(nameof(NodePreviewByTrack));
+    }
+
     public void CancelNodeDrag()
     {
         var active = IsNodeDragActive;
-        dragAnchor = null; dragNodes = []; dragTrackOrder = []; dragPreviewValid = false; dragDelta = 0; DragDestinationTrack = null;
-        if (nodePreview.Count > 0)
-        {
-            nodePreview = new ReadOnlyDictionary<Sample, int>(new Dictionary<Sample, int>());
-            OnPropertyChanged(nameof(NodePreviewTimestamps));
-        }
+        dragAnchor = null; dragNodes = []; dragTrackOrder = []; dragDelta = 0; DragDestinationTrack = null;
+        ClearNodeDragPreview();
         if (active) OnPropertyChanged(nameof(IsNodeDragActive));
     }
 
