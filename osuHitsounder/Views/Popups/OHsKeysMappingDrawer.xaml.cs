@@ -22,9 +22,17 @@ public partial class OHsKeysMappingDrawer : UserControl, IOHsShellDrawer
     internal bool HandleNavigationKey(Key key, ModifierKeys modifiers)
     {
         var scroll = Descendants(KeyRows).OfType<ScrollViewer>().FirstOrDefault(); if (scroll is null) return false;
-        if (modifiers == ModifierKeys.Alt && key == Key.End) scroll.ScrollToEnd();
-        else if (modifiers == ModifierKeys.Alt && key == Key.Home) scroll.ScrollToHome();
-        else if (modifiers == ModifierKeys.None && key == Key.PageDown) scroll.PageDown();
+        if (modifiers == ModifierKeys.Alt && key is Key.End or Key.Home)
+        {
+            if (KeyRows.Items.Count == 0) return false;
+            var index = key == Key.End ? viewModel.Rows.Count - 1 : 0;
+            Descendants(KeyRows).OfType<VirtualizingStackPanel>().FirstOrDefault()?.BringIndexIntoViewPublic(index);
+            KeyRows.UpdateLayout();
+            if (KeyRows.ItemContainerGenerator.ContainerFromIndex(index) is DependencyObject container)
+                Descendants(container).OfType<TextBox>().FirstOrDefault(input => input.IsEnabled)?.Focus();
+            return true;
+        }
+        if (modifiers == ModifierKeys.None && key == Key.PageDown) scroll.PageDown();
         else if (modifiers == ModifierKeys.None && key == Key.PageUp) scroll.PageUp();
         else return false;
         KeyRows.UpdateLayout(); FocusInitialAction(); return true;

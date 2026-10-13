@@ -56,6 +56,7 @@ public partial class WorkstationPageVM
         messenger.Register<MoveInstrumentalNoteRequestedMessage>(this, (_, m) => MoveInstrumentNote(m));
         messenger.Register<RemoveInstrumentalNoteRequestedMessage>(this, (_, m) => RemoveInstrumentNote(m));
         messenger.Register<SetInstrumentalKeyMappingRequestedMessage>(this, (_, m) => MapInstrumentKey(m));
+        messenger.Register<SetInstrumentalKeyMappingsRequestedMessage>(this, (_, m) => MapInstrumentKeys(m));
         messenger.Register<InstrumentalEditorReadyMessage>(this, (_, m) =>
         { if (ActiveInstrument(m.Context) is not null) { PublishInstrumentSnapshot(); PublishInstrumentSaveState(); } });
     }
@@ -170,6 +171,19 @@ public partial class WorkstationPageVM
         var changed = old != file || m.FolderName is not null && track.FolderName != m.FolderName;
         if (m.FolderName is not null) track.FolderName = m.FolderName;
         if (changed) { if (file is null) track.KeyFiles.Remove(m.Key); else track.KeyFiles[m.Key] = file; }
+        InstrumentResult(m.Context, m.RequestId, changed, null);
+    }
+
+    private void MapInstrumentKeys(SetInstrumentalKeyMappingsRequestedMessage m)
+    {
+        if (ActiveInstrument(m.Context) is not { } track) return;
+        var error = SamplePaths.GetFolderNameError(m.FolderName);
+        if (error is null && tracks.OfType<InstrumentalTrack>().Any(t => t != track && string.Equals(t.FolderName, m.FolderName, StringComparison.OrdinalIgnoreCase))) error = "This sample folder belongs to another track.";
+        if (error is null && m.Mappings.Any(pair => !InstrumentalKeys.TryGetIndex(pair.Key, out _) || SamplePaths.GetRelativePathError(pair.Value) is not null)) error = "Choose valid keys and sample paths.";
+        if (error is not null) { InstrumentResult(m.Context, m.RequestId, false, null, error); return; }
+        var changed = track.FolderName != m.FolderName || m.Mappings.Any(pair => !track.KeyFiles.TryGetValue(pair.Key, out var old) || old != pair.Value);
+        track.FolderName = m.FolderName;
+        foreach (var pair in m.Mappings) track.KeyFiles[pair.Key] = pair.Value;
         InstrumentResult(m.Context, m.RequestId, changed, null);
     }
 }

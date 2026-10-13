@@ -42,13 +42,14 @@ public partial class App : Application
         registrations.AddSingleton<ISampleFileDialogService>(provider =>
             new SampleFileDialogService(() => Current.MainWindow, Current.Dispatcher,
                 provider.GetRequiredService<Func<SampleLoaderPopupVM>>()));
+        registrations.AddSingleton<IMappingConflictDialogService>(_ => new MappingConflictDialogService(() => Current.MainWindow, Current.Dispatcher));
         registrations.AddSingleton<IInstrumentalTrackDialogService>(provider => new InstrumentalTrackDialogService(
             () => Current.MainWindow, Current.Dispatcher,
             context => new InstrumentalArrangementPopupVM(context,
                 new MarkerPlaybackCoordinator(provider.GetRequiredService<Func<IWorkstationAudioService>>()(),MarkerPlaybackCoordinator.DelayAsync),
                 provider.GetRequiredService<IMessenger>(),provider.GetRequiredService<IUiScheduler>()),
             snapshot => new KeysMappingDrawerVM(snapshot,provider.GetRequiredService<IMessenger>(),provider.GetRequiredService<IUiScheduler>(),
-                provider.GetRequiredService<ISampleFileService>(),provider.GetRequiredService<ISampleFileDialogService>())));
+                provider.GetRequiredService<ISampleFileService>(),provider.GetRequiredService<ISampleFileDialogService>(),provider.GetRequiredService<IMappingConflictDialogService>())));
         registrations.AddSingleton<INodePasteDialogService>(_ => new NodePasteDialogService(
             () => Current.MainWindow, Current.Dispatcher));
         registrations.AddSingleton<ITrackRemovalDialogService>(_ =>

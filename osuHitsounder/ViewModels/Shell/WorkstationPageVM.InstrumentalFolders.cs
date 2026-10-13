@@ -6,14 +6,15 @@ public partial class WorkstationPageVM
 {
     private readonly Dictionary<InstrumentalTrack, string> folderNamesPending = new(ReferenceEqualityComparer.Instance);
     private Task folderWork = Task.CompletedTask;
+    private bool folderRenamesActive;
     private CancellationTokenSource? folderDelay;
 
     private void QueueInstrumentFolderRename(InstrumentalTrack track, string name)
     {
         folderNamesPending[track] = name;
         folderDelay?.Cancel();
-        if (folderWork.IsCompleted) folderWork = RenameInstrumentFoldersAsync();
-        OnPropertyChanged(nameof(HasPendingSaves));
+        if (!folderRenamesActive) { folderRenamesActive = true; folderWork = RenameInstrumentFoldersAsync(); }
+        NotifyInstrumentState();
     }
 
     private async Task RenameInstrumentFoldersAsync()
@@ -54,7 +55,8 @@ public partial class WorkstationPageVM
             }
         }
         folderDelay?.Dispose(); folderDelay = null;
-        OnPropertyChanged(nameof(HasPendingSaves));
+        folderRenamesActive = false;
+        NotifyInstrumentState();
     }
 
     public async Task SettleInstrumentalFoldersAsync()

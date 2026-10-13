@@ -86,4 +86,21 @@ public sealed class WorkstationInstrumentalFolderTests
         }
         finally { await owner.DeactivateAsync(); }
     }
+
+    [Test] public async Task PendingFolderRenameGatesSampleOperationsUntilSettled()
+    {
+        var track = new InstrumentalTrack { Name = "Piano", FolderName = "Piano" };
+        var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [track], Offsets = [0], BPMs = [120] })) },
+            new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), sampleFiles: new StubSampleFileService([]), sampleDialog: new StubSampleFileDialogService((string?)null));
+        try
+        {
+            await owner.LoadAsync("project.json", default); owner.AcknowledgePresentationReady(owner.LoadGeneration);
+            Assert.That(owner.CanImportSample, Is.True);
+            owner.SetTrackName(track, "Soft");
+            Assert.That(owner.HasPendingSaves, Is.True); Assert.That(owner.CanImportSample, Is.False); Assert.That(owner.CanPlaceSamples, Is.False);
+            await owner.FlushSavesAsync();
+            Assert.That(owner.CanImportSample, Is.True); Assert.That(owner.CanPlaceSamples, Is.True);
+        }
+        finally { await owner.DeactivateAsync(); }
+    }
 }

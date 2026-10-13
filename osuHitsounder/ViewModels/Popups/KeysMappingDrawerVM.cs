@@ -19,6 +19,7 @@ public sealed partial class KeysMappingDrawerVM : ObservableObject
     private readonly IUiScheduler scheduler;
     private readonly ISampleFileService files;
     private readonly ISampleFileDialogService picker;
+    private readonly IMappingConflictDialogService? conflicts;
     private readonly CancellationTokenSource lifetime = new();
     private readonly HashSet<Task> operations = [];
     private readonly SemaphoreSlim edits = new(1, 1);
@@ -34,13 +35,14 @@ public sealed partial class KeysMappingDrawerVM : ObservableObject
     public bool CanClose => !closed && !pickerActive;
     public bool CanEditMapping => !closed && !closing && !IsBusy;
     public string SaveStatus => saveVersion < 0 ? "Checking save status…" : SaveError is not null ? "Save failed" : IsSaving ? "Saving…" : "Autosaved";
-    [ObservableProperty][NotifyCanExecuteChangedFor(nameof(OpenKeyCommand))][NotifyPropertyChangedFor(nameof(CanEditMapping))] private bool isBusy;
+    [ObservableProperty][NotifyCanExecuteChangedFor(nameof(OpenKeyCommand))][NotifyCanExecuteChangedFor(nameof(OpenFolderCommand))][NotifyPropertyChangedFor(nameof(CanEditMapping))] private bool isBusy;
     [ObservableProperty][NotifyPropertyChangedFor(nameof(SaveStatus))] private bool isSaving;
     [ObservableProperty][NotifyPropertyChangedFor(nameof(SaveStatus))] private string? saveError;
     [ObservableProperty] private string? errorMessage;
-    public KeysMappingDrawerVM(InstrumentalTrackSnapshot initial, IMessenger messenger, IUiScheduler scheduler, ISampleFileService files, ISampleFileDialogService picker)
+    [ObservableProperty] private string? importStatus;
+    public KeysMappingDrawerVM(InstrumentalTrackSnapshot initial, IMessenger messenger, IUiScheduler scheduler, ISampleFileService files, ISampleFileDialogService picker, IMappingConflictDialogService? conflicts = null)
     {
-        snapshot = initial; this.messenger = messenger; this.scheduler = scheduler; this.files = files; this.picker = picker;
+        snapshot = initial; this.messenger = messenger; this.scheduler = scheduler; this.files = files; this.picker = picker; this.conflicts = conflicts;
         Rows = new(new ObservableCollection<KeyMappingEntry>(InstrumentalKeys.All.Select(k => new KeyMappingEntry(k))));
         ApplySnapshot(initial);
         messenger.Register<InstrumentalTrackChangedMessage>(this, (_, m) => { if (!closed && m.Snapshot.Context == snapshot.Context && m.Snapshot.Revision >= snapshot.Revision) ApplySnapshot(m.Snapshot); });
@@ -50,6 +52,7 @@ public sealed partial class KeysMappingDrawerVM : ObservableObject
             accepted = m.Error is null;
             var row = Rows.FirstOrDefault(r => r.Key == pendingKey);
             if (row is not null) { row.Error = m.Error; if (accepted) row.DraftFileName = row.FileName ?? ""; }
+            else if (m.Error is not null) ErrorMessage = m.Error;
         });
         messenger.Register<InstrumentalSaveStateChangedMessage>(this, (_, m) =>
         { if (closed || m.Context != snapshot.Context || m.Version < saveVersion) return; saveVersion = m.Version; IsSaving = m.IsSaving; SaveError = m.Error; OnPropertyChanged(nameof(SaveStatus)); });
