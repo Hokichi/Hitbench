@@ -58,7 +58,7 @@ public sealed class SampleFileDialogService : ISampleFileDialogService
                 paths = popup.ShowDialog() == true ? popup.Result : Array.Empty<string>();
             }
             token.ThrowIfCancellationRequested();
-            if(mode==SampleSelectionMode.Single && paths.Count>1) throw new InvalidOperationException("Select one sample for this key.");
+            if(mode != SampleSelectionMode.Multiple && paths.Count > 1) throw new InvalidOperationException("Select one sample or folder.");
             return Array.AsReadOnly(paths.ToArray());
         }
         catch (OperationCanceledException) { return Array.Empty<string>(); }

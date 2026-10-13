@@ -3,10 +3,11 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:c="clr-namespace:osuHitsounder.Resources.CustomControls"
+    xmlns:h="clr-namespace:osuHitsounder.Resources.Helpers"
     Width="960"
     Height="640"
     Mode="None"
-    PopupTitle="Load samples"
+    PopupTitle="{Binding PopupTitle, Mode=OneWay}"
     SizeToContent="Manual">
     <c:BasePopup.Resources>
         <Style
@@ -117,12 +118,13 @@
             BasedOn="{StaticResource BaseCheckBoxStyle}"
             TargetType="CheckBox">
             <Setter Property="IsTabStop" Value="True" />
+            <Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
             <Setter Property="Template" Value="{StaticResource SampleLoaderCheckTemplate}" />
             <Setter Property="Width" Value="40" />
             <Setter Property="Height" Value="40" />
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}, Mode=OneWay}" />
-            <Setter Property="FocusVisualStyle" Value="{StaticResource OHsKeyboardFocusVisualStyle}" />
+            <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
                     <Setter Property="Background" Value="{DynamicResource Brush.Background.Hover}" />
@@ -147,8 +149,9 @@
             TargetType="c:BalloonButton">
             <Setter Property="ShouldShowText" Value="True" />
             <Setter Property="IsTabStop" Value="True" />
+            <Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
             <Setter Property="ButtonIcon" Value="{StaticResource AngleRight}" />
-            <Setter Property="FocusVisualStyle" Value="{StaticResource OHsKeyboardFocusVisualStyle}" />
+            <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
             <Setter Property="DefaultBackground" Value="{DynamicResource Brush.BalloonButton.Background.NavInfo}" />
             <Setter Property="HoveredBackground" Value="{DynamicResource Brush.BalloonButton.Background.NavInfo.Hovered}" />
             <Setter Property="FontFamily" Value="{DynamicResource Regular}" />
@@ -184,10 +187,11 @@
             <Setter Property="Template" Value="{StaticResource SampleLoaderContentItemTemplate}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="IsTabStop" Value="True" />
+            <Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
             <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
             <Setter Property="FontFamily" Value="{DynamicResource Regular}" />
-            <Setter Property="FocusVisualStyle" Value="{StaticResource OHsKeyboardFocusVisualStyle}" />
+            <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
             <Setter Property="AutomationProperties.Name" Value="{Binding Name, Mode=OneWay}" />
             <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
             <EventSetter Event="PreviewMouseLeftButtonDown" Handler="OnEntryRowMouseDown" />
@@ -273,8 +277,9 @@
             BasedOn="{StaticResource OHsBalloonNeutralActionStyle}"
             TargetType="c:BalloonButton">
             <Setter Property="IsTabStop" Value="True" />
+            <Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
             <Setter Property="ShouldShowText" Value="True" />
-            <Setter Property="FocusVisualStyle" Value="{StaticResource OHsKeyboardFocusVisualStyle}" />
+            <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
             <Setter Property="ButtonIcon" Value="{StaticResource MediaPlay}" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsPreviewPlaying, Mode=OneWay}" Value="True">
@@ -287,8 +292,9 @@
             BasedOn="{StaticResource OHsBalloonConfirmActionStyle}"
             TargetType="c:BalloonButton">
             <Setter Property="IsTabStop" Value="True" />
+            <Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
             <Setter Property="ShouldShowText" Value="True" />
-            <Setter Property="FocusVisualStyle" Value="{StaticResource OHsKeyboardFocusVisualStyle}" />
+            <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
         </Style>
         <Style
             x:Key="SampleLoaderCompactTextStyle"
@@ -311,8 +317,9 @@
             BasedOn="{StaticResource OHsValueSliderStyle}"
             TargetType="c:ValueSlider">
             <Setter Property="IsTabStop" Value="True" />
+            <Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
             <Setter Property="MinHeight" Value="40" />
-            <Setter Property="FocusVisualStyle" Value="{StaticResource OHsKeyboardFocusVisualStyle}" />
+            <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
             <Setter Property="SmallChange" Value="0.01" />
             <Setter Property="LargeChange" Value="0.1" />
         </Style>
@@ -366,12 +373,16 @@
             <Setter Property="MinHeight" Value="40" />
             <Setter Property="Padding" Value="8,0" />
             <Setter Property="IsTabStop" Value="True" />
+            <Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
             <Setter Property="FontFamily" Value="{DynamicResource Regular}" />
             <Setter Property="FontSize" Value="13" />
-            <Setter Property="FocusVisualStyle" Value="{StaticResource OHsKeyboardFocusVisualStyle}" />
+            <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
             <Style.Triggers>
+                <DataTrigger Binding="{Binding IsFolderSelection, Mode=OneWay}" Value="True">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
                 <Trigger Property="IsMouseOver" Value="True">
                     <Setter Property="Background" Value="{DynamicResource Brush.Background.Hover}" />
                 </Trigger>
@@ -433,7 +444,7 @@
                     x:Name="DirectoryContents"
                     Grid.Row="2"
                     Margin="0,8,0,0"
-                    AutomationProperties.Name="Folders and audio files"
+                    AutomationProperties.Name="{Binding ContentsAutomationName, Mode=OneWay}"
                     ItemsSource="{Binding Entries, Mode=OneWay}"
                     PreviewKeyDown="OnContentsKeyDown"
                     SelectionChanged="OnContentsSelectionChanged"
@@ -442,7 +453,7 @@
                     x:Name="FolderEmptyPrompt"
                     Grid.Row="2"
                     Style="{StaticResource SampleLoaderFolderEmptyStyle}"
-                    Text="No audio file to display" />
+                    Text="{Binding FolderEmptyPromptText, Mode=OneWay}" />
                 <TextBlock
                     Grid.Row="3"
                     Style="{StaticResource SampleLoaderStatusStyle}"
@@ -530,7 +541,7 @@
                 x:Name="EmptySelectionPrompt"
                 MinHeight="40"
                 Style="{StaticResource SampleLoaderEmptySelectionStyle}"
-                Text="Select a .wav, .ogg or .mp3" />
+                Text="{Binding SelectionPrompt, Mode=OneWay}" />
         </Grid>
         <Grid
             Grid.Row="2"
@@ -557,12 +568,13 @@
             <c:BalloonButton
                 x:Name="ImportButton"
                 Grid.Column="2"
-                AutomationProperties.Name="Import checked files"
+                AutomationProperties.Name="{Binding ConfirmAutomationName, Mode=OneWay}"
                 ButtonIcon="{StaticResource PlusSolid}"
-                ButtonText="Import"
+                ButtonText="{Binding ConfirmActionText, Mode=OneWay}"
                 Click="OnImportClick"
-                IsEnabled="{Binding CanImport, Mode=OneWay}"
+                IsEnabled="{Binding CanConfirm, Mode=OneWay}"
                 Style="{StaticResource SampleLoaderImportStyle}" />
         </Grid>
     </Grid>
 </c:BasePopup>
+
