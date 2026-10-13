@@ -15,6 +15,14 @@ public sealed class StubSampleFileService(IReadOnlyList<string> files) : ISample
     public Task<IReadOnlyList<string>> ListAsync(string projectPath, CancellationToken token) =>
         List?.Invoke(projectPath, token) ?? Task.FromResult(files);
 
-    public Task<string> ImportAsync(string projectPath, string sourcePath, CancellationToken token) =>
-        Import?.Invoke(projectPath, sourcePath, token) ?? Task.FromResult(Path.GetFileName(sourcePath));
+    public Task<string> ImportAsync(string projectPath, string sourcePath, CancellationToken token, string? folderName = null) =>
+        Import?.Invoke(projectPath, sourcePath, token) ?? Task.FromResult(folderName is null ? Path.GetFileName(sourcePath) : folderName + "/" + Path.GetFileName(sourcePath));
+    public Func<string, string, string, IReadOnlyCollection<string>, CancellationToken, Task<string>>? FolderRename { get; set; }
+    public Task<string> EnsureFolderAsync(string projectPath, string trackName, string currentFolderName, IReadOnlyCollection<string> reserved, CancellationToken token) =>
+        Task.FromResult(currentFolderName.Length > 0 ? currentFolderName : SamplePaths.NormalizeFolderName(trackName));
+    public Task<string> RenameFolderAsync(string projectPath, string folderName, string trackName, IReadOnlyCollection<string> reserved, CancellationToken token) =>
+        FolderRename?.Invoke(projectPath, folderName, trackName, reserved, token) ?? Task.FromResult(SamplePaths.NormalizeFolderName(trackName));
+    public Task DeleteEmptyFolderAsync(string projectPath, string folderName, CancellationToken token) => Task.CompletedTask;
+    public Task<(IReadOnlyDictionary<string, IReadOnlyList<string>> Candidates, IReadOnlyList<string> IgnoredPaths)> FindNoteFilesAsync(string sourceDirectory, CancellationToken token) =>
+        new SampleFileService().FindNoteFilesAsync(sourceDirectory, token);
 }

@@ -91,7 +91,7 @@ public sealed partial class ManageSamplesPopupVM(SampleManagementContext context
             if (generation != previewGeneration || token.IsCancellationRequested) return;
             await preview!.StopAsync(CancellationToken.None);
             if (!play) return;
-            await preview.PlayAsync(Path.Combine(Path.GetDirectoryName(Path.GetFullPath(Context.ProjectPath))!, "Samples", entry.FileName),
+            await preview.PlayAsync(SamplePaths.Resolve(Context.ProjectPath, entry.FileName),
                 playbackVolumes?.ApplicationVolume ?? 100, token);
             if (generation != previewGeneration || token.IsCancellationRequested) { await preview.StopAsync(CancellationToken.None); return; }
             previewMonitor = MonitorPreviewAsync(entry, generation, token);

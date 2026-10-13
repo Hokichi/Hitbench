@@ -176,7 +176,7 @@ public class WorkstationAudioServiceTests
     }
 
     [TestCase("../hit.wav")]
-    [TestCase("folder/hit.wav")]
+    [TestCase("folder/../hit.wav")]
     public async Task UnsafeSampleNameIsRejectedWithoutDecoderAccess(string fileName)
     {
         using var project = new TestProjectFolder();
@@ -196,6 +196,23 @@ public class WorkstationAudioServiceTests
             Assert.That(unsafeDecode, Is.False);
             Assert.That(service.GetSnapshot().Error, Does.Contain("invalid file name"));
         });
+    }
+
+    [Test]
+    public async Task NestedSampleIsPreparedAndAudible()
+    {
+        using var project = new TestProjectFolder();
+        var folder = Directory.CreateDirectory(Path.Combine(Path.GetDirectoryName(project.ProjectPath)!, "Samples", "Piano"));
+        File.WriteAllBytes(Path.Combine(folder.FullName, "C3.wav"), [0]);
+        var player = new StubWavePlayer();
+        using var service = new WorkstationAudioService(path => path.EndsWith("C3.wav", StringComparison.OrdinalIgnoreCase)
+            ? CreateStream([0.4f, 0.4f], 44_100, 2) : CreateStream([0f, 0f], 44_100, 2), () => player);
+        service.Open("song.wav");
+        await service.UpdateSamplesAsync(project.ProjectPath, [new(1, "Piano/C3.wav", 0, 100, 100)], default);
+        service.Play();
+        var output = new float[2]; player.Provider!.ToSampleProvider().Read(output, 0, 2);
+        Assert.That(output, Is.EqualTo(new[] { 0.4f, 0.4f }).Within(0.0001));
+        Assert.That(service.GetSnapshot().Error, Is.Null);
     }
 
     [TestCase("tone.mp3")]

@@ -514,11 +514,8 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
     private static bool TryResolveSamplePath(string projectPath, string fileName, out string path)
     {
         path = string.Empty;
-        if (string.IsNullOrWhiteSpace(fileName) || Path.IsPathRooted(fileName) ||
-            !string.Equals(Path.GetFileName(fileName), fileName, StringComparison.Ordinal)) return false;
-        var sampleFolder = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(projectPath))!, "Samples");
-        path = Path.Combine(sampleFolder, fileName);
-        return true;
+        try { path = FileSystem.SamplePaths.Resolve(projectPath, fileName); return true; }
+        catch (ArgumentException) { return false; }
     }
 
     private void ThrowIfDisposed() => ObjectDisposedException.ThrowIf(disposed, this);
