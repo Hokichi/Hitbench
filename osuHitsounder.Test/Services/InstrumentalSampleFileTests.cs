@@ -55,6 +55,34 @@ public sealed class InstrumentalSampleFileTests
         Assert.That(result.IgnoredPaths.Select(Path.GetFileName), Is.EquivalentTo(new[] { "C0.wav", "Nested" }));
     }
 
+    [TestCase("C3S.wav", "C3")]
+    [TestCase("c#4-soft.OGG", "C#4")]
+    [TestCase("B9_release.mp3", "B9")]
+    [TestCase("F2.wav", "F2")]
+    public async Task MatchesNoteAtStartOfFileName(string fileName, string key)
+    {
+        var path = Path.Combine(root, fileName); File.WriteAllBytes(path, [1]);
+        var result = await new SampleFileService().FindNoteFilesAsync(root, default);
+        Assert.That(result.Candidates.Keys, Is.EqualTo(new[] { key }));
+        Assert.That(result.Candidates[key], Is.EqualTo(new[] { path }));
+    }
+
+    [TestCase("SampleC3.wav")][TestCase("C0S.wav")][TestCase("C3S.flac")]
+    public async Task IgnoresFilesWithoutSupportedNotePrefix(string fileName)
+    {
+        var path = Path.Combine(root, fileName); File.WriteAllBytes(path, [1]);
+        var result = await new SampleFileService().FindNoteFilesAsync(root, default);
+        Assert.That(result.Candidates, Is.Empty);
+        Assert.That(result.IgnoredPaths, Is.EqualTo(new[] { path }));
+    }
+
+    [Test] public async Task KeepsSuffixedVariantsTogetherForConflictSelection()
+    {
+        File.WriteAllBytes(Path.Combine(root, "C3S.wav"), [1]); File.WriteAllBytes(Path.Combine(root, "C3T.wav"), [2]);
+        var result = await new SampleFileService().FindNoteFilesAsync(root, default);
+        Assert.That(result.Candidates["C3"].Select(Path.GetFileName), Is.EqualTo(new[] { "C3S.wav", "C3T.wav" }));
+    }
+
     [Test] public async Task FailedCopyAndEmptyFolderCleanupNeverDeleteExistingFiles()
     {
         var service = new SampleFileService();

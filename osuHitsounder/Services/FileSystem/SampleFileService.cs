@@ -101,8 +101,10 @@ public sealed class SampleFileService : ISampleFileService
         var candidates = new Dictionary<string, List<string>>(StringComparer.Ordinal); var ignored = new List<string>();
         foreach (var path in Directory.EnumerateFileSystemEntries(Path.GetFullPath(sourceDirectory)).OrderBy(Path.GetFileName, StringComparer.OrdinalIgnoreCase).ThenBy(Path.GetFileName, StringComparer.Ordinal))
         {
-            token.ThrowIfCancellationRequested(); var key = Path.GetFileNameWithoutExtension(path).ToUpperInvariant();
-            if (!File.Exists(path) || !Extensions.Contains(Path.GetExtension(path)) || !InstrumentalKeys.TryGetIndex(key, out _)) { ignored.Add(path); continue; }
+            token.ThrowIfCancellationRequested();
+            var stem = Path.GetFileNameWithoutExtension(path);
+            var key = InstrumentalKeys.All.FirstOrDefault(note => stem.StartsWith(note, StringComparison.OrdinalIgnoreCase));
+            if (!File.Exists(path) || !Extensions.Contains(Path.GetExtension(path)) || key is null) { ignored.Add(path); continue; }
             if (!candidates.TryGetValue(key, out var group)) candidates[key] = group = [];
             group.Add(path);
         }
