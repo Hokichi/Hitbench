@@ -21,7 +21,7 @@ public class KeysMappingDrawerIntegrationTests
         {
             drawer.Measure(new Size(600, 400)); drawer.Arrange(new Rect(0, 0, 600, 400)); drawer.UpdateLayout();
             var rows = (ItemsControl)drawer.FindName("KeyRows");
-            Assert.That(drawer.HandleNavigationKey(Key.End, ModifierKeys.Alt), Is.True);
+            Assert.That(drawer.HandleNavigationKey(Key.System, Key.End, ModifierKeys.Alt), Is.True);
             Assert.That(((FrameworkElement)rows.ItemContainerGenerator.ContainerFromIndex(107)).DataContext, Is.TypeOf<KeyMappingEntry>());
             Assert.That(((KeyMappingEntry)((FrameworkElement)rows.ItemContainerGenerator.ContainerFromIndex(107)).DataContext).Key, Is.EqualTo("B9"));
         }

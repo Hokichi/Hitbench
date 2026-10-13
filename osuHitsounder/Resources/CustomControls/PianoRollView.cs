@@ -142,6 +142,8 @@ public sealed class PianoRollView : Control
         else return false;
         RevealActive(); InvalidateVisual(); return true;
     }
+    internal bool HandleEditorKey(Key key, Key systemKey, ModifierKeys modifiers, bool repeat) =>
+        HandleEditorKey(key == Key.System ? systemKey : key, modifiers, repeat);
     private void RevealActive()
     {
         var top = (107 - activeKey) * LaneHeight;
@@ -157,7 +159,7 @@ public sealed class PianoRollView : Control
     protected override void OnGotKeyboardFocus(KeyboardFocusChangedEventArgs e)
     { base.OnGotKeyboardFocus(e); activeMs = BeatGridCalculator.GetContainingInterval(Offsets, Bpms, Subdivision, Position.TotalMilliseconds, Duration.TotalMilliseconds)?.StartMilliseconds ?? 0; RevealActive(); InvalidateVisual(); }
     protected override void OnLostKeyboardFocus(KeyboardFocusChangedEventArgs e) { base.OnLostKeyboardFocus(e); InvalidateVisual(); }
-    protected override void OnKeyDown(KeyEventArgs e) { if (HandleEditorKey(e.Key, Keyboard.Modifiers, e.IsRepeat)) { e.Handled = true; return; } base.OnKeyDown(e); }
+    protected override void OnKeyDown(KeyEventArgs e) { if (HandleEditorKey(e.Key, e.SystemKey, Keyboard.Modifiers, e.IsRepeat)) { e.Handled = true; return; } base.OnKeyDown(e); }
     protected override void OnMouseLeftButtonDown(MouseButtonEventArgs e)
     {
         base.OnMouseLeftButtonDown(e); if (!CanEdit) return; Focus();

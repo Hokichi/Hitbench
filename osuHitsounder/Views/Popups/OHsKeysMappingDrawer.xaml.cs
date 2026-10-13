@@ -29,6 +29,8 @@ public partial class OHsKeysMappingDrawer : UserControl, IOHsShellDrawer
         else return false;
         KeyRows.UpdateLayout(); FocusInitialAction(); return true;
     }
+    internal bool HandleNavigationKey(Key key, Key systemKey, ModifierKeys modifiers) =>
+        HandleNavigationKey(key == Key.System ? systemKey : key, modifiers);
     private void OnCloseClick(object sender, RoutedEventArgs e) { if (CanDismiss) CloseRequested?.Invoke(this, EventArgs.Empty); }
     private void OnMappingLostFocus(object sender, KeyboardFocusChangedEventArgs e)
     { if (sender is TextBox { DataContext: KeyMappingEntry row } input) viewModel.CommitMapping(row.Key, input.Text); }
@@ -37,7 +39,7 @@ public partial class OHsKeysMappingDrawer : UserControl, IOHsShellDrawer
     protected override void OnPreviewKeyDown(KeyEventArgs e)
     {
         if (e.Key == Key.Escape) { e.Handled = true; if (CanDismiss) CloseRequested?.Invoke(this, EventArgs.Empty); return; }
-        if (HandleNavigationKey(e.Key, Keyboard.Modifiers)) { e.Handled = true; return; }
+        if (HandleNavigationKey(e.Key, e.SystemKey, Keyboard.Modifiers)) { e.Handled = true; return; }
         base.OnPreviewKeyDown(e);
     }
 }

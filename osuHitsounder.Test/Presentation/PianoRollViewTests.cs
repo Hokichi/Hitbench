@@ -32,7 +32,7 @@ public class PianoRollViewTests
         var roll = new PianoRollView { Notes = [note], SelectedNoteId = note.Id, Offsets = [0], Bpms = [137], Subdivision = 3, Duration = TimeSpan.FromSeconds(10), CanEdit = true };
         var requests = new List<InstrumentalNoteEditRequestedEventArgs>(); roll.NoteEditRequested += (_, e) => requests.Add(e);
         roll.HandleEditorKey(Key.Up, ModifierKeys.Alt, false); Assert.That(requests, Is.Empty);
-        roll.HandleEditorKey(Key.Right, ModifierKeys.Alt, false);
+        roll.HandleEditorKey(Key.System, Key.Right, ModifierKeys.Alt, false);
         Assert.That(requests.Single().RequestedMilliseconds, Is.EqualTo(60000d / 137 / 3 * 2).Within(.0001));
         requests.Clear(); roll.HandleEditorKey(Key.Down, ModifierKeys.Alt, false); Assert.That(requests.Single().Key, Is.EqualTo("A#9"));
         requests.Clear(); roll.HandleEditorKey(Key.Delete, ModifierKeys.None, true); Assert.That(requests, Is.Empty);

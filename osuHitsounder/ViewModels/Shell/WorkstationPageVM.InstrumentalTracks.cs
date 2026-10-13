@@ -102,6 +102,7 @@ public partial class WorkstationPageVM
         OnPropertyChanged(nameof(CanAddInstrumentalTrack)); OnPropertyChanged(nameof(CanOpenInstrumentalEditor)); OnPropertyChanged(nameof(HasPendingSaves));
         AddPianoTrackCommand.NotifyCanExecuteChanged(); ViewArrangementCommand.NotifyCanExecuteChanged(); KeysMappingCommand.NotifyCanExecuteChanged();
         NotifyEditingState();
+        NotifyCommandState();
     }
     private int? InstrumentTimestamp(double requested, int subdivision, bool moving)
     {

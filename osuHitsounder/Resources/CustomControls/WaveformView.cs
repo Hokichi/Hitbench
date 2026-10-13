@@ -167,13 +167,17 @@ public sealed class WaveformView : FrameworkElement
 
         if(ShowBeatRuler && Offsets is not null && Bpms is not null)
         {
+            var lastLabelRight=double.NegativeInfinity;
             foreach(var beat in BeatGridCalculator.GetLines(Offsets,Bpms,1,offset/width*data.Duration.TotalMilliseconds,(offset+viewport)/width*data.Duration.TotalMilliseconds))
             {
+                var labelX=beat.Milliseconds/data.Duration.TotalMilliseconds*width+4;
+                if(labelX<lastLabelRight+8)continue;
                 var label=new FormattedText(string.Format(System.Globalization.CultureInfo.CurrentCulture,"{0:0.###} s",beat.Milliseconds/1000),
                     System.Globalization.CultureInfo.CurrentCulture,FlowDirection.LeftToRight,
                     new Typeface(FontFamily??TryFindResource("Regular") as FontFamily??SystemFonts.MessageFontFamily,FontStyles.Normal,FontWeights.Normal,FontStretches.Normal),
                     11,textBrush,VisualTreeHelper.GetDpi(this).PixelsPerDip);
-                drawingContext.DrawText(label,new Point(beat.Milliseconds/data.Duration.TotalMilliseconds*width+4,4));
+                drawingContext.DrawText(label,new Point(labelX,4));
+                lastLabelRight=labelX+label.Width;
             }
         }
         drawingContext.Pop();

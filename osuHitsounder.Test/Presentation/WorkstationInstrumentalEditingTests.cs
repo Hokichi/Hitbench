@@ -15,6 +15,7 @@ public class WorkstationInstrumentalEditingTests
     {
         var track = new InstrumentalTrack();
         var messenger = new WeakReferenceMessenger(); var dialogs = new StubInstrumentalTrackDialogService(); var saves = new DelayedProjectFileService();
+        var audio = new StubWorkstationAudioService();
         var entered = new TaskCompletionSource<InstrumentalTrackContext>();
         var states = new List<InstrumentalSaveStateChangedMessage>();
         messenger.Register<InstrumentalSaveStateChangedMessage>(this, (_, m) => states.Add(m));
@@ -27,12 +28,17 @@ public class WorkstationInstrumentalEditingTests
             await Task.Delay(Timeout.Infinite, token);
         };
         var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [track], Offsets = [0], BPMs = [120] })) },
-            new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), projectFiles: saves, messenger: messenger, instrumentDialogs: dialogs);
+            new MarkerPlaybackCoordinator(audio, Task.Delay), new ImmediateUiScheduler(), projectFiles: saves, messenger: messenger, instrumentDialogs: dialogs);
         try
         {
             await owner.LoadAsync("project.json", default); owner.AcknowledgePresentationReady(owner.LoadGeneration);
             var editor = owner.ViewArrangementCommand.ExecuteAsync(track); var context = await entered.Task.WaitAsync(TimeSpan.FromSeconds(3));
             Assert.That(owner.KeysMappingCommand.CanExecute(track), Is.False);
+            Assert.That(owner.PlayPauseCommand.CanExecute(null), Is.False);
+            await owner.PlayPauseCommand.ExecuteAsync(null);
+            await owner.SeekCommand.ExecuteAsync(TimeSpan.FromSeconds(2));
+            Assert.That(audio.Snapshot.IsPlaying, Is.False);
+            Assert.That(audio.Snapshot.Position, Is.EqualTo(TimeSpan.Zero));
             Assert.That(states.Last().IsSaving, Is.True);
             var settlement = owner.SettleInstrumentalEditorAsync(); Assert.That(settlement.IsCompleted, Is.False);
             saves.Release(); await Task.WhenAll(editor, settlement).WaitAsync(TimeSpan.FromSeconds(3));
