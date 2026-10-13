@@ -30,7 +30,7 @@
             x:Key="OHsWorkstationTrackNameStyle"
             BasedOn="{StaticResource RoundedTextInputStyle}"
             TargetType="TextBox">
-            <Setter Property="helpers:KeyboardNavigationPolicy.AllowTabNavigation" Value="True"/>
+            <Setter Property="helpers:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
             <Setter Property="IsTabStop" Value="True" />
             <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
             <Setter Property="Margin" Value="0,0,0,8" />
@@ -49,7 +49,7 @@
             x:Key="OHsWorkstationRemoveTrackStyle"
             BasedOn="{StaticResource OHsBalloonDestructiveActionStyle}"
             TargetType="customControls:BalloonButton">
-            <Setter Property="helpers:KeyboardNavigationPolicy.AllowTabNavigation" Value="True"/>
+            <Setter Property="helpers:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
             <Setter Property="ButtonIcon" Value="{StaticResource Delete}" />
             <Setter Property="ShouldShowText" Value="False" />
             <Setter Property="ShouldExpand" Value="False" />
@@ -88,7 +88,7 @@
             x:Key="OHsWorkstationTrackToggleStyle"
             BasedOn="{StaticResource BaseToggleButtonStyle}"
             TargetType="ToggleButton">
-            <Setter Property="helpers:KeyboardNavigationPolicy.AllowTabNavigation" Value="True"/>
+            <Setter Property="helpers:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
             <Setter Property="IsTabStop" Value="True" />
             <Setter Property="Width" Value="40" />
             <Setter Property="Height" Value="40" />
@@ -419,7 +419,7 @@
             x:Key="OHsWorkstationVolumeStyle"
             BasedOn="{StaticResource OHsValueSliderStyle}"
             TargetType="customControls:ValueSlider">
-            <Setter Property="helpers:KeyboardNavigationPolicy.AllowTabNavigation" Value="True"/>
+            <Setter Property="helpers:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
             <Setter Property="IsTabStop" Value="True" />
             <Setter Property="IsMoveToPointEnabled" Value="True" />
             <Setter Property="Minimum" Value="5" />
@@ -450,14 +450,21 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
-        <Style x:Key="OHsWorkstationPlaybackWarningScrollStyle" TargetType="ScrollViewer" BasedOn="{StaticResource {x:Type ScrollViewer}}">
+        <Style
+            x:Key="OHsWorkstationPlaybackWarningScrollStyle"
+            BasedOn="{StaticResource {x:Type ScrollViewer}}"
+            TargetType="ScrollViewer">
             <Setter Property="MaxHeight" Value="120" />
             <Setter Property="Focusable" Value="True" />
             <Setter Property="helpers:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
             <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
             <Style.Triggers>
-                <DataTrigger Binding="{Binding PlaybackWarning, Mode=OneWay}" Value="{x:Null}"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
-                <DataTrigger Binding="{Binding PlaybackWarning, Mode=OneWay}" Value=""><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+                <DataTrigger Binding="{Binding PlaybackWarning, Mode=OneWay}" Value="{x:Null}">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding PlaybackWarning, Mode=OneWay}" Value="">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
             </Style.Triggers>
         </Style>
         <Style
@@ -816,72 +823,72 @@
             </Style.Triggers>
         </Style>
         <DataTemplate x:Key="OHsWorkstationTrackLeftTemplate">
-                <StackPanel
-                    x:Name="TrackLeftControls"
-                    Margin="0,8"
-                    VerticalAlignment="Center"
-                    Loaded="OnTrackControlStackLoaded"
-                    SizeChanged="OnTrackControlStackSizeChanged"
-                    Style="{StaticResource BaseStackPanelStyle}">
-                    <TextBox
-                        AutomationProperties.Name="Track name"
-                        DataContextChanged="OnTrackControlDataContextChanged"
-                        IsEnabled="{Binding DataContext.CanEditTracks, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
-                        Loaded="OnTrackNameLoaded"
-                        Style="{StaticResource OHsWorkstationTrackNameStyle}"
-                        Text="{Binding Name, Mode=OneWay, UpdateSourceTrigger=Explicit}"
-                        TextChanged="OnTrackNameTextChanged"
-                        ToolTip="Track name" />
-                    <StackPanel x:Name="TrackLeftExpandedControls" Style="{StaticResource OHsWorkstationExpandedTrackControlsStyle}">
-                        <customControls:SpacedUniformGrid
-                            Margin="0,0,0,8"
-                            Columns="3"
-                            HorizontalGap="4"
-                            ItemHeight="40"
-                            ItemWidth="40"
-                            VerticalGap="4">
-                            <customControls:BalloonButton
-                                AutomationProperties.Name="Remove track"
-                                Command="{Binding DataContext.RemoveTrackCommand, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
-                                CommandParameter="{Binding Mode=OneWay}"
-                                IsEnabled="{Binding DataContext.CanRemoveTrack, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
-                                Style="{StaticResource OHsWorkstationRemoveTrackStyle}"
-                                ToolTip="Remove track" />
-                            <ToggleButton
-                                x:Name="TrackMuteToggle"
-                                AutomationProperties.Name="Mute track"
-                                Checked="OnTrackAuditionChanged"
-                                Content="M"
-                                DataContextChanged="OnTrackControlDataContextChanged"
-                                IsEnabled="{Binding DataContext.CanPlaceSamples, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
-                                Loaded="OnTrackAuditionLoaded"
-                                Style="{StaticResource OHsWorkstationTrackToggleStyle}"
-                                ToolTip="Mute track"
-                                Unchecked="OnTrackAuditionChanged" />
-                            <ToggleButton
-                                x:Name="TrackSoloToggle"
-                                AutomationProperties.Name="Solo track"
-                                Checked="OnTrackAuditionChanged"
-                                Content="S"
-                                DataContextChanged="OnTrackControlDataContextChanged"
-                                IsEnabled="{Binding DataContext.CanPlaceSamples, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
-                                Loaded="OnTrackAuditionLoaded"
-                                Style="{StaticResource OHsWorkstationTrackToggleStyle}"
-                                ToolTip="Solo track"
-                                Unchecked="OnTrackAuditionChanged" />
-                        </customControls:SpacedUniformGrid>
-                        <customControls:ValueSlider
-                            x:Name="VolumeSlider"
-                            AutomationProperties.Name="Track volume percent"
+            <StackPanel
+                x:Name="TrackLeftControls"
+                Margin="0,8"
+                VerticalAlignment="Center"
+                Loaded="OnTrackControlStackLoaded"
+                SizeChanged="OnTrackControlStackSizeChanged"
+                Style="{StaticResource BaseStackPanelStyle}">
+                <TextBox
+                    AutomationProperties.Name="Track name"
+                    DataContextChanged="OnTrackControlDataContextChanged"
+                    IsEnabled="{Binding DataContext.CanEditTracks, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
+                    Loaded="OnTrackNameLoaded"
+                    Style="{StaticResource OHsWorkstationTrackNameStyle}"
+                    Text="{Binding Name, Mode=OneWay, UpdateSourceTrigger=Explicit}"
+                    TextChanged="OnTrackNameTextChanged"
+                    ToolTip="Track name" />
+                <StackPanel x:Name="TrackLeftExpandedControls" Style="{StaticResource OHsWorkstationExpandedTrackControlsStyle}">
+                    <customControls:SpacedUniformGrid
+                        Margin="0,0,0,8"
+                        Columns="3"
+                        HorizontalGap="4"
+                        ItemHeight="40"
+                        ItemWidth="40"
+                        VerticalGap="4">
+                        <customControls:BalloonButton
+                            AutomationProperties.Name="Remove track"
+                            Command="{Binding DataContext.RemoveTrackCommand, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
+                            CommandParameter="{Binding Mode=OneWay}"
+                            IsEnabled="{Binding DataContext.CanRemoveTrack, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
+                            Style="{StaticResource OHsWorkstationRemoveTrackStyle}"
+                            ToolTip="Remove track" />
+                        <ToggleButton
+                            x:Name="TrackMuteToggle"
+                            AutomationProperties.Name="Mute track"
+                            Checked="OnTrackAuditionChanged"
+                            Content="M"
                             DataContextChanged="OnTrackControlDataContextChanged"
-                            DisplayText="{Binding ElementName=VolumeSlider, Path=Value, Mode=OneWay, StringFormat={}{0:0}}"
-                            IsEnabled="{Binding DataContext.CanImportSample, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
-                            Loaded="OnVolumeSliderLoaded"
-                            Style="{StaticResource OHsWorkstationVolumeStyle}"
-                            ToolTip="Track volume percent"
-                            ValueChanged="OnVolumeValueChanged" />
-                    </StackPanel>
+                            IsEnabled="{Binding DataContext.CanPlaceSamples, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
+                            Loaded="OnTrackAuditionLoaded"
+                            Style="{StaticResource OHsWorkstationTrackToggleStyle}"
+                            ToolTip="Mute track"
+                            Unchecked="OnTrackAuditionChanged" />
+                        <ToggleButton
+                            x:Name="TrackSoloToggle"
+                            AutomationProperties.Name="Solo track"
+                            Checked="OnTrackAuditionChanged"
+                            Content="S"
+                            DataContextChanged="OnTrackControlDataContextChanged"
+                            IsEnabled="{Binding DataContext.CanPlaceSamples, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
+                            Loaded="OnTrackAuditionLoaded"
+                            Style="{StaticResource OHsWorkstationTrackToggleStyle}"
+                            ToolTip="Solo track"
+                            Unchecked="OnTrackAuditionChanged" />
+                    </customControls:SpacedUniformGrid>
+                    <customControls:ValueSlider
+                        x:Name="VolumeSlider"
+                        AutomationProperties.Name="Track volume percent"
+                        DataContextChanged="OnTrackControlDataContextChanged"
+                        DisplayText="{Binding ElementName=VolumeSlider, Path=Value, Mode=OneWay, StringFormat={}{0:0}}"
+                        IsEnabled="{Binding DataContext.CanImportSample, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
+                        Loaded="OnVolumeSliderLoaded"
+                        Style="{StaticResource OHsWorkstationVolumeStyle}"
+                        ToolTip="Track volume percent"
+                        ValueChanged="OnVolumeValueChanged" />
                 </StackPanel>
+            </StackPanel>
         </DataTemplate>
         <DataTemplate x:Key="OHsWorkstationSampleTrackTemplate">
             <Grid Style="{StaticResource BaseGridStyle}">
@@ -892,7 +899,10 @@
                     <ColumnDefinition Width="{StaticResource OHsWorkstationColumnGap}" />
                     <ColumnDefinition Width="{StaticResource OHsWorkstationSideColumnWidth}" />
                 </Grid.ColumnDefinitions>
-                <ContentPresenter Content="{Binding Mode=OneWay}" ContentTemplate="{StaticResource OHsWorkstationTrackLeftTemplate}" Style="{StaticResource BaseContentPresenterStyle}" />
+                <ContentPresenter
+                    Content="{Binding Mode=OneWay}"
+                    ContentTemplate="{StaticResource OHsWorkstationTrackLeftTemplate}"
+                    Style="{StaticResource BaseContentPresenterStyle}" />
                 <Border Grid.Column="2" Style="{StaticResource OHsWorkstationTimelineStyle}">
                     <Grid
                         x:Name="TrackGridHost"
@@ -1041,8 +1051,11 @@
             </Style.Triggers>
         </Style>
 
-        <Style x:Key="OHsWorkstationInstrumentActionStyle" TargetType="customControls:BalloonButton" BasedOn="{StaticResource OHsBalloonNeutralActionStyle}">
-            <Setter Property="helpers:KeyboardNavigationPolicy.AllowTabNavigation" Value="True"/>
+        <Style
+            x:Key="OHsWorkstationInstrumentActionStyle"
+            BasedOn="{StaticResource OHsBalloonNeutralActionStyle}"
+            TargetType="customControls:BalloonButton">
+            <Setter Property="helpers:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
             <Setter Property="DefaultBackground" Value="{DynamicResource Brush.BalloonButton.Background.NavInfo}" />
             <Setter Property="HoveredBackground" Value="{DynamicResource Brush.BalloonButton.Background.NavInfo.Hovered}" />
             <Setter Property="ShouldShowText" Value="True" />
@@ -1050,32 +1063,67 @@
             <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
             <Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="True" />
         </Style>
-        <Style x:Key="OHsWorkstationKeysMappingStyle" TargetType="customControls:BalloonButton" BasedOn="{StaticResource OHsWorkstationInstrumentActionStyle}">
-            <Setter Property="Height" Value="Auto" /><Setter Property="VerticalAlignment" Value="Stretch" />
+        <Style
+            x:Key="OHsWorkstationKeysMappingStyle"
+            BasedOn="{StaticResource OHsWorkstationInstrumentActionStyle}"
+            TargetType="customControls:BalloonButton">
+            <Setter Property="Height" Value="Auto" />
+            <Setter Property="VerticalAlignment" Value="Stretch" />
         </Style>
-        <Style x:Key="OHsWorkstationAddInstrumentStyle" TargetType="customControls:BalloonButton" BasedOn="{StaticResource OHsWorkstationToolbarButtonStyle}">
-            <Setter Property="helpers:KeyboardNavigationPolicy.AllowTabNavigation" Value="True"/>
+        <Style
+            x:Key="OHsWorkstationInstrumentalSideCardStyle"
+            BasedOn="{StaticResource OHsWorkstationTrackCardStyle}"
+            TargetType="Border">
+            <Setter Property="Padding" Value="4" />
+        </Style>
+        <Style
+            x:Key="OHsWorkstationAddInstrumentStyle"
+            BasedOn="{StaticResource OHsWorkstationToolbarButtonStyle}"
+            TargetType="customControls:BalloonButton">
+            <Setter Property="helpers:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
             <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
         </Style>
         <DataTemplate x:Key="OHsWorkstationInstrumentalTrackTemplate">
-            <Grid Style="{StaticResource BaseGridStyle}" Height="{Binding DataContext.TrackHeight,RelativeSource={RelativeSource AncestorType=pages:WorkstationPage},Mode=OneWay}">
+            <Grid Height="{Binding DataContext.TrackHeight, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}" Style="{StaticResource BaseGridStyle}">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="{StaticResource OHsWorkstationSideColumnWidth}" />
                     <ColumnDefinition Width="{StaticResource OHsWorkstationColumnGap}" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="{StaticResource OHsWorkstationColumnGap}" />
-                    <ColumnDefinition Width="Auto" MinWidth="128" />
+                    <ColumnDefinition Width="{StaticResource OHsWorkstationSideColumnWidth}" />
                 </Grid.ColumnDefinitions>
-                <ContentPresenter Content="{Binding Mode=OneWay}" ContentTemplate="{StaticResource OHsWorkstationTrackLeftTemplate}" Style="{StaticResource BaseContentPresenterStyle}" />
-                <customControls:BalloonButton Grid.Column="2" HorizontalAlignment="Center" VerticalAlignment="Center" ButtonText="View Arrangement" ButtonIcon="{StaticResource Eye}"
-                    Style="{StaticResource OHsWorkstationInstrumentActionStyle}" AutomationProperties.Name="View Arrangement" ToolTip="Edit instrumental notes"
-                    Command="{Binding DataContext.ViewArrangementCommand,RelativeSource={RelativeSource AncestorType=pages:WorkstationPage},Mode=OneWay}" CommandParameter="{Binding Mode=OneWay}" />
-                <customControls:BalloonButton Grid.Column="4" ButtonText="Keys Mapping" ButtonIcon="{StaticResource KeyboardBoxFill}" Style="{StaticResource OHsWorkstationKeysMappingStyle}"
-                    AutomationProperties.Name="Keys Mapping" ToolTip="Map samples to instrument keys"
-                    Command="{Binding DataContext.KeysMappingCommand,RelativeSource={RelativeSource AncestorType=pages:WorkstationPage},Mode=OneWay}" CommandParameter="{Binding Mode=OneWay}" />
+                <ContentPresenter
+                    Content="{Binding Mode=OneWay}"
+                    ContentTemplate="{StaticResource OHsWorkstationTrackLeftTemplate}"
+                    Style="{StaticResource BaseContentPresenterStyle}" />
+                <customControls:BalloonButton
+                    Grid.Column="2"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    AutomationProperties.HelpText="Map at least one key before opening the arrangement."
+                    AutomationProperties.Name="View Arrangement"
+                    ButtonIcon="{StaticResource Eye}"
+                    ButtonText="View Arrangement"
+                    Command="{Binding DataContext.ViewArrangementCommand, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
+                    CommandParameter="{Binding Mode=OneWay}"
+                    Style="{StaticResource OHsWorkstationInstrumentActionStyle}"
+                    ToolTip="Edit instrumental notes (map at least one key first)"
+                    ToolTipService.ShowOnDisabled="True" />
+                <customControls:BalloonButton
+                    Grid.Column="4"
+                    AutomationProperties.Name="Keys Mapping"
+                    ButtonIcon="{StaticResource KeyboardBoxFill}"
+                    ButtonText="Mapping"
+                    Command="{Binding DataContext.KeysMappingCommand, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
+                    CommandParameter="{Binding Mode=OneWay}"
+                    Style="{StaticResource OHsWorkstationKeysMappingStyle}"
+                    ToolTip="Map samples to instrument keys" />
             </Grid>
         </DataTemplate>
-        <helpers:WorkstationTrackTemplateSelector x:Key="OHsWorkstationTrackTemplateSelector" SampleTrackTemplate="{StaticResource OHsWorkstationSampleTrackTemplate}" InstrumentalTrackTemplate="{StaticResource OHsWorkstationInstrumentalTrackTemplate}" />
+        <helpers:WorkstationTrackTemplateSelector
+            x:Key="OHsWorkstationTrackTemplateSelector"
+            InstrumentalTrackTemplate="{StaticResource OHsWorkstationInstrumentalTrackTemplate}"
+            SampleTrackTemplate="{StaticResource OHsWorkstationSampleTrackTemplate}" />
     </UserControl.Resources>
     <Grid Background="Transparent" Style="{StaticResource BaseGridStyle}">
         <Grid
@@ -1100,11 +1148,18 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" MinHeight="128" />
                         </Grid.RowDefinitions>
-                        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
-                            Style="{StaticResource OHsWorkstationPlaybackWarningScrollStyle}" AutomationProperties.Name="Playback diagnostics">
-                            <TextBlock x:Name="PlaybackWarningText" Text="{Binding PlaybackWarning,Mode=OneWay}"
-                                AutomationProperties.Name="{Binding PlaybackWarning,Mode=OneWay}" AutomationProperties.LiveSetting="Polite"
-                                Style="{StaticResource OHsWorkstationPlaybackWarningStyle}" />
+                        <ScrollViewer
+                            Grid.Row="0"
+                            AutomationProperties.Name="Playback diagnostics"
+                            HorizontalScrollBarVisibility="Disabled"
+                            Style="{StaticResource OHsWorkstationPlaybackWarningScrollStyle}"
+                            VerticalScrollBarVisibility="Auto">
+                            <TextBlock
+                                x:Name="PlaybackWarningText"
+                                AutomationProperties.LiveSetting="Polite"
+                                AutomationProperties.Name="{Binding PlaybackWarning, Mode=OneWay}"
+                                Style="{StaticResource OHsWorkstationPlaybackWarningStyle}"
+                                Text="{Binding PlaybackWarning, Mode=OneWay}" />
                         </ScrollViewer>
                         <Grid Grid.Row="1" Style="{StaticResource BaseGridStyle}">
                             <Grid.ColumnDefinitions>

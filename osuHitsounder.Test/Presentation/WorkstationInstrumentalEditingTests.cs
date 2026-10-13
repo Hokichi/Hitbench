@@ -11,9 +11,47 @@ namespace osuHitsounder.Test.Presentation;
 public class WorkstationInstrumentalEditingTests
 {
     [Test]
-    public async Task SettlementCancelsEditorAndDrainsLatestSaveWithoutSelfAwait()
+    public async Task ArrangementRequiresAMappingAndUpdatesAfterMappingChanges()
     {
         var track = new InstrumentalTrack();
+        var messenger = new WeakReferenceMessenger();
+        var dialogs = new StubInstrumentalTrackDialogService();
+        var opens = 0;
+        dialogs.Arrangement = (_, _) => { opens++; return Task.CompletedTask; };
+        var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [track], Offsets = [0], BPMs = [120] })) },
+            new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), messenger: messenger, instrumentDialogs: dialogs);
+        try
+        {
+            await owner.LoadAsync("project.json", default); owner.AcknowledgePresentationReady(owner.LoadGeneration);
+            Assert.That(owner.ViewArrangementCommand.CanExecute(track), Is.False);
+            Assert.That(owner.KeysMappingCommand.CanExecute(track), Is.True);
+            await owner.ViewArrangementCommand.ExecuteAsync(track);
+            Assert.That(opens, Is.Zero);
+            dialogs.Mapping = (snapshot, _) =>
+            {
+                messenger.Send(new SetInstrumentalKeyMappingRequestedMessage(snapshot.Context, Guid.NewGuid(), "C4", "missing.wav"));
+                return Task.CompletedTask;
+            };
+            await owner.KeysMappingCommand.ExecuteAsync(track);
+            Assert.That(owner.ViewArrangementCommand.CanExecute(track), Is.True);
+            await owner.ViewArrangementCommand.ExecuteAsync(track);
+            Assert.That(opens, Is.EqualTo(1));
+            dialogs.Mapping = (snapshot, _) =>
+            {
+                messenger.Send(new SetInstrumentalKeyMappingRequestedMessage(snapshot.Context, Guid.NewGuid(), "C4", null));
+                return Task.CompletedTask;
+            };
+            await owner.KeysMappingCommand.ExecuteAsync(track);
+            Assert.That(owner.ViewArrangementCommand.CanExecute(track), Is.False);
+            await owner.ViewArrangementCommand.ExecuteAsync(track);
+            Assert.That(opens, Is.EqualTo(1));
+        }
+        finally { await owner.DeactivateAsync(); }
+    }
+    [Test]
+    public async Task SettlementCancelsEditorAndDrainsLatestSaveWithoutSelfAwait()
+    {
+        var track = new InstrumentalTrack { KeyFiles = new() { ["C4"] = "piano.wav" } };
         var messenger = new WeakReferenceMessenger(); var dialogs = new StubInstrumentalTrackDialogService(); var saves = new DelayedProjectFileService();
         var audio = new StubWorkstationAudioService();
         var entered = new TaskCompletionSource<InstrumentalTrackContext>();
@@ -84,7 +122,7 @@ public class WorkstationInstrumentalEditingTests
     [Test]
     public async Task PlacementSnapsSelectsAndRejectsStaleSessions()
     {
-        var track = new InstrumentalTrack();
+        var track = new InstrumentalTrack { KeyFiles = new() { ["C4"] = "piano.wav" } };
         var project = new ProjectData { Tracks = [track], Offsets = [0], BPMs = [137] };
         var messenger = new WeakReferenceMessenger(); var dialogs = new StubInstrumentalTrackDialogService();
         var saves = new DelayedProjectFileService(); saves.Release();

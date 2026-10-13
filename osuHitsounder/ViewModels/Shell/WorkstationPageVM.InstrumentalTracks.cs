@@ -58,8 +58,11 @@ public partial class WorkstationPageVM
         messenger.Register<InstrumentalEditorReadyMessage>(this, (_, m) =>
         { if (ActiveInstrument(m.Context) is not null) { PublishInstrumentSnapshot(); PublishInstrumentSaveState(); } });
     }
-    [RelayCommand(CanExecute = nameof(CanOpenInstrumentalEditor))]
-    private Task ViewArrangementAsync(InstrumentalTrack track) => OpenInstrumentAsync(track, true);
+    private bool CanViewArrangement(InstrumentalTrack? track) =>
+        CanOpenInstrumentalEditor && track is not null && tracks.Contains(track) && track.KeyFiles.Count > 0;
+    [RelayCommand(CanExecute = nameof(CanViewArrangement))]
+    private Task ViewArrangementAsync(InstrumentalTrack track) =>
+        CanViewArrangement(track) ? OpenInstrumentAsync(track, true) : Task.CompletedTask;
     [RelayCommand(CanExecute = nameof(CanOpenInstrumentalEditor))]
     private Task KeysMappingAsync(InstrumentalTrack track) => OpenInstrumentAsync(track, false);
     private Task OpenInstrumentAsync(InstrumentalTrack track, bool arrangement)

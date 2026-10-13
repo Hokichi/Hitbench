@@ -26,6 +26,8 @@ public class InstrumentalTrackCompositionTests
         UiControlContract.AssertStyle<osuHitsounder.Resources.CustomControls.BalloonButton>(arrangement, "OHsWorkstationInstrumentActionStyle");
         var mapping = Children(row).OfType<osuHitsounder.Resources.CustomControls.BalloonButton>().Single(b => b.ButtonText == "Keys Mapping");
         UiControlContract.AssertStyle<osuHitsounder.Resources.CustomControls.BalloonButton>(mapping, "OHsWorkstationKeysMappingStyle");
+        var sideCard = Children(row).OfType<Border>().Single(card => ReferenceEquals(card.Style, page.FindResource("OHsWorkstationInstrumentalSideCardStyle")));
+        UiControlContract.AssertStyle<Border>(sideCard, "OHsWorkstationInstrumentalSideCardStyle");
         Assert.That(Children(row).OfType<osuHitsounder.Resources.CustomControls.BeatGridView>(), Is.Empty);
         UiTestPump.Run(page.DeactivateAsync());
     }
