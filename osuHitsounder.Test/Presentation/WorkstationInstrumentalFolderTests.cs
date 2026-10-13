@@ -10,9 +10,10 @@ namespace osuHitsounder.Test.Presentation;
 
 public sealed class WorkstationInstrumentalFolderTests
 {
-    [Test] public void FolderAndNestedMappingsRoundTripWithoutMigratingLegacy()
+    [TestCase("RB/C3.wav")][TestCase(@"RB\C3.wav")]
+    public void FolderAndNestedMappingsRoundTripWithoutMigratingLegacy(string reference)
     {
-        var project = new ProjectData { Tracks = [new InstrumentalTrack { FolderName = "RB", KeyFiles = new() { ["C3"] = "RB/C3.wav" } }] };
+        var project = new ProjectData { Tracks = [new InstrumentalTrack { FolderName = "RB", KeyFiles = new() { ["C3"] = reference } }] };
         var loaded = (InstrumentalTrack)ProjectDataSerializer.Deserialize(ProjectDataSerializer.Serialize(project)).Tracks.Single();
         Assert.That(loaded.FolderName, Is.EqualTo("RB")); Assert.That(loaded.KeyFiles["C3"], Is.EqualTo("RB/C3.wav"));
         var legacy = (InstrumentalTrack)ProjectDataSerializer.Deserialize("{\"Tracks\":[{\"Kind\":\"Instrumental\",\"KeyFiles\":{\"C3\":\"old.wav\"}}]}").Tracks.Single();
@@ -100,6 +101,26 @@ public sealed class WorkstationInstrumentalFolderTests
             Assert.That(owner.HasPendingSaves, Is.True); Assert.That(owner.CanImportSample, Is.False); Assert.That(owner.CanPlaceSamples, Is.False);
             await owner.FlushSavesAsync();
             Assert.That(owner.CanImportSample, Is.True); Assert.That(owner.CanPlaceSamples, Is.True);
+        }
+        finally { await owner.DeactivateAsync(); }
+    }
+
+    [Test] public async Task AnotherNameEditRestartsDebounceBeforeMovingFolder()
+    {
+        var first = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var second = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var calls = 0;
+        var track = new InstrumentalTrack { Name = "Piano", FolderName = "Piano" };
+        var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [track], Offsets = [0], BPMs = [120] })) },
+            new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), sampleFiles: new StubSampleFileService([]), folderRenameDelay: (_, token) =>
+            { if (Interlocked.Increment(ref calls) == 1) first.TrySetResult(); else second.TrySetResult(); return Task.Delay(Timeout.Infinite, token); });
+        try
+        {
+            await owner.LoadAsync("project.json", default); owner.AcknowledgePresentationReady(owner.LoadGeneration);
+            owner.SetTrackName(track, "Soft"); await first.Task.WaitAsync(TimeSpan.FromSeconds(3));
+            owner.SetTrackName(track, "Soft Piano"); await second.Task.WaitAsync(TimeSpan.FromSeconds(3));
+            Assert.That(track.Name, Is.EqualTo("Piano"));
+            await owner.FlushSavesAsync(); Assert.That(track.Name, Is.EqualTo("Soft Piano"));
         }
         finally { await owner.DeactivateAsync(); }
     }

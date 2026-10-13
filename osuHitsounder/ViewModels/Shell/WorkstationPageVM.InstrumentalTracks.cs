@@ -161,7 +161,7 @@ public partial class WorkstationPageVM
     private void MapInstrumentKey(SetInstrumentalKeyMappingRequestedMessage m)
     {
         if (ActiveInstrument(m.Context) is not { } track) return;
-        var file = string.IsNullOrWhiteSpace(m.FileName) ? null : m.FileName;
+        var file = string.IsNullOrWhiteSpace(m.FileName) ? null : m.FileName.Replace('\\', '/');
         var error = !InstrumentalKeys.TryGetIndex(m.Key, out _) ? "Choose C1–B9." : file is not null ? SamplePaths.GetRelativePathError(file) : null;
         if (error is null && m.FolderName is { } folder && (SamplePaths.GetFolderNameError(folder) is not null ||
             tracks.OfType<InstrumentalTrack>().Any(t => t != track && string.Equals(t.FolderName, folder, StringComparison.OrdinalIgnoreCase)))) error = "Choose an unreserved sample folder.";
@@ -181,9 +181,10 @@ public partial class WorkstationPageVM
         if (error is null && tracks.OfType<InstrumentalTrack>().Any(t => t != track && string.Equals(t.FolderName, m.FolderName, StringComparison.OrdinalIgnoreCase))) error = "This sample folder belongs to another track.";
         if (error is null && m.Mappings.Any(pair => !InstrumentalKeys.TryGetIndex(pair.Key, out _) || SamplePaths.GetRelativePathError(pair.Value) is not null)) error = "Choose valid keys and sample paths.";
         if (error is not null) { InstrumentResult(m.Context, m.RequestId, false, null, error); return; }
-        var changed = track.FolderName != m.FolderName || m.Mappings.Any(pair => !track.KeyFiles.TryGetValue(pair.Key, out var old) || old != pair.Value);
+        var mappings = m.Mappings.ToDictionary(pair => pair.Key, pair => pair.Value.Replace('\\', '/'));
+        var changed = track.FolderName != m.FolderName || mappings.Any(pair => !track.KeyFiles.TryGetValue(pair.Key, out var old) || old != pair.Value);
         track.FolderName = m.FolderName;
-        foreach (var pair in m.Mappings) track.KeyFiles[pair.Key] = pair.Value;
+        foreach (var pair in mappings) track.KeyFiles[pair.Key] = pair.Value;
         InstrumentResult(m.Context, m.RequestId, changed, null);
     }
 }

@@ -99,7 +99,7 @@ public sealed partial class KeysMappingDrawerVM : ObservableObject
                 target = await files.ImportAsync(snapshot.Context.ProjectPath, SamplePaths.Resolve(snapshot.Context.ProjectPath, known), cancellation.Token, folder);
             else if (known is not null) target = known;
             cancellation.Token.ThrowIfCancellationRequested();
-            await RefreshFilesAsync([target], cancellation.Token);
+            await RefreshFilesAsync(known is null ? [] : [target], cancellation.Token);
             return await OnUiAsync(() => !closed && (!closing || allowClosing) && ApplyMapping(key, target, folder), cancellation.Token);
         }
         catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { return false; }
@@ -170,7 +170,8 @@ public sealed partial class KeysMappingDrawerVM : ObservableObject
     }
     private async Task FlushCloseAsync()
     {
-        await Task.WhenAll(operations.ToArray());
+        try { await Task.WhenAll(operations.ToArray()); }
+        catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
         foreach (var row in Rows.Where(r => r.DraftFileName != (r.FileName ?? "")).ToArray()) await CommitCoreAsync(row.Key, row.DraftFileName, default, true);
     }
     public async Task PrepareCloseAsync() { PrepareClose(); if (closeFlush is not null) await closeFlush; }

@@ -5,6 +5,17 @@ namespace osuHitsounder.Test.Services;
 
 public class NodeHistoryManagerTests
 {
+    [Test] public void FolderRenameKeepsRemovedSamplePlayableAfterRedo()
+    {
+        var history = new NodeHistoryManager();
+        var node = new Sample { FileName = "Piano/C3.wav" };
+        var track = new Track { Samples = [node] };
+        history.RecordPlacement(track, node, 0);
+        Assert.That(history.Undo([track]), Is.True);
+        history.RenameSampleFolder("Piano", "RB");
+        Assert.That(history.Redo([track]), Is.True);
+        Assert.That(track.Samples.Single().FileName, Is.EqualTo("RB/C3.wav"));
+    }
     [Test] public void RenamingPreservesCrossTrackUndoAndRedoSnapshots()
     {
         var history = new NodeHistoryManager();

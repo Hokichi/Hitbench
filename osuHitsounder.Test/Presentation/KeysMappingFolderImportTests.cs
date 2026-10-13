@@ -114,6 +114,40 @@ public sealed class KeysMappingFolderImportTests
         }, new(source), new());
     }
 
+    [Test] public async Task ClosingQueuedManualEditsFlushesDirtyDrafts()
+    {
+        var track = new InstrumentalTrack { Name = "Piano" };
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var calls = 0;
+        var files = new StubSampleFileService(["new.wav"]) { Import = async (_, _, token) =>
+        { if (Interlocked.Increment(ref calls) == 1) { entered.TrySetResult(); await Task.Delay(Timeout.Infinite, token); } return "Piano/new.wav"; } };
+        await RunOwnerAsync(track, files, async vm =>
+        {
+            vm.Rows.Single(r => r.Key == "C3").DraftFileName = "new.wav";
+            vm.Rows.Single(r => r.Key == "D3").DraftFileName = "new.wav";
+            var first = vm.CommitMappingAsync("C3", "new.wav"); await entered.Task;
+            var second = vm.CommitMappingAsync("D3", "new.wav");
+            var closing = vm.DeactivateAsync();
+            await first;
+            try { await second; } catch (OperationCanceledException) { }
+            await closing;
+            Assert.That(track.KeyFiles["C3"], Is.EqualTo("Piano/new.wav")); Assert.That(track.KeyFiles["D3"], Is.EqualTo("Piano/new.wav"));
+        }, new(source), new());
+    }
+
+    [Test] public async Task MissingManualMappingStaysMissingWhenFolderRefreshFails()
+    {
+        var track = new InstrumentalTrack { Name = "Piano" };
+        var files = new StubSampleFileService([]);
+        await RunOwnerAsync(track, files, async vm =>
+        {
+            files.List = (_, _) => Task.FromException<IReadOnlyList<string>>(new IOException("scan failed"));
+            Assert.That(await vm.CommitMappingAsync("C3", "missing.wav"), Is.True);
+            Assert.That(track.KeyFiles["C3"], Is.EqualTo("Piano/missing.wav"));
+            Assert.That(vm.Rows.Single(row => row.Key == "C3").IsMissing, Is.True);
+        }, new(source), new());
+    }
+
     private async Task RunOwnerAsync(InstrumentalTrack track, ISampleFileService files, Func<KeysMappingDrawerVM, Task> work, StubSampleFileDialogService picker, StubMappingConflictDialogService conflicts)
     {
         var messenger = new WeakReferenceMessenger(); var dialogs = new StubInstrumentalTrackDialogService();

@@ -69,11 +69,15 @@ public sealed class InstrumentalSampleFileTests
         Assert.That(File.Exists(Path.Combine(root, "Samples", folder, "C3.wav")), Is.True);
     }
 
-    [Test] public void LinkedSampleDirectoryCannotEscapeProject()
+    [TestCase(true, false)][TestCase(true, true)][TestCase(false, false)][TestCase(false, true)]
+    public void LinkedSamplesCannotEscapeProject(bool directory, bool dangling)
     {
-        var outside = Directory.CreateDirectory(Path.Combine(root, "outside")).FullName;
+        var outside = Path.Combine(root, directory ? "outside" : "outside.wav");
+        if (directory) Directory.CreateDirectory(outside); else File.WriteAllBytes(outside, [1]);
         var samples = Directory.CreateDirectory(Path.Combine(root, "Samples")).FullName;
-        Directory.CreateSymbolicLink(Path.Combine(samples, "Link"), outside);
-        Assert.Throws<ArgumentException>(() => SamplePaths.Resolve(project, "Link/C3.wav"));
+        if (directory) Directory.CreateSymbolicLink(Path.Combine(samples, "Link"), outside);
+        else File.CreateSymbolicLink(Path.Combine(samples, "Link.wav"), outside);
+        if (dangling) { if (directory) Directory.Delete(outside); else File.Delete(outside); }
+        Assert.Throws<ArgumentException>(() => SamplePaths.Resolve(project, directory ? "Link/C3.wav" : "Link.wav"));
     }
 }

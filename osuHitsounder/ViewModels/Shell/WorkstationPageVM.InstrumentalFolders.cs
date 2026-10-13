@@ -7,6 +7,7 @@ public partial class WorkstationPageVM
     private readonly Dictionary<InstrumentalTrack, string> folderNamesPending = new(ReferenceEqualityComparer.Instance);
     private Task folderWork = Task.CompletedTask;
     private bool folderRenamesActive;
+    private bool flushFolderRenames;
     private CancellationTokenSource? folderDelay;
 
     private void QueueInstrumentFolderRename(InstrumentalTrack track, string name)
@@ -23,7 +24,11 @@ public partial class WorkstationPageVM
         while (folderNamesPending.Count > 0)
         {
             folderDelay?.Dispose(); folderDelay = new();
-            try { await Task.Delay(250, folderDelay.Token); } catch (OperationCanceledException) { }
+            if (!flushFolderRenames)
+            {
+                try { await (folderRenameDelay ?? Task.Delay)(TimeSpan.FromMilliseconds(250), folderDelay.Token); }
+                catch (OperationCanceledException) when (folderDelay.IsCancellationRequested) { if (!flushFolderRenames) continue; }
+            }
             while (instrumentBusy || managingSamples || importBusy || removalBusy) await Task.Delay(25);
             var requests = folderNamesPending.ToArray(); folderNamesPending.Clear();
             foreach (var (track, name) in requests)
@@ -61,7 +66,9 @@ public partial class WorkstationPageVM
 
     public async Task SettleInstrumentalFoldersAsync()
     {
+        flushFolderRenames = true;
         folderDelay?.Cancel();
-        await folderWork;
+        try { await folderWork; }
+        finally { flushFolderRenames = false; }
     }
 }

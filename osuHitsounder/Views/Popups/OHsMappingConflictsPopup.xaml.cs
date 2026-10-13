@@ -23,7 +23,7 @@ public partial class OHsMappingConflictsPopup : BasePopup
         Loaded += (_, _) =>
         {
             sizingOwner = Owner; if (sizingOwner is not null) sizingOwner.SizeChanged += OwnerSizeChanged;
-            UpdateSize(); MoveFocus(new TraversalRequest(FocusNavigationDirection.First));
+            UpdateSize(); ConflictRows.UpdateLayout(); MoveFocus(new TraversalRequest(FocusNavigationDirection.First));
         };
         DpiChanged += (_, _) => UpdateSize();
         Closed += (_, _) => { if (sizingOwner is not null) sizingOwner.SizeChanged -= OwnerSizeChanged; };

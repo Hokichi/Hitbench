@@ -116,9 +116,12 @@ public static class ProjectDataSerializer
         if (keys is null) track["KeyFiles"]=keys=new JObject();
         if (keys is not JObject mappings) throw new InvalidDataException("Instrumental KeyFiles must be an object.");
         foreach (var pair in mappings.Properties())
+        {
             if (!InstrumentalKeys.TryGetIndex(pair.Name,out _) || pair.Value.Type!=JTokenType.String ||
                 SamplePaths.GetRelativePathError(pair.Value.Value<string>()!) is not null)
                 throw new InvalidDataException($"Invalid instrumental key mapping: {pair.Name}.");
+            pair.Value = pair.Value.Value<string>()!.Replace('\\', '/');
+        }
         var notes=InstrumentMember(track,"Notes");
         if (notes is null) track["Notes"]=notes=new JArray();
         if (notes is not JArray list) throw new InvalidDataException("Instrumental Notes must be an array.");

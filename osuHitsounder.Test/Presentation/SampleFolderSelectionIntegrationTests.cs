@@ -28,6 +28,10 @@ public sealed class SampleFolderSelectionIntegrationTests
             Assert.That(confirm.Style, Is.SameAs(popup.FindResource("SampleLoaderImportStyle")));
             Assert.That(confirm.ButtonText, Is.EqualTo("Select folder"));
             Assert.That(confirm.IsEnabled, Is.True); Assert.That(confirm.IsTabStop, Is.True);
+            vm.DirectoryError = "Folder unavailable"; view.UpdateLayout();
+            Assert.That(confirm.IsEnabled, Is.False);
+            vm.DirectoryError = null; view.UpdateLayout();
+            Assert.That(confirm.IsEnabled, Is.True);
             Assert.That(((CheckBox)popup.FindName("AutoPlayCheckBox")).Visibility, Is.EqualTo(Visibility.Collapsed));
             Assert.That(((Grid)popup.FindName("SelectedFileDetails")).Visibility, Is.EqualTo(Visibility.Collapsed));
             confirm.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));

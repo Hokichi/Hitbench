@@ -51,7 +51,7 @@ public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, I
     [ObservableProperty] private bool isMetadataLoading;
     [ObservableProperty] private bool isPreviewPlaying;
     [ObservableProperty] private bool isConfirming;
-    [ObservableProperty] private string? directoryError;
+    [ObservableProperty][NotifyPropertyChangedFor(nameof(CanConfirm))][NotifyPropertyChangedFor(nameof(CanImport))] private string? directoryError;
     [ObservableProperty] private string? metadataError;
     [ObservableProperty] private string? previewError;
     [ObservableProperty] private string? previewWarning;

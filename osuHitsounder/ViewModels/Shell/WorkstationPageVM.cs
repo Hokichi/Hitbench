@@ -27,7 +27,8 @@ public partial class WorkstationPageVM(
     INodePasteDialogService? nodePasteDialog = null,
     ISampleManagementDialogService? sampleManagementDialog = null,
     SampleImportBatch? sampleImports = null,
-    IInstrumentalTrackDialogService? instrumentDialogs = null) : ObservableObject
+    IInstrumentalTrackDialogService? instrumentDialogs = null,
+    Func<TimeSpan, CancellationToken, Task>? folderRenameDelay = null) : ObservableObject
 {
     private readonly IWorkstationAudioService audioService = playback.Audio;
     private bool subscribedToPlayback;
