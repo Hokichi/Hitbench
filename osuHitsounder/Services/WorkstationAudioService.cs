@@ -23,6 +23,7 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
     private ScheduledSampleMixer? mixer;
     private EventHandler<StoppedEventArgs>? playbackStoppedHandler;
     private PreparedPlaybackSchedule preparedEvents = PreparedPlaybackSchedule.Empty;
+    private ControlPointVolumeTimeline controlPoints = ControlPointVolumeTimeline.Empty;
     private DecodedAudio? preparedSong;
     private string? audioPath;
     private string? error;
@@ -74,6 +75,7 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
             audioPath = path;
             preparedSong = null;
             preparedEvents = PreparedPlaybackSchedule.Empty;
+            controlPoints = ControlPointVolumeTimeline.Empty;
             sampleCache.Clear();
             preparationGeneration++;
             error = null;
@@ -191,6 +193,17 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
             }
         }
         finally { if (acquired) preparationGate.Release(); }
+    }
+
+    public void SetControlPoints(IReadOnlyList<ControlPointVolumeSnapshot> points)
+    {
+        var timeline = new ControlPointVolumeTimeline(points);
+        lock (sync)
+        {
+            ThrowIfDisposed();
+            controlPoints = timeline;
+            mixer?.SetControlPoints(timeline);
+        }
     }
 
     private void AbandonPreparation() => mixer?.Publish(preparedEvents);
@@ -362,6 +375,7 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
             ResetPosition();
             preparedSong = null;
             preparedEvents = PreparedPlaybackSchedule.Empty;
+            controlPoints = ControlPointVolumeTimeline.Empty;
             sampleCache.Clear();
         }
         DisposeOutput(retired);
@@ -379,6 +393,7 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
             ThrowIfDisposed();
             startFrame = TimeToFrame(currentPosition);
             sessionMixer = new ScheduledSampleMixer(preparedSong!, startFrame);
+            sessionMixer.SetControlPoints(controlPoints);
             sessionMixer.SetVolumes(songVolume, samplesVolume, applicationVolume);
             sessionMixer.Publish(preparedEvents);
             sessionGeneration = generation;
@@ -410,6 +425,7 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
             if (!disposed && generation == sessionGeneration)
             {
                 sessionMixer.SetVolumes(songVolume, samplesVolume, applicationVolume);
+                sessionMixer.SetControlPoints(controlPoints);
                 sessionMixer.Publish(preparedEvents);
                 mixer = sessionMixer;
                 player = output;

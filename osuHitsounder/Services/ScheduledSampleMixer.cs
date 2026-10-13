@@ -7,6 +7,7 @@ public sealed class ScheduledSampleMixer : ISampleProvider
     private readonly DecodedAudio song;
     private readonly object sync = new();
     private PreparedPlaybackSchedule schedule = PreparedPlaybackSchedule.Empty;
+    private ControlPointVolumeTimeline controlPoints = ControlPointVolumeTimeline.Empty;
     private PlaybackGains gains = new(1, 1, 1);
     private long frame;
     private bool pending;
@@ -33,6 +34,12 @@ public sealed class ScheduledSampleMixer : ISampleProvider
 
     public void SetVolumes(float song, float samples, float application) =>
         Volatile.Write(ref gains, new PlaybackGains(Normalize(song), Normalize(samples), Normalize(application)));
+
+    public void SetControlPoints(ControlPointVolumeTimeline timeline)
+    {
+        ArgumentNullException.ThrowIfNull(timeline);
+        lock (sync) controlPoints = timeline;
+    }
 
     public int Read(float[] buffer, int offset, int count)
     {
@@ -88,11 +95,17 @@ public sealed class ScheduledSampleMixer : ISampleProvider
             if (item.StartFrame >= end) break;
             if (item.EndFrame <= start) continue;
             var overlap = Math.Max(start, item.StartFrame);
-            var length = checked((int)((Math.Min(end, item.EndFrame) - overlap) * 2));
-            var target = checked((int)((overlap - start) * 2));
-            var input = item.Audio.Samples.Slice(checked((int)((overlap - item.StartFrame) * 2)), length);
-            var gain = item.Gain * volume.Samples;
-            for (var i = 0; i < length; i++) output[target + i] += Finite(input[i]) * gain;
+            var overlapEnd = Math.Min(end, item.EndFrame);
+            while (overlap < overlapEnd)
+            {
+                var regionEnd = Math.Min(overlapEnd, controlPoints.GetNextBoundary(overlap));
+                var length = checked((int)((regionEnd - overlap) * 2));
+                var target = checked((int)((overlap - start) * 2));
+                var input = item.Audio.Samples.Slice(checked((int)((overlap - item.StartFrame) * 2)), length);
+                var gain = item.Gain * volume.Samples * controlPoints.GetGain(overlap);
+                for (var i = 0; i < length; i++) output[target + i] += Finite(input[i]) * gain;
+                overlap = regionEnd;
+            }
         }
         for (var i = 0; i < output.Length; i++) output[i] = Math.Clamp(Finite(output[i] * volume.Application), -1, 1);
     }

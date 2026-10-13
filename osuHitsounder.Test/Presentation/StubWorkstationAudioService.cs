@@ -21,6 +21,8 @@ public sealed class StubWorkstationAudioService : IWorkstationAudioService
     public int SongVolume { get; private set; } = 100;
     public int SamplesVolume { get; private set; } = 100;
     public int ApplicationVolume { get; private set; } = 100;
+    public IReadOnlyList<ControlPointVolumeSnapshot> ControlPoints { get; private set; } = [];
+    public void SetControlPoints(IReadOnlyList<ControlPointVolumeSnapshot> points) => ControlPoints = Array.AsReadOnly(points.ToArray());
     private readonly List<IReadOnlyList<SamplePlaybackEvent>> sampleUpdates = [];
     public IReadOnlyList<IReadOnlyList<SamplePlaybackEvent>> SampleUpdates { get { lock(sync) return sampleUpdates.ToArray(); } }
     public Func<CancellationToken, Task>? PrepareSamplesAsync { get; set; }
