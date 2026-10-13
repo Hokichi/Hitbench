@@ -74,7 +74,7 @@ public partial class WorkstationPageVM(
     public bool CanAddTrack => CanEditTracks && availableSamples.Count > 0;
     public bool CanRemoveTrack => !instrumentBusy && !managingSamples && !IsNodeEditBusy && CanEditTracks && !importBusy && !removalBusy && trackRemovalDialog is not null;
     public bool CanPlaceSamples => !managingSamples && !IsNodeEditBusy && CanEditTracks && Waveform is not null && !importBusy && !removalBusy;
-    public bool HasPendingSaves => instrumentBusy || managingSamples || IsNodeEditBusy || pendingZoom is not null || importBusy || removalBusy || !saveTail.IsCompleted || lastSaveError is not null;
+    public bool HasPendingSaves => !folderWork.IsCompleted || instrumentBusy || managingSamples || IsNodeEditBusy || pendingZoom is not null || importBusy || removalBusy || !saveTail.IsCompleted || lastSaveError is not null;
     [ObservableProperty] private string? saveError;
     [ObservableProperty] private bool scrollWithMarker = true;
     [ObservableProperty]
@@ -188,6 +188,7 @@ public partial class WorkstationPageVM(
         await SettleInstrumentalEditorAsync();
         await DrainProjectSaveQueueAsync();
         await SettleSampleManagerAsync();
+        await SettleInstrumentalFoldersAsync();
         sampleSession = Guid.NewGuid();
         instrumentIds.Clear(); instrumentNoteIds.Clear(); instrumentEventIds.Clear(); instrumentRevision=0;
         ResetNodeEditing();
@@ -214,6 +215,7 @@ public partial class WorkstationPageVM(
         if (deactivated) return;
         await SettleInstrumentalEditorAsync();
         await SettleSampleManagerAsync();
+        await SettleInstrumentalFoldersAsync();
         deactivated = true;
         ResetNodeEditing();
         history.Clear();
@@ -548,7 +550,10 @@ public partial class WorkstationPageVM(
 
     public void SetTrackName(Track track, string name)
     {
-        if (!CanEditTracks || !tracks.Contains(track) || string.Equals(track.Name, name, StringComparison.Ordinal)) return;
+        if (!CanEditTracks || !tracks.Contains(track)) return;
+        if (track is InstrumentalTrack instrument && instrument.FolderName.Length > 0 && sampleFiles is not null)
+        { QueueInstrumentFolderRename(instrument, name); return; }
+        if (string.Equals(track.Name, name, StringComparison.Ordinal)) return;
         track.Name = name;
         QueueSave();
         instrumentRevision++; PublishInstrumentSnapshot();
@@ -656,6 +661,7 @@ public partial class WorkstationPageVM(
     {
         if(instrumentWorkflow is { } workflow) await workflow;
         if (activeManager is not null) await activeManager;
+        await SettleInstrumentalFoldersAsync();
         await sampleChangeNotifications;
         CommitPendingZoom();
         if (activeImport is not null) await activeImport;
@@ -695,6 +701,7 @@ public partial class WorkstationPageVM(
         if (deactivated || IsReturning || token.IsCancellationRequested) return false;
         await SettleInstrumentalEditorAsync();
         await SettleSampleManagerAsync();
+        await SettleInstrumentalFoldersAsync();
         IsReturning = true;
         var prepared = false;
         try

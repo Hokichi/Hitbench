@@ -104,6 +104,10 @@ public static class ProjectDataSerializer
     }
     private static void NormalizeInstrument(JObject track)
     {
+        var folder = InstrumentMember(track, "FolderName");
+        if (folder is null) track["FolderName"] = "";
+        else if (folder.Type != JTokenType.String || folder.Value<string>() is { Length: > 0 } folderName && SamplePaths.GetFolderNameError(folderName) is not null)
+            throw new InvalidDataException("Instrumental FolderName must be a safe single directory name.");
         foreach (var name in new[] { "Sampleset","Addition","SampleType","SelectedSampleFileName","Samples" }) InstrumentMember(track,name);
         track["Sampleset"]="Soft"; track["Addition"]="None"; track["SampleType"]=3; track["SelectedSampleFileName"]=null;
         if (track["Samples"] is JArray inherited && inherited.Count==0 || track["Samples"] is null) track["Samples"]=new JArray();
@@ -113,7 +117,7 @@ public static class ProjectDataSerializer
         if (keys is not JObject mappings) throw new InvalidDataException("Instrumental KeyFiles must be an object.");
         foreach (var pair in mappings.Properties())
             if (!InstrumentalKeys.TryGetIndex(pair.Name,out _) || pair.Value.Type!=JTokenType.String ||
-                SampleFileNames.GetFileNameError(pair.Value.Value<string>()!) is not null)
+                SamplePaths.GetRelativePathError(pair.Value.Value<string>()!) is not null)
                 throw new InvalidDataException($"Invalid instrumental key mapping: {pair.Name}.");
         var notes=InstrumentMember(track,"Notes");
         if (notes is null) track["Notes"]=notes=new JArray();

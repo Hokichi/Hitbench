@@ -140,4 +140,13 @@ public sealed class NodeHistoryManager
             stack.Clear(); foreach (var batch in batches) stack.Push(batch);
         }
     }
+
+    public void RenameSampleFolder(string oldFolderName, string newFolderName)
+    {
+        var prefix = oldFolderName + "/";
+        var names = undo.Concat(redo).SelectMany(batch => batch)
+            .SelectMany(entry => new[] { entry.Sample.FileName, entry.PreviousFileName, entry.NextFileName })
+            .OfType<string>().Where(name => name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        foreach (var name in names) RenameSample(name, newFolderName + "/" + name[prefix.Length..]);
+    }
 }

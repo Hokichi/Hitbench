@@ -55,18 +55,18 @@ public class KeysMappingDrawerVMTests
          sampleFiles: files, messenger: messenger, instrumentDialogs: dialogs);
         dialogs.Mapping = async (snapshot, token) =>
         {
-            files.List = (_, _) => folderScanFails ? Task.FromException<IReadOnlyList<string>>(new IOException("scan failed")) : Task.FromResult<IReadOnlyList<string>>(["old.wav", "new.wav"]);
+            files.List = (_, _) => folderScanFails ? Task.FromException<IReadOnlyList<string>>(new IOException("scan failed")) : Task.FromResult<IReadOnlyList<string>>(["old.wav", "Instrumental/new.wav"]);
             var vm = new KeysMappingDrawerVM(snapshot, messenger, new ImmediateUiScheduler(), files, new StubSampleFileDialogService("new.wav"));
             try
             {
                 Assert.That(vm.Rows.Count, Is.EqualTo(108));
-                Assert.That(vm.CommitMapping("C1", "../bad.wav"), Is.False);
+                Assert.That(await vm.CommitMappingAsync("C1", "../bad.wav"), Is.False);
                 Assert.That(track.KeyFiles["C1"], Is.EqualTo("old.wav"));
-                await vm.OpenKeyAsync("C1", token); Assert.That(track.KeyFiles["C1"], Is.EqualTo("new.wav"));
-                Assert.That(owner.SampleFiles, Does.Contain("new.wav"));
+                await vm.OpenKeyAsync("C1", token); Assert.That(track.KeyFiles["C1"], Is.EqualTo("Instrumental/new.wav"));
+                Assert.That(owner.SampleFiles, Does.Contain("Instrumental/new.wav"));
                 Assert.That(vm.Rows[0].IsMissing, Is.False);
                 if (folderScanFails) Assert.That(vm.ErrorMessage, Does.Contain("could not refresh"));
-                vm.Rows[0].DraftFileName = ""; vm.PrepareClose(); Assert.That(track.KeyFiles.ContainsKey("C1"), Is.False);
+                vm.Rows[0].DraftFileName = ""; await vm.PrepareCloseAsync(); Assert.That(track.KeyFiles.ContainsKey("C1"), Is.False);
             }
             finally { await vm.DeactivateAsync(); }
         };

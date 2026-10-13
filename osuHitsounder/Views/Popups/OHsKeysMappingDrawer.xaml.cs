@@ -32,10 +32,12 @@ public partial class OHsKeysMappingDrawer : UserControl, IOHsShellDrawer
     internal bool HandleNavigationKey(Key key, Key systemKey, ModifierKeys modifiers) =>
         HandleNavigationKey(key == Key.System ? systemKey : key, modifiers);
     private void OnCloseClick(object sender, RoutedEventArgs e) { if (CanDismiss) CloseRequested?.Invoke(this, EventArgs.Empty); }
-    private void OnMappingLostFocus(object sender, KeyboardFocusChangedEventArgs e)
-    { if (sender is TextBox { DataContext: KeyMappingEntry row } input) viewModel.CommitMapping(row.Key, input.Text); }
-    private void OnMappingKeyDown(object sender, KeyEventArgs e)
-    { if (e.Key == Key.Enter && sender is TextBox { DataContext: KeyMappingEntry row } input) { e.Handled = true; viewModel.CommitMapping(row.Key, input.Text); } }
+    private async void OnMappingLostFocus(object sender, KeyboardFocusChangedEventArgs e)
+    { if (sender is TextBox { DataContext: KeyMappingEntry row } input) await CommitInputAsync(row.Key, input.Text); }
+    private async void OnMappingKeyDown(object sender, KeyEventArgs e)
+    { if (e.Key == Key.Enter && sender is TextBox { DataContext: KeyMappingEntry row } input) { e.Handled = true; await CommitInputAsync(row.Key, input.Text); } }
+    private async Task CommitInputAsync(string key, string text)
+    { try { await viewModel.CommitMappingAsync(key, text); } catch (OperationCanceledException) { } catch (Exception error) { viewModel.ErrorMessage = error.Message; } }
     protected override void OnPreviewKeyDown(KeyEventArgs e)
     {
         if (e.Key == Key.Escape) { e.Handled = true; if (CanDismiss) CloseRequested?.Invoke(this, EventArgs.Empty); return; }

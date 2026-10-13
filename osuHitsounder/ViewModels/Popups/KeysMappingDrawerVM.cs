@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
@@ -19,8 +20,9 @@ public sealed partial class KeysMappingDrawerVM : ObservableObject
     private readonly ISampleFileService files;
     private readonly ISampleFileDialogService picker;
     private readonly CancellationTokenSource lifetime = new();
-    private Task? import;
-    private Task? deactivation;
+    private readonly HashSet<Task> operations = [];
+    private readonly SemaphoreSlim edits = new(1, 1);
+    private Task? deactivation, closeFlush;
     private bool closed, closing, pickerActive;
     private long saveVersion = -1;
     private Guid pendingId;
@@ -45,7 +47,8 @@ public sealed partial class KeysMappingDrawerVM : ObservableObject
         messenger.Register<InstrumentalEditResultMessage>(this, (_, m) =>
         {
             if (closed || m.Context != snapshot.Context || m.RequestId != pendingId) return;
-            accepted = m.Error is null; var row = Rows.FirstOrDefault(r => r.Key == pendingKey);
+            accepted = m.Error is null;
+            var row = Rows.FirstOrDefault(r => r.Key == pendingKey);
             if (row is not null) { row.Error = m.Error; if (accepted) row.DraftFileName = row.FileName ?? ""; }
         });
         messenger.Register<InstrumentalSaveStateChangedMessage>(this, (_, m) =>
@@ -62,23 +65,54 @@ public sealed partial class KeysMappingDrawerVM : ObservableObject
             row.IsMissing = name is not null && next.AvailableFiles is not null && !next.AvailableFiles.Contains(name, StringComparer.OrdinalIgnoreCase);
         }
     }
-    public bool CommitMapping(string key, string draft)
+    private bool ApplyMapping(string key, string? name, string? folderName)
     {
-        if (closed) return false;
-        var row = Rows.FirstOrDefault(r => r.Key == key); if (row is null) return false;
-        var name = string.IsNullOrWhiteSpace(draft) ? null : draft;
-        var error = name is null ? null : SampleFileNames.GetFileNameError(name);
-        if (error is not null) { row.Error = error + " Previous mapping is retained."; return false; }
         pendingId = Guid.NewGuid(); pendingKey = key; accepted = false;
-        messenger.Send(new SetInstrumentalKeyMappingRequestedMessage(snapshot.Context, pendingId, key, name));
+        messenger.Send(new SetInstrumentalKeyMappingRequestedMessage(snapshot.Context, pendingId, key, name, folderName));
         return accepted;
     }
+    public Task<bool> CommitMappingAsync(string key, string draft, CancellationToken token = default) => OwnAsync(() => CommitCoreAsync(key, draft, token));
+    private async Task<bool> CommitCoreAsync(string key, string draft, CancellationToken token, bool allowClosing = false)
+    {
+        if (closed || closing && !allowClosing) return false;
+        var row = Rows.FirstOrDefault(r => r.Key == key); if (row is null) return false;
+        var name = string.IsNullOrWhiteSpace(draft) ? null : draft.Replace('\\', '/');
+        var error = name is null ? null : SamplePaths.GetRelativePathError(name);
+        if (error is not null) { row.Error = error + " Previous mapping is retained."; return false; }
+        if (name == row.FileName) return true;
+        if (name is null) return ApplyMapping(key, null, null);
+        using var cancellation = allowClosing ? CancellationTokenSource.CreateLinkedTokenSource(token) : CancellationTokenSource.CreateLinkedTokenSource(token, lifetime.Token);
+        var created = "";
+        await edits.WaitAsync(cancellation.Token);
+        IsBusy = true;
+        try
+        {
+            var folder = await files.EnsureFolderAsync(snapshot.Context.ProjectPath, snapshot.Name, snapshot.FolderName, snapshot.ReservedFolderNames, cancellation.Token);
+            if (snapshot.FolderName.Length == 0) created = folder;
+            var target = folder + "/" + Path.GetFileName(name);
+            var known = (snapshot.AvailableFiles ?? []).FirstOrDefault(f => string.Equals(f, target, StringComparison.OrdinalIgnoreCase))
+                ?? (snapshot.AvailableFiles ?? []).FirstOrDefault(f => string.Equals(f, name, StringComparison.OrdinalIgnoreCase));
+            if (known is not null && !string.Equals(known, target, StringComparison.OrdinalIgnoreCase))
+                target = await files.ImportAsync(snapshot.Context.ProjectPath, SamplePaths.Resolve(snapshot.Context.ProjectPath, known), cancellation.Token, folder);
+            else if (known is not null) target = known;
+            cancellation.Token.ThrowIfCancellationRequested();
+            await RefreshFilesAsync([target], cancellation.Token);
+            return await OnUiAsync(() => !closed && (!closing || allowClosing) && ApplyMapping(key, target, folder), cancellation.Token);
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { return false; }
+        catch (Exception failure) { row.Error = failure.Message + " Previous mapping is retained."; return false; }
+        finally
+        {
+            if (created.Length > 0 && snapshot.FolderName.Length == 0) await CleanupFolderAsync(created);
+            IsBusy = false; edits.Release(); OnPropertyChanged(nameof(CanClose));
+        }
+    }
     [RelayCommand(CanExecute = nameof(CanOpenKey))]
-    public Task OpenKeyAsync(string key, CancellationToken token) => CanOpenKey ? import = ImportKeyAsync(key, token) : Task.CompletedTask;
+    public Task OpenKeyAsync(string key, CancellationToken token) => CanOpenKey ? OwnAsync(() => ImportKeyAsync(key, token)) : Task.CompletedTask;
     private async Task ImportKeyAsync(string key, CancellationToken token)
     {
         using var cancel = CancellationTokenSource.CreateLinkedTokenSource(token, lifetime.Token);
-        IsBusy = true; ErrorMessage = null;
+        var created = ""; IsBusy = true; ErrorMessage = null;
         try
         {
             pickerActive = true; OnPropertyChanged(nameof(CanClose));
@@ -87,34 +121,60 @@ public sealed partial class KeysMappingDrawerVM : ObservableObject
             finally { pickerActive = false; OnPropertyChanged(nameof(CanClose)); }
             cancel.Token.ThrowIfCancellationRequested(); if (selected.Count == 0) return;
             if (selected.Count != 1) throw new InvalidOperationException("Select one file for this key.");
-            var name = await files.ImportAsync(snapshot.Context.ProjectPath, selected[0], cancel.Token);
+            var folder = await files.EnsureFolderAsync(snapshot.Context.ProjectPath, snapshot.Name, snapshot.FolderName, snapshot.ReservedFolderNames, cancel.Token);
+            if (snapshot.FolderName.Length == 0) created = folder;
+            var name = await files.ImportAsync(snapshot.Context.ProjectPath, selected[0], cancel.Token, folder);
             cancel.Token.ThrowIfCancellationRequested();
-            IReadOnlyList<string>? choices = null;
-            try { choices = await files.ListAsync(snapshot.Context.ProjectPath, cancel.Token); }
-            catch (OperationCanceledException) { throw; }
-            catch (Exception error) { ErrorMessage = "Imported sample; could not refresh folder: " + error.Message; }
-            await scheduler.InvokeAsync(() =>
-            {
-                if (closed || closing || cancel.IsCancellationRequested) return;
-                var known = choices ?? (snapshot.AvailableFiles ?? []).Append(name).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
-                messenger.Send(new ProjectSamplesChangedMessage(new(snapshot.Context.ProjectPath, snapshot.Context.InitialDirectory, snapshot.Context.ProjectSessionId), known));
-                CommitMapping(key, name);
-            }, cancel.Token);
+            await RefreshFilesAsync([name], cancel.Token);
+            await scheduler.InvokeAsync(() => { if (!closed && !closing && !cancel.IsCancellationRequested) ApplyMapping(key, name, folder); }, cancel.Token);
         }
         catch (OperationCanceledException) when (cancel.IsCancellationRequested) { }
         catch (Exception error) { ErrorMessage = error.Message; }
-        finally { IsBusy = false; OnPropertyChanged(nameof(CanClose)); }
+        finally
+        {
+            if (created.Length > 0 && snapshot.FolderName.Length == 0) await CleanupFolderAsync(created);
+            IsBusy = false; OnPropertyChanged(nameof(CanClose));
+        }
+    }
+    private async Task RefreshFilesAsync(IReadOnlyList<string> imported, CancellationToken token)
+    {
+        IReadOnlyList<string> known;
+        try { known = await files.ListAsync(snapshot.Context.ProjectPath, token); }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception error) { ErrorMessage = "Imported sample; could not refresh folder: " + error.Message; known = (snapshot.AvailableFiles ?? []).Concat(imported).Distinct(StringComparer.OrdinalIgnoreCase).ToArray(); }
+        await scheduler.InvokeAsync(() => { if (!closed) messenger.Send(new ProjectSamplesChangedMessage(new(snapshot.Context.ProjectPath, snapshot.Context.InitialDirectory, snapshot.Context.ProjectSessionId), known)); }, token);
+    }
+    private async Task CleanupFolderAsync(string folder)
+    { try { await files.DeleteEmptyFolderAsync(snapshot.Context.ProjectPath, folder, CancellationToken.None); } catch (Exception error) { ErrorMessage = "Could not remove empty sample folder: " + error.Message; } }
+    private async Task<bool> OnUiAsync(Func<bool> action, CancellationToken token)
+    { var result = false; await scheduler.InvokeAsync(() => result = action(), token); return result; }
+    private async Task<T> OwnAsync<T>(Func<Task<T>> action)
+    {
+        if (closed || closing) return default!;
+        var task = action(); operations.Add(task);
+        try { return await task; } finally { operations.Remove(task); }
+    }
+    private async Task OwnAsync(Func<Task> action)
+    {
+        if (closed || closing) return;
+        var task = action(); operations.Add(task);
+        try { await task; } finally { operations.Remove(task); }
     }
     public void PrepareClose()
     {
-        if (closed) return; closing = true; lifetime.Cancel(); OnPropertyChanged(nameof(CanEditMapping));
-        foreach (var row in Rows.Where(r => r.DraftFileName != (r.FileName ?? ""))) CommitMapping(row.Key, row.DraftFileName);
+        if (closed || closing) return; closing = true; lifetime.Cancel(); OnPropertyChanged(nameof(CanEditMapping));
+        closeFlush = FlushCloseAsync();
     }
+    private async Task FlushCloseAsync()
+    {
+        await Task.WhenAll(operations.ToArray());
+        foreach (var row in Rows.Where(r => r.DraftFileName != (r.FileName ?? "")).ToArray()) await CommitCoreAsync(row.Key, row.DraftFileName, default, true);
+    }
+    public async Task PrepareCloseAsync() { PrepareClose(); if (closeFlush is not null) await closeFlush; }
     public Task DeactivateAsync() => deactivation ??= DeactivateCoreAsync();
     private async Task DeactivateCoreAsync()
     {
-        PrepareClose(); closed = true; messenger.UnregisterAll(this);
-        try { if (import is not null) await import; }
-        finally { lifetime.Dispose(); }
+        try { await PrepareCloseAsync(); }
+        finally { closed = true; messenger.UnregisterAll(this); edits.Dispose(); lifetime.Dispose(); }
     }
 }

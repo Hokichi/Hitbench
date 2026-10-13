@@ -36,7 +36,8 @@ public partial class WorkstationPageVM
     private InstrumentalNoteSnapshot[] NoteSnapshots(InstrumentalTrack track) =>
         track.Notes.Select(n => new InstrumentalNoteSnapshot(InstrumentNoteId(n), n.Key, n.Timestamp, n.Volume)).ToArray();
     private InstrumentalTrackSnapshot InstrumentSnapshot(InstrumentalTrack track, InstrumentalTrackContext context) =>
-        new(context, track.Name, track.Volume, track.KeyFiles, NoteSnapshots(track), sampleFiles is null ? null : availableSamples.ToArray(), instrumentRevision);
+        new(context, track.Name, track.Volume, track.KeyFiles, NoteSnapshots(track), sampleFiles is null ? null : availableSamples.ToArray(), instrumentRevision, track.FolderName,
+            tracks.OfType<InstrumentalTrack>().Where(t => t != track && t.FolderName.Length > 0).Select(t => t.FolderName).ToArray());
     private void PublishInstrumentSnapshot()
     {
         if (activeInstrumentContext is { } context && ActiveInstrument(context) is { } track)
@@ -65,15 +66,16 @@ public partial class WorkstationPageVM
         CanViewArrangement(track) ? OpenInstrumentAsync(track, true) : Task.CompletedTask;
     [RelayCommand(CanExecute = nameof(CanOpenInstrumentalEditor))]
     private Task KeysMappingAsync(InstrumentalTrack track) => OpenInstrumentAsync(track, false);
-    private Task OpenInstrumentAsync(InstrumentalTrack track, bool arrangement)
+    private async Task OpenInstrumentAsync(InstrumentalTrack track, bool arrangement)
     {
-        if (!CanOpenInstrumentalEditor || !tracks.Contains(track) || projectPath is null) return Task.CompletedTask;
+        await SettleInstrumentalFoldersAsync();
+        if (!CanOpenInstrumentalEditor || !tracks.Contains(track) || projectPath is null) return;
         instrumentBusy = true;
         instrumentCancellation?.Dispose();
         instrumentCancellation = CancellationTokenSource.CreateLinkedTokenSource(loadCancellation?.Token ?? default);
         activeInstrumentContext = new(projectPath, Project!.BeatmapPath, sampleSession, Guid.NewGuid(), InstrumentId(track));
         NotifyInstrumentState();
-        return instrumentWorkflow = RunInstrumentWorkflowAsync(track, arrangement, activeInstrumentContext, instrumentCancellation.Token);
+        await (instrumentWorkflow = RunInstrumentWorkflowAsync(track, arrangement, activeInstrumentContext, instrumentCancellation.Token));
     }
     private async Task RunInstrumentWorkflowAsync(InstrumentalTrack track, bool arrangement, InstrumentalTrackContext context, CancellationToken token)
     {
@@ -159,11 +161,14 @@ public partial class WorkstationPageVM
     {
         if (ActiveInstrument(m.Context) is not { } track) return;
         var file = string.IsNullOrWhiteSpace(m.FileName) ? null : m.FileName;
-        var error = !InstrumentalKeys.TryGetIndex(m.Key, out _) ? "Choose C1–B9." : file is not null ? SampleFileNames.GetFileNameError(file) : null;
+        var error = !InstrumentalKeys.TryGetIndex(m.Key, out _) ? "Choose C1–B9." : file is not null ? SamplePaths.GetRelativePathError(file) : null;
+        if (error is null && m.FolderName is { } folder && (SamplePaths.GetFolderNameError(folder) is not null ||
+            tracks.OfType<InstrumentalTrack>().Any(t => t != track && string.Equals(t.FolderName, folder, StringComparison.OrdinalIgnoreCase)))) error = "Choose an unreserved sample folder.";
         if (error is not null) { InstrumentResult(m.Context, m.RequestId, false, null, error); return; }
         if (file is not null) file = availableSamples.FirstOrDefault(n => string.Equals(n, file, StringComparison.OrdinalIgnoreCase)) ?? file;
         track.KeyFiles.TryGetValue(m.Key, out var old);
-        var changed = old != file;
+        var changed = old != file || m.FolderName is not null && track.FolderName != m.FolderName;
+        if (m.FolderName is not null) track.FolderName = m.FolderName;
         if (changed) { if (file is null) track.KeyFiles.Remove(m.Key); else track.KeyFiles[m.Key] = file; }
         InstrumentResult(m.Context, m.RequestId, changed, null);
     }
