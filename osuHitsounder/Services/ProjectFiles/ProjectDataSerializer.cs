@@ -34,6 +34,7 @@ public static class ProjectDataSerializer
             root["Tracks"] = tracks;
         }
         root.Remove("Samples");
+        NormalizeControlPoints(root);
 
         if (root["Tracks"] is JArray trackNodes)
         {
@@ -142,6 +143,27 @@ public static class ProjectDataSerializer
         value?.Type==JTokenType.Integer && long.TryParse(value.ToString(Formatting.None),
             System.Globalization.NumberStyles.Integer,System.Globalization.CultureInfo.InvariantCulture,out var number) &&
         number>=0 && number<=maximum;
+
+    private static void NormalizeControlPoints(JObject root)
+    {
+        var value = InstrumentMember(root, nameof(ProjectData.ControlPoints));
+        if (value is null or { Type: JTokenType.Null })
+        { root[nameof(ProjectData.ControlPoints)] = new JArray(); return; }
+        if (value is not JArray points) throw new InvalidDataException("ControlPoints must be an array of objects.");
+        foreach (var item in points)
+        {
+            if (item is not JObject point) throw new InvalidDataException("Control point must be an object.");
+            var time = InstrumentMember(point, nameof(ControlPoint.Timestamp));
+            var volume = InstrumentMember(point, nameof(ControlPoint.Volume));
+            var sampleset = InstrumentMember(point, nameof(ControlPoint.Sampleset));
+            if (!IsIntegerInRange(time, int.MaxValue)) throw new InvalidDataException("Control point Timestamp must be a nonnegative integer.");
+            if (volume is null) point[nameof(ControlPoint.Volume)] = 100;
+            else if (!IsIntegerInRange(volume, 100)) throw new InvalidDataException("Control point Volume must be an integer from 0 to 100.");
+            if (sampleset is null or { Type: JTokenType.Null }) point[nameof(ControlPoint.Sampleset)] = "Normal";
+            else if (sampleset.Type != JTokenType.String || !Track.SamplesetOptions.Contains(sampleset.Value<string>()!))
+                throw new InvalidDataException("Control point Sampleset must be Normal, Soft, or Drum.");
+        }
+    }
 
     private static void NormalizeTrackOption(JObject track, string property, string defaultValue, IReadOnlyList<string> options)
     {

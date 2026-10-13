@@ -1,0 +1,3 @@
+namespace osuHitsounder.Core.Entities;
+
+public sealed record ControlPointVolumeSnapshot(int Timestamp, int Volume);
