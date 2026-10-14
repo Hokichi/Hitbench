@@ -135,7 +135,7 @@ public sealed partial class ManageSamplesPopupVM(SampleManagementContext context
     public async Task InitializeAsync(CancellationToken token)
     {
         lifetime.Dispose(); lifetime = CancellationTokenSource.CreateLinkedTokenSource(token);
-        try { var names = await files.ListAsync(Context.ProjectPath, lifetime.Token); lifetime.Token.ThrowIfCancellationRequested(); Replace(names); await PublishAsync(); }
+        try { var names = await files.ListAsync(Context.ProjectPath, lifetime.Token, includeSubfolders: false); lifetime.Token.ThrowIfCancellationRequested(); Replace(names); await PublishAsync(); }
         catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
         catch (Exception error) { ErrorMessage = error.Message; }
     }
@@ -149,10 +149,10 @@ public sealed partial class ManageSamplesPopupVM(SampleManagementContext context
         NotifyEditingState();
     }
     private Task PublishAsync(string? oldName = null, string? newName = null) => scheduler.InvokeAsync(() =>
-        messenger.Send(new ProjectSamplesChangedMessage(Context, Entries.Select(e => e.FileName).ToArray(), oldName, newName)), CancellationToken.None);
+        messenger.Send(new ProjectSamplesChangedMessage(Context, Entries.Select(e => e.FileName).ToArray(), oldName, newName, includesSubfolders: false)), CancellationToken.None);
     private async Task RefreshAsync()
     {
-        try { lifetime.Token.ThrowIfCancellationRequested(); var names = await files.ListAsync(Context.ProjectPath, lifetime.Token); var changed = !Entries.Select(e => e.FileName).SequenceEqual(names); Replace(names); if (changed) await PublishAsync(); }
+        try { lifetime.Token.ThrowIfCancellationRequested(); var names = await files.ListAsync(Context.ProjectPath, lifetime.Token, includeSubfolders: false); var changed = !Entries.Select(e => e.FileName).SequenceEqual(names); Replace(names); if (changed) await PublishAsync(); }
         catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
         catch (Exception error) { ErrorMessage = $"Could not refresh samples: {error.Message}"; }
     }

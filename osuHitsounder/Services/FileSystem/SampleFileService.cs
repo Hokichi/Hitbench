@@ -29,11 +29,11 @@ public sealed class SampleFileService : ISampleFileService
         File.Delete(SamplePaths.Resolve(projectPath, fileName)); return true;
     }, token);
 
-    public Task<IReadOnlyList<string>> ListAsync(string projectPath, CancellationToken token) => Task.Run<IReadOnlyList<string>>(() =>
+    public Task<IReadOnlyList<string>> ListAsync(string projectPath, CancellationToken token, bool includeSubfolders = true) => Task.Run<IReadOnlyList<string>>(() =>
     {
         token.ThrowIfCancellationRequested();
         var root = SamplePaths.Root(projectPath); Directory.CreateDirectory(root);
-        var paths = Directory.EnumerateFiles(root, "*", new EnumerationOptions { RecurseSubdirectories = true, AttributesToSkip = FileAttributes.ReparsePoint, IgnoreInaccessible = false });
+        var paths = Directory.EnumerateFiles(root, "*", new EnumerationOptions { RecurseSubdirectories = includeSubfolders, AttributesToSkip = FileAttributes.ReparsePoint, IgnoreInaccessible = false });
         return paths.Where(path => Extensions.Contains(Path.GetExtension(path)))
             .Select(path => { token.ThrowIfCancellationRequested(); return SamplePaths.Relative(projectPath, path); })
             .OrderBy(name => name, StringComparer.OrdinalIgnoreCase).ThenBy(name => name, StringComparer.Ordinal).ToArray();

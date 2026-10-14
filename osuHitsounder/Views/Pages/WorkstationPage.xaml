@@ -703,6 +703,13 @@
             <Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="True" />
         </Style>
         <Style
+            x:Key="OHsWorkstationRefreshButtonStyle"
+            BasedOn="{StaticResource OHsWorkstationToolbarButtonStyle}"
+            TargetType="customControls:BalloonButton">
+            <Setter Property="helpers:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
+            <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
+        </Style>
+        <Style
             x:Key="OHsWorkstationManageSamplesButtonStyle"
             BasedOn="{StaticResource OHsWorkstationToolbarButtonStyle}"
             TargetType="customControls:BalloonButton">
@@ -715,13 +722,13 @@
             TargetType="customControls:BalloonButton">
             <Setter Property="ButtonIcon" Value="{StaticResource ArrowDropUpRound}" />
             <Setter Property="ButtonText" Value="Collapse all tracks" />
-            <Setter Property="ToolTip" Value="Collapse all tracks" />
+            <Setter Property="ToolTip" Value="Collapse all tracks (F4)" />
             <Setter Property="AutomationProperties.Name" Value="Collapse all tracks" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding AreTracksCollapsed, Mode=OneWay}" Value="True">
                     <Setter Property="ButtonIcon" Value="{StaticResource ArrowDropDownRound}" />
                     <Setter Property="ButtonText" Value="Expand all tracks" />
-                    <Setter Property="ToolTip" Value="Expand all tracks" />
+                    <Setter Property="ToolTip" Value="Expand all tracks (F4)" />
                     <Setter Property="AutomationProperties.Name" Value="Expand all tracks" />
                 </DataTrigger>
             </Style.Triggers>
@@ -1095,7 +1102,7 @@
         <Grid
             x:Name="WorkstationRoot"
             Margin="16,16,16,0"
-            IsEnabled="{Binding IsInteractionReady, Mode=OneWay}"
+            IsEnabled="{Binding IsWorkstationContentEnabled, Mode=OneWay}"
             SizeChanged="OnVolumeOverlayHostSizeChanged">
             <Grid x:Name="WorkstationContent" Style="{StaticResource OHsWorkstationContentStyle}">
                 <Grid.RowDefinitions>
@@ -1168,7 +1175,7 @@
                                     IsChecked="{Binding ScrollWithMarker, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                     IsEnabled="{Binding CanPlay, Mode=OneWay}"
                                     Style="{StaticResource OHsWorkstationToolbarFollowStyle}"
-                                    ToolTip="Follow the current playback marker. Selecting a node turns this off." />
+                                    ToolTip="Follow the current playback marker (F3). Selecting a node turns this off." />
                                 <customControls:BalloonButton
                                     x:Name="ResnapAllSamplesButton"
                                     Margin="0"
@@ -1246,7 +1253,7 @@
                                     IsChecked="{Binding IsSelectionMode, Mode=OneWay}"
                                     IsEnabled="{Binding CanPlaceSamples, Mode=OneWay}"
                                     Style="{StaticResource OHsWorkstationModeButtonStyle}"
-                                    ToolTip="Selection Mode: select and drag nodes">
+                                    ToolTip="Selection Mode (1): select and drag nodes">
                                     <customControls:Icon
                                         Width="18"
                                         Height="18"
@@ -1261,7 +1268,7 @@
                                     IsChecked="{Binding IsAdditionMode, Mode=OneWay}"
                                     IsEnabled="{Binding CanPlaceSamples, Mode=OneWay}"
                                     Style="{StaticResource OHsWorkstationModeButtonStyle}"
-                                    ToolTip="Addition Mode: create nodes">
+                                    ToolTip="Addition Mode (2): create nodes">
                                     <customControls:Icon
                                         Width="18"
                                         Height="18"
@@ -1279,7 +1286,7 @@
                                     ButtonText="Manage Samples"
                                     Command="{Binding ManageSamplesCommand, Mode=OneWay}"
                                     Style="{StaticResource OHsWorkstationManageSamplesButtonStyle}"
-                                    ToolTip="Manage project samples" />
+                                    ToolTip="Manage project samples (F2)" />
                                 <customControls:BalloonButton
                                     x:Name="AddSampleTrackButton"
                                     AutomationProperties.Name="Add New Sample Track"
@@ -1287,7 +1294,7 @@
                                     ButtonText="Add New Sample Track"
                                     Command="{Binding AddSampleTrackCommand, Mode=OneWay}"
                                     Style="{StaticResource OHsWorkstationToolbarButtonStyle}"
-                                    ToolTip="Add New Sample Track" />
+                                    ToolTip="Add New Sample Track (Ctrl+N)" />
                                 <customControls:BalloonButton
                                     x:Name="AddControlPointButton"
                                     AutomationProperties.Name="Add Control Point"
@@ -1295,7 +1302,7 @@
                                     ButtonText="Add Control Point"
                                     Command="{Binding AddControlPointCommand, Mode=OneWay}"
                                     Style="{StaticResource OHsWorkstationControlPointsButtonStyle}"
-                                    ToolTip="Open Control Points" />
+                                    ToolTip="Open Control Points (F6)" />
                                 <customControls:BalloonButton
                                     x:Name="AddInstrumentButton"
                                     AutomationProperties.HelpText="Create an instrumental arrangement with mapped samples."
@@ -1304,7 +1311,15 @@
                                     ButtonText="Add New Instrument"
                                     Command="{Binding AddPianoTrackCommand, Mode=OneWay}"
                                     Style="{StaticResource OHsWorkstationAddInstrumentStyle}"
-                                    ToolTip="Add New Instrument" />
+                                    ToolTip="Add New Instrument (Ctrl+Shift+N)" />
+                                <customControls:BalloonButton
+                                    x:Name="RefreshProjectButton"
+                                    AutomationProperties.Name="Refresh Project"
+                                    ButtonIcon="{StaticResource RegularRepeat}"
+                                    ButtonText="Refresh Project"
+                                    Command="{Binding RefreshProjectCommand, Mode=OneWay}"
+                                    Style="{StaticResource OHsWorkstationRefreshButtonStyle}"
+                                    ToolTip="Refresh Project (F5)" />
                             </customControls:SpacedUniformGrid>
                         </Grid>
                     </Grid>

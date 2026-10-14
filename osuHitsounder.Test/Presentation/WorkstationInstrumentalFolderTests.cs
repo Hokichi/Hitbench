@@ -52,7 +52,7 @@ public sealed class WorkstationInstrumentalFolderTests
             Assert.That(track.Name, Is.EqualTo("Soft Piano")); Assert.That(track.FolderName, Is.EqualTo("Soft Piano"));
             Assert.That(track.KeyFiles["C3"], Is.EqualTo("Soft Piano/C3.wav"));
             Assert.That(other.Samples.Single().FileName, Is.EqualTo("Soft Piano/C3.wav"));
-            Assert.That(owner.SampleFiles, Does.Contain("Soft Piano/C3.wav"));
+            Assert.That(owner.SampleFiles, Is.EqualTo(new[] { "C3.wav" }));
             Assert.That(File.ReadAllBytes(Path.Combine(root, "Samples", "Soft Piano", "C3.wav")), Is.EqualTo(new byte[] { 3 }));
         }
         finally { await owner.DeactivateAsync(); Directory.Delete(root, true); }

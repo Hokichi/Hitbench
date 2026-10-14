@@ -180,7 +180,8 @@ public class WorkstationNodePlaceholderTests
             case "reload": UiTestPump.Run(vm.LoadAsync("project.json", CancellationToken.None)); break;
             case "deactivate": UiTestPump.Run(page.DeactivateAsync()); break;
         }
-        AssertEmptyPlaceholders(); Assert.That(vm.IsNodeDragActive, Is.False);
+        AssertEmptyPlaceholders();
+        Assert.That(vm.IsNodeDragActive, Is.EqualTo(action is "source-recycle" or "target-recycle" or "source-unload" or "target-unload"));
     }
 
     private void BeginLaterTrackDrag()

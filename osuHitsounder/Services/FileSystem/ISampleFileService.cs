@@ -2,7 +2,7 @@ namespace osuHitsounder.Services.FileSystem;
 
 public interface ISampleFileService
 {
-    Task<IReadOnlyList<string>> ListAsync(string projectPath, CancellationToken token);
+    Task<IReadOnlyList<string>> ListAsync(string projectPath, CancellationToken token, bool includeSubfolders = true);
     Task<string> ImportAsync(string projectPath, string sourcePath, CancellationToken token, string? folderName = null);
     Task<string> RenameAsync(string projectPath, string fileName, string newStem, CancellationToken token);
     Task DeleteAsync(string projectPath, string fileName, CancellationToken token);

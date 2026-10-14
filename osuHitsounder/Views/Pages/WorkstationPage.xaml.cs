@@ -207,6 +207,7 @@ public partial class WorkstationPage : UserControl
         WaveformScrollBar.Value = e.HorizontalOffset;
         ApplyPendingZoomAnchor();
         UpdateNodeAdornerGeometry();
+        if (e.HorizontalChange != 0) RefreshNodeDragAfterScroll();
     }
 
     private void OnSampleSelectorLoaded(object sender, RoutedEventArgs e)
@@ -384,6 +385,13 @@ public partial class WorkstationPage : UserControl
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(WorkstationPageVM.LoadPhase) && viewModel.LoadPhase == osuHitsounder.Services.ProjectLoadPhase.PreparingData)
+        {
+            playbackReady = false;
+            readinessCandidate = null;
+            hasPendingZoomAnchor = false;
+            CancelNodePointer();
+        }
         if (e.PropertyName == nameof(WorkstationPageVM.IsSelectionMode) && nodeSourceGrid is not null && pointerNode is null) CancelNodePointer();
         if (e.PropertyName == nameof(WorkstationPageVM.TrackAuditionRevision)) RefreshTrackAuditionControls(TrackList);
         if (!viewModel.CanPlaceSamples || nodeDragging && !viewModel.IsNodeDragActive) CancelNodePointer();
@@ -473,11 +481,14 @@ public partial class WorkstationPage : UserControl
     internal bool HandlePlaybackKey(Key key, ModifierKeys modifiers, bool isRepeat, DependencyObject? origin)
     {
         if (IsVolumeOverlayOpen) return true;
+        if (deactivationStarted) return false;
+        if (HandleWorkstationShortcut(key, modifiers, isRepeat, origin)) return true;
         if (HandleNodeKey(key, modifiers, isRepeat, origin)) return true;
-        if (deactivationStarted || !viewModel.CanPlay) return false;
+        if (!viewModel.CanPlay) return false;
         if (HandleBeatDivisorKey(key, modifiers, isRepeat, origin)) return true;
         if (modifiers == ModifierKeys.Control && key is Key.Z or Key.Y)
         {
+            if (IsTextInputOrigin(origin)) return false;
             if (!viewModel.CanPlaceSamples) return false;
             if (isRepeat) return true;
             var historyCommand = key == Key.Z ? viewModel.UndoCommand : viewModel.RedoCommand;
@@ -487,6 +498,7 @@ public partial class WorkstationPage : UserControl
         }
         if (key == Key.Space)
         {
+            if (IsTextInputOrigin(origin)) return false;
             if (modifiers is not (ModifierKeys.None or ModifierKeys.Shift)) return false;
             var transport = modifiers == ModifierKeys.Shift ? viewModel.StopCommand : viewModel.PlayPauseCommand;
             if (!transport.CanExecute(null)) return false;
@@ -513,6 +525,51 @@ public partial class WorkstationPage : UserControl
         if (!command.CanExecute(null)) return false;
         PlaybackInputCompletion = RevealAfterNavigationAsync(command.ExecuteAsync(null), FindAncestor<BeatGridView>(origin));
         return true;
+    }
+
+    private static bool IsTextInputOrigin(DependencyObject? origin) =>
+        FindAncestor<TextBoxBase>(origin) is not null || FindAncestor<PasswordBox>(origin) is not null ||
+        FindAncestor<ComboBox>(origin)?.IsEditable == true;
+
+    private bool HandleWorkstationShortcut(Key key, ModifierKeys modifiers, bool isRepeat, DependencyObject? origin)
+    {
+        if (modifiers == ModifierKeys.None && key is Key.D1 or Key.NumPad1 or Key.D2 or Key.NumPad2)
+        {
+            if (!viewModel.CanPlaceSamples || IsTextInputOrigin(origin)) return false;
+            if (!isRepeat) viewModel.IsAdditionMode = key is Key.D2 or Key.NumPad2;
+            return true;
+        }
+        if (modifiers == ModifierKeys.None && key == Key.F3)
+        {
+            if (!viewModel.CanPlay) return false;
+            if (!isRepeat) viewModel.ScrollWithMarker = !viewModel.ScrollWithMarker;
+            return true;
+        }
+        ICommand? command = (key, modifiers) switch
+        {
+            (Key.N, ModifierKeys.Control) => viewModel.AddSampleTrackCommand,
+            (Key.N, ModifierKeys.Control | ModifierKeys.Shift) => viewModel.AddPianoTrackCommand,
+            (Key.F2, ModifierKeys.None) => viewModel.ManageSamplesCommand,
+            (Key.F4, ModifierKeys.None) => viewModel.ToggleTracksCollapsedCommand,
+            (Key.F5, ModifierKeys.None) => viewModel.RefreshProjectCommand,
+            (Key.F6, ModifierKeys.None) => viewModel.AddControlPointCommand,
+            _ => null
+        };
+        if (command is null || !command.CanExecute(null)) return false;
+        if (!isRepeat)
+        {
+            if (command is CommunityToolkit.Mvvm.Input.IAsyncRelayCommand asyncCommand)
+                PlaybackInputCompletion = ObserveWorkstationInputAsync(asyncCommand.ExecuteAsync(null));
+            else command.Execute(null);
+        }
+        return true;
+    }
+
+    private static async Task ObserveWorkstationInputAsync(Task operation)
+    {
+        try { await operation; }
+        catch (OperationCanceledException) { }
+        catch (Exception error) { System.Diagnostics.Trace.TraceError("Workstation input failed: {0}", error); }
     }
 
     private static void PrepareTrackDrawings(DependencyObject parent)

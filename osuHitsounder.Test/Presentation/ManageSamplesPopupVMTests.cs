@@ -9,6 +9,18 @@ namespace osuHitsounder.Test.Presentation;
 public sealed class ManageSamplesPopupVMTests
 {
     [Test]
+    public async Task ManagerListsOnlyDirectSamples()
+    {
+        var vm = CreateManager(new StubSampleFileService(["kick.wav", "Piano/C3.wav"]));
+        try
+        {
+            await vm.InitializeAsync(default);
+            Assert.That(vm.Entries.Select(entry => entry.FileName), Is.EqualTo(new[] { "kick.wav" }));
+        }
+        finally { await vm.DeactivateAsync(); }
+    }
+
+    [Test]
     public async Task EditLocksOtherRowsAndMutations()
     {
         var files = new StubSampleFileService(["hit.wav", "kick.wav"]);

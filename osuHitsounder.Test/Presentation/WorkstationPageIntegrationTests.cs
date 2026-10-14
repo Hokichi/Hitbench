@@ -1128,9 +1128,9 @@ public class WorkstationPageIntegrationTests
         UiTestPump.Run(page.PlaybackInputCompletion);
             Assert.That(page.HandlePlaybackKey(Key.Enter, ModifierKeys.None, false, page), Is.False);
         UiTestPump.Run(page.PlaybackInputCompletion);
-            Assert.That(page.HandlePlaybackKey(Key.Space, ModifierKeys.None, false, new TextBox()), Is.True);
+            Assert.That(page.HandlePlaybackKey(Key.Space, ModifierKeys.None, false, new TextBox()), Is.False);
         UiTestPump.Run(page.PlaybackInputCompletion);
-            Assert.That(page.HandlePlaybackKey(Key.Space, ModifierKeys.None, false, new PasswordBox()), Is.True);
+            Assert.That(page.HandlePlaybackKey(Key.Space, ModifierKeys.None, false, new PasswordBox()), Is.False);
         UiTestPump.Run(page.PlaybackInputCompletion);
         });
 

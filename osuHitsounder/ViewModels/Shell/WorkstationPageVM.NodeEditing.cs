@@ -139,7 +139,7 @@ public partial class WorkstationPageVM
             if (candidate >= Waveform.Duration.TotalMilliseconds) continue;
             if (!ValidNodeTimestamp(candidate)) return RejectPaste("The copied formation does not fit within the song.");
             if (!CanEditTrackGrid(node.Track)) return RejectPaste("The original track is unavailable.");
-            if (!availableSamples.Any(file => string.Equals(file, node.FileName, StringComparison.OrdinalIgnoreCase)))
+            if (!sampleTrackFiles.Any(file => string.Equals(file, node.FileName, StringComparison.OrdinalIgnoreCase)))
                 return RejectPaste("The copied sample file is unavailable.");
             var sample = new Sample { FileName = node.FileName, Volume = node.Volume, Timestamp = (int)candidate };
             var index = nextIndexes.GetValueOrDefault(node.Track, node.Track.Samples.Count);
@@ -183,6 +183,7 @@ public partial class WorkstationPageVM
         dragAnchor = anchor;
         dragDelta = 0;
         OnPropertyChanged(nameof(IsNodeDragActive));
+        NotifyRefreshAvailability();
         return true;
     }
 
@@ -259,7 +260,7 @@ public partial class WorkstationPageVM
             entries.All(entry => ValidNodeTimestamp(entry.NextTimestamp));
         CancelNodeDrag();
         if (!valid) return false;
-        var destinationFiles = destinations.Select(track => availableSamples.FirstOrDefault(file =>
+        var destinationFiles = destinations.Select(track => sampleTrackFiles.FirstOrDefault(file =>
             string.Equals(file, track.SelectedSampleFileName, StringComparison.OrdinalIgnoreCase))).ToArray();
         if (entries.Where((entry, i) => !ReferenceEquals(entry.Track, destinations[i]) && destinationFiles[i] is null).Any())
             return RejectPaste("The destination sample file is unavailable.");
@@ -301,7 +302,11 @@ public partial class WorkstationPageVM
         var active = IsNodeDragActive;
         dragAnchor = null; dragNodes = []; dragTrackOrder = []; dragDelta = 0; DragDestinationTrack = null;
         ClearNodeDragPreview();
-        if (active) OnPropertyChanged(nameof(IsNodeDragActive));
+        if (active)
+        {
+            OnPropertyChanged(nameof(IsNodeDragActive));
+            NotifyRefreshAvailability();
+        }
     }
 
     public async Task<bool> MoveSelectedNodesAsync(bool forward)

@@ -560,7 +560,7 @@ public class WorkstationNodeInteractionTests
         UiTestPump.Run(editor.Page.DeactivateAsync());
     }
     [Test]
-    public void UnloadingSourceGridCancelsGesture()
+    public void UnloadingSourceGridPreservesModelGestureUntilCancelled()
     {
         var editor = CreateEditor(); using var view = editor.View;
         var grid = Descendants<BeatGridView>(editor.Page).First();
@@ -568,8 +568,9 @@ public class WorkstationNodeInteractionTests
         editor.Page.BeginNodePointer(grid, new Point(100, editor.Vm.TrackHeight / 2), new Point(0, 0));
         editor.Page.UpdateNodePointer(new Point(20, 20), grid, new Point(125, editor.Vm.TrackHeight / 2));
         grid.RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent, grid));
-        Assert.That(editor.Vm.IsNodeDragActive, Is.False);
+        Assert.That(editor.Vm.IsNodeDragActive, Is.True);
         Assert.That(editor.Node.Timestamp, Is.EqualTo(1000));
+        editor.Page.CancelNodePointer();
         UiTestPump.Run(editor.Page.DeactivateAsync());
     }
 }

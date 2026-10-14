@@ -63,7 +63,7 @@ public class WorkstationTrackCollapseTests
             view.UpdateLayout();
             Assert.That(vm.AreTracksCollapsed, Is.True);
             Assert.That(AutomationProperties.GetName(toggle), Is.EqualTo("Expand all tracks"));
-            Assert.That(toggle.ToolTip, Is.EqualTo("Expand all tracks"));
+            Assert.That(toggle.ToolTip, Is.EqualTo("Expand all tracks (F4)"));
             vm.IsReturning = true;
             view.UpdateLayout();
             Assert.That(sample.IsEnabled, Is.False);

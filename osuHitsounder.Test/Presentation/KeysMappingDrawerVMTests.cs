@@ -63,7 +63,7 @@ public class KeysMappingDrawerVMTests
                 Assert.That(await vm.CommitMappingAsync("C1", "../bad.wav"), Is.False);
                 Assert.That(track.KeyFiles["C1"], Is.EqualTo("old.wav"));
                 await vm.OpenKeyAsync("C1", token); Assert.That(track.KeyFiles["C1"], Is.EqualTo("Instrumental/new.wav"));
-                Assert.That(owner.SampleFiles, Does.Contain("Instrumental/new.wav"));
+                Assert.That(owner.SampleFiles, Is.EqualTo(new[] { "old.wav" }));
                 Assert.That(vm.Rows[0].IsMissing, Is.False);
                 if (folderScanFails) Assert.That(vm.ErrorMessage, Does.Contain("could not refresh"));
                 vm.Rows[0].DraftFileName = ""; await vm.PrepareCloseAsync(); Assert.That(track.KeyFiles.ContainsKey("C1"), Is.False);

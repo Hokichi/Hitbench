@@ -93,6 +93,7 @@ public partial class WorkstationPage
     internal bool HandleContextWheel(ModifierKeys modifiers, int delta, DependencyObject? origin)
     {
         if (IsVolumeOverlayOpen && modifiers == ModifierKeys.None && IsVolumeOverlayElement(origin)) return false;
+        if (!IsVolumeOverlayOpen && HandleNodeDragWheel(modifiers, delta)) return true;
         if (modifiers != ModifierKeys.Alt)
         {
             volumeWheelRemainder = 0;

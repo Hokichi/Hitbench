@@ -10,6 +10,54 @@ namespace osuHitsounder.Test.Presentation;
 public sealed class WorkstationSampleManagementTests
 {
     [Test]
+    public async Task ScopedNotificationsKeepRootChoicesAndNestedInstrumentAvailabilitySeparate()
+    {
+        var instrument = new osuHitsounder.Core.Entities.InstrumentalTrack
+        {
+            KeyFiles = new() { ["C3"] = "Piano/C3.wav" }, Notes = [new() { Key = "C3", Timestamp = 125 }]
+        };
+        var sample = new osuHitsounder.Core.Entities.Track { SelectedSampleFileName = "Piano/C3.wav" };
+        var project = new osuHitsounder.Core.Entities.ProjectData { Tracks = [sample, instrument], Offsets = [0], BPMs = [120] };
+        var messenger = new WeakReferenceMessenger();
+        var audio = new StubWorkstationAudioService();
+        var manager = new StubSampleManagementDialogService();
+        var dialogs = new StubInstrumentalTrackDialogService();
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new osuHitsounder.Core.Entities.WorkstationSource("map", "song", project)) },
+            new MarkerPlaybackCoordinator(audio, Task.Delay), new ImmediateUiScheduler(), new StubSampleFileService(["kick.wav", "Piano/C3.wav"]),
+            new StubSampleFileDialogService([]), messenger: messenger, sampleManagementDialog: manager, instrumentDialogs: dialogs);
+        try
+        {
+            await vm.LoadAsync("project.json", default); vm.AcknowledgePresentationReady(vm.LoadGeneration);
+            Assert.That(vm.SampleFiles, Is.EqualTo(new[] { "kick.wav" }));
+            Assert.That(sample.SelectedSampleFileName, Is.EqualTo("Piano/C3.wav"));
+            Assert.That(vm.GetSampleAvailability(sample), Is.EqualTo(TrackSampleAvailability.Missing));
+            manager.Present = (context, _) =>
+            {
+                messenger.Send(new ProjectSamplesChangedMessage(context, ["snare.wav", "Piano/C3.wav"]));
+                return Task.CompletedTask;
+            };
+            await vm.ManageSamplesCommand.ExecuteAsync(null);
+            Assert.That(vm.SampleFiles, Is.EqualTo(new[] { "snare.wav" }));
+            manager.Present = (context, _) =>
+            {
+                messenger.Send(new ProjectSamplesChangedMessage(context, ["hat.wav"], includesSubfolders: false));
+                return Task.CompletedTask;
+            };
+            await vm.ManageSamplesCommand.ExecuteAsync(null);
+            Assert.That(vm.SampleFiles, Is.EqualTo(new[] { "hat.wav" }));
+            dialogs.Mapping = (snapshot, _) =>
+            {
+                Assert.That(snapshot.AvailableFiles, Does.Contain("Piano/C3.wav"));
+                return Task.CompletedTask;
+            };
+            await vm.KeysMappingCommand.ExecuteAsync(instrument);
+            await vm.FlushPlaybackUpdatesAsync();
+            Assert.That(audio.SampleUpdates.Last().Single().FileName, Is.EqualTo("Piano/C3.wav"));
+        }
+        finally { await vm.DeactivateAsync(); }
+    }
+
+    [Test]
     public async Task OpeningManagerPreservesPlayingSnapshotAndTransport()
     {
         var audio = new StubWorkstationAudioService(); var closed = new TaskCompletionSource(); var presented = new TaskCompletionSource();

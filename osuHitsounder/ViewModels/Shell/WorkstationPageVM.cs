@@ -39,6 +39,7 @@ public partial class WorkstationPageVM(
     private readonly PlaybackVolumeSettings playbackVolumes = playbackVolumes ?? new PlaybackVolumeSettings();
     private readonly ObservableCollection<Track> tracks = [];
     private readonly ObservableCollection<string> availableSamples = [];
+    private readonly ObservableCollection<string> sampleTrackFiles = [];
     private string? projectPath;
     private Task saveTail = Task.CompletedTask;
     private Task<IReadOnlyList<string>>? activeImport;
@@ -67,13 +68,13 @@ public partial class WorkstationPageVM(
         }
     }
     public ObservableCollection<Track> Tracks => tracks;
-    public ObservableCollection<string> SampleFiles => availableSamples;
+    public ObservableCollection<string> SampleFiles => sampleTrackFiles;
     public int SamplesRevision => samplesRevision;
     public int Subdivision => new[] { 1, 2, 3, 4, 5, 6, 8, 12, 16 }[SelectedSubdivisionIndex];
     public bool CanEditTracks => Project is not null && IsInteractionReady;
     public bool CanImportSample => !controlPointsBusy && !folderRenamesActive && !instrumentBusy && !managingSamples && !IsNodeEditBusy && CanEditTracks && !importBusy && !removalBusy &&
         sampleFiles is not null && sampleDialog is not null && projectPath is not null;
-    public bool CanAddTrack => CanEditTracks && availableSamples.Count > 0;
+    public bool CanAddTrack => CanEditTracks && sampleTrackFiles.Count > 0;
     public bool CanRemoveTrack => !controlPointsBusy && !folderRenamesActive && !instrumentBusy && !managingSamples && !IsNodeEditBusy && CanEditTracks && !importBusy && !removalBusy && trackRemovalDialog is not null;
     public bool CanPlaceSamples => !folderRenamesActive && !managingSamples && !IsNodeEditBusy && CanEditTracks && Waveform is not null && !importBusy && !removalBusy;
     public bool HasPendingSaves => controlPointsBusy || folderRenamesActive || instrumentBusy || managingSamples || IsNodeEditBusy || pendingZoom is not null || importBusy || removalBusy || !saveTail.IsCompleted || lastSaveError is not null;
@@ -100,7 +101,7 @@ public partial class WorkstationPageVM(
     [ObservableProperty] private ProjectLoadPhase loadPhase = ProjectLoadPhase.PreparingData;
     public int LoadGeneration => loadGeneration;
     public bool IsLoading => LoadPhase is ProjectLoadPhase.PreparingData or ProjectLoadPhase.AwaitingPresentation;
-    public bool IsInteractionReady => LoadPhase == ProjectLoadPhase.Ready && !deactivated && !IsReturning;
+    public bool IsInteractionReady => LoadPhase == ProjectLoadPhase.Ready && !deactivated && !IsReturning && !refreshingProject;
     public bool CanGoBack => !deactivated && !IsReturning;
     public bool ShowStatusOverlay => IsLoading || IsSavingForReturn;
     public string StatusText => IsSavingForReturn ? "Saving..." : "Loading Project...";
@@ -187,6 +188,7 @@ public partial class WorkstationPageVM(
     public async Task LoadAsync(string projectPath, CancellationToken token)
     {
         if (deactivated) return;
+        if (refreshingProject && token != refreshCancellation?.Token) refreshCancellation?.Cancel();
         await SettleControlPointsDrawerAsync();
         controlPointIds.Clear();
         await SettleInstrumentalEditorAsync();
@@ -217,6 +219,7 @@ public partial class WorkstationPageVM(
     private async Task DeactivateCoreAsync()
     {
         if (deactivated) return;
+        refreshCancellation?.Cancel();
         await SettleControlPointsDrawerAsync();
         await SettleInstrumentalEditorAsync();
         await SettleSampleManagerAsync();
@@ -241,6 +244,7 @@ public partial class WorkstationPageVM(
             try { await activeLoad; }
             catch (OperationCanceledException) { }
         }
+        if (activeRefresh is not null) await activeRefresh;
         if (activeRemoval is not null) await activeRemoval;
         if (activeNodeEdit is not null) await activeNodeEdit;
         await playbackUpdates;
@@ -255,6 +259,8 @@ public partial class WorkstationPageVM(
             nodeEditCancellation = null;
             loadCancellation?.Dispose();
             loadCancellation = null;
+            refreshCancellation?.Dispose();
+            refreshCancellation = null;
             playbackUpdateCancellation?.Dispose();
             playbackUpdateCancellation = null;
             NotifyCommandState();
@@ -442,7 +448,7 @@ public partial class WorkstationPageVM(
     private void AddSampleTrack()
     {
         if (!CanAddTrack) return;
-        var track = new Track { SelectedSampleFileName = availableSamples[0] };
+        var track = new Track { SelectedSampleFileName = sampleTrackFiles[0] };
         Project!.Tracks.Add(track);
         tracks.Add(track);
         SelectedTrack = track;
@@ -506,9 +512,9 @@ public partial class WorkstationPageVM(
     {
         if (track is InstrumentalTrack) return;
         if (!CanEditTracks || !tracks.Contains(track) || string.IsNullOrWhiteSpace(fileName) ||
-            sampleFiles is not null && !availableSamples.Any(name => string.Equals(name, fileName, StringComparison.OrdinalIgnoreCase))) return;
+            sampleFiles is not null && !sampleTrackFiles.Any(name => string.Equals(name, fileName, StringComparison.OrdinalIgnoreCase))) return;
         if (string.Equals(track.SelectedSampleFileName, fileName, StringComparison.OrdinalIgnoreCase)) return;
-        track.SelectedSampleFileName = availableSamples.FirstOrDefault(name =>
+        track.SelectedSampleFileName = sampleTrackFiles.FirstOrDefault(name =>
             string.Equals(name, fileName, StringComparison.OrdinalIgnoreCase)) ?? fileName;
         foreach (var sample in track.Samples) sample.FileName = track.SelectedSampleFileName;
         samplesRevision++;
@@ -526,7 +532,7 @@ public partial class WorkstationPageVM(
         var existing = track.Samples.LastOrDefault(node => node.Timestamp == timestamp);
         if (existing is not null) return SelectNode(track, existing, false);
         if (!IsAdditionMode) return false;
-        var fileName = availableSamples.FirstOrDefault(name =>
+        var fileName = sampleTrackFiles.FirstOrDefault(name =>
             string.Equals(name, track.SelectedSampleFileName, StringComparison.OrdinalIgnoreCase));
         if (fileName is null) return false;
         var sample = new Sample
@@ -635,9 +641,9 @@ public partial class WorkstationPageVM(
             if (!IsCurrentProject(path, project, generation)) return Array.Empty<string>();
             try
             {
-                var choices = await sampleFiles!.ListAsync(path, token);
+                var choices = await sampleFiles!.ListAsync(path, token, includeSubfolders: false);
                 if (!IsCurrentProject(path, project, generation)) return Array.Empty<string>();
-                await CommitAsync(generation, token, () => RefreshAvailableSamples(choices, false));
+                await CommitAsync(generation, token, () => RefreshAvailableSamples(choices, false, includesSubfolders: false));
                 QueuePlaybackUpdate();
             }
             catch (OperationCanceledException) { throw; }
@@ -704,6 +710,8 @@ public partial class WorkstationPageVM(
     public async Task<bool> PrepareToReturnAsync(CancellationToken token)
     {
         if (deactivated || IsReturning || token.IsCancellationRequested) return false;
+        refreshCancellation?.Cancel();
+        if (activeRefresh is not null) await activeRefresh;
         await SettleControlPointsDrawerAsync();
         await SettleInstrumentalEditorAsync();
         await SettleSampleManagerAsync();
@@ -852,23 +860,33 @@ public partial class WorkstationPageVM(
         saveTail = SaveSnapshotAsync(previous, projectPath, json);
     }
 
-    private void RefreshAvailableSamples(IReadOnlyList<string> choices, bool initializeSelections = true)
+    private static bool IsDirectSample(string name) => !name.Contains('/') && !name.Contains('\\');
+
+    private void RefreshAvailableSamples(IReadOnlyList<string> choices, bool initializeSelections = true, bool includesSubfolders = true)
     {
-        for (var index = 0; index < choices.Count; index++)
-        {
-            if (index < availableSamples.Count && availableSamples[index] == choices[index]) continue;
-            var existing = availableSamples.IndexOf(choices[index]);
-            if (existing >= 0) availableSamples.Move(existing, index);
-            else availableSamples.Insert(index, choices[index]);
-        }
-        while (availableSamples.Count > choices.Count) availableSamples.RemoveAt(availableSamples.Count - 1);
+        if (!includesSubfolders)
+            choices = choices.Concat(availableSamples.Where(name => !IsDirectSample(name))).ToArray();
+        ReplaceSampleChoices(availableSamples, choices);
+        ReplaceSampleChoices(sampleTrackFiles, choices.Where(IsDirectSample).ToArray());
         if (initializeSelections)
             foreach (var track in tracks.Where(t=>t is not InstrumentalTrack))
-                track.SelectedSampleFileName ??= track.Samples.FirstOrDefault()?.FileName ?? availableSamples.FirstOrDefault();
+                track.SelectedSampleFileName ??= track.Samples.FirstOrDefault()?.FileName ?? sampleTrackFiles.FirstOrDefault();
         OnPropertyChanged(nameof(SampleFiles));
         OnPropertyChanged(nameof(CanAddTrack));
         AddSampleTrackCommand.NotifyCanExecuteChanged();
         AddPianoTrackCommand.NotifyCanExecuteChanged();
+    }
+
+    private static void ReplaceSampleChoices(ObservableCollection<string> target, IReadOnlyList<string> choices)
+    {
+        for (var index = 0; index < choices.Count; index++)
+        {
+            if (index < target.Count && target[index] == choices[index]) continue;
+            var existing = target.IndexOf(choices[index]);
+            if (existing >= 0) target.Move(existing, index);
+            else target.Insert(index, choices[index]);
+        }
+        while (target.Count > choices.Count) target.RemoveAt(target.Count - 1);
     }
 
     private async Task SaveSnapshotAsync(Task previous, string path, string json)
@@ -900,6 +918,8 @@ public partial class WorkstationPageVM(
                 playbackErrorMessage = null;
                 Waveform = null;
                 Project = null;
+                availableSamples.Clear();
+                sampleTrackFiles.Clear();
                 RefreshControlPointTimestamps();
                 markerClock = new([], []);
 
@@ -953,7 +973,9 @@ public partial class WorkstationPageVM(
             await playback.ConfigureAsync(markerClock, waveform.Duration, token);
             if (sampleFiles is not null)
             {
-                var choices = await sampleFiles.ListAsync(projectPath, token);
+                var choices = await sampleFiles.ListAsync(projectPath, token, includeSubfolders: false);
+                if (source.Project.Tracks.OfType<InstrumentalTrack>().Any())
+                    choices = await sampleFiles.ListAsync(projectPath, token);
                 await CommitAsync(generation, token, () =>
                 {
                     RefreshAvailableSamples(choices);
@@ -1039,6 +1061,7 @@ public partial class WorkstationPageVM(
 
     private void NotifyEditingState()
     {
+        NotifyRefreshAvailability();
         OnPropertyChanged(nameof(CanOpenControlPoints)); AddControlPointCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(HasPendingSaves)); PublishControlPointsSnapshot();
         OnPropertyChanged(nameof(CanAddInstrumentalTrack)); OnPropertyChanged(nameof(CanOpenInstrumentalEditor));

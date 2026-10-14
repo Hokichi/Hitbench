@@ -12,6 +12,76 @@ namespace osuHitsounder.Test.Presentation;
 [NonParallelizable]
 public class WorkstationShortcutTests
 {
+    [TestCase(Key.D1, false)]
+    [TestCase(Key.NumPad1, false)]
+    [TestCase(Key.D2, true)]
+    [TestCase(Key.NumPad2, true)]
+    public void ModeShortcutsSwitchModesAndSuppressRepeats(Key key, bool addition)
+    {
+        var (page, vm, view) = CreateShortcutPage(); using (view)
+        {
+            vm.IsAdditionMode = !addition;
+            Assert.That(page.HandlePlaybackKey(key, ModifierKeys.None, false, page), Is.True);
+            Assert.That(vm.IsAdditionMode, Is.EqualTo(addition));
+            vm.IsAdditionMode = !addition;
+            Assert.That(page.HandlePlaybackKey(key, ModifierKeys.None, true, page), Is.True);
+            Assert.That(vm.IsAdditionMode, Is.EqualTo(!addition));
+            UiTestPump.Run(page.DeactivateAsync());
+        }
+    }
+
+    [TestCase(ModifierKeys.Control, false)]
+    [TestCase(ModifierKeys.Control | ModifierKeys.Shift, true)]
+    public void NewTrackShortcutsWorkFromNameEditorAndSuppressRepeats(ModifierKeys modifiers, bool instrument)
+    {
+        var (page, vm, view) = CreateShortcutPage(); using (view)
+        {
+            var before = vm.Tracks.Count;
+            Assert.That(page.HandlePlaybackKey(Key.N, modifiers, false, new TextBox()), Is.True);
+            Assert.That(vm.Tracks, Has.Count.EqualTo(before + 1));
+            Assert.That(vm.Tracks.Last() is osuHitsounder.Core.Entities.InstrumentalTrack, Is.EqualTo(instrument));
+            Assert.That(page.HandlePlaybackKey(Key.N, modifiers, true, page), Is.True);
+            Assert.That(vm.Tracks, Has.Count.EqualTo(before + 1));
+            Assert.That(page.HandlePlaybackKey(Key.N, ModifierKeys.Control | ModifierKeys.Alt, false, page), Is.False);
+            UiTestPump.Run(page.DeactivateAsync());
+        }
+    }
+
+    [TestCase(Key.F3)]
+    [TestCase(Key.F4)]
+    public void ToolbarToggleShortcutsToggleOnlyOnce(Key key)
+    {
+        var (page, vm, view) = CreateShortcutPage(); using (view)
+        {
+            var before = key == Key.F3 ? vm.ScrollWithMarker : vm.AreTracksCollapsed;
+            Assert.That(page.HandlePlaybackKey(key, ModifierKeys.None, false, new TextBox()), Is.True);
+            Assert.That(key == Key.F3 ? vm.ScrollWithMarker : vm.AreTracksCollapsed, Is.EqualTo(!before));
+            Assert.That(page.HandlePlaybackKey(key, ModifierKeys.None, true, page), Is.True);
+            Assert.That(key == Key.F3 ? vm.ScrollWithMarker : vm.AreTracksCollapsed, Is.EqualTo(!before));
+            Assert.That(page.HandlePlaybackKey(key, ModifierKeys.Control, false, page), Is.False);
+            UiTestPump.Run(page.DeactivateAsync());
+        }
+    }
+
+    [TestCase(Key.F2)]
+    [TestCase(Key.F6)]
+    public void DrawerShortcutsOpenExistingWorkflowAndSuppressRepeats(Key key)
+    {
+        var opened = 0;
+        var manager = new StubSampleManagementDialogService { Present = (_, _) => { opened++; return Task.CompletedTask; } };
+        var points = new StubControlPointsDialogService { Show = (_, _) => { opened++; return Task.CompletedTask; } };
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay),
+            new ImmediateUiScheduler(), new StubSampleFileService(["hit.wav"]), new StubSampleFileDialogService([]),
+            messenger: new CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger(), sampleManagementDialog: manager, controlPointsDialog: points);
+        var page = new WorkstationPage(vm); page.SetProjectPath("project.json");
+        using var view = new InMemoryView(new Window { Content = page, Width = 900, Height = 600 });
+        UiTestPump.Run(page.LoadCompletion);
+        Assert.That(page.HandlePlaybackKey(key, ModifierKeys.None, false, new TextBox()), Is.True);
+        UiTestPump.Run(page.PlaybackInputCompletion); Assert.That(opened, Is.EqualTo(1));
+        Assert.That(page.HandlePlaybackKey(key, ModifierKeys.None, true, page), Is.True);
+        Assert.That(opened, Is.EqualTo(1)); UiTestPump.Run(page.DeactivateAsync());
+    }
+
     [TestCase(Key.D1, 1, 0)]
     [TestCase(Key.D2, 2, 1)]
     [TestCase(Key.D3, 3, 2)]
@@ -129,6 +199,14 @@ public class WorkstationShortcutTests
         vm.PlaceSample(first, 125);
         vm.PlaceSample(second, 250);
         var node = second.Samples.Single();
+        if (kind is "text" or "password")
+        {
+            Assert.That(page.HandlePlaybackKey(Key.Z, ModifierKeys.Control, false, origin), Is.False);
+            Assert.That(page.HandlePlaybackKey(Key.Y, ModifierKeys.Control, false, origin), Is.False);
+            Assert.That(second.Samples.Single(), Is.SameAs(node));
+            UiTestPump.Run(page.DeactivateAsync());
+            return;
+        }
         Assert.That(page.HandlePlaybackKey(Key.Z, ModifierKeys.None, false, origin), Is.False);
         Assert.That(page.HandlePlaybackKey(Key.Y, ModifierKeys.None, false, origin), Is.False);
         Assert.That(page.HandlePlaybackKey(Key.Z, ModifierKeys.Control | ModifierKeys.Shift, false, origin), Is.False);
@@ -207,6 +285,14 @@ public class WorkstationShortcutTests
         Assert.That(page.HandlePlaybackKey(Key.Right, ModifierKeys.None, false, origin), Is.True);
         UiTestPump.Run(page.PlaybackInputCompletion);
         Assert.That(vm.Position, Is.EqualTo(TimeSpan.FromMilliseconds(125)));
+
+        if (kind is "text" or "password")
+        {
+            Assert.That(page.HandlePlaybackKey(Key.Space, ModifierKeys.None, false, origin), Is.False);
+            Assert.That(vm.IsPlaying, Is.False);
+            UiTestPump.Run(page.DeactivateAsync());
+            return;
+        }
 
         Assert.That(page.HandlePlaybackKey(Key.Space, ModifierKeys.None, false, origin), Is.True);
         UiTestPump.Run(page.PlaybackInputCompletion);

@@ -50,7 +50,8 @@ public class WorkstationTextInputTests
     [TestCase("password")]
     [TestCase("visual")]
     [TestCase("content")]
-    public void SpaceControlsPlaybackFromTextDescendants(string kind)
+    [TestCase("editable")]
+    public void SpacePreservesPlaybackFromTextDescendants(string kind)
     {
         var vm = new WorkstationPageVM(new StubWorkstationSourceService(),
             new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler());
@@ -67,17 +68,20 @@ public class WorkstationTextInputTests
             "password" => new PasswordBox(),
             "visual" => VisualTreeHelper.GetChild(text, 0),
             "content" => run,
+            "editable" => new ComboBox { IsEditable = true },
             _ => text
         };
-        Assert.That(page.HandlePlaybackKey(Key.Space, ModifierKeys.None, false, origin), Is.True);
-        UiTestPump.Run(page.PlaybackInputCompletion);
+        UiTestPump.Run(vm.PlayPauseCommand.ExecuteAsync(null));
+        Assert.That(page.HandlePlaybackKey(Key.Space, ModifierKeys.None, false, origin), Is.False);
         Assert.That(vm.IsPlaying, Is.True);
-        Assert.That(page.HandlePlaybackKey(Key.Space, ModifierKeys.None, true, origin), Is.True);
+        Assert.That(page.HandlePlaybackKey(Key.Space, ModifierKeys.None, true, origin), Is.False);
         Assert.That(vm.IsPlaying, Is.True);
-        Assert.That(page.HandlePlaybackKey(Key.Space, ModifierKeys.Shift, false, origin), Is.True);
-        UiTestPump.Run(page.PlaybackInputCompletion);
-        Assert.That(vm.IsPlaying, Is.False);
+        Assert.That(page.HandlePlaybackKey(Key.Space, ModifierKeys.Shift, false, origin), Is.False);
+        Assert.That(vm.IsPlaying, Is.True);
+        Assert.That(page.HandlePlaybackKey(Key.D1, ModifierKeys.None, false, origin), Is.False);
+        Assert.That(page.HandlePlaybackKey(Key.D2, ModifierKeys.None, false, origin), Is.False);
         Assert.That(run.Text, Is.EqualTo("Track name"));
         GC.KeepAlive(rich);
+        UiTestPump.Run(page.DeactivateAsync());
     }
 }

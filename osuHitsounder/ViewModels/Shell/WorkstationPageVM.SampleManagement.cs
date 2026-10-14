@@ -14,7 +14,7 @@ public partial class WorkstationPageVM
     private bool managingSamples;
     public bool CanManageSamples => CanImportSample && sampleManagementDialog is not null && !managingSamples;
     public TrackSampleAvailability GetSampleAvailability(Track track) => track.SelectedSampleFileName is null
-        ? TrackSampleAvailability.Unselected : sampleFiles is null || availableSamples.Any(n => string.Equals(n, track.SelectedSampleFileName, StringComparison.OrdinalIgnoreCase))
+        ? TrackSampleAvailability.Unselected : sampleFiles is null || sampleTrackFiles.Any(n => string.Equals(n, track.SelectedSampleFileName, StringComparison.OrdinalIgnoreCase))
             ? TrackSampleAvailability.Available : TrackSampleAvailability.Missing;
     public bool CanEditTrackGrid(Track track) => track is not InstrumentalTrack && tracks.Contains(track) && (sampleFiles is null || GetSampleAvailability(track) == TrackSampleAvailability.Available);
     [RelayCommand(CanExecute = nameof(CanManageSamples))]
@@ -63,7 +63,7 @@ public partial class WorkstationPageVM
                 }
                 history.RenameSample(oldName, newName);
             }
-            RefreshAvailableSamples(change.Files, false); CancelNodeDrag(); PruneNodeSelection();
+            RefreshAvailableSamples(change.Files, false, change.IncludesSubfolders); CancelNodeDrag(); PruneNodeSelection();
             samplesRevision++; OnPropertyChanged(nameof(SamplesRevision)); NotifyHistoryState(); QueuePlaybackUpdate(); QueueSave();
             instrumentRevision++; PublishInstrumentSnapshot();
         }, CancellationToken.None);
