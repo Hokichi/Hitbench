@@ -13,7 +13,7 @@ public partial class OHsControlPointsDrawer : UserControl, IOHsShellDrawer
     public OHsControlPointsDrawer(ControlPointsDrawerVM viewModel)
     {
         InitializeComponent(); this.viewModel = viewModel; DataContext = viewModel;
-        KeyboardNavigation.SetTabNavigation(this, KeyboardNavigationMode.Cycle);
+        KeyboardNavigation.SetTabNavigation(this, KeyboardNavigationMode.Continue);
     }
     public event EventHandler? CloseRequested;
     public bool CanDismiss => viewModel.CanClose;

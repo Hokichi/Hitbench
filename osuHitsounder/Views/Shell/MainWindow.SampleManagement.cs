@@ -18,16 +18,28 @@ public partial class MainWindow
         nameof(IsSampleManagerVisible), typeof(bool), typeof(MainWindow), new PropertyMetadata(false));
     public static readonly DependencyProperty IsSampleManagerVisibleProperty = IsSampleManagerVisiblePropertyKey.DependencyProperty;
     public bool IsSampleManagerVisible => (bool)GetValue(IsSampleManagerVisibleProperty);
+    private static readonly DependencyPropertyKey IsBottomDrawerPropertyKey = DependencyProperty.RegisterReadOnly(
+        nameof(IsBottomDrawer), typeof(bool), typeof(MainWindow), new PropertyMetadata(false));
+    public static readonly DependencyProperty IsBottomDrawerProperty = IsBottomDrawerPropertyKey.DependencyProperty;
+    public bool IsBottomDrawer => (bool)GetValue(IsBottomDrawerProperty);
+    private static readonly DependencyPropertyKey IsBlockingDrawerVisiblePropertyKey = DependencyProperty.RegisterReadOnly(
+        nameof(IsBlockingDrawerVisible), typeof(bool), typeof(MainWindow), new PropertyMetadata(false));
+    public static readonly DependencyProperty IsBlockingDrawerVisibleProperty = IsBlockingDrawerVisiblePropertyKey.DependencyProperty;
+    public bool IsBlockingDrawerVisible => (bool)GetValue(IsBlockingDrawerVisibleProperty);
+    internal bool ShouldRestoreDrawerFocus(bool presentationCanceled, bool focusInsideDrawer) =>
+        !presentationCanceled && (!IsBottomDrawer || focusInsideDrawer);
     internal OHsSampleDrawerPhase SampleManagerPhase { get; private set; }
 
     private void SetSampleManagerPhase(OHsSampleDrawerPhase phase)
     {
         SampleManagerPhase = phase;
         SetValue(IsSampleManagerVisiblePropertyKey, phase != OHsSampleDrawerPhase.Closed);
+        SetValue(IsBlockingDrawerVisiblePropertyKey, phase != OHsSampleDrawerPhase.Closed && !IsBottomDrawer);
     }
 
     private async void OnSampleManagerBackdropClick(object sender, MouseButtonEventArgs e)
     {
+        if (IsBottomDrawer) return;
         e.Handled = true;
         if (SampleManagerHost.Content is not UserControl drawer || drawer is not IOHsShellDrawer) return;
         try { await RequestSampleManagerCloseAsync(drawer); }
@@ -44,7 +56,7 @@ public partial class MainWindow
     internal Task PresentSampleManagerAsync(ManageSamplesDrawer drawer, CancellationToken token,
         Func<bool,CancellationToken,Task>? transition=null) => PresentDrawerAsync(drawer,token,transition);
     internal async Task PresentDrawerAsync<T>(T drawer, CancellationToken token,
-        Func<bool, CancellationToken, Task>? transition = null)
+        Func<bool, CancellationToken, Task>? transition = null, bool bottomNonModal = false)
         where T:UserControl,IOHsShellDrawer
     {
         if (sampleManagerCompletion is not null) throw new InvalidOperationException("The sample manager is already open.");
@@ -60,9 +72,11 @@ public partial class MainWindow
         var animate = transition ?? AnimateSampleManagerAsync;
         Task entrance = Task.CompletedTask;
         Task closing = Task.CompletedTask;
+        var ownedFocusBeforeClose = false;
         Task CloseNormally()
         {
             if (SampleManagerPhase == OHsSampleDrawerPhase.Closing) return closing;
+            ownedFocusBeforeClose = drawer.IsKeyboardFocusWithin;
             SetSampleManagerPhase(OHsSampleDrawerPhase.Closing);
             drawer.IsEnabled = false;
             entranceCancellation.Cancel();
@@ -94,6 +108,7 @@ public partial class MainWindow
         drawer.CloseRequested += OnCloseRequested;
         drawer.Loaded += OnLoaded;
         CancelBackgroundDrag();
+        SetValue(IsBottomDrawerPropertyKey, bottomNonModal);
         SetSampleManagerPhase(OHsSampleDrawerPhase.Opening);
         drawer.IsEnabled = true;
         SampleManagerHost.Content = drawer;
@@ -113,12 +128,15 @@ public partial class MainWindow
         }
         finally
         {
-            var restoreFocus = !presentation.IsCancellationRequested;
+            var presentationCanceled = presentation.IsCancellationRequested;
             presentation.Cancel();
             try { await closing; }
             catch (OperationCanceledException) when (presentation.IsCancellationRequested) { }
             await Dispatcher.InvokeAsync(() =>
             {
+                var focusInside = IsDrawerOrigin(Keyboard.FocusedElement as DependencyObject) ||
+                    ownedFocusBeforeClose && (Keyboard.FocusedElement is null || ReferenceEquals(Keyboard.FocusedElement, this));
+                var restoreFocus = ShouldRestoreDrawerFocus(presentationCanceled, focusInside);
                 SystemParameters.StaticPropertyChanged -= OnSampleManagerAnimationSettingChanged;
                 drawer.CloseRequested -= OnCloseRequested;
                 drawer.Loaded -= OnLoaded;
@@ -130,10 +148,11 @@ public partial class MainWindow
                     sampleManagerCancellation = null;
                     closeSampleManager = null;
                     SetSampleManagerPhase(OHsSampleDrawerPhase.Closed);
+                    SetValue(IsBottomDrawerPropertyKey, false);
                 }
                 drawer.IsEnabled = true;
                 if (!closed && !closeRequested && SampleManagerHost.Content is null && restoreFocus && invoker is not null)
-                    RestoreSampleManagerFocus(invoker);
+                    RestoreSampleManagerFocus(invoker, bottomNonModal, drawer);
             });
         }
     }
@@ -160,15 +179,29 @@ public partial class MainWindow
         }
     }
 
-    private void RestoreSampleManagerFocus(FrameworkElement invoker)
+    private bool IsDrawerOrigin(DependencyObject? origin, UserControl? drawer = null)
     {
+        while (origin is not null)
+        {
+            if (ReferenceEquals(origin, drawer ?? SampleManagerHost.Content)) return true;
+            origin = origin is System.Windows.Media.Visual
+                ? System.Windows.Media.VisualTreeHelper.GetParent(origin) ?? LogicalTreeHelper.GetParent(origin)
+                : origin is FrameworkContentElement content ? content.Parent : LogicalTreeHelper.GetParent(origin);
+        }
+        return false;
+    }
+    private void RestoreSampleManagerFocus(FrameworkElement invoker, bool bottomNonModal, UserControl drawer)
+    {
+        bool FocusStillOwned() => !bottomNonModal || Keyboard.FocusedElement is null || ReferenceEquals(Keyboard.FocusedElement, this) ||
+            IsDrawerOrigin(Keyboard.FocusedElement as DependencyObject, drawer);
+        if (!FocusStillOwned()) return;
         if (!invoker.IsVisible) return;
         if (invoker.IsEnabled) { invoker.Focus(); return; }
         void OnEnabledChanged(object sender, DependencyPropertyChangedEventArgs args)
         {
             if (!invoker.IsEnabled) return;
             clearSampleFocusRestore?.Invoke();
-            if (invoker.IsVisible && !closed) invoker.Focus();
+            if (invoker.IsVisible && !closed && FocusStillOwned()) invoker.Focus();
         }
         void OnUnloaded(object sender, RoutedEventArgs args) => clearSampleFocusRestore?.Invoke();
         clearSampleFocusRestore = () =>

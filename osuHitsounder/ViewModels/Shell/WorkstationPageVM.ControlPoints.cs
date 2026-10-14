@@ -18,7 +18,7 @@ public partial class WorkstationPageVM
     private Task controlPointNotifications = Task.CompletedTask;
     private bool controlPointsBusy;
     private long controlPointsVersion;
-    public bool CanOpenControlPoints => CanEditTracks && controlPointsDialog is not null && messenger is not null &&
+    public bool CanOpenControlPoints => !controlPointsBusy && CanEditTracks && controlPointsDialog is not null && messenger is not null &&
         !managingSamples && !instrumentBusy && !folderRenamesActive && !importBusy && !removalBusy && !IsNodeEditBusy;
     private Guid ControlPointId(ControlPoint point)
     {

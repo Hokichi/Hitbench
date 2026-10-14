@@ -28,7 +28,8 @@ public partial class MainWindow
         }
         if (opening)
         {
-            sampleManagerTranslation.X = 24;
+            sampleManagerTranslation.X = IsBottomDrawer ? 0 : 24;
+            sampleManagerTranslation.Y = IsBottomDrawer ? 24 : 0;
             SampleManagerHost.Opacity = 0;
             SampleManagerBackdrop.Opacity = 0;
         }
@@ -37,7 +38,8 @@ public partial class MainWindow
         sampleManagerAnimationOpening = opening;
         var easing = new CubicEase { EasingMode = opening ? EasingMode.EaseOut : EasingMode.EaseIn };
         var duration = TimeSpan.FromMilliseconds(180);
-        var movement = new DoubleAnimation(sampleManagerTranslation.X, opening ? 0 : 24, duration) { EasingFunction = easing };
+        var axis = IsBottomDrawer ? TranslateTransform.YProperty : TranslateTransform.XProperty;
+        var movement = new DoubleAnimation(IsBottomDrawer ? sampleManagerTranslation.Y : sampleManagerTranslation.X, opening ? 0 : 24, duration) { EasingFunction = easing };
         var fade = new DoubleAnimation(SampleManagerHost.Opacity, opening ? 1 : 0, duration) { EasingFunction = easing };
         var backdropFade = new DoubleAnimation(SampleManagerBackdrop.Opacity, opening ? 1 : 0, duration) { EasingFunction = easing };
         void OnCompleted(object? sender, EventArgs args)
@@ -45,7 +47,7 @@ public partial class MainWindow
             if (ReferenceEquals(sampleManagerAnimationCompletion, completion)) SettleSampleManagerAnimation();
         }
         movement.Completed += OnCompleted;
-        sampleManagerTranslation.BeginAnimation(TranslateTransform.XProperty, movement);
+        sampleManagerTranslation.BeginAnimation(axis, movement);
         SampleManagerHost.BeginAnimation(OpacityProperty, fade);
         SampleManagerBackdrop.BeginAnimation(OpacityProperty, backdropFade);
         return FinishAsync();
@@ -79,19 +81,23 @@ public partial class MainWindow
     private void ClearSampleManagerAnimationClocks()
     {
         var shift = sampleManagerTranslation.X;
+        var verticalShift = sampleManagerTranslation.Y;
         var opacity = SampleManagerHost.Opacity;
         var backdropOpacity = SampleManagerBackdrop.Opacity;
         sampleManagerTranslation.BeginAnimation(TranslateTransform.XProperty, null);
+        sampleManagerTranslation.BeginAnimation(TranslateTransform.YProperty, null);
         SampleManagerHost.BeginAnimation(OpacityProperty, null);
         SampleManagerBackdrop.BeginAnimation(OpacityProperty, null);
         sampleManagerTranslation.X = shift;
+        sampleManagerTranslation.Y = verticalShift;
         SampleManagerHost.Opacity = opacity;
         SampleManagerBackdrop.Opacity = backdropOpacity;
     }
 
     private void ApplySampleManagerAnimationEnd(bool opening)
     {
-        sampleManagerTranslation.X = opening ? 0 : 24;
+        sampleManagerTranslation.X = IsBottomDrawer ? 0 : opening ? 0 : 24;
+        sampleManagerTranslation.Y = IsBottomDrawer && !opening ? 24 : 0;
         SampleManagerHost.Opacity = opening ? 1 : 0;
         SampleManagerBackdrop.Opacity = opening ? 1 : 0;
     }

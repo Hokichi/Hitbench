@@ -30,10 +30,13 @@ public sealed class StubWorkstationAudioService : IWorkstationAudioService
     public void Open(string audioPath) => OpenedPath = audioPath;
     public Action? Playing { get; set; }
     public Action? ReadingSnapshot { get; set; }
-    public void Play() { Playing?.Invoke(); Snapshot = Snapshot with { IsPlaying = true }; }
-    public void Pause() => Snapshot = Snapshot with { IsPlaying = false };
+    public int PlayCalls { get; private set; }
+    public int PauseCalls { get; private set; }
+    public int SeekCalls { get; private set; }
+    public void Play() { PlayCalls++; Playing?.Invoke(); Snapshot = Snapshot with { IsPlaying = true }; }
+    public void Pause() { PauseCalls++; Snapshot = Snapshot with { IsPlaying = false }; }
     public void Stop() => Snapshot = Snapshot with { Position = TimeSpan.Zero, IsPlaying = false };
-    public void Seek(TimeSpan position) => Snapshot = Snapshot with { Position = position };
+    public void Seek(TimeSpan position) { SeekCalls++; Snapshot = Snapshot with { Position = position }; }
     public void SetSongVolume(int volume) => SongVolume = volume;
     public void SetSamplesVolume(int volume) => SamplesVolume = volume;
     public void SetApplicationVolume(int volume) => ApplicationVolume = volume;

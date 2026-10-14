@@ -29,6 +29,17 @@
                 </Trigger>
             </Style.Triggers>
         </Style>
+        <Style x:Key="OHsMainWindowShellDrawerHostStyle" TargetType="ContentControl" BasedOn="{StaticResource OHsMainWindowSampleManagerHostStyle}">
+            <Setter Property="Grid.RowSpan" Value="2" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsBottomDrawer, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}" Value="True">
+                    <Setter Property="Grid.Row" Value="1" />
+                    <Setter Property="Grid.RowSpan" Value="1" />
+                    <Setter Property="HorizontalAlignment" Value="Stretch" />
+                    <Setter Property="Width" Value="Auto" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
         <SolidColorBrush x:Key="OHsMainWindowAcrylicBackground" Color="Transparent" />
         <Style
             x:Key="OHsMainWindowGoBackStyle"
@@ -155,7 +166,7 @@
             BasedOn="{StaticResource BaseBorderStyle}"
             TargetType="Border">
             <Style.Triggers>
-                <DataTrigger Binding="{Binding IsSampleManagerVisible, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}" Value="True">
+                <DataTrigger Binding="{Binding IsBlockingDrawerVisible, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}" Value="True">
                     <Setter Property="Effect" Value="{StaticResource MainWindowModalBlur}" />
                     <Setter Property="IsEnabled" Value="False" />
                 </DataTrigger>
@@ -181,6 +192,12 @@
             <Setter Property="Background" Value="{DynamicResource Brush.Overlay}" />
             <Setter Property="Focusable" Value="False" />
             <Setter Property="AutomationProperties.Name" Value="Dismiss active drawer" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsBottomDrawer, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}" Value="True">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                    <Setter Property="IsHitTestVisible" Value="False" />
+                </DataTrigger>
+            </Style.Triggers>
         </Style>
         <Style
             x:Key="MainWindowModalContentStyle"
@@ -304,10 +321,11 @@
                             x:Name="SampleManagerMotionHost"
                             Grid.Row="1"
                             Style="{StaticResource BaseGridStyle}">
+                            <Grid.RowDefinitions><RowDefinition Height="*" /><RowDefinition Height="*" /></Grid.RowDefinitions>
                             <ContentControl
                                 x:Name="SampleManagerHost"
                                 FlowDirection="{Binding FlowDirection, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}"
-                                Style="{StaticResource OHsMainWindowSampleManagerHostStyle}" />
+                                Style="{StaticResource OHsMainWindowShellDrawerHostStyle}" />
                         </Grid>
                     </Grid>
                 </Grid>

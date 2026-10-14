@@ -504,7 +504,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
     }
 
     private bool CanDragBackground => !closed && !viewModel.IsInteractionBlocked && !viewModel.IsProcessing &&
-        !IsPopupOverlayVisible && !IsSampleManagerVisible && !ComponentDispatcher.IsThreadModal;
+        !IsPopupOverlayVisible && !IsBlockingDrawerVisible && !ComponentDispatcher.IsThreadModal;
 
     private void BeginBackgroundDrag(Point cursorPixels, Rect currentPixels, double dpiX, double dpiY)
     {
@@ -591,7 +591,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
     internal bool HandleWindowKeyDown(bool isActive, Key key, ModifierKeys modifiers, bool isRepeat,
         DependencyObject? origin)
     {
-        if (!isActive || IsPopupOverlayVisible || IsSampleManagerVisible || PageHost.Content is not WorkstationPage workstationPage) return false;
+        if (!isActive || IsPopupOverlayVisible || IsBlockingDrawerVisible || IsDrawerOrigin(origin) || PageHost.Content is not WorkstationPage workstationPage) return false;
 
         return workstationPage.HandleVolumeShortcut(key, modifiers, origin) ||
                workstationPage.HandlePlaybackKey(key, modifiers, isRepeat, origin);
@@ -600,7 +600,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
     internal bool HandleWindowMouseWheel(bool isActive, ModifierKeys modifiers, int delta,
         DependencyObject? origin = null)
     {
-        if (!isActive || IsPopupOverlayVisible || IsSampleManagerVisible || PageHost.Content is not WorkstationPage workstationPage) return false;
+        if (!isActive || IsPopupOverlayVisible || IsBlockingDrawerVisible || IsDrawerOrigin(origin) || PageHost.Content is not WorkstationPage workstationPage) return false;
 
         return workstationPage.HandleContextWheel(modifiers, delta, origin);
     }

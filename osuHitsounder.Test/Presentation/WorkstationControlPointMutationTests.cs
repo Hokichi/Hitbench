@@ -10,6 +10,38 @@ namespace osuHitsounder.Test.Presentation;
 
 public class WorkstationControlPointMutationTests
 {
+    [Test]
+    public async Task DrawerLeavesInlineEditingAndTransportAvailableWithoutTransportSideEffects()
+    {
+        var project = new ProjectData { Offsets = [0], BPMs = [120], ControlPoints = [new() { Timestamp = 0, Volume = 50 }] };
+        var messages = new WeakReferenceMessenger(); var dialog = new StubControlPointsDialogService();
+        var audio = new StubWorkstationAudioService();
+        var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", project)) },
+            new MarkerPlaybackCoordinator(audio, Task.Delay), new ImmediateUiScheduler(), new StubSampleFileService(["a.wav"]),
+            new StubSampleFileDialogService([]), messenger: messages, trackRemovalDialog: new StubTrackRemovalDialogService(),
+            sampleManagementDialog: new StubSampleManagementDialogService(), instrumentDialogs: new StubInstrumentalTrackDialogService(), controlPointsDialog: dialog);
+        dialog.Show = (initial, _) =>
+        {
+            var transport = (audio.PlayCalls, audio.PauseCalls, audio.SeekCalls);
+            Assert.That(owner.CanEditTracks, Is.True); Assert.That(owner.CanPlaceSamples, Is.True);
+            Assert.That(owner.CanAddTrack, Is.True); Assert.That(owner.CanAddInstrumentalTrack, Is.True);
+            Assert.That(owner.PlayPauseCommand.CanExecute(null), Is.True);
+            Assert.That(owner.CanOpenControlPoints, Is.False); Assert.That(owner.CanImportSample, Is.False);
+            Assert.That(owner.CanRemoveTrack, Is.False); Assert.That(owner.CanManageSamples, Is.False);
+            Assert.That(owner.CanOpenInstrumentalEditor, Is.False);
+            messages.Send(new SetControlPointRequestedMessage(initial.Context, initial.Points[0].Id, 25, "Drum"));
+            Assert.That((audio.PlayCalls, audio.PauseCalls, audio.SeekCalls), Is.EqualTo(transport));
+            return Task.CompletedTask;
+        };
+        try
+        {
+            await Ready(owner); var transport = (audio.PlayCalls, audio.PauseCalls, audio.SeekCalls);
+            await owner.AddControlPointCommand.ExecuteAsync(null); Assert.That(owner.ErrorMessage, Is.Null);
+            Assert.That((audio.PlayCalls, audio.PauseCalls, audio.SeekCalls), Is.EqualTo(transport));
+            Assert.That(owner.CanImportSample && owner.CanManageSamples && owner.CanRemoveTrack && owner.CanOpenInstrumentalEditor, Is.True);
+        }
+        finally { await owner.DeactivateAsync(); }
+    }
     private static WorkstationPageVM CreateOwner(ProjectData project, IMessenger messenger,
         StubControlPointsDialogService dialog, StubWorkstationAudioService audio, IProjectFileService? files = null) =>
         new(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", project)) },

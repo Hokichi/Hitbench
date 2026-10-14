@@ -53,7 +53,7 @@ public sealed class ControlPointsDialogService(Func<Window?> getOwner, Dispatche
             {
                 vm.Initialize();
                 if (Present is not null) await Present(vm, token);
-                else await ((MainWindow)owner!).PresentDrawerAsync(new OHsControlPointsDrawer(vm), token);
+                else await ((MainWindow)owner!).PresentDrawerAsync(new OHsControlPointsDrawer(vm), token, bottomNonModal: true);
             }
             finally { await vm.DeactivateAsync(); }
         }).Task.Unwrap();

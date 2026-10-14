@@ -167,7 +167,8 @@ public sealed class ManageSamplesDrawerHostTests
             var showing = shell.PresentSampleManagerAsync(drawer, cancellation.Token, (_, _) => Task.CompletedTask);
             var host = (ContentControl)shell.FindName("SampleManagerHost");
             Assert.That(host.Content, Is.SameAs(drawer)); Assert.That(showing.IsCompleted, Is.False);
-            Assert.That(host.Style, Is.SameAs(shell.FindResource("OHsMainWindowSampleManagerHostStyle")));
+            Assert.That(host.Style, Is.SameAs(shell.FindResource("OHsMainWindowShellDrawerHostStyle")));
+            Assert.That(host.Style.BasedOn, Is.SameAs(shell.FindResource("OHsMainWindowSampleManagerHostStyle")));
             Assert.That(shell.IsPopupOverlayVisible, Is.False);
             Assert.ThrowsAsync<InvalidOperationException>(() => shell.PresentSampleManagerAsync(new ManageSamplesDrawer(vm), default));
             UiTestPump.Run(vm.EditCommand.ExecuteAsync(vm.Entries.Single())); vm.DraftStem = "kick";
