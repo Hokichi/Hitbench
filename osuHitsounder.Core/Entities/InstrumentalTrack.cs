@@ -19,6 +19,14 @@ public sealed class InstrumentalTrack : Track
         note.Key = key; note.Timestamp = timestamp; return true;
     }
     public bool TryRemoveNote(InstrumentalNote note) => Notes.Remove(note);
+    public bool TryReplaceNotes(IReadOnlyList<InstrumentalNote> notes)
+    {
+        var replacement = notes.ToArray();
+        if (replacement.Any(n => !Valid(n.Key, n.Timestamp) || n.Volume is < 0 or > 100) ||
+            replacement.Distinct().Count() != replacement.Length ||
+            replacement.Select(n => (n.Key, n.Timestamp)).Distinct().Count() != replacement.Length) return false;
+        Notes.Clear(); Notes.AddRange(replacement); return true;
+    }
     private static bool Valid(string key, int time) => time >= 0 && InstrumentalKeys.TryGetIndex(key, out _);
     private bool Collides(string key, int time, InstrumentalNote? except) => Notes.Any(n => n != except && n.Key == key && n.Timestamp == time);
 }
