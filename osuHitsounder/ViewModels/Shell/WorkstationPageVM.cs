@@ -194,7 +194,7 @@ public partial class WorkstationPageVM(
         await SettleSampleManagerAsync();
         await SettleInstrumentalFoldersAsync();
         sampleSession = Guid.NewGuid();
-        instrumentIds.Clear(); instrumentNoteIds.Clear(); instrumentEventIds.Clear(); instrumentRevision=0;
+        instrumentHistories.Clear(); instrumentIds.Clear(); instrumentNoteIds.Clear(); instrumentEventIds.Clear(); instrumentRevision=0;
         ResetNodeEditing();
         history.Clear();
         NotifyHistoryState();
@@ -221,7 +221,7 @@ public partial class WorkstationPageVM(
         await SettleInstrumentalEditorAsync();
         await SettleSampleManagerAsync();
         await SettleInstrumentalFoldersAsync();
-        deactivated = true;
+        deactivated = true; instrumentHistories.Clear();
         ResetNodeEditing();
         history.Clear();
         NotifyHistoryState();
@@ -484,7 +484,7 @@ public partial class WorkstationPageVM(
             project.Tracks.Remove(track);
             tracks.Remove(track);
             if (wasSelected) SelectedTrack = tracks.Count == 0 ? null : tracks[Math.Min(removedIndex, tracks.Count - 1)];
-            history.RemoveTrack(track);
+            history.RemoveTrack(track); if (track is InstrumentalTrack instrument) instrumentHistories.Remove(instrument);
             PruneNodeSelection();
             NotifyHistoryState();
             QueuePlaybackUpdate();

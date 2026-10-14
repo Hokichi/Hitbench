@@ -1,8 +1,10 @@
 using System.Collections.ObjectModel;
 namespace osuHitsounder.Resources.DataModels;
 
-public sealed class InstrumentalTrackSnapshot(InstrumentalTrackContext context, string name, int trackVolume, IReadOnlyDictionary<string, string> keyFiles, IReadOnlyList<InstrumentalNoteSnapshot> notes, IReadOnlyList<string>? availableFiles, long revision, string folderName = "", IReadOnlyList<string>? reservedFolderNames = null)
+public sealed class InstrumentalTrackSnapshot(InstrumentalTrackContext context, string name, int trackVolume, IReadOnlyDictionary<string, string> keyFiles, IReadOnlyList<InstrumentalNoteSnapshot> notes, IReadOnlyList<string>? availableFiles, long revision, string folderName = "", IReadOnlyList<string>? reservedFolderNames = null, bool canUndo = false, bool canRedo = false)
 {
+    public bool CanUndo { get; } = canUndo;
+    public bool CanRedo { get; } = canRedo;
     public string FolderName { get; } = folderName;
     public IReadOnlyList<string> ReservedFolderNames { get; } = Array.AsReadOnly((reservedFolderNames ?? []).ToArray());
     public InstrumentalTrackContext Context { get; } = context;
