@@ -1,5 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Media;
 using System.Windows.Input;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.Messaging;
@@ -36,7 +38,7 @@ public class ControlPointsBottomHostTests
         owner = new(new StubWorkstationSourceService(), new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler());
         page = new(owner); UiTestPump.Run(owner.LoadAsync("project.json", default)); owner.AcknowledgePresentationReady(owner.LoadGeneration);
         ((ContentControl)shell.FindName("PageHost")).Content = page;
-        editor = new(new(new("project.json", Guid.NewGuid(), Guid.NewGuid()), [], 1, true, null, false, null), new WeakReferenceMessenger(), new ImmediateUiScheduler());
+        editor = new(new(new("project.json", Guid.NewGuid(), Guid.NewGuid()), [new(Guid.NewGuid(), 1000, 50, "Normal")], 1, true, null, false, null), new WeakReferenceMessenger(), new ImmediateUiScheduler());
         drawer = new(editor); cancellation = new(); showing = Task.CompletedTask;
     }
     private static void Drain() => UiTestPump.Run(Dispatcher.CurrentDispatcher.InvokeAsync(() => { }, DispatcherPriority.Background).Task);
@@ -87,6 +89,31 @@ public class ControlPointsBottomHostTests
         UiTestPump.Run(page.PlaybackInputCompletion);
         Assert.That(owner.Position, Is.GreaterThan(TimeSpan.Zero));
         Assert.That(KeyboardNavigation.GetTabNavigation(drawer), Is.EqualTo(KeyboardNavigationMode.Continue));
+    }
+
+    [Test]
+    public void DetachedSamplesetPopupContentDoesNotTriggerWorkstationShortcuts()
+    {
+        Show(true); UiTestPump.Layout(drawer, 720, 220);
+        var combo = Descendants(drawer).OfType<ComboBox>().Single();
+        var popup = (Popup)combo.Template.FindName("PART_Popup", combo);
+        Assert.That(popup.IsOpen, Is.False);
+        // A popup has a separate visual root while retaining its logical owner.
+        // Substitute that root without opening the native popup.
+        var popupRoot = new ContainerVisual();
+        popupRoot.Children.Add((Visual)popup.Child);
+        try
+        {
+            Assert.That(shell.HandleWindowMouseWheel(true, ModifierKeys.Control, 120, popup.Child), Is.False);
+            Assert.That(shell.HandleWindowKeyDown(true, Key.Space, ModifierKeys.None, false, popup.Child), Is.False);
+        }
+        finally { popupRoot.Children.Remove((Visual)popup.Child); }
+    }
+    private static IEnumerable<DependencyObject> Descendants(DependencyObject root)
+    {
+        yield return root;
+        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(root); index++)
+            foreach (var child in Descendants(VisualTreeHelper.GetChild(root, index))) yield return child;
     }
 
     [TestCase(true)][TestCase(false)]

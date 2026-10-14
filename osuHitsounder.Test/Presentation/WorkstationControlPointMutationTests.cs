@@ -31,13 +31,15 @@ public class WorkstationControlPointMutationTests
             Assert.That(owner.CanOpenInstrumentalEditor, Is.False);
             messages.Send(new SetControlPointRequestedMessage(initial.Context, initial.Points[0].Id, 25, "Drum"));
             Assert.That((audio.PlayCalls, audio.PauseCalls, audio.SeekCalls), Is.EqualTo(transport));
+            Assert.That(audio.Snapshot.IsPlaying, Is.True);
             return Task.CompletedTask;
         };
         try
         {
-            await Ready(owner); var transport = (audio.PlayCalls, audio.PauseCalls, audio.SeekCalls);
+            await Ready(owner); audio.Play(); var transport = (audio.PlayCalls, audio.PauseCalls, audio.SeekCalls);
             await owner.AddControlPointCommand.ExecuteAsync(null); Assert.That(owner.ErrorMessage, Is.Null);
             Assert.That((audio.PlayCalls, audio.PauseCalls, audio.SeekCalls), Is.EqualTo(transport));
+            Assert.That(audio.Snapshot.IsPlaying, Is.True);
             Assert.That(owner.CanImportSample && owner.CanManageSamples && owner.CanRemoveTrack && owner.CanOpenInstrumentalEditor, Is.True);
         }
         finally { await owner.DeactivateAsync(); }

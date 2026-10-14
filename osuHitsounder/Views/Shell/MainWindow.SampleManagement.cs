@@ -184,9 +184,9 @@ public partial class MainWindow
         while (origin is not null)
         {
             if (ReferenceEquals(origin, drawer ?? SampleManagerHost.Content)) return true;
-            origin = origin is System.Windows.Media.Visual
-                ? System.Windows.Media.VisualTreeHelper.GetParent(origin) ?? LogicalTreeHelper.GetParent(origin)
-                : origin is FrameworkContentElement content ? content.Parent : LogicalTreeHelper.GetParent(origin);
+            origin = LogicalTreeHelper.GetParent(origin) ?? (origin is System.Windows.Media.Visual
+                ? System.Windows.Media.VisualTreeHelper.GetParent(origin)
+                : origin is FrameworkContentElement content ? content.Parent : null);
         }
         return false;
     }

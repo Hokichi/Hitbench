@@ -20,6 +20,19 @@ public sealed partial class ControlPointsDrawerVM : ObservableObject
     private bool closed, registered, applying;
     public ReadOnlyObservableCollection<ControlPointEntry> Rows { get; }
     public bool CanAdd => !closed && snapshot.CanAdd;
+    public bool CanSnap => !closed && snapshot.CanAdd;
+    private bool CanDeletePoint(Guid pointId) => !closed && rows.Any(row => row.Id == pointId);
+    private bool CanSnapPoint(Guid pointId) => CanSnap && CanDeletePoint(pointId);
+    [RelayCommand(CanExecute = nameof(CanDeletePoint))]
+    private void DeletePoint(Guid pointId)
+    {
+        if (CanDeletePoint(pointId)) messenger.Send(new DeleteControlPointRequestedMessage(snapshot.Context, pointId));
+    }
+    [RelayCommand(CanExecute = nameof(CanSnapPoint))]
+    private void SnapPoint(Guid pointId)
+    {
+        if (CanSnapPoint(pointId)) messenger.Send(new SnapControlPointRequestedMessage(snapshot.Context, pointId));
+    }
     public string? UnavailableReason => snapshot.UnavailableReason;
     public string? SaveError => snapshot.SaveError;
     public string SaveStatus => SaveError is not null ? "Save failed" : snapshot.IsSaving ? "Saving…" : "Autosaved";
@@ -66,7 +79,7 @@ public sealed partial class ControlPointsDrawerVM : ObservableObject
     private void OnEntryChanged(object? sender, PropertyChangedEventArgs args)
     {
         if (closed || applying || sender is not ControlPointEntry row || args.PropertyName is not (nameof(ControlPointEntry.Volume) or nameof(ControlPointEntry.Sampleset))) return;
-        var error = row.Volume is < 0 or > 100 || decimal.Truncate(row.Volume) != row.Volume ? "Enter a whole number from 0 to 100."
+        var error = row.Volume is < 5 or > 100 || decimal.Truncate(row.Volume) != row.Volume ? "Enter a whole number from 5 to 100."
             : !Track.SamplesetOptions.Contains(row.Sampleset) ? "Choose Normal, Soft, or Drum." : null;
         row.SetError(error);
         if (error is null && row.IsDirty) messenger.Send(new SetControlPointRequestedMessage(snapshot.Context, row.Id, row.Volume, row.Sampleset));
@@ -84,7 +97,8 @@ public sealed partial class ControlPointsDrawerVM : ObservableObject
     }
     private void NotifyState()
     {
-        foreach (var name in new[] { nameof(CanAdd), nameof(UnavailableReason), nameof(SaveError), nameof(SaveStatus), nameof(IsEmpty), nameof(CanClose), nameof(CanRetry) }) OnPropertyChanged(name);
+        foreach (var name in new[] { nameof(CanAdd), nameof(CanSnap), nameof(UnavailableReason), nameof(SaveError), nameof(SaveStatus), nameof(IsEmpty), nameof(CanClose), nameof(CanRetry) }) OnPropertyChanged(name);
         AddCommand.NotifyCanExecuteChanged(); RetrySaveCommand.NotifyCanExecuteChanged();
+        DeletePointCommand.NotifyCanExecuteChanged(); SnapPointCommand.NotifyCanExecuteChanged();
     }
 }

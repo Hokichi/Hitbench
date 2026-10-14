@@ -5,7 +5,8 @@ namespace osuHitsounder.Resources.DataModels;
 public sealed partial class ControlPointEntry(ControlPointSnapshot initial) : ObservableObject
 {
     public Guid Id { get; } = initial.Id;
-    public int Timestamp { get; } = initial.Timestamp;
+    private int timestamp = initial.Timestamp;
+    public int Timestamp => timestamp;
     [ObservableProperty] private decimal volume = initial.Volume;
     [ObservableProperty] private string sampleset = initial.Sampleset;
     [ObservableProperty] private string? error;
@@ -15,6 +16,7 @@ public sealed partial class ControlPointEntry(ControlPointSnapshot initial) : Ob
     {
         var dirty = IsDirty;
         var acknowledged = Volume == point.Volume && Sampleset == point.Sampleset;
+        SetProperty(ref timestamp, point.Timestamp, nameof(Timestamp));
         accepted = point;
         if (!dirty || acknowledged) { Volume = point.Volume; Sampleset = point.Sampleset; Error = null; }
     }
