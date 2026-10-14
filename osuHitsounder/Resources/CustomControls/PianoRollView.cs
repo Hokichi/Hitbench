@@ -100,7 +100,7 @@ public sealed class PianoRollView : Control
     private void OnSystemChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     { if (Dispatcher.CheckAccess()) InvalidateVisual(); else Dispatcher.BeginInvoke(InvalidateVisual); }
     private static void OnGeometryChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    { var roll = (PianoRollView)d; if (e.Property == LaneHeightProperty || e.Property == VerticalOffsetProperty) roll.OnMaximumChanged(); roll.InvalidateVisual(); }
+    { var roll = (PianoRollView)d; if(e.Property==NotesProperty || e.Property==CanEditProperty)roll.CancelInteraction(); if (e.Property == LaneHeightProperty || e.Property == VerticalOffsetProperty) roll.OnMaximumChanged(); roll.InvalidateVisual(); }
     protected override void OnRenderSizeChanged(SizeChangedInfo info) { base.OnRenderSizeChanged(info); OnMaximumChanged(); }
     private void OnMaximumChanged()
     { SetValue(MaximumVerticalOffsetPropertyKey, double.IsFinite(LaneHeight) ? Math.Max(0, 108 * LaneHeight - ActualHeight) : 0d); var value = Math.Clamp(VerticalOffset, 0, MaximumVerticalOffset); if (value != VerticalOffset) SetCurrentValue(VerticalOffsetProperty, value); }
@@ -177,7 +177,7 @@ public sealed class PianoRollView : Control
         if (x < HorizontalOffset || x > HorizontalOffset + width) SetCurrentValue(HorizontalOffsetProperty, Math.Clamp(x - width / 2, 0, Math.Max(0, ContentWidth - width)));
     }
     public bool CancelInteraction()
-    { var active = pointerInteraction || IsMouseCaptured; pointerInteraction = false; pressedNote = null; dragging = false; hover = null; if (IsMouseCaptured) ReleaseMouseCapture(); InvalidateVisual(); return active; }
+    { var active = pointerInteraction || IsMouseCaptured; pointerInteraction = false; pressedNote = null; dragging = false; hover = null; gestureIds=[]; if (IsMouseCaptured) ReleaseMouseCapture(); InvalidateVisual(); return active; }
     protected override void OnGotKeyboardFocus(KeyboardFocusChangedEventArgs e)
     { base.OnGotKeyboardFocus(e); if(!pointerInteraction)InitializeActiveCell(); InvalidateVisual(); }
     protected override void OnLostKeyboardFocus(KeyboardFocusChangedEventArgs e) { base.OnLostKeyboardFocus(e); CancelInteraction(); }
@@ -236,7 +236,12 @@ public sealed class PianoRollView : Control
         return true;
     }
     protected override void OnMouseRightButtonDown(MouseButtonEventArgs e)
-    { base.OnMouseRightButtonDown(e); if (!CanEdit) return; var note = FindNoteAt(e.GetPosition(this)); if (note is null) return; Request(InstrumentalNoteEditKind.Remove, note.Id, note.Key, note.Timestamp); e.Handled = true; }
+    { base.OnMouseRightButtonDown(e); if(RemoveNoteAt(e.GetPosition(this)))e.Handled=true; }
+    internal bool RemoveNoteAt(Point point)
+    {
+        if(!CanEdit || FindNoteAt(point) is not {} note)return false;
+        RaiseEvent(new InstrumentalNoteEditRequestedEventArgs(NoteEditRequestedEvent,InstrumentalNoteEditKind.Remove,note.Id,note.Key,note.Timestamp,[note.Id]));return true;
+    }
     protected override void OnLostMouseCapture(MouseEventArgs e) { base.OnLostMouseCapture(e); CancelInteraction(); }
     protected override void OnMouseLeave(MouseEventArgs e) { base.OnMouseLeave(e); if (!IsMouseCaptured) { hover = null; InvalidateVisual(); } }
     protected override void OnMouseWheel(MouseWheelEventArgs e)

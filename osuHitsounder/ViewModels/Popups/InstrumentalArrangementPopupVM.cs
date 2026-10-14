@@ -50,7 +50,7 @@ public sealed partial class InstrumentalArrangementPopupVM : ObservableObject
     public bool CanPlay => CanEdit && configured && !preparing && playback.Audio.IsPrepared;
     public int SelectedSubdivisionIndex { get => subdivisionIndex; set { if (SetProperty(ref subdivisionIndex, Math.Clamp(value, 0, 8))) OnPropertyChanged(nameof(Subdivision)); } }
     public int Subdivision => new[] { 1, 2, 3, 4, 5, 6, 8, 12, 16 }[SelectedSubdivisionIndex];
-    public double ZoomFactor { get => zoomFactor; set { if (double.IsFinite(value)) SetProperty(ref zoomFactor, Math.Clamp(value, 8, 128)); } }
+    public double ZoomFactor { get => zoomFactor; set { if (double.IsFinite(value) && SetProperty(ref zoomFactor, Math.Clamp(value, 8, 128))) { ZoomInCommand.NotifyCanExecuteChanged(); ZoomOutCommand.NotifyCanExecuteChanged(); } } }
     [ObservableProperty] private Guid? selectedNoteId;
     [ObservableProperty][NotifyPropertyChangedFor(nameof(ElapsedText))] private TimeSpan position;
     [ObservableProperty][NotifyPropertyChangedFor(nameof(PlayText))] private bool isPlaying;
@@ -127,7 +127,7 @@ public sealed partial class InstrumentalArrangementPopupVM : ObservableObject
     private void OnPlaybackChanged() => notifications = RefreshNotificationAsync(notifications);
     private async Task RefreshNotificationAsync(Task previous) { await previous; if (!closed) await scheduler.InvokeAsync(() => { if (!closed) RefreshPlayback(); }, CancellationToken.None); }
     public void RefreshPlayback() { if (closed) return; var state = playback.Latest.Playback; Position = state.Position; IsPlaying = state.IsPlaying; PlaybackWarning = state.Warning; if (state.Error is not null) ErrorMessage = state.Error; }
-    private void NotifyTransport() { NotifyNoteCommands(); OnPropertyChanged(nameof(CanPlay)); OnPropertyChanged(nameof(CanEdit)); PlayPauseCommand.NotifyCanExecuteChanged(); StopCommand.NotifyCanExecuteChanged(); SeekCommand.NotifyCanExecuteChanged(); NextGridCommand.NotifyCanExecuteChanged(); PreviousGridCommand.NotifyCanExecuteChanged(); }
+    private void NotifyTransport() { NotifyNoteCommands(); ZoomInCommand.NotifyCanExecuteChanged(); ZoomOutCommand.NotifyCanExecuteChanged(); OnPropertyChanged(nameof(CanPlay)); OnPropertyChanged(nameof(CanEdit)); PlayPauseCommand.NotifyCanExecuteChanged(); StopCommand.NotifyCanExecuteChanged(); SeekCommand.NotifyCanExecuteChanged(); NextGridCommand.NotifyCanExecuteChanged(); PreviousGridCommand.NotifyCanExecuteChanged(); }
     [RelayCommand(CanExecute = nameof(CanPlay))]
     private async Task PlayPauseAsync()
     { try { await AwaitPreparationsAsync(); if (IsPlaying) await playback.PauseAsync(lifetime.Token); else await playback.PlayAsync(lifetime.Token); RefreshPlayback(); } catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { } catch (Exception e) { ErrorMessage = e.Message; } }
@@ -135,11 +135,13 @@ public sealed partial class InstrumentalArrangementPopupVM : ObservableObject
     private async Task StopAsync() { try { await playback.StopAsync(lifetime.Token); RefreshPlayback(); } catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { } catch (Exception e) { ErrorMessage = e.Message; } }
     [RelayCommand(CanExecute = nameof(CanPlay))]
     private async Task SeekAsync(TimeSpan value) { try { await playback.SeekAsync(value, lifetime.Token); RefreshPlayback(); } catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { } catch (Exception e) { ErrorMessage = e.Message; } }
-    [RelayCommand] private void ZoomIn() => ZoomFactor += 1;
+    private bool CanZoomIn() => CanEdit && ZoomFactor < 128;
+    [RelayCommand(CanExecute = nameof(CanZoomIn))] private void ZoomIn() { if (CanZoomIn()) ZoomFactor += 1; }
     [RelayCommand(CanExecute = nameof(CanPlay))] private Task NextGridAsync() => NavigateAsync(true);
     [RelayCommand(CanExecute = nameof(CanPlay))] private Task PreviousGridAsync() => NavigateAsync(false);
     private Task NavigateAsync(bool forward) => BeatGridCalculator.GetAdjacentPosition(Offsets, Bpms, Subdivision, Position, Waveform.Duration, forward) is { } next ? SeekAsync(next) : Task.CompletedTask;
-    [RelayCommand] private void ZoomOut() => ZoomFactor -= 1;
+    private bool CanZoomOut() => CanEdit && ZoomFactor > 8;
+    [RelayCommand(CanExecute = nameof(CanZoomOut))] private void ZoomOut() { if (CanZoomOut()) ZoomFactor -= 1; }
     public void SelectNote(Guid? id) => SetNoteSelection(id is {} value ? new[] { value } : Array.Empty<Guid>(), id);
     public void PlaceNote(string key, double ms) { if (!CanEdit) return; pendingRequest = Guid.NewGuid(); messenger.Send(new PlaceInstrumentalNoteRequestedMessage(snapshot.Context, pendingRequest, key, ms, Subdivision)); }
     public void MoveNote(Guid id, string key, double ms) { if (!CanEdit) return; pendingRequest = Guid.NewGuid(); messenger.Send(new MoveInstrumentalNoteRequestedMessage(snapshot.Context, pendingRequest, id, key, ms, Subdivision)); }

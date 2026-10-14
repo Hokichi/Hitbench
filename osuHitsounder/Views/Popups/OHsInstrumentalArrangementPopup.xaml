@@ -77,7 +77,7 @@
    <TextBlock Text="Song" Style="{StaticResource OHsArrangementText}" VerticalAlignment="Center"/>
    <ScrollViewer x:Name="WaveformScroll" Grid.Column="1" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" Style="{StaticResource {x:Type ScrollViewer}}"
     ScrollChanged="OnWaveformScrolled" SizeChanged="OnWaveformSizeChanged">
-    <c:WaveformView Focusable="True" h:KeyboardNavigationPolicy.AllowTabNavigation="True" FocusVisualStyle="{StaticResource OHsSampleManagerKeyboardFocusStyle}" x:Name="SongWaveform" Data="{Binding Waveform,Mode=OneWay}" Position="{Binding Position,Mode=OneWay}" ZoomFactor="{Binding ZoomFactor,Mode=OneWay}"
+    <c:WaveformView AutomationProperties.Name="Song waveform" Focusable="True" h:KeyboardNavigationPolicy.AllowTabNavigation="True" FocusVisualStyle="{StaticResource OHsSampleManagerKeyboardFocusStyle}" x:Name="SongWaveform" Data="{Binding Waveform,Mode=OneWay}" Position="{Binding Position,Mode=OneWay}" ZoomFactor="{Binding ZoomFactor,Mode=OneWay}"
      ViewportWidth="{Binding ViewportWidth,ElementName=WaveformScroll,Mode=OneWay}" HorizontalOffset="{Binding HorizontalOffset,ElementName=WaveformScroll,Mode=OneWay}"
      Offsets="{Binding Offsets,Mode=OneWay}" Bpms="{Binding Bpms,Mode=OneWay}" Subdivision="{Binding Subdivision,Mode=OneWay}"
      ShowBeatRuler="False" FontFamily="{DynamicResource Regular}" WaveformBrush="{DynamicResource Brush.Navy.Muted}" MarkerBrush="{DynamicResource Brush.Text.Primary}" TextBrush="{DynamicResource Brush.Text.Secondary}"
