@@ -1,7 +1,12 @@
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Input;
+using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Threading;
 using osuHitsounder.Resources.CustomControls;
+using osuHitsounder.Resources.DataModels;
+using osuHitsounder.Services.Dialogs;
 
 namespace osuHitsounder.Test.Presentation;
 
@@ -9,6 +14,67 @@ namespace osuHitsounder.Test.Presentation;
 [NonParallelizable]
 public sealed class OHsMessageBoxPopupIntegrationTests
 {
+    [TestCase("enter", MessageBoxResult.Cancel)][TestCase("escape", MessageBoxResult.Cancel)]
+    [TestCase("skip", MessageBoxResult.Cancel)][TestCase("replace", MessageBoxResult.OK)]
+    public void ControlPointReplacementHasExplicitSafeActions(string action, MessageBoxResult expected)
+    {
+        EnsureResources();
+        var popup = new OHsMessageBoxPopup("Replace existing points at 1000 ms?", "Replace control point?",
+            MessageBoxButton.OKCancel, MessageBoxImage.Warning, true, "Replace", "Replace", "Delete", "Skip");
+        try
+        {
+            var primary = (BalloonButton)popup.FindName("PrimaryButton");
+            var secondary = (BalloonButton)popup.FindName("SecondaryButton");
+            Assert.That(primary.ButtonIcon, Is.SameAs(popup.FindResource("Delete")));
+            Assert.That(secondary.ButtonIcon, Is.SameAs(popup.FindResource("Ban")));
+            Assert.That(primary.Style, Is.SameAs(popup.FindResource("OHsBalloonDestructiveActionStyle")));
+            Assert.That(secondary.Style, Is.SameAs(popup.FindResource("OHsBalloonNeutralActionStyle")));
+            Assert.That(secondary.ButtonText, Is.EqualTo("Skip"));
+            Assert.That(AutomationProperties.GetName(secondary), Is.EqualTo("Skip"));
+            UiControlContract.AssertStyle<TextBlock>((TextBlock)popup.FindName("MessageTextBlock"), "OHsMessageBoxBodyTextStyle");
+            using var source = new InMemoryPresentationSource();
+            if (action is "enter" or "escape") popup.RaiseEvent(CreateKeyEvent(source, action == "enter" ? Key.Enter : Key.Escape));
+            else (action == "replace" ? primary : secondary).RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
+            Assert.That(popup.Result, Is.EqualTo(expected));
+        }
+        finally { popup.Close(); }
+    }
+
+    [TestCase(true)][TestCase(false)]
+    public void ConfirmationServiceUsesSubstitutedPresenter(bool accepted)
+    {
+        EnsureResources();
+        var service = new ControlPointsDialogService(() => null, Dispatcher.CurrentDispatcher, _ => throw new AssertionException("No drawer."))
+        {
+            PresentConfirmation = (popup, _) =>
+            {
+                Assert.That(popup.PopupTitle, Is.EqualTo("Replace control point?"));
+                Assert.That(((BalloonButton)popup.FindName("SecondaryButton")).ButtonText, Is.EqualTo("Skip"));
+                return Task.FromResult(accepted);
+            }
+        };
+        var task = service.ConfirmReplaceAsync(new(Guid.NewGuid(), 500, 25, "Drum"), 1000, 2, default);
+        UiTestPump.Run(task); Assert.That(task.GetAwaiter().GetResult(), Is.EqualTo(accepted));
+    }
+
+    [TestCase("canceled")][TestCase("faulted")][TestCase("closed")]
+    public void ConfirmationServicePreservesCancellationFailureAndClosedOwner(string outcome)
+    {
+        EnsureResources(); using var cancellation = new CancellationTokenSource();
+        var service = new ControlPointsDialogService(() => null, Dispatcher.CurrentDispatcher, _ => throw new AssertionException("No drawer."))
+        {
+            PresentConfirmation = outcome == "closed" ? null : (_, _) =>
+            {
+                if (outcome == "faulted") throw new InvalidOperationException("Confirmation failed.");
+                cancellation.Cancel(); return Task.FromResult(true);
+            }
+        };
+        var task = service.ConfirmReplaceAsync(new(Guid.NewGuid(), 500, 25, "Drum"), 1000, 1, cancellation.Token);
+        if (outcome == "faulted") Assert.Throws<InvalidOperationException>(() => UiTestPump.Run(task));
+        else if (outcome == "canceled") Assert.Catch<OperationCanceledException>(() => UiTestPump.Run(task));
+        else { UiTestPump.Run(task); Assert.That(task.GetAwaiter().GetResult(), Is.False); }
+    }
+
     [Test]
     public void SampleDeletionUsesSpecificActionWithSafeDefault()
     {

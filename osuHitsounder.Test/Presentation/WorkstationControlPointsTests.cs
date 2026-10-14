@@ -75,8 +75,8 @@ public class WorkstationControlPointsTests
         var ready=new TaskCompletionSource<ControlPointsSnapshot>(TaskCreationOptions.RunContinuationsAsynchronously);
         dialog.Show=async(s,token)=>
         {
-            messenger.Send(new SetControlPointRequestedMessage(s.Context,s.Points[0].Id,0,"Soft"));
-            Assert.That(owner.SaveError,Does.Contain("Disk full")); Assert.That(audio.ControlPoints[0].Volume,Is.Zero);
+            messenger.Send(new SetControlPointRequestedMessage(s.Context,s.Points[0].Id,5,"Soft"));
+            Assert.That(owner.SaveError,Does.Contain("Disk full")); Assert.That(audio.ControlPoints[0].Volume,Is.EqualTo(5));
             messenger.Send(new RetryControlPointsSaveRequestedMessage(s.Context)); Assert.That(owner.SaveError,Is.Null);
             ready.SetResult(s);
             try { await Task.Delay(Timeout.Infinite,token); }
@@ -88,7 +88,7 @@ public class WorkstationControlPointsTests
             var open=owner.AddControlPointCommand.ExecuteAsync(null); var snapshot=await ready.Task.WaitAsync(TimeSpan.FromSeconds(3));
             Assert.That(owner.CanOpenControlPoints,Is.False); await owner.DeactivateAsync(); await open;
             messenger.Send(new SetControlPointRequestedMessage(snapshot.Context,snapshot.Points[0].Id,100,"Normal"));
-            Assert.That(p.ControlPoints[0].Volume,Is.Zero); Assert.That(saves.SavedJson,Is.Not.Null);
+            Assert.That(p.ControlPoints[0].Volume,Is.EqualTo(5)); Assert.That(saves.SavedJson,Is.Not.Null);
         }
         finally { await owner.DeactivateAsync(); }
     }
@@ -104,7 +104,7 @@ public class WorkstationControlPointsTests
             owner.Position = TimeSpan.FromMilliseconds(1030); owner.SelectedSubdivisionIndex = 3;
             messenger.Send(new AddControlPointRequestedMessage(initial.Context));
             var added = project.ControlPoints.Single(p=>p.Timestamp==1000);
-            Assert.That(added.Volume, Is.EqualTo(volume)); Assert.That(added.Sampleset, Is.EqualTo("Normal"));
+            Assert.That(added.Volume, Is.EqualTo(Math.Max(5, volume))); Assert.That(added.Sampleset, Is.EqualTo("Normal"));
             messenger.Send(new AddControlPointRequestedMessage(initial.Context)); Assert.That(project.ControlPoints,Has.Count.EqualTo(4));
             owner.Position = TimeSpan.Zero; messenger.Send(new AddControlPointRequestedMessage(initial.Context));
             Assert.That(project.ControlPoints.Single(p=>p.Timestamp==0).Volume, Is.EqualTo(100));
@@ -131,7 +131,7 @@ public class WorkstationControlPointsTests
             messenger.Send(new SetControlPointRequestedMessage(initial.Context,id,25,"Drum"));
             Assert.That(project.ControlPoints[0].Volume,Is.EqualTo(25)); Assert.That(project.ControlPoints[0].Sampleset,Is.EqualTo("Drum"));
             Assert.That(audio.ControlPoints.Single().Volume,Is.EqualTo(25));
-            foreach(var invalid in new[]{-1m,101m,50.5m}) messenger.Send(new SetControlPointRequestedMessage(initial.Context,id,invalid,"Normal"));
+            foreach(var invalid in new[]{-1m,0m,4m,101m,50.5m}) messenger.Send(new SetControlPointRequestedMessage(initial.Context,id,invalid,"Normal"));
             messenger.Send(new SetControlPointRequestedMessage(initial.Context,id,50,"Bad"));
             messenger.Send(new SetControlPointRequestedMessage(initial.Context with { DrawerId=Guid.NewGuid() },id,50,"Normal"));
             Assert.That(project.ControlPoints[0].Volume,Is.EqualTo(25)); return Task.CompletedTask;

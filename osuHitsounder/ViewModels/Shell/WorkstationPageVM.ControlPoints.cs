@@ -12,6 +12,8 @@ public partial class WorkstationPageVM
     private readonly Dictionary<ControlPoint, Guid> controlPointIds = new(ReferenceEqualityComparer.Instance);
     private ControlPointsContext? controlPointsContext;
     private CancellationTokenSource? controlPointsCancellation;
+    private CancellationTokenSource? controlPointConfirmationCancellation;
+    private bool acceptingControlPointRequests;
     private Task? controlPointsWorkflow;
     private Task controlPointNotifications = Task.CompletedTask;
     private bool controlPointsBusy;
@@ -33,7 +35,7 @@ public partial class WorkstationPageVM
         var canAdd = ControlPointTimestamp() is not null;
         return new(context, Project!.ControlPoints.OrderBy(p => p.Timestamp).Select(p =>
                 new ControlPointSnapshot(ControlPointId(p), p.Timestamp, p.Volume, p.Sampleset)).ToArray(),
-            ++controlPointsVersion, canAdd, canAdd ? null : "Adding control points requires valid BPM timing and a song duration.",
+            ++controlPointsVersion, canAdd, canAdd ? null : "Adding or snapping control points requires valid BPM timing and a song duration.",
             pendingProjectWrites > 0, SaveError);
     }
     private void PublishControlPointsSnapshot()
@@ -50,7 +52,10 @@ public partial class WorkstationPageVM
         controlPointsBusy = true;
         controlPointsCancellation?.Dispose();
         controlPointsCancellation = CancellationTokenSource.CreateLinkedTokenSource(loadCancellation?.Token ?? default);
+        controlPointConfirmationCancellation = CancellationTokenSource.CreateLinkedTokenSource(controlPointsCancellation.Token);
+        acceptingControlPointRequests = true;
         controlPointsContext = new(projectPath, sampleSession, Guid.NewGuid());
+        NormalizeControlPointVolumes();
         NotifyEditingState();
         await (controlPointsWorkflow = RunControlPointsAsync(controlPointsContext, controlPointsCancellation.Token));
     }
@@ -61,9 +66,12 @@ public partial class WorkstationPageVM
         catch (Exception error) { ErrorMessage = error.Message; }
         finally
         {
+            acceptingControlPointRequests = false;
+            controlPointConfirmationCancellation?.Cancel();
             await controlPointNotifications;
             controlPointsContext = null;
             await saveTail;
+            controlPointConfirmationCancellation?.Dispose(); controlPointConfirmationCancellation = null;
             controlPointsBusy = false; NotifyEditingState();
         }
     }
@@ -82,14 +90,69 @@ public partial class WorkstationPageVM
         messenger.Register<AddControlPointRequestedMessage>(this, (_, m) => QueueControlPointRequest(m.Context, () => AddPoint(m.Context)));
         messenger.Register<SetControlPointRequestedMessage>(this, (_, m) => QueueControlPointRequest(m.Context, () => SetPoint(m)));
         messenger.Register<RetryControlPointsSaveRequestedMessage>(this, (_, m) => QueueControlPointRequest(m.Context, QueueSave));
+        messenger.Register<DeleteControlPointRequestedMessage>(this, (_, m) => QueueControlPointRequest(m.Context, () => DeletePoint(m.Context, m.PointId)));
+        messenger.Register<SnapControlPointRequestedMessage>(this, (_, m) => QueueControlPointRequest(m.Context, () => SnapPointAsync(m.Context, m.PointId)));
     }
     private void QueueControlPointRequest(ControlPointsContext context, Action mutation) =>
+        QueueControlPointRequest(context, () => { mutation(); return Task.CompletedTask; });
+    private void QueueControlPointRequest(ControlPointsContext context, Func<Task> mutation)
+    {
+        if (!acceptingControlPointRequests || !IsActiveControlPoints(context)) return;
         controlPointNotifications = ApplyControlPointRequestAsync(controlPointNotifications, context, mutation);
-    private async Task ApplyControlPointRequestAsync(Task previous, ControlPointsContext context, Action mutation)
+    }
+    private async Task ApplyControlPointRequestAsync(Task previous, ControlPointsContext context, Func<Task> mutation)
     {
         await previous;
-        try { await uiScheduler.InvokeAsync(() => { if (IsActiveControlPoints(context)) mutation(); }, CancellationToken.None); }
-        catch (Exception error) { ErrorMessage = error.Message; }
+        try
+        {
+            Task operation = Task.CompletedTask;
+            await uiScheduler.InvokeAsync(() => { if (IsActiveControlPoints(context)) operation = mutation(); }, CancellationToken.None);
+            await operation;
+        }
+        catch (OperationCanceledException) when (controlPointConfirmationCancellation?.IsCancellationRequested == true || controlPointsCancellation?.IsCancellationRequested == true) { }
+        catch (Exception error) { await uiScheduler.InvokeAsync(() => ErrorMessage = error.Message, CancellationToken.None); }
+    }
+    private void NormalizeControlPointVolumes()
+    {
+        var changed = false;
+        foreach (var point in Project!.ControlPoints)
+            if (point.Volume < 5) { point.Volume = 5; changed = true; }
+        if (changed) { PublishControlPointTimeline(); QueueSave(); }
+    }
+    private void DeletePoint(ControlPointsContext context, Guid pointId)
+    {
+        if (!IsActiveControlPoints(context) || !IsInteractionReady) return;
+        var point = Project!.ControlPoints.FirstOrDefault(p => ControlPointId(p) == pointId);
+        if (point is null) return;
+        Project.ControlPoints.Remove(point);
+        PublishControlPointTimeline(); QueueSave(); PublishControlPointsSnapshot();
+    }
+    private async Task SnapPointAsync(ControlPointsContext context, Guid pointId)
+    {
+        if (!acceptingControlPointRequests || !IsActiveControlPoints(context) || ControlPointTimestamp() is not { } timestamp) return;
+        var point = Project!.ControlPoints.FirstOrDefault(p => ControlPointId(p) == pointId);
+        if (point is null) return;
+        var conflicts = Project.ControlPoints.Count(p => !ReferenceEquals(p, point) && p.Timestamp == timestamp);
+        if (point.Timestamp == timestamp && conflicts == 0) return;
+        var token = controlPointConfirmationCancellation!.Token;
+        if (conflicts > 0)
+        {
+            var confirmation = controlPointsDialog!.ConfirmReplaceAsync(
+                new(pointId, point.Timestamp, point.Volume, point.Sampleset), timestamp, conflicts, token);
+            // Observe even a presenter that ignores cancellation and faults after the drawer closes.
+            _ = confirmation.ContinueWith(task => _ = task.Exception, CancellationToken.None,
+                TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+            if (!await confirmation.WaitAsync(token)) return;
+        }
+        await uiScheduler.InvokeAsync(() =>
+        {
+            if (token.IsCancellationRequested || !acceptingControlPointRequests || !IsActiveControlPoints(context) ||
+                !Project!.ControlPoints.Contains(point)) return;
+            foreach (var conflict in Project.ControlPoints.Where(p => !ReferenceEquals(p, point) && p.Timestamp == timestamp).ToArray())
+                Project.ControlPoints.Remove(conflict);
+            point.Timestamp = timestamp;
+            PublishControlPointTimeline(); QueueSave(); PublishControlPointsSnapshot();
+        }, CancellationToken.None);
     }
     private void AddPoint(ControlPointsContext context)
     {
@@ -101,7 +164,7 @@ public partial class WorkstationPageVM
     }
     private void SetPoint(SetControlPointRequestedMessage request)
     {
-        if (!IsActiveControlPoints(request.Context) || !IsInteractionReady || request.Volume is < 0 or > 100 ||
+        if (!IsActiveControlPoints(request.Context) || !IsInteractionReady || request.Volume is < 5 or > 100 ||
             decimal.Truncate(request.Volume) != request.Volume || !Track.SamplesetOptions.Contains(request.Sampleset)) return;
         var point = Project!.ControlPoints.FirstOrDefault(p => ControlPointId(p) == request.PointId);
         if (point is null || point.Volume == request.Volume && point.Sampleset == request.Sampleset) return;

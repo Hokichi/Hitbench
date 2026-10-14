@@ -16,7 +16,7 @@ public partial class OHsMessageBoxPopup : BasePopup
     public OHsMessageBoxPopup(string message, string title, MessageBoxButton buttons = MessageBoxButton.OK,
         MessageBoxImage icon = MessageBoxImage.None, bool destructiveConfirmation = false,
         string? destructiveButtonText = null, string? destructiveButtonAutomationName = null,
-        string? destructiveButtonIconKey = null)
+        string? destructiveButtonIconKey = null, string? cancelButtonText = null)
     {
         InitializeComponent();
         this.destructiveConfirmation = destructiveConfirmation && buttons == MessageBoxButton.OKCancel;
@@ -25,6 +25,11 @@ public partial class OHsMessageBoxPopup : BasePopup
         SetFormattedMessage(message);
 
         ConfigureButtons(buttons);
+        if (cancelButtonText is not null && buttons == MessageBoxButton.OKCancel)
+        {
+            SecondaryButton.ButtonText = cancelButtonText;
+            AutomationProperties.SetName(SecondaryButton, cancelButtonText);
+        }
         if (this.destructiveConfirmation)
         {
             PrimaryButton.ButtonText = destructiveButtonText ?? "Remove Track";
