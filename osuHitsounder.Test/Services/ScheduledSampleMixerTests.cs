@@ -149,11 +149,12 @@ public class ScheduledSampleMixerTests
         Assert.Throws<OverflowException>(() => new PreparedPlaybackSchedule([Event(1,long.MaxValue,[0,0])]));
     }
 
-    [Test]
-    public void NormalReadAllocatesNothingAndChecksBounds()
+    [TestCase(false), TestCase(true)]
+    public void NormalReadAllocatesNothingAndChecksBounds(bool activeControlPoints)
     {
         var mixer = new ScheduledSampleMixer(DecodedAudio.CopyFrom(new float[400_100]),0);
         mixer.Publish( new PreparedPlaybackSchedule([Event(1,0,new float[400_100])]));
+        if (activeControlPoints) mixer.SetControlPoints(new([new(0, 50), new(1000, 25), new(2000, 100)]));
         var output = new float[16];
         long allocated = -1;
         Exception? measurementFailure = null;
@@ -162,8 +163,15 @@ public class ScheduledSampleMixerTests
         {
             try
             {
-                _ = MeasureReads(mixer, output);
-                allocated = MeasureReads(mixer, output);
+                // Keep background-GC counter effects outside the strict zero-byte measurement.
+                if (!GC.TryStartNoGCRegion(16 * 1024 * 1024))
+                    throw new InvalidOperationException("Cannot isolate the allocation measurement from background GC.");
+                try
+                {
+                    _ = MeasureReads(mixer, output);
+                    allocated = MeasureReads(mixer, output);
+                }
+                finally { GC.EndNoGCRegion(); }
             }
             catch (Exception error) { measurementFailure = error; }
         });

@@ -66,6 +66,16 @@ public class NumericUpDown : Control
             new FrameworkPropertyMetadata(typeof(NumericUpDown)));
     }
 
+    public NumericUpDown()
+    {
+        DataContextChanged += (_, _) =>
+        {
+            SetValue(InputErrorPropertyKey, null);
+            SetValue(HasInputErrorPropertyKey, false);
+            UpdateText();
+        };
+    }
+
     public decimal Value
     {
         get => (decimal)GetValue(ValueProperty);
@@ -296,7 +306,7 @@ public class NumericUpDown : Control
 
         if (IsIntegerOnly)
         {
-            if (!decimal.TryParse(_textBox.Text, NumberStyles.Number, CultureInfo.CurrentCulture, out var integer) ||
+            if (!decimal.TryParse(_textBox.Text, NumberStyles.Number & ~NumberStyles.AllowThousands, CultureInfo.CurrentCulture, out var integer) ||
                 decimal.Truncate(integer) != integer || integer < LowerLimit || integer > UpperLimit)
             {
                 SetValue(InputErrorPropertyKey, string.Format(CultureInfo.CurrentCulture, "Enter a whole number from {0} to {1}.", LowerLimit, UpperLimit));

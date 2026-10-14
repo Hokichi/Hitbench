@@ -10,6 +10,39 @@ namespace osuHitsounder.Test.Presentation;
 public class WorkstationControlPointsTests
 {
     [Test]
+    public async Task ClosedDrawerRejectsRequestsWhileAcceptedSaveIsPending()
+    {
+        var project = new ProjectData { Offsets = [0], BPMs = [120], ControlPoints = [new() { Timestamp = 1000, Volume = 50 }] };
+        var messenger = new WeakReferenceMessenger();
+        var dialog = new StubControlPointsDialogService();
+        var audio = new StubWorkstationAudioService();
+        var saves = new DelayedProjectFileService();
+        var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", project)) },
+            new MarkerPlaybackCoordinator(audio, Task.Delay), new ImmediateUiScheduler(), projectFiles: saves, messenger: messenger, controlPointsDialog: dialog);
+        ControlPointsSnapshot? closed = null;
+        dialog.Show = (snapshot, _) =>
+        {
+            closed = snapshot;
+            messenger.Send(new SetControlPointRequestedMessage(snapshot.Context, snapshot.Points[0].Id, 25, "Drum"));
+            return Task.CompletedTask;
+        };
+        try
+        {
+            await owner.LoadAsync("project.json", default);
+            owner.AcknowledgePresentationReady(owner.LoadGeneration);
+            var operation = owner.AddControlPointCommand.ExecuteAsync(null);
+            Assert.That(saves.FirstWriteStarted, Is.True);
+            Assert.That(operation.IsCompleted, Is.False);
+            messenger.Send(new SetControlPointRequestedMessage(closed!.Context, closed.Points[0].Id, 100, "Normal"));
+            Assert.That(project.ControlPoints[0].Volume, Is.EqualTo(25));
+            Assert.That(audio.ControlPoints[0].Volume, Is.EqualTo(25));
+            saves.Release();
+            await operation;
+            Assert.That(osuHitsounder.Services.ProjectFiles.ProjectDataSerializer.Deserialize(saves.LatestJson!).ControlPoints[0].Volume, Is.EqualTo(25));
+        }
+        finally { saves.Release(); await owner.DeactivateAsync(); }
+    }
+    [Test]
     public async Task LiveEditDoesNotWaitForSaveAndRetryRetainsAcceptedPoint()
     {
         var p=new ProjectData { Offsets=[0],BPMs=[120],ControlPoints=[new(){Timestamp=1000,Volume=50}] };

@@ -85,6 +85,7 @@ public sealed partial class InstrumentalArrangementPopupVM : ObservableObject
         {
             lifetime.Token.ThrowIfCancellationRequested();
             playback.Audio.Open(context.AudioPath); playback.Audio.SetSongVolume(context.SongVolume); playback.Audio.SetSamplesVolume(context.SamplesVolume); playback.Audio.SetApplicationVolume(context.ApplicationVolume);
+            playback.Audio.SetControlPoints(context.ControlPoints);
             await playback.ConfigureAsync(new(Offsets, Bpms), Waveform.Duration, lifetime.Token);
             configured = true; playback.StateChanged += OnPlaybackChanged; QueuePreparation(); await AwaitPreparationsAsync();
             if (!closed && !lifetime.IsCancellationRequested) { await playback.SeekAsync(context.InitialPosition, lifetime.Token); RefreshPlayback(); }

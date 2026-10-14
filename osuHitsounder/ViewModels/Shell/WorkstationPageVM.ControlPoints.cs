@@ -61,8 +61,10 @@ public partial class WorkstationPageVM
         catch (Exception error) { ErrorMessage = error.Message; }
         finally
         {
-            await controlPointNotifications; await saveTail;
-            controlPointsContext = null; controlPointsBusy = false; NotifyEditingState();
+            await controlPointNotifications;
+            controlPointsContext = null;
+            await saveTail;
+            controlPointsBusy = false; NotifyEditingState();
         }
     }
     public async Task SettleControlPointsDrawerAsync()

@@ -87,7 +87,8 @@ public partial class WorkstationPageVM
                 pendingPlayCancellation?.Cancel();
                 await playback.PauseAsync(token); RefreshPlayback();
                 await instrumentDialogs!.ShowArrangementAsync(new(InstrumentSnapshot(track, context), instrumentAudioPath!, Waveform!,
-                    Project!.Offsets, Project.BPMs, Position, Subdivision, ZoomFactor, SongVolume, SamplesVolume, ApplicationVolume), token);
+                    Project!.Offsets, Project.BPMs, Position, Subdivision, ZoomFactor, SongVolume, SamplesVolume, ApplicationVolume,
+                    Project.ControlPoints.Select(p => new ControlPointVolumeSnapshot(p.Timestamp, p.Volume)).ToArray()), token);
             }
             else await instrumentDialogs!.ShowKeysMappingAsync(InstrumentSnapshot(track, context), token);
         }

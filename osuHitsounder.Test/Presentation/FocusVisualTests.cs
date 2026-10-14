@@ -67,7 +67,7 @@ public sealed class FocusVisualTests
         BindingOperations.SetBinding(input, NumericUpDown.ValueProperty, binding);
         UiTestPump.Layout(input, 160, 40);
         var editor = (TextBox)input.Template.FindName("PART_TextBox", input);
-        Assert.That(editor.FocusVisualStyle, Is.SameAs(Application.Current.FindResource("DefaultFocusVisualStyle")));
+        Assert.That(editor.FocusVisualStyle, Is.SameAs(Application.Current.FindResource("OHsSampleManagerKeyboardFocusStyle")));
         UiControlContract.AssertStyle<NumericUpDown>(input, typeof(NumericUpDown));
         UiControlContract.AssertTemplate(input, "NumericUpDownTemplate");
         UiControlContract.AssertStyle<TextBox>(editor, "NumericUpDownEditorStyle");

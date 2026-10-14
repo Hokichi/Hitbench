@@ -1,8 +1,9 @@
 using osuHitsounder.Core.Entities;
 namespace osuHitsounder.Resources.DataModels;
 
-public sealed class InstrumentalEditorContext(InstrumentalTrackSnapshot track, string audioPath, WaveformData waveform, IReadOnlyList<int> offsets, IReadOnlyList<int> bpms, TimeSpan initialPosition, int initialSubdivision, double initialZoomFactor, int songVolume, int samplesVolume, int applicationVolume)
+public sealed class InstrumentalEditorContext(InstrumentalTrackSnapshot track, string audioPath, WaveformData waveform, IReadOnlyList<int> offsets, IReadOnlyList<int> bpms, TimeSpan initialPosition, int initialSubdivision, double initialZoomFactor, int songVolume, int samplesVolume, int applicationVolume, IReadOnlyList<ControlPointVolumeSnapshot>? controlPoints = null)
 {
+    public IReadOnlyList<ControlPointVolumeSnapshot> ControlPoints { get; } = Array.AsReadOnly((controlPoints ?? []).ToArray());
     public InstrumentalTrackSnapshot Track { get; } = track;
     public string AudioPath { get; } = audioPath;
     public WaveformData Waveform { get; } = waveform;
