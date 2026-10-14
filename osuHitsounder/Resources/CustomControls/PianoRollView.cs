@@ -11,6 +11,22 @@ namespace osuHitsounder.Resources.CustomControls;
 
 public sealed class PianoRollView : Control
 {
+    public static readonly DependencyProperty IsAdditionModeProperty=DependencyProperty.Register(nameof(IsAdditionMode),typeof(bool),typeof(PianoRollView),new FrameworkPropertyMetadata(true,FrameworkPropertyMetadataOptions.AffectsRender,(d,_)=>((PianoRollView)d).CancelInteraction()));
+    public bool IsAdditionMode {get=>(bool)GetValue(IsAdditionModeProperty);set=>SetValue(IsAdditionModeProperty,value);}
+    public static readonly DependencyProperty SelectedNoteIdsProperty=DependencyProperty.Register(nameof(SelectedNoteIds),typeof(IReadOnlyList<Guid>),typeof(PianoRollView),new FrameworkPropertyMetadata(Array.Empty<Guid>(),FrameworkPropertyMetadataOptions.AffectsRender));
+    public IReadOnlyList<Guid> SelectedNoteIds {get=>(IReadOnlyList<Guid>)GetValue(SelectedNoteIdsProperty);set=>SetValue(SelectedNoteIdsProperty,value);}
+    public static readonly RoutedEvent NoteSelectionRequestedEvent=EventManager.RegisterRoutedEvent(nameof(NoteSelectionRequested),RoutingStrategy.Bubble,typeof(EventHandler<InstrumentalNoteSelectionRequestedEventArgs>),typeof(PianoRollView));
+    public event EventHandler<InstrumentalNoteSelectionRequestedEventArgs> NoteSelectionRequested {add=>AddHandler(NoteSelectionRequestedEvent,value);remove=>RemoveHandler(NoteSelectionRequestedEvent,value);}
+    private ModifierKeys pointerModifiers;
+    private Point pointerLast;
+    private IReadOnlyList<Guid> gestureIds=[];
+    private void SelectIds(IReadOnlyList<Guid> ids,Guid? anchor)=>RaiseEvent(new InstrumentalNoteSelectionRequestedEventArgs(NoteSelectionRequestedEvent,ids,anchor));
+    internal void InitializeActiveCell()
+    {
+        activeKey=Math.Clamp(107-(int)Math.Floor(VerticalOffset/Math.Max(1,LaneHeight)),0,107);
+        var visible=ContentWidth>0 ? HorizontalOffset/ContentWidth*Duration.TotalMilliseconds : 0;
+        activeMs=BeatGridCalculator.GetContainingInterval(Offsets,Bpms,Subdivision,visible,Duration.TotalMilliseconds)?.StartMilliseconds ?? visible;
+    }
     public static readonly DependencyProperty NotesProperty = DependencyProperty.Register(nameof(Notes), typeof(IReadOnlyList<InstrumentalNoteSnapshot>), typeof(PianoRollView), new FrameworkPropertyMetadata(Array.Empty<InstrumentalNoteSnapshot>(), FrameworkPropertyMetadataOptions.AffectsRender, OnGeometryChanged));
     public IReadOnlyList<InstrumentalNoteSnapshot> Notes { get => (IReadOnlyList<InstrumentalNoteSnapshot>)GetValue(NotesProperty); set => SetValue(NotesProperty, value); }
     public static readonly DependencyProperty SelectedNoteIdProperty = DependencyProperty.Register(nameof(SelectedNoteId), typeof(Guid?), typeof(PianoRollView), new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender, OnGeometryChanged));
@@ -116,7 +132,7 @@ public sealed class PianoRollView : Control
          .OrderBy(l => Math.Abs(l.Milliseconds - ms)).FirstOrDefault();
         return Math.Abs(nearest.Milliseconds - ms) <= .500001 ? nearest.Milliseconds : ms;
     }
-    private void Request(InstrumentalNoteEditKind kind, Guid id, string key, double ms) => RaiseEvent(new InstrumentalNoteEditRequestedEventArgs(NoteEditRequestedEvent, kind, id, key, ms));
+    private void Request(InstrumentalNoteEditKind kind, Guid id, string key, double ms) => RaiseEvent(new InstrumentalNoteEditRequestedEventArgs(NoteEditRequestedEvent, kind, id, key, ms, kind==InstrumentalNoteEditKind.Place ? [] : gestureIds.Count>0 ? gestureIds : SelectedNoteIds.Count>0 && SelectedNoteIds.Contains(id) ? SelectedNoteIds : new[]{id}));
     public bool HandleEditorKey(Key key, ModifierKeys modifiers, bool repeat)
     {
         if (!CanEdit) return false;
@@ -132,8 +148,14 @@ public sealed class PianoRollView : Control
                 Request(InstrumentalNoteEditKind.Move, selected.Id, selected.Key, next.TotalMilliseconds);
             return true;
         }
+        if(key==Key.Enter && modifiers is ModifierKeys.None or ModifierKeys.Control)
+        {
+            var hit=Notes.FirstOrDefault(n=>n.Key==InstrumentalKeys.GetName(activeKey) && BeatGridCalculator.GetContainingInterval(Offsets,Bpms,Subdivision,activeMs,Duration.TotalMilliseconds) is {} interval && n.Timestamp==Math.Round(interval.StartMilliseconds,MidpointRounding.AwayFromZero));
+            if(hit is not null){var ids=modifiers==ModifierKeys.Control ? SelectedNoteIds.Contains(hit.Id) ? SelectedNoteIds.Where(id=>id!=hit.Id).ToArray() : [..SelectedNoteIds,hit.Id] : new[]{hit.Id};SelectIds(ids,hit.Id);}
+            else if(modifiers==ModifierKeys.None){if(IsAdditionMode)Request(InstrumentalNoteEditKind.Place,Guid.Empty,InstrumentalKeys.GetName(activeKey),activeMs);else SelectIds([],null);}
+            return true;
+        }
         if (modifiers != ModifierKeys.None) return false;
-        if (key == Key.Enter) { Request(InstrumentalNoteEditKind.Place, Guid.Empty, InstrumentalKeys.GetName(activeKey), activeMs); return true; }
         if (key == Key.Delete) { if (selected is not null) Request(InstrumentalNoteEditKind.Remove, selected.Id, selected.Key, selected.Timestamp); return true; }
         if (key == Key.Up) activeKey = Math.Min(107, activeKey + 1);
         else if (key == Key.Down) activeKey = Math.Max(0, activeKey - 1);
@@ -157,34 +179,37 @@ public sealed class PianoRollView : Control
     public bool CancelInteraction()
     { var active = pointerInteraction || IsMouseCaptured; pointerInteraction = false; pressedNote = null; dragging = false; hover = null; if (IsMouseCaptured) ReleaseMouseCapture(); InvalidateVisual(); return active; }
     protected override void OnGotKeyboardFocus(KeyboardFocusChangedEventArgs e)
-    { base.OnGotKeyboardFocus(e); activeMs = BeatGridCalculator.GetContainingInterval(Offsets, Bpms, Subdivision, Position.TotalMilliseconds, Duration.TotalMilliseconds)?.StartMilliseconds ?? 0; RevealActive(); InvalidateVisual(); }
-    protected override void OnLostKeyboardFocus(KeyboardFocusChangedEventArgs e) { base.OnLostKeyboardFocus(e); InvalidateVisual(); }
+    { base.OnGotKeyboardFocus(e); if(!pointerInteraction)InitializeActiveCell(); InvalidateVisual(); }
+    protected override void OnLostKeyboardFocus(KeyboardFocusChangedEventArgs e) { base.OnLostKeyboardFocus(e); CancelInteraction(); }
     protected override void OnKeyDown(KeyEventArgs e) { if (HandleEditorKey(e.Key, e.SystemKey, Keyboard.Modifiers, e.IsRepeat)) { e.Handled = true; return; } base.OnKeyDown(e); }
     protected override void OnMouseLeftButtonDown(MouseButtonEventArgs e)
     {
-        base.OnMouseLeftButtonDown(e); if (!CanEdit) return; Focus();
-        if (!BeginPointerInteraction(e.GetPosition(this))) return;
+        base.OnMouseLeftButtonDown(e); if (!CanEdit) return;
+        if (!BeginPointerInteraction(e.GetPosition(this),Keyboard.Modifiers)) return; Focus();
         if (!CaptureMouse()) CancelInteraction();
         e.Handled = true;
     }
-    internal bool BeginPointerInteraction(Point p)
+    internal bool BeginPointerInteraction(Point p,ModifierKeys modifiers=ModifierKeys.None)
     {
         if (!CellAt(p, out var key, out var ms)) return false;
         pointerInteraction = true;
+        pointerModifiers=modifiers;pointerLast=p;gestureIds=[];
         pointerStart = p; pressedNote = FindNoteAt(p); dragging = false; hover = (key, ms);
-        if (pressedNote is not null) { SetCurrentValue(SelectedNoteIdProperty, pressedNote.Id); InstrumentalKeys.TryGetIndex(pressedNote.Key, out activeKey); activeMs = GridTime(pressedNote.Timestamp); grabOffset = ms - pressedNote.Timestamp; }
-        else { SetCurrentValue(SelectedNoteIdProperty, null); InstrumentalKeys.TryGetIndex(key, out activeKey); activeMs = BeatGridCalculator.GetContainingInterval(Offsets, Bpms, Subdivision, ms, Duration.TotalMilliseconds)?.StartMilliseconds ?? ms; }
+        if (pressedNote is not null) { gestureIds=SelectedNoteIds.Contains(pressedNote.Id)?SelectedNoteIds:new[]{pressedNote.Id};InstrumentalKeys.TryGetIndex(pressedNote.Key, out activeKey); activeMs = GridTime(pressedNote.Timestamp); grabOffset = ms - pressedNote.Timestamp; }
+        else { InstrumentalKeys.TryGetIndex(key, out activeKey); activeMs = BeatGridCalculator.GetContainingInterval(Offsets, Bpms, Subdivision, ms, Duration.TotalMilliseconds)?.StartMilliseconds ?? ms; }
         InvalidateVisual(); return true;
     }
     protected override void OnMouseMove(MouseEventArgs e)
     {
-        base.OnMouseMove(e); UpdatePointerPosition(e.GetPosition(this));
+        base.OnMouseMove(e); UpdatePointerPosition(e.GetPosition(this),Keyboard.Modifiers);
     }
-    internal void UpdatePointerPosition(Point p)
+    internal void UpdatePointerPosition(Point p,ModifierKeys modifiers=ModifierKeys.None)
     {
+        if(pointerInteraction && modifiers.HasFlag(ModifierKeys.Control) && !pointerModifiers.HasFlag(ModifierKeys.Control)){CancelInteraction();return;}
+        pointerLast=p;
         if (CellAt(p, out var key, out var ms))
         {
-            if (pointerInteraction && pressedNote is not null && (Math.Abs(p.X - pointerStart.X) >= SystemParameters.MinimumHorizontalDragDistance || Math.Abs(p.Y - pointerStart.Y) >= SystemParameters.MinimumVerticalDragDistance)) dragging = true;
+            if (pointerInteraction && (Math.Abs(p.X - pointerStart.X) >= SystemParameters.MinimumHorizontalDragDistance || Math.Abs(p.Y - pointerStart.Y) >= SystemParameters.MinimumVerticalDragDistance)) dragging = true;
             hover = (key, dragging ? ms - grabOffset : ms);
         }
         else hover = null;
@@ -198,11 +223,15 @@ public sealed class PianoRollView : Control
     internal bool CompletePointerInteraction()
     {
         if (!pointerInteraction) return false;
-        var note = pressedNote; var moved = dragging; var target = hover; CancelInteraction();
+        var note = pressedNote; var moved = dragging; var target = hover; var ids=gestureIds;var start=pointerStart;var end=pointerLast;var modifiers=pointerModifiers; CancelInteraction();
+        if(modifiers.HasFlag(ModifierKeys.Control)){if(!moved && note is not null)SelectIds(SelectedNoteIds.Contains(note.Id)?SelectedNoteIds.Where(id=>id!=note.Id).ToArray():[..SelectedNoteIds,note.Id],note.Id);return true;}
+        if(IsAdditionMode && moved)return true;
+        if(!IsAdditionMode && note is null && moved){var rectangle=new Rect(start,end);var chosen=Notes.Where(n=>GetNoteBounds(n).IntersectsWith(rectangle)).Select(n=>n.Id).ToArray();SelectIds(chosen,chosen.Length>0?chosen[0]:null);return true;}
         if (CanEdit && target is { } cell)
         {
-            if (note is not null && moved) Request(InstrumentalNoteEditKind.Move, note.Id, cell.Key, cell.Time);
-            else if (note is null && !moved) Request(InstrumentalNoteEditKind.Place, Guid.Empty, cell.Key, cell.Time);
+            if (note is not null && moved) {gestureIds=ids;Request(InstrumentalNoteEditKind.Move, note.Id, cell.Key, cell.Time);gestureIds=[];}
+            else if(note is not null)SelectIds(ids,note.Id);
+            else if (note is null && !moved){if(IsAdditionMode)Request(InstrumentalNoteEditKind.Place, Guid.Empty, cell.Key, cell.Time);else SelectIds([],null);}
         }
         return true;
     }
@@ -231,28 +260,42 @@ public sealed class PianoRollView : Control
             var label = new FormattedText(name, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, new Typeface(FontFamily, FontStyle, FontWeight, FontStretch), 11, text, VisualTreeHelper.GetDpi(this).PixelsPerDip);
             dc.DrawText(label, new Point(Math.Max(4, KeyColumnWidth - label.Width - 8), y + (LaneHeight - label.Height) / 2));
             dc.DrawLine(new Pen(hc ? SystemColors.WindowTextBrush : BrushOr(GridBrush, "Brush.Border.Subtle"), .5), new(KeyColumnWidth, y + LaneHeight), new(ActualWidth, y + LaneHeight));
-            if (IsKeyboardFocused && 107 - row == activeKey) dc.DrawLine(new Pen(text, 2), new(8, y + LaneHeight - 3), new(KeyColumnWidth - 8, y + LaneHeight - 3));
         }
         dc.PushClip(new RectangleGeometry(new Rect(KeyColumnWidth, 0, Math.Max(0, ActualWidth - KeyColumnWidth), ActualHeight)));
         dc.PushTransform(new TranslateTransform(KeyColumnWidth, 0)); dc.PushOpacity(.5);
         BeatGridDrawing.Draw(dc, this, Offsets, Bpms, Subdivision, Duration.TotalMilliseconds, ContentWidth, HorizontalOffset, Math.Max(0, ActualWidth - KeyColumnWidth), ActualHeight, false);
         dc.Pop(); dc.Pop();
-        if (hover is { } cell)
+        if(pointerInteraction && dragging && !IsAdditionMode && !pointerModifiers.HasFlag(ModifierKeys.Control) && pressedNote is null)
+            dc.DrawRectangle(null,new Pen(selection,1),new Rect(pointerStart,pointerLast));
+        if(dragging && pressedNote is {} anchor && hover is {} destination && !IsAdditionMode)
+        {
+            InstrumentalKeys.TryGetIndex(anchor.Key,out var originalPitch);InstrumentalKeys.TryGetIndex(destination.Key,out var targetPitch);
+            var time=BeatGridCalculator.GetNearestTimestamp(Offsets,Bpms,Subdivision,destination.Time,Duration.TotalMilliseconds);
+            if(time is {} timestamp)foreach(var note in Notes.Where(n=>gestureIds.Contains(n.Id)))
+            {
+                InstrumentalKeys.TryGetIndex(note.Key,out var pitch);pitch+=targetPitch-originalPitch;
+                var movedTime=(long)note.Timestamp+timestamp-anchor.Timestamp;
+                if(pitch is <0 or >107 || movedTime<0 || movedTime>=Duration.TotalMilliseconds || movedTime>int.MaxValue)continue;
+                var bounds=GetNoteBounds(note with{Key=InstrumentalKeys.GetName(pitch),Timestamp=(int)movedTime});
+                if(!bounds.IsEmpty)OHsSampleNodeDrawing.Draw(dc,selection,new Pen(cue,1),OHsSampleNodeDrawing.Inset(bounds));
+            }
+        }
+        if (IsAdditionMode && hover is { } cell)
         {
             var ts = dragging ? BeatGridCalculator.GetNearestTimestamp(Offsets, Bpms, Subdivision, cell.Time, Duration.TotalMilliseconds) : BeatGridCalculator.GetContainingInterval(Offsets, Bpms, Subdivision, cell.Time, Duration.TotalMilliseconds) is { } interval ? (int?)Math.Round(interval.StartMilliseconds, MidpointRounding.AwayFromZero) : null;
             if (ts is { } t) { var rect = GetNoteBounds(new(Guid.Empty, cell.Key, t, 100)); if (!rect.IsEmpty) OHsSampleNodeDrawing.Draw(dc, hc ? SystemColors.HighlightBrush : BrushOr(HoverBrush, "Brush.Background.Hover"), null, OHsSampleNodeDrawing.Inset(rect)); }
         }
         foreach (var note in Notes.OrderBy(n => n.Id == SelectedNoteId))
         {
-            var rect = GetNoteBounds(note); if (rect.IsEmpty || !rect.IntersectsWith(new Rect(KeyColumnWidth, 0, Math.Max(0, ActualWidth - KeyColumnWidth), ActualHeight)) || dragging && note == pressedNote) continue;
-            var chosen = note.Id == SelectedNoteId;
+            var rect = GetNoteBounds(note); if (rect.IsEmpty || !rect.IntersectsWith(new Rect(KeyColumnWidth, 0, Math.Max(0, ActualWidth - KeyColumnWidth), ActualHeight)) || dragging && !IsAdditionMode && gestureIds.Contains(note.Id)) continue;
+            var chosen = SelectedNoteIds.Contains(note.Id) || note.Id == SelectedNoteId;
             OHsSampleNodeDrawing.Draw(dc, chosen ? selection : marker, chosen ? new Pen(cue, 1) : border, OHsSampleNodeDrawing.Inset(rect));
             if (note == pressedNote) OHsSampleNodeDrawing.Draw(dc, null, new Pen(hc ? SystemColors.HighlightTextBrush : BrushOr(PressedBrush, "Brush.Navy"), 2), OHsSampleNodeDrawing.Inset(rect));
         }
         if (IsKeyboardFocused)
         {
             var t = (int)Math.Round(activeMs, MidpointRounding.AwayFromZero); var r = GetNoteBounds(new(Guid.Empty, InstrumentalKeys.GetName(activeKey), t, 100));
-            if (!r.IsEmpty) dc.DrawLine(new Pen(text, 2), new(r.Left, r.Bottom + 2), new(r.Right, r.Bottom + 2));
+            if (!r.IsEmpty) dc.DrawEllipse(text,null,new Point(r.Left+4,r.Top+4),2,2);
         }
         if (Duration > TimeSpan.Zero && ContentWidth > 0) { var x = KeyColumnWidth + Position.TotalMilliseconds / Duration.TotalMilliseconds * ContentWidth - HorizontalOffset; dc.DrawLine(new Pen(hc ? SystemColors.WindowTextBrush : BrushOr(PlaybackMarkerBrush, "Brush.Text.Primary"), 1.5), new(x, 0), new(x, ActualHeight)); }
         dc.Pop();

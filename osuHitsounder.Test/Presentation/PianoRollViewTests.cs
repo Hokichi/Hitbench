@@ -11,7 +11,7 @@ public class PianoRollViewTests
     public void DragRetainsGrabOffsetAndCancelDoesNotMutate()
     {
         var note = new InstrumentalNoteSnapshot(Guid.NewGuid(), "C4", 1000, 100);
-        var roll = new PianoRollView { Notes = [note], Offsets = [0], Bpms = [120], Duration = TimeSpan.FromSeconds(10), ContentWidth = 1000, HorizontalOffset = 50, VerticalOffset = 70 * 36, KeyColumnWidth = 72, LaneHeight = 36, CanEdit = true };
+        var roll = new PianoRollView { Notes = [note], Offsets = [0], Bpms = [120], Duration = TimeSpan.FromSeconds(10), ContentWidth = 1000, HorizontalOffset = 50, VerticalOffset = 70 * 36, KeyColumnWidth = 72, LaneHeight = 36, CanEdit = true, IsAdditionMode = false };
         UiTestPump.Layout(roll, 400, 150);
         var requests = new List<InstrumentalNoteEditRequestedEventArgs>(); roll.NoteEditRequested += (_, e) => requests.Add(e);
         Assert.That(roll.BeginPointerInteraction(new Point(127, 54)), Is.True);
@@ -29,7 +29,7 @@ public class PianoRollViewTests
     public void KeyboardMovesRespectPitchBoundsAndFractionalGrid()
     {
         var note = new InstrumentalNoteSnapshot(Guid.NewGuid(), "B9", 146, 100);
-        var roll = new PianoRollView { Notes = [note], SelectedNoteId = note.Id, Offsets = [0], Bpms = [137], Subdivision = 3, Duration = TimeSpan.FromSeconds(10), CanEdit = true };
+        var roll = new PianoRollView { Notes = [note], SelectedNoteId = note.Id, Offsets = [0], Bpms = [137], Subdivision = 3, Duration = TimeSpan.FromSeconds(10), CanEdit = true, IsAdditionMode = false };
         var requests = new List<InstrumentalNoteEditRequestedEventArgs>(); roll.NoteEditRequested += (_, e) => requests.Add(e);
         roll.HandleEditorKey(Key.Up, ModifierKeys.Alt, false); Assert.That(requests, Is.Empty);
         roll.HandleEditorKey(Key.System, Key.Right, ModifierKeys.Alt, false);
@@ -52,7 +52,7 @@ public class PianoRollViewTests
     [Test]
     public void HitTestingAccountsForKeyColumnAndScrolling()
     {
-        var id = Guid.NewGuid(); var roll = new PianoRollView { Notes = [new(id, "C4", 1000, 100)], Offsets = [0], Bpms = [120], Duration = TimeSpan.FromSeconds(10), ContentWidth = 1000, ViewportWidth = 328, HorizontalOffset = 50, VerticalOffset = 70 * 36, KeyColumnWidth = 72, LaneHeight = 36, CanEdit = true };
+        var id = Guid.NewGuid(); var roll = new PianoRollView { Notes = [new(id, "C4", 1000, 100)], Offsets = [0], Bpms = [120], Duration = TimeSpan.FromSeconds(10), ContentWidth = 1000, ViewportWidth = 328, HorizontalOffset = 50, VerticalOffset = 70 * 36, KeyColumnWidth = 72, LaneHeight = 36, CanEdit = true, IsAdditionMode = true };
         roll.Measure(new Size(400, 100)); roll.Arrange(new Rect(0, 0, 400, 100));
         Assert.That(roll.FindNoteAt(new Point(122, 54))?.Id, Is.EqualTo(id));
         Assert.That(roll.FindNoteAt(new Point(20, 54)), Is.Null);
