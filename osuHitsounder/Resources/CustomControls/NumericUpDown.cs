@@ -9,7 +9,7 @@ namespace osuHitsounder.Resources.CustomControls;
 [TemplatePart(Name = PartTextBox, Type = typeof(TextBox))]
 [TemplatePart(Name = PartUpButton, Type = typeof(RepeatButton))]
 [TemplatePart(Name = PartDownButton, Type = typeof(RepeatButton))]
-public class NumericUpDown : Control
+public partial class NumericUpDown : Control
 {
     private const string PartTextBox = "PART_TextBox";
     private const string PartUpButton = "PART_UpButton";
@@ -68,8 +68,10 @@ public class NumericUpDown : Control
 
     public NumericUpDown()
     {
+        InitializeVerticalDrag();
         DataContextChanged += (_, _) =>
         {
+            CancelVerticalDrag();
             SetValue(InputErrorPropertyKey, null);
             SetValue(HasInputErrorPropertyKey, false);
             UpdateText();
@@ -102,6 +104,7 @@ public class NumericUpDown : Control
 
     public override void OnApplyTemplate()
     {
+        CancelVerticalDrag();
         UnwireTemplateParts();
 
         base.OnApplyTemplate();
@@ -184,11 +187,16 @@ public class NumericUpDown : Control
     {
         base.OnPreviewMouseWheel(e);
 
-        if (!IsKeyboardFocusWithin || e.Handled)
+        if (e.Handled)
             return;
+        e.Handled = HandleMouseWheel(e.Delta, IsKeyboardFocusWithin);
+    }
 
-        ChangeValue(e.Delta > 0 ? Step : -Step);
-        e.Handled = true;
+    internal bool HandleMouseWheel(int delta, bool hasKeyboardFocus)
+    {
+        if (!hasKeyboardFocus) return false;
+        ChangeValue(delta > 0 ? Step : -Step);
+        return true;
     }
 
     private static object CoerceValue(DependencyObject dependencyObject, object baseValue)
@@ -307,14 +315,14 @@ public class NumericUpDown : Control
         if (IsIntegerOnly)
         {
             if (!decimal.TryParse(_textBox.Text, NumberStyles.Number & ~NumberStyles.AllowThousands, CultureInfo.CurrentCulture, out var integer) ||
-                decimal.Truncate(integer) != integer || integer < LowerLimit || integer > UpperLimit)
+                decimal.Truncate(integer) != integer || (!ClampIntegerToRange && (integer < LowerLimit || integer > UpperLimit)))
             {
                 SetValue(InputErrorPropertyKey, string.Format(CultureInfo.CurrentCulture, "Enter a whole number from {0} to {1}.", LowerLimit, UpperLimit));
                 SetValue(HasInputErrorPropertyKey, true);
                 return false;
             }
             SetValue(InputErrorPropertyKey, null); SetValue(HasInputErrorPropertyKey, false);
-            SetCurrentValue(ValueProperty, integer);
+            SetCurrentValue(ValueProperty, CoerceValueWithinLimits(integer, LowerLimit, UpperLimit));
             UpdateText(); return true;
         }
 

@@ -170,6 +170,11 @@
         <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
         <Setter Property="helpers:KeyboardNavigationPolicy.AllowTabNavigation" Value="{Binding Path=(helpers:KeyboardNavigationPolicy.AllowTabNavigation), RelativeSource={RelativeSource AncestorType=customControls:NumericUpDown}, Mode=OneWay}" />
         <Setter Property="IsTabStop" Value="True" />
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding IsVerticalDragActive, RelativeSource={RelativeSource AncestorType=customControls:NumericUpDown}, Mode=OneWay}" Value="True">
+                <Setter Property="Cursor" Value="SizeNS" />
+            </DataTrigger>
+        </Style.Triggers>
     </Style>
     <ControlTemplate
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -298,6 +303,14 @@
         <Setter Property="FontFamily" Value="{DynamicResource Regular}" />
         <Setter Property="Template" Value="{StaticResource NumericUpDownTemplate}" />
         <Style.Triggers>
+            <MultiTrigger>
+                <MultiTrigger.Conditions>
+                    <Condition Property="IsVerticalDragEnabled" Value="True" />
+                    <Condition Property="IsEnabled" Value="True" />
+                </MultiTrigger.Conditions>
+                <Setter Property="Cursor" Value="Hand" />
+            </MultiTrigger>
+            <Trigger Property="IsVerticalDragActive" Value="True"><Setter Property="Cursor" Value="SizeNS" /></Trigger>
             <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
                 <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
                 <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
