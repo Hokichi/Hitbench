@@ -14,6 +14,17 @@ public class NumericUpDown : Control
     private const string PartTextBox = "PART_TextBox";
     private const string PartUpButton = "PART_UpButton";
     private const string PartDownButton = "PART_DownButton";
+    public static readonly DependencyProperty IsIntegerOnlyProperty = DependencyProperty.Register(
+        nameof(IsIntegerOnly), typeof(bool), typeof(NumericUpDown), new PropertyMetadata(false));
+    private static readonly DependencyPropertyKey InputErrorPropertyKey = DependencyProperty.RegisterReadOnly(
+        nameof(InputError), typeof(string), typeof(NumericUpDown), new PropertyMetadata(null));
+    public static readonly DependencyProperty InputErrorProperty = InputErrorPropertyKey.DependencyProperty;
+    private static readonly DependencyPropertyKey HasInputErrorPropertyKey = DependencyProperty.RegisterReadOnly(
+        nameof(HasInputError), typeof(bool), typeof(NumericUpDown), new PropertyMetadata(false));
+    public static readonly DependencyProperty HasInputErrorProperty = HasInputErrorPropertyKey.DependencyProperty;
+    public bool IsIntegerOnly { get => (bool)GetValue(IsIntegerOnlyProperty); set => SetValue(IsIntegerOnlyProperty, value); }
+    public string? InputError => (string?)GetValue(InputErrorProperty);
+    public bool HasInputError => (bool)GetValue(HasInputErrorProperty);
 
     public static readonly DependencyProperty ValueProperty = DependencyProperty.Register(
         nameof(Value),
@@ -272,19 +283,36 @@ public class NumericUpDown : Control
 
     private void ChangeValue(decimal delta)
     {
-        CommitText();
-        Value = CoerceValueWithinLimits(Value + delta, LowerLimit, UpperLimit);
+        if (!CommitInput()) return;
+        SetCurrentValue(ValueProperty, CoerceValueWithinLimits(Value + delta, LowerLimit, UpperLimit));
     }
 
-    private void CommitText()
+    private void CommitText() => CommitInput();
+
+    public bool CommitInput()
     {
         if (_textBox is null || _isUpdatingText)
-            return;
+            return true;
+
+        if (IsIntegerOnly)
+        {
+            if (!decimal.TryParse(_textBox.Text, NumberStyles.Number, CultureInfo.CurrentCulture, out var integer) ||
+                decimal.Truncate(integer) != integer || integer < LowerLimit || integer > UpperLimit)
+            {
+                SetValue(InputErrorPropertyKey, string.Format(CultureInfo.CurrentCulture, "Enter a whole number from {0} to {1}.", LowerLimit, UpperLimit));
+                SetValue(HasInputErrorPropertyKey, true);
+                return false;
+            }
+            SetValue(InputErrorPropertyKey, null); SetValue(HasInputErrorPropertyKey, false);
+            SetCurrentValue(ValueProperty, integer);
+            UpdateText(); return true;
+        }
 
         if (TryParseValueText(_textBox.Text ?? string.Empty, LowerLimit, UpperLimit, out var value))
-            Value = value;
+            SetCurrentValue(ValueProperty, value);
 
         UpdateText();
+        return true;
     }
 
     private void UpdateText()
