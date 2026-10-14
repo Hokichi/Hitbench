@@ -43,14 +43,6 @@
    <Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True"/><Setter Property="IsTabStop" Value="True"/>
    <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}"/>
   </Style>
-  <ItemsPanelTemplate x:Key="OHsKeysPanel"><VirtualizingStackPanel/></ItemsPanelTemplate>
-  <ControlTemplate x:Key="OHsKeysItemsTemplate" TargetType="ItemsControl">
-   <ScrollViewer CanContentScroll="True" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Style="{StaticResource {x:Type ScrollViewer}}"><ItemsPresenter/></ScrollViewer>
-  </ControlTemplate>
-  <Style x:Key="OHsKeysItemsStyle" TargetType="ItemsControl" BasedOn="{StaticResource BaseItemsControlStyle}">
-   <Setter Property="Template" Value="{StaticResource OHsKeysItemsTemplate}"/><Setter Property="ItemsPanel" Value="{StaticResource OHsKeysPanel}"/>
-   <Setter Property="VirtualizingPanel.IsVirtualizing" Value="True"/><Setter Property="VirtualizingPanel.VirtualizationMode" Value="Recycling"/>
-  </Style>
   <DataTemplate x:Key="OHsKeysRowTemplate">
    <Grid Margin="0,8,8,0" Style="{StaticResource BaseGridStyle}">
     <Grid.ColumnDefinitions><ColumnDefinition Width="48"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
@@ -81,7 +73,7 @@
     <TextBlock Text="{Binding TrackName,Mode=OneWay}" Style="{StaticResource OHsKeysTextStyle}" TextTrimming="CharacterEllipsis"/>
     <TextBlock Text="C1–B9 · Paths relative to Samples · PageUp/PageDown scroll keys; Alt+Home/End go to first/last key." Style="{StaticResource OHsKeysTextStyle}"/>
    </StackPanel>
-   <ItemsControl x:Name="KeyRows" Grid.Row="2" IsEnabled="{Binding CanEditMapping,Mode=OneWay}" ItemsSource="{Binding Rows,Mode=OneWay}" ItemTemplate="{StaticResource OHsKeysRowTemplate}" Style="{StaticResource OHsKeysItemsStyle}"/>
+   <ItemsControl x:Name="KeyRows" Grid.Row="2" IsEnabled="{Binding CanEditMapping,Mode=OneWay}" ItemsSource="{Binding Rows,Mode=OneWay}" ItemTemplate="{StaticResource OHsKeysRowTemplate}" Style="{StaticResource OHsVirtualizedDrawerItemsStyle}"/>
    <ScrollViewer Grid.Row="3" Margin="0,12,0,0" Style="{StaticResource OHsKeysStatusScrollStyle}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" AutomationProperties.Name="Mapping import and save status">
    <StackPanel Style="{StaticResource BaseStackPanelStyle}">
     <TextBlock Text="{Binding SaveStatus,Mode=OneWay}" Style="{StaticResource OHsKeysTextStyle}"/>

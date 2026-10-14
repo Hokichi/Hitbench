@@ -180,7 +180,7 @@
             TargetType="Border">
             <Setter Property="Background" Value="{DynamicResource Brush.Overlay}" />
             <Setter Property="Focusable" Value="False" />
-            <Setter Property="AutomationProperties.Name" Value="Dismiss Manage Samples" />
+            <Setter Property="AutomationProperties.Name" Value="Dismiss active drawer" />
         </Style>
         <Style
             x:Key="MainWindowModalContentStyle"

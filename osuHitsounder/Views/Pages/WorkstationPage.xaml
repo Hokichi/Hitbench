@@ -726,6 +726,11 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
+        <Style x:Key="OHsWorkstationControlPointsButtonStyle" TargetType="customControls:BalloonButton"
+               BasedOn="{StaticResource OHsWorkstationToolbarButtonStyle}">
+            <Setter Property="helpers:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
+            <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
+        </Style>
         <Style
             x:Key="OHsWorkstationToolbarResnapStyle"
             BasedOn="{StaticResource OHsWorkstationResnapButtonStyle}"
@@ -782,8 +787,11 @@
             </Style.Triggers>
         </Style>
         <converters:SamplesetDisplayConverter x:Key="OHsWorkstationSamplesetDisplayConverter" />
+        <Style x:Key="OHsWorkstationCompactOptionTextStyle" TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlockStyle}">
+            <Setter Property="Foreground" Value="{Binding Path=(TextElement.Foreground), RelativeSource={RelativeSource AncestorType=ContentPresenter}, Mode=OneWay}" />
+        </Style>
         <DataTemplate x:Key="OHsWorkstationCompactOptionTemplate">
-            <TextBlock Style="{StaticResource BaseTextBlockStyle}" TextTrimming="CharacterEllipsis">
+            <TextBlock Style="{StaticResource OHsWorkstationCompactOptionTextStyle}" TextTrimming="CharacterEllipsis">
                 <TextBlock.Text>
                     <MultiBinding Converter="{StaticResource OHsWorkstationSamplesetDisplayConverter}" Mode="OneWay">
                         <Binding Mode="OneWay" />
@@ -1320,6 +1328,14 @@
                                     Command="{Binding AddSampleTrackCommand, Mode=OneWay}"
                                     Style="{StaticResource OHsWorkstationToolbarButtonStyle}"
                                     ToolTip="Add New Sample Track" />
+                                <customControls:BalloonButton
+                                    x:Name="AddControlPointButton"
+                                    AutomationProperties.Name="Add Control Point"
+                                    ButtonIcon="{StaticResource ClockPlusOutline}"
+                                    ButtonText="Add Control Point"
+                                    Command="{Binding AddControlPointCommand, Mode=OneWay}"
+                                    Style="{StaticResource OHsWorkstationControlPointsButtonStyle}"
+                                    ToolTip="Open Control Points" />
                                 <customControls:BalloonButton
                                     x:Name="AddInstrumentButton"
                                     AutomationProperties.HelpText="Create an instrumental arrangement with mapped samples."
