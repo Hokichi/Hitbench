@@ -743,49 +743,7 @@
             TargetType="customControls:BalloonCheckBox">
             <Setter Property="Margin" Value="0" />
         </Style>
-        <ControlTemplate x:Key="OHsWorkstationModeButtonTemplate" TargetType="RadioButton">
-            <Grid>
-                <Border Background="{TemplateBinding Background}" CornerRadius="8" />
-                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
-                <Border
-                    x:Name="ModeCue"
-                    Height="3"
-                    Margin="8,0,8,4"
-                    VerticalAlignment="Bottom"
-                    Background="{TemplateBinding Foreground}"
-                    IsHitTestVisible="False"
-                    Visibility="Collapsed" />
-            </Grid>
-            <ControlTemplate.Triggers>
-                <Trigger Property="IsChecked" Value="True">
-                    <Setter TargetName="ModeCue" Property="Visibility" Value="Visible" />
-                </Trigger>
-            </ControlTemplate.Triggers>
-        </ControlTemplate>
-        <Style
-            x:Key="OHsWorkstationModeButtonStyle"
-            BasedOn="{StaticResource BaseRadioButtonStyle}"
-            TargetType="RadioButton">
-            <Setter Property="Width" Value="40" />
-            <Setter Property="Height" Value="40" />
-            <Setter Property="Background" Value="{DynamicResource Brush.Background.Elevated}" />
-            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
-            <Setter Property="FocusVisualStyle" Value="{StaticResource OHsKeyboardFocusVisualStyle}" />
-            <Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="True" />
-            <Setter Property="Template" Value="{StaticResource OHsWorkstationModeButtonTemplate}" />
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource Brush.Background.Hover}" />
-                </Trigger>
-                <Trigger Property="IsChecked" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource Brush.Navy.Tint}" />
-                </Trigger>
-                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
-                    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
+        <Style x:Key="OHsWorkstationModeButtonStyle" TargetType="RadioButton" BasedOn="{StaticResource OHsTimelineEditingModeButtonStyle}" />
         <converters:SamplesetDisplayConverter x:Key="OHsWorkstationSamplesetDisplayConverter" />
         <Style x:Key="OHsWorkstationCompactOptionTextStyle" TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlockStyle}">
             <Setter Property="Foreground" Value="{Binding Path=(TextElement.Foreground), RelativeSource={RelativeSource AncestorType=ContentPresenter}, Mode=OneWay}" />

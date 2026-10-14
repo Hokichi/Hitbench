@@ -51,10 +51,16 @@
    <Setter Property="MaxHeight" Value="120"/><Setter Property="Focusable" Value="True"/>
    <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}"/>
   </Style>
- </c:BasePopup.Resources>
+  <Style x:Key="OHsArrangementIconAction" TargetType="c:BalloonButton" BasedOn="{StaticResource OHsArrangementAction}"><Setter Property="ShouldShowText" Value="False"/><Setter Property="ShouldExpand" Value="False"/></Style>
+  <Style x:Key="OHsArrangementFollow" TargetType="c:BalloonCheckBox" BasedOn="{StaticResource {x:Type c:BalloonCheckBox}}"><Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True"/><Setter Property="ButtonSize" Value="40"/><Setter Property="IsTabStop" Value="True"/><Setter Property="ShouldShowText" Value="True"/><Setter Property="FontFamily" Value="{DynamicResource Regular}"/><Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}"/><Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="True"/><Setter Property="DefaultBackground" Value="{DynamicResource Brush.BalloonButton.Background.Neutral}"/><Setter Property="HoveredBackground" Value="{DynamicResource Brush.BalloonButton.Background.Neutral.Hovered}"/><Setter Property="CheckedBackground" Value="{DynamicResource Brush.Navy}"/><Style.Triggers><DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast),Mode=OneWay}" Value="True"><Setter Property="DefaultBackground" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}"/><Setter Property="CheckedBackground" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}"/><Setter Property="HoveredBackground" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}"/><Setter Property="StrokeBrush" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}"/></DataTrigger></Style.Triggers></Style> </c:BasePopup.Resources>
  <Grid Margin="16" Style="{StaticResource BaseGridStyle}">
   <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="1*"/><RowDefinition Height="3*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-  <WrapPanel Grid.Row="0">
+  <WrapPanel Grid.Row="0">   <RadioButton x:Name="SelectionModeButton" GroupName="ArrangementEditingMode" IsChecked="{Binding IsSelectionMode,Mode=OneWay}" IsEnabled="{Binding CanEdit,Mode=OneWay}" Checked="OnEditingModeChecked" Style="{StaticResource OHsTimelineEditingModeButtonStyle}" AutomationProperties.Name="Selection Mode" ToolTip="Selection Mode: select and move notes"><c:Icon Width="18" Height="18" Path="{StaticResource ArrowCursor}" Color="{Binding Foreground,RelativeSource={RelativeSource AncestorType=RadioButton},Mode=OneWay}"/></RadioButton>
+   <RadioButton x:Name="AdditionModeButton" GroupName="ArrangementEditingMode" IsChecked="{Binding IsAdditionMode,Mode=OneWay}" IsEnabled="{Binding CanEdit,Mode=OneWay}" Checked="OnEditingModeChecked" Style="{StaticResource OHsTimelineEditingModeButtonStyle}" AutomationProperties.Name="Addition Mode" ToolTip="Addition Mode: place notes"><c:Icon Width="18" Height="18" Path="{StaticResource RectangleVertical}" Color="{Binding Foreground,RelativeSource={RelativeSource AncestorType=RadioButton},Mode=OneWay}"/></RadioButton>
+   <c:BalloonButton ButtonText="Undo" ButtonIcon="{StaticResource RegularUndo}" Command="{Binding UndoCommand,Mode=OneWay}" Style="{StaticResource OHsArrangementAction}" AutomationProperties.Name="Undo note edit" ToolTip="Undo (Ctrl+Z)"/>
+   <c:BalloonButton ButtonText="Redo" ButtonIcon="{StaticResource RegularRedo}" Command="{Binding RedoCommand,Mode=OneWay}" Style="{StaticResource OHsArrangementAction}" AutomationProperties.Name="Redo note edit" ToolTip="Redo (Ctrl+Y)"/>
+   <c:BalloonButton ButtonText="Resnap all notes" ButtonIcon="{StaticResource RegularRepeat}" Command="{Binding ResnapAllNotesCommand,Mode=OneWay}" Style="{StaticResource OHsArrangementAction}" AutomationProperties.Name="Resnap all notes" ToolTip="Snap all notes to current subdivision"/>
+   <c:BalloonCheckBox ButtonIcon="{StaticResource AlignArrowRightFill}" CheckedText="Follow on" UncheckedText="Follow off" IsChecked="{Binding ScrollWithMarker,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource OHsArrangementFollow}" AutomationProperties.Name="Scroll with marker" ToolTip="Scroll with playback marker"/>
    <c:BalloonButton ButtonText="{Binding PlayText,Mode=OneWay}" Command="{Binding PlayPauseCommand,Mode=OneWay}" Style="{StaticResource OHsArrangementPlay}" AutomationProperties.Name="Arrangement play or pause" ToolTip="Play/Pause (Space)"/>
    <c:BalloonButton ButtonText="Stop" ButtonIcon="{StaticResource MediaStop}" Command="{Binding StopCommand,Mode=OneWay}" Style="{StaticResource OHsArrangementAction}" AutomationProperties.Name="Stop arrangement" ToolTip="Stop (Shift+Space)"/>
    <TextBlock Text="{Binding ElapsedText,Mode=OneWay}" VerticalAlignment="Center" Margin="0,0,16,8" Style="{StaticResource OHsArrangementText}"/>
@@ -63,25 +69,25 @@
     Value="{Binding SelectedSubdivisionIndex,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" DisplayText="{Binding Subdivision,Mode=OneWay,StringFormat=1/{0}}" Style="{StaticResource OHsArrangementSlider}" AutomationProperties.Name="Arrangement beat subdivision"/>
    <TextBlock Text="Zoom" VerticalAlignment="Center" Style="{StaticResource OHsArrangementFieldLabel}"/>
    <c:ValueSlider Minimum="8" Maximum="128" Value="{Binding ZoomFactor,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" DisplayText="{Binding ZoomFactor,Mode=OneWay,StringFormat={}{0:0}}" Style="{StaticResource OHsArrangementSlider}" AutomationProperties.Name="Arrangement zoom"/>
-   <c:BalloonButton ButtonText="Zoom out" ButtonIcon="{StaticResource Minus}" Command="{Binding ZoomOutCommand,Mode=OneWay}" Style="{StaticResource OHsArrangementAction}" AutomationProperties.Name="Zoom out arrangement" ToolTip="Zoom out"/>
-   <c:BalloonButton ButtonText="Zoom in" ButtonIcon="{StaticResource PlusSolid}" Command="{Binding ZoomInCommand,Mode=OneWay}" Style="{StaticResource OHsArrangementAction}" AutomationProperties.Name="Zoom in arrangement" ToolTip="Zoom in"/>
+   <c:BalloonButton ButtonIcon="{StaticResource Minus}" Command="{Binding ZoomOutCommand,Mode=OneWay}" Style="{StaticResource OHsArrangementIconAction}" AutomationProperties.Name="Zoom out arrangement" ToolTip="Zoom out"/>
+   <c:BalloonButton ButtonIcon="{StaticResource PlusSolid}" Command="{Binding ZoomInCommand,Mode=OneWay}" Style="{StaticResource OHsArrangementIconAction}" AutomationProperties.Name="Zoom in arrangement" ToolTip="Zoom in"/>
   </WrapPanel>
   <Grid Grid.Row="1" FlowDirection="LeftToRight" Margin="0,0,0,8" Style="{StaticResource BaseGridStyle}">
    <Grid.ColumnDefinitions><ColumnDefinition Width="{Binding KeyColumnWidth,ElementName=PianoRoll,Mode=OneWay}"/><ColumnDefinition Width="*"/><ColumnDefinition Width="{Binding ActualWidth,ElementName=PitchScroll,Mode=OneWay}"/></Grid.ColumnDefinitions>
    <TextBlock Text="Song" Style="{StaticResource OHsArrangementText}" VerticalAlignment="Center"/>
    <ScrollViewer x:Name="WaveformScroll" Grid.Column="1" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" Style="{StaticResource {x:Type ScrollViewer}}"
     ScrollChanged="OnWaveformScrolled" SizeChanged="OnWaveformSizeChanged">
-    <c:WaveformView x:Name="SongWaveform" Data="{Binding Waveform,Mode=OneWay}" Position="{Binding Position,Mode=OneWay}" ZoomFactor="{Binding ZoomFactor,Mode=OneWay}"
+    <c:WaveformView Focusable="True" h:KeyboardNavigationPolicy.AllowTabNavigation="True" FocusVisualStyle="{StaticResource OHsSampleManagerKeyboardFocusStyle}" x:Name="SongWaveform" Data="{Binding Waveform,Mode=OneWay}" Position="{Binding Position,Mode=OneWay}" ZoomFactor="{Binding ZoomFactor,Mode=OneWay}"
      ViewportWidth="{Binding ViewportWidth,ElementName=WaveformScroll,Mode=OneWay}" HorizontalOffset="{Binding HorizontalOffset,ElementName=WaveformScroll,Mode=OneWay}"
      Offsets="{Binding Offsets,Mode=OneWay}" Bpms="{Binding Bpms,Mode=OneWay}" Subdivision="{Binding Subdivision,Mode=OneWay}"
-     ShowBeatRuler="True" FontFamily="{DynamicResource Regular}" WaveformBrush="{DynamicResource Brush.Navy.Muted}" MarkerBrush="{DynamicResource Brush.Text.Primary}" TextBrush="{DynamicResource Brush.Text.Secondary}"
+     ShowBeatRuler="False" FontFamily="{DynamicResource Regular}" WaveformBrush="{DynamicResource Brush.Navy.Muted}" MarkerBrush="{DynamicResource Brush.Text.Primary}" TextBrush="{DynamicResource Brush.Text.Secondary}"
      SeekCommand="{Binding SeekCommand,Mode=OneWay}" MouseLeftButtonDown="OnWaveformClick" />
    </ScrollViewer>
   </Grid>
   <Grid Grid.Row="2" FlowDirection="LeftToRight" Style="{StaticResource BaseGridStyle}">
    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
    <c:PianoRollView x:Name="PianoRoll" Style="{StaticResource OHsArrangementRoll}" Notes="{Binding Notes,Mode=OneWay}"
-    SelectedNoteId="{Binding SelectedNoteId,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" Offsets="{Binding Offsets,Mode=OneWay}" Bpms="{Binding Bpms,Mode=OneWay}"
+    SelectedNoteId="{Binding SelectedNoteId,Mode=OneWay}" SelectedNoteIds="{Binding SelectedNoteIds,Mode=OneWay}" IsAdditionMode="{Binding IsAdditionMode,Mode=OneWay}" LaneHeight="{Binding LaneHeight,Mode=OneWay}" NoteSelectionRequested="OnNoteSelection" Offsets="{Binding Offsets,Mode=OneWay}" Bpms="{Binding Bpms,Mode=OneWay}"
     Subdivision="{Binding Subdivision,Mode=OneWay}" Duration="{Binding Waveform.Duration,Mode=OneWay}" Position="{Binding Position,Mode=OneWay}" ZoomFactor="{Binding ZoomFactor,Mode=OneWay}"
     ContentWidth="{Binding ActualWidth,ElementName=SongWaveform,Mode=OneWay}" ViewportWidth="{Binding ViewportWidth,ElementName=WaveformScroll,Mode=OneWay}"
     HorizontalOffset="{Binding Value,ElementName=TimelineScroll,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
@@ -90,15 +96,15 @@
    <ScrollBar x:Name="PitchScroll" Grid.Column="1" Orientation="Vertical" Minimum="0" Maximum="{Binding MaximumVerticalOffset,ElementName=PianoRoll,Mode=OneWay}" ViewportSize="{Binding ActualHeight,ElementName=PianoRoll,Mode=OneWay}"
     Value="{Binding VerticalOffset,ElementName=PianoRoll,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" SmallChange="36" LargeChange="180" AutomationProperties.Name="Piano pitch position"/>
   </Grid>
-  <ScrollBar x:Name="TimelineScroll" Grid.Row="3" Margin="0,8,0,8" Orientation="Horizontal" Minimum="0" Maximum="{Binding ScrollableWidth,ElementName=WaveformScroll,Mode=OneWay}"
+  <ScrollBar PreviewMouseDown="OnTimelineManualInput" PreviewKeyDown="OnTimelineManualInput" x:Name="TimelineScroll" Grid.Row="3" Margin="0,8,0,8" Orientation="Horizontal" Minimum="0" Maximum="{Binding ScrollableWidth,ElementName=WaveformScroll,Mode=OneWay}"
    ViewportSize="{Binding ViewportWidth,ElementName=WaveformScroll,Mode=OneWay}" ValueChanged="OnHorizontalChanged" AutomationProperties.Name="Arrangement timeline position"/>
   <ScrollViewer Grid.Row="4" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Style="{StaticResource OHsArrangementStatusScroll}" AutomationProperties.Name="Arrangement status messages">
   <StackPanel Style="{StaticResource BaseStackPanelStyle}">
    <TextBlock Text="{Binding EditingHint,Mode=OneWay}" Style="{StaticResource OHsArrangementText}"/>
-   <TextBlock Text="C1–B9 · Enter places; Alt+arrows move; Delete removes. Ctrl+Left/Right seeks; Ctrl+Home/End goes to song start/end." Style="{StaticResource OHsArrangementText}"/>
+   <TextBlock Text="C1–B9 · Addition places; Selection selects and drags. Ctrl+A selects all; Ctrl+C/V copies/pastes; Ctrl+Z/Y undoes/redoes. Alt+arrows move selected notes; Delete removes. Shift+wheel scrolls time; Ctrl+wheel zooms; Alt+wheel changes snap; Ctrl+Shift+wheel changes pitch height." Style="{StaticResource OHsArrangementText}"/>
    <TextBlock Text="{Binding MappingStatus,Mode=OneWay}" Style="{StaticResource OHsArrangementWarning}"/>
    <TextBlock Text="{Binding PlaybackWarning,Mode=OneWay}" Style="{StaticResource OHsArrangementWarning}"/>
-   <TextBlock Text="{Binding SaveStatus,Mode=OneWay}" Style="{StaticResource OHsArrangementText}"/>
+
    <TextBlock Text="{Binding SaveError,Mode=OneWay}" Style="{StaticResource OHsArrangementError}"/>
    <TextBlock Text="{Binding ErrorMessage,Mode=OneWay}" Style="{StaticResource OHsArrangementError}"/>
   </StackPanel>
