@@ -73,11 +73,11 @@ public sealed partial class InstrumentalArrangementPopupVM : ObservableObject
         {
             if (closed || m.Snapshot.Context != snapshot.Context || m.Snapshot.Revision < snapshot.Revision) return;
             snapshot = m.Snapshot; OnPropertyChanged(nameof(Notes)); OnPropertyChanged(nameof(KeyFiles)); OnPropertyChanged(nameof(PopupTitle)); OnPropertyChanged(nameof(MappingStatus)); OnPropertyChanged(nameof(EditingHint));
-            if (SelectedNoteId is { } id && !Notes.Any(n => n.Id == id)) SelectedNoteId = null;
+            SetNoteSelection(SelectedNoteIds, SelectedNoteId);
             if (configured) QueuePreparation();
         });
         messenger.Register<InstrumentalEditResultMessage>(this, (_, m) =>
-        { if (closed || m.Context != snapshot.Context || m.RequestId != pendingRequest) return; ErrorMessage = m.Error; if (m.Error is null) SelectedNoteId = m.SelectedNoteId; });
+        { if (closed || m.Context != snapshot.Context || m.RequestId != pendingRequest) return; ErrorMessage = m.Error; if (m.Error is null) SetNoteSelection(m.SelectedNoteIds ?? (m.SelectedNoteId is {} id ? new[] { id } : Array.Empty<Guid>()), m.SelectedNoteId); });
         messenger.Register<InstrumentalSaveStateChangedMessage>(this, (_, m) =>
         { if (closed || m.Context != snapshot.Context || m.Version < saveVersion) return; saveVersion = m.Version; IsSaving = m.IsSaving; SaveError = m.Error; OnPropertyChanged(nameof(SaveStatus)); });
         messenger.Send(new InstrumentalEditorReadyMessage(snapshot.Context));
@@ -127,7 +127,7 @@ public sealed partial class InstrumentalArrangementPopupVM : ObservableObject
     private void OnPlaybackChanged() => notifications = RefreshNotificationAsync(notifications);
     private async Task RefreshNotificationAsync(Task previous) { await previous; if (!closed) await scheduler.InvokeAsync(() => { if (!closed) RefreshPlayback(); }, CancellationToken.None); }
     public void RefreshPlayback() { if (closed) return; var state = playback.Latest.Playback; Position = state.Position; IsPlaying = state.IsPlaying; PlaybackWarning = state.Warning; if (state.Error is not null) ErrorMessage = state.Error; }
-    private void NotifyTransport() { OnPropertyChanged(nameof(CanPlay)); OnPropertyChanged(nameof(CanEdit)); PlayPauseCommand.NotifyCanExecuteChanged(); StopCommand.NotifyCanExecuteChanged(); SeekCommand.NotifyCanExecuteChanged(); NextGridCommand.NotifyCanExecuteChanged(); PreviousGridCommand.NotifyCanExecuteChanged(); }
+    private void NotifyTransport() { NotifyNoteCommands(); OnPropertyChanged(nameof(CanPlay)); OnPropertyChanged(nameof(CanEdit)); PlayPauseCommand.NotifyCanExecuteChanged(); StopCommand.NotifyCanExecuteChanged(); SeekCommand.NotifyCanExecuteChanged(); NextGridCommand.NotifyCanExecuteChanged(); PreviousGridCommand.NotifyCanExecuteChanged(); }
     [RelayCommand(CanExecute = nameof(CanPlay))]
     private async Task PlayPauseAsync()
     { try { await AwaitPreparationsAsync(); if (IsPlaying) await playback.PauseAsync(lifetime.Token); else await playback.PlayAsync(lifetime.Token); RefreshPlayback(); } catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { } catch (Exception e) { ErrorMessage = e.Message; } }
@@ -135,12 +135,12 @@ public sealed partial class InstrumentalArrangementPopupVM : ObservableObject
     private async Task StopAsync() { try { await playback.StopAsync(lifetime.Token); RefreshPlayback(); } catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { } catch (Exception e) { ErrorMessage = e.Message; } }
     [RelayCommand(CanExecute = nameof(CanPlay))]
     private async Task SeekAsync(TimeSpan value) { try { await playback.SeekAsync(value, lifetime.Token); RefreshPlayback(); } catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { } catch (Exception e) { ErrorMessage = e.Message; } }
-    [RelayCommand] private void ZoomIn() => ZoomFactor *= 1.25;
+    [RelayCommand] private void ZoomIn() => ZoomFactor += 1;
     [RelayCommand(CanExecute = nameof(CanPlay))] private Task NextGridAsync() => NavigateAsync(true);
     [RelayCommand(CanExecute = nameof(CanPlay))] private Task PreviousGridAsync() => NavigateAsync(false);
     private Task NavigateAsync(bool forward) => BeatGridCalculator.GetAdjacentPosition(Offsets, Bpms, Subdivision, Position, Waveform.Duration, forward) is { } next ? SeekAsync(next) : Task.CompletedTask;
-    [RelayCommand] private void ZoomOut() => ZoomFactor /= 1.25;
-    public void SelectNote(Guid? id) => SelectedNoteId = id is null || Notes.Any(n => n.Id == id) ? id : null;
+    [RelayCommand] private void ZoomOut() => ZoomFactor -= 1;
+    public void SelectNote(Guid? id) => SetNoteSelection(id is {} value ? new[] { value } : Array.Empty<Guid>(), id);
     public void PlaceNote(string key, double ms) { if (!CanEdit) return; pendingRequest = Guid.NewGuid(); messenger.Send(new PlaceInstrumentalNoteRequestedMessage(snapshot.Context, pendingRequest, key, ms, Subdivision)); }
     public void MoveNote(Guid id, string key, double ms) { if (!CanEdit) return; pendingRequest = Guid.NewGuid(); messenger.Send(new MoveInstrumentalNoteRequestedMessage(snapshot.Context, pendingRequest, id, key, ms, Subdivision)); }
     public void RemoveNote(Guid id) { if (!CanEdit) return; pendingRequest = Guid.NewGuid(); messenger.Send(new RemoveInstrumentalNoteRequestedMessage(snapshot.Context, pendingRequest, id)); }
