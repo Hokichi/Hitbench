@@ -900,6 +900,7 @@ public partial class WorkstationPageVM(
                 playbackErrorMessage = null;
                 Waveform = null;
                 Project = null;
+                RefreshControlPointTimestamps();
                 markerClock = new([], []);
 
                 Position = TimeSpan.Zero;

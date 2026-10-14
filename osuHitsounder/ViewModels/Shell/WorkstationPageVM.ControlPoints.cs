@@ -9,6 +9,8 @@ namespace osuHitsounder.ViewModels.Shell;
 
 public partial class WorkstationPageVM
 {
+    private IReadOnlyList<int> controlPointTimestamps = Array.Empty<int>();
+    public IReadOnlyList<int> ControlPointTimestamps => controlPointTimestamps;
     private readonly Dictionary<ControlPoint, Guid> controlPointIds = new(ReferenceEqualityComparer.Instance);
     private ControlPointsContext? controlPointsContext;
     private CancellationTokenSource? controlPointsCancellation;
@@ -43,8 +45,19 @@ public partial class WorkstationPageVM
         if (controlPointsContext is { } context && IsActiveControlPoints(context))
             messenger?.Send(new ControlPointsChangedMessage(ControlPointsSnapshot(context)));
     }
-    private void PublishControlPointTimeline() => audioService.SetControlPoints(Project?.ControlPoints
-        .Select(p => new ControlPointVolumeSnapshot(p.Timestamp, p.Volume)).ToArray() ?? []);
+    private void PublishControlPointTimeline()
+    {
+        audioService.SetControlPoints(Project?.ControlPoints
+            .Select(p => new ControlPointVolumeSnapshot(p.Timestamp, p.Volume)).ToArray() ?? []);
+        RefreshControlPointTimestamps();
+    }
+    private void RefreshControlPointTimestamps()
+    {
+        var timestamps = Project?.ControlPoints.Select(p => p.Timestamp).Distinct().Order().ToArray() ?? [];
+        if (controlPointTimestamps.SequenceEqual(timestamps)) return;
+        controlPointTimestamps = Array.AsReadOnly(timestamps);
+        OnPropertyChanged(nameof(ControlPointTimestamps));
+    }
     [RelayCommand(CanExecute = nameof(CanOpenControlPoints))]
     private async Task AddControlPointAsync()
     {

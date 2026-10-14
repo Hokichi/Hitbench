@@ -1254,6 +1254,8 @@
                                 <customControls:WaveformView
                                     x:Name="WaveformDisplay"
                                     Bpms="{Binding Project.BPMs, Mode=OneWay}"
+                                    ControlPointTimestamps="{Binding ControlPointTimestamps, Mode=OneWay}"
+                                    ControlPointBrush="{DynamicResource Brush.Success}"
                                     Data="{Binding Waveform, Mode=OneWay}"
                                     FontFamily="{DynamicResource Regular}"
                                     HorizontalOffset="{Binding ElementName=WaveformScrollViewer, Path=HorizontalOffset, Mode=OneWay}"

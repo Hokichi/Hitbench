@@ -25,6 +25,10 @@ public sealed class WaveformView : FrameworkElement
         nameof(WaveformBrush), typeof(Brush), typeof(WaveformView), new FrameworkPropertyMetadata(SystemColors.HighlightBrush, FrameworkPropertyMetadataOptions.AffectsRender));
     public static readonly DependencyProperty MarkerBrushProperty = DependencyProperty.Register(
         nameof(MarkerBrush), typeof(Brush), typeof(WaveformView), new FrameworkPropertyMetadata(SystemColors.HighlightTextBrush, FrameworkPropertyMetadataOptions.AffectsRender));
+    public static readonly DependencyProperty ControlPointTimestampsProperty = DependencyProperty.Register(
+        nameof(ControlPointTimestamps), typeof(IReadOnlyList<int>), typeof(WaveformView), new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
+    public static readonly DependencyProperty ControlPointBrushProperty = DependencyProperty.Register(
+        nameof(ControlPointBrush), typeof(Brush), typeof(WaveformView), new FrameworkPropertyMetadata(SystemColors.WindowTextBrush, FrameworkPropertyMetadataOptions.AffectsRender));
     public static readonly DependencyProperty TextBrushProperty = DependencyProperty.Register(
         nameof(TextBrush), typeof(Brush), typeof(WaveformView), new FrameworkPropertyMetadata(SystemColors.WindowTextBrush, FrameworkPropertyMetadataOptions.AffectsRender));
     public static readonly DependencyProperty FontFamilyProperty = DependencyProperty.Register(
@@ -42,6 +46,8 @@ public sealed class WaveformView : FrameworkElement
     public double HorizontalOffset { get => (double)GetValue(HorizontalOffsetProperty); set => SetValue(HorizontalOffsetProperty, value); }
     public Brush WaveformBrush { get => (Brush)GetValue(WaveformBrushProperty); set => SetValue(WaveformBrushProperty, value); }
     public Brush MarkerBrush { get => (Brush)GetValue(MarkerBrushProperty); set => SetValue(MarkerBrushProperty, value); }
+    public IReadOnlyList<int>? ControlPointTimestamps { get => (IReadOnlyList<int>?)GetValue(ControlPointTimestampsProperty); set => SetValue(ControlPointTimestampsProperty, value); }
+    public Brush ControlPointBrush { get => (Brush)GetValue(ControlPointBrushProperty); set => SetValue(ControlPointBrushProperty, value); }
     public Brush TextBrush { get => (Brush)GetValue(TextBrushProperty); set => SetValue(TextBrushProperty, value); }
     public FontFamily? FontFamily { get => (FontFamily?)GetValue(FontFamilyProperty); set => SetValue(FontFamilyProperty, value); }
     public ICommand? SeekCommand { get => (ICommand?)GetValue(SeekCommandProperty); set => SetValue(SeekCommandProperty, value); }
@@ -178,6 +184,17 @@ public sealed class WaveformView : FrameworkElement
                     11,textBrush,VisualTreeHelper.GetDpi(this).PixelsPerDip);
                 drawingContext.DrawText(label,new Point(labelX,4));
                 lastLabelRight=labelX+label.Width;
+            }
+        }
+        if (ControlPointTimestamps is { } timestamps)
+        {
+            var pointPen = new Pen(SystemParameters.HighContrast ? SystemColors.WindowTextBrush : ControlPointBrush, 1);
+            foreach (var timestamp in timestamps.Distinct())
+            {
+                if (timestamp < 0 || timestamp > data.Duration.TotalMilliseconds) continue;
+                var x = timestamp / data.Duration.TotalMilliseconds * width;
+                if (x < offset || x > offset + viewport) continue;
+                drawingContext.DrawLine(pointPen, new Point(x, Math.Min(rulerHeight, height)), new Point(x, height));
             }
         }
         drawingContext.Pop();
