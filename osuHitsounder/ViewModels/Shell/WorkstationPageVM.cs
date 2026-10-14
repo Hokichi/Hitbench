@@ -28,7 +28,8 @@ public partial class WorkstationPageVM(
     ISampleManagementDialogService? sampleManagementDialog = null,
     SampleImportBatch? sampleImports = null,
     IInstrumentalTrackDialogService? instrumentDialogs = null,
-    Func<TimeSpan, CancellationToken, Task>? folderRenameDelay = null) : ObservableObject
+    Func<TimeSpan, CancellationToken, Task>? folderRenameDelay = null,
+    IControlPointsDialogService? controlPointsDialog = null) : ObservableObject
 {
     private readonly IWorkstationAudioService audioService = playback.Audio;
     private bool subscribedToPlayback;
@@ -69,13 +70,13 @@ public partial class WorkstationPageVM(
     public ObservableCollection<string> SampleFiles => availableSamples;
     public int SamplesRevision => samplesRevision;
     public int Subdivision => new[] { 1, 2, 3, 4, 5, 6, 8, 12, 16 }[SelectedSubdivisionIndex];
-    public bool CanEditTracks => Project is not null && IsInteractionReady;
+    public bool CanEditTracks => Project is not null && IsInteractionReady && !controlPointsBusy;
     public bool CanImportSample => !folderRenamesActive && !instrumentBusy && !managingSamples && !IsNodeEditBusy && CanEditTracks && !importBusy && !removalBusy &&
         sampleFiles is not null && sampleDialog is not null && projectPath is not null;
     public bool CanAddTrack => CanEditTracks && availableSamples.Count > 0;
     public bool CanRemoveTrack => !folderRenamesActive && !instrumentBusy && !managingSamples && !IsNodeEditBusy && CanEditTracks && !importBusy && !removalBusy && trackRemovalDialog is not null;
     public bool CanPlaceSamples => !folderRenamesActive && !managingSamples && !IsNodeEditBusy && CanEditTracks && Waveform is not null && !importBusy && !removalBusy;
-    public bool HasPendingSaves => folderRenamesActive || instrumentBusy || managingSamples || IsNodeEditBusy || pendingZoom is not null || importBusy || removalBusy || !saveTail.IsCompleted || lastSaveError is not null;
+    public bool HasPendingSaves => controlPointsBusy || folderRenamesActive || instrumentBusy || managingSamples || IsNodeEditBusy || pendingZoom is not null || importBusy || removalBusy || !saveTail.IsCompleted || lastSaveError is not null;
     [ObservableProperty] private string? saveError;
     [ObservableProperty] private bool scrollWithMarker = true;
     [ObservableProperty]
@@ -186,6 +187,8 @@ public partial class WorkstationPageVM(
     public async Task LoadAsync(string projectPath, CancellationToken token)
     {
         if (deactivated) return;
+        await SettleControlPointsDrawerAsync();
+        controlPointIds.Clear();
         await SettleInstrumentalEditorAsync();
         await DrainProjectSaveQueueAsync();
         await SettleSampleManagerAsync();
@@ -214,6 +217,7 @@ public partial class WorkstationPageVM(
     private async Task DeactivateCoreAsync()
     {
         if (deactivated) return;
+        await SettleControlPointsDrawerAsync();
         await SettleInstrumentalEditorAsync();
         await SettleSampleManagerAsync();
         await SettleInstrumentalFoldersAsync();
@@ -700,6 +704,7 @@ public partial class WorkstationPageVM(
     public async Task<bool> PrepareToReturnAsync(CancellationToken token)
     {
         if (deactivated || IsReturning || token.IsCancellationRequested) return false;
+        await SettleControlPointsDrawerAsync();
         await SettleInstrumentalEditorAsync();
         await SettleSampleManagerAsync();
         await SettleInstrumentalFoldersAsync();
@@ -843,6 +848,7 @@ public partial class WorkstationPageVM(
         var json = ProjectDataSerializer.Serialize(Project);
         var previous = saveTail;
         pendingProjectWrites++; PublishInstrumentSaveState();
+        PublishControlPointsSnapshot();
         saveTail = SaveSnapshotAsync(previous, projectPath, json);
     }
 
@@ -879,7 +885,7 @@ public partial class WorkstationPageVM(
             lastSaveError = error;
             SaveError = error.Message;
         }
-        finally { pendingProjectWrites--; PublishInstrumentSaveState(); }
+        finally { pendingProjectWrites--; PublishInstrumentSaveState(); PublishControlPointsSnapshot(); }
     }
 
     private async Task LoadCoreAsync(string projectPath, int generation, CancellationToken token)
@@ -917,6 +923,7 @@ public partial class WorkstationPageVM(
                 audioService.SetApplicationVolume(ApplicationVolume);
                 audioService.SetSamplesVolume(SamplesVolume);
                 Project = source.Project;
+                PublishControlPointTimeline();
                 RestoreZoom(Project.WorkstationZoom);
                 markerClock = new PlaybackMarkerClock(Project.Offsets, Project.BPMs);
                 SetProperty(ref playbackInterval, markerClock.IsValid ? markerClock.GetInterval(TimeSpan.Zero) : TimeSpan.Zero,
@@ -939,6 +946,7 @@ public partial class WorkstationPageVM(
                     messenger.Register<ManageSamplesRequestedMessage>(this, (_, _) => ManageSamplesCommand.Execute(null));
                     messenger.Register<ProjectSamplesChangedMessage>(this, (_, change) => ReceiveSampleChange(change));
                     RegisterInstrumentMessages();
+                    RegisterControlPointMessages();
                 }
             });
             await playback.ConfigureAsync(markerClock, waveform.Duration, token);
@@ -1030,6 +1038,8 @@ public partial class WorkstationPageVM(
 
     private void NotifyEditingState()
     {
+        OnPropertyChanged(nameof(CanOpenControlPoints)); AddControlPointCommand.NotifyCanExecuteChanged();
+        OnPropertyChanged(nameof(HasPendingSaves)); PublishControlPointsSnapshot();
         OnPropertyChanged(nameof(CanAddInstrumentalTrack)); OnPropertyChanged(nameof(CanOpenInstrumentalEditor));
         ViewArrangementCommand.NotifyCanExecuteChanged(); KeysMappingCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(CanManageSamples)); ManageSamplesCommand.NotifyCanExecuteChanged();
