@@ -34,6 +34,9 @@ public static class ProjectDataSerializer
             root["Tracks"] = tracks;
         }
         root.Remove("Samples");
+        var collapsed = InstrumentMember(root, nameof(ProjectData.IsCollapsed));
+        if (collapsed is not null && collapsed.Type != JTokenType.Boolean)
+            throw new InvalidDataException("Project IsCollapsed must be a boolean.");
         NormalizeControlPoints(root);
 
         if (root["Tracks"] is JArray trackNodes)

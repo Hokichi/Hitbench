@@ -40,7 +40,7 @@ public class WorkstationZoomTests
             Assert.That(vm.AreTracksCollapsed, Is.False);
             Assert.That(vm.TrackHeight, Is.EqualTo(252));
             Assert.That(vm.HasPendingSaves, Is.False);
-            Assert.That(saves.Writes, Is.Zero);
+            Assert.That(saves.Writes, Is.EqualTo(4));
         });
         await vm.DeactivateAsync();
     }

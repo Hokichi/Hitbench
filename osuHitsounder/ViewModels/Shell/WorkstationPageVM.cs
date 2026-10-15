@@ -423,8 +423,15 @@ public partial class WorkstationPageVM(
     private void ToggleTracksCollapsed()
     {
         if (!CanEditTracks) return;
+        ApplyTrackCollapse(!AreTracksCollapsed);
+        Project!.IsCollapsed = AreTracksCollapsed;
+        QueueSave();
+    }
+
+    private void ApplyTrackCollapse(bool collapsed)
+    {
         if (!AreTracksCollapsed) expandedTrackGrowth = Math.Clamp(trackHeight - minimumTrackHeight, 0, 108);
-        SetProperty(ref areTracksCollapsed, !AreTracksCollapsed, nameof(AreTracksCollapsed));
+        SetProperty(ref areTracksCollapsed, collapsed, nameof(AreTracksCollapsed));
         OnPropertyChanged(nameof(MaximumTrackHeight));
         SetProperty(ref trackHeight, minimumTrackHeight + (AreTracksCollapsed ? 0 : expandedTrackGrowth), nameof(TrackHeight));
         NotifyCommandState();
@@ -938,6 +945,7 @@ public partial class WorkstationPageVM(
                 Project = source.Project;
                 PublishControlPointTimeline();
                 RestoreZoom(Project.WorkstationZoom);
+                ApplyTrackCollapse(Project.IsCollapsed);
                 markerClock = new PlaybackMarkerClock(Project.Offsets, Project.BPMs);
                 SetProperty(ref playbackInterval, markerClock.IsValid ? markerClock.GetInterval(TimeSpan.Zero) : TimeSpan.Zero,
                     nameof(PlaybackInterval));

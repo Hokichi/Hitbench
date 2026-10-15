@@ -62,7 +62,7 @@ public class WorkstationTrackCollapseTests
                 Assert.That(vm.Position, Is.EqualTo(TimeSpan.FromMilliseconds(375)));
                 Assert.That(vm.SamplesRevision, Is.Zero);
                 Assert.That(vm.HasPendingSaves, Is.False);
-                Assert.That(saves.Writes, Is.Zero);
+                Assert.That(saves.Writes, Is.EqualTo(6));
                 Assert.That(vm.CanUndo, Is.EqualTo(undo));
                 Assert.That(vm.CanRedo, Is.EqualTo(redo));
             });
@@ -151,7 +151,7 @@ public class WorkstationTrackCollapseTests
             ScrollTo(page, view, edited);
             AssertRealizedTrackState(page, vm);
             UiTestPump.Run(vm.FlushSavesAsync());
-            Assert.That(saves.Writes, Is.EqualTo(writes));
+            Assert.That(saves.Writes, Is.EqualTo(writes + 1));
             Assert.That(vm.SamplesRevision, Is.EqualTo(revision));
 
             var (otherPage, otherVm, otherView) = Create(files: ["other.wav"]);
