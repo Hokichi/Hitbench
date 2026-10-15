@@ -415,6 +415,18 @@ public partial class WorkstationPage : UserControl
 
     private void OnTracksCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        if (e.Action == NotifyCollectionChangedAction.Add && !deactivationStarted && viewModel.IsInteractionReady && e.NewItems is { Count: > 0 })
+        {
+            var generation = viewModel.LoadGeneration;
+            var added = e.NewItems[e.NewItems.Count - 1];
+            Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
+            {
+                if (deactivationStarted || viewModel.LoadGeneration != generation || !TrackList.Items.Contains(added)) return;
+                TrackList.UpdateLayout();
+                FindVisualChild<ScrollViewer>(TrackList)?.ScrollToBottom();
+            });
+            return;
+        }
         if (e.Action != NotifyCollectionChangedAction.Remove || e.OldItems is null || deactivationStarted)
             return;
         var focus = Keyboard.FocusedElement as DependencyObject;

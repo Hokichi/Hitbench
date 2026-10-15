@@ -465,11 +465,11 @@ public class WorkstationPageIntegrationTests
         Assert.That(AutomationProperties.GetName(button), Is.EqualTo("Remove track"));
         UiTestPump.Run(vm.RemoveTrackCommand.ExecuteAsync(button.CommandParameter));
         view.UpdateLayout();
-        var emptyState = FindVisualChildren<TextBlock>(page).Single(text =>
-            ReferenceEquals(text.Style, page.FindResource("OHsWorkstationEmptyTracksStyle")));
-        Assert.That(emptyState.Visibility, Is.EqualTo(Visibility.Visible));
-        Assert.That(emptyState.Text, Does.Contain("No tracks"));
-        Assert.That(emptyState.Text, Does.Contain("Add New Sample Track"));
+        var list = (ListBox)page.FindName("TrackList");
+        Assert.That(list.Items, Is.Empty);
+        Assert.That(FindVisualChildren<TextBlock>(list).Any(text => text.Text.Contains("No tracks")), Is.False);
+        Assert.That(vm.AddPianoTrackCommand.CanExecute(null), Is.True);
+        UiTestPump.Run(page.DeactivateAsync());
     }
 
     [Test]

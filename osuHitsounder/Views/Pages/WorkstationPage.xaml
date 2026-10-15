@@ -558,21 +558,6 @@
         <ItemsPanelTemplate x:Key="OHsWorkstationTrackItemsPanel">
             <VirtualizingStackPanel />
         </ItemsPanelTemplate>
-        <Style
-            x:Key="OHsWorkstationEmptyTracksStyle"
-            BasedOn="{StaticResource BaseTextBlockStyle}"
-            TargetType="TextBlock">
-            <Setter Property="Visibility" Value="Collapsed" />
-            <Setter Property="TextWrapping" Value="Wrap" />
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding Tracks.Count, Mode=OneWay}" Value="0">
-                    <Setter Property="Visibility" Value="Visible" />
-                </DataTrigger>
-                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
-                    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
         <ControlTemplate x:Key="OHsWorkstationTrackListTemplate" TargetType="ListBox">
             <Grid Style="{StaticResource BaseGridStyle}">
                 <ScrollViewer
@@ -583,10 +568,6 @@
                     VerticalScrollBarVisibility="{TemplateBinding ScrollViewer.VerticalScrollBarVisibility}">
                     <ItemsPresenter />
                 </ScrollViewer>
-                <TextBlock
-                    AutomationProperties.LiveSetting="Polite"
-                    Style="{StaticResource OHsWorkstationEmptyTracksStyle}"
-                    Text="No tracks. Use Add Instrument, or load a sample and use Add New Sample Track beside the waveform." />
             </Grid>
         </ControlTemplate>
         <Style
