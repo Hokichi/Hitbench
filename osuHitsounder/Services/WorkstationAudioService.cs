@@ -89,7 +89,7 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
     }
 
     public async Task UpdateSamplesAsync(string projectPath, IReadOnlyList<SamplePlaybackEvent> events,
-        CancellationToken token)
+        CancellationToken token, bool forceReload = false)
     {
         ArgumentNullException.ThrowIfNull(projectPath);
         ArgumentNullException.ThrowIfNull(events);
@@ -115,8 +115,14 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
         {
             await preparationGate.WaitAsync(token);
             acquired = true;
+            token.ThrowIfCancellationRequested();
             DecodedAudio? song;
-            lock (sync) song = preparedSong;
+            lock (sync)
+            {
+                if (disposed || request != preparationGeneration) return;
+                if (forceReload) sampleCache.Clear();
+                song = preparedSong;
+            }
             if (song is null) song = await Task.Run(() => Decode(songPath, token), token);
 
             if (events.Any(item => item.Id <= 0) || events.Select(item => item.Id).Distinct().Count() != events.Count)

@@ -40,9 +40,14 @@ public sealed class StubWorkstationAudioService : IWorkstationAudioService
     public void SetSongVolume(int volume) => SongVolume = volume;
     public void SetSamplesVolume(int volume) => SamplesVolume = volume;
     public void SetApplicationVolume(int volume) => ApplicationVolume = volume;
-    public Task UpdateSamplesAsync(string projectPath, IReadOnlyList<SamplePlaybackEvent> events, CancellationToken token)
+    public int ForceReloadSampleRequests { get; private set; }
+    public Task UpdateSamplesAsync(string projectPath, IReadOnlyList<SamplePlaybackEvent> events, CancellationToken token, bool forceReload = false)
     {
-        lock(sync) sampleUpdates.Add(events.ToArray());
+        lock(sync)
+        {
+            sampleUpdates.Add(events.ToArray());
+            if (forceReload) ForceReloadSampleRequests++;
+        }
         return PrepareSamplesAsync?.Invoke(token) ?? Task.CompletedTask;
     }
     private int snapshotReads;

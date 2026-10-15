@@ -6,6 +6,65 @@ namespace osuHitsounder.Test.Services;
 
 public class WorkstationAudioServiceTests
 {
+    [Test]
+    public async Task ForcedSampleRefreshBypassesMetadataCacheAndKeepsSong()
+    {
+        using var project = new TestProjectFolder("hit.wav");
+        var sampleDecodes = 0; var songDecodes = 0; var amplitude = .4f;
+        var player = new StubWavePlayer();
+        using var service = new WorkstationAudioService(path =>
+        {
+            if (path.EndsWith("hit.wav", StringComparison.OrdinalIgnoreCase))
+            { sampleDecodes++; return CreateStream(Enumerable.Repeat(amplitude, 128).ToArray(), 44_100, 2); }
+            songDecodes++; return CreateStream(new float[256], 44_100, 2);
+        }, () => player);
+        service.Open("song.wav"); service.SetSongVolume(0);
+        SamplePlaybackEvent[] events = [new(1, "hit.wav", 0, 100, 100)];
+        await service.UpdateSamplesAsync(project.ProjectPath, events, default);
+        amplitude = .8f;
+        await service.UpdateSamplesAsync(project.ProjectPath, events, default);
+        Assert.That(sampleDecodes, Is.EqualTo(1));
+        await service.UpdateSamplesAsync(project.ProjectPath, events, default, forceReload: true);
+        Assert.That(sampleDecodes, Is.EqualTo(2));
+        Assert.That(songDecodes, Is.EqualTo(1));
+        service.Play();
+        var output = new float[2];
+        player.Provider!.ToSampleProvider().Read(output, 0, output.Length);
+        Assert.That(output, Is.EqualTo(new[] { .8f, .8f }).Within(.0001));
+    }
+
+    [Test]
+    public async Task CancelledForcedRefreshDoesNotPublishStaleSamples()
+    {
+        using var project = new TestProjectFolder("hit.wav");
+        using var started = new ManualResetEventSlim(); using var release = new ManualResetEventSlim();
+        var block = false; var amplitude = .2f;
+        var player = new StubWavePlayer();
+        using var service = new WorkstationAudioService(path =>
+        {
+            var sample = path.EndsWith("hit.wav", StringComparison.OrdinalIgnoreCase);
+            if (sample && block) { started.Set(); release.Wait(TimeSpan.FromSeconds(5)); }
+            return CreateStream(Enumerable.Repeat(sample ? amplitude : 0, 128).ToArray(), 44_100, 2);
+        }, () => player);
+        service.Open("song.wav");
+        SamplePlaybackEvent[] events = [new(1, "hit.wav", 0, 100, 100)];
+        await service.UpdateSamplesAsync(project.ProjectPath, events, default);
+        using var cancellation = new CancellationTokenSource(); block = true;
+        var stale = service.UpdateSamplesAsync(project.ProjectPath, events, cancellation.Token, forceReload: true);
+        try
+        {
+            Assert.That(started.Wait(TimeSpan.FromSeconds(5)), Is.True);
+            cancellation.Cancel(); amplitude = .7f; block = false;
+            var newest = service.UpdateSamplesAsync(project.ProjectPath, events, default, forceReload: true);
+            release.Set();
+            Assert.ThrowsAsync<OperationCanceledException>(async () => await stale);
+            await newest; service.Play();
+            var output = new float[2]; player.Provider!.ToSampleProvider().Read(output, 0, 2);
+            Assert.That(output, Is.EqualTo(new[] { .7f, .7f }).Within(.0001));
+        }
+        finally { release.Set(); }
+    }
+
     [TestCase(false)]
     [TestCase(true)]
     public async Task ReadinessFollowsSongPreparationAndOpenReset(bool decoderFails)

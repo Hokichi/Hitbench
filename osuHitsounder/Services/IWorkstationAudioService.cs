@@ -15,6 +15,6 @@ public interface IWorkstationAudioService : IDisposable
     void SetSamplesVolume(int volume);
     void SetApplicationVolume(int volume);
     void SetControlPoints(IReadOnlyList<ControlPointVolumeSnapshot> points);
-    Task UpdateSamplesAsync(string projectPath, IReadOnlyList<SamplePlaybackEvent> events, CancellationToken token);
+    Task UpdateSamplesAsync(string projectPath, IReadOnlyList<SamplePlaybackEvent> events, CancellationToken token, bool forceReload = false);
     AudioPlaybackSnapshot GetSnapshot();
 }

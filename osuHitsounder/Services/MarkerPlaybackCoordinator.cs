@@ -75,10 +75,10 @@ public sealed class MarkerPlaybackCoordinator(IWorkstationAudioService audio,
         Reset(audio.GetSnapshot().Position);
     }, token);
 
-    public async Task UpdateSamplesAsync(string path, IReadOnlyList<SamplePlaybackEvent> events, CancellationToken token)
+    public async Task UpdateSamplesAsync(string path, IReadOnlyList<SamplePlaybackEvent> events, CancellationToken token, bool forceReload = false)
     {
         Task preparation = Task.CompletedTask;
-        await TransitionAsync(() => preparation = audio.UpdateSamplesAsync(path, events, token), token).ConfigureAwait(false);
+        await TransitionAsync(() => preparation = audio.UpdateSamplesAsync(path, events, token, forceReload), token).ConfigureAwait(false);
         await preparation.ConfigureAwait(false);
     }
 
