@@ -205,7 +205,7 @@ public class WorkstationTrackCollapseTests
     private static List<Track> CreateTracks(IReadOnlyList<string> files) => Enumerable.Range(0, 80).Select(i => new Track
     {
         Name = $"Track {i}", SelectedSampleFileName = files[i % files.Count], Volume = 20 + i,
-        Sampleset = Track.SamplesetOptions[i % 3], Addition = Track.AdditionOptions[i % 4],
+        Addition = Track.AdditionOptions[i % 4],
         IsTrackMuted = i % 5 == 0, IsTrackSoloed = i % 7 == 0,
         Samples = [new Sample { Timestamp = i * 100, FileName = files[i % files.Count] }]
     }).ToList();
@@ -325,7 +325,7 @@ public class WorkstationTrackCollapseTests
             { Source = new Uri($"/osuHitsounder;component/Resources/Themes/{theme}.xaml", UriKind.Relative) };
         var node = new Sample { Timestamp = 125, FileName = "kick.wav" };
         var track = new Track { Name = "Kick", SelectedSampleFileName = "kick.wav", Volume = 64,
-            Sampleset = "Soft", Addition = "Drum", IsTrackMuted = true, IsTrackSoloed = true, Samples = [node] };
+            Addition = "Drum", IsTrackMuted = true, IsTrackSoloed = true, Samples = [node] };
         var (page, vm, view) = Create(direction, new ProjectData { Offsets = [0], BPMs = [120], Tracks = [track] });
         using (view)
         {
@@ -336,7 +336,7 @@ public class WorkstationTrackCollapseTests
             var grid = Descendants<BeatGridView>(page).Single();
             var secondary = new FrameworkElement[] { Find<ValueSlider>(page, "VolumeSlider"),
                 Find<ToggleButton>(page, "TrackMuteToggle"), Find<ToggleButton>(page, "TrackSoloToggle"),
-                Find<ComboBox>(page, "TrackSamplesetSelector"), Find<ComboBox>(page, "TrackAdditionSelector"),
+                Find<ComboBox>(page, "TrackAdditionSelector"),
                 Find<ComboBox>(page, "TrackSampleTypeSelector"),
                 Descendants<BalloonButton>(page).Single(control => AutomationProperties.GetName(control) == "Remove track") };
             UiControlContract.AssertStyle<ValueSlider>(secondary[0], "OHsWorkstationVolumeStyle");
@@ -362,7 +362,6 @@ public class WorkstationTrackCollapseTests
                 Assert.That(track.Name, Is.EqualTo("Kick"));
                 Assert.That(track.SelectedSampleFileName, Is.EqualTo("kick.wav"));
                 Assert.That(track.Volume, Is.EqualTo(64));
-                Assert.That(track.Sampleset, Is.EqualTo("Soft"));
                 Assert.That(track.Addition, Is.EqualTo("Drum"));
                 Assert.That(track.IsTrackMuted && track.IsTrackSoloed, Is.True);
                 Assert.That(track.Samples.Single(), Is.SameAs(node));
@@ -426,7 +425,7 @@ public class WorkstationTrackCollapseTests
     }
 
     [TestCase("VolumeSlider")]
-    [TestCase("TrackSamplesetSelector")]
+    [TestCase("TrackAdditionSelector")]
     public void CollapseRestoresLogicalFocusOnlyFromHiddenControls(string controlName)
     {
         var track = new Track { SelectedSampleFileName = "kick.wav" };

@@ -7,7 +7,7 @@ public sealed class InstrumentalTrack : Track
     public string FolderName { get; set; } = "";
     public Dictionary<string, string> KeyFiles { get; set; } = new(StringComparer.Ordinal);
     public List<InstrumentalNote> Notes { get; set; } = [];
-    public InstrumentalTrack() { Sampleset = "Soft"; Addition = "None"; SampleType = Enums.SampleType.Whistle; }
+    public InstrumentalTrack() { Addition = "Soft"; SampleType = Enums.SampleType.Whistle; }
     public bool TryAddNote(InstrumentalNote note)
     {
         if (!Valid(note.Key, note.Timestamp) || note.Volume is < 0 or > 100 || Notes.Contains(note) || Collides(note.Key, note.Timestamp, null)) return false;

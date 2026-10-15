@@ -274,7 +274,7 @@ public partial class WorkstationPage : UserControl
     {
         if (sender is not ComboBox { DataContext: Track track } selector) return;
         selector.Tag = true;
-        selector.SetCurrentValue(ComboBox.SelectedItemProperty, selector.Name switch { "TrackSamplesetSelector" => (object)track.Sampleset, "TrackSampleTypeSelector" => track.SampleType, _ => track.Addition });
+        selector.SetCurrentValue(ComboBox.SelectedItemProperty, selector.Name switch { "TrackSampleTypeSelector" => track.SampleType, _ => track.Addition });
         selector.Tag = false;
     }
 
@@ -283,8 +283,7 @@ public partial class WorkstationPage : UserControl
         if (sender is not ComboBox { IsLoaded: true, DataContext: Track track } selector || selector.Tag is true) return;
         if (selector.Name == "TrackSampleTypeSelector" && selector.SelectedItem is osuHitsounder.Core.Enums.SampleType type) { viewModel.SetTrackSampleType(track, type); return; }
         if (selector.SelectedItem is not string value) return;
-        if (selector.Name == "TrackSamplesetSelector") viewModel.SetTrackSampleset(track, value);
-        else if (selector.Name == "TrackAdditionSelector") viewModel.SetTrackAddition(track, value);
+        if (selector.Name == "TrackAdditionSelector") viewModel.SetTrackAddition(track, value);
     }
 
     private void OnVolumeSliderLoaded(object sender, RoutedEventArgs e)

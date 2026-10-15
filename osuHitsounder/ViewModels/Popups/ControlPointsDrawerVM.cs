@@ -80,7 +80,7 @@ public sealed partial class ControlPointsDrawerVM : ObservableObject
     {
         if (closed || applying || sender is not ControlPointEntry row || args.PropertyName is not (nameof(ControlPointEntry.Volume) or nameof(ControlPointEntry.Sampleset))) return;
         var error = row.Volume is < 5 or > 100 || decimal.Truncate(row.Volume) != row.Volume ? "Enter a whole number from 5 to 100."
-            : !Track.SamplesetOptions.Contains(row.Sampleset) ? "Choose Normal, Soft, or Drum." : null;
+            : !ControlPoint.SamplesetOptions.Contains(row.Sampleset) ? "Choose Normal, Soft, or Drum." : null;
         row.SetError(error);
         if (error is null && row.IsDirty) messenger.Send(new SetControlPointRequestedMessage(snapshot.Context, row.Id, row.Volume, row.Sampleset));
     }

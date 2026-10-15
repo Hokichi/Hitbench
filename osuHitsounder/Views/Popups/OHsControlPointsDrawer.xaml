@@ -92,7 +92,7 @@
      <TextBlock Text="{Binding InputError, ElementName=VolumeInput, Mode=OneWay}" Style="{StaticResource OHsControlPointsErrorStyle}" />
      <TextBlock Text="{Binding Error, Mode=OneWay}" Style="{StaticResource OHsControlPointsErrorStyle}" />
     </StackPanel>
-    <ComboBox Grid.Column="2" ItemsSource="{x:Static e:Track.SamplesetOptions}" SelectedItem="{Binding Sampleset, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+    <ComboBox Grid.Column="2" ItemsSource="{x:Static e:ControlPoint.SamplesetOptions}" SelectedItem="{Binding Sampleset, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
      Style="{StaticResource OHsControlPointsSamplesetStyle}" AutomationProperties.Name="{Binding Timestamp, Mode=OneWay, StringFormat=Sampleset at {0} milliseconds}" />
    </Grid>
   </DataTemplate>

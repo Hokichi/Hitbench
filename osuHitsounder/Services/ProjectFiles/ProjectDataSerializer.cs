@@ -59,7 +59,6 @@ public static class ProjectDataSerializer
                         member.Value = (int)Enum.Parse<osuHitsounder.Core.Enums.SampleType>(value.Value<string>()!);
                     else throw new InvalidDataException("Track SampleType must be Normal, Clap, Finish, or Whistle.");
                 }
-                NormalizeTrackOption(track, nameof(Track.Sampleset), "Normal", Track.SamplesetOptions);
                 NormalizeTrackOption(track, nameof(Track.Addition), "None", Track.AdditionOptions);
                 foreach (var property in new[] { nameof(Track.IsTrackMuted), nameof(Track.IsTrackSoloed) })
                     if (track.Properties().Any(member => string.Equals(member.Name, property, StringComparison.OrdinalIgnoreCase) &&
@@ -109,8 +108,8 @@ public static class ProjectDataSerializer
         if (folder is null) track["FolderName"] = "";
         else if (folder.Type != JTokenType.String || folder.Value<string>() is { Length: > 0 } folderName && SamplePaths.GetFolderNameError(folderName) is not null)
             throw new InvalidDataException("Instrumental FolderName must be a safe single directory name.");
-        foreach (var name in new[] { "Sampleset","Addition","SampleType","SelectedSampleFileName","Samples" }) InstrumentMember(track,name);
-        track["Sampleset"]="Soft"; track["Addition"]="None"; track["SampleType"]=3; track["SelectedSampleFileName"]=null;
+        foreach (var name in new[] { "Addition","SampleType","SelectedSampleFileName","Samples" }) InstrumentMember(track,name);
+        track["Addition"]="Soft"; track["SampleType"]=3; track["SelectedSampleFileName"]=null;
         if (track["Samples"] is JArray inherited && inherited.Count==0 || track["Samples"] is null) track["Samples"]=new JArray();
         else throw new InvalidDataException("Instrumental tracks cannot contain sample-grid nodes.");
         var keys=InstrumentMember(track,"KeyFiles");
@@ -160,7 +159,7 @@ public static class ProjectDataSerializer
             if (volume is null) point[nameof(ControlPoint.Volume)] = 100;
             else if (!IsIntegerInRange(volume, 100)) throw new InvalidDataException("Control point Volume must be an integer from 0 to 100.");
             if (sampleset is null or { Type: JTokenType.Null }) point[nameof(ControlPoint.Sampleset)] = "Normal";
-            else if (sampleset.Type != JTokenType.String || !Track.SamplesetOptions.Contains(sampleset.Value<string>()!))
+            else if (sampleset.Type != JTokenType.String || !ControlPoint.SamplesetOptions.Contains(sampleset.Value<string>()!))
                 throw new InvalidDataException("Control point Sampleset must be Normal, Soft, or Drum.");
         }
     }

@@ -178,7 +178,7 @@ public partial class WorkstationPageVM
     private void SetPoint(SetControlPointRequestedMessage request)
     {
         if (!IsActiveControlPoints(request.Context) || !IsInteractionReady || request.Volume is < 5 or > 100 ||
-            decimal.Truncate(request.Volume) != request.Volume || !Track.SamplesetOptions.Contains(request.Sampleset)) return;
+            decimal.Truncate(request.Volume) != request.Volume || !ControlPoint.SamplesetOptions.Contains(request.Sampleset)) return;
         var point = Project!.ControlPoints.FirstOrDefault(p => ControlPointId(p) == request.PointId);
         if (point is null || point.Volume == request.Volume && point.Sampleset == request.Sampleset) return;
         var volumeChanged = point.Volume != request.Volume;

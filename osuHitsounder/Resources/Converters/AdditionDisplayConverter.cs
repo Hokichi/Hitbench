@@ -3,7 +3,7 @@ using System.Windows.Data;
 
 namespace osuHitsounder.Resources.Converters;
 
-public sealed class SamplesetDisplayConverter : IMultiValueConverter
+public sealed class AdditionDisplayConverter : IMultiValueConverter
 {
     public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
     {

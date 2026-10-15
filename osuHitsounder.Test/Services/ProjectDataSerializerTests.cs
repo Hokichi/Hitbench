@@ -66,7 +66,6 @@ public class ProjectDataSerializerTests
     public void MetadataDefaultsForOldAndNullFields(string json)
     {
         var track = ProjectDataSerializer.Deserialize(json).Tracks.Single();
-        Assert.That(track.Sampleset, Is.EqualTo("Normal"));
         Assert.That(track.Addition, Is.EqualTo("None"));
     }
 
@@ -76,11 +75,10 @@ public class ProjectDataSerializerTests
     [TestCase("Normal", "Drum")]
     public void MetadataDefaultsAndRoundTripsAllChoices(string sampleset, string addition)
     {
-        var project = new ProjectData { Tracks = [new Track { Sampleset = sampleset, Addition = addition,
+        var project = new ProjectData { Tracks = [new Track { Addition = addition,
             Name = "Kick", SelectedSampleFileName = "kick.wav", Volume = 75,
             Samples = [new Sample { FileName = "kick.wav", Timestamp = 125, Volume = 23 }] }] };
         var track = ProjectDataSerializer.Deserialize(ProjectDataSerializer.Serialize(project)).Tracks.Single();
-        Assert.That(track.Sampleset, Is.EqualTo(sampleset));
         Assert.That(track.Addition, Is.EqualTo(addition));
         Assert.That(track.Name, Is.EqualTo("Kick"));
         Assert.That(track.SelectedSampleFileName, Is.EqualTo("kick.wav"));
@@ -97,7 +95,6 @@ public class ProjectDataSerializerTests
     [TestCase("[]")]
     public void MetadataRejectsMalformedValuesEvenWithoutSamples(string value)
     {
-        Assert.Throws<InvalidDataException>(() => ProjectDataSerializer.Deserialize("{\"Tracks\":[{\"Sampleset\":" + value + "}]}"));
         if (value != "\"None\"")
             Assert.Throws<InvalidDataException>(() => ProjectDataSerializer.Deserialize("{\"Tracks\":[{\"Addition\":" + value + ",\"Samples\":[]}]}"));
     }

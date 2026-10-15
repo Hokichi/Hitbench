@@ -752,14 +752,14 @@
             <Setter Property="Margin" Value="0" />
         </Style>
         <Style x:Key="OHsWorkstationModeButtonStyle" TargetType="RadioButton" BasedOn="{StaticResource OHsTimelineEditingModeButtonStyle}" />
-        <converters:SamplesetDisplayConverter x:Key="OHsWorkstationSamplesetDisplayConverter" />
+        <converters:AdditionDisplayConverter x:Key="OHsWorkstationAdditionDisplayConverter" />
         <Style x:Key="OHsWorkstationCompactOptionTextStyle" TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlockStyle}">
             <Setter Property="Foreground" Value="{Binding Path=(TextElement.Foreground), RelativeSource={RelativeSource AncestorType=ContentPresenter}, Mode=OneWay}" />
         </Style>
         <DataTemplate x:Key="OHsWorkstationCompactOptionTemplate">
             <TextBlock Style="{StaticResource OHsWorkstationCompactOptionTextStyle}" TextTrimming="CharacterEllipsis">
                 <TextBlock.Text>
-                    <MultiBinding Converter="{StaticResource OHsWorkstationSamplesetDisplayConverter}" Mode="OneWay">
+                    <MultiBinding Converter="{StaticResource OHsWorkstationAdditionDisplayConverter}" Mode="OneWay">
                         <Binding Mode="OneWay" />
                         <Binding
                             Mode="OneWay"
@@ -774,6 +774,9 @@
             BasedOn="{StaticResource OHsWorkstationTrackMetadataComboBoxStyle}"
             TargetType="ComboBox">
             <Setter Property="ItemTemplate" Value="{StaticResource OHsWorkstationCompactOptionTemplate}" />
+        </Style>
+        <Style x:Key="OHsWorkstationAdditionSelectorStyle" TargetType="ComboBox" BasedOn="{StaticResource OHsWorkstationCompactMetadataStyle}">
+            <Setter Property="Margin" Value="0,0,0,8" />
         </Style>
         <Style
             x:Key="OHsWorkstationSampleFileSelectorStyle"
@@ -941,32 +944,16 @@
                         Style="{StaticResource OHsWorkstationSampleFileSelectorStyle}"
                         ToolTip="{Binding SelectedItem, RelativeSource={RelativeSource Self}, Mode=OneWay}" />
                     <StackPanel x:Name="TrackRightExpandedControls" Style="{StaticResource OHsWorkstationExpandedTrackControlsStyle}">
-                        <customControls:SpacedUniformGrid
-                            Margin="0,0,0,8"
-                            Columns="2"
-                            HorizontalGap="4"
-                            VerticalGap="4">
-                            <ComboBox
-                                x:Name="TrackSamplesetSelector"
-                                AutomationProperties.Name="Sampleset"
-                                DataContextChanged="OnTrackControlDataContextChanged"
-                                IsEnabled="{Binding DataContext.CanEditTracks, Source={StaticResource OHsWorkstationPageSource}, Mode=OneWay}"
-                                ItemsSource="{x:Static entities:Track.SamplesetOptions}"
-                                Loaded="OnTrackMetadataSelectorLoaded"
-                                SelectionChanged="OnTrackMetadataSelectionChanged"
-                                Style="{StaticResource OHsWorkstationCompactMetadataStyle}"
-                                ToolTip="Sampleset" />
-                            <ComboBox
-                                x:Name="TrackAdditionSelector"
-                                AutomationProperties.Name="Addition"
-                                DataContextChanged="OnTrackControlDataContextChanged"
-                                IsEnabled="{Binding DataContext.CanEditTracks, Source={StaticResource OHsWorkstationPageSource}, Mode=OneWay}"
-                                ItemsSource="{x:Static entities:Track.AdditionOptions}"
-                                Loaded="OnTrackMetadataSelectorLoaded"
-                                SelectionChanged="OnTrackMetadataSelectionChanged"
-                                Style="{StaticResource OHsWorkstationCompactMetadataStyle}"
-                                ToolTip="Addition" />
-                        </customControls:SpacedUniformGrid>
+                        <ComboBox
+                            x:Name="TrackAdditionSelector"
+                            AutomationProperties.Name="Addition"
+                            DataContextChanged="OnTrackControlDataContextChanged"
+                            IsEnabled="{Binding DataContext.CanEditTracks, Source={StaticResource OHsWorkstationPageSource}, Mode=OneWay}"
+                            ItemsSource="{x:Static entities:Track.AdditionOptions}"
+                            Loaded="OnTrackMetadataSelectorLoaded"
+                            SelectionChanged="OnTrackMetadataSelectionChanged"
+                            Style="{StaticResource OHsWorkstationAdditionSelectorStyle}"
+                            ToolTip="Addition" />
                         <ComboBox
                             x:Name="TrackSampleTypeSelector"
                             AutomationProperties.Name="Track sample type"

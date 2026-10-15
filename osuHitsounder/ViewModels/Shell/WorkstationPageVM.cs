@@ -578,14 +578,6 @@ public partial class WorkstationPageVM(
         QueueSave();
     }
 
-    public void SetTrackSampleset(Track track, string value)
-    {
-        if (track is InstrumentalTrack) return;
-        if (!CanEditTracks || !tracks.Contains(track) || !Track.SamplesetOptions.Contains(value) || track.Sampleset == value) return;
-        track.Sampleset = value;
-        QueueSave();
-    }
-
     public void SetTrackAddition(Track track, string value)
     {
         if (track is InstrumentalTrack) return;

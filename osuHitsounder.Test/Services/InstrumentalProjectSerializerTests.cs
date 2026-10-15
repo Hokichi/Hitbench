@@ -38,7 +38,7 @@ public class InstrumentalProjectSerializerTests
     public void MetadataIsFixedAndLegacyTracksRemainSamples()
     {
         var t = ProjectDataSerializer.Deserialize("{\"Tracks\":[{\"Kind\":\"Instrumental\",\"Sampleset\":false,\"SampleType\":99}]}").Tracks[0];
-        Assert.That(t.Sampleset, Is.EqualTo("Soft"));
+        Assert.That(t.Addition, Is.EqualTo("Soft"));
         Assert.That(t.SampleType, Is.EqualTo(osuHitsounder.Core.Enums.SampleType.Whistle));
         Assert.That(ProjectDataSerializer.Deserialize("{\"Tracks\":[{}]}").Tracks[0], Is.TypeOf<Track>());
     }

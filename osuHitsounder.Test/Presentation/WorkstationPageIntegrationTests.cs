@@ -276,7 +276,7 @@ public class WorkstationPageIntegrationTests
     public void FileRefreshPreservesMetadataOptionsAndSampleIdentity()
     {
         EnsureResources("Dark");
-        var track = new Track { SelectedSampleFileName = "kick.wav", Sampleset = "Drum", Addition = "Soft",
+        var track = new Track { SelectedSampleFileName = "kick.wav", Addition = "Soft",
             Samples = [new Sample { FileName = "kick.wav" }] };
         IReadOnlyList<string> choices = ["kick.wav"];
         var files = new StubSampleFileService([]) { List = (_, _) => Task.FromResult(choices) };
@@ -290,10 +290,9 @@ public class WorkstationPageIntegrationTests
         choices = ["kick.wav", "snare.wav"];
         UiTestPump.Run(vm.ImportSamplesAsync());
         var selectors = FindVisualChildren<ComboBox>(page).Where(box => ReferenceEquals(box.DataContext, track)).ToArray();
-        Assert.That(selectors.Single(box => box.Name == "TrackSamplesetSelector").SelectedItem, Is.EqualTo("Drum"));
         Assert.That(selectors.Single(box => box.Name == "TrackAdditionSelector").SelectedItem, Is.EqualTo("Soft"));
-        Assert.That(selectors.Single(box => box.Name == "TrackSamplesetSelector").Items.Cast<string>(),
-            Is.EqualTo(new[] { "Normal", "Soft", "Drum" }));
+        Assert.That(selectors.Single(box => box.Name == "TrackAdditionSelector").Items.Cast<string>(),
+            Is.EqualTo(new[] { "Normal", "Soft", "Drum", "None" }));
         Assert.That(track.SelectedSampleFileName, Is.EqualTo("kick.wav"));
         Assert.That(track.Samples.Single().FileName, Is.EqualTo("kick.wav"));
         UiTestPump.Run(page.DeactivateAsync());
@@ -305,8 +304,8 @@ public class WorkstationPageIntegrationTests
     {
         EnsureResources(theme);
         var node = new Sample { FileName = "kick.wav", Timestamp = 125 };
-        var first = new Track { SelectedSampleFileName = "kick.wav", Sampleset = "Drum", Addition = "Soft", Samples = [node] };
-        var second = new Track { Sampleset = "Normal", Addition = "None" };
+        var first = new Track { SelectedSampleFileName = "kick.wav", Addition = "Soft", Samples = [node] };
+        var second = new Track { Addition = "None" };
         var source = new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(
             new WorkstationSource("map.osu", "audio.wav", new ProjectData { Tracks = [first, second] })) };
         var saves = new DelayedProjectFileService(); saves.Release();
@@ -316,29 +315,25 @@ public class WorkstationPageIntegrationTests
         using var view = new InMemoryView(new Window { Content = page, Width = width, Height = 900, FlowDirection = direction });
         UiTestPump.Run(page.LoadCompletion); view.UpdateLayout();
         var selectors = FindVisualChildren<ComboBox>(page).Where(box => ReferenceEquals(box.DataContext, first)).ToArray();
-        Assert.That(selectors.Select(box => box.Name), Does.Contain("TrackSamplesetSelector"));
-        var sampleset = selectors.Single(box => box.Name == "TrackSamplesetSelector");
+        Assert.That(selectors.Select(box => box.Name), Does.Not.Contain("TrackSamplesetSelector"));
         var addition = selectors.Single(box => box.Name == "TrackAdditionSelector");
-        Assert.That(sampleset.Items.Cast<string>(), Is.EqualTo(new[] { "Normal", "Soft", "Drum" }));
         Assert.That(addition.Items.Cast<string>(), Is.EqualTo(new[] { "Normal", "Soft", "Drum", "None" }));
-        Assert.That(sampleset.SelectedItem, Is.EqualTo("Drum"));
         Assert.That(addition.SelectedItem, Is.EqualTo("Soft"));
-        Assert.That(sampleset.Style, Is.SameAs(page.FindResource("OHsWorkstationCompactMetadataStyle")));
-        Assert.That(sampleset.Style.BasedOn, Is.SameAs(page.FindResource("OHsWorkstationTrackMetadataComboBoxStyle")));
-        Assert.That(sampleset.IsTabStop, Is.False);
+        Assert.That(addition.Style, Is.SameAs(page.FindResource("OHsWorkstationAdditionSelectorStyle")));
+        Assert.That(addition.Style.BasedOn.BasedOn, Is.SameAs(page.FindResource("OHsWorkstationTrackMetadataComboBoxStyle")));
+        Assert.That(addition.IsTabStop, Is.False);
         Assert.That(saves.Writes, Is.Zero);
-        sampleset.SelectedItem = "Soft"; addition.SelectedItem = "None";
+        addition.SelectedItem = "None";
         UiTestPump.Run(vm.FlushSavesAsync());
-        Assert.That(first.Sampleset, Is.EqualTo("Soft")); Assert.That(first.Addition, Is.EqualTo("None"));
-        Assert.That(second.Sampleset, Is.EqualTo("Normal")); Assert.That(node.FileName, Is.EqualTo("kick.wav"));
+        Assert.That(first.Addition, Is.EqualTo("None"));
+        Assert.That(node.FileName, Is.EqualTo("kick.wav"));
         var writes = saves.Writes;
-        sampleset.DataContext = second; addition.DataContext = second;
-        Assert.That(sampleset.SelectedItem, Is.EqualTo("Normal")); Assert.That(addition.SelectedItem, Is.EqualTo("None"));
+        addition.DataContext = second;
         Assert.That(saves.Writes, Is.EqualTo(writes));
         page.ShowVolumeOverlay(false, new Point(), false, false);
-        Assert.That(sampleset.IsEnabled, Is.False); Assert.That(addition.IsEnabled, Is.False);
+        Assert.That(addition.IsEnabled, Is.False);
         page.DismissVolumeOverlay();
-        Assert.That(sampleset.IsEnabled, Is.True);
+        Assert.That(addition.IsEnabled, Is.True);
         UiTestPump.Run(page.DeactivateAsync());
     }
 
