@@ -213,4 +213,3 @@ public class WorkstationSampleReloadTests
         finally { await vm.DeactivateAsync(); }
     }
 }
-
