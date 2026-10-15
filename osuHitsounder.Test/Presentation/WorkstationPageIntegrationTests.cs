@@ -292,7 +292,7 @@ public class WorkstationPageIntegrationTests
         var selectors = FindVisualChildren<ComboBox>(page).Where(box => ReferenceEquals(box.DataContext, track)).ToArray();
         Assert.That(selectors.Single(box => box.Name == "TrackAdditionSelector").SelectedItem, Is.EqualTo("Soft"));
         Assert.That(selectors.Single(box => box.Name == "TrackAdditionSelector").Items.Cast<string>(),
-            Is.EqualTo(new[] { "Normal", "Soft", "Drum", "None" }));
+            Is.EqualTo(new[] { "None", "Normal", "Soft", "Drum" }));
         Assert.That(track.SelectedSampleFileName, Is.EqualTo("kick.wav"));
         Assert.That(track.Samples.Single().FileName, Is.EqualTo("kick.wav"));
         UiTestPump.Run(page.DeactivateAsync());
@@ -317,10 +317,11 @@ public class WorkstationPageIntegrationTests
         var selectors = FindVisualChildren<ComboBox>(page).Where(box => ReferenceEquals(box.DataContext, first)).ToArray();
         Assert.That(selectors.Select(box => box.Name), Does.Not.Contain("TrackSamplesetSelector"));
         var addition = selectors.Single(box => box.Name == "TrackAdditionSelector");
-        Assert.That(addition.Items.Cast<string>(), Is.EqualTo(new[] { "Normal", "Soft", "Drum", "None" }));
+        Assert.That(addition.Items.Cast<string>(), Is.EqualTo(new[] { "None", "Normal", "Soft", "Drum" }));
         Assert.That(addition.SelectedItem, Is.EqualTo("Soft"));
+        Assert.That(addition.ItemTemplate, Is.Null, "Use the native full-string presentation for both selection and options.");
         Assert.That(addition.Style, Is.SameAs(page.FindResource("OHsWorkstationAdditionSelectorStyle")));
-        Assert.That(addition.Style.BasedOn.BasedOn, Is.SameAs(page.FindResource("OHsWorkstationTrackMetadataComboBoxStyle")));
+        Assert.That(addition.Style.BasedOn, Is.SameAs(page.FindResource("OHsWorkstationTrackMetadataComboBoxStyle")));
         Assert.That(addition.IsTabStop, Is.False);
         Assert.That(saves.Writes, Is.Zero);
         addition.SelectedItem = "None";

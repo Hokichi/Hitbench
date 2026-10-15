@@ -733,30 +733,7 @@
             <Setter Property="Margin" Value="0" />
         </Style>
         <Style x:Key="OHsWorkstationModeButtonStyle" TargetType="RadioButton" BasedOn="{StaticResource OHsTimelineEditingModeButtonStyle}" />
-        <converters:AdditionDisplayConverter x:Key="OHsWorkstationAdditionDisplayConverter" />
-        <Style x:Key="OHsWorkstationCompactOptionTextStyle" TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlockStyle}">
-            <Setter Property="Foreground" Value="{Binding Path=(TextElement.Foreground), RelativeSource={RelativeSource AncestorType=ContentPresenter}, Mode=OneWay}" />
-        </Style>
-        <DataTemplate x:Key="OHsWorkstationCompactOptionTemplate">
-            <TextBlock Style="{StaticResource OHsWorkstationCompactOptionTextStyle}" TextTrimming="CharacterEllipsis">
-                <TextBlock.Text>
-                    <MultiBinding Converter="{StaticResource OHsWorkstationAdditionDisplayConverter}" Mode="OneWay">
-                        <Binding Mode="OneWay" />
-                        <Binding
-                            Mode="OneWay"
-                            Path="IsDropDownOpen"
-                            RelativeSource="{RelativeSource AncestorType=ComboBox}" />
-                    </MultiBinding>
-                </TextBlock.Text>
-            </TextBlock>
-        </DataTemplate>
-        <Style
-            x:Key="OHsWorkstationCompactMetadataStyle"
-            BasedOn="{StaticResource OHsWorkstationTrackMetadataComboBoxStyle}"
-            TargetType="ComboBox">
-            <Setter Property="ItemTemplate" Value="{StaticResource OHsWorkstationCompactOptionTemplate}" />
-        </Style>
-        <Style x:Key="OHsWorkstationAdditionSelectorStyle" TargetType="ComboBox" BasedOn="{StaticResource OHsWorkstationCompactMetadataStyle}">
+        <Style x:Key="OHsWorkstationAdditionSelectorStyle" TargetType="ComboBox" BasedOn="{StaticResource OHsWorkstationTrackMetadataComboBoxStyle}">
             <Setter Property="Margin" Value="0,0,0,8" />
         </Style>
         <Style

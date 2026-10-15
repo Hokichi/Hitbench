@@ -618,6 +618,7 @@ public class WorkstationTrackTests
             vm.AddSampleTrackCommand.Execute(null);
             var track = vm.Tracks.Single();
             Assert.That(track.SelectedSampleFileName, Is.EqualTo("a.wav"));
+            Assert.That(track.Addition, Is.EqualTo("None"));
             Assert.That(track.Samples, Is.Empty);
             Assert.That(await vm.ImportSamplesAsync(), Is.EqualTo(new[] { "b.mp3" }));
             vm.SelectSample(track, "b.mp3");
