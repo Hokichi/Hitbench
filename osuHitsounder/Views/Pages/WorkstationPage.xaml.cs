@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Media3D;
@@ -43,6 +44,7 @@ public partial class WorkstationPage : UserControl
         InitializeComponent();
         WaveformScrollBar.AddHandler(Thumb.DragStartedEvent, new DragStartedEventHandler(OnWaveformScrollBarDragStarted));
         DataContext = viewModel;
+        ((ObjectDataProvider)Resources["OHsWorkstationPageSource"]).ObjectInstance = this;
         InitializeNodeInteraction();
 
         Loaded += OnLoaded;

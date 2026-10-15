@@ -13,6 +13,7 @@
     d:DesignWidth="1100"
     mc:Ignorable="d">
     <UserControl.Resources>
+        <ObjectDataProvider x:Key="OHsWorkstationPageSource" />
         <GridLength x:Key="OHsWorkstationSideColumnWidth">128</GridLength>
         <GridLength x:Key="OHsWorkstationColumnGap">12</GridLength>
         <Style
@@ -35,7 +36,7 @@
             <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
             <Setter Property="Margin" Value="0,0,0,8" />
             <Style.Triggers>
-                <DataTrigger Binding="{Binding DataContext.AreTracksCollapsed, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}" Value="True">
+                <DataTrigger Binding="{Binding DataContext.AreTracksCollapsed, Source={StaticResource OHsWorkstationPageSource}, Mode=OneWay}" Value="True">
                     <Setter Property="Margin" Value="0" />
                 </DataTrigger>
                 <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
@@ -538,14 +539,14 @@
                 <MultiDataTrigger>
                     <MultiDataTrigger.Conditions>
                         <Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource Self}, Mode=OneWay}" Value="True" />
-                        <Condition Binding="{Binding DataContext.IsSelectionMode, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}" Value="True" />
+                        <Condition Binding="{Binding DataContext.IsSelectionMode, Source={StaticResource OHsWorkstationPageSource}, Mode=OneWay}" Value="True" />
                     </MultiDataTrigger.Conditions>
                     <Setter Property="Background" Value="{DynamicResource Brush.Background.Hover}" />
                 </MultiDataTrigger>
                 <MultiDataTrigger>
                     <MultiDataTrigger.Conditions>
                         <Condition Binding="{Binding IsSelected, RelativeSource={RelativeSource Self}, Mode=OneWay}" Value="True" />
-                        <Condition Binding="{Binding DataContext.IsSelectionMode, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}" Value="True" />
+                        <Condition Binding="{Binding DataContext.IsSelectionMode, Source={StaticResource OHsWorkstationPageSource}, Mode=OneWay}" Value="True" />
                     </MultiDataTrigger.Conditions>
                     <Setter Property="Background" Value="{DynamicResource Brush.Navy.Tint}" />
                 </MultiDataTrigger>
@@ -780,7 +781,7 @@
             TargetType="ComboBox">
             <Setter Property="Margin" Value="0,0,0,8" />
             <Style.Triggers>
-                <DataTrigger Binding="{Binding DataContext.AreTracksCollapsed, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}" Value="True">
+                <DataTrigger Binding="{Binding DataContext.AreTracksCollapsed, Source={StaticResource OHsWorkstationPageSource}, Mode=OneWay}" Value="True">
                     <Setter Property="Margin" Value="0" />
                 </DataTrigger>
             </Style.Triggers>
@@ -790,7 +791,7 @@
             BasedOn="{StaticResource BaseStackPanelStyle}"
             TargetType="StackPanel">
             <Style.Triggers>
-                <DataTrigger Binding="{Binding DataContext.AreTracksCollapsed, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}" Value="True">
+                <DataTrigger Binding="{Binding DataContext.AreTracksCollapsed, Source={StaticResource OHsWorkstationPageSource}, Mode=OneWay}" Value="True">
                     <Setter Property="Visibility" Value="Collapsed" />
                 </DataTrigger>
             </Style.Triggers>
@@ -806,7 +807,7 @@
                 <TextBox
                     AutomationProperties.Name="Track name"
                     DataContextChanged="OnTrackControlDataContextChanged"
-                    IsEnabled="{Binding DataContext.CanEditTracks, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
+                    IsEnabled="{Binding DataContext.CanEditTracks, Source={StaticResource OHsWorkstationPageSource}, Mode=OneWay}"
                     Loaded="OnTrackNameLoaded"
                     Style="{StaticResource OHsWorkstationTrackNameStyle}"
                     Text="{Binding Name, Mode=OneWay, UpdateSourceTrigger=Explicit}"
@@ -822,9 +823,9 @@
                         VerticalGap="4">
                         <customControls:BalloonButton
                             AutomationProperties.Name="Remove track"
-                            Command="{Binding DataContext.RemoveTrackCommand, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
+                            Command="{Binding DataContext.RemoveTrackCommand, Source={StaticResource OHsWorkstationPageSource}, Mode=OneWay}"
                             CommandParameter="{Binding Mode=OneWay}"
-                            IsEnabled="{Binding DataContext.CanRemoveTrack, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
+                            IsEnabled="{Binding DataContext.CanRemoveTrack, Source={StaticResource OHsWorkstationPageSource}, Mode=OneWay}"
                             Style="{StaticResource OHsWorkstationRemoveTrackStyle}"
                             ToolTip="Remove track" />
                         <ToggleButton
@@ -833,7 +834,7 @@
                             Checked="OnTrackAuditionChanged"
                             Content="M"
                             DataContextChanged="OnTrackControlDataContextChanged"
-                            IsEnabled="{Binding DataContext.CanPlaceSamples, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
+                            IsEnabled="{Binding DataContext.CanPlaceSamples, Source={StaticResource OHsWorkstationPageSource}, Mode=OneWay}"
                             Loaded="OnTrackAuditionLoaded"
                             Style="{StaticResource OHsWorkstationTrackToggleStyle}"
                             ToolTip="Mute track"
@@ -844,7 +845,7 @@
                             Checked="OnTrackAuditionChanged"
                             Content="S"
                             DataContextChanged="OnTrackControlDataContextChanged"
-                            IsEnabled="{Binding DataContext.CanPlaceSamples, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
+                            IsEnabled="{Binding DataContext.CanPlaceSamples, Source={StaticResource OHsWorkstationPageSource}, Mode=OneWay}"
                             Loaded="OnTrackAuditionLoaded"
                             Style="{StaticResource OHsWorkstationTrackToggleStyle}"
                             ToolTip="Solo track"
@@ -855,7 +856,7 @@
                         AutomationProperties.Name="Track volume percent"
                         DataContextChanged="OnTrackControlDataContextChanged"
                         DisplayText="{Binding ElementName=VolumeSlider, Path=Value, Mode=OneWay, StringFormat={}{0:0}}"
-                        IsEnabled="{Binding DataContext.CanImportSample, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
+                        IsEnabled="{Binding DataContext.CanImportSample, Source={StaticResource OHsWorkstationPageSource}, Mode=OneWay}"
                         Loaded="OnVolumeSliderLoaded"
                         Style="{StaticResource OHsWorkstationVolumeStyle}"
                         ToolTip="Track volume percent"
@@ -884,36 +885,36 @@
                         Style="{StaticResource BaseGridStyle}">
                         <Grid x:Name="TrackGridContent" Style="{StaticResource OHsWorkstationGridContentStyle}">
                             <customControls:BeatGridView
-                                Height="{Binding DataContext.TrackHeight, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
-                                AllowNodeCreation="{Binding DataContext.IsAdditionMode, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
+                                Height="{Binding DataContext.TrackHeight, Source={StaticResource OHsWorkstationPageSource}, Mode=OneWay}"
+                                AllowNodeCreation="{Binding DataContext.IsAdditionMode, Source={StaticResource OHsWorkstationPageSource}, Mode=OneWay}"
                                 AutomationProperties.HelpText="Use Left and Right to move playback. Enter places or selects a node. In Selection Mode, drag empty timeline space to select nodes across tracks. Control+click or Control+Enter toggles selection; Control+drag does nothing. Escape cancels an active drag and keeps selection; press Escape again to clear selection. Selecting nodes disables Scroll with marker. Delete removes selected nodes; Control+C copies and Control+V pastes on original tracks at the marker, preserving spacing and discarding nodes beyond the audio end. Alt+Left or Right moves selected nodes; Alt+Up or Down changes tracks. Drag nodes to move them."
                                 AutomationProperties.Name="Track sample placement timeline"
-                                Bpms="{Binding DataContext.Project.BPMs, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
-                                CanPlaceSamples="{Binding DataContext.CanPlaceSamples, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
-                                ContentWidth="{Binding TimelineContentWidth, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
+                                Bpms="{Binding DataContext.Project.BPMs, Source={StaticResource OHsWorkstationPageSource}, Mode=OneWay}"
+                                CanPlaceSamples="{Binding DataContext.CanPlaceSamples, Source={StaticResource OHsWorkstationPageSource}, Mode=OneWay}"
+                                ContentWidth="{Binding TimelineContentWidth, Source={StaticResource OHsWorkstationPageSource}, Mode=OneWay}"
                                 FocusBrush="{DynamicResource Brush.Text.Primary}"
-                                HorizontalOffset="{Binding TimelineHorizontalOffset, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
+                                HorizontalOffset="{Binding TimelineHorizontalOffset, Source={StaticResource OHsWorkstationPageSource}, Mode=OneWay}"
                                 HoverBrush="{DynamicResource Brush.Background.Hover}"
-                                IsNodeDragActive="{Binding DataContext.IsNodeDragActive, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
+                                IsNodeDragActive="{Binding DataContext.IsNodeDragActive, Source={StaticResource OHsWorkstationPageSource}, Mode=OneWay}"
                                 KeyboardNavigation.IsTabStop="True"
                                 MarkerBrush="{DynamicResource Brush.Navy.Muted}"
-                                Offsets="{Binding DataContext.Project.Offsets, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
+                                Offsets="{Binding DataContext.Project.Offsets, Source={StaticResource OHsWorkstationPageSource}, Mode=OneWay}"
                                 PlaybackMarkerBrush="{StaticResource OHsWorkstationPlaybackMarkerBrush}"
                                 PlaybackMarkerOutlineBrush="{DynamicResource Brush.Navy.Muted}"
-                                Position="{Binding DataContext.Position, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
+                                Position="{Binding DataContext.Position, Source={StaticResource OHsWorkstationPageSource}, Mode=OneWay}"
                                 PressedBrush="{DynamicResource Brush.Navy}"
                                 SamplePlacementRequested="OnSamplePlacementRequested"
                                 SampleRemovalRequested="OnSampleRemovalRequested"
                                 SampleSelectionRequested="OnSampleSelectionRequested"
                                 Samples="{Binding Samples, Mode=OneWay}"
-                                SamplesRevision="{Binding DataContext.SamplesRevision, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
-                                SelectedSamples="{Binding DataContext.SelectedSamples, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
+                                SamplesRevision="{Binding DataContext.SamplesRevision, Source={StaticResource OHsWorkstationPageSource}, Mode=OneWay}"
+                                SelectedSamples="{Binding DataContext.SelectedSamples, Source={StaticResource OHsWorkstationPageSource}, Mode=OneWay}"
                                 SelectionBrush="{DynamicResource Brush.Navy}"
                                 SelectionCueBrush="{DynamicResource Brush.Text.Primary}"
-                                Subdivision="{Binding DataContext.Subdivision, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
-                                ViewportWidth="{Binding TimelineViewportWidth, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
-                                ZoomFactor="{Binding DataContext.ZoomFactor, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
-                                Duration="{Binding DataContext.Waveform.Duration, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}" />
+                                Subdivision="{Binding DataContext.Subdivision, Source={StaticResource OHsWorkstationPageSource}, Mode=OneWay}"
+                                ViewportWidth="{Binding TimelineViewportWidth, Source={StaticResource OHsWorkstationPageSource}, Mode=OneWay}"
+                                ZoomFactor="{Binding DataContext.ZoomFactor, Source={StaticResource OHsWorkstationPageSource}, Mode=OneWay}"
+                                Duration="{Binding DataContext.Waveform.Duration, Source={StaticResource OHsWorkstationPageSource}, Mode=OneWay}" />
                         </Grid>
                         <TextBlock
                             x:Name="MissingGridStatus"
@@ -933,8 +934,8 @@
                         x:Name="TrackSampleFileSelector"
                         AutomationProperties.Name="Track sample"
                         DataContextChanged="OnTrackControlDataContextChanged"
-                        IsEnabled="{Binding DataContext.CanImportSample, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
-                        ItemsSource="{Binding DataContext.SampleFiles, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
+                        IsEnabled="{Binding DataContext.CanImportSample, Source={StaticResource OHsWorkstationPageSource}, Mode=OneWay}"
+                        ItemsSource="{Binding DataContext.SampleFiles, Source={StaticResource OHsWorkstationPageSource}, Mode=OneWay}"
                         Loaded="OnSampleSelectorLoaded"
                         SelectionChanged="OnSampleSelectionChanged"
                         Style="{StaticResource OHsWorkstationSampleFileSelectorStyle}"
@@ -949,7 +950,7 @@
                                 x:Name="TrackSamplesetSelector"
                                 AutomationProperties.Name="Sampleset"
                                 DataContextChanged="OnTrackControlDataContextChanged"
-                                IsEnabled="{Binding DataContext.CanEditTracks, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
+                                IsEnabled="{Binding DataContext.CanEditTracks, Source={StaticResource OHsWorkstationPageSource}, Mode=OneWay}"
                                 ItemsSource="{x:Static entities:Track.SamplesetOptions}"
                                 Loaded="OnTrackMetadataSelectorLoaded"
                                 SelectionChanged="OnTrackMetadataSelectionChanged"
@@ -959,7 +960,7 @@
                                 x:Name="TrackAdditionSelector"
                                 AutomationProperties.Name="Addition"
                                 DataContextChanged="OnTrackControlDataContextChanged"
-                                IsEnabled="{Binding DataContext.CanEditTracks, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
+                                IsEnabled="{Binding DataContext.CanEditTracks, Source={StaticResource OHsWorkstationPageSource}, Mode=OneWay}"
                                 ItemsSource="{x:Static entities:Track.AdditionOptions}"
                                 Loaded="OnTrackMetadataSelectorLoaded"
                                 SelectionChanged="OnTrackMetadataSelectionChanged"
@@ -970,7 +971,7 @@
                             x:Name="TrackSampleTypeSelector"
                             AutomationProperties.Name="Track sample type"
                             DataContextChanged="OnTrackControlDataContextChanged"
-                            IsEnabled="{Binding DataContext.CanEditTracks, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
+                            IsEnabled="{Binding DataContext.CanEditTracks, Source={StaticResource OHsWorkstationPageSource}, Mode=OneWay}"
                             ItemsSource="{x:Static entities:Track.SampleTypeOptions}"
                             Loaded="OnTrackMetadataSelectorLoaded"
                             SelectionChanged="OnTrackMetadataSelectionChanged"
@@ -1057,7 +1058,7 @@
             <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
         </Style>
         <DataTemplate x:Key="OHsWorkstationInstrumentalTrackTemplate">
-            <Grid Height="{Binding DataContext.TrackHeight, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}" Style="{StaticResource BaseGridStyle}">
+            <Grid Height="{Binding DataContext.TrackHeight, Source={StaticResource OHsWorkstationPageSource}, Mode=OneWay}" Style="{StaticResource BaseGridStyle}">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="{StaticResource OHsWorkstationSideColumnWidth}" />
                     <ColumnDefinition Width="{StaticResource OHsWorkstationColumnGap}" />
@@ -1077,7 +1078,7 @@
                     AutomationProperties.Name="View Arrangement"
                     ButtonIcon="{StaticResource Eye}"
                     ButtonText="View Arrangement"
-                    Command="{Binding DataContext.ViewArrangementCommand, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
+                    Command="{Binding DataContext.ViewArrangementCommand, Source={StaticResource OHsWorkstationPageSource}, Mode=OneWay}"
                     CommandParameter="{Binding Mode=OneWay}"
                     Style="{StaticResource OHsWorkstationInstrumentActionStyle}"
                     ToolTip="Edit instrumental notes (map at least one key first)"
@@ -1087,7 +1088,7 @@
                     AutomationProperties.Name="Keys Mapping"
                     ButtonIcon="{StaticResource KeyboardBoxFill}"
                     ButtonText="Mapping"
-                    Command="{Binding DataContext.KeysMappingCommand, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
+                    Command="{Binding DataContext.KeysMappingCommand, Source={StaticResource OHsWorkstationPageSource}, Mode=OneWay}"
                     CommandParameter="{Binding Mode=OneWay}"
                     Style="{StaticResource OHsWorkstationKeysMappingStyle}"
                     ToolTip="Map samples to instrument keys" />
