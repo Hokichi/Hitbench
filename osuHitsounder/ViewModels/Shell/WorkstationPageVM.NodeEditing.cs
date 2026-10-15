@@ -183,7 +183,7 @@ public partial class WorkstationPageVM
         dragAnchor = anchor;
         dragDelta = 0;
         OnPropertyChanged(nameof(IsNodeDragActive));
-        NotifyRefreshAvailability();
+        NotifySampleReloadAvailability();
         return true;
     }
 
@@ -305,7 +305,7 @@ public partial class WorkstationPageVM
         if (active)
         {
             OnPropertyChanged(nameof(IsNodeDragActive));
-            NotifyRefreshAvailability();
+            NotifySampleReloadAvailability();
         }
     }
 

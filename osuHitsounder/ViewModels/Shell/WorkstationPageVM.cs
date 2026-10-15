@@ -101,7 +101,7 @@ public partial class WorkstationPageVM(
     [ObservableProperty] private ProjectLoadPhase loadPhase = ProjectLoadPhase.PreparingData;
     public int LoadGeneration => loadGeneration;
     public bool IsLoading => LoadPhase is ProjectLoadPhase.PreparingData or ProjectLoadPhase.AwaitingPresentation;
-    public bool IsInteractionReady => LoadPhase == ProjectLoadPhase.Ready && !deactivated && !IsReturning && !refreshingProject;
+    public bool IsInteractionReady => LoadPhase == ProjectLoadPhase.Ready && !deactivated && !IsReturning && !reloadingSamples;
     public bool CanGoBack => !deactivated && !IsReturning;
     public bool ShowStatusOverlay => IsLoading || IsSavingForReturn;
     public string StatusText => IsSavingForReturn ? "Saving..." : "Loading Project...";
@@ -188,7 +188,7 @@ public partial class WorkstationPageVM(
     public async Task LoadAsync(string projectPath, CancellationToken token)
     {
         if (deactivated) return;
-        if (refreshingProject && token != refreshCancellation?.Token) refreshCancellation?.Cancel();
+        if (reloadingSamples && token != reloadSamplesCancellation?.Token) reloadSamplesCancellation?.Cancel();
         await SettleControlPointsDrawerAsync();
         controlPointIds.Clear();
         await SettleInstrumentalEditorAsync();
@@ -219,7 +219,7 @@ public partial class WorkstationPageVM(
     private async Task DeactivateCoreAsync()
     {
         if (deactivated) return;
-        refreshCancellation?.Cancel();
+        reloadSamplesCancellation?.Cancel();
         await SettleControlPointsDrawerAsync();
         await SettleInstrumentalEditorAsync();
         await SettleSampleManagerAsync();
@@ -244,7 +244,7 @@ public partial class WorkstationPageVM(
             try { await activeLoad; }
             catch (OperationCanceledException) { }
         }
-        if (activeRefresh is not null) await activeRefresh;
+        if (activeSampleReload is not null) await activeSampleReload;
         if (activeRemoval is not null) await activeRemoval;
         if (activeNodeEdit is not null) await activeNodeEdit;
         await playbackUpdates;
@@ -259,8 +259,8 @@ public partial class WorkstationPageVM(
             nodeEditCancellation = null;
             loadCancellation?.Dispose();
             loadCancellation = null;
-            refreshCancellation?.Dispose();
-            refreshCancellation = null;
+            reloadSamplesCancellation?.Dispose();
+            reloadSamplesCancellation = null;
             playbackUpdateCancellation?.Dispose();
             playbackUpdateCancellation = null;
             NotifyCommandState();
@@ -709,8 +709,8 @@ public partial class WorkstationPageVM(
     public async Task<bool> PrepareToReturnAsync(CancellationToken token)
     {
         if (deactivated || IsReturning || token.IsCancellationRequested) return false;
-        refreshCancellation?.Cancel();
-        if (activeRefresh is not null) await activeRefresh;
+        reloadSamplesCancellation?.Cancel();
+        if (activeSampleReload is not null) await activeSampleReload;
         await SettleControlPointsDrawerAsync();
         await SettleInstrumentalEditorAsync();
         await SettleSampleManagerAsync();
@@ -771,12 +771,12 @@ public partial class WorkstationPageVM(
         playbackUpdates = AwaitPlaybackUpdatesAsync(playbackUpdates, update);
     }
 
-    private async Task UpdatePlaybackAsync(string path, int generation, CancellationToken token)
+    private async Task UpdatePlaybackAsync(string path, int generation, CancellationToken token, bool forceReload = false)
     {
         var events = CreatePlaybackEvents();
         try
         {
-            await playback.UpdateSamplesAsync(path, events, token);
+            await playback.UpdateSamplesAsync(path, events, token, forceReload);
             var playbackError = audioService.GetSnapshot().Error;
             await CommitAsync(generation, CancellationToken.None, () =>
             {
@@ -1061,7 +1061,7 @@ public partial class WorkstationPageVM(
 
     private void NotifyEditingState()
     {
-        NotifyRefreshAvailability();
+        NotifySampleReloadAvailability();
         OnPropertyChanged(nameof(CanOpenControlPoints)); AddControlPointCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(HasPendingSaves)); PublishControlPointsSnapshot();
         OnPropertyChanged(nameof(CanAddInstrumentalTrack)); OnPropertyChanged(nameof(CanOpenInstrumentalEditor));

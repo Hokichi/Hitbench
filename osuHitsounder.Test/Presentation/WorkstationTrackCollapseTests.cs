@@ -169,7 +169,7 @@ public class WorkstationTrackCollapseTests
     }
 
     [Test]
-    public void RefreshRestoresRecycledRowsAfterDelayedSampleList()
+    public void ReloadSamplesRestoresRecycledRowsAfterDelayedSampleList()
     {
         string[] files = ["kick.wav", "snare.wav"];
         var tracks = CreateTracks(files);
@@ -181,13 +181,14 @@ public class WorkstationTrackCollapseTests
             vm.ToggleTracksCollapsedCommand.Execute(null);
             ScrollTo(page, view, tracks[40]);
             var snapshot = JsonConvert.SerializeObject(tracks);
+            var revision = vm.SamplesRevision;
             var listing = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             var choices = new TaskCompletionSource<IReadOnlyList<string>>(TaskCreationOptions.RunContinuationsAsynchronously);
             samples.List = (_, _) => { listing.TrySetResult(); return choices.Task; };
-            var refresh = vm.RefreshProjectCommand.ExecuteAsync(null);
+            var refresh = vm.ReloadSamplesCommand.ExecuteAsync(null);
             UiTestPump.Run(listing.Task);
             Settle(page, view);
-            Assert.That(vm.SampleFiles, Is.Empty);
+            Assert.That(vm.SampleFiles, Is.EqualTo(files));
             choices.SetResult(files);
             UiTestPump.Run(refresh);
             foreach (var target in new[] { 40, 79, 0 })
@@ -196,7 +197,7 @@ public class WorkstationTrackCollapseTests
                 AssertRealizedTrackState(page, vm);
             }
             Assert.That(JsonConvert.SerializeObject(tracks), Is.EqualTo(snapshot));
-            Assert.That(vm.SamplesRevision, Is.Zero);
+            Assert.That(vm.SamplesRevision, Is.EqualTo(revision + 1));
             Assert.That(vm.HasPendingSaves, Is.False);
         }
         finally { UiTestPump.Run(page.DeactivateAsync()); }

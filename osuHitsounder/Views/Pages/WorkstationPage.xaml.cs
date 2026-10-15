@@ -564,7 +564,7 @@ public partial class WorkstationPage : UserControl
             (Key.N, ModifierKeys.Control | ModifierKeys.Shift) => viewModel.AddPianoTrackCommand,
             (Key.F2, ModifierKeys.None) => viewModel.ManageSamplesCommand,
             (Key.F4, ModifierKeys.None) => viewModel.ToggleTracksCollapsedCommand,
-            (Key.F5, ModifierKeys.None) => viewModel.RefreshProjectCommand,
+            (Key.F5, ModifierKeys.None) => viewModel.ReloadSamplesCommand,
             (Key.F6, ModifierKeys.None) => viewModel.AddControlPointCommand,
             _ => null
         };

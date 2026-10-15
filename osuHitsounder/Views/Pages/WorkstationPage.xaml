@@ -1282,13 +1282,13 @@
                                     Style="{StaticResource OHsWorkstationAddInstrumentStyle}"
                                     ToolTip="Add New Instrument (Ctrl+Shift+N)" />
                                 <customControls:BalloonButton
-                                    x:Name="RefreshProjectButton"
-                                    AutomationProperties.Name="Refresh Project"
+                                    x:Name="ReloadSamplesButton"
+                                    AutomationProperties.Name="Reload Samples"
                                     ButtonIcon="{StaticResource RegularRepeat}"
-                                    ButtonText="Refresh Project"
-                                    Command="{Binding RefreshProjectCommand, Mode=OneWay}"
+                                    ButtonText="Reload Samples"
+                                    Command="{Binding ReloadSamplesCommand, Mode=OneWay}"
                                     Style="{StaticResource OHsWorkstationRefreshButtonStyle}"
-                                    ToolTip="Refresh Project (F5)" />
+                                    ToolTip="Reload Samples (F5)" />
                             </customControls:SpacedUniformGrid>
                         </Grid>
                     </Grid>
