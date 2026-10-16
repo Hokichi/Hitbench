@@ -45,12 +45,20 @@ public partial class OHsWorkstationTimeline : UserControl
     }
     public void AttachScrollBar(ScrollBar value)
     {
-        if (scrollBar is not null) scrollBar.RemoveHandler(Thumb.DragStartedEvent, new DragStartedEventHandler(OnWaveformScrollBarDragStarted));
+        DetachScrollBar();
         scrollBar = value;
+        scrollBar.Scroll += OnWaveformScrollBarScroll;
         scrollBar.SetBinding(RangeBase.MaximumProperty, new Binding(nameof(ScrollableWidth)) { Source = this, Mode = BindingMode.OneWay });
         scrollBar.SetBinding(ScrollBar.ViewportSizeProperty, new Binding(nameof(TimelineViewportWidth)) { Source = this, Mode = BindingMode.OneWay });
         scrollBar.SetBinding(RangeBase.LargeChangeProperty, new Binding(nameof(TimelineViewportWidth)) { Source = this, Mode = BindingMode.OneWay });
         scrollBar.AddHandler(Thumb.DragStartedEvent, new DragStartedEventHandler(OnWaveformScrollBarDragStarted));
+    }
+    public void DetachScrollBar()
+    {
+        if (scrollBar is null) return;
+        scrollBar.Scroll -= OnWaveformScrollBarScroll;
+        scrollBar.RemoveHandler(Thumb.DragStartedEvent, new DragStartedEventHandler(OnWaveformScrollBarDragStarted));
+        scrollBar = null;
     }
     public void ResetWheel() { wheelMode = ModifierKeys.None; wheelRemainder = 0; }
     public void Reset() { hasPendingZoomAnchor = false; ResetWheel(); }
@@ -104,12 +112,7 @@ public partial class OHsWorkstationTimeline : UserControl
         if (viewModel.CanPlay && !deactivationStarted) viewModel.ScrollWithMarker = false;
     }
 
-    private void OnWaveformScrollBarScroll(object sender, ScrollEventArgs e)
-    {
-        if (!viewModel.CanPlay || deactivationStarted) return;
-        viewModel.ScrollWithMarker = false;
-        WaveformScrollViewer.ScrollToHorizontalOffset(e.NewValue);
-    }
+    private void OnWaveformScrollBarScroll(object sender, ScrollEventArgs e) => ScrollFromUser(e.NewValue);
 
     public void ApplyPendingZoomAnchor()
     {

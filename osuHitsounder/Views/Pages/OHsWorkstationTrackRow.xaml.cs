@@ -20,7 +20,7 @@ public partial class OHsWorkstationTrackRow : UserControl
     public OHsWorkstationTrackRow()
     {
         InitializeComponent();
-        ((ObjectDataProvider)Resources["OHsWorkstationPageSource"]).ObjectInstance = this;
+        ((ObjectDataProvider)Resources["OHsWorkstationTrackRowSource"]).ObjectInstance = this;
         Loaded += (_, _) => { Subscribe(); RefreshPresentation(); };
         Unloaded += (_, _) => Unsubscribe();
     }

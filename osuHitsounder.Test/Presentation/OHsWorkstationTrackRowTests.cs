@@ -19,10 +19,14 @@ public sealed class OHsWorkstationTrackRowTests
         using var view = new InMemoryView(new Window { Content = row, Width = 900, Height = 300 });
         row.Track = b; view.UpdateLayout(); row.RefreshPresentation();
         Assert.That(row.Track, Is.SameAs(b));
+        var template = (DataTemplate)row.FindResource("OHsWorkstationSampleTrackTemplate");
+        var selector = (ComboBox)template.FindName("TrackSampleFileSelector", row.RowContent);
+        Assert.That(selector.SelectedItem, Is.EqualTo("b.wav"));
         Assert.That(row.SampleTimeline!.DataContext, Is.SameAs(b));
         Assert.That(a.Name, Is.EqualTo("A"));
         row.Track = a; view.UpdateLayout(); row.RefreshPresentation();
         Assert.That(row.SampleTimeline!.DataContext, Is.SameAs(a));
+        Assert.That(selector.SelectedItem, Is.EqualTo("a.wav"));
         UiTestPump.Run(vm.DeactivateAsync());
     }
 }

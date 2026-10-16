@@ -23,13 +23,13 @@ public partial class OHsWorkstationTrackList : UserControl
     public OHsWorkstationTrackList()
     {
         InitializeComponent();
-        ((ObjectDataProvider)Resources["OHsWorkstationPageSource"]).ObjectInstance = this;
+        ((ObjectDataProvider)Resources["OHsWorkstationTrackListSource"]).ObjectInstance = this;
         InitializeNodeInteraction();
         DataContextChanged += OnViewModelChanged;
     }
     private void OnViewModelChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
-        if (viewModel is not null) { viewModel.Tracks.CollectionChanged -= OnTracksCollectionChanged; viewModel.PropertyChanged -= OnPresentationChanged; }
+        if (viewModel is not null) { CancelNodePointer(); viewModel.Tracks.CollectionChanged -= OnTracksCollectionChanged; viewModel.PropertyChanged -= OnPresentationChanged; }
         viewModel = e.NewValue as WorkstationPageVM ?? null!;
         if (viewModel is not null && !deactivationStarted) { viewModel.Tracks.CollectionChanged += OnTracksCollectionChanged; viewModel.PropertyChanged += OnPresentationChanged; }
     }
@@ -115,12 +115,12 @@ public partial class OHsWorkstationTrackList : UserControl
         }
     }
 
-    public IInputElement FindRemovalFocusTarget(int index)
+    public IInputElement? FindRemovalFocusTarget(int index)
     {
         TrackList.UpdateLayout();
         var container = TrackList.ItemContainerGenerator.ContainerFromIndex(index) as FrameworkElement;
-        return container is null ? Timeline!.FocusTarget
-            : FindVisualChild<OHsWorkstationTrackRow>(container)?.GetRemovalFocusTarget() ?? Timeline!.FocusTarget;
+        return container is null ? Timeline?.FocusTarget
+            : FindVisualChild<OHsWorkstationTrackRow>(container)?.GetRemovalFocusTarget() ?? Timeline?.FocusTarget;
     }
 
     public void PrepareTrackDrawings()

@@ -101,7 +101,7 @@ public sealed class ManageSamplesDrawerHostTests
         {
             UiTestPump.Run(vm.InitializeAsync(default)); var showing = shell.PresentSampleManagerAsync(drawer, default, (_, _) => Task.CompletedTask);
             UiTestPump.Layout((FrameworkElement)shell.Content, 1280, 720);
-            var header = (Grid?)shell.FindName("ShellHeader"); Assert.That(header, Is.Not.Null);
+            var header = (osuHitsounder.Views.Shell.OHsShellHeader?)shell.FindName("ShellHeader"); Assert.That(header, Is.Not.Null);
             var content = (Border)shell.FindName("SampleManagerAppContent");
             Assert.That(header!.IsEnabled, Is.False); Assert.That(content.IsEnabled, Is.False); Assert.That(drawer.IsEnabled, Is.True);
             Assert.That(content.Style, Is.SameAs(shell.FindResource("OHsMainWindowSampleManagerContentStyle")));

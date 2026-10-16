@@ -35,7 +35,6 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
-        <SolidColorBrush x:Key="OHsWorkstationPlaybackMarkerBrush" Color="White" />
 
 
 
@@ -278,7 +277,6 @@
                         AutomationProperties.Name="Waveform horizontal position"
                         FlowDirection="LeftToRight"
                         Orientation="Horizontal"
-                        Scroll="OnWaveformScrollBarScroll"
                         SmallChange="16"
                         Style="{StaticResource OHsWorkstationWaveformScrollBarStyle}" />
                 </Grid>

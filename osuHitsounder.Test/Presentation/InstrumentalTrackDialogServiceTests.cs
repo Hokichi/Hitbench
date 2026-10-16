@@ -42,6 +42,20 @@ public sealed class InstrumentalTrackDialogServiceTests
         Assert.That(vm.CanOpenKey, Is.False);
     }
 
+    [Test]
+    public void FailedMappingPresenterDeactivatesRecipient()
+    {
+        var messenger = new WeakReferenceMessenger();
+        KeysMappingDrawerVM? mapping = null;
+        var service = new InstrumentalTrackDialogService(() => null, Dispatcher.CurrentDispatcher,
+            _ => throw new AssertionException("Arrangement factory should not run."),
+            snapshot => mapping = new(snapshot, messenger, new ImmediateUiScheduler(), new StubSampleFileService([]), new StubSampleFileDialogService((string?)null)),
+            presentMapping: (_, _) => Task.FromException(new InvalidOperationException("mapping presenter failed")));
+        Assert.Throws<InvalidOperationException>(() => UiTestPump.Run(service.ShowKeysMappingAsync(Snapshot(), default)));
+        Assert.That(mapping!.CanEditMapping, Is.False);
+        Assert.That(mapping.CanOpenKey, Is.False);
+    }
+
     private static InstrumentalTrackSnapshot Snapshot() => new(
         new("project.json", null, Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid()), "Piano", 100,
         new Dictionary<string, string>(), [], [], 0);

@@ -12,7 +12,7 @@
     d:DesignHeight="600"
     d:DesignWidth="1100"
     mc:Ignorable="d">
-<UserControl.Resources><ObjectDataProvider x:Key="OHsWorkstationPageSource" />
+<UserControl.Resources><ObjectDataProvider x:Key="OHsWorkstationTrackListSource" />
 <ControlTemplate x:Key="OHsWorkstationTrackScrollTemplate" TargetType="ScrollViewer">
             <Grid Background="{TemplateBinding Background}" Style="{StaticResource BaseGridStyle}">
                 <Grid.ColumnDefinitions>
@@ -99,14 +99,14 @@
                 <MultiDataTrigger>
                     <MultiDataTrigger.Conditions>
                         <Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource Self}, Mode=OneWay}" Value="True" />
-                        <Condition Binding="{Binding DataContext.IsSelectionMode, Source={StaticResource OHsWorkstationPageSource}, Mode=OneWay}" Value="True" />
+                        <Condition Binding="{Binding DataContext.IsSelectionMode, Source={StaticResource OHsWorkstationTrackListSource}, Mode=OneWay}" Value="True" />
                     </MultiDataTrigger.Conditions>
                     <Setter Property="Background" Value="{DynamicResource Brush.Background.Hover}" />
                 </MultiDataTrigger>
                 <MultiDataTrigger>
                     <MultiDataTrigger.Conditions>
                         <Condition Binding="{Binding IsSelected, RelativeSource={RelativeSource Self}, Mode=OneWay}" Value="True" />
-                        <Condition Binding="{Binding DataContext.IsSelectionMode, Source={StaticResource OHsWorkstationPageSource}, Mode=OneWay}" Value="True" />
+                        <Condition Binding="{Binding DataContext.IsSelectionMode, Source={StaticResource OHsWorkstationTrackListSource}, Mode=OneWay}" Value="True" />
                     </MultiDataTrigger.Conditions>
                     <Setter Property="Background" Value="{DynamicResource Brush.Navy.Tint}" />
                 </MultiDataTrigger>

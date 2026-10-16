@@ -26,7 +26,7 @@ public partial class WorkstationPage : UserControl
     public OHsWorkstationTimeline Timeline => AudioCard.Timeline;
     internal Task NodeInputCompletion => TrackListComponent.NodeInputCompletion;
     internal bool IsRegionSelectionActive => TrackListComponent.IsRegionSelectionActive;
-    internal IInputElement FindRemovalFocusTarget(int index) => TrackListComponent.FindRemovalFocusTarget(index);
+    internal IInputElement FindRemovalFocusTarget(int index) => TrackListComponent.FindRemovalFocusTarget(index) ?? Timeline.FocusTarget;
     internal bool BeginNodePointer(BeatGridView? grid, Point gridPoint, Point pagePoint, ModifierKeys modifiers = ModifierKeys.None) =>
         TrackListComponent.BeginNodePointer(grid, gridPoint, TranslatePoint(pagePoint, TrackListComponent), modifiers);
     internal void UpdateNodePointer(Point pagePoint, BeatGridView? targetGrid, Point targetPoint, ModifierKeys modifiers = ModifierKeys.None) =>
@@ -148,6 +148,8 @@ public partial class WorkstationPage : UserControl
             viewModel.PropertyChanged -= OnViewModelPropertyChanged;
             TrackListComponent.ViewportChanged -= OnTrackViewportChanged;
             Timeline.Reset();
+            Timeline.DetachScrollBar();
+            PreviewMouseLeftButtonDown -= OnPagePointerDown;
             Timeline.ViewportChanged -= OnTimelineViewportChanged;
         }
     }
@@ -389,7 +391,6 @@ public partial class WorkstationPage : UserControl
     }
     internal static double GetPlaybackPageOffset(double markerX, double offset, double viewportWidth, double extentWidth) =>
         OHsWorkstationTimeline.GetPlaybackPageOffset(markerX, offset, viewportWidth, extentWidth);
-    private void OnWaveformScrollBarScroll(object sender, ScrollEventArgs e) => Timeline.ScrollFromUser(e.NewValue);
     private void OnTimelineViewportChanged(object? sender, EventArgs e)
     {
         TimelineContentWidth = Timeline.TimelineContentWidth;
