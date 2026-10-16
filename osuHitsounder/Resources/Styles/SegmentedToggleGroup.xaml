@@ -5,7 +5,6 @@
         x:Key="BaseSegmentedToggleGroupStyle"
         TargetType="{x:Type c:SegmentedToggleGroup}">
         <Setter Property="OverridesDefaultStyle" Value="True" />
-        <Setter Property="Height" Value="32" />
         <Setter Property="Padding" Value="4" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="OptionSpacing" Value="4" />
@@ -16,7 +15,6 @@
         x:Key="SegmentedToggleGroupTemplate"
         TargetType="{x:Type c:SegmentedToggleGroup}">
         <Border
-            Height="{TemplateBinding Height}"
             Padding="{TemplateBinding Padding}"
             Background="{TemplateBinding Background}"
             BorderBrush="{TemplateBinding BorderBrush}"
@@ -39,5 +37,11 @@
         <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Subtle}" />
         <Setter Property="Template" Value="{StaticResource SegmentedToggleGroupTemplate}" />
         <Setter Property="ItemsPanel" Value="{StaticResource SegmentedToggleItemsPanelTemplate}" />
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
+                <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+            </DataTrigger>
+        </Style.Triggers>
     </Style>
 </ResourceDictionary>

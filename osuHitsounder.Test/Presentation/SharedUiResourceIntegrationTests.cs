@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using osuHitsounder.Resources.CustomControls;
 
@@ -39,18 +39,18 @@ public sealed class SharedUiResourceIntegrationTests
         Assert.That(first.FocusVisualStyle, Is.SameAs(first.FindResource("OHsSampleManagerKeyboardFocusStyle")));
         var changes = 0;
         group.OptionSelected += (_, _) => changes++;
-        var provider = (System.Windows.Automation.Provider.IInvokeProvider)
+        var provider = (System.Windows.Automation.Provider.ISelectionItemProvider)
             System.Windows.Automation.Peers.UIElementAutomationPeer.CreatePeerForElement(first)
-                .GetPattern(System.Windows.Automation.Peers.PatternInterface.Invoke);
-        provider.Invoke();
+                .GetPattern(System.Windows.Automation.Peers.PatternInterface.SelectionItem);
+        provider.Select();
         UiTestPump.Run(first.Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle).Task);
         Assert.That(group.SelectedValue, Is.EqualTo("first"));
         Assert.That(changes, Is.EqualTo(1));
         second.IsEnabled = false;
-        var disabled = (System.Windows.Automation.Provider.IInvokeProvider)
+        var disabled = (System.Windows.Automation.Provider.ISelectionItemProvider)
             System.Windows.Automation.Peers.UIElementAutomationPeer.CreatePeerForElement(second)
-                .GetPattern(System.Windows.Automation.Peers.PatternInterface.Invoke);
-        Assert.Throws<System.Windows.Automation.ElementNotEnabledException>(() => disabled.Invoke());
+                .GetPattern(System.Windows.Automation.Peers.PatternInterface.SelectionItem);
+        Assert.Throws<System.Windows.Automation.ElementNotEnabledException>(() => disabled.Select());
         Assert.That(group.SelectedValue, Is.EqualTo("first"));
     }
     [TestCase(typeof(BalloonButton), "BalloonControlTemplate")]

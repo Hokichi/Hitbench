@@ -1,9 +1,10 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 
 namespace osuHitsounder.Resources.CustomControls;
 
-public class SegmentedToggleOption : Button
+public class SegmentedToggleOption : RadioButton
 {
     static SegmentedToggleOption()
     {
@@ -13,7 +14,9 @@ public class SegmentedToggleOption : Button
     }
 
     public static readonly DependencyProperty IsSelectedProperty =
-        DependencyProperty.Register(nameof(IsSelected), typeof(bool), typeof(SegmentedToggleOption), new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault));
+        DependencyProperty.Register(nameof(IsSelected), typeof(bool), typeof(SegmentedToggleOption),
+            new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault,
+                (d, e) => d.SetCurrentValue(IsCheckedProperty, (bool)e.NewValue)));
 
     public static readonly DependencyProperty ValueProperty =
         DependencyProperty.Register(nameof(Value), typeof(object), typeof(SegmentedToggleOption), new PropertyMetadata(null));
@@ -41,10 +44,35 @@ public class SegmentedToggleOption : Button
 
     protected override void OnClick()
     {
-        if (SelectOnClick)
-            SetCurrentValue(IsSelectedProperty, true);
-
+        if (!IsEnabled) return;
         base.OnClick();
+    }
+
+    protected override void OnToggle()
+    {
+        if (SelectOnClick) base.OnToggle();
+    }
+
+    protected override void OnChecked(RoutedEventArgs e)
+    {
+        SetCurrentValue(IsSelectedProperty, true);
+        base.OnChecked(e);
+    }
+
+    protected override void OnUnchecked(RoutedEventArgs e)
+    {
+        SetCurrentValue(IsSelectedProperty, false);
+        base.OnUnchecked(e);
+    }
+
+    protected override void OnKeyDown(KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter && IsEnabled)
+        {
+            OnClick();
+            e.Handled = true;
+        }
+        else base.OnKeyDown(e);
     }
 }
 

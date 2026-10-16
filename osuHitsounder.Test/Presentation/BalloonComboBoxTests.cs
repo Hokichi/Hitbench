@@ -231,12 +231,27 @@ public sealed class BalloonComboBoxTests
 
     [TestCase(Key.Down)]
     [TestCase(Key.Enter)]
+    [TestCase(Key.Space)]
     public void OpenKeysActivateOnce(Key key)
     {
         var control = Create(new MenuItem { Header = "First" });
         control.PressKey(key);
         Assert.That(control.IsDropDownOpen, Is.True);
         Assert.That(control.PresentationRequests.Count(x => x.Open), Is.EqualTo(1));
+        Unload(control);
+    }
+
+    [Test]
+    public void QueuedTriggerInvocationCannotCrossReload()
+    {
+        var control = Create(new MenuItem { Header = "First" });
+        var provider = (IInvokeProvider)UIElementAutomationPeer.CreatePeerForElement(control)!.GetPattern(PatternInterface.Invoke);
+        provider.Invoke();
+        Unload(control);
+        Load(control);
+        Drain();
+        Assert.That(control.IsDropDownOpen, Is.False);
+        Assert.That(control.PresentationRequests, Is.Empty);
         Unload(control);
     }
 

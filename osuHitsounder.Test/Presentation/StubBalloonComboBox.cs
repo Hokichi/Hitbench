@@ -15,6 +15,8 @@ public sealed class StubBalloonComboBox : BalloonComboBox
     public void PressKey(Key key)
     {
         using var source = new InMemoryPresentationSource();
-        OnKeyDown(new KeyEventArgs(Keyboard.PrimaryDevice, source, 0, key) { RoutedEvent = KeyDownEvent });
+        RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, source, 0, key) { RoutedEvent = KeyDownEvent });
+        if (key == Key.Space)
+            RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, source, 0, key) { RoutedEvent = KeyUpEvent });
     }
 }
