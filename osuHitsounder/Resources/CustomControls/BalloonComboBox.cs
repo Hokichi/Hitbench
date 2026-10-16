@@ -22,10 +22,14 @@ public class BalloonComboBox : BalloonButton
     private ContextMenu? menu;
     private UIElement? previousPlacementTarget;
     private DispatcherOperation? pendingClose;
+    private long menuSession;
 
     public bool IsDropDownOpen => (bool)GetValue(IsDropDownOpenProperty);
     public bool IsMenuOwnerActive => (bool)GetValue(IsMenuOwnerActiveProperty);
     internal long MenuOwnerVersion { get; private set; }
+
+    static BalloonComboBox() => DefaultStyleKeyProperty.OverrideMetadata(typeof(BalloonComboBox),
+        new FrameworkPropertyMetadata(typeof(BalloonComboBox)));
 
     public BalloonComboBox()
     {
@@ -69,6 +73,7 @@ public class BalloonComboBox : BalloonButton
         base.OnClick();
         // A consumer Click/Command can detach the owner or replace its menu.
         if (!IsMenuOwnerActive || menu is not { HasItems: true }) return;
+        menuSession++;
         SetValue(IsDropDownOpenPropertyKey, true);
         try { SetMenuOpen(menu, true); }
         catch
@@ -155,14 +160,17 @@ public class BalloonComboBox : BalloonButton
     {
         if (e.OriginalSource is not MenuItem { HasItems: false } || !IsMenuOwnerActive) return;
         var version = MenuOwnerVersion;
+        var session = menuSession;
         // Native Click precedes command execution. Close/focus afterward; never interfere with that command.
         pendingClose?.Abort();
         pendingClose = Dispatcher.BeginInvoke(DispatcherPriority.Input, () =>
         {
             pendingClose = null;
-            if (!IsMenuOwnerActive || version != MenuOwnerVersion) return;
+            if (!IsMenuOwnerActive || version != MenuOwnerVersion || session != menuSession) return;
             CloseMenu(restoreFocus: false);
-            RestoreTriggerFocus();
+            // A command may have opened another workflow. Do not take its keyboard focus.
+            if (Keyboard.FocusedElement is null || IsKeyboardFocusWithin || menu?.IsKeyboardFocusWithin == true)
+                RestoreTriggerFocus();
         });
     }
 }

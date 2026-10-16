@@ -239,4 +239,21 @@ public sealed class BalloonComboBoxTests
         Assert.That(control.PresentationRequests.Count(x => x.Open), Is.EqualTo(1));
         Unload(control);
     }
+
+    [Test]
+    public void ActionThatReopensMenuKeepsNewSession()
+    {
+        var item = new MenuItem { Header = "Reopen" };
+        var control = Create(item);
+        item.Command = new RelayCommand(() =>
+        {
+            control.PressKey(Key.Escape);
+            control.Activate();
+        });
+        control.Activate();
+        Provider(item).Invoke();
+        Drain();
+        Assert.That(control.IsDropDownOpen, Is.True, "Completion of the old action cannot close a newly opened session.");
+        Unload(control);
+    }
 }

@@ -1,0 +1,43 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Style x:Key="BaseContextMenuStyle" TargetType="ContextMenu">
+        <Setter Property="FontFamily" Value="{DynamicResource Regular}" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="KeyboardNavigation.DirectionalNavigation" Value="Cycle" />
+        <Setter Property="KeyboardNavigation.TabNavigation" Value="Cycle" />
+    </Style>
+    <ControlTemplate x:Key="OHsActionContextMenuTemplate" TargetType="ContextMenu">
+        <Border Style="{StaticResource BaseBorderStyle}" Background="{TemplateBinding Background}"
+                BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
+                Padding="{TemplateBinding Padding}" CornerRadius="16">
+            <!-- Public scrolling part for this template's in-memory scrolling/virtualization contract. -->
+            <ScrollViewer x:Name="PART_ScrollViewer" CanContentScroll="True"
+                          HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                <ItemsPresenter />
+            </ScrollViewer>
+        </Border>
+    </ControlTemplate>
+    <Style x:Key="OHsActionContextMenuStyle" TargetType="ContextMenu" BasedOn="{StaticResource BaseContextMenuStyle}">
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="Template" Value="{StaticResource OHsActionContextMenuTemplate}" />
+        <Setter Property="ItemContainerStyle" Value="{StaticResource OHsActionMenuItemStyle}" />
+        <Setter Property="ItemsPanel" Value="{StaticResource OHsVirtualizedDrawerItemsPanel}" />
+        <Setter Property="VirtualizingPanel.IsVirtualizing" Value="True" />
+        <Setter Property="VirtualizingPanel.VirtualizationMode" Value="Recycling" />
+        <Setter Property="Background" Value="{DynamicResource Brush.Background.Popup}" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Default}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Padding" Value="8" />
+        <Setter Property="DataContext" Value="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}, Mode=OneWay}" />
+        <Setter Property="FlowDirection" Value="{Binding PlacementTarget.FlowDirection, RelativeSource={RelativeSource Self}, Mode=OneWay, FallbackValue=LeftToRight}" />
+        <Setter Property="IsEnabled" Value="{Binding PlacementTarget.IsMenuOwnerActive, RelativeSource={RelativeSource Self}, Mode=OneWay, FallbackValue=False, TargetNullValue=False}" />
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
+                <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
+                <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
+</ResourceDictionary>
