@@ -82,7 +82,7 @@ public class WaveformControlPointMarkerTests
         {
             UiTestPump.Run(owner.LoadAsync("project.json", default)); owner.AcknowledgePresentationReady(owner.LoadGeneration);
             var page = new WorkstationPage(owner); UiTestPump.Layout(page, 900, 600);
-            var view = (WaveformView)((OHsWorkstationTimeline)page.FindName("Timeline")).FindName("WaveformDisplay");
+            var view = (WaveformView)(page.Timeline).FindName("WaveformDisplay");
             Assert.That(BindingOperations.GetBinding(view, WaveformView.ControlPointTimestampsProperty)!.Mode, Is.EqualTo(BindingMode.OneWay));
             Assert.That(view.ControlPointTimestamps, Is.EqualTo(new[] { 1000 }));
             dialogs.Show = (initial, _) =>

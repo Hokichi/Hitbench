@@ -238,7 +238,7 @@ public partial class WorkstationPage
         VolumeOverlay.Margin = new Thickness(0);
     }
 
-    private bool IsSongAudioCardElement(DependencyObject? origin) => IsWithin(origin, SongAudioCard);
+    private bool IsSongAudioCardElement(DependencyObject? origin) => AudioCard.ContainsInputOrigin(origin);
     private bool IsVolumeOverlayElement(DependencyObject? origin) => IsWithin(origin, VolumeOverlay);
 
     private static bool IsWithin(DependencyObject? origin, DependencyObject owner)

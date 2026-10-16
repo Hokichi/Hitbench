@@ -1,4 +1,4 @@
-using System.Windows.Input;
+﻿using System.Windows.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using osuHitsounder.Resources.DataModels;
 using osuHitsounder.Resources.CustomControls;
@@ -23,7 +23,7 @@ public class InstrumentalArrangementShortcutTests
             popup.HandleArrangementWheel(ModifierKeys.Control|ModifierKeys.Shift,120,roll);Assert.That(vm.LaneHeight,Is.EqualTo(42));Assert.That(roll.VerticalOffset/roll.LaneHeight,Is.EqualTo(70.5).Within(.0001));
             popup.HandleEditorShortcut(Key.NumPad8,ModifierKeys.Control,false,roll);Assert.That(vm.Subdivision,Is.EqualTo(8)); vm.ZoomFactor=128; Assert.That(vm.ZoomInCommand.CanExecute(null),Is.False); vm.ZoomFactor=8; Assert.That(vm.ZoomOutCommand.CanExecute(null),Is.False);
             Assert.That(popup.HandleEditorShortcut(Key.Z,ModifierKeys.Control,false,new System.Windows.Controls.TextBox()),Is.False);
-            UiControlContract.AssertStyle<System.Windows.Controls.RadioButton>((System.Windows.Controls.RadioButton)popup.FindName("SelectionModeButton"),"OHsTimelineEditingModeButtonStyle");
+            UiControlContract.AssertStyle<System.Windows.Controls.RadioButton>((System.Windows.Controls.RadioButton)((osuHitsounder.Views.Pages.OHsWorkstationAudioCard)popup.FindName("AudioCard")).FindName("SelectionModeButton"),"OHsTimelineEditingModeButtonStyle");
         }
         finally{popup.Close();UiTestPump.Run(vm.DeactivateAsync());}
     }

@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -61,7 +61,7 @@ public class WorkstationNodeScrollTests
         var editor = CreateEditor(); using var view = editor.View;
         try
         {
-            var timeline = (ScrollViewer)((OHsWorkstationTimeline)editor.Page.FindName("Timeline")).FindName("WaveformScrollViewer");
+            var timeline = (ScrollViewer)(editor.Page.Timeline).FindName("WaveformScrollViewer");
             var before = timeline.HorizontalOffset; var width = editor.Grid.ContentWidth;
             Assert.That(editor.Page.HandleContextWheel(ModifierKeys.Shift, -120 * 8, editor.Page), Is.True);
             view.UpdateLayout();

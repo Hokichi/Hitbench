@@ -14,25 +14,25 @@ public class WorkstationPlaybackRefreshTests
     public void UncheckedFollowingKeepsViewportWhileMarkerAdvances()
     {
         vm.ScrollWithMarker = false; UiTestPump.Run(vm.PlayPauseCommand.ExecuteAsync(null));
-        var viewer = (System.Windows.Controls.ScrollViewer)((OHsWorkstationTimeline)page.FindName("Timeline")).FindName("WaveformScrollViewer");
+        var viewer = (System.Windows.Controls.ScrollViewer)(page.Timeline).FindName("WaveformScrollViewer");
         viewer.ScrollToLeftEnd(); view.UpdateLayout();
         audio.Snapshot = audio.Snapshot with { Position = TimeSpan.FromSeconds(7) }; PumpFrame(); view.UpdateLayout();
         Assert.That(viewer.HorizontalOffset, Is.Zero);
         Assert.That(vm.Position.TotalSeconds, Is.EqualTo(7).Within(.02));
-        Assert.That(((WaveformView)((OHsWorkstationTimeline)page.FindName("Timeline")).FindName("WaveformDisplay")).Position, Is.EqualTo(vm.Position));
+        Assert.That(((WaveformView)(page.Timeline).FindName("WaveformDisplay")).Position, Is.EqualTo(vm.Position));
     }
     [Test]
     public void CheckingDuringPlaybackRevealsMarkerWithoutAudioSeek()
     {
-        var checkBox = page.FindName("ScrollWithMarkerCheckBox") as BalloonCheckBox;
+        var checkBox = ((osuHitsounder.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("ScrollWithMarkerCheckBox") as BalloonCheckBox;
         Assert.That(checkBox, Is.Not.Null); Assert.That(checkBox!.IsChecked, Is.True);
-        Assert.That(checkBox.Style, Is.SameAs(page.FindResource("OHsWorkstationScrollWithMarkerStyle")));
+        Assert.That(checkBox.Style, Is.SameAs(checkBox.FindResource("OHsWorkstationScrollWithMarkerStyle")));
         Assert.That(checkBox.IsTabStop, Is.False);
         checkBox.IsChecked = false; Assert.That(vm.ScrollWithMarker, Is.False);
         UiTestPump.Run(vm.PlayPauseCommand.ExecuteAsync(null));
         audio.Snapshot = audio.Snapshot with { Position = TimeSpan.FromSeconds(7) }; PumpFrame(); view.UpdateLayout();
         var before = audio.Snapshot; checkBox.IsChecked = true; view.UpdateLayout();
-        var viewer = (System.Windows.Controls.ScrollViewer)((OHsWorkstationTimeline)page.FindName("Timeline")).FindName("WaveformScrollViewer");
+        var viewer = (System.Windows.Controls.ScrollViewer)(page.Timeline).FindName("WaveformScrollViewer");
         Assert.That(viewer.HorizontalOffset, Is.GreaterThan(0));
         Assert.That(audio.Snapshot, Is.EqualTo(before));
         Assert.That(page.TimelineHorizontalOffset, Is.EqualTo(viewer.HorizontalOffset));
@@ -41,7 +41,7 @@ public class WorkstationPlaybackRefreshTests
     public void UncheckedFollowingKeepsViewportAtNaturalCompletion()
     {
         vm.ScrollWithMarker = false; UiTestPump.Run(vm.PlayPauseCommand.ExecuteAsync(null));
-        var viewer = (System.Windows.Controls.ScrollViewer)((OHsWorkstationTimeline)page.FindName("Timeline")).FindName("WaveformScrollViewer");
+        var viewer = (System.Windows.Controls.ScrollViewer)(page.Timeline).FindName("WaveformScrollViewer");
         viewer.ScrollToLeftEnd(); view.UpdateLayout();
         audio.Snapshot = new AudioPlaybackSnapshot(TimeSpan.FromSeconds(10), false, null);
         UiTestPump.Run(StubWorkstationAudioService.WaitUntilAsync(() => vm.Position == TimeSpan.FromSeconds(10)));
@@ -69,7 +69,7 @@ public class WorkstationPlaybackRefreshTests
     public void NaturalCompletionRevealsFinalMarkerWithoutAnotherFrame()
     {
         UiTestPump.Run(vm.PlayPauseCommand.ExecuteAsync(null));
-        var viewer = (System.Windows.Controls.ScrollViewer)((OHsWorkstationTimeline)page.FindName("Timeline")).FindName("WaveformScrollViewer");
+        var viewer = (System.Windows.Controls.ScrollViewer)(page.Timeline).FindName("WaveformScrollViewer");
         audio.Snapshot = new AudioPlaybackSnapshot(TimeSpan.FromSeconds(10), false, null);
         UiTestPump.Run(StubWorkstationAudioService.WaitUntilAsync(() => vm.Position == TimeSpan.FromSeconds(10)));
         view.UpdateLayout();
@@ -81,8 +81,8 @@ public class WorkstationPlaybackRefreshTests
     public void PlayingMarkerRevealsNextPageAndKeepsOffsetsAligned()
     {
         UiTestPump.Run(vm.PlayPauseCommand.ExecuteAsync(null));
-        var viewer = (System.Windows.Controls.ScrollViewer)((OHsWorkstationTimeline)page.FindName("Timeline")).FindName("WaveformScrollViewer");
-        var waveform = (WaveformView)((OHsWorkstationTimeline)page.FindName("Timeline")).FindName("WaveformDisplay");
+        var viewer = (System.Windows.Controls.ScrollViewer)(page.Timeline).FindName("WaveformScrollViewer");
+        var waveform = (WaveformView)(page.Timeline).FindName("WaveformDisplay");
         audio.Snapshot = audio.Snapshot with { Position = TimeSpan.FromSeconds(7) };
         PumpFrame();
         view.UpdateLayout();
@@ -108,7 +108,7 @@ public class WorkstationPlaybackRefreshTests
         audio.Snapshot = audio.Snapshot with { Warning = warning };
         PumpFrame();
         view.UpdateLayout();
-        var status = (System.Windows.Controls.TextBlock)page.FindName("PlaybackWarningText");
+        var status = (System.Windows.Controls.TextBlock)((osuHitsounder.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("PlaybackWarningText");
         Assert.That(status, Is.Not.Null);
         UiControlContract.AssertStyle<System.Windows.Controls.TextBlock>(status, "OHsWorkstationPlaybackWarningStyle");
         Assert.That(status.Text, Is.EqualTo(warning));
@@ -246,7 +246,7 @@ public class WorkstationPlaybackRefreshTests
         PumpFrame();
         PumpFrame();
         Assert.That(vm.Position.TotalMilliseconds, Is.EqualTo(12.5));
-        Assert.That(((WaveformView)((OHsWorkstationTimeline)page.FindName("Timeline")).FindName("WaveformDisplay")).Position, Is.EqualTo(vm.Position));
+        Assert.That(((WaveformView)(page.Timeline).FindName("WaveformDisplay")).Position, Is.EqualTo(vm.Position));
         Assert.That(playback.Latest.Playback.Position, Is.GreaterThan(TimeSpan.Zero));
         Assert.That(vm.Position.TotalMilliseconds, Is.EqualTo(12.5));
     }

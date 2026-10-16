@@ -1,0 +1,103 @@
+<UserControl
+    x:Class="osuHitsounder.Views.Pages.OHsWorkstationFooter"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:converters="clr-namespace:osuHitsounder.Resources.Converters"
+    xmlns:customControls="clr-namespace:osuHitsounder.Resources.CustomControls"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:entities="clr-namespace:osuHitsounder.Core.Entities;assembly=osuHitsounder.Core"
+    xmlns:helpers="clr-namespace:osuHitsounder.Resources.Helpers"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:pages="clr-namespace:osuHitsounder.Views.Pages"
+    d:DesignHeight="600"
+    d:DesignWidth="1100"
+    mc:Ignorable="d">
+<UserControl.Resources><Style
+            x:Key="OHsWorkstationElapsedStyle"
+            BasedOn="{StaticResource BaseTextBlockStyle}"
+            TargetType="TextBlock">
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="FontFamily" Value="{DynamicResource Bold}" />
+            <Setter Property="FontSize" Value="18" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
+                    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+</UserControl.Resources>
+<Border
+                            Grid.Row="1"
+                            Padding="0"
+                            BorderThickness="{Binding AudioCardBorderThickness, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationFooter}, Mode=OneWay}"
+                            Style="{StaticResource BaseBorderStyle}">
+                            <Grid
+                                x:Name="ZoomFooter"
+                                Margin="0,0,0,-16"
+                                Style="{StaticResource BaseGridStyle}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock
+                                    Grid.Column="0"
+                                    Margin="0,0,12,8"
+                                    HorizontalAlignment="Left"
+                                    VerticalAlignment="Bottom"
+                                    AutomationProperties.Name="Elapsed audio time"
+                                    Style="{StaticResource OHsWorkstationElapsedStyle}"
+                                    Text="{Binding ElapsedText, Mode=OneWay}"
+                                    TextTrimming="CharacterEllipsis" />
+                                <Grid
+                                    x:Name="FooterControlsHost"
+                                    Grid.Column="1"
+                                    Style="{StaticResource BaseGridStyle}">
+                                    <WrapPanel
+                                        MaxWidth="{Binding ActualWidth, ElementName=FooterControlsHost, Mode=OneWay}"
+                                        Margin="0,8,0,0"
+                                        HorizontalAlignment="Right"
+                                        VerticalAlignment="Center"
+                                        FlowDirection="{Binding FlowDirection, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationFooter}, Mode=OneWay}">
+                                        <StackPanel
+                                            x:Name="SubdivisionPanel"
+                                            Margin="0,0,12,0"
+                                            VerticalAlignment="Center"
+                                            Orientation="Horizontal">
+                                            <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="Beat Divisor"  Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                            <customControls:ValueSlider
+                                                x:Name="SubdivisionSelector"
+                                                AutomationProperties.Name="Beat subdivision"
+                                                DisplayText="{Binding Subdivision, Mode=OneWay, StringFormat=1/{0}}"
+                                                IsSnapToTickEnabled="True"
+                                                LargeChange="1"
+                                                Maximum="8"
+                                                Minimum="0"
+                                                SmallChange="1"
+                                                Style="{StaticResource BaseValueSliderStyle}"
+                                                TickFrequency="1"
+                                                Value="{Binding SelectedSubdivisionIndex, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"  Width="160"/>
+                                        </StackPanel>
+                                        <StackPanel
+                                            x:Name="ZoomControls"
+                                            VerticalAlignment="Center"
+                                            FlowDirection="{Binding RelativeSource={RelativeSource AncestorType=UserControl}, Path=FlowDirection, Mode=OneWay}"
+                                            Orientation="Horizontal">
+                                            <customControls:BalloonButton
+                                                AutomationProperties.Name="Zoom waveform out"
+                                                ButtonIcon="{StaticResource Minus}"
+                                                Command="{Binding ZoomOutCommand, Mode=OneWay}"
+                                                Style="{StaticResource OHsBalloonNeutralActionStyle}"
+                                                ToolTip="Zoom waveform out"  Margin="4,0,0,0" ShouldShowText="False"/>
+                                            <customControls:BalloonButton
+                                                AutomationProperties.Name="Zoom waveform in"
+                                                ButtonIcon="{StaticResource PlusSolid}"
+                                                Command="{Binding ZoomInCommand, Mode=OneWay}"
+                                                Style="{StaticResource OHsBalloonNeutralActionStyle}"
+                                                ToolTip="Zoom waveform in"  Margin="4,0,0,0" ShouldShowText="False"/>
+                                        </StackPanel>
+                                    </WrapPanel>
+                                </Grid>
+                            </Grid>
+                        </Border>
+</UserControl>

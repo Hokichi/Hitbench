@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -270,9 +270,9 @@ public class WorkstationTrackCollapseTests
         var (page, vm, view) = Create(direction);
         using (view)
         {
-            var sample = (BalloonButton)page.FindName("AddSampleTrackButton");
-            var instrument = (BalloonButton)page.FindName("AddInstrumentButton");
-            var toggle = (BalloonButton)page.FindName("ToggleTracksCollapsedButton");
+            var sample = (BalloonButton)((osuHitsounder.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("AddSampleTrackButton");
+            var instrument = (BalloonButton)((osuHitsounder.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("AddInstrumentButton");
+            var toggle = (BalloonButton)((osuHitsounder.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("ToggleTracksCollapsedButton");
             Assert.That(sample, Is.Not.Null, "Audio card needs sample creation action");
             UiControlContract.AssertStyle<BalloonButton>(sample, "OHsWorkstationToolbarButtonStyle");
             UiControlContract.AssertStyle<BalloonButton>(instrument, "OHsWorkstationToolbarButtonStyle");
@@ -384,7 +384,7 @@ public class WorkstationTrackCollapseTests
         using (view)
         {
             Assert.That(vm.SelectNode(track, node, false), Is.True);
-            var toggle = (BalloonButton)page.FindName("ToggleTracksCollapsedButton");
+            var toggle = (BalloonButton)((osuHitsounder.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("ToggleTracksCollapsedButton");
             toggle.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left)
                 { RoutedEvent = Mouse.PreviewMouseDownEvent });
             PressEnter(toggle);
@@ -406,7 +406,7 @@ public class WorkstationTrackCollapseTests
         {
             var list = (ListBox)page.FindName("TrackList");
             vm.ToggleTracksCollapsedCommand.Execute(null);
-            PressEnter((BalloonButton)page.FindName("AddSampleTrackButton"));
+            PressEnter((BalloonButton)((osuHitsounder.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("AddSampleTrackButton"));
             list.ScrollIntoView(vm.Tracks.Last());
             view.UpdateLayout();
             Assert.That(vm.Tracks, Has.Count.EqualTo(81));
@@ -434,7 +434,7 @@ public class WorkstationTrackCollapseTests
         using (view)
         {
             var hidden = Find<FrameworkElement>(page, controlName);
-            var toggle = (BalloonButton)page.FindName("ToggleTracksCollapsedButton");
+            var toggle = (BalloonButton)((osuHitsounder.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("ToggleTracksCollapsedButton");
             var scope = FocusManager.GetFocusScope(toggle);
             page.RestoreTrackFocusBeforeCollapse(hidden);
             Assert.That(FocusManager.GetFocusedElement(scope), Is.SameAs(toggle));

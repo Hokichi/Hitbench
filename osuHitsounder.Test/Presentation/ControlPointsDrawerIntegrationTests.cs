@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
@@ -189,7 +189,7 @@ public class ControlPointsDrawerIntegrationTests
         try
         {
             UiTestPump.Run(vm.LoadAsync("project.json",default)); vm.AcknowledgePresentationReady(vm.LoadGeneration);
-            var page=new osuHitsounder.Views.Pages.WorkstationPage(vm); var button=(BalloonButton)page.FindName("AddControlPointButton");
+            var page=new osuHitsounder.Views.Pages.WorkstationPage(vm); var button=(BalloonButton)((osuHitsounder.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("AddControlPointButton");
             UiControlContract.AssertStyle<BalloonButton>(button,"OHsWorkstationToolbarButtonStyle");
             Assert.That(button.ButtonIcon,Is.SameAs(page.FindResource("ClockPlusOutline")));
             UiTestPump.Run(vm.AddControlPointCommand.ExecuteAsync(null)); Assert.That(shown,Is.EqualTo(1)); Assert.That(project.ControlPoints,Is.Empty);

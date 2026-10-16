@@ -83,7 +83,7 @@ public class WorkstationVolumeInputLockTests
             page.ShowVolumeOverlay(false, new Point(), false, false);
             Assert.That(page.HandleContextWheel(ModifierKeys.None, -120, page.VolumeOverlay), Is.False);
             Assert.That(page.HandleContextWheel(ModifierKeys.None, -120, page), Is.True);
-            Assert.That(page.HandleContextWheel(ModifierKeys.Alt, -120, page.SongAudioCard), Is.True);
+            Assert.That(page.HandleContextWheel(ModifierKeys.Alt, -120, page.AudioCard), Is.True);
             Assert.That(vm.SelectedSubdivisionIndex, Is.EqualTo(subdivision));
             Assert.That(vm.ApplicationVolume, Is.EqualTo(95));
             Assert.That(page.HandleVolumeOverlayKey(Key.Down, ModifierKeys.None), Is.True);
@@ -116,3 +116,4 @@ public class WorkstationVolumeInputLockTests
         return (page, vm, view);
     }
 }
+

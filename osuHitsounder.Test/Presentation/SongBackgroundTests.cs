@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -35,7 +35,7 @@ public class SongBackgroundTests
         app.Resources.MergedDictionaries.Clear();
         UiTestPump.EnsureFontResources(app);
         foreach (var resource in new[] { "Themes/Dark.xaml", "Converters/Converters.xaml", "Icons.xaml",
-                     "Styles/TextBlock.xaml", "Styles/ItemsControl.xaml", "Styles/Image.xaml", "Styles/Grid.xaml", "Styles/Border.xaml",
+                     "Styles/TextBlock.xaml", "Styles/ItemsControl.xaml", "Styles/Image.xaml", "Styles/ColumnDefinition.xaml", "Styles/Grid.xaml", "Styles/Border.xaml",
                      "Styles/ContentPresenter.xaml", "Styles/Button.xaml", "Styles/ToolTip.xaml", "Styles/TextBox.xaml" })
             app.Resources.MergedDictionaries.Add(new ResourceDictionary
             { Source = new Uri($"/osuHitsounder;component/Resources/{resource}", UriKind.Relative) });

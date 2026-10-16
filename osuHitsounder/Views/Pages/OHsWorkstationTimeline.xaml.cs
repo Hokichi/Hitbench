@@ -31,7 +31,10 @@ public partial class OHsWorkstationTimeline : UserControl
         DataContextChanged += (_, e) => viewModel = e.NewValue as WorkstationPageVM ?? null!;
     }
     public event EventHandler? ViewportChanged;
-    public double ScrollableWidth => WaveformScrollViewer.ScrollableWidth;
+    private static readonly DependencyPropertyKey ScrollableWidthPropertyKey = DependencyProperty.RegisterReadOnly(nameof(ScrollableWidth), typeof(double), typeof(OHsWorkstationTimeline), new PropertyMetadata(0d));
+    public static readonly DependencyProperty ScrollableWidthProperty = ScrollableWidthPropertyKey.DependencyProperty;
+    public double ScrollableWidth => (double)GetValue(ScrollableWidthProperty);
+    public IInputElement FocusTarget => WaveformScrollViewer;
     public bool FocusTimeline() => WaveformScrollViewer.Focus();
     public void ScrollToHorizontalOffset(double offset) => WaveformScrollViewer.ScrollToHorizontalOffset(offset);
     public void ScrollFromUser(double offset)
@@ -44,6 +47,9 @@ public partial class OHsWorkstationTimeline : UserControl
     {
         if (scrollBar is not null) scrollBar.RemoveHandler(Thumb.DragStartedEvent, new DragStartedEventHandler(OnWaveformScrollBarDragStarted));
         scrollBar = value;
+        scrollBar.SetBinding(RangeBase.MaximumProperty, new Binding(nameof(ScrollableWidth)) { Source = this, Mode = BindingMode.OneWay });
+        scrollBar.SetBinding(ScrollBar.ViewportSizeProperty, new Binding(nameof(TimelineViewportWidth)) { Source = this, Mode = BindingMode.OneWay });
+        scrollBar.SetBinding(RangeBase.LargeChangeProperty, new Binding(nameof(TimelineViewportWidth)) { Source = this, Mode = BindingMode.OneWay });
         scrollBar.AddHandler(Thumb.DragStartedEvent, new DragStartedEventHandler(OnWaveformScrollBarDragStarted));
     }
     public void ResetWheel() { wheelMode = ModifierKeys.None; wheelRemainder = 0; }
@@ -84,6 +90,7 @@ public partial class OHsWorkstationTimeline : UserControl
     private void OnWaveformScrollChanged(object sender, ScrollChangedEventArgs e)
     {
         if (e.ViewportWidth > 0) WaveformDisplay.SetCurrentValue(WaveformView.ViewportWidthProperty, e.ViewportWidth);
+        SetValue(ScrollableWidthPropertyKey, WaveformScrollViewer.ScrollableWidth);
         TimelineHorizontalOffset = e.HorizontalOffset;
         TimelineViewportWidth = e.ViewportWidth;
         if (scrollBar is not null) scrollBar.Value = e.HorizontalOffset;

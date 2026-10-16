@@ -1,4 +1,4 @@
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using osuHitsounder.Resources.CustomControls;
 
 using System.Windows.Media;
@@ -28,15 +28,15 @@ public sealed class ManageSampleHeaderTests
         var page = services.GetRequiredService<Func<osuHitsounder.Views.Pages.WorkstationPage>>()();
         var host = new Window { Content = page };
         using var view = new InMemoryView(host, scheduleLayout: false);
-        var button = (BalloonButton)page.FindName("ManageSamplesButton");
+        var button = (BalloonButton)((osuHitsounder.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("ManageSamplesButton");
         var vm = (osuHitsounder.ViewModels.Shell.WorkstationPageVM)page.DataContext;
         Assert.That(button, Is.TypeOf<BalloonButton>());
         Assert.That(button.Command, Is.SameAs(vm.ManageSamplesCommand));
-        Assert.That(button.Style, Is.SameAs(page.FindResource("OHsWorkstationToolbarButtonStyle")));
-        Assert.That(button.Style, Is.SameAs(page.FindResource("OHsWorkstationToolbarButtonStyle")));
+        Assert.That(button.Style, Is.SameAs(button.FindResource("OHsWorkstationToolbarButtonStyle")));
+        Assert.That(button.Style, Is.SameAs(button.FindResource("OHsWorkstationToolbarButtonStyle")));
         Assert.That(button.IsTabStop, Is.True);
-        Assert.That(((BalloonButton)page.FindName("AddSampleTrackButton")).Command, Is.SameAs(vm.AddSampleTrackCommand));
-        Assert.That(((BalloonButton)page.FindName("AddInstrumentButton")).Command, Is.SameAs(vm.AddPianoTrackCommand));
+        Assert.That(((BalloonButton)((osuHitsounder.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("AddSampleTrackButton")).Command, Is.SameAs(vm.AddSampleTrackCommand));
+        Assert.That(((BalloonButton)((osuHitsounder.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("AddInstrumentButton")).Command, Is.SameAs(vm.AddPianoTrackCommand));
         UiTestPump.Run(page.DeactivateAsync());
         host.Close();
     }

@@ -29,9 +29,9 @@ public class WorkstationSampleReloadIntegrationTests
         files.List = (_, _) => Task.FromException<IReadOnlyList<string>>(new IOException("listing failed"));
         UiTestPump.Run(vm.ReloadSamplesCommand.ExecuteAsync(null)); view.UpdateLayout();
         Assert.That(vm.LoadPhase, Is.EqualTo(ProjectLoadPhase.Ready));
-        Assert.That(page.FindName("ReloadSamplesButton"), Is.TypeOf<BalloonButton>());
-        Assert.That(((BalloonButton)page.FindName("ReloadSamplesButton")).IsEnabled, Is.True);
-        Assert.That(((ScrollViewer)((OHsWorkstationTimeline)page.FindName("Timeline")).FindName("WaveformScrollViewer")).IsEnabled, Is.True);
+        Assert.That(((osuHitsounder.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("ReloadSamplesButton"), Is.TypeOf<BalloonButton>());
+        Assert.That(((BalloonButton)((osuHitsounder.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("ReloadSamplesButton")).IsEnabled, Is.True);
+        Assert.That(((ScrollViewer)(page.Timeline).FindName("WaveformScrollViewer")).IsEnabled, Is.True);
         files.List = (_, _) => Task.FromResult<IReadOnlyList<string>>(["new.wav"]);
         Assert.That(page.HandlePlaybackKey(Key.F5, ModifierKeys.None, false, page), Is.True);
         UiTestPump.Run(page.PlaybackInputCompletion); view.UpdateLayout();
@@ -56,7 +56,7 @@ public class WorkstationSampleReloadIntegrationTests
         UiTestPump.Run(StubWorkstationAudioService.WaitUntilAsync(() => vm.LoadPhase == ProjectLoadPhase.AwaitingPresentation));
         view.UpdateLayout(); page.ProcessPresentationFrame(TimeSpan.FromMilliseconds(1)); page.ProcessPresentationFrame(TimeSpan.FromMilliseconds(2));
         UiTestPump.Run(page.LoadCompletion);
-        var action = page.FindName("ReloadSamplesButton");
+        var action = ((osuHitsounder.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("ReloadSamplesButton");
         Assert.That(action, Is.TypeOf<BalloonButton>());
         var button = (BalloonButton)action;
         Assert.That(button.IsTabStop, Is.True);

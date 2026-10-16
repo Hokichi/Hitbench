@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
@@ -15,8 +15,7 @@ public partial class WorkstationPage
         for (var current = focusedElement; current is not null; current = GetInputParent(current))
         {
             if (current is not StackPanel { Name: "TrackLeftExpandedControls" or "TrackRightExpandedControls" }) continue;
-            FocusManager.SetFocusedElement(FocusManager.GetFocusScope(ToggleTracksCollapsedButton), ToggleTracksCollapsedButton);
-            ToggleTracksCollapsedButton.Focus();
+            AudioCard.FocusCollapseAction();
             return;
         }
     }
@@ -27,15 +26,6 @@ public partial class WorkstationPage
     {
         get => (double)GetValue(TrackScrollBarGutterProperty);
         set => SetValue(TrackScrollBarGutterProperty, value);
-    }
-
-    private void OnClearTrackMutesUnchecked(object sender, RoutedEventArgs e)
-    {
-        if (viewModel.ClearTrackMutesCommand.CanExecute(null)) viewModel.ClearTrackMutesCommand.Execute(null);
-    }
-    private void OnClearTrackSolosUnchecked(object sender, RoutedEventArgs e)
-    {
-        if (viewModel.ClearTrackSolosCommand.CanExecute(null)) viewModel.ClearTrackSolosCommand.Execute(null);
     }
 
     private void OnTrackAuditionLoaded(object sender, RoutedEventArgs e)

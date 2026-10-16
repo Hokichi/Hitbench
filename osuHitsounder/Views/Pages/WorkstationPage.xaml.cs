@@ -23,6 +23,7 @@ public partial class WorkstationPage : UserControl
     public double TimelineViewportWidth { get => (double)GetValue(TimelineViewportWidthProperty); set => SetValue(TimelineViewportWidthProperty, value); }
     public double TimelineHorizontalOffset { get => (double)GetValue(TimelineHorizontalOffsetProperty); set => SetValue(TimelineHorizontalOffsetProperty, value); }
     private readonly WorkstationPageVM viewModel;
+    public OHsWorkstationTimeline Timeline => AudioCard.Timeline;
     private bool renderingSubscribed;
     private Window? ownerWindow;
     private TimeSpan lastPresentationFrame = TimeSpan.MinValue;
@@ -310,16 +311,11 @@ public partial class WorkstationPage : UserControl
 
     public void CancelReturn() => viewModel.CancelReturn();
 
-    private void OnEditingModeChecked(object sender, RoutedEventArgs e)
-    {
-        if (sender is RadioButton radio) viewModel.IsAdditionMode = radio.Name == "AdditionModeButton";
-    }
-
     private void OnViewModelPropertyChanging(object? sender, PropertyChangingEventArgs e)
     {
         if (e.PropertyName == nameof(WorkstationPageVM.AreTracksCollapsed) && !viewModel.AreTracksCollapsed)
             RestoreTrackFocusBeforeCollapse(Keyboard.FocusedElement as DependencyObject ??
-                FocusManager.GetFocusedElement(FocusManager.GetFocusScope(ToggleTracksCollapsedButton)) as DependencyObject);
+                FocusManager.GetFocusedElement(FocusManager.GetFocusScope(AudioCard)) as DependencyObject);
         if (e.PropertyName == nameof(WorkstationPageVM.ZoomFactor)) Timeline.CaptureZoomAnchor();
     }
 
@@ -389,8 +385,8 @@ public partial class WorkstationPage : UserControl
     {
         TrackList.UpdateLayout();
         var container = TrackList.ItemContainerGenerator.ContainerFromIndex(index) as FrameworkElement;
-        return container is null ? Timeline
-            : FindVisualChild<BalloonButton>(container) ?? (IInputElement)Timeline;
+        return container is null ? Timeline.FocusTarget
+            : FindVisualChild<BalloonButton>(container) ?? Timeline.FocusTarget;
     }
 
     private bool HandleBeatDivisorKey(Key key, ModifierKeys modifiers, bool isRepeat, DependencyObject? origin)

@@ -35,8 +35,8 @@ public class WorkstationPageIntegrationTests
         var page = new WorkstationPage(vm); page.SetProjectPath("project.json");
         using var view = new InMemoryView(new Window { Content = page, Width = 1100, Height = 800, FlowDirection = direction });
         UiTestPump.Run(page.LoadCompletion); view.UpdateLayout();
-        var selection = (RadioButton)page.FindName("SelectionModeButton");
-        var addition = (RadioButton)page.FindName("AdditionModeButton");
+        var selection = (RadioButton)((osuHitsounder.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("SelectionModeButton");
+        var addition = (RadioButton)((osuHitsounder.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("AdditionModeButton");
         var grid = FindVisualChild<BeatGridView>(page)!;
         foreach (var mode in new[] { selection, addition, selection })
         {
@@ -80,7 +80,7 @@ public class WorkstationPageIntegrationTests
         {
             "page" => (UIElement)page,
             "track" => FindVisualChildren<TextBox>(page).Single(input => ReferenceEquals(input.DataContext, track)),
-            _ => (UIElement)page.FindName(originName)
+            _ => (UIElement)(originName is "SongAudioCard" or "PlayPauseButton" ? page.AudioCard.FindName(originName) : originName == "ZoomFooter" ? page.Footer.FindName(originName) : page.FindName(originName))
         };
         var click = new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left)
             { RoutedEvent = Mouse.PreviewMouseDownEvent };
@@ -111,7 +111,7 @@ public class WorkstationPageIntegrationTests
             page.HandleWaveformWheel(modifiers, delta);
             Assert.That(vm.ScrollWithMarker, Is.EqualTo(!(modifiers == ModifierKeys.Shift && delta != 0)), $"Direct: {modifiers}, {delta}");
             vm.ScrollWithMarker = true;
-            page.HandleContextWheel(modifiers, delta, page.SongAudioCard);
+            page.HandleContextWheel(modifiers, delta, page.AudioCard);
             Assert.That(vm.ScrollWithMarker, Is.EqualTo(!(modifiers == ModifierKeys.Shift && delta != 0)), $"Context: {modifiers}, {delta}");
         }
         if (modifiers == ModifierKeys.Alt)
@@ -149,8 +149,8 @@ public class WorkstationPageIntegrationTests
         var page = new WorkstationPage(vm); page.SetProjectPath("project.json");
         using var view = new InMemoryView(new Window { Content = page, Width = 900, Height = 700 });
         UiTestPump.Run(page.LoadCompletion);
-        var addition = (RadioButton)page.FindName("AdditionModeButton");
-        var selection = (RadioButton)page.FindName("SelectionModeButton");
+        var addition = (RadioButton)((osuHitsounder.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("AdditionModeButton");
+        var selection = (RadioButton)((osuHitsounder.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("SelectionModeButton");
         Assert.That(addition.IsChecked, Is.True);
         UiControlContract.AssertStyle<RadioButton>(selection, "OHsTimelineEditingModeButtonStyle");
         selection.SetCurrentValue(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, true);
@@ -522,7 +522,7 @@ public class WorkstationPageIntegrationTests
         UiTestPump.Run(vm.RemoveTrackCommand.ExecuteAsync(second));
         view.UpdateLayout();
         Assert.That(page.FindRemovalFocusTarget(0),
-            Is.SameAs(((OHsWorkstationTimeline)page.FindName("Timeline")).FindName("WaveformScrollViewer")));
+            Is.SameAs((page.Timeline).FindName("WaveformScrollViewer")));
     }
     [SetUp]
     public void SetUp() => EnsureResources();
@@ -533,9 +533,9 @@ public class WorkstationPageIntegrationTests
         var page = new WorkstationPage(new WorkstationPageVM(new StubWorkstationSourceService(), new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler()));
         using var view = new InMemoryView(new Window { Content = page, Width = 900, Height = 600 });
         view.UpdateLayout();
-        var waveform = (WaveformView)((OHsWorkstationTimeline)page.FindName("Timeline")).FindName("WaveformDisplay");
+        var waveform = (WaveformView)(page.Timeline).FindName("WaveformDisplay");
         Assert.That(waveform, Is.TypeOf<WaveformView>());
-        UiControlContract.AssertStyle<ScrollViewer>((ScrollViewer)((OHsWorkstationTimeline)page.FindName("Timeline")).FindName("WaveformScrollViewer"), "OHsWorkstationWaveformScrollStyle");
+        UiControlContract.AssertStyle<ScrollViewer>((ScrollViewer)(page.Timeline).FindName("WaveformScrollViewer"), "OHsWorkstationWaveformScrollStyle");
     }
 
     [Test]
@@ -550,7 +550,7 @@ public class WorkstationPageIntegrationTests
         UiTestPump.Run(page.LoadCompletion);
         view.UpdateLayout();
 
-        var play = (BalloonButton)page.FindName("PlayPauseButton");
+        var play = (BalloonButton)((osuHitsounder.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("PlayPauseButton");
         UiControlContract.AssertStyle<BalloonButton>(play, "OHsWorkstationPlayPauseStyle");
         Assert.That(vm.IsPlaying, Is.False);
         osuHitsounder.Test.Presentation.UiTestPump.Run(vm.PlayPauseCommand.ExecuteAsync(null));
@@ -558,8 +558,8 @@ public class WorkstationPageIntegrationTests
         Assert.That(vm.IsPlaying, Is.True);
         UiControlContract.AssertStyle<BalloonButton>(play, "OHsWorkstationPlayPauseStyle");
 
-        var scroll = (ScrollViewer)((OHsWorkstationTimeline)page.FindName("Timeline")).FindName("WaveformScrollViewer");
-        var waveform = (WaveformView)((OHsWorkstationTimeline)page.FindName("Timeline")).FindName("WaveformDisplay");
+        var scroll = (ScrollViewer)(page.Timeline).FindName("WaveformScrollViewer");
+        var waveform = (WaveformView)(page.Timeline).FindName("WaveformDisplay");
         Assert.That(waveform.DesiredSize.Width, Is.GreaterThan(scroll.ViewportWidth));
         scroll.ScrollToHorizontalOffset(50);
         view.UpdateLayout();
@@ -585,7 +585,7 @@ public class WorkstationPageIntegrationTests
         Assert.Multiple(() =>
         {
             Assert.That(((ItemsControl)page.FindName("TrackList")).ItemsSource, Is.SameAs(vm.Tracks));
-            Assert.That(((ScrollViewer)((OHsWorkstationTimeline)page.FindName("Timeline")).FindName("WaveformScrollViewer")).Focusable, Is.True);
+            Assert.That(((ScrollViewer)(page.Timeline).FindName("WaveformScrollViewer")).Focusable, Is.True);
         });
     }
 
@@ -787,9 +787,9 @@ public class WorkstationPageIntegrationTests
         var grid = FindVisualChild<BeatGridView>(card)!;
         for (var index = 0; index < 3; index++) vm.ZoomInCommand.Execute(null);
         view.UpdateLayout();
-        var waveform = (WaveformView)((OHsWorkstationTimeline)page.FindName("Timeline")).FindName("WaveformDisplay");
+        var waveform = (WaveformView)(page.Timeline).FindName("WaveformDisplay");
         Assert.That(grid.ContentWidth, Is.EqualTo(waveform.ActualWidth));
-        var scroll = (ScrollViewer)((OHsWorkstationTimeline)page.FindName("Timeline")).FindName("WaveformScrollViewer");
+        var scroll = (ScrollViewer)(page.Timeline).FindName("WaveformScrollViewer");
         scroll.ScrollToHorizontalOffset(100);
         view.UpdateLayout();
         Assert.That(grid.HorizontalOffset, Is.EqualTo(scroll.HorizontalOffset));
@@ -857,7 +857,7 @@ public class WorkstationPageIntegrationTests
 
         Assert.That(page.FindName("WaveformScrollBar"), Is.TypeOf<ScrollBar>());
         var bar = (ScrollBar)page.FindName("WaveformScrollBar");
-        var scroll = (ScrollViewer)((OHsWorkstationTimeline)page.FindName("Timeline")).FindName("WaveformScrollViewer");
+        var scroll = (ScrollViewer)(page.Timeline).FindName("WaveformScrollViewer");
         Assert.Multiple(() =>
         {
             Assert.That(bar.Maximum, Is.EqualTo(scroll.ScrollableWidth).Within(1));
@@ -916,13 +916,13 @@ public class WorkstationPageIntegrationTests
         UiTestPump.Run(page.LoadCompletion);
         view.UpdateLayout();
 
-        var waveform = (WaveformView)((OHsWorkstationTimeline)page.FindName("Timeline")).FindName("WaveformDisplay");
+        var waveform = (WaveformView)(page.Timeline).FindName("WaveformDisplay");
         Assert.That(waveform.SeekAt(waveform.ActualWidth * 0.6), Is.True);
         Assert.Multiple(() =>
         {
             Assert.That(audio.Snapshot.Position, Is.EqualTo(TimeSpan.FromSeconds(6)).Within(TimeSpan.FromMilliseconds(1)));
             Assert.That(waveform.Position, Is.EqualTo(audio.Snapshot.Position));
-            Assert.That(((ScrollViewer)((OHsWorkstationTimeline)page.FindName("Timeline")).FindName("WaveformScrollViewer")).IsEnabled, Is.True);
+            Assert.That(((ScrollViewer)(page.Timeline).FindName("WaveformScrollViewer")).IsEnabled, Is.True);
         });
     }
 
@@ -938,7 +938,7 @@ public class WorkstationPageIntegrationTests
         UiTestPump.Run(page.LoadCompletion);
         view.UpdateLayout();
 
-        var selector = (ValueSlider)page.FindName("SubdivisionSelector");
+        var selector = (ValueSlider)((osuHitsounder.Views.Pages.OHsWorkstationFooter)page.FindName("Footer")).FindName("SubdivisionSelector");
         var before = audio.Snapshot;
         Assert.Multiple(() =>
         {
@@ -963,8 +963,8 @@ public class WorkstationPageIntegrationTests
         UiTestPump.Run(page.LoadCompletion);
         view.UpdateLayout();
 
-        var controls = (StackPanel)page.FindName("ZoomControls");
-        var selector = (ValueSlider)page.FindName("SubdivisionSelector");
+        var controls = (StackPanel)((osuHitsounder.Views.Pages.OHsWorkstationFooter)page.FindName("Footer")).FindName("ZoomControls");
+        var selector = (ValueSlider)((osuHitsounder.Views.Pages.OHsWorkstationFooter)page.FindName("Footer")).FindName("SubdivisionSelector");
         var buttons = controls.Children.OfType<BalloonButton>().ToArray();
         Assert.That(buttons.Length, Is.EqualTo(2));
         Assert.That(AutomationProperties.GetName(buttons[0]), Is.EqualTo("Zoom waveform out"));
@@ -997,8 +997,8 @@ public class WorkstationPageIntegrationTests
         osuHitsounder.Test.Presentation.UiTestPump.Run(vm.SeekCommand.ExecuteAsync(TimeSpan.FromSeconds(6)));
         view.UpdateLayout();
 
-        var scroll = (ScrollViewer)((OHsWorkstationTimeline)page.FindName("Timeline")).FindName("WaveformScrollViewer");
-        var waveform = (WaveformView)((OHsWorkstationTimeline)page.FindName("Timeline")).FindName("WaveformDisplay");
+        var scroll = (ScrollViewer)(page.Timeline).FindName("WaveformScrollViewer");
+        var waveform = (WaveformView)(page.Timeline).FindName("WaveformDisplay");
         double ScreenX() => vm.Position.TotalSeconds / vm.Waveform!.Duration.TotalSeconds
             * waveform.ActualWidth - scroll.HorizontalOffset;
         scroll.ScrollToHorizontalOffset(vm.Position.TotalSeconds / vm.Waveform!.Duration.TotalSeconds
@@ -1029,8 +1029,8 @@ public class WorkstationPageIntegrationTests
         UiTestPump.Run(page.LoadCompletion);
         view.UpdateLayout();
 
-        var scroll = (ScrollViewer)((OHsWorkstationTimeline)page.FindName("Timeline")).FindName("WaveformScrollViewer");
-        var waveform = (WaveformView)((OHsWorkstationTimeline)page.FindName("Timeline")).FindName("WaveformDisplay");
+        var scroll = (ScrollViewer)(page.Timeline).FindName("WaveformScrollViewer");
+        var waveform = (WaveformView)(page.Timeline).FindName("WaveformDisplay");
         double ScreenX() => vm.Position.TotalSeconds / vm.Waveform!.Duration.TotalSeconds
             * waveform.ActualWidth - scroll.HorizontalOffset;
 
@@ -1238,7 +1238,7 @@ public class WorkstationPageIntegrationTests
         UiTestPump.Run(page.LoadCompletion);
         view.UpdateLayout();
         UiTestPump.Run(vm.SeekCommand.ExecuteAsync(TimeSpan.FromSeconds(8)));
-        var scroll = (ScrollViewer)((OHsWorkstationTimeline)page.FindName("Timeline")).FindName("WaveformScrollViewer");
+        var scroll = (ScrollViewer)(page.Timeline).FindName("WaveformScrollViewer");
         scroll.ScrollToLeftEnd();
         view.UpdateLayout();
         Assert.That(page.HandlePlaybackKey(Key.Right, ModifierKeys.None, false, page), Is.True);
@@ -1355,7 +1355,7 @@ public class WorkstationPageIntegrationTests
         UiTestPump.Run(page.LoadCompletion);
         view.UpdateLayout();
 
-        var scroll = (ScrollViewer)((OHsWorkstationTimeline)page.FindName("Timeline")).FindName("WaveformScrollViewer");
+        var scroll = (ScrollViewer)(page.Timeline).FindName("WaveformScrollViewer");
         scroll.ScrollToHorizontalOffset(100);
         view.UpdateLayout();
         var before = audio.Snapshot;
@@ -1410,9 +1410,9 @@ public class WorkstationPageIntegrationTests
             UiTestPump.Run(page.LoadCompletion);
             view.UpdateLayout();
 
-            var selector = (ValueSlider)page.FindName("SubdivisionSelector");
+            var selector = (ValueSlider)((osuHitsounder.Views.Pages.OHsWorkstationFooter)page.FindName("Footer")).FindName("SubdivisionSelector");
             var bar = (ScrollBar)page.FindName("WaveformScrollBar");
-            var zoomControls = (StackPanel)page.FindName("ZoomControls");
+            var zoomControls = (StackPanel)((osuHitsounder.Views.Pages.OHsWorkstationFooter)page.FindName("Footer")).FindName("ZoomControls");
             var buttons = zoomControls.Children.OfType<BalloonButton>().ToArray();
             listener.Flush();
             Assert.Multiple(() =>
@@ -1448,7 +1448,7 @@ public class WorkstationPageIntegrationTests
         using var view = new InMemoryView(window);
         view.UpdateLayout();
 
-        var buttons = ((StackPanel)page.FindName("ZoomControls")).Children.OfType<BalloonButton>().ToArray();
+        var buttons = ((StackPanel)((osuHitsounder.Views.Pages.OHsWorkstationFooter)page.FindName("Footer")).FindName("ZoomControls")).Children.OfType<BalloonButton>().ToArray();
         var scrollBar = (ScrollBar)page.FindName("WaveformScrollBar");
         Assert.Multiple(() =>
         {
@@ -1475,14 +1475,14 @@ public class WorkstationPageIntegrationTests
         var window = new Window { Content = page, Width = width, Height = height, FlowDirection = direction };
         using var view = new InMemoryView(window);
         UiTestPump.Run(page.LoadCompletion);
-        var card = (Border)page.FindName("SongAudioCard");
+        var card = (Border)((osuHitsounder.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("SongAudioCard");
         foreach (var cardHeight in new[] { 200d, 260d, 180d })
         {
             card.Height = cardHeight;
             window.Width = width + cardHeight - 200;
             window.Height = height + cardHeight - 200;
             view.UpdateLayout();
-            var selector = (ValueSlider)page.FindName("SubdivisionSelector");
+            var selector = (ValueSlider)((osuHitsounder.Views.Pages.OHsWorkstationFooter)page.FindName("Footer")).FindName("SubdivisionSelector");
             UiControlContract.AssertStyle<ValueSlider>(selector, "BaseValueSliderStyle");
             Assert.That(selector.Value, Is.EqualTo(vm.SelectedSubdivisionIndex));
         }
@@ -1506,7 +1506,7 @@ public class WorkstationPageIntegrationTests
         using var view = new InMemoryView(new Window { Content = page, Width = width, Height = 720, FlowDirection = direction });
         try
         {
-            var action = page.FindName("ResnapAllSamplesButton") as BalloonButton;
+            var action = ((osuHitsounder.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("ResnapAllSamplesButton") as BalloonButton;
             Assert.That(action, Is.Not.Null, "The workstation header must expose the resnap action.");
             var button = action!;
             Assert.That(button.IsEnabled, Is.False);
@@ -1564,7 +1564,7 @@ public class WorkstationPageIntegrationTests
         app.Resources.MergedDictionaries.Clear();
         UiTestPump.EnsureFontResources(app);
         foreach (var resource in new[] { $"Themes/{theme}.xaml", "Converters/Converters.xaml", "Icons.xaml",
-                     "Styles/TextBlock.xaml", "Styles/ItemsControl.xaml", "Styles/StackPanel.xaml", "Styles/Grid.xaml", "Styles/Border.xaml", "Styles/ContentPresenter.xaml",
+                     "Styles/TextBlock.xaml", "Styles/ItemsControl.xaml", "Styles/StackPanel.xaml", "Styles/ColumnDefinition.xaml", "Styles/Grid.xaml", "Styles/Border.xaml", "Styles/ContentPresenter.xaml",
                      "Styles/Button.xaml", "Styles/ToolTip.xaml", "Styles/ScrollViewer.xaml", "Styles/TextBox.xaml", "Styles/ComboBox.xaml", "Styles/ListBox.xaml", "Styles/Slider.xaml", "BeatGrid.xaml" })
             app.Resources.MergedDictionaries.Add(new ResourceDictionary
             {
@@ -1572,3 +1572,4 @@ public class WorkstationPageIntegrationTests
             });
     }
 }
+

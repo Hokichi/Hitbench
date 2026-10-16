@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls.Primitives;
 using System.Windows.Automation.Peers;
 using System.Windows.Automation.Provider;
@@ -29,8 +29,8 @@ public class WorkstationTrackControlsTests
         var page = new WorkstationPage(vm) { FlowDirection = direction }; page.SetProjectPath("project.json");
         using var view = new InMemoryView(new Window { Content = page, Width = 900, Height = 700 });
         UiTestPump.Run(page.LoadCompletion);
-        var mute = (ToggleButton)page.FindName("ClearTrackMutesToggle");
-        var solo = (ToggleButton)page.FindName("ClearTrackSolosToggle");
+        var mute = (ToggleButton)((osuHitsounder.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("ClearTrackMutesToggle");
+        var solo = (ToggleButton)((osuHitsounder.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("ClearTrackSolosToggle");
         UiControlContract.AssertStyle<ToggleButton>(mute, "OHsWorkstationTrackToggleStyle");
         Assert.That(mute.IsChecked, Is.True); Assert.That(mute.IsEnabled, Is.True);
         ((IToggleProvider)new ToggleButtonAutomationPeer(mute)).Toggle(); view.UpdateLayout();

@@ -104,7 +104,7 @@ public class WorkstationShortcutTests
             Assert.That(page.HandlePlaybackKey(key, ModifierKeys.Control, false, page), Is.True);
             Assert.That(vm.Subdivision, Is.EqualTo(divisor));
             Assert.That(vm.SelectedSubdivisionIndex, Is.EqualTo(index));
-            Assert.That(((ValueSlider)page.FindName("SubdivisionSelector")).Value, Is.EqualTo(index));
+            Assert.That(((ValueSlider)((osuHitsounder.Views.Pages.OHsWorkstationFooter)page.FindName("Footer")).FindName("SubdivisionSelector")).Value, Is.EqualTo(index));
             foreach (var grid in Descendants(page).OfType<BeatGridView>())
                 Assert.That(grid.Subdivision, Is.EqualTo(divisor));
             UiTestPump.Run(page.DeactivateAsync());

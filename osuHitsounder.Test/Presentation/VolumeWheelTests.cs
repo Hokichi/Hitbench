@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Automation.Peers;
 using System.Windows.Automation.Provider;
@@ -202,7 +202,7 @@ public class VolumeWheelTests
         app.Resources.MergedDictionaries.Clear();
         UiTestPump.EnsureFontResources(app);
         foreach (var resource in new[] { "Themes/Dark.xaml", "Converters/Converters.xaml", "Icons.xaml", "Styles/TextBlock.xaml",
-                     "Styles/ItemsControl.xaml", "Styles/StackPanel.xaml", "Styles/Grid.xaml", "Styles/Border.xaml", "Styles/ContentPresenter.xaml",
+                     "Styles/ItemsControl.xaml", "Styles/StackPanel.xaml", "Styles/ColumnDefinition.xaml", "Styles/Grid.xaml", "Styles/Border.xaml", "Styles/ContentPresenter.xaml",
                      "Styles/Button.xaml", "Styles/ToolTip.xaml", "Styles/ScrollViewer.xaml", "Styles/TextBox.xaml",
                      "Styles/ComboBox.xaml", "Styles/ListBox.xaml", "Styles/Slider.xaml", "BeatGrid.xaml" })
             app.Resources.MergedDictionaries.Add(new ResourceDictionary
@@ -313,7 +313,7 @@ public class VolumeWheelTests
         var (page, vm, view) = CreateLoadedPage();
         using (view)
         {
-            var card = (Border)page.FindName("SongAudioCard");
+            var card = (Border)((osuHitsounder.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("SongAudioCard");
             page.HandleContextWheel(ModifierKeys.Alt, 60, card);
             page.HandleContextWheel(ModifierKeys.Alt, 120, page);
             page.HandleContextWheel(ModifierKeys.Alt, 60, card);
@@ -332,7 +332,7 @@ public class VolumeWheelTests
         var (page, vm, view) = CreateLoadedPage();
         using (view)
         {
-            var card = (Border)page.FindName("SongAudioCard");
+            var card = (Border)((osuHitsounder.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("SongAudioCard");
             Assert.That(page.HandleContextWheel(ModifierKeys.Alt, 120, card), Is.True);
             Assert.That(vm.SelectedSubdivisionIndex, Is.EqualTo(4));
             Assert.That(page.IsVolumeOverlayOpen, Is.False);
