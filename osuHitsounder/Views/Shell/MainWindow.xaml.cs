@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -136,6 +136,9 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
         this.settings = settings;
         this.getWorkArea = getWorkArea ?? WindowWorkArea.GetClientSize;
         InitializeComponent();
+        ShellHeader.SetBinding(osuHitsounder.Views.Shell.OHsShellHeader.CanGoBackProperty,
+            new System.Windows.Data.Binding("Content.DataContext.CanGoBack")
+            { Source = PageHost, Mode = System.Windows.Data.BindingMode.OneWay });
         popupOverlayTimer = new DispatcherTimer(DispatcherPriority.Background, Dispatcher)
         { Interval = TimeSpan.FromMilliseconds(200) };
         popupOverlayTimer.Tick += OnPopupOverlayTimerTick;
@@ -201,7 +204,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
             DataContext = viewModel;
             viewModel.PropertyChanged += OnStateChanged;
             PageHost.Content = next;
-            WorkstationActions.Visibility = Visibility.Collapsed;
+            ShellHeader.IsWorkstationVisible = false;
             MinWidth = defaultMinWidth;
             MinHeight = defaultMinHeight;
             QueueSongsLayout();
@@ -268,7 +271,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
             workstation.SetProjectPath(projectPath);
             page.Deactivate();
             PageHost.Content = workstation;
-            WorkstationActions.Visibility = Visibility.Visible;
+            ShellHeader.IsWorkstationVisible = true;
             MinWidth = defaultMinWidth;
             MinHeight = defaultMinHeight;
         }
@@ -627,12 +630,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
     private void UpdateMaximizeRestoreButton()
     {
         if (!IsInitialized) return;
-        var restoring = WindowState == WindowState.Maximized;
-        var label = restoring ? "Restore" : "Maximize";
-        MaximizeRestoreButton.ButtonIcon = (Geometry)FindResource(restoring ? "CompressAlt" : "ExpandAlt");
-        MaximizeRestoreButton.ButtonText = label;
-        AutomationProperties.SetName(MaximizeRestoreButton, label);
-        MaximizeRestoreButton.ToolTip = label;
+        ShellHeader.IsMaximized = WindowState == WindowState.Maximized;
     }
 
     private void OnStateChanged(object? sender, PropertyChangedEventArgs e)

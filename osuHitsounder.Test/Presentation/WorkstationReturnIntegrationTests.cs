@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Automation;
 using CommunityToolkit.Mvvm.Messaging;
@@ -103,7 +103,7 @@ public class WorkstationReturnIntegrationTests
         finally { delayed.Release(); UiTestPump.Run(returning); }
         Assert.That(((ContentControl)window.FindName("PageHost")).Content, Is.SameAs(homes[1]));
         Assert.That(audio.Disposed, Is.True);
-        Assert.That(((FrameworkElement)window.FindName("WorkstationActions")).Visibility, Is.EqualTo(Visibility.Collapsed));
+        Assert.That(((FrameworkElement)((osuHitsounder.Views.Shell.OHsShellHeader)window.FindName("ShellHeader")).FindName("WorkstationActions")).Visibility, Is.EqualTo(Visibility.Collapsed));
     }
 
     [Test]
@@ -116,7 +116,7 @@ public class WorkstationReturnIntegrationTests
         Assert.That(((Border)workstation.FindName("LoadingOverlay")).Visibility, Is.EqualTo(Visibility.Collapsed));
         Assert.That(vm.SaveError, Does.Contain("Disk full"));
         Assert.That(vm.CanEditTracks, Is.True);
-        var back = (BalloonButton)window.FindName("GoBackButton");
+        var back = (BalloonButton)((osuHitsounder.Views.Shell.OHsShellHeader)window.FindName("ShellHeader")).FindName("GoBackButton");
         Assert.That(back, Is.Not.Null);
         Assert.That(back.IsEnabled, Is.True);
         Assert.That(AutomationProperties.GetName(back), Is.EqualTo("Go Back"));
@@ -154,8 +154,8 @@ public class WorkstationReturnIntegrationTests
         window.Width = width;
         window.FlowDirection = direction;
         view.UpdateLayout();
-        var back = (BalloonButton)window.FindName("GoBackButton");
-        var close = (BalloonButton)window.FindName("CloseButton");
+        var back = (BalloonButton)((osuHitsounder.Views.Shell.OHsShellHeader)window.FindName("ShellHeader")).FindName("GoBackButton");
+        var close = (BalloonButton)((osuHitsounder.Views.Shell.OHsShellHeader)window.FindName("ShellHeader")).FindName("CloseButton");
         foreach (var button in new[] { back, close })
         {
             var bounds = button.TransformToAncestor(view.Root).TransformBounds(new Rect(button.RenderSize));
@@ -187,3 +187,4 @@ public class WorkstationReturnIntegrationTests
         Assert.That(homes.Distinct().Count(), Is.EqualTo(3));
     }
 }
+

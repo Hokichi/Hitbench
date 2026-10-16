@@ -1,4 +1,4 @@
-using CommunityToolkit.Mvvm.Messaging;
+﻿using CommunityToolkit.Mvvm.Messaging;
 using osuHitsounder.Services.FileSystem;
 using System.Diagnostics;
 using System.Text;
@@ -215,8 +215,8 @@ public class HomePageIntegrationTests
         using var view = new InMemoryView(window);
         try
         {
-            var maximize = (BalloonButton)window.FindName("MaximizeRestoreButton");
-            var minimize = (BalloonButton)window.FindName("MinimizeButton");
+            var maximize = (BalloonButton)((osuHitsounder.Views.Shell.OHsShellHeader)window.FindName("ShellHeader")).FindName("MaximizeRestoreButton");
+            var minimize = (BalloonButton)((osuHitsounder.Views.Shell.OHsShellHeader)window.FindName("ShellHeader")).FindName("MinimizeButton");
 
             maximize.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
             window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
@@ -244,9 +244,9 @@ public class HomePageIntegrationTests
             WorkstationTestPage.Create, vm, new StubAppSettingsService());
         try
         {
-            var minimize = (BalloonButton)window.FindName("MinimizeButton");
-            var maximize = (BalloonButton)window.FindName("MaximizeRestoreButton");
-            var close = (BalloonButton)window.FindName("CloseButton");
+            var minimize = (BalloonButton)((osuHitsounder.Views.Shell.OHsShellHeader)window.FindName("ShellHeader")).FindName("MinimizeButton");
+            var maximize = (BalloonButton)((osuHitsounder.Views.Shell.OHsShellHeader)window.FindName("ShellHeader")).FindName("MaximizeRestoreButton");
+            var close = (BalloonButton)((osuHitsounder.Views.Shell.OHsShellHeader)window.FindName("ShellHeader")).FindName("CloseButton");
 
             Assert.Multiple(() =>
             {
@@ -427,11 +427,11 @@ public class HomePageIntegrationTests
             UiTestPump.Run(window.LoadAsync());
             var host = (ContentControl)window.FindName("PageHost");
             Assert.That(host.Content, Is.SameAs(page));
-            Assert.That(((FrameworkElement)window.FindName("WorkstationActions")).Visibility, Is.EqualTo(Visibility.Collapsed));
+            Assert.That(((FrameworkElement)((osuHitsounder.Views.Shell.OHsShellHeader)window.FindName("ShellHeader")).FindName("WorkstationActions")).Visibility, Is.EqualTo(Visibility.Collapsed));
             Assert.That(creations, Is.Zero);
             messenger.Send(new ProjectCreatedMessage("saved.json"));
             Assert.That(host.Content, Is.TypeOf<WorkstationPage>());
-            Assert.That(((FrameworkElement)window.FindName("WorkstationActions")).Visibility, Is.EqualTo(Visibility.Visible));
+            Assert.That(((FrameworkElement)((osuHitsounder.Views.Shell.OHsShellHeader)window.FindName("ShellHeader")).FindName("WorkstationActions")).Visibility, Is.EqualTo(Visibility.Visible));
             Assert.That(host.IsEnabled, Is.True);
             Assert.That(creations, Is.EqualTo(1));
         }
