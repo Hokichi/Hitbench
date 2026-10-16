@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using osuHitsounder.Resources.CustomControls;
 
@@ -8,6 +8,51 @@ namespace osuHitsounder.Test.Presentation;
 [NonParallelizable]
 public sealed class SharedUiResourceIntegrationTests
 {
+    [TestCase("Dark")]
+    [TestCase("Light")]
+    public void SegmentedResourcesPreserveContractsAndKeyboardSelection(string theme)
+    {
+        SharedResources_LoadTogetherAndProvideReusableControlContracts();
+        var app = Application.Current;
+        app.Resources.MergedDictionaries[0] = new ResourceDictionary
+        {
+            Source = new Uri($"/osuHitsounder;component/Resources/Themes/{theme}.xaml", UriKind.Relative)
+        };
+        foreach (var family in new[] { "SegmentedToggleGroup", "SegmentedToggleOption" })
+            app.Resources.MergedDictionaries.Add(new ResourceDictionary
+            {
+                Source = new Uri($"/osuHitsounder;component/Resources/Styles/{family}.xaml", UriKind.Relative)
+            });
+        var group = new SegmentedToggleGroup();
+        var first = new SegmentedToggleOption { Content = "First", Value = "first" };
+        var second = new SegmentedToggleOption { Content = "Second", Value = "second" };
+        group.Items.Add(first);
+        group.Items.Add(second);
+        var host = new Grid { Resources = app.Resources };
+        host.Children.Add(group);
+        UiTestPump.Layout(host, 400, 100);
+        UiControlContract.AssertStyle<SegmentedToggleGroup>(group, typeof(SegmentedToggleGroup));
+        UiControlContract.AssertTemplate(group, "SegmentedToggleGroupTemplate");
+        UiControlContract.AssertStyle<SegmentedToggleOption>(first, typeof(SegmentedToggleOption));
+        UiControlContract.AssertTemplate(first, "SegmentedToggleOptionTemplate");
+        Assert.That(first.IsTabStop, Is.True);
+        Assert.That(first.FocusVisualStyle, Is.SameAs(first.FindResource("OHsSampleManagerKeyboardFocusStyle")));
+        var changes = 0;
+        group.OptionSelected += (_, _) => changes++;
+        var provider = (System.Windows.Automation.Provider.IInvokeProvider)
+            System.Windows.Automation.Peers.UIElementAutomationPeer.CreatePeerForElement(first)
+                .GetPattern(System.Windows.Automation.Peers.PatternInterface.Invoke);
+        provider.Invoke();
+        UiTestPump.Run(first.Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle).Task);
+        Assert.That(group.SelectedValue, Is.EqualTo("first"));
+        Assert.That(changes, Is.EqualTo(1));
+        second.IsEnabled = false;
+        var disabled = (System.Windows.Automation.Provider.IInvokeProvider)
+            System.Windows.Automation.Peers.UIElementAutomationPeer.CreatePeerForElement(second)
+                .GetPattern(System.Windows.Automation.Peers.PatternInterface.Invoke);
+        Assert.Throws<System.Windows.Automation.ElementNotEnabledException>(() => disabled.Invoke());
+        Assert.That(group.SelectedValue, Is.EqualTo("first"));
+    }
     [TestCase(typeof(BalloonButton), "BalloonControlTemplate")]
     [TestCase(typeof(BalloonCheckBox), "BalloonControlTemplate")]
     [TestCase(typeof(NumericUpDown), "NumericUpDownTemplate")]
@@ -43,7 +88,7 @@ public sealed class SharedUiResourceIntegrationTests
                          "Themes/Dark.xaml", "Converters/Converters.xaml", "Icons.xaml",
                          "Styles/ColumnDefinition.xaml", "Styles/Grid.xaml", "Styles/StackPanel.xaml",
                          "Styles/TextBlock.xaml", "Styles/ItemsControl.xaml", "Styles/Image.xaml", "Styles/Border.xaml",
-                         "Styles/ContentPresenter.xaml", "Styles/Button.xaml", "Styles/PianoRollView.xaml", "Styles/ToolTip.xaml",
+                         "Styles/ContentPresenter.xaml", "Styles/Button.xaml", "Styles/SegmentedToggleGroup.xaml", "Styles/SegmentedToggleOption.xaml", "Styles/PianoRollView.xaml", "Styles/ToolTip.xaml",
                          "Styles/Window.xaml", "Styles/ListBox.xaml", "Styles/ListView.xaml", "Styles/TreeView.xaml",
                          "Styles/ComboBox.xaml", "Styles/ScrollViewer.xaml", "Styles/Slider.xaml", "BeatGrid.xaml", "Styles/TextBox.xaml", "Styles/ProgressBar.xaml",
                          "Styles/StepNavigator.xaml", "Styles/Popup.xaml"
@@ -81,7 +126,7 @@ public sealed class SharedUiResourceIntegrationTests
                      "Themes/Dark.xaml", "Converters/Converters.xaml", "Icons.xaml",
                      "Styles/ColumnDefinition.xaml", "Styles/Grid.xaml", "Styles/StackPanel.xaml",
                      "Styles/TextBlock.xaml", "Styles/ItemsControl.xaml", "Styles/Image.xaml", "Styles/Border.xaml",
-                     "Styles/ContentPresenter.xaml", "Styles/Button.xaml", "Styles/PianoRollView.xaml", "Styles/ToolTip.xaml",
+                     "Styles/ContentPresenter.xaml", "Styles/Button.xaml", "Styles/SegmentedToggleGroup.xaml", "Styles/SegmentedToggleOption.xaml", "Styles/PianoRollView.xaml", "Styles/ToolTip.xaml",
                      "Styles/Window.xaml", "Styles/ListBox.xaml", "Styles/ListView.xaml", "Styles/TreeView.xaml",
                      "Styles/ComboBox.xaml", "Styles/ScrollViewer.xaml", "Styles/Slider.xaml", "BeatGrid.xaml", "Styles/TextBox.xaml", "Styles/ProgressBar.xaml",
                      "Styles/StepNavigator.xaml", "Styles/Popup.xaml"
@@ -144,3 +189,4 @@ public sealed class SharedUiResourceIntegrationTests
         UiControlContract.AssertTemplate(button, "BalloonControlTemplate");
     }
 }
+

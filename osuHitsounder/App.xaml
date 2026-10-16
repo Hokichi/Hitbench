@@ -1,4 +1,4 @@
-<Application
+﻿<Application
     x:Class="osuHitsounder.App"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -26,6 +26,8 @@
                 <ResourceDictionary Source="Resources/Styles/Border.xaml" />
                 <ResourceDictionary Source="Resources/Styles/ContentPresenter.xaml" />
                 <ResourceDictionary Source="Resources/Styles/Button.xaml" />
+                <ResourceDictionary Source="Resources/Styles/SegmentedToggleGroup.xaml" />
+                <ResourceDictionary Source="Resources/Styles/SegmentedToggleOption.xaml" />
                 <ResourceDictionary Source="Resources/Styles/PianoRollView.xaml" />
                 <ResourceDictionary Source="Resources/Styles/ToolTip.xaml" />
                 <ResourceDictionary Source="Resources/Styles/Window.xaml" />
