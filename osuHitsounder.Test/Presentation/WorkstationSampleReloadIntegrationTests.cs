@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -31,7 +31,7 @@ public class WorkstationSampleReloadIntegrationTests
         Assert.That(vm.LoadPhase, Is.EqualTo(ProjectLoadPhase.Ready));
         Assert.That(page.FindName("ReloadSamplesButton"), Is.TypeOf<BalloonButton>());
         Assert.That(((BalloonButton)page.FindName("ReloadSamplesButton")).IsEnabled, Is.True);
-        Assert.That(((ScrollViewer)page.FindName("WaveformScrollViewer")).IsEnabled, Is.True);
+        Assert.That(((ScrollViewer)((OHsWorkstationTimeline)page.FindName("Timeline")).FindName("WaveformScrollViewer")).IsEnabled, Is.True);
         files.List = (_, _) => Task.FromResult<IReadOnlyList<string>>(["new.wav"]);
         Assert.That(page.HandlePlaybackKey(Key.F5, ModifierKeys.None, false, page), Is.True);
         UiTestPump.Run(page.PlaybackInputCompletion); view.UpdateLayout();

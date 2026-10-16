@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
@@ -105,8 +105,7 @@ public partial class WorkstationPage
             return HandleWaveformWheel(modifiers, delta);
         }
 
-        wheelMode = ModifierKeys.None;
-        wheelRemainder = 0;
+        Timeline.ResetWheel();
 
         if (!IsVolumeOverlayOpen)
         {

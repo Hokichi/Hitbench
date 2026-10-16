@@ -319,53 +319,6 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
-        <ControlTemplate x:Key="OHsWorkstationWaveformScrollTemplate" TargetType="ScrollViewer">
-            <Border
-                x:Name="WaveformBoundary"
-                Background="{TemplateBinding Background}"
-                BorderBrush="{TemplateBinding BorderBrush}"
-                BorderThickness="{TemplateBinding BorderThickness}"
-                CornerRadius="8">
-                <ScrollContentPresenter
-                    x:Name="PART_ScrollContentPresenter"
-                    Margin="{TemplateBinding Padding}"
-                    HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
-                    VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
-                    CanContentScroll="{TemplateBinding CanContentScroll}"
-                    Content="{TemplateBinding Content}"
-                    ContentTemplate="{TemplateBinding ContentTemplate}"
-                    ContentTemplateSelector="{TemplateBinding ContentTemplateSelector}" />
-            </Border>
-            <ControlTemplate.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter TargetName="WaveformBoundary" Property="BorderBrush" Value="{DynamicResource Brush.Navy.Muted}" />
-                </Trigger>
-            </ControlTemplate.Triggers>
-        </ControlTemplate>
-        <Style
-            x:Key="OHsWorkstationWaveformScrollStyle"
-            BasedOn="{StaticResource BaseScrollViewerStyle}"
-            TargetType="ScrollViewer">
-            <Setter Property="Background" Value="{DynamicResource Brush.Background.Deepened}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Subtle}" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="FocusVisualStyle" Value="{StaticResource DefaultFocusVisualStyle}" />
-            <Setter Property="HorizontalScrollBarVisibility" Value="Hidden" />
-            <Setter Property="VerticalScrollBarVisibility" Value="Disabled" />
-            <Setter Property="Template" Value="{StaticResource OHsWorkstationWaveformScrollTemplate}" />
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
-                    <Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
-                </DataTrigger>
-                <Trigger Property="IsEnabled" Value="False">
-                    <Setter Property="Cursor" Value="Arrow" />
-                    <Setter Property="Opacity" Value="0.4" />
-                </Trigger>
-            </Style.Triggers>
-        </Style>
-
         <Style
             x:Key="OHsWorkstationPlaybackWarningStyle"
             BasedOn="{StaticResource BaseTextBlockStyle}"
@@ -995,37 +948,7 @@
                                     ToolTip="Clear all track solos"
                                     Unchecked="OnClearTrackSolosUnchecked" />
                             </customControls:SpacedUniformGrid>
-                            <ScrollViewer
-                                x:Name="WaveformScrollViewer"
-                                Grid.Column="2"
-                                AutomationProperties.HelpText="Click to seek. Left and Right move between subdivision lines. Control plus Left or Right moves between whole beats. Use Shift plus wheel to scroll, Control plus wheel to zoom, or Alt plus wheel over this song card to change subdivision."
-                                AutomationProperties.Name="Audio waveform"
-                                FlowDirection="LeftToRight"
-                                Focusable="True"
-                                IsEnabled="{Binding CanPlay, Mode=OneWay}"
-                                ScrollChanged="OnWaveformScrollChanged"
-                                SizeChanged="OnWaveformViewportSizeChanged"
-                                Style="{StaticResource OHsWorkstationWaveformScrollStyle}">
-                                <customControls:WaveformView
-                                    x:Name="WaveformDisplay"
-                                    Bpms="{Binding Project.BPMs, Mode=OneWay}"
-                                    ControlPointTimestamps="{Binding ControlPointTimestamps, Mode=OneWay}"
-                                    ControlPointBrush="{DynamicResource Brush.Success}"
-                                    Data="{Binding Waveform, Mode=OneWay}"
-                                    FontFamily="{DynamicResource Regular}"
-                                    HorizontalOffset="{Binding ElementName=WaveformScrollViewer, Path=HorizontalOffset, Mode=OneWay}"
-                                    MarkerBrush="{StaticResource OHsWorkstationPlaybackMarkerBrush}"
-                                    MouseLeftButtonDown="OnWaveformMouseLeftButtonDown"
-                                    Offsets="{Binding Project.Offsets, Mode=OneWay}"
-                                    Position="{Binding Position, Mode=OneWay}"
-                                    SeekCommand="{Binding SeekCommand, Mode=OneWay}"
-                                    SizeChanged="OnWaveformDisplaySizeChanged"
-                                    Subdivision="{Binding Subdivision, Mode=OneWay}"
-                                    TextBrush="{DynamicResource Brush.Text.Secondary}"
-                                    ViewportWidth="{Binding ElementName=WaveformScrollViewer, Path=ViewportWidth, Mode=OneWay}"
-                                    WaveformBrush="{DynamicResource Brush.Navy.Muted}"
-                                    ZoomFactor="{Binding ZoomFactor, Mode=OneWay}" />
-                            </ScrollViewer>
+                            <pages:OHsWorkstationTimeline x:Name="Timeline" Grid.Column="2" />
                             <customControls:SpacedUniformGrid
                                 x:Name="TrackActionsHost"
                                 Grid.Column="4"
@@ -1146,13 +1069,13 @@
                         AutomationProperties.HelpText="Use arrow keys, Page Up, Page Down, Home, or End to move through the waveform."
                         AutomationProperties.Name="Waveform horizontal position"
                         FlowDirection="LeftToRight"
-                        LargeChange="{Binding ViewportWidth, ElementName=WaveformScrollViewer, Mode=OneWay}"
-                        Maximum="{Binding ScrollableWidth, ElementName=WaveformScrollViewer, Mode=OneWay}"
+                        LargeChange="{Binding TimelineViewportWidth, ElementName=Timeline, Mode=OneWay}"
+                        Maximum="{Binding ScrollableWidth, ElementName=Timeline, Mode=OneWay}"
                         Orientation="Horizontal"
                         Scroll="OnWaveformScrollBarScroll"
                         SmallChange="16"
                         Style="{StaticResource OHsWorkstationWaveformScrollBarStyle}"
-                        ViewportSize="{Binding ViewportWidth, ElementName=WaveformScrollViewer, Mode=OneWay}" />
+                        ViewportSize="{Binding TimelineViewportWidth, ElementName=Timeline, Mode=OneWay}" />
                 </Grid>
                 <Border
                     x:Name="TracksCard"
@@ -1309,3 +1232,4 @@
         </Border>
     </Grid>
 </UserControl>
+

@@ -61,7 +61,7 @@ public class WorkstationNodeScrollTests
         var editor = CreateEditor(); using var view = editor.View;
         try
         {
-            var timeline = (ScrollViewer)editor.Page.FindName("WaveformScrollViewer");
+            var timeline = (ScrollViewer)((OHsWorkstationTimeline)editor.Page.FindName("Timeline")).FindName("WaveformScrollViewer");
             var before = timeline.HorizontalOffset; var width = editor.Grid.ContentWidth;
             Assert.That(editor.Page.HandleContextWheel(ModifierKeys.Shift, -120 * 8, editor.Page), Is.True);
             view.UpdateLayout();
@@ -119,3 +119,4 @@ public class WorkstationNodeScrollTests
             foreach (var child in Descendants<T>(VisualTreeHelper.GetChild(parent, i))) yield return child;
     }
 }
+

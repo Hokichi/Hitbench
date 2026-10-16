@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Data;
@@ -32,17 +32,12 @@ public partial class WorkstationPage : UserControl
     private string? projectPath;
     private bool loadStarted;
     private bool deactivationStarted;
-    private bool hasPendingZoomAnchor;
-    private double zoomAnchorFraction;
-    private double zoomAnchorViewportX;
-    private ModifierKeys wheelMode;
-    private int wheelRemainder;
-
     public WorkstationPage(WorkstationPageVM viewModel)
     {
         this.viewModel = viewModel;
         InitializeComponent();
-        WaveformScrollBar.AddHandler(Thumb.DragStartedEvent, new DragStartedEventHandler(OnWaveformScrollBarDragStarted));
+        Timeline.AttachScrollBar(WaveformScrollBar);
+        Timeline.ViewportChanged += OnTimelineViewportChanged;
         DataContext = viewModel;
         ((ObjectDataProvider)Resources["OHsWorkstationPageSource"]).ObjectInstance = this;
         InitializeNodeInteraction();
@@ -126,9 +121,8 @@ public partial class WorkstationPage : UserControl
             viewModel.PropertyChanging -= OnViewModelPropertyChanging;
             viewModel.PropertyChanged -= OnViewModelPropertyChanged;
             viewModel.Tracks.CollectionChanged -= OnTracksCollectionChanged;
-            hasPendingZoomAnchor = false;
-            wheelMode = ModifierKeys.None;
-            wheelRemainder = 0;
+            Timeline.Reset();
+            Timeline.ViewportChanged -= OnTimelineViewportChanged;
         }
     }
 
@@ -145,15 +139,10 @@ public partial class WorkstationPage : UserControl
         lastPresentationFrame = frameTime;
         if (viewModel.LoadPhase == osuHitsounder.Services.ProjectLoadPhase.AwaitingPresentation)
         {
-            var boundary = WaveformScrollViewer.BorderThickness;
-            var padding = WaveformScrollViewer.Padding;
-            var hasWaveformSpace = WaveformScrollViewer.ActualWidth > boundary.Left + boundary.Right + padding.Left + padding.Right;
-            if (!IsMeasureValid || !IsArrangeValid || (hasWaveformSpace && WaveformScrollViewer.ViewportWidth <= 0) ||
-                !WaveformDisplay.IsMeasureValid || !WaveformDisplay.IsArrangeValid || !TrackList.IsArrangeValid)
+            if (!IsMeasureValid || !IsArrangeValid || !Timeline.PreparePresentation() || !TrackList.IsArrangeValid)
             { readinessCandidate = null; return; }
-            WaveformDisplay.PrepareDrawing();
             PrepareTrackDrawings(TrackList);
-            var candidate = (viewModel.LoadGeneration, RenderSize, WaveformDisplay.ActualWidth, WaveformScrollViewer.ViewportWidth);
+            var candidate = (viewModel.LoadGeneration, RenderSize, TimelineContentWidth, TimelineViewportWidth);
             if (readinessCandidate != candidate) { readinessCandidate = candidate; return; }
             viewModel.AcknowledgePresentationReady(viewModel.LoadGeneration);
             playbackReady = true;
@@ -184,32 +173,6 @@ public partial class WorkstationPage : UserControl
         readinessCandidate = null;
         if (playbackReady && !deactivationStarted && IsVisible) viewModel.RefreshPlayback();
         UpdatePlaybackRefreshSubscription();
-    }
-
-    private void OnWaveformViewportSizeChanged(object sender, SizeChangedEventArgs e)
-    {
-        // Bootstrap measurement before the ScrollViewer has a nonzero viewport.
-        var inset = WaveformScrollViewer.BorderThickness;
-        var padding = WaveformScrollViewer.Padding;
-        WaveformDisplay.SetCurrentValue(WaveformView.ViewportWidthProperty,
-            Math.Max(0, e.NewSize.Width - inset.Left - inset.Right - padding.Left - padding.Right));
-        TimelineViewportWidth = WaveformScrollViewer.ViewportWidth;
-    }
-    private void OnWaveformDisplaySizeChanged(object sender, SizeChangedEventArgs e)
-    {
-        TimelineContentWidth = e.NewSize.Width;
-        ApplyPendingZoomAnchor();
-        UpdateNodeAdornerGeometry();
-    }
-    private void OnWaveformScrollChanged(object sender, ScrollChangedEventArgs e)
-    {
-        if (e.ViewportWidth > 0) WaveformDisplay.SetCurrentValue(WaveformView.ViewportWidthProperty, e.ViewportWidth);
-        TimelineHorizontalOffset = e.HorizontalOffset;
-        TimelineViewportWidth = e.ViewportWidth;
-        WaveformScrollBar.Value = e.HorizontalOffset;
-        ApplyPendingZoomAnchor();
-        UpdateNodeAdornerGeometry();
-        if (e.HorizontalChange != 0) RefreshNodeDragAfterScroll();
     }
 
     private void OnSampleSelectorLoaded(object sender, RoutedEventArgs e)
@@ -352,36 +315,12 @@ public partial class WorkstationPage : UserControl
         if (sender is RadioButton radio) viewModel.IsAdditionMode = radio.Name == "AdditionModeButton";
     }
 
-    private void OnWaveformScrollBarDragStarted(object sender, DragStartedEventArgs e)
-    {
-        if (viewModel.CanPlay && !deactivationStarted) viewModel.ScrollWithMarker = false;
-    }
-
-    private void OnWaveformScrollBarScroll(object sender, ScrollEventArgs e)
-    {
-        if (!viewModel.CanPlay || deactivationStarted) return;
-        viewModel.ScrollWithMarker = false;
-        WaveformScrollViewer.ScrollToHorizontalOffset(e.NewValue);
-    }
-
     private void OnViewModelPropertyChanging(object? sender, PropertyChangingEventArgs e)
     {
         if (e.PropertyName == nameof(WorkstationPageVM.AreTracksCollapsed) && !viewModel.AreTracksCollapsed)
             RestoreTrackFocusBeforeCollapse(Keyboard.FocusedElement as DependencyObject ??
                 FocusManager.GetFocusedElement(FocusManager.GetFocusScope(ToggleTracksCollapsedButton)) as DependencyObject);
-        if (e.PropertyName != nameof(WorkstationPageVM.ZoomFactor) || hasPendingZoomAnchor) return;
-        var duration = viewModel.Waveform?.Duration.TotalSeconds ?? 0;
-        var extent = WaveformDisplay.ActualWidth;
-        var viewport = WaveformScrollViewer.ViewportWidth;
-        if (!double.IsFinite(duration) || duration <= 0 || !double.IsFinite(extent) || extent <= 0 ||
-            !double.IsFinite(viewport) || viewport <= 0) return;
-
-        zoomAnchorFraction = Math.Clamp(viewModel.Position.TotalSeconds / duration, 0, 1);
-        var markerViewportX = zoomAnchorFraction * extent - WaveformScrollViewer.HorizontalOffset;
-        zoomAnchorViewportX = markerViewportX >= 0 && markerViewportX <= viewport
-            ? markerViewportX
-            : viewport / 2;
-        hasPendingZoomAnchor = true;
+        if (e.PropertyName == nameof(WorkstationPageVM.ZoomFactor)) Timeline.CaptureZoomAnchor();
     }
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -390,7 +329,7 @@ public partial class WorkstationPage : UserControl
         {
             playbackReady = false;
             readinessCandidate = null;
-            hasPendingZoomAnchor = false;
+            Timeline.Reset();
             CancelNodePointer();
         }
         if (e.PropertyName == nameof(WorkstationPageVM.IsSelectionMode) && nodeSourceGrid is not null && pointerNode is null) CancelNodePointer();
@@ -400,7 +339,7 @@ public partial class WorkstationPage : UserControl
         if (e.PropertyName is nameof(WorkstationPageVM.SampleFiles) or nameof(WorkstationPageVM.SamplesRevision)) RefreshTrackSamplePresentation();
         if (e.PropertyName is nameof(WorkstationPageVM.IsPlaying) or nameof(WorkstationPageVM.LoadPhase))
             UpdatePlaybackRefreshSubscription();
-        if (e.PropertyName == nameof(WorkstationPageVM.ZoomFactor)) { ApplyPendingZoomAnchor(); UpdateNodeAdornerGeometry(); }
+        if (e.PropertyName == nameof(WorkstationPageVM.ZoomFactor)) { Timeline.ApplyPendingZoomAnchor(); UpdateNodeAdornerGeometry(); }
         if (e.PropertyName == nameof(WorkstationPageVM.Position) && viewModel.IsPlaying) FollowPlaybackPosition();
         if (e.PropertyName == nameof(WorkstationPageVM.ScrollWithMarker) && viewModel.ScrollWithMarker && viewModel.IsPlaying)
         {
@@ -439,7 +378,7 @@ public partial class WorkstationPage : UserControl
                 {
                     if (deactivationStarted) return;
                     if (FindRemovalFocusTarget(index) is not UIElement target || !target.Focus())
-                        WaveformScrollViewer.Focus();
+                        Timeline.FocusTimeline();
                 });
                 break;
             }
@@ -450,30 +389,8 @@ public partial class WorkstationPage : UserControl
     {
         TrackList.UpdateLayout();
         var container = TrackList.ItemContainerGenerator.ContainerFromIndex(index) as FrameworkElement;
-        return container is null ? WaveformScrollViewer
-            : FindVisualChild<BalloonButton>(container) ?? (IInputElement)WaveformScrollViewer;
-    }
-
-    private void ApplyPendingZoomAnchor()
-    {
-        if (!hasPendingZoomAnchor || deactivationStarted) return;
-        var extent = WaveformDisplay.ActualWidth;
-        var viewport = WaveformScrollViewer.ViewportWidth;
-        if (!double.IsFinite(extent) || extent <= 0 || !double.IsFinite(viewport) || viewport <= 0) return;
-        var expectedExtent = WaveformDisplay.ViewportWidth * viewModel.ZoomFactor;
-        if (Math.Abs(extent - expectedExtent) > 1 || Math.Abs(WaveformScrollViewer.ExtentWidth - extent) > 1) return;
-
-        var maximum = Math.Max(0, extent - viewport);
-        var offset = Math.Clamp(zoomAnchorFraction * extent - zoomAnchorViewportX, 0, maximum);
-        hasPendingZoomAnchor = false;
-        WaveformScrollViewer.ScrollToHorizontalOffset(offset);
-    }
-
-    private void OnWaveformMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-    {
-        WaveformScrollViewer.Focus();
-        if (!WaveformDisplay.SeekAt(e.GetPosition(WaveformDisplay).X)) return;
-        e.Handled = true;
+        return container is null ? Timeline
+            : FindVisualChild<BalloonButton>(container) ?? (IInputElement)Timeline;
     }
 
     private bool HandleBeatDivisorKey(Key key, ModifierKeys modifiers, bool isRepeat, DependencyObject? origin)
@@ -527,8 +444,8 @@ public partial class WorkstationPage : UserControl
                 if (!viewModel.SeekCommand.CanExecute(target)) return false;
                 PlaybackInputCompletion = RevealAfterNavigationAsync(viewModel.SeekCommand.ExecuteAsync(target));
             }
-            else if (key == Key.Home) WaveformScrollViewer.ScrollToLeftEnd();
-            else WaveformScrollViewer.ScrollToRightEnd();
+            else if (key == Key.Home) Timeline.ScrollToHorizontalOffset(0);
+            else Timeline.ScrollToHorizontalOffset(Timeline.ScrollableWidth);
             return true;
         }
         if (key is not (Key.Left or Key.Right)) return false;
@@ -606,39 +523,6 @@ public partial class WorkstationPage : UserControl
         catch (Exception error) { System.Diagnostics.Trace.TraceError("Playback navigation failed: {0}", error); }
     }
 
-    private void RevealPlaybackPosition()
-    {
-        var duration = viewModel.Waveform?.Duration.TotalSeconds ?? 0;
-        var extent = WaveformDisplay.ActualWidth;
-        var viewport = WaveformScrollViewer.ViewportWidth;
-        if (duration <= 0 || !double.IsFinite(extent) || extent <= 0 ||
-            !double.IsFinite(viewport) || viewport <= 0) return;
-        var x = Math.Clamp(viewModel.Position.TotalSeconds / duration * extent, 0, extent);
-        var offset = WaveformScrollViewer.HorizontalOffset;
-        if (x < offset) WaveformScrollViewer.ScrollToHorizontalOffset(x);
-        else if (x > offset + viewport)
-            WaveformScrollViewer.ScrollToHorizontalOffset(Math.Min(WaveformScrollViewer.ScrollableWidth, x - viewport));
-    }
-
-    private void FollowPlaybackPosition()
-    {
-        if (!viewModel.ScrollWithMarker || !playbackReady || deactivationStarted || !IsVisible || ownerWindow?.WindowState == WindowState.Minimized) return;
-        var duration = viewModel.Waveform?.Duration.TotalSeconds ?? 0;
-        if (duration <= 0) return;
-        var offset = GetPlaybackPageOffset(viewModel.Position.TotalSeconds / duration * WaveformDisplay.ActualWidth,
-            WaveformScrollViewer.HorizontalOffset, WaveformScrollViewer.ViewportWidth, WaveformDisplay.ActualWidth);
-        if (offset != WaveformScrollViewer.HorizontalOffset) WaveformScrollViewer.ScrollToHorizontalOffset(offset);
-    }
-
-    internal static double GetPlaybackPageOffset(double markerX, double offset, double viewportWidth, double extentWidth)
-    {
-        if (!double.IsFinite(markerX) || !double.IsFinite(offset) || !double.IsFinite(viewportWidth) ||
-            !double.IsFinite(extentWidth) || viewportWidth <= 0 || extentWidth <= 0) return offset;
-        if (markerX >= offset && markerX < offset + viewportWidth) return offset;
-        var pages = Math.Floor((markerX - offset) / viewportWidth);
-        return Math.Clamp(offset + pages * viewportWidth, 0, Math.Max(0, extentWidth - viewportWidth));
-    }
-
     private static DependencyObject? GetInputParent(DependencyObject current) =>
         current is Visual or Visual3D
             ? VisualTreeHelper.GetParent(current)
@@ -646,54 +530,24 @@ public partial class WorkstationPage : UserControl
 
     internal bool HandleWaveformWheel(ModifierKeys modifiers, int delta)
     {
-        if (IsVolumeOverlayOpen)
-        {
-            wheelMode = ModifierKeys.None;
-            wheelRemainder = 0;
-            return true;
-        }
-        if (modifiers is not ModifierKeys.Control and not ModifierKeys.Alt and not ModifierKeys.Shift and
-            not (ModifierKeys.Control | ModifierKeys.Shift) ||
-            !viewModel.CanZoom || deactivationStarted)
-        {
-            wheelMode = ModifierKeys.None;
-            wheelRemainder = 0;
-            return false;
-        }
-
-        if (wheelMode != modifiers)
-        {
-            wheelMode = modifiers;
-            wheelRemainder = 0;
-        }
-
-        wheelRemainder += delta;
-        var steps = wheelRemainder / Mouse.MouseWheelDeltaForOneLine;
-        wheelRemainder %= Mouse.MouseWheelDeltaForOneLine;
-        if (modifiers == ModifierKeys.Shift)
-        {
-            if (delta != 0) viewModel.ScrollWithMarker = false;
-            for (var index = 0; index < Math.Abs(steps); index++)
-            {
-                if (steps > 0) WaveformScrollViewer.LineLeft();
-                else WaveformScrollViewer.LineRight();
-            }
-            return true;
-        }
-
-        var increase = steps > 0;
-        for (var index = 0; index < Math.Abs(steps); index++)
-        {
-            var command = modifiers switch
-            {
-                ModifierKeys.Control => increase ? viewModel.ZoomInCommand : viewModel.ZoomOutCommand,
-                ModifierKeys.Alt => increase ? viewModel.IncreaseSubdivisionCommand : viewModel.DecreaseSubdivisionCommand,
-                _ => increase ? viewModel.IncreaseTrackHeightCommand : viewModel.DecreaseTrackHeightCommand
-            };
-            if (!command.CanExecute(null)) break;
-            command.Execute(null);
-        }
-        return true;
+        if (IsVolumeOverlayOpen) { Timeline.ResetWheel(); return true; }
+        return Timeline.HandleWaveformWheel(modifiers, delta);
     }
-
+    private void RevealPlaybackPosition() => Timeline.RevealPlaybackPosition();
+    private void FollowPlaybackPosition()
+    {
+        if (playbackReady && !deactivationStarted && IsVisible && ownerWindow?.WindowState != WindowState.Minimized)
+            Timeline.FollowPlaybackPosition();
+    }
+    internal static double GetPlaybackPageOffset(double markerX, double offset, double viewportWidth, double extentWidth) =>
+        OHsWorkstationTimeline.GetPlaybackPageOffset(markerX, offset, viewportWidth, extentWidth);
+    private void OnWaveformScrollBarScroll(object sender, ScrollEventArgs e) => Timeline.ScrollFromUser(e.NewValue);
+    private void OnTimelineViewportChanged(object? sender, EventArgs e)
+    {
+        TimelineContentWidth = Timeline.TimelineContentWidth;
+        TimelineViewportWidth = Timeline.TimelineViewportWidth;
+        TimelineHorizontalOffset = Timeline.TimelineHorizontalOffset;
+        UpdateNodeAdornerGeometry();
+        RefreshNodeDragAfterScroll();
+    }
 }

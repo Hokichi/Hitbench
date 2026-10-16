@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
@@ -522,7 +522,7 @@ public class WorkstationPageIntegrationTests
         UiTestPump.Run(vm.RemoveTrackCommand.ExecuteAsync(second));
         view.UpdateLayout();
         Assert.That(page.FindRemovalFocusTarget(0),
-            Is.SameAs(page.FindName("WaveformScrollViewer")));
+            Is.SameAs(((OHsWorkstationTimeline)page.FindName("Timeline")).FindName("WaveformScrollViewer")));
     }
     [SetUp]
     public void SetUp() => EnsureResources();
@@ -533,9 +533,9 @@ public class WorkstationPageIntegrationTests
         var page = new WorkstationPage(new WorkstationPageVM(new StubWorkstationSourceService(), new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler()));
         using var view = new InMemoryView(new Window { Content = page, Width = 900, Height = 600 });
         view.UpdateLayout();
-        var waveform = (WaveformView)page.FindName("WaveformDisplay");
+        var waveform = (WaveformView)((OHsWorkstationTimeline)page.FindName("Timeline")).FindName("WaveformDisplay");
         Assert.That(waveform, Is.TypeOf<WaveformView>());
-        UiControlContract.AssertStyle<ScrollViewer>((ScrollViewer)page.FindName("WaveformScrollViewer"), "OHsWorkstationWaveformScrollStyle");
+        UiControlContract.AssertStyle<ScrollViewer>((ScrollViewer)((OHsWorkstationTimeline)page.FindName("Timeline")).FindName("WaveformScrollViewer"), "OHsWorkstationWaveformScrollStyle");
     }
 
     [Test]
@@ -558,8 +558,8 @@ public class WorkstationPageIntegrationTests
         Assert.That(vm.IsPlaying, Is.True);
         UiControlContract.AssertStyle<BalloonButton>(play, "OHsWorkstationPlayPauseStyle");
 
-        var scroll = (ScrollViewer)page.FindName("WaveformScrollViewer");
-        var waveform = (WaveformView)page.FindName("WaveformDisplay");
+        var scroll = (ScrollViewer)((OHsWorkstationTimeline)page.FindName("Timeline")).FindName("WaveformScrollViewer");
+        var waveform = (WaveformView)((OHsWorkstationTimeline)page.FindName("Timeline")).FindName("WaveformDisplay");
         Assert.That(waveform.DesiredSize.Width, Is.GreaterThan(scroll.ViewportWidth));
         scroll.ScrollToHorizontalOffset(50);
         view.UpdateLayout();
@@ -585,7 +585,7 @@ public class WorkstationPageIntegrationTests
         Assert.Multiple(() =>
         {
             Assert.That(((ItemsControl)page.FindName("TrackList")).ItemsSource, Is.SameAs(vm.Tracks));
-            Assert.That(((ScrollViewer)page.FindName("WaveformScrollViewer")).Focusable, Is.True);
+            Assert.That(((ScrollViewer)((OHsWorkstationTimeline)page.FindName("Timeline")).FindName("WaveformScrollViewer")).Focusable, Is.True);
         });
     }
 
@@ -787,9 +787,9 @@ public class WorkstationPageIntegrationTests
         var grid = FindVisualChild<BeatGridView>(card)!;
         for (var index = 0; index < 3; index++) vm.ZoomInCommand.Execute(null);
         view.UpdateLayout();
-        var waveform = (WaveformView)page.FindName("WaveformDisplay");
+        var waveform = (WaveformView)((OHsWorkstationTimeline)page.FindName("Timeline")).FindName("WaveformDisplay");
         Assert.That(grid.ContentWidth, Is.EqualTo(waveform.ActualWidth));
-        var scroll = (ScrollViewer)page.FindName("WaveformScrollViewer");
+        var scroll = (ScrollViewer)((OHsWorkstationTimeline)page.FindName("Timeline")).FindName("WaveformScrollViewer");
         scroll.ScrollToHorizontalOffset(100);
         view.UpdateLayout();
         Assert.That(grid.HorizontalOffset, Is.EqualTo(scroll.HorizontalOffset));
@@ -857,7 +857,7 @@ public class WorkstationPageIntegrationTests
 
         Assert.That(page.FindName("WaveformScrollBar"), Is.TypeOf<ScrollBar>());
         var bar = (ScrollBar)page.FindName("WaveformScrollBar");
-        var scroll = (ScrollViewer)page.FindName("WaveformScrollViewer");
+        var scroll = (ScrollViewer)((OHsWorkstationTimeline)page.FindName("Timeline")).FindName("WaveformScrollViewer");
         Assert.Multiple(() =>
         {
             Assert.That(bar.Maximum, Is.EqualTo(scroll.ScrollableWidth).Within(1));
@@ -916,13 +916,13 @@ public class WorkstationPageIntegrationTests
         UiTestPump.Run(page.LoadCompletion);
         view.UpdateLayout();
 
-        var waveform = (WaveformView)page.FindName("WaveformDisplay");
+        var waveform = (WaveformView)((OHsWorkstationTimeline)page.FindName("Timeline")).FindName("WaveformDisplay");
         Assert.That(waveform.SeekAt(waveform.ActualWidth * 0.6), Is.True);
         Assert.Multiple(() =>
         {
             Assert.That(audio.Snapshot.Position, Is.EqualTo(TimeSpan.FromSeconds(6)).Within(TimeSpan.FromMilliseconds(1)));
             Assert.That(waveform.Position, Is.EqualTo(audio.Snapshot.Position));
-            Assert.That(((ScrollViewer)page.FindName("WaveformScrollViewer")).IsEnabled, Is.True);
+            Assert.That(((ScrollViewer)((OHsWorkstationTimeline)page.FindName("Timeline")).FindName("WaveformScrollViewer")).IsEnabled, Is.True);
         });
     }
 
@@ -997,8 +997,8 @@ public class WorkstationPageIntegrationTests
         osuHitsounder.Test.Presentation.UiTestPump.Run(vm.SeekCommand.ExecuteAsync(TimeSpan.FromSeconds(6)));
         view.UpdateLayout();
 
-        var scroll = (ScrollViewer)page.FindName("WaveformScrollViewer");
-        var waveform = (WaveformView)page.FindName("WaveformDisplay");
+        var scroll = (ScrollViewer)((OHsWorkstationTimeline)page.FindName("Timeline")).FindName("WaveformScrollViewer");
+        var waveform = (WaveformView)((OHsWorkstationTimeline)page.FindName("Timeline")).FindName("WaveformDisplay");
         double ScreenX() => vm.Position.TotalSeconds / vm.Waveform!.Duration.TotalSeconds
             * waveform.ActualWidth - scroll.HorizontalOffset;
         scroll.ScrollToHorizontalOffset(vm.Position.TotalSeconds / vm.Waveform!.Duration.TotalSeconds
@@ -1029,8 +1029,8 @@ public class WorkstationPageIntegrationTests
         UiTestPump.Run(page.LoadCompletion);
         view.UpdateLayout();
 
-        var scroll = (ScrollViewer)page.FindName("WaveformScrollViewer");
-        var waveform = (WaveformView)page.FindName("WaveformDisplay");
+        var scroll = (ScrollViewer)((OHsWorkstationTimeline)page.FindName("Timeline")).FindName("WaveformScrollViewer");
+        var waveform = (WaveformView)((OHsWorkstationTimeline)page.FindName("Timeline")).FindName("WaveformDisplay");
         double ScreenX() => vm.Position.TotalSeconds / vm.Waveform!.Duration.TotalSeconds
             * waveform.ActualWidth - scroll.HorizontalOffset;
 
@@ -1238,7 +1238,7 @@ public class WorkstationPageIntegrationTests
         UiTestPump.Run(page.LoadCompletion);
         view.UpdateLayout();
         UiTestPump.Run(vm.SeekCommand.ExecuteAsync(TimeSpan.FromSeconds(8)));
-        var scroll = (ScrollViewer)page.FindName("WaveformScrollViewer");
+        var scroll = (ScrollViewer)((OHsWorkstationTimeline)page.FindName("Timeline")).FindName("WaveformScrollViewer");
         scroll.ScrollToLeftEnd();
         view.UpdateLayout();
         Assert.That(page.HandlePlaybackKey(Key.Right, ModifierKeys.None, false, page), Is.True);
@@ -1355,7 +1355,7 @@ public class WorkstationPageIntegrationTests
         UiTestPump.Run(page.LoadCompletion);
         view.UpdateLayout();
 
-        var scroll = (ScrollViewer)page.FindName("WaveformScrollViewer");
+        var scroll = (ScrollViewer)((OHsWorkstationTimeline)page.FindName("Timeline")).FindName("WaveformScrollViewer");
         scroll.ScrollToHorizontalOffset(100);
         view.UpdateLayout();
         var before = audio.Snapshot;
