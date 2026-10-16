@@ -1,4 +1,4 @@
-using CommunityToolkit.Mvvm.Input;
+﻿using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using osuHitsounder.Core.Constants;
 using osuHitsounder.Core.Entities;
@@ -72,8 +72,6 @@ public partial class WorkstationPageVM
         messenger.Register<PlaceInstrumentalNoteRequestedMessage>(this, (_, m) => PlaceInstrumentNote(m));
         messenger.Register<MoveInstrumentalNoteRequestedMessage>(this, (_, m) => MoveInstrumentNote(m));
         messenger.Register<RemoveInstrumentalNoteRequestedMessage>(this, (_, m) => RemoveInstrumentNote(m));
-        messenger.Register<SetInstrumentalKeyMappingRequestedMessage>(this, (_, m) => MapInstrumentKey(m));
-        messenger.Register<SetInstrumentalKeyMappingsRequestedMessage>(this, (_, m) => MapInstrumentKeys(m));
         messenger.Register<InstrumentalEditorReadyMessage>(this, (_, m) =>
         { if (ActiveInstrument(m.Context) is not null) { PublishInstrumentSnapshot(); PublishInstrumentSaveState(); } });
     }
@@ -193,33 +191,5 @@ public partial class WorkstationPageVM
         if (note is null) { InstrumentResult(m.Context, m.RequestId, false, null, "Note no longer exists."); return; }
         CommitInstrumentNotes(track, m.Context, m.RequestId, NoteSnapshots(track).Where(n => n.Id != m.NoteId).ToArray(), [m.NoteId]);
     }
-    private void MapInstrumentKey(SetInstrumentalKeyMappingRequestedMessage m)
-    {
-        if (ActiveInstrument(m.Context) is not { } track) return;
-        var file = string.IsNullOrWhiteSpace(m.FileName) ? null : m.FileName.Replace('\\', '/');
-        var error = !InstrumentalKeys.TryGetIndex(m.Key, out _) ? "Choose C1–B9." : file is not null ? SamplePaths.GetRelativePathError(file) : null;
-        if (error is null && m.FolderName is { } folder && (SamplePaths.GetFolderNameError(folder) is not null ||
-            tracks.OfType<InstrumentalTrack>().Any(t => t != track && string.Equals(t.FolderName, folder, StringComparison.OrdinalIgnoreCase)))) error = "Choose an unreserved sample folder.";
-        if (error is not null) { InstrumentResult(m.Context, m.RequestId, false, null, error); return; }
-        if (file is not null) file = availableSamples.FirstOrDefault(n => string.Equals(n, file, StringComparison.OrdinalIgnoreCase)) ?? file;
-        track.KeyFiles.TryGetValue(m.Key, out var old);
-        var changed = old != file || m.FolderName is not null && track.FolderName != m.FolderName;
-        if (m.FolderName is not null) track.FolderName = m.FolderName;
-        if (changed) { if (file is null) track.KeyFiles.Remove(m.Key); else track.KeyFiles[m.Key] = file; }
-        InstrumentResult(m.Context, m.RequestId, changed, null);
-    }
 
-    private void MapInstrumentKeys(SetInstrumentalKeyMappingsRequestedMessage m)
-    {
-        if (ActiveInstrument(m.Context) is not { } track) return;
-        var error = SamplePaths.GetFolderNameError(m.FolderName);
-        if (error is null && tracks.OfType<InstrumentalTrack>().Any(t => t != track && string.Equals(t.FolderName, m.FolderName, StringComparison.OrdinalIgnoreCase))) error = "This sample folder belongs to another track.";
-        if (error is null && m.Mappings.Any(pair => !InstrumentalKeys.TryGetIndex(pair.Key, out _) || SamplePaths.GetRelativePathError(pair.Value) is not null)) error = "Choose valid keys and sample paths.";
-        if (error is not null) { InstrumentResult(m.Context, m.RequestId, false, null, error); return; }
-        var mappings = m.Mappings.ToDictionary(pair => pair.Key, pair => pair.Value.Replace('\\', '/'));
-        var changed = track.FolderName != m.FolderName || mappings.Any(pair => !track.KeyFiles.TryGetValue(pair.Key, out var old) || old != pair.Value);
-        track.FolderName = m.FolderName;
-        foreach (var pair in mappings) track.KeyFiles[pair.Key] = pair.Value;
-        InstrumentResult(m.Context, m.RequestId, changed, null);
-    }
 }

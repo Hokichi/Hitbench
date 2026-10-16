@@ -1,4 +1,4 @@
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using osuHitsounder.Core.Entities;
 using osuHitsounder.Services;
@@ -37,7 +37,6 @@ public partial class WorkstationPageVM(
     private Task notifications = Task.CompletedTask;
     private (long Generation, AudioPlaybackSnapshot Playback)? presentedPlayback;
     private readonly PlaybackVolumeSettings playbackVolumes = playbackVolumes ?? new PlaybackVolumeSettings();
-    private readonly ObservableCollection<Track> tracks = [];
     private readonly ObservableCollection<string> availableSamples = [];
     private readonly ObservableCollection<string> sampleTrackFiles = [];
     private string? projectPath;
@@ -45,10 +44,6 @@ public partial class WorkstationPageVM(
     private Task<IReadOnlyList<string>>? activeImport;
     private Exception? lastSaveError;
     private bool importBusy;
-    private TimeSpan? lastGridTarget;
-    private TimeSpan? lastGridAudioPosition;
-    private bool removalBusy;
-    private Task? activeRemoval;
     private readonly Dictionary<Sample, long> sampleEventIds = new(ReferenceEqualityComparer.Instance);
     private CancellationTokenSource? playbackUpdateCancellation;
     private Task playbackUpdates = Task.CompletedTask;
@@ -57,20 +52,8 @@ public partial class WorkstationPageVM(
     private long nextSampleEventId = 1;
     private int samplesRevision;
     private string? playbackErrorMessage;
-    private Track? selectedTrack;
-    public Track? SelectedTrack
-    {
-        get => selectedTrack;
-        set
-        {
-            if (value is not null && !tracks.Contains(value)) return;
-            if (SetProperty(ref selectedTrack, value)) NotifyNodeEditingState();
-        }
-    }
-    public ObservableCollection<Track> Tracks => tracks;
     public ObservableCollection<string> SampleFiles => sampleTrackFiles;
     public int SamplesRevision => samplesRevision;
-    public int Subdivision => new[] { 1, 2, 3, 4, 5, 6, 8, 12, 16 }[SelectedSubdivisionIndex];
     public bool CanEditTracks => Project is not null && IsInteractionReady;
     public bool CanImportSample => !controlPointsBusy && !folderRenamesActive && !instrumentBusy && !managingSamples && !IsNodeEditBusy && CanEditTracks && !importBusy && !removalBusy &&
         sampleFiles is not null && sampleDialog is not null && projectPath is not null;
@@ -79,25 +62,16 @@ public partial class WorkstationPageVM(
     public bool CanPlaceSamples => !folderRenamesActive && !managingSamples && !IsNodeEditBusy && CanEditTracks && Waveform is not null && !importBusy && !removalBusy;
     public bool HasPendingSaves => controlPointsBusy || folderRenamesActive || instrumentBusy || managingSamples || IsNodeEditBusy || pendingZoom is not null || importBusy || removalBusy || !saveTail.IsCompleted || lastSaveError is not null;
     [ObservableProperty] private string? saveError;
-    [ObservableProperty] private bool scrollWithMarker = true;
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsSelectionMode))]
-    private bool isAdditionMode = true;
-    public bool IsSelectionMode => !IsAdditionMode;
     private CancellationTokenSource? loadCancellation;
     private Task? activeLoad;
     private int loadGeneration;
     private bool deactivated;
     private Task? deactivation;
     private PlaybackMarkerClock markerClock = new([], []);
-    private TimeSpan playbackInterval;
-    public TimeSpan PlaybackInterval => playbackInterval;
 
 
     [ObservableProperty] private WaveformData? waveform;
     [ObservableProperty] private ProjectData? project;
-    [ObservableProperty] private TimeSpan position;
-    [ObservableProperty] private string elapsedText = "00:00.0";
     [ObservableProperty] private ProjectLoadPhase loadPhase = ProjectLoadPhase.PreparingData;
     public int LoadGeneration => loadGeneration;
     public bool IsLoading => LoadPhase is ProjectLoadPhase.PreparingData or ProjectLoadPhase.AwaitingPresentation;
@@ -120,68 +94,11 @@ public partial class WorkstationPageVM(
         if (!deactivated && generation == loadGeneration && LoadPhase == ProjectLoadPhase.AwaitingPresentation)
             LoadPhase = ProjectLoadPhase.Ready;
     }
-    [ObservableProperty] private bool isPlaying;
     [ObservableProperty] private string? errorMessage;
     [ObservableProperty] private string? playbackWarning;
-    private int songVolume = 100;
     private double zoomFactor = 32;
-    private double trackHeight = 36;
-    private double minimumTrackHeight = 36;
-    private bool areTracksCollapsed;
-    private double expandedTrackGrowth;
-    public bool AreTracksCollapsed => areTracksCollapsed;
-    public double MinimumTrackHeight => minimumTrackHeight;
-    public double MaximumTrackHeight => minimumTrackHeight + (AreTracksCollapsed ? 0 : 108);
-    private int selectedSubdivisionIndex = 3;
 
     public double ZoomFactor => zoomFactor;
-    public double TrackHeight => trackHeight;
-    public int SongVolume
-    {
-        get => songVolume;
-        set
-        {
-            var next = Math.Clamp(value, 0, 100);
-            if (!SetProperty(ref songVolume, next)) return;
-            audioService.SetSongVolume(next);
-        }
-    }
-    public int ApplicationVolume
-    {
-        get => playbackVolumes.ApplicationVolume;
-        set
-        {
-            var previous = playbackVolumes.ApplicationVolume;
-            playbackVolumes.ApplicationVolume = value;
-            if (previous == playbackVolumes.ApplicationVolume) return;
-            OnPropertyChanged();
-            audioService.SetApplicationVolume(playbackVolumes.ApplicationVolume);
-        }
-    }
-    public int SamplesVolume
-    {
-        get => playbackVolumes.SamplesVolume;
-        set
-        {
-            var previous = playbackVolumes.SamplesVolume;
-            playbackVolumes.SamplesVolume = value;
-            if (previous == playbackVolumes.SamplesVolume) return;
-            OnPropertyChanged();
-            audioService.SetSamplesVolume(playbackVolumes.SamplesVolume);
-        }
-    }
-    public int SelectedSubdivisionIndex
-    {
-        get => selectedSubdivisionIndex;
-        set
-        {
-            var next = Math.Clamp(value, 0, 8);
-            if (!SetProperty(ref selectedSubdivisionIndex, next)) return;
-            IncreaseSubdivisionCommand.NotifyCanExecuteChanged();
-            DecreaseSubdivisionCommand.NotifyCanExecuteChanged();
-            OnPropertyChanged(nameof(Subdivision));
-        }
-    }
     public bool CanPlay => Waveform is not null && IsInteractionReady;
     public bool CanZoom => Waveform is not null && IsInteractionReady;
 
@@ -267,138 +184,6 @@ public partial class WorkstationPageVM(
         }
     }
 
-    public void RefreshPlayback()
-    {
-        if (deactivated) return;
-        var current = playback.Latest;
-        if (presentedPlayback == current) return;
-        presentedPlayback = current;
-        var snapshot = current.Playback;
-        PlaybackWarning = snapshot.Warning;
-        if (markerClock.IsValid)
-            SetProperty(ref playbackInterval, markerClock.GetInterval(snapshot.Position), nameof(PlaybackInterval));
-        Position = snapshot.Position;
-        IsPlaying = snapshot.IsPlaying;
-        ElapsedText = $"{(int)Position.TotalMinutes:00}:{Position.Seconds:00}.{Position.Milliseconds:000}";
-        if (!string.IsNullOrWhiteSpace(snapshot.Error)) ErrorMessage = snapshot.Error;
-    }
-
-    private void OnPlaybackStateChanged()
-    {
-        lock (notificationLock) notifications = Task.WhenAll(notifications, ApplyPlaybackStateAsync());
-    }
-
-    private async Task ApplyPlaybackStateAsync()
-    {
-        try { await uiScheduler.InvokeAsync(() => { if (!deactivated) RefreshPlayback(); }, CancellationToken.None); }
-        catch (Exception error) { System.Diagnostics.Trace.TraceError("Playback presentation failed: {0}", error); }
-    }
-
-    [RelayCommand(CanExecute = nameof(CanUseTransport))]
-    private async Task PlayPauseAsync()
-    {
-        if (!CanUseTransport()) return;
-        if (audioService.GetSnapshot().IsPlaying)
-        {
-            try { await playback.PauseAsync(CancellationToken.None); }
-            catch (Exception error) { if (!deactivated) ErrorMessage = error.Message; return; }
-            // Intentional pause preserves consumed position, unlike a device-stopped session.
-            IsPlaying = false;
-        }
-        else
-        {
-            if (!markerClock.IsValid)
-            {
-                ErrorMessage = "Playback requires valid BPM timing data. Reload a beatmap with timing points.";
-                return;
-            }
-            pendingPlayCancellation?.Cancel();
-            using var cancellation = new CancellationTokenSource();
-            pendingPlayCancellation = cancellation;
-            var generation = loadGeneration;
-            try
-            {
-                Task pending;
-                do
-                {
-                    pending = playbackUpdates;
-                    await pending.WaitAsync(cancellation.Token);
-                } while (!ReferenceEquals(pending, playbackUpdates));
-                if (cancellation.IsCancellationRequested || deactivated || generation != loadGeneration ||
-                    !CanPlay || playbackPreparationFailed) return;
-                if (Waveform is not null && audioService.GetSnapshot().Position >= Waveform.Duration)
-                {
-                    await playback.StopAsync(cancellation.Token);
-                }
-                await playback.PlayAsync(cancellation.Token);
-            }
-            catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { return; }
-            catch (Exception error) { ErrorMessage = error.Message; return; }
-            finally
-            {
-                if (ReferenceEquals(pendingPlayCancellation, cancellation)) pendingPlayCancellation = null;
-            }
-        }
-        RefreshPlayback();
-    }
-
-    [RelayCommand(CanExecute = nameof(CanUseTransport))]
-    private async Task StopAsync()
-    {
-        if (!CanUseTransport()) return;
-        pendingPlayCancellation?.Cancel();
-        lastGridTarget = null;
-        lastGridAudioPosition = null;
-        try { await playback.StopAsync(CancellationToken.None); }
-        catch (Exception error) { if (!deactivated) ErrorMessage = error.Message; return; }
-        RefreshPlayback();
-    }
-
-    [RelayCommand(CanExecute = nameof(CanUseTransport))]
-    private async Task SeekAsync(TimeSpan position)
-    {
-        if (!CanUseTransport()) return;
-        pendingPlayCancellation?.Cancel();
-        lastGridTarget = null;
-        lastGridAudioPosition = null;
-        try { await playback.SeekAsync(position, CancellationToken.None); }
-        catch (Exception error) { if (!deactivated) ErrorMessage = error.Message; return; }
-        RefreshPlayback();
-    }
-
-    [RelayCommand(CanExecute = nameof(CanUseTransport))]
-    private Task NextGridLineAsync() => SeekAdjacentGridLineAsync(true, Subdivision);
-
-    [RelayCommand(CanExecute = nameof(CanUseTransport))]
-    private Task PreviousGridLineAsync() => SeekAdjacentGridLineAsync(false, Subdivision);
-
-    [RelayCommand(CanExecute = nameof(CanUseTransport))]
-    private Task NextWholeBeatAsync() => SeekAdjacentGridLineAsync(true, 1);
-
-    [RelayCommand(CanExecute = nameof(CanUseTransport))]
-    private Task PreviousWholeBeatAsync() => SeekAdjacentGridLineAsync(false, 1);
-
-    private async Task SeekAdjacentGridLineAsync(bool forward, int subdivision)
-    {
-        if (!CanUseTransport() || Project is null || Waveform is null) return;
-        var position = audioService.GetSnapshot().Position;
-        if (lastGridTarget is { } lastTarget && lastGridAudioPosition is { } lastAudioPosition &&
-            position >= TimeSpan.FromTicks(Math.Min(lastAudioPosition.Ticks, lastTarget.Ticks)) &&
-            position <= TimeSpan.FromTicks(Math.Max(lastAudioPosition.Ticks, lastTarget.Ticks)))
-            position = lastTarget;
-        var target = BeatGridCalculator.GetAdjacentPosition(Project.Offsets, Project.BPMs,
-            subdivision, position, Waveform.Duration, forward);
-        if (target is not null)
-        {
-            await SeekAsync(target.Value);
-            if (audioService.GetSnapshot().Error is null)
-            {
-                lastGridTarget = target.Value;
-                lastGridAudioPosition = Position;
-            }
-        }
-    }
-
     [RelayCommand(CanExecute = nameof(CanZoomIn))]
     private void ZoomIn()
     {
@@ -411,197 +196,6 @@ public partial class WorkstationPageVM(
     {
         if (!CanZoomOut()) return;
         SetZoom((int)ZoomFactor - 1);
-    }
-
-    [RelayCommand(CanExecute = nameof(CanIncreaseTrackHeight))]
-    private void IncreaseTrackHeight() => SetTrackHeight(trackHeight + 6);
-
-    [RelayCommand(CanExecute = nameof(CanDecreaseTrackHeight))]
-    private void DecreaseTrackHeight() => SetTrackHeight(trackHeight - 6);
-
-    [RelayCommand(CanExecute = nameof(CanEditTracks))]
-    private void ToggleTracksCollapsed()
-    {
-        if (!CanEditTracks) return;
-        ApplyTrackCollapse(!AreTracksCollapsed);
-        Project!.IsCollapsed = AreTracksCollapsed;
-        QueueSave();
-    }
-
-    private void ApplyTrackCollapse(bool collapsed)
-    {
-        if (!AreTracksCollapsed) expandedTrackGrowth = Math.Clamp(trackHeight - minimumTrackHeight, 0, 108);
-        SetProperty(ref areTracksCollapsed, collapsed, nameof(AreTracksCollapsed));
-        OnPropertyChanged(nameof(MaximumTrackHeight));
-        SetProperty(ref trackHeight, minimumTrackHeight + (AreTracksCollapsed ? 0 : expandedTrackGrowth), nameof(TrackHeight));
-        NotifyCommandState();
-    }
-
-    [RelayCommand(CanExecute = nameof(CanIncreaseSubdivision))]
-    private void IncreaseSubdivision()
-    {
-        if (!CanIncreaseSubdivision()) return;
-        SelectedSubdivisionIndex++;
-    }
-
-    [RelayCommand(CanExecute = nameof(CanDecreaseSubdivision))]
-    private void DecreaseSubdivision()
-    {
-        if (!CanDecreaseSubdivision()) return;
-        SelectedSubdivisionIndex--;
-    }
-
-    [RelayCommand(CanExecute = nameof(CanAddTrack))]
-    private void AddSampleTrack()
-    {
-        if (!CanAddTrack) return;
-        var track = new Track { SelectedSampleFileName = sampleTrackFiles[0] };
-        Project!.Tracks.Add(track);
-        tracks.Add(track);
-        SelectedTrack = track;
-        QueueSave();
-    }
-
-    [RelayCommand(CanExecute = nameof(CanAddInstrumentalTrack))]
-    private void AddPianoTrack()
-    {
-        if (!CanAddInstrumentalTrack) return;
-        var track=new InstrumentalTrack();
-        Project!.Tracks.Add(track); tracks.Add(track); SelectedTrack=track; QueueSave();
-    }
-
-    [RelayCommand]
-    private Task RemoveTrackAsync(Track track)
-    {
-        if (!CanRemoveTrack || !tracks.Contains(track)) return Task.CompletedTask;
-        activeRemoval = RemoveTrackCoreAsync(track);
-        return activeRemoval;
-    }
-
-    private async Task RemoveTrackCoreAsync(Track track)
-    {
-        var project = Project;
-        var generation = loadGeneration;
-        removalBusy = true;
-        NotifyHistoryState();
-        OnPropertyChanged(nameof(CanRemoveTrack));
-        OnPropertyChanged(nameof(CanImportSample));
-        OnPropertyChanged(nameof(CanPlaceSamples));
-        try
-        {
-            if ((track.Samples.Count > 0 || track is InstrumentalTrack { Notes.Count: >0 }) && !await trackRemovalDialog!.ConfirmAsync(loadCancellation?.Token ?? CancellationToken.None)) return;
-            if (deactivated || generation != loadGeneration || !ReferenceEquals(Project, project) ||
-                project is null || !tracks.Contains(track)) return;
-            var removedIndex = tracks.IndexOf(track);
-            var wasSelected = ReferenceEquals(SelectedTrack, track);
-            project.Tracks.Remove(track);
-            tracks.Remove(track);
-            if (wasSelected) SelectedTrack = tracks.Count == 0 ? null : tracks[Math.Min(removedIndex, tracks.Count - 1)];
-            history.RemoveTrack(track); if (track is InstrumentalTrack instrument) instrumentHistories.Remove(instrument);
-            PruneNodeSelection();
-            NotifyHistoryState();
-            QueuePlaybackUpdate();
-            QueueSave();
-        }
-        catch (OperationCanceledException) { }
-        catch (Exception error) { ErrorMessage = error.Message; }
-        finally
-        {
-            removalBusy = false;
-            NotifyHistoryState();
-            OnPropertyChanged(nameof(CanRemoveTrack));
-            OnPropertyChanged(nameof(CanImportSample));
-            OnPropertyChanged(nameof(CanPlaceSamples));
-        }
-    }
-
-    public void SelectSample(Track track, string fileName)
-    {
-        if (track is InstrumentalTrack) return;
-        if (!CanEditTracks || !tracks.Contains(track) || string.IsNullOrWhiteSpace(fileName) ||
-            sampleFiles is not null && !sampleTrackFiles.Any(name => string.Equals(name, fileName, StringComparison.OrdinalIgnoreCase))) return;
-        if (string.Equals(track.SelectedSampleFileName, fileName, StringComparison.OrdinalIgnoreCase)) return;
-        track.SelectedSampleFileName = sampleTrackFiles.FirstOrDefault(name =>
-            string.Equals(name, fileName, StringComparison.OrdinalIgnoreCase)) ?? fileName;
-        foreach (var sample in track.Samples) sample.FileName = track.SelectedSampleFileName;
-        samplesRevision++;
-        OnPropertyChanged(nameof(SamplesRevision));
-        QueuePlaybackUpdate();
-        QueueSave();
-    }
-
-    public bool PlaceSample(Track track, double leftBoundaryMilliseconds)
-    {
-        if (!CanPlaceSamples || !CanEditTrackGrid(track) || !double.IsFinite(leftBoundaryMilliseconds) ||
-            leftBoundaryMilliseconds < 0 || leftBoundaryMilliseconds >= Waveform!.Duration.TotalMilliseconds ||
-            leftBoundaryMilliseconds > int.MaxValue) return false;
-        var timestamp = (int)Math.Round(leftBoundaryMilliseconds, MidpointRounding.AwayFromZero);
-        var existing = track.Samples.LastOrDefault(node => node.Timestamp == timestamp);
-        if (existing is not null) return SelectNode(track, existing, false);
-        if (!IsAdditionMode) return false;
-        var fileName = sampleTrackFiles.FirstOrDefault(name =>
-            string.Equals(name, track.SelectedSampleFileName, StringComparison.OrdinalIgnoreCase));
-        if (fileName is null) return false;
-        var sample = new Sample
-        {
-            FileName = fileName,
-            Volume = 100,
-            Timestamp = (int)Math.Round(leftBoundaryMilliseconds, MidpointRounding.AwayFromZero)
-        };
-        track.Samples.Add(sample);
-        history.RecordPlacement(track, sample, track.Samples.Count - 1);
-        PublishNodeChange();
-        SelectNode(track, sample, false);
-        return true;
-    }
-
-    public bool RemoveSample(Track track, Sample sample)
-    {
-        if (!CanPlaceSamples || !CanEditTrackGrid(track)) return false;
-        var index = track.Samples.FindIndex(node => ReferenceEquals(node, sample));
-        if (index < 0) return false;
-        track.Samples.RemoveAt(index);
-        history.RecordRemoval(track, sample, index);
-        PublishNodeChange();
-        return true;
-    }
-
-    public void SetTrackName(Track track, string name)
-    {
-        if (!CanEditTracks || !tracks.Contains(track)) return;
-        if (track is InstrumentalTrack instrument && instrument.FolderName.Length > 0 && sampleFiles is not null)
-        { QueueInstrumentFolderRename(instrument, name); return; }
-        if (string.Equals(track.Name, name, StringComparison.Ordinal)) return;
-        track.Name = name;
-        QueueSave();
-        instrumentRevision++; PublishInstrumentSnapshot();
-    }
-
-    public void SetTrackSampleType(Track track, osuHitsounder.Core.Enums.SampleType value)
-    {
-        if (track is InstrumentalTrack) return;
-        if (!CanEditTracks || !tracks.Contains(track) || !Enum.IsDefined(value) || track.SampleType == value) return;
-        track.SampleType = value;
-        QueueSave();
-    }
-
-    public void SetTrackAddition(Track track, string value)
-    {
-        if (track is InstrumentalTrack) return;
-        if (!CanEditTracks || !tracks.Contains(track) || !Track.AdditionOptions.Contains(value) || track.Addition == value) return;
-        track.Addition = value;
-        QueueSave();
-    }
-
-    public void SetTrackVolume(Track track, int volume)
-    {
-        if (!CanEditTracks || !tracks.Contains(track)) return;
-        var next = Math.Clamp(volume, 5, 100);
-        if (track.Volume == next) return;
-        track.Volume = next;
-        QueuePlaybackUpdate();
-        QueueSave();
-        instrumentRevision++; PublishInstrumentSnapshot();
     }
 
     [RelayCommand(CanExecute = nameof(CanImportSample))]
@@ -945,19 +539,14 @@ public partial class WorkstationPageVM(
                 Project = source.Project;
                 PublishControlPointTimeline();
                 RestoreZoom(Project.WorkstationZoom);
-                ApplyTrackCollapse(Project.IsCollapsed);
+                InitializeTrackPresentation(Project);
                 markerClock = new PlaybackMarkerClock(Project.Offsets, Project.BPMs);
                 SetProperty(ref playbackInterval, markerClock.IsValid ? markerClock.GetInterval(TimeSpan.Zero) : TimeSpan.Zero,
                     nameof(PlaybackInterval));
                 if (!markerClock.IsValid)
                     ErrorMessage = "Playback requires valid BPM timing data. Reload a beatmap with timing points.";
                 Waveform = waveform;
-                tracks.Clear();
-                foreach (var track in source.Project.Tracks)
-                {
-                    if(track is not InstrumentalTrack) track.SelectedSampleFileName ??= track.Samples.FirstOrDefault()?.FileName;
-                    tracks.Add(track);
-                }
+                InitializeLoadedTracks(source.Project);
                 if (messenger is not null)
                 {
                     messenger.UnregisterAll(this);
@@ -967,6 +556,7 @@ public partial class WorkstationPageVM(
                     messenger.Register<ManageSamplesRequestedMessage>(this, (_, _) => ManageSamplesCommand.Execute(null));
                     messenger.Register<ProjectSamplesChangedMessage>(this, (_, change) => ReceiveSampleChange(change));
                     RegisterInstrumentMessages();
+                    RegisterKeyMappingMessages();
                     RegisterControlPointMessages();
                 }
             });
@@ -1010,34 +600,11 @@ public partial class WorkstationPageVM(
             if (generation == loadGeneration && !deactivated) action();
         }, token);
 
-    private bool CanUseTransport() => CanPlay && !instrumentBusy;
-    private bool CanIncreaseTrackHeight() => CanZoom && TrackHeight < MaximumTrackHeight;
-    private bool CanDecreaseTrackHeight() => CanZoom && TrackHeight > MinimumTrackHeight;
-    private bool CanIncreaseSubdivision() => IsInteractionReady && SelectedSubdivisionIndex < 8;
-    private bool CanDecreaseSubdivision() => IsInteractionReady && SelectedSubdivisionIndex > 0;
-
-    private void SetTrackHeight(double value)
-    {
-        if (!CanZoom) return;
-        if (SetProperty(ref trackHeight, Math.Clamp(value, MinimumTrackHeight, MaximumTrackHeight), nameof(TrackHeight)))
-            NotifyCommandState();
-    }
-
-    public void SetTrackHeightMinimum(double minimum)
-    {
-        if (deactivated || !double.IsFinite(minimum) || minimum <= 0 || minimum == minimumTrackHeight) return;
-        var growth = AreTracksCollapsed ? 0 : Math.Clamp(trackHeight - minimumTrackHeight, 0, 108);
-        minimumTrackHeight = minimum;
-        OnPropertyChanged(nameof(MinimumTrackHeight));
-        OnPropertyChanged(nameof(MaximumTrackHeight));
-        SetProperty(ref trackHeight, minimum + growth, nameof(TrackHeight));
-        NotifyCommandState();
-    }
-
     private void NotifyCommandState()
     {
         NotifyNodeEditingState();
         NotifyHistoryState();
+        NotifyTrackCommands();
         PlayPauseCommand.NotifyCanExecuteChanged();
         StopCommand.NotifyCanExecuteChanged();
         SeekCommand.NotifyCanExecuteChanged();
@@ -1047,13 +614,8 @@ public partial class WorkstationPageVM(
         PreviousWholeBeatCommand.NotifyCanExecuteChanged();
         ZoomInCommand.NotifyCanExecuteChanged();
         ZoomOutCommand.NotifyCanExecuteChanged();
-        IncreaseTrackHeightCommand.NotifyCanExecuteChanged();
-        DecreaseTrackHeightCommand.NotifyCanExecuteChanged();
-        ToggleTracksCollapsedCommand.NotifyCanExecuteChanged();
         IncreaseSubdivisionCommand.NotifyCanExecuteChanged();
         DecreaseSubdivisionCommand.NotifyCanExecuteChanged();
-        AddSampleTrackCommand.NotifyCanExecuteChanged();
-        AddPianoTrackCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(CanPlay));
         OnPropertyChanged(nameof(CanZoom));
         OnPropertyChanged(nameof(CanPlaceSamples));

@@ -1,0 +1,228 @@
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using osuHitsounder.Core.Entities;
+using osuHitsounder.Services;
+using osuHitsounder.Services.FileSystem;
+using osuHitsounder.Services.Ui;
+using osuHitsounder.Services.Dialogs;
+using osuHitsounder.Services.ProjectFiles;
+using osuHitsounder.Resources.Messages;
+using CommunityToolkit.Mvvm.Messaging;
+using System.Collections.ObjectModel;
+using System.IO;
+
+using osuHitsounder.Core.Constants;
+using osuHitsounder.Resources.DataModels;
+
+namespace osuHitsounder.ViewModels.Shell;
+
+public partial class WorkstationPageVM
+{
+    public void RefreshPlayback()
+    {
+        if (deactivated) return;
+        var current = playback.Latest;
+        if (presentedPlayback == current) return;
+        presentedPlayback = current;
+        var snapshot = current.Playback;
+        PlaybackWarning = snapshot.Warning;
+        if (markerClock.IsValid)
+            SetProperty(ref playbackInterval, markerClock.GetInterval(snapshot.Position), nameof(PlaybackInterval));
+        Position = snapshot.Position;
+        IsPlaying = snapshot.IsPlaying;
+        ElapsedText = $"{(int)Position.TotalMinutes:00}:{Position.Seconds:00}.{Position.Milliseconds:000}";
+        if (!string.IsNullOrWhiteSpace(snapshot.Error)) ErrorMessage = snapshot.Error;
+    }
+
+    private void OnPlaybackStateChanged()
+    {
+        lock (notificationLock) notifications = Task.WhenAll(notifications, ApplyPlaybackStateAsync());
+    }
+
+    private async Task ApplyPlaybackStateAsync()
+    {
+        try { await uiScheduler.InvokeAsync(() => { if (!deactivated) RefreshPlayback(); }, CancellationToken.None); }
+        catch (Exception error) { System.Diagnostics.Trace.TraceError("Playback presentation failed: {0}", error); }
+    }
+
+    [RelayCommand(CanExecute = nameof(CanUseTransport))]
+    private async Task PlayPauseAsync()
+    {
+        if (!CanUseTransport()) return;
+        if (audioService.GetSnapshot().IsPlaying)
+        {
+            try { await playback.PauseAsync(CancellationToken.None); }
+            catch (Exception error) { if (!deactivated) ErrorMessage = error.Message; return; }
+            // Intentional pause preserves consumed position, unlike a device-stopped session.
+            IsPlaying = false;
+        }
+        else
+        {
+            if (!markerClock.IsValid)
+            {
+                ErrorMessage = "Playback requires valid BPM timing data. Reload a beatmap with timing points.";
+                return;
+            }
+            pendingPlayCancellation?.Cancel();
+            using var cancellation = new CancellationTokenSource();
+            pendingPlayCancellation = cancellation;
+            var generation = loadGeneration;
+            try
+            {
+                Task pending;
+                do
+                {
+                    pending = playbackUpdates;
+                    await pending.WaitAsync(cancellation.Token);
+                } while (!ReferenceEquals(pending, playbackUpdates));
+                if (cancellation.IsCancellationRequested || deactivated || generation != loadGeneration ||
+                    !CanPlay || playbackPreparationFailed) return;
+                if (Waveform is not null && audioService.GetSnapshot().Position >= Waveform.Duration)
+                {
+                    await playback.StopAsync(cancellation.Token);
+                }
+                await playback.PlayAsync(cancellation.Token);
+            }
+            catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { return; }
+            catch (Exception error) { ErrorMessage = error.Message; return; }
+            finally
+            {
+                if (ReferenceEquals(pendingPlayCancellation, cancellation)) pendingPlayCancellation = null;
+            }
+        }
+        RefreshPlayback();
+    }
+
+    [RelayCommand(CanExecute = nameof(CanUseTransport))]
+    private async Task StopAsync()
+    {
+        if (!CanUseTransport()) return;
+        pendingPlayCancellation?.Cancel();
+        lastGridTarget = null;
+        lastGridAudioPosition = null;
+        try { await playback.StopAsync(CancellationToken.None); }
+        catch (Exception error) { if (!deactivated) ErrorMessage = error.Message; return; }
+        RefreshPlayback();
+    }
+
+    [RelayCommand(CanExecute = nameof(CanUseTransport))]
+    private async Task SeekAsync(TimeSpan position)
+    {
+        if (!CanUseTransport()) return;
+        pendingPlayCancellation?.Cancel();
+        lastGridTarget = null;
+        lastGridAudioPosition = null;
+        try { await playback.SeekAsync(position, CancellationToken.None); }
+        catch (Exception error) { if (!deactivated) ErrorMessage = error.Message; return; }
+        RefreshPlayback();
+    }
+
+    [RelayCommand(CanExecute = nameof(CanUseTransport))]
+    private Task NextGridLineAsync() => SeekAdjacentGridLineAsync(true, Subdivision);
+
+    [RelayCommand(CanExecute = nameof(CanUseTransport))]
+    private Task PreviousGridLineAsync() => SeekAdjacentGridLineAsync(false, Subdivision);
+
+    [RelayCommand(CanExecute = nameof(CanUseTransport))]
+    private Task NextWholeBeatAsync() => SeekAdjacentGridLineAsync(true, 1);
+
+    [RelayCommand(CanExecute = nameof(CanUseTransport))]
+    private Task PreviousWholeBeatAsync() => SeekAdjacentGridLineAsync(false, 1);
+
+    private async Task SeekAdjacentGridLineAsync(bool forward, int subdivision)
+    {
+        if (!CanUseTransport() || Project is null || Waveform is null) return;
+        var position = audioService.GetSnapshot().Position;
+        if (lastGridTarget is { } lastTarget && lastGridAudioPosition is { } lastAudioPosition &&
+            position >= TimeSpan.FromTicks(Math.Min(lastAudioPosition.Ticks, lastTarget.Ticks)) &&
+            position <= TimeSpan.FromTicks(Math.Max(lastAudioPosition.Ticks, lastTarget.Ticks)))
+            position = lastTarget;
+        var target = BeatGridCalculator.GetAdjacentPosition(Project.Offsets, Project.BPMs,
+            subdivision, position, Waveform.Duration, forward);
+        if (target is not null)
+        {
+            await SeekAsync(target.Value);
+            if (audioService.GetSnapshot().Error is null)
+            {
+                lastGridTarget = target.Value;
+                lastGridAudioPosition = Position;
+            }
+        }
+    }
+
+    [RelayCommand(CanExecute = nameof(CanIncreaseSubdivision))]
+    private void IncreaseSubdivision()
+    {
+        if (!CanIncreaseSubdivision()) return;
+        SelectedSubdivisionIndex++;
+    }
+
+    [RelayCommand(CanExecute = nameof(CanDecreaseSubdivision))]
+    private void DecreaseSubdivision()
+    {
+        if (!CanDecreaseSubdivision()) return;
+        SelectedSubdivisionIndex--;
+    }
+
+    public int SongVolume
+    {
+        get => songVolume;
+        set
+        {
+            var next = Math.Clamp(value, 0, 100);
+            if (!SetProperty(ref songVolume, next)) return;
+            audioService.SetSongVolume(next);
+        }
+    }
+    public int ApplicationVolume
+    {
+        get => playbackVolumes.ApplicationVolume;
+        set
+        {
+            var previous = playbackVolumes.ApplicationVolume;
+            playbackVolumes.ApplicationVolume = value;
+            if (previous == playbackVolumes.ApplicationVolume) return;
+            OnPropertyChanged();
+            audioService.SetApplicationVolume(playbackVolumes.ApplicationVolume);
+        }
+    }
+    public int SamplesVolume
+    {
+        get => playbackVolumes.SamplesVolume;
+        set
+        {
+            var previous = playbackVolumes.SamplesVolume;
+            playbackVolumes.SamplesVolume = value;
+            if (previous == playbackVolumes.SamplesVolume) return;
+            OnPropertyChanged();
+            audioService.SetSamplesVolume(playbackVolumes.SamplesVolume);
+        }
+    }
+    public int SelectedSubdivisionIndex
+    {
+        get => selectedSubdivisionIndex;
+        set
+        {
+            var next = Math.Clamp(value, 0, 8);
+            if (!SetProperty(ref selectedSubdivisionIndex, next)) return;
+            IncreaseSubdivisionCommand.NotifyCanExecuteChanged();
+            DecreaseSubdivisionCommand.NotifyCanExecuteChanged();
+            OnPropertyChanged(nameof(Subdivision));
+        }
+    }
+    private bool CanUseTransport() => CanPlay && !instrumentBusy;
+    private bool CanIncreaseSubdivision() => IsInteractionReady && SelectedSubdivisionIndex < 8;
+    private bool CanDecreaseSubdivision() => IsInteractionReady && SelectedSubdivisionIndex > 0;
+
+    private int songVolume = 100;
+    private int selectedSubdivisionIndex = 3;
+    public int Subdivision => new[] { 1, 2, 3, 4, 5, 6, 8, 12, 16 }[SelectedSubdivisionIndex];
+    [ObservableProperty] private bool scrollWithMarker = true;
+    [ObservableProperty] private TimeSpan position;
+    [ObservableProperty] private string elapsedText = "00:00.0";
+    [ObservableProperty] private bool isPlaying;
+    private TimeSpan? lastGridTarget;
+    private TimeSpan? lastGridAudioPosition;
+    private TimeSpan playbackInterval;
+    public TimeSpan PlaybackInterval => playbackInterval;
+}
