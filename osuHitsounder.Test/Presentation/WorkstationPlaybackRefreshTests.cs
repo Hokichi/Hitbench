@@ -26,7 +26,7 @@ public class WorkstationPlaybackRefreshTests
     {
         var checkBox = page.FindName("ScrollWithMarkerCheckBox") as BalloonCheckBox;
         Assert.That(checkBox, Is.Not.Null); Assert.That(checkBox!.IsChecked, Is.True);
-        Assert.That(checkBox.Style, Is.SameAs(page.FindResource("OHsWorkstationToolbarFollowStyle")));
+        Assert.That(checkBox.Style, Is.SameAs(page.FindResource("OHsWorkstationScrollWithMarkerStyle")));
         Assert.That(checkBox.IsTabStop, Is.False);
         checkBox.IsChecked = false; Assert.That(vm.ScrollWithMarker, Is.False);
         UiTestPump.Run(vm.PlayPauseCommand.ExecuteAsync(null));

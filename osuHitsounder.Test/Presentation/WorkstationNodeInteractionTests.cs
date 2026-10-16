@@ -423,7 +423,7 @@ public class WorkstationNodeInteractionTests
         Assert.That(page.FindName("TrackList"), Is.TypeOf<ListBox>());
         var list = (ListBox)page.FindName("TrackList");
         Assert.That(list.SelectionMode, Is.EqualTo(SelectionMode.Single));
-        Assert.That(list.Style, Is.SameAs(page.FindResource("OHsWorkstationTrackListStyle")));
+        Assert.That(list.Style, Is.SameAs(page.FindResource("BaseListBoxStyle")));
     }
 
     private static (WorkstationPage Page, WorkstationPageVM Vm, Sample Node, InMemoryView View) CreateEditor(int trackCount = 2, int bpm = 120, int offset = 0)

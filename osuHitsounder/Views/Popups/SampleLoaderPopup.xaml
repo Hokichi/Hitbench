@@ -6,22 +6,10 @@
     xmlns:h="clr-namespace:osuHitsounder.Resources.Helpers"
     Width="960"
     Height="640"
-    Mode="None"
     PopupTitle="{Binding PopupTitle, Mode=OneWay}"
     SizeToContent="Manual">
     <c:BasePopup.Resources>
-        <Style
-            x:Key="SampleLoaderTextStyle"
-            BasedOn="{StaticResource BaseTextBlockStyle}"
-            TargetType="TextBlock">
-            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
-            <Setter Property="TextWrapping" Value="Wrap" />
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
-                    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
+
         <Style
             x:Key="SampleLoaderSelectedFileDetailsStyle"
             BasedOn="{StaticResource BaseGridStyle}"
@@ -49,7 +37,7 @@
         </Style>
         <Style
             x:Key="SampleLoaderCaptionStyle"
-            BasedOn="{StaticResource SampleLoaderTextStyle}"
+            BasedOn="{StaticResource BodyTextStyle}"
             TargetType="TextBlock">
             <Setter Property="FontSize" Value="11" />
             <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}" />
@@ -81,17 +69,7 @@
             TargetType="TextBlock">
             <Setter Property="Foreground" Value="{DynamicResource Brush.Warning}" />
         </Style>
-        <Style
-            x:Key="SampleLoaderCardStyle"
-            BasedOn="{StaticResource CardBorderStyle}"
-            TargetType="Border">
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
-                    <Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
+
         <ControlTemplate x:Key="SampleLoaderCheckTemplate" TargetType="CheckBox">
             <Grid Background="{TemplateBinding Background}" Style="{StaticResource BaseGridStyle}">
                 <c:Icon
@@ -238,25 +216,14 @@
                     VerticalAlignment="Center"
                     FontFamily="{Binding FontFamily, RelativeSource={RelativeSource AncestorType=ListBoxItem}, Mode=OneWay}"
                     Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}, Mode=OneWay}"
-                    Style="{StaticResource SampleLoaderTextStyle}"
+                    Style="{StaticResource BodyTextStyle}"
                     Text="{Binding Name, Mode=OneWay}"
                     TextTrimming="CharacterEllipsis"
                     TextWrapping="NoWrap"
                     ToolTip="{Binding FullPath, Mode=OneWay}" />
             </Grid>
         </DataTemplate>
-        <Style
-            x:Key="SampleLoaderContentsStyle"
-            BasedOn="{StaticResource BaseListBoxStyle}"
-            TargetType="ListBox">
-            <Setter Property="ItemContainerStyle" Value="{StaticResource SampleLoaderContentItemStyle}" />
-            <Setter Property="ItemTemplate" Value="{StaticResource SampleLoaderEntryTemplate}" />
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="VirtualizingPanel.IsVirtualizing" Value="True" />
-            <Setter Property="VirtualizingPanel.VirtualizationMode" Value="Recycling" />
-            <Setter Property="ScrollViewer.CanContentScroll" Value="True" />
-        </Style>
+
         <Style
             x:Key="SampleLoaderFolderEmptyStyle"
             BasedOn="{StaticResource CenteredEmptyStateTextStyle}"
@@ -287,42 +254,16 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
-        <Style
-            x:Key="SampleLoaderImportStyle"
-            BasedOn="{StaticResource OHsBalloonConfirmActionStyle}"
-            TargetType="c:BalloonButton">
-            <Setter Property="IsTabStop" Value="True" />
-            <Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
-            <Setter Property="ShouldShowText" Value="True" />
-            <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
-        </Style>
-        <Style
-            x:Key="SampleLoaderCompactTextStyle"
-            BasedOn="{StaticResource SampleLoaderTextStyle}"
-            TargetType="TextBlock">
-            <Setter Property="TextWrapping" Value="NoWrap" />
-            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
-            <Setter Property="AutomationProperties.Name" Value="{Binding Text, RelativeSource={RelativeSource Self}, Mode=OneWay}" />
-        </Style>
+
         <Style
             x:Key="SampleLoaderMetadataLabelStyle"
-            BasedOn="{StaticResource SampleLoaderTextStyle}"
+            BasedOn="{StaticResource BodyTextStyle}"
             TargetType="TextBlock">
             <Setter Property="FontSize" Value="11" />
             <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}" />
             <Setter Property="Margin" Value="0,0,4,0" />
         </Style>
-        <Style
-            x:Key="SampleLoaderTimelineStyle"
-            BasedOn="{StaticResource OHsValueSliderStyle}"
-            TargetType="c:ValueSlider">
-            <Setter Property="IsTabStop" Value="True" />
-            <Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
-            <Setter Property="MinHeight" Value="40" />
-            <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
-            <Setter Property="SmallChange" Value="0.01" />
-            <Setter Property="LargeChange" Value="0.1" />
-        </Style>
+
         <ControlTemplate x:Key="SampleLoaderAutoPlayTemplate" TargetType="CheckBox">
             <Border
                 Padding="{TemplateBinding Padding}"
@@ -406,7 +347,7 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
-        <Border Style="{StaticResource SampleLoaderCardStyle}">
+        <Border Style="{StaticResource CardBorderStyle}">
             <Grid Style="{StaticResource BaseGridStyle}">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -448,7 +389,7 @@
                     ItemsSource="{Binding Entries, Mode=OneWay}"
                     PreviewKeyDown="OnContentsKeyDown"
                     SelectionChanged="OnContentsSelectionChanged"
-                    Style="{StaticResource SampleLoaderContentsStyle}" />
+                    Style="{StaticResource BaseListBoxStyle}"  ItemContainerStyle="{StaticResource SampleLoaderContentItemStyle}" ItemTemplate="{StaticResource SampleLoaderEntryTemplate}" Background="Transparent" BorderThickness="0" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" ScrollViewer.CanContentScroll="True"/>
                 <TextBlock
                     x:Name="FolderEmptyPrompt"
                     Grid.Row="2"
@@ -477,26 +418,26 @@
                     <StackPanel Style="{StaticResource BaseStackPanelStyle}">
                         <TextBlock
                             FontFamily="{DynamicResource Bold}"
-                            Style="{StaticResource SampleLoaderCompactTextStyle}"
-                            Text="{Binding SelectedFile.Name, Mode=OneWay}" />
+                            Style="{StaticResource BodyTextStyle}"
+                            Text="{Binding SelectedFile.Name, Mode=OneWay}"  TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" AutomationProperties.Name="{Binding Text, RelativeSource={RelativeSource Self}, Mode=OneWay}"/>
                         <TextBlock
                             FontSize="11"
-                            Style="{StaticResource SampleLoaderCompactTextStyle}"
-                            Text="{Binding SelectedFile.FullPath, Mode=OneWay}" />
+                            Style="{StaticResource BodyTextStyle}"
+                            Text="{Binding SelectedFile.FullPath, Mode=OneWay}"  TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" AutomationProperties.Name="{Binding Text, RelativeSource={RelativeSource Self}, Mode=OneWay}"/>
                         <WrapPanel>
                             <StackPanel
                                 Margin="0,0,12,0"
                                 Orientation="Horizontal"
                                 Style="{StaticResource BaseStackPanelStyle}">
                                 <TextBlock Style="{StaticResource SampleLoaderMetadataLabelStyle}" Text="Size" />
-                                <TextBlock Style="{StaticResource SampleLoaderTextStyle}" Text="{Binding SizeText, Mode=OneWay}" />
+                                <TextBlock Style="{StaticResource BodyTextStyle}" Text="{Binding SizeText, Mode=OneWay}" />
                             </StackPanel>
                             <StackPanel
                                 Margin="0,0,12,0"
                                 Orientation="Horizontal"
                                 Style="{StaticResource BaseStackPanelStyle}">
                                 <TextBlock Style="{StaticResource SampleLoaderMetadataLabelStyle}" Text="Duration" />
-                                <TextBlock Style="{StaticResource SampleLoaderTextStyle}" Text="{Binding DurationText, Mode=OneWay}" />
+                                <TextBlock Style="{StaticResource BodyTextStyle}" Text="{Binding DurationText, Mode=OneWay}" />
                             </StackPanel>
                         </WrapPanel>
                         <TextBlock Style="{StaticResource SampleLoaderStatusStyle}" Text="{Binding MetadataStatusText, Mode=OneWay}" />
@@ -527,13 +468,13 @@
                         IsEnabled="{Binding CanSeek, Mode=OneWay}"
                         Maximum="{Binding PlaybackDurationSeconds, Mode=OneWay}"
                         Minimum="0"
-                        Style="{StaticResource SampleLoaderTimelineStyle}"
-                        Value="{Binding PlaybackPositionSeconds, Mode=OneWay}" />
+                        Style="{StaticResource BaseValueSliderStyle}"
+                        Value="{Binding PlaybackPositionSeconds, Mode=OneWay}"  IsTabStop="True" h:KeyboardNavigationPolicy.AllowTabNavigation="True" MinHeight="40" FocusVisualStyle="{StaticResource OHsSampleManagerKeyboardFocusStyle}" SmallChange="0.01" LargeChange="0.1"/>
                     <TextBlock
                         x:Name="PlaybackTimeTextBlock"
                         Grid.Column="2"
                         VerticalAlignment="Center"
-                        Style="{StaticResource SampleLoaderTextStyle}"
+                        Style="{StaticResource BodyTextStyle}"
                         Text="{Binding PlaybackTimeText, Mode=OneWay}" />
                 </Grid>
             </Grid>
@@ -563,8 +504,8 @@
                 Grid.Column="1"
                 Margin="8,0"
                 VerticalAlignment="Center"
-                Style="{StaticResource SampleLoaderCompactTextStyle}"
-                Text="{Binding CheckedCountText, Mode=OneWay}" />
+                Style="{StaticResource BodyTextStyle}"
+                Text="{Binding CheckedCountText, Mode=OneWay}"  TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" AutomationProperties.Name="{Binding Text, RelativeSource={RelativeSource Self}, Mode=OneWay}"/>
             <c:BalloonButton
                 x:Name="ImportButton"
                 Grid.Column="2"
@@ -573,7 +514,7 @@
                 ButtonText="{Binding ConfirmActionText, Mode=OneWay}"
                 Click="OnImportClick"
                 IsEnabled="{Binding CanConfirm, Mode=OneWay}"
-                Style="{StaticResource SampleLoaderImportStyle}" />
+                Style="{StaticResource OHsBalloonConfirmActionStyle}"  IsTabStop="True" h:KeyboardNavigationPolicy.AllowTabNavigation="True" ShouldShowText="True" FocusVisualStyle="{StaticResource OHsSampleManagerKeyboardFocusStyle}"/>
         </Grid>
     </Grid>
 </c:BasePopup>

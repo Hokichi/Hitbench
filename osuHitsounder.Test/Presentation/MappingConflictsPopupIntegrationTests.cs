@@ -25,7 +25,7 @@ public sealed class MappingConflictsPopupIntegrationTests
         {
             Assert.That(popup.PopupTitle, Is.EqualTo("Mapping conflicts found"));
             var ok = (BalloonButton)popup.FindName("ConfirmButton");
-            Assert.That(ok.Style, Is.SameAs(popup.FindResource("OHsMappingConflictConfirmStyle")));
+            Assert.That(ok.Style, Is.SameAs(popup.FindResource("OHsBalloonConfirmActionStyle")));
             Assert.That(ok.ButtonIcon, Is.SameAs(popup.FindResource("Check")));
             var existing = Descendants(view.Root).OfType<CheckBox>().Single(c => c.DataContext is MappingConflictChoice { IsExisting: true });
             Assert.That(existing.Style, Is.SameAs(popup.FindResource("OHsMappingConflictChoiceStyle")));

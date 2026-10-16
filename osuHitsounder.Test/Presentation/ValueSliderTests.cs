@@ -32,7 +32,7 @@ public class ValueSliderTests
             Value = 50,
             DisplayText = "custom text",
             Width = 180,
-            Style = (Style)Application.Current.FindResource("OHsValueSliderStyle")
+            Style = (Style)Application.Current.FindResource("BaseValueSliderStyle")
         };
         UiTestPump.Layout(slider, 180, 40);
 

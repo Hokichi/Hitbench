@@ -9,12 +9,7 @@
    <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
    <Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="True" />
   </Style>
-  <Style x:Key="OHsControlPointsCloseStyle" TargetType="c:BalloonButton" BasedOn="{StaticResource OHsBalloonDestructiveActionStyle}">
-   <Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
-   <Setter Property="IsTabStop" Value="True" /><Setter Property="ShouldShowText" Value="True" />
-   <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
-   <Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="True" />
-  </Style>
+
   <Style x:Key="OHsControlPointsTextStyle" TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlockStyle}">
    <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" /><Setter Property="TextWrapping" Value="Wrap" />
    <Style.Triggers><DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
@@ -34,30 +29,14 @@
     <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
    </DataTrigger></Style.Triggers>
   </Style>
-  <Style x:Key="OHsControlPointsStatusStyle" TargetType="ScrollViewer" BasedOn="{StaticResource {x:Type ScrollViewer}}">
-   <Setter Property="MaxHeight" Value="120" /><Setter Property="Focusable" Value="True" />
-   <Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" /><Setter Property="IsTabStop" Value="True" />
-   <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
-  </Style>
+
   <Style x:Key="OHsControlPointsVolumeStyle" TargetType="c:NumericUpDown" BasedOn="{StaticResource {x:Type c:NumericUpDown}}">
    <Setter Property="IsIntegerOnly" Value="True" /><Setter Property="LowerLimit" Value="5" /><Setter Property="UpperLimit" Value="100" /><Setter Property="Step" Value="1" />
    <Setter Property="ClampIntegerToRange" Value="True" /><Setter Property="IsVerticalDragEnabled" Value="True" />
    <Setter Property="AutomationProperties.HelpText" Value="Drag up/down to adjust volume (5–100%)." />
    <Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
   </Style>
-  <Style x:Key="OHsControlPointsSnapStyle" TargetType="c:BalloonButton" BasedOn="{StaticResource OHsControlPointsActionStyle}">
-   <Setter Property="ShouldShowText" Value="False" />
-  </Style>
-  <Style x:Key="OHsControlPointsDeleteStyle" TargetType="c:BalloonButton" BasedOn="{StaticResource OHsControlPointsCloseStyle}">
-   <Setter Property="ShouldShowText" Value="False" />
-  </Style>
-  <Style x:Key="OHsControlPointsItemsStyle" TargetType="ItemsControl" BasedOn="{StaticResource OHsVirtualizedDrawerItemsStyle}">
-   <Setter Property="VirtualizingPanel.ScrollUnit" Value="Pixel" />
-  </Style>
-  <Style x:Key="OHsControlPointsSamplesetStyle" TargetType="ComboBox" BasedOn="{StaticResource OHsComboBoxStyle}">
-   <Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" /><Setter Property="IsTabStop" Value="True" />
-   <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
-  </Style>
+
   <Style x:Key="OHsControlPointsEmptyStyle" TargetType="TextBlock" BasedOn="{StaticResource OHsControlPointsTextStyle}">
    <Setter Property="Visibility" Value="Collapsed" />
    <Style.Triggers><DataTrigger Binding="{Binding IsEmpty, Mode=OneWay}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
@@ -77,14 +56,14 @@
      <TextBlock Text="{Binding Timestamp, Mode=OneWay}" VerticalAlignment="Center" Style="{StaticResource OHsControlPointsTextStyle}" />
      <c:BalloonButton Grid.Column="1" Margin="4,0" ButtonText="Snap" ButtonIcon="{StaticResource BullseyeSolid}"
       Command="{Binding DataContext.SnapPointCommand, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=OneWay}"
-      CommandParameter="{Binding Id, Mode=OneWay}" Style="{StaticResource OHsControlPointsSnapStyle}"
+      CommandParameter="{Binding Id, Mode=OneWay}" Style="{StaticResource OHsControlPointsActionStyle}"
       ToolTip="Snap to current marker location"
-      AutomationProperties.Name="{Binding Timestamp, Mode=OneWay, StringFormat=Snap control point at {0} milliseconds to current marker location}" />
+      AutomationProperties.Name="{Binding Timestamp, Mode=OneWay, StringFormat=Snap control point at {0} milliseconds to current marker location}"  ShouldShowText="False"/>
      <c:BalloonButton Grid.Column="2" ButtonText="Delete" ButtonIcon="{StaticResource Delete}"
       Command="{Binding DataContext.DeletePointCommand, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=OneWay}"
-      CommandParameter="{Binding Id, Mode=OneWay}" Style="{StaticResource OHsControlPointsDeleteStyle}"
+      CommandParameter="{Binding Id, Mode=OneWay}" Style="{StaticResource OHsBalloonDestructiveActionStyle}"
       ToolTip="Delete control point"
-      AutomationProperties.Name="{Binding Timestamp, Mode=OneWay, StringFormat=Delete control point at {0} milliseconds}" />
+      AutomationProperties.Name="{Binding Timestamp, Mode=OneWay, StringFormat=Delete control point at {0} milliseconds}"  ShouldShowText="False" h:KeyboardNavigationPolicy.AllowTabNavigation="True" IsTabStop="True" FocusVisualStyle="{StaticResource OHsSampleManagerKeyboardFocusStyle}" ToolTipService.ShowsToolTipOnKeyboardFocus="True"/>
     </Grid>
     <StackPanel Grid.Column="1" Margin="8,0" Style="{StaticResource BaseStackPanelStyle}">
      <c:NumericUpDown x:Name="VolumeInput" Value="{Binding Volume, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
@@ -93,7 +72,7 @@
      <TextBlock Text="{Binding Error, Mode=OneWay}" Style="{StaticResource OHsControlPointsErrorStyle}" />
     </StackPanel>
     <ComboBox Grid.Column="2" ItemsSource="{x:Static e:ControlPoint.SamplesetOptions}" SelectedItem="{Binding Sampleset, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-     Style="{StaticResource OHsControlPointsSamplesetStyle}" AutomationProperties.Name="{Binding Timestamp, Mode=OneWay, StringFormat=Sampleset at {0} milliseconds}" />
+     Style="{StaticResource OHsComboBoxStyle}" AutomationProperties.Name="{Binding Timestamp, Mode=OneWay, StringFormat=Sampleset at {0} milliseconds}"  h:KeyboardNavigationPolicy.AllowTabNavigation="True" IsTabStop="True" FocusVisualStyle="{StaticResource OHsSampleManagerKeyboardFocusStyle}"/>
    </Grid>
   </DataTemplate>
  </UserControl.Resources>
@@ -105,8 +84,8 @@
     <c:BalloonButton x:Name="AddPointButton" HorizontalAlignment="Left" ButtonText="Add" ButtonIcon="{StaticResource PlusSolid}" Command="{Binding AddCommand, Mode=OneWay}"
      Style="{StaticResource OHsControlPointsActionStyle}" AutomationProperties.Name="Add control point at marker" ToolTip="Add control point at nearest grid beat" />
     <TextBlock Grid.Column="1" Text="Control Points" Margin="8,0" VerticalAlignment="Center" Style="{StaticResource OHsPopupTitleTextStyle}" />
-    <c:BalloonButton Grid.Column="2" ButtonText="Close" ButtonIcon="{StaticResource Close}" Click="OnCloseClick" Style="{StaticResource OHsControlPointsCloseStyle}"
-     IsEnabled="{Binding CanClose, Mode=OneWay}" AutomationProperties.Name="Close Control Points" ToolTip="Close (Esc)" />
+    <c:BalloonButton Grid.Column="2" ButtonText="Close" ButtonIcon="{StaticResource Close}" Click="OnCloseClick" Style="{StaticResource OHsBalloonDestructiveActionStyle}"
+     IsEnabled="{Binding CanClose, Mode=OneWay}" AutomationProperties.Name="Close Control Points" ToolTip="Close (Esc)"  h:KeyboardNavigationPolicy.AllowTabNavigation="True" IsTabStop="True" ShouldShowText="True" FocusVisualStyle="{StaticResource OHsSampleManagerKeyboardFocusStyle}" ToolTipService.ShowsToolTipOnKeyboardFocus="True"/>
    </Grid>
    <Grid Grid.Row="1" Margin="0,8,8,0" Style="{StaticResource BaseGridStyle}">
     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
@@ -116,9 +95,9 @@
    </Grid>
    <Grid Grid.Row="2" Style="{StaticResource BaseGridStyle}">
     <Grid.RowDefinitions><RowDefinition Height="4*" /><RowDefinition Height="*" MinHeight="40" /></Grid.RowDefinitions>
-    <ItemsControl x:Name="PointRows" ItemsSource="{Binding Rows, Mode=OneWay}" ItemTemplate="{StaticResource OHsControlPointsRowTemplate}" Style="{StaticResource OHsControlPointsItemsStyle}" />
+    <ItemsControl x:Name="PointRows" ItemsSource="{Binding Rows, Mode=OneWay}" ItemTemplate="{StaticResource OHsControlPointsRowTemplate}" Style="{StaticResource OHsVirtualizedDrawerItemsStyle}"  VirtualizingPanel.ScrollUnit="Pixel"/>
     <TextBlock Text="No control points yet. Use + Add to create one." Style="{StaticResource OHsControlPointsEmptyStyle}" Margin="0,8" />
-   <ScrollViewer x:Name="SaveStatusHost" Grid.Row="1" Style="{StaticResource OHsControlPointsStatusStyle}"
+   <ScrollViewer x:Name="SaveStatusHost" Grid.Row="1" Style="{StaticResource OHsStatusScrollStyle}"
     VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" AutomationProperties.Name="Control point save status">
    <StackPanel Style="{StaticResource BaseStackPanelStyle}">
     <TextBlock Text="{Binding UnavailableReason, Mode=OneWay}" Style="{StaticResource OHsControlPointsTextStyle}" />

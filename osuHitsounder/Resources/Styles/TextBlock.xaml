@@ -17,7 +17,7 @@
         <Setter Property="HorizontalAlignment" Value="Center" />
         <Setter Property="VerticalAlignment" Value="Center" />
         <Setter Property="FontFamily" Value="{DynamicResource Bold}" />
-        <Setter Property="FontSize" Value="13" />
+
         <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Muted}" />
     </Style>
     <Style
@@ -55,4 +55,24 @@
             </DataTrigger>
         </Style.Triggers>
     </Style>
+<Style
+            x:Key="BodyTextStyle"
+            BasedOn="{StaticResource BaseTextBlockStyle}"
+            TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
+                    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+<Style x:Key="ErrorTextStyle" TargetType="TextBlock" BasedOn="{StaticResource BodyTextStyle}">
+   <Setter Property="Foreground" Value="{DynamicResource Brush.Danger}"/><Setter Property="AutomationProperties.LiveSetting" Value="Polite"/>
+   <Style.Triggers><Trigger Property="Text" Value="{x:Null}"><Setter Property="Visibility" Value="Collapsed"/></Trigger><Trigger Property="Text" Value=""><Setter Property="Visibility" Value="Collapsed"/></Trigger></Style.Triggers>
+  </Style>
+<Style x:Key="WarningTextStyle" TargetType="TextBlock" BasedOn="{StaticResource BodyTextStyle}">
+   <Setter Property="Foreground" Value="{DynamicResource Brush.Warning}"/>
+   <Style.Triggers><Trigger Property="Text" Value=""><Setter Property="Visibility" Value="Collapsed"/></Trigger></Style.Triggers>
+  </Style>
 </ResourceDictionary>

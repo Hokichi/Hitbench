@@ -29,9 +29,9 @@ public class ProjectNamePopupIntegrationTests
             var watermark = (TextBlock)popup.FindName("ProjectNameWatermark");
             var validation = (TextBlock)popup.FindName("ProjectNameValidation");
             var cancel = (BalloonButton)popup.FindName("CancelButton");
-            Assert.That(cancel.Style, Is.SameAs(popup.FindResource("ProjectNamePopupCancelButtonStyle")));
+            Assert.That(cancel.Style, Is.SameAs(popup.FindResource("OHsBalloonDestructiveActionStyle")));
             var create = (BalloonButton)popup.FindName("CreateButton");
-            Assert.That(create.Style, Is.SameAs(popup.FindResource("ProjectNamePopupCreateButtonStyle")));
+            Assert.That(create.Style, Is.SameAs(popup.FindResource("OHsBalloonConfirmActionStyle")));
             Assert.Multiple(() =>
             {
                 Assert.That(input.Focusable, Is.True);
@@ -96,7 +96,7 @@ public class ProjectNamePopupIntegrationTests
             Assert.That(input.Text, Is.EqualTo("AB"));
 
             var cancel = (BalloonButton)popup.FindName("CancelButton");
-            Assert.That(cancel.Style, Is.SameAs(popup.FindResource("ProjectNamePopupCancelButtonStyle")));
+            Assert.That(cancel.Style, Is.SameAs(popup.FindResource("OHsBalloonDestructiveActionStyle")));
             popup.RaiseEvent(CreateKeyEvent(source, Key.Escape));
 
             Assert.That(completion, Is.False);
@@ -120,7 +120,7 @@ public class ProjectNamePopupIntegrationTests
         try
         {
             var create = (BalloonButton)popup.FindName("CreateButton");
-            Assert.That(create.Style, Is.SameAs(popup.FindResource("ProjectNamePopupCreateButtonStyle")));
+            Assert.That(create.Style, Is.SameAs(popup.FindResource("OHsBalloonConfirmActionStyle")));
             Assert.That(create.IsEnabled, Is.False);
             popup.RaiseEvent(CreateKeyEvent(source, Key.Enter));
             Assert.That(completion, Is.Null);

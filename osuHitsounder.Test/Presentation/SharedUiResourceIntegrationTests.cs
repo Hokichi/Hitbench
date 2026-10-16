@@ -8,6 +8,28 @@ namespace osuHitsounder.Test.Presentation;
 [NonParallelizable]
 public sealed class SharedUiResourceIntegrationTests
 {
+    [TestCase(typeof(BalloonButton), "BalloonControlTemplate")]
+    [TestCase(typeof(BalloonCheckBox), "BalloonControlTemplate")]
+    [TestCase(typeof(NumericUpDown), "NumericUpDownTemplate")]
+    [TestCase(typeof(BasePopup), "BasePopupTemplate")]
+    public void ImplicitControlsResolveCanonicalTemplates(Type type, string templateKey)
+    {
+        SharedResources_LoadTogetherAndProvideReusableControlContracts();
+        var control = (Control)Activator.CreateInstance(type)!;
+        try
+        {
+            Assert.That(control.GetType(), Is.EqualTo(type));
+            if (control is not Window)
+            {
+                var host = new Grid { Resources = Application.Current.Resources };
+                host.Children.Add(control);
+                UiTestPump.Layout(host, 300, 100);
+            }
+            UiControlContract.AssertTemplate(control, templateKey);
+        }
+        finally { if (control is Window window) window.Close(); }
+    }
+
     [Test]
     public void SharedResources_DeferApplicationFontLookupUntilFontsAreAvailable()
     {

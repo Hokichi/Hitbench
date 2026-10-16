@@ -12,7 +12,14 @@
     ResizeMode="CanResize"
     WindowStartupLocation="CenterScreen"
     WindowStyle="None">
-    <Window.Resources>
+    <Window.Resources><Style
+            x:Key="OHsMainWindowGoBackStyle"
+            BasedOn="{StaticResource OHsBalloonActionStyle}"
+            TargetType="customControls:BalloonButton">
+            <Setter Property="DefaultBackground" Value="{DynamicResource Brush.BalloonButton.Background.NavInfo}" />
+            <Setter Property="HoveredBackground" Value="{DynamicResource Brush.BalloonButton.Background.NavInfo.Hovered}" />
+
+        </Style>
         <Style
             x:Key="OHsMainWindowSampleManagerHostStyle"
             BasedOn="{StaticResource BaseContentControlStyle}"
@@ -41,14 +48,7 @@
             </Style.Triggers>
         </Style>
         <SolidColorBrush x:Key="OHsMainWindowAcrylicBackground" Color="Transparent" />
-        <Style
-            x:Key="OHsMainWindowGoBackStyle"
-            BasedOn="{StaticResource OHsBalloonActionStyle}"
-            TargetType="customControls:BalloonButton">
-            <Setter Property="DefaultBackground" Value="{DynamicResource Brush.BalloonButton.Background.NavInfo}" />
-            <Setter Property="HoveredBackground" Value="{DynamicResource Brush.BalloonButton.Background.NavInfo.Hovered}" />
-            <Setter Property="ShouldShowText" Value="True" />
-        </Style>
+
         <Style
             x:Key="MainWindowStyle"
             BasedOn="{StaticResource BaseWindowStyle}"
@@ -263,7 +263,7 @@
                                         Click="OnGoBackClick"
                                         IsEnabled="{Binding ElementName=PageHost, Path=Content.DataContext.CanGoBack, Mode=OneWay}"
                                         Style="{StaticResource OHsMainWindowGoBackStyle}"
-                                        ToolTip="Save project and return to home" />
+                                        ToolTip="Save project and return to home"  ShouldShowText="True"/>
                                 </WrapPanel>
                                 <StackPanel Grid.Column="2" Orientation="Horizontal">
                                     <customControls:BalloonButton

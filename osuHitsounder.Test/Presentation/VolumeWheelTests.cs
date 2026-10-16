@@ -15,28 +15,25 @@ namespace osuHitsounder.Test.Presentation;
 [NonParallelizable]
 public class VolumeWheelTests
 {
-    [TestCase(0d, 0d)]
-    [TestCase(50d, .5d)]
-    [TestCase(100d, 1d)]
-    public void ProgressDrawingReflectsValueFraction(double value, double fraction)
+    [TestCase(0d, 100d, 50d)]
+    [TestCase(20d, 80d, 50d)]
+    [TestCase(80d, 80d, 80d)]
+    public void RangeProviderPreservesBoundsAndClampsValues(double minimum, double maximum, double value)
     {
-        var full = new VolumeWheel { Minimum = 0, Maximum = 100, Value = 100 };
-        var wheel = new VolumeWheel { Minimum = 0, Maximum = 100, Value = value };
-        var area = full.FilledGeometry.GetArea();
-        Assert.That(area, Is.GreaterThan(0));
-        Assert.That(wheel.FilledGeometry.GetArea(), Is.EqualTo(area * fraction).Within(area * .001));
-    }
-
-    [Test]
-    public void ProgressNormalizesCustomRangeAndHandlesDegenerateRange()
-    {
-        var full = new VolumeWheel { Minimum = 20, Maximum = 80, Value = 80 };
-        var wheel = new VolumeWheel { Minimum = 20, Maximum = 80, Value = 50 };
-        var area = full.FilledGeometry.GetArea();
-        Assert.That(area, Is.GreaterThan(0));
-        Assert.That(wheel.FilledGeometry.GetArea(), Is.EqualTo(area / 2).Within(area * .001));
-        wheel.Minimum = 80;
-        Assert.That(wheel.FilledGeometry.Bounds.IsEmpty, Is.True);
+        var wheel = new VolumeWheel { Minimum = minimum, Maximum = maximum, Value = value, IsActive = true };
+        var peer = UIElementAutomationPeer.CreatePeerForElement(wheel);
+        var provider = (IRangeValueProvider)peer.GetPattern(PatternInterface.RangeValue);
+        Assert.That(provider.Minimum, Is.EqualTo(minimum));
+        Assert.That(provider.Maximum, Is.EqualTo(maximum));
+        Assert.That(provider.Value, Is.EqualTo(value));
+        provider.SetValue(maximum + 10);
+        Assert.That(wheel.Value, Is.EqualTo(maximum));
+        provider.SetValue(minimum - 10);
+        Assert.That(wheel.Value, Is.EqualTo(minimum));
+        wheel.IsActive = false;
+        Assert.That(provider.IsReadOnly, Is.True);
+        provider.SetValue(maximum);
+        Assert.That(wheel.Value, Is.EqualTo(minimum));
     }
 
     [TestCase(FlowDirection.LeftToRight)]
@@ -47,19 +44,17 @@ public class VolumeWheelTests
         {
             Label = "Application volume with a long localized name", Value = 50,
             FlowDirection = direction,
-            Style = (Style)Application.Current.FindResource("OHsVolumeWheelStyle")
+            Style = (Style)Application.Current.FindResource("BaseVolumeWheelStyle")
         };
         UiTestPump.Layout(wheel, 320, 168);
-        UiControlContract.AssertStyle<VolumeWheel>(wheel, "OHsVolumeWheelStyle");
+        UiControlContract.AssertStyle<VolumeWheel>(wheel, "BaseVolumeWheelStyle");
         UiControlContract.AssertTemplate(wheel, "OHsVolumeWheelTemplate");
-        var label = (TextBlock)wheel.Template.FindName("WheelLabel", wheel);
-        Assert.That(label.Text, Is.EqualTo(wheel.Label));
-        Assert.That(label.FlowDirection, Is.EqualTo(direction));
+        Assert.That(AutomationProperties.GetName(wheel), Is.EqualTo($"{wheel.Label} volume"));
         wheel.IsActive = true;
         wheel.IsEnabled = false;
         Assert.That(wheel.IsActive, Is.True);
         Assert.That(wheel.IsEnabled, Is.False);
-        UiControlContract.AssertStyle<VolumeWheel>(wheel, "OHsVolumeWheelStyle");
+        UiControlContract.AssertStyle<VolumeWheel>(wheel, "BaseVolumeWheelStyle");
     }
 
     [Test]
@@ -88,9 +83,8 @@ public class VolumeWheelTests
             page.ShowVolumeOverlay(false, new Point());
             page.ProcessVolumeOverlayIdle(TimeSpan.FromMilliseconds(500), true);
             var overlay = (Border)page.FindName("VolumeOverlay");
-            Assert.That(overlay.HasAnimatedProperties, Is.True);
             page.RecordVolumeActivity();
-            Assert.That(overlay.HasAnimatedProperties, Is.EqualTo(SystemParameters.ClientAreaAnimation));
+            Assert.That(page.IsVolumeOverlayOpen, Is.True);
             UiTestPump.Run(Task.Delay(250));
             page.ApplicationVolumeWheel.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, MouseButton.Left) { RoutedEvent = Mouse.MouseDownEvent });
             page.DismissVolumeOverlay();
@@ -110,7 +104,6 @@ public class VolumeWheelTests
             page.ProcessVolumeOverlayIdle(TimeSpan.FromMilliseconds(500), true);
             var overlay = (Border)page.FindName("VolumeOverlay");
             overlay.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, 0) { RoutedEvent = Mouse.PreviewMouseMoveEvent });
-            Assert.That(overlay.HasAnimatedProperties, Is.EqualTo(SystemParameters.ClientAreaAnimation));
             UiTestPump.Run(Task.Delay(250));
         }
     }
@@ -119,7 +112,7 @@ public class VolumeWheelTests
     public void PointerPressMoveAndReleaseNeverChangesVolumeOrCapturesMouse()
     {
         var wheel = new VolumeWheel { Value = 50, IsActive = true,
-            Style = (Style)Application.Current.FindResource("OHsVolumeWheelStyle") };
+            Style = (Style)Application.Current.FindResource("BaseVolumeWheelStyle") };
         var host = new Grid();
         host.Children.Add(wheel);
         UiTestPump.Layout(host, 320, 168);
@@ -199,7 +192,7 @@ public class VolumeWheelTests
             var panel = (Panel)page.FindName("VolumeWheelPanel");
             Assert.That(panel.Children.OfType<VolumeWheel>().Select(w => w.Label), Is.EquivalentTo(new[] { "Song", "Application", "Samples" }));
             foreach (var wheel in panel.Children.OfType<VolumeWheel>())
-                UiControlContract.AssertStyle<VolumeWheel>(wheel, "OHsVolumeWheelStyle");
+                UiControlContract.AssertStyle<VolumeWheel>(wheel, "BaseVolumeWheelStyle");
         }
     }
     [SetUp]

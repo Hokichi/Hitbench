@@ -60,23 +60,7 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
-        <Style
-            x:Key="HomePageHeadingStyle"
-            BasedOn="{StaticResource HomePageBodyStyle}"
-            TargetType="TextBlock">
-            <Setter Property="FontFamily" Value="{DynamicResource Bold}" />
-            <Setter Property="FontWeight" Value="Bold" />
-            <Setter Property="FontSize" Value="14" />
-            <Setter Property="TextWrapping" Value="Wrap" />
-            <Setter Property="Margin" Value="0,0,0,12" />
-        </Style>
-        <Style
-            x:Key="HomePageSongsHeadingStyle"
-            BasedOn="{StaticResource HomePageHeadingStyle}"
-            TargetType="TextBlock">
-            <Setter Property="Margin" Value="0" />
-            <Setter Property="VerticalAlignment" Value="Center" />
-        </Style>
+
         <Style
             x:Key="HomePageStatusStyle"
             BasedOn="{StaticResource HomePageBodyStyle}"
@@ -107,13 +91,7 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
-        <Style
-            x:Key="HomePageProjectCardStyle"
-            BasedOn="{StaticResource FolderActionButtonStyle}"
-            TargetType="Button">
-            <Setter Property="Margin" Value="0,0,0,8" />
-            <Setter Property="Padding" Value="16" />
-        </Style>
+
         <Style
             x:Key="HomePageProjectNameStyle"
             BasedOn="{StaticResource HomePageBodyStyle}"
@@ -122,27 +100,14 @@
             <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}, Mode=OneWay}" />
             <Setter Property="TextWrapping" Value="Wrap" />
         </Style>
-        <Style
-            x:Key="HomePageProjectPathStyle"
-            BasedOn="{StaticResource HomePageBodyStyle}"
-            TargetType="TextBlock">
-            <Setter Property="Margin" Value="0,4,0,0" />
-            <Setter Property="FontSize" Value="11" />
-            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}" />
-            <Setter Property="TextWrapping" Value="Wrap" />
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
-                    <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}, Mode=OneWay}" />
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
+
         <DataTemplate x:Key="HomePageFolderTemplate">
             <Button
                 AutomationProperties.HelpText="{Binding FullName, Mode=OneWay}"
                 AutomationProperties.Name="{Binding Name, Mode=OneWay}"
                 Command="{Binding DataContext.OpenProjectCommand, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=OneWay}"
                 CommandParameter="{Binding Mode=OneWay}"
-                Style="{StaticResource HomePageProjectCardStyle}">
+                Style="{StaticResource FolderActionButtonStyle}" Margin="0,0,0,8" Padding="16">
                 <TextBlock Style="{StaticResource HomePageProjectNameStyle}" Text="{Binding Name, Mode=OneWay}" />
             </Button>
         </DataTemplate>
@@ -192,7 +157,7 @@
             BasedOn="{StaticResource HomePageBodyStyle}"
             TargetType="TextBlock">
             <Setter Property="Text" Value="{Binding Artist, Mode=OneWay}" />
-            <Setter Property="FontFamily" Value="{DynamicResource Regular}" />
+
             <Setter Property="FontSize" Value="14" />
             <Setter Property="TextAlignment" Value="Center" />
             <Setter Property="TextTrimming" Value="CharacterEllipsis" />
@@ -205,15 +170,7 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
-        <Style
-            x:Key="HomePageSongTitleStyle"
-            BasedOn="{StaticResource HomePageSongArtistStyle}"
-            TargetType="TextBlock">
-            <Setter Property="Text" Value="{Binding Title, Mode=OneWay}" />
-            <Setter Property="FontFamily" Value="{DynamicResource Bold}" />
-            <Setter Property="FontSize" Value="18" />
-            <Setter Property="Margin" Value="0,4,0,0" />
-        </Style>
+
         <Style
             x:Key="HomePageSongCardButtonStyle"
             BasedOn="{StaticResource FolderActionButtonStyle}"
@@ -249,14 +206,12 @@
                         VerticalAlignment="Center"
                         IsHitTestVisible="False">
                         <TextBlock Style="{StaticResource HomePageSongArtistStyle}" />
-                        <TextBlock Style="{StaticResource HomePageSongTitleStyle}" />
+                        <TextBlock Style="{StaticResource HomePageSongArtistStyle}"  Text="{Binding Title, Mode=OneWay}" FontFamily="{DynamicResource Bold}" FontSize="18" Margin="0,4,0,0"/>
                     </StackPanel>
                 </Grid>
             </Button>
         </DataTemplate>
-        <ItemsPanelTemplate x:Key="HomePageVirtualizingPanel">
-            <VirtualizingStackPanel />
-        </ItemsPanelTemplate>
+
         <ControlTemplate x:Key="HomePageItemsTemplate" TargetType="ItemsControl">
             <ScrollViewer
                 x:Name="PART_ScrollViewer"
@@ -269,45 +224,8 @@
                 <ItemsPresenter />
             </ScrollViewer>
         </ControlTemplate>
-        <ControlTemplate x:Key="HomePageSongsItemsTemplate" TargetType="ItemsControl">
-            <ScrollViewer
-                x:Name="PART_ScrollViewer"
-                Padding="{TemplateBinding Padding}"
-                AutomationProperties.Name="{Binding Path=(AutomationProperties.Name), RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}"
-                CanContentScroll="True"
-                Focusable="True"
-                HorizontalScrollBarVisibility="{TemplateBinding ScrollViewer.HorizontalScrollBarVisibility}"
-                VerticalScrollBarVisibility="{TemplateBinding ScrollViewer.VerticalScrollBarVisibility}">
-                <customControls:SpacedUniformGrid
-                    Columns="4"
-                    HorizontalGap="12"
-                    IsItemsHost="True"
-                    ItemHeight="108"
-                    ItemWidth="336"
-                    VerticalGap="12" />
-            </ScrollViewer>
-        </ControlTemplate>
-        <Style
-            x:Key="HomePageFoldersStyle"
-            BasedOn="{StaticResource BaseItemsControlStyle}"
-            TargetType="ItemsControl">
-            <Setter Property="Template" Value="{StaticResource HomePageItemsTemplate}" />
-            <Setter Property="ItemsPanel" Value="{StaticResource HomePageVirtualizingPanel}" />
-            <Setter Property="ItemTemplate" Value="{StaticResource HomePageFolderTemplate}" />
-            <Setter Property="ItemContainerStyle" Value="{StaticResource BaseContentPresenterStyle}" />
-            <Setter Property="VirtualizingPanel.IsVirtualizing" Value="True" />
-            <Setter Property="VirtualizingPanel.VirtualizationMode" Value="Recycling" />
-            <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto" />
-            <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
-        </Style>
-        <Style
-            x:Key="HomePageSongsStyle"
-            BasedOn="{StaticResource HomePageFoldersStyle}"
-            TargetType="ItemsControl">
-            <Setter Property="Template" Value="{StaticResource HomePageSongsItemsTemplate}" />
-            <Setter Property="ItemTemplate" Value="{StaticResource HomePageSongTemplate}" />
-            <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Visible" />
-        </Style>
+        <ItemsPanelTemplate x:Key="HomePageSongsItemsPanel"><customControls:SpacedUniformGrid Columns="4" HorizontalGap="12" ItemHeight="108" ItemWidth="336" VerticalGap="12" /></ItemsPanelTemplate>
+
         <Style
             x:Key="HomePageRetryButtonStyle"
             BasedOn="{StaticResource OHsBalloonDefaultActionStyle}"
@@ -349,7 +267,7 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
-                <TextBlock Style="{StaticResource HomePageHeadingStyle}" Text="Projects" />
+                <TextBlock Style="{StaticResource HomePageBodyStyle}" Text="Projects"  FontFamily="{DynamicResource Bold}" FontWeight="Bold" FontSize="14" TextWrapping="Wrap" Margin="0,0,0,12"/>
                 <TextBlock
                     Grid.Row="1"
                     Style="{StaticResource HomePageStatusStyle}"
@@ -368,7 +286,7 @@
                     Grid.Row="3"
                     AutomationProperties.Name="Projects"
                     ItemsSource="{Binding Projects, Mode=OneWay}"
-                    Style="{StaticResource HomePageFoldersStyle}" />
+                    Style="{StaticResource BaseItemsControlStyle}"  Template="{StaticResource HomePageItemsTemplate}" ItemsPanel="{StaticResource OHsVirtualizedDrawerItemsPanel}" ItemTemplate="{StaticResource HomePageFolderTemplate}" ItemContainerStyle="{StaticResource BaseContentPresenterStyle}" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
             </Grid>
         </Border>
         <Border
@@ -387,7 +305,7 @@
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
-                    <TextBlock Style="{StaticResource HomePageSongsHeadingStyle}" Text="Songs" />
+                    <TextBlock Style="{StaticResource HomePageBodyStyle}" Text="Songs"  Margin="0" VerticalAlignment="Center" FontFamily="{DynamicResource Bold}" FontWeight="Bold" FontSize="14" TextWrapping="Wrap"/>
                     <Grid Grid.Column="1" Margin="8,0,0,0">
                         <customControls:BalloonButton
                             x:Name="SongSearchButton"
@@ -458,7 +376,7 @@
                     AutomationProperties.Name="Songs"
                     ItemsSource="{Binding Songs, Mode=OneWay}"
                     Opacity="0"
-                    Style="{StaticResource HomePageSongsStyle}" />
+                    Style="{StaticResource BaseItemsControlStyle}"  ItemsPanel="{StaticResource HomePageSongsItemsPanel}" ItemTemplate="{StaticResource HomePageSongTemplate}" ScrollViewer.VerticalScrollBarVisibility="Visible" Template="{StaticResource HomePageItemsTemplate}" ItemContainerStyle="{StaticResource BaseContentPresenterStyle}" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
             </Grid>
         </Border>
     </Grid>

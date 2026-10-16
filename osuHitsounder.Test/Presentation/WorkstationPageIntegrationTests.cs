@@ -45,7 +45,7 @@ public class WorkstationPageIntegrationTests
             Assert.That(selection.IsChecked, Is.EqualTo(vm.IsSelectionMode));
             Assert.That(addition.IsChecked, Is.EqualTo(vm.IsAdditionMode));
             Assert.That(grid.AllowNodeCreation, Is.EqualTo(vm.IsAdditionMode));
-            UiControlContract.AssertStyle<RadioButton>(mode, "OHsWorkstationModeButtonStyle");
+            UiControlContract.AssertStyle<RadioButton>(mode, "OHsTimelineEditingModeButtonStyle");
         }
         Assert.That(AutomationProperties.GetName(selection), Is.EqualTo("Selection Mode"));
         Assert.That(AutomationProperties.GetName(addition), Is.EqualTo("Addition Mode"));
@@ -152,7 +152,7 @@ public class WorkstationPageIntegrationTests
         var addition = (RadioButton)page.FindName("AdditionModeButton");
         var selection = (RadioButton)page.FindName("SelectionModeButton");
         Assert.That(addition.IsChecked, Is.True);
-        UiControlContract.AssertStyle<RadioButton>(selection, "OHsWorkstationModeButtonStyle");
+        UiControlContract.AssertStyle<RadioButton>(selection, "OHsTimelineEditingModeButtonStyle");
         selection.SetCurrentValue(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, true);
         Assert.That(vm.IsSelectionMode, Is.True);
         Assert.That(addition.IsChecked, Is.False);
@@ -320,8 +320,8 @@ public class WorkstationPageIntegrationTests
         Assert.That(addition.Items.Cast<string>(), Is.EqualTo(new[] { "None", "Normal", "Soft", "Drum" }));
         Assert.That(addition.SelectedItem, Is.EqualTo("Soft"));
         Assert.That(addition.ItemTemplate, Is.Null, "Use the native full-string presentation for both selection and options.");
-        Assert.That(addition.Style, Is.SameAs(page.FindResource("OHsWorkstationAdditionSelectorStyle")));
-        Assert.That(addition.Style.BasedOn, Is.SameAs(page.FindResource("OHsWorkstationTrackMetadataComboBoxStyle")));
+        Assert.That(addition.Style, Is.SameAs(page.FindResource("OHsWorkstationTrackMetadataComboBoxStyle")));
+        Assert.That(addition.Style, Is.SameAs(page.FindResource("OHsWorkstationTrackMetadataComboBoxStyle")));
         Assert.That(addition.IsTabStop, Is.False);
         Assert.That(saves.Writes, Is.Zero);
         addition.SelectedItem = "None";
@@ -1421,7 +1421,7 @@ public class WorkstationPageIntegrationTests
                 Assert.That(AutomationProperties.GetName(selector), Is.EqualTo("Beat subdivision"));
                 foreach (var button in buttons)
                 {
-                    UiControlContract.AssertStyle<BalloonButton>(button, "OHsWorkstationIconButtonStyle");
+                    UiControlContract.AssertStyle<BalloonButton>(button, "OHsBalloonNeutralActionStyle");
                     Assert.That(AutomationProperties.GetName(button), Is.Not.Empty);
                 }
                 UiControlContract.AssertStyle<ScrollBar>(bar, "OHsWorkstationWaveformScrollBarStyle");
@@ -1483,7 +1483,7 @@ public class WorkstationPageIntegrationTests
             window.Height = height + cardHeight - 200;
             view.UpdateLayout();
             var selector = (ValueSlider)page.FindName("SubdivisionSelector");
-            UiControlContract.AssertStyle<ValueSlider>(selector, "OHsWorkstationSubdivisionStyle");
+            UiControlContract.AssertStyle<ValueSlider>(selector, "BaseValueSliderStyle");
             Assert.That(selector.Value, Is.EqualTo(vm.SelectedSubdivisionIndex));
         }
     }
@@ -1516,13 +1516,13 @@ public class WorkstationPageIntegrationTests
             }));
             UiTestPump.Run(page.LoadCompletion);
             view.UpdateLayout();
-            UiControlContract.AssertStyle<BalloonButton>(button, "OHsWorkstationToolbarResnapStyle");
+            UiControlContract.AssertStyle<BalloonButton>(button, "OHsWorkstationTransportButtonStyle");
             Assert.That(button.Command, Is.SameAs(vm.ResnapAllSamplesCommand));
             Assert.That(button.IsEnabled, Is.True);
             Assert.That(button.ButtonText, Is.EqualTo("Resnap all samples"));
             Assert.That(button.Focusable, Is.True);
             Assert.That(button.IsTabStop, Is.False);
-            Assert.That(button.FocusVisualStyle, Is.SameAs(page.FindResource("OHsKeyboardFocusVisualStyle")));
+            Assert.That(button.FocusVisualStyle, Is.SameAs(page.FindResource("DefaultFocusVisualStyle")));
             Assert.That(button.ToolTip, Is.EqualTo("Snap every sample to the nearest beat in the current subdivision"));
             Assert.That(AutomationProperties.GetHelpText(button), Is.EqualTo(button.ToolTip));
             Assert.That(page.HandlePlaybackKey(Key.Enter, ModifierKeys.None, false, button), Is.False);

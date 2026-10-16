@@ -6,21 +6,10 @@
     xmlns:h="clr-namespace:osuHitsounder.Resources.Helpers"
     Style="{StaticResource BaseControlStyle}">
     <UserControl.Resources>
-        <Style
-            x:Key="OHsManageSamplesTextStyle"
-            BasedOn="{StaticResource BaseTextBlockStyle}"
-            TargetType="TextBlock">
-            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
-            <Setter Property="TextWrapping" Value="Wrap" />
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
-                    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
+
         <Style
             x:Key="OHsManageSamplesErrorStyle"
-            BasedOn="{StaticResource OHsManageSamplesTextStyle}"
+            BasedOn="{StaticResource BodyTextStyle}"
             TargetType="TextBlock">
             <Setter Property="Foreground" Value="{DynamicResource Brush.Danger}" />
             <Setter Property="AutomationProperties.LiveSetting" Value="Polite" />
@@ -35,7 +24,7 @@
         </Style>
         <Style
             x:Key="OHsManageSamplesNameStyle"
-            BasedOn="{StaticResource OHsManageSamplesTextStyle}"
+            BasedOn="{StaticResource BodyTextStyle}"
             TargetType="TextBlock">
             <Setter Property="TextWrapping" Value="NoWrap" />
             <Setter Property="TextTrimming" Value="CharacterEllipsis" />
@@ -86,16 +75,7 @@
             <Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="True" />
             <Setter Property="ShouldExpand" Value="False" />
         </Style>
-        <Style
-            x:Key="OHsManageSamplesDeleteStyle"
-            BasedOn="{StaticResource OHsBalloonDestructiveActionStyle}"
-            TargetType="c:BalloonButton">
-            <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
-            <Setter Property="IsTabStop" Value="True" />
-            <Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
-            <Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="True" />
-            <Setter Property="ShouldExpand" Value="False" />
-        </Style>
+
         <Style
             x:Key="OHsManageSamplesPlayStyle"
             BasedOn="{StaticResource OHsManageSamplesActionStyle}"
@@ -147,26 +127,7 @@
                 </MultiDataTrigger>
             </Style.Triggers>
         </Style>
-        <Style
-            x:Key="OHsManageSamplesSurfaceStyle"
-            BasedOn="{StaticResource CardBorderStyle}"
-            TargetType="Border">
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
-                    <Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
-        <Style
-            x:Key="OHsManageSamplesEditStyle"
-            BasedOn="{StaticResource OHsManageSamplesActionStyle}"
-            TargetType="c:BalloonButton">
-            <Setter Property="ButtonText" Value="Edit" />
-            <Setter Property="ButtonIcon" Value="{StaticResource Pen}" />
-            <Setter Property="ToolTip" Value="{Binding FileName, Mode=OneWay, StringFormat=Edit {0}}" />
-            <Setter Property="AutomationProperties.Name" Value="{Binding FileName, Mode=OneWay, StringFormat=Edit {0}}" />
-        </Style>
+
         <Style
             x:Key="OHsManageSamplesSaveStyle"
             BasedOn="{StaticResource OHsBalloonConfirmActionStyle}"
@@ -181,7 +142,16 @@
             <Setter Property="ToolTip" Value="{Binding FileName, Mode=OneWay, StringFormat=Save {0}}" />
             <Setter Property="AutomationProperties.Name" Value="{Binding FileName, Mode=OneWay, StringFormat=Save {0}}" />
         </Style>
-        <DataTemplate x:Key="OHsManageSamplesRowTemplate">
+        <Style
+            x:Key="OHsManageSamplesEditStyle"
+            BasedOn="{StaticResource OHsManageSamplesActionStyle}"
+            TargetType="c:BalloonButton">
+            <Setter Property="ButtonText" Value="Edit" />
+            <Setter Property="ButtonIcon" Value="{StaticResource Pen}" />
+            <Setter Property="ToolTip" Value="{Binding FileName, Mode=OneWay, StringFormat=Edit {0}}" />
+            <Setter Property="AutomationProperties.Name" Value="{Binding FileName, Mode=OneWay, StringFormat=Edit {0}}" />
+        </Style>
+<DataTemplate x:Key="OHsManageSamplesRowTemplate">
             <Border IsEnabled="{Binding IsInteractionEnabled, Mode=OneWay}" Style="{StaticResource OHsManageSamplesRowStyle}">
                 <Grid MinHeight="48" Style="{StaticResource BaseGridStyle}">
                     <Grid.ColumnDefinitions>
@@ -204,7 +174,7 @@
                         <TextBlock
                             Margin="0,0,8,0"
                             VerticalAlignment="Center"
-                            Style="{StaticResource OHsManageSamplesTextStyle}"
+                            Style="{StaticResource BodyTextStyle}"
                             Text="Filename" />
                         <TextBox
                             Grid.Column="1"
@@ -218,7 +188,7 @@
                             Grid.Column="2"
                             Margin="8,0,0,0"
                             VerticalAlignment="Center"
-                            Style="{StaticResource OHsManageSamplesTextStyle}"
+                            Style="{StaticResource BodyTextStyle}"
                             Text="{Binding Extension, Mode=OneWay}" />
                     </Grid>
                     <c:BalloonButton
@@ -242,8 +212,8 @@
                         ButtonText="Delete"
                         Command="{Binding DataContext.DeleteCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}, Mode=OneWay}"
                         CommandParameter="{Binding Mode=OneWay}"
-                        Style="{StaticResource OHsManageSamplesDeleteStyle}"
-                        ToolTip="{Binding FileName, Mode=OneWay, StringFormat=Delete {0}}" />
+                        Style="{StaticResource OHsBalloonDestructiveActionStyle}"
+                        ToolTip="{Binding FileName, Mode=OneWay, StringFormat=Delete {0}}"  FocusVisualStyle="{StaticResource OHsSampleManagerKeyboardFocusStyle}" IsTabStop="True" h:KeyboardNavigationPolicy.AllowTabNavigation="True" ToolTipService.ShowsToolTipOnKeyboardFocus="True" ShouldExpand="False"/>
                 </Grid>
             </Border>
             <DataTemplate.Triggers>
@@ -252,27 +222,7 @@
                 </DataTrigger>
             </DataTemplate.Triggers>
         </DataTemplate>
-        <ItemsPanelTemplate x:Key="OHsManageSamplesPanel">
-            <VirtualizingStackPanel />
-        </ItemsPanelTemplate>
-        <ControlTemplate x:Key="OHsManageSamplesListTemplate" TargetType="ItemsControl">
-            <ScrollViewer
-                CanContentScroll="True"
-                HorizontalScrollBarVisibility="Disabled"
-                VerticalScrollBarVisibility="Auto">
-                <ItemsPresenter />
-            </ScrollViewer>
-        </ControlTemplate>
-        <Style
-            x:Key="OHsManageSamplesListStyle"
-            BasedOn="{StaticResource BaseItemsControlStyle}"
-            TargetType="ItemsControl">
-            <Setter Property="ItemsPanel" Value="{StaticResource OHsManageSamplesPanel}" />
-            <Setter Property="ItemTemplate" Value="{StaticResource OHsManageSamplesRowTemplate}" />
-            <Setter Property="Template" Value="{StaticResource OHsManageSamplesListTemplate}" />
-            <Setter Property="VirtualizingPanel.IsVirtualizing" Value="True" />
-            <Setter Property="VirtualizingPanel.VirtualizationMode" Value="Recycling" />
-        </Style>
+
         <Style
             x:Key="OHsManageSamplesEmptyStyle"
             BasedOn="{StaticResource CenteredEmptyStateTextStyle}"
@@ -289,7 +239,7 @@
             </Style.Triggers>
         </Style>
     </UserControl.Resources>
-    <Border Style="{StaticResource OHsManageSamplesSurfaceStyle}">
+    <Border Style="{StaticResource CardBorderStyle}">
         <Grid Style="{StaticResource BaseGridStyle}">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
@@ -314,14 +264,14 @@
                     ButtonText="Close"
                     Click="OnCloseClick"
                     IsEnabled="{Binding CanClose, Mode=OneWay}"
-                    Style="{StaticResource OHsManageSamplesDeleteStyle}"
-                    ToolTip="Close Manage Samples" />
+                    Style="{StaticResource OHsBalloonDestructiveActionStyle}"
+                    ToolTip="Close Manage Samples"  FocusVisualStyle="{StaticResource OHsSampleManagerKeyboardFocusStyle}" IsTabStop="True" h:KeyboardNavigationPolicy.AllowTabNavigation="True" ToolTipService.ShowsToolTipOnKeyboardFocus="True" ShouldExpand="False"/>
             </Grid>
             <Grid Grid.Row="1" Style="{StaticResource BaseGridStyle}">
                 <ItemsControl
                     x:Name="SampleRows"
                     ItemsSource="{Binding Entries, Mode=OneWay}"
-                    Style="{StaticResource OHsManageSamplesListStyle}" />
+                    Style="{StaticResource BaseItemsControlStyle}"  ItemsPanel="{StaticResource OHsVirtualizedDrawerItemsPanel}" ItemTemplate="{StaticResource OHsManageSamplesRowTemplate}" Template="{StaticResource OHsVirtualizedDrawerItemsTemplate}" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"/>
                 <TextBlock Style="{StaticResource OHsManageSamplesEmptyStyle}" Text="No samples in this project. Add a new sample to get started." />
             </Grid>
             <TextBlock

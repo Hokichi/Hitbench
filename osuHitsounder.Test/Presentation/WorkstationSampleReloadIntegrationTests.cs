@@ -60,8 +60,8 @@ public class WorkstationSampleReloadIntegrationTests
         Assert.That(action, Is.TypeOf<BalloonButton>());
         var button = (BalloonButton)action;
         Assert.That(button.IsTabStop, Is.True);
-        UiControlContract.AssertStyle<BalloonButton>(button, "OHsWorkstationRefreshButtonStyle");
-        Assert.That(button.Style.BasedOn, Is.SameAs(button.FindResource("OHsWorkstationToolbarButtonStyle")));
+        UiControlContract.AssertStyle<BalloonButton>(button, "OHsWorkstationToolbarButtonStyle");
+        Assert.That(button.Style, Is.SameAs(button.FindResource("OHsWorkstationToolbarButtonStyle")));
         Assert.That(button.FocusVisualStyle, Is.SameAs(button.FindResource("OHsSampleManagerKeyboardFocusStyle")));
         Assert.That(button.Command, Is.SameAs(vm.ReloadSamplesCommand)); Assert.That(button.IsEnabled, Is.True);
         Assert.That(AutomationProperties.GetName(button), Is.EqualTo("Reload Samples"));

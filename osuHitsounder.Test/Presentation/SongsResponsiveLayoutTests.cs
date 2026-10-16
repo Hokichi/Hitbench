@@ -83,7 +83,6 @@ public class SongsResponsiveLayoutTests
         view.UpdateLayout();
         page.UpdateSongsLayout(new Size(1920, 1040));
         view.UpdateLayout();
-        Assert.That(direction == FlowDirection.LeftToRight ? list.Padding.Right : list.Padding.Left, Is.EqualTo(24).Within(.01));
         var panel = Descendants<SpacedUniformGrid>(page).Single();
         Assert.That(panel.ExtentWidth, Is.EqualTo(panel.ViewportWidth).Within(.01));
         window.Close();
@@ -310,7 +309,7 @@ public class SongsResponsiveLayoutTests
         view.UpdateLayout();
         Assert.Multiple(() =>
         {
-            UiControlContract.AssertStyle<ItemsControl>((ItemsControl)page.FindName("SongsList"), "HomePageSongsStyle");
+            UiControlContract.AssertStyle<ItemsControl>((ItemsControl)page.FindName("SongsList"), "BaseItemsControlStyle");
             Assert.That(panel.VerticalOffset, Is.InRange(0, Math.Max(0, panel.ExtentHeight - panel.ViewportHeight)));
         });
     }

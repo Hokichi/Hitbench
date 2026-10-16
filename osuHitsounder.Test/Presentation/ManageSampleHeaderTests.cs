@@ -32,8 +32,8 @@ public sealed class ManageSampleHeaderTests
         var vm = (osuHitsounder.ViewModels.Shell.WorkstationPageVM)page.DataContext;
         Assert.That(button, Is.TypeOf<BalloonButton>());
         Assert.That(button.Command, Is.SameAs(vm.ManageSamplesCommand));
-        Assert.That(button.Style, Is.SameAs(page.FindResource("OHsWorkstationManageSamplesButtonStyle")));
-        Assert.That(button.Style.BasedOn, Is.SameAs(page.FindResource("OHsWorkstationToolbarButtonStyle")));
+        Assert.That(button.Style, Is.SameAs(page.FindResource("OHsWorkstationToolbarButtonStyle")));
+        Assert.That(button.Style, Is.SameAs(page.FindResource("OHsWorkstationToolbarButtonStyle")));
         Assert.That(button.IsTabStop, Is.True);
         Assert.That(((BalloonButton)page.FindName("AddSampleTrackButton")).Command, Is.SameAs(vm.AddSampleTrackCommand));
         Assert.That(((BalloonButton)page.FindName("AddInstrumentButton")).Command, Is.SameAs(vm.AddPianoTrackCommand));
@@ -46,5 +46,4 @@ public sealed class ManageSampleHeaderTests
             foreach(var child in Descendants(VisualTreeHelper.GetChild(root,i))) yield return child;
     }
 }
-
 

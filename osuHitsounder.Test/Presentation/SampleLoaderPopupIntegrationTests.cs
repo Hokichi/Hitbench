@@ -219,7 +219,7 @@ public sealed class SampleLoaderPopupIntegrationTests
         UiTestPump.Run(vm.SetCheckedAsync(file, true));
         view.UpdateLayout();
         var import = (BalloonButton)popup.FindName("ImportButton");
-        AssertPopupStyle<BalloonButton>(import, "SampleLoaderImportStyle");
+        AssertPopupStyle<BalloonButton>(import, "OHsBalloonConfirmActionStyle");
         Assert.That(import.IsEnabled, Is.True);
         import.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
         Assert.That(popup.Result, Is.EqualTo(new[] { file.FullPath }));
@@ -306,8 +306,8 @@ public sealed class SampleLoaderPopupIntegrationTests
     {
         UiTestPump.Run(vm.SelectAsync(file));
         view.UpdateLayout();
-        AssertPopupStyle<ListBox>((ListBox)popup.FindName("DirectoryContents"), "SampleLoaderContentsStyle");
-        AssertPopupStyle<ValueSlider>((ValueSlider)popup.FindName("PlaybackTimeline"), "SampleLoaderTimelineStyle");
+        AssertPopupStyle<ListBox>((ListBox)popup.FindName("DirectoryContents"), "BaseListBoxStyle");
+        AssertPopupStyle<ValueSlider>((ValueSlider)popup.FindName("PlaybackTimeline"), "BaseValueSliderStyle");
         var footer = (CheckBox)popup.FindName("AutoPlayCheckBox");
         AssertPopupStyle<CheckBox>(footer, "SampleLoaderAutoPlayStyle");
         Assert.That(footer.Template, Is.SameAs(popup.FindResource("SampleLoaderAutoPlayTemplate")));
@@ -360,8 +360,8 @@ public sealed class SampleLoaderPopupIntegrationTests
             var styleKey = name switch
             {
                 "AutoPlayCheckBox" => "SampleLoaderAutoPlayStyle",
-                "PlaybackTimeline" => "SampleLoaderTimelineStyle",
-                _ => "SampleLoaderImportStyle"
+                "PlaybackTimeline" => "BaseValueSliderStyle",
+                _ => "OHsBalloonConfirmActionStyle"
             };
             Assert.That(control.Style, Is.SameAs(popup.FindResource(styleKey)));
         }

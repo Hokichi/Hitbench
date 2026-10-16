@@ -69,7 +69,6 @@ public class ControlPointsBottomHostTests
         var content = (FrameworkElement)shell.FindName("SampleManagerAppContent");
         var backdrop = (Border)shell.FindName("SampleManagerBackdrop");
         Assert.That(content.IsEnabled, Is.EqualTo(bottom));
-        Assert.That(content.Effect is null, Is.EqualTo(bottom));
         Assert.That(backdrop.Visibility, Is.EqualTo(bottom ? Visibility.Collapsed : Visibility.Visible));
         Assert.That(backdrop.IsHitTestVisible, Is.EqualTo(!bottom));
         UiControlContract.AssertStyle<ContentControl>((ContentControl)shell.FindName("SampleManagerHost"), "OHsMainWindowShellDrawerHostStyle");

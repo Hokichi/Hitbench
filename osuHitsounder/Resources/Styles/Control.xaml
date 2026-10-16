@@ -6,10 +6,7 @@
         TargetType="Control">
         <Setter Property="Template" Value="{x:Null}" />
     </Style>
-    <Style
-        x:Key="OHsKeyboardFocusVisualStyle"
-        BasedOn="{StaticResource DefaultFocusVisualStyle}"
-        TargetType="Control" />
+
     <ControlTemplate x:Key="OHsSampleManagerKeyboardFocusTemplate" TargetType="Control">
         <Border x:Name="FocusMarker" Height="2" Margin="4,0,4,0" VerticalAlignment="Bottom"
                 IsHitTestVisible="False" Background="{DynamicResource Brush.Text.Primary}"

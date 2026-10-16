@@ -11,16 +11,7 @@
         <Setter Property="FocusVisualStyle" Value="{StaticResource DefaultFocusVisualStyle}" />
         <Setter Property="OverridesDefaultStyle" Value="True" />
     </Style>
-    <ControlTemplate
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        x:Key="FadingTextBoxContentHostTemplate"
-        TargetType="TextBox">
-        <customControls:FadingScrollViewer
-            x:Name="PART_ContentHost"
-            Margin="0"
-            VerticalAlignment="Stretch" />
-    </ControlTemplate>
+
     <Style
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -85,45 +76,7 @@
         <Setter Property="VerticalContentAlignment" Value="Center" />
         <Setter Property="Template" Value="{StaticResource RoundedTextInputTemplate}" />
     </Style>
-    <ControlTemplate
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        x:Key="RoundedPasswordInputTemplate"
-        TargetType="PasswordBox">
-        <Border
-            x:Name="InputRoot"
-            Background="{TemplateBinding Background}"
-            BorderBrush="{TemplateBinding BorderBrush}"
-            BorderThickness="{TemplateBinding BorderThickness}"
-            CornerRadius="8">
-            <ScrollViewer
-                x:Name="PART_ContentHost"
-                Margin="{TemplateBinding Padding}"
-                VerticalAlignment="Stretch" />
-        </Border>
-        <ControlTemplate.Triggers>
-            <Trigger Property="IsMouseOver" Value="True">
-                <Setter TargetName="InputRoot" Property="Background" Value="{DynamicResource Brush.Background.Hover}" />
-            </Trigger>
-            <Trigger Property="IsEnabled" Value="False">
-                <Setter TargetName="InputRoot" Property="Opacity" Value="0.4" />
-            </Trigger>
-        </ControlTemplate.Triggers>
-    </ControlTemplate>
-    <Style
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        x:Key="RoundedPasswordInputStyle"
-        BasedOn="{StaticResource BasePasswordBoxStyle}"
-        TargetType="PasswordBox">
-        <Setter Property="Background" Value="{DynamicResource Brush.Background.Elevated}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Subtle}" />
-        <Setter Property="CaretBrush" Value="{DynamicResource Brush.Text.Primary}" />
-        <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
-        <Setter Property="FontFamily" Value="{DynamicResource Regular}" />
-        <Setter Property="FontSize" Value="13" />
-        <Setter Property="Template" Value="{StaticResource RoundedPasswordInputTemplate}" />
-    </Style>
+
     <ControlTemplate
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -320,6 +273,4 @@
     </Style>
 
 </ResourceDictionary>
-
-
 

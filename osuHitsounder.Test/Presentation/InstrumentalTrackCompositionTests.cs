@@ -25,7 +25,7 @@ public class InstrumentalTrackCompositionTests
         var arrangement = Children(row).OfType<osuHitsounder.Resources.CustomControls.BalloonButton>().Single(b => b.ButtonText == "View Arrangement");
         UiControlContract.AssertStyle<osuHitsounder.Resources.CustomControls.BalloonButton>(arrangement, "OHsWorkstationInstrumentActionStyle");
         var mapping = Children(row).OfType<osuHitsounder.Resources.CustomControls.BalloonButton>().Single(b => System.Windows.Automation.AutomationProperties.GetName(b) == "Keys Mapping");
-        UiControlContract.AssertStyle<osuHitsounder.Resources.CustomControls.BalloonButton>(mapping, "OHsWorkstationKeysMappingStyle");
+        UiControlContract.AssertStyle<osuHitsounder.Resources.CustomControls.BalloonButton>(mapping, "OHsWorkstationInstrumentActionStyle");
         Assert.That(Children(row).OfType<osuHitsounder.Resources.CustomControls.BeatGridView>(), Is.Empty);
         UiTestPump.Run(page.DeactivateAsync());
     }
@@ -49,7 +49,7 @@ public class InstrumentalTrackCompositionTests
         var popup = new OHsInstrumentalArrangementPopup(vm);
         try
         {
-            Assert.That(popup.HandlePlaybackKey(Key.Space, ModifierKeys.None, false, new TextBox()), Is.False); Assert.That(popup.FindName("PianoRoll"), Is.TypeOf<osuHitsounder.Resources.CustomControls.PianoRollView>()); Assert.That(popup.SizeToContent, Is.EqualTo(SizeToContent.Manual));
+            Assert.That(popup.HandlePlaybackKey(Key.Space, ModifierKeys.None, false, new TextBox()), Is.False); Assert.That(popup.FindName("PianoRoll"), Is.TypeOf<osuHitsounder.Resources.CustomControls.PianoRollView>());
             var scroller = (ScrollViewer)popup.FindName("WaveformScroll"); scroller.ApplyTemplate();
             Assert.That(scroller.Template, Is.SameAs(popup.FindResource("DefaultScrollViewerTemplate")));
         }

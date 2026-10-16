@@ -64,7 +64,7 @@ public class KeysMappingDrawerIntegrationTests
             var open = Descendants(drawer).OfType<osuHitsounder.Resources.CustomControls.BalloonButton>().Single(button => System.Windows.Automation.AutomationProperties.GetName(button) == "Import key mappings from folder");
             open.GetBindingExpression(System.Windows.Controls.Primitives.ButtonBase.CommandProperty)!.UpdateTarget();
             Assert.That(open.Command, Is.SameAs(vm.OpenFolderCommand));
-            Assert.That(open.Style, Is.SameAs(drawer.FindResource("OHsKeysActionStyle")));
+            Assert.That(open.Style, Is.SameAs(drawer.FindResource("OHsBalloonNeutralActionStyle")));
             Assert.That(open.IsEnabled, Is.True);
         }
         finally { UiTestPump.Run(vm.DeactivateAsync()); host.Close(); }

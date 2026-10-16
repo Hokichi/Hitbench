@@ -648,13 +648,13 @@ public class HomePageIntegrationTests
             button.Foreground = Brushes.Green;
             name.FontSize = 17;
             view.UpdateLayout();
-            UiControlContract.AssertStyle<Button>(button, "HomePageProjectCardStyle");
+            UiControlContract.AssertStyle<Button>(button, "FolderActionButtonStyle");
             UiControlContract.AssertStyle<TextBlock>(name, "HomePageProjectNameStyle");
             var originalStyle = button.Style;
-            button.Style = (Style)page.FindResource("FolderActionButtonStyle");
-            Assert.Throws<AssertionException>(() => UiControlContract.AssertStyle<Button>(button, "HomePageProjectCardStyle"));
+            button.Style = (Style)page.FindResource("BaseButtonStyle");
+            Assert.Throws<AssertionException>(() => UiControlContract.AssertStyle<Button>(button, "FolderActionButtonStyle"));
             button.Style = originalStyle;
-            Assert.Throws<AssertionException>(() => UiControlContract.AssertStyle<TextBox>(button, "HomePageProjectCardStyle"));
+            Assert.Throws<AssertionException>(() => UiControlContract.AssertStyle<TextBox>(button, "FolderActionButtonStyle"));
             var peer = new ButtonAutomationPeer(button);
 
             ((IInvokeProvider)peer.GetPattern(PatternInterface.Invoke)).Invoke();
@@ -670,7 +670,7 @@ public class HomePageIntegrationTests
                 Assert.That(button.IsEnabled, Is.False);
                 Assert.That(opened, Is.EqualTo(new[] { Path.Combine(row.FullName, "project.json") }));
                 Assert.That(name.Text, Is.EqualTo(row.Name));
-                UiControlContract.AssertStyle<Button>(button, "HomePageProjectCardStyle");
+                UiControlContract.AssertStyle<Button>(button, "FolderActionButtonStyle");
                 UiControlContract.AssertStyle<TextBlock>(name, "HomePageProjectNameStyle");
                 Assert.That(VirtualizingPanel.GetIsVirtualizing(projects), Is.True);
                 Assert.That(VirtualizingPanel.GetVirtualizationMode(projects), Is.EqualTo(VirtualizationMode.Recycling));
@@ -744,7 +744,7 @@ public class HomePageIntegrationTests
                     UiControlContract.AssertStyle<Image>(backgroundImage, "HomePageSongBackgroundStyle");
                     UiControlContract.AssertStyle<Grid>((Grid)button.Content, "HomePageSongArtworkStyle");
                     UiControlContract.AssertStyle<TextBlock>(labels.Single(label => label.Text == "Artist"), "HomePageSongArtistStyle");
-                    UiControlContract.AssertStyle<TextBlock>(labels.Single(label => label.Text.StartsWith("Title")), "HomePageSongTitleStyle");
+                    UiControlContract.AssertStyle<TextBlock>(labels.Single(label => label.Text.StartsWith("Title")), "HomePageSongArtistStyle");
                     var peer = new ButtonAutomationPeer(button);
                     Assert.Multiple(() =>
                     {

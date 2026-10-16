@@ -13,20 +13,14 @@
         </Style.Triggers>
     </Style>
 
-    <ControlTemplate x:Key="OHsValueSliderDecreaseTemplate" TargetType="RepeatButton">
+    <ControlTemplate x:Key="OHsValueSliderTrackButtonTemplate" TargetType="RepeatButton">
         <Border
             Height="6"
             VerticalAlignment="Center"
             Background="{TemplateBinding Background}"
             CornerRadius="3" />
     </ControlTemplate>
-    <ControlTemplate x:Key="OHsValueSliderIncreaseTemplate" TargetType="RepeatButton">
-        <Border
-            Height="6"
-            VerticalAlignment="Center"
-            Background="{TemplateBinding Background}"
-            CornerRadius="3" />
-    </ControlTemplate>
+
     <ControlTemplate x:Key="OHsValueSliderThumbTemplate" TargetType="Thumb">
         <Ellipse
             Fill="{TemplateBinding Background}"
@@ -38,8 +32,8 @@
         BasedOn="{StaticResource BaseRepeatButtonStyle}"
         TargetType="RepeatButton">
         <Setter Property="Background" Value="{DynamicResource Brush.Navy}" />
-        <Setter Property="Focusable" Value="False" />
-        <Setter Property="Template" Value="{StaticResource OHsValueSliderDecreaseTemplate}" />
+
+        <Setter Property="Template" Value="{StaticResource OHsValueSliderTrackButtonTemplate}" />
         <Style.Triggers>
             <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
                 <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
@@ -51,8 +45,8 @@
         BasedOn="{StaticResource BaseRepeatButtonStyle}"
         TargetType="RepeatButton">
         <Setter Property="Background" Value="{DynamicResource Brush.Background.Deepened}" />
-        <Setter Property="Focusable" Value="False" />
-        <Setter Property="Template" Value="{StaticResource OHsValueSliderIncreaseTemplate}" />
+
+        <Setter Property="Template" Value="{StaticResource OHsValueSliderTrackButtonTemplate}" />
         <Style.Triggers>
             <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
                 <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
@@ -136,7 +130,7 @@
         </ControlTemplate.Triggers>
     </ControlTemplate>
     <Style
-        x:Key="OHsValueSliderStyle"
+        x:Key="BaseValueSliderStyle"
         BasedOn="{StaticResource BaseSliderStyle}"
         TargetType="customControls:ValueSlider">
         <Setter Property="MinHeight" Value="28" />
@@ -235,7 +229,7 @@
         </ControlTemplate.Triggers>
     </ControlTemplate>
     <Style
-        x:Key="OHsVolumeWheelStyle"
+        x:Key="BaseVolumeWheelStyle"
         BasedOn="{StaticResource BaseSliderStyle}"
         TargetType="customControls:VolumeWheel">
         <Setter Property="Focusable" Value="True" />

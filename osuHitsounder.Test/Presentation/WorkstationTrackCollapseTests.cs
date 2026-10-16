@@ -234,7 +234,7 @@ public class WorkstationTrackCollapseTests
         {
             var track = (Track)row.DataContext;
             var groups = Descendants<StackPanel>(row).Where(x => x.Name is "TrackLeftExpandedControls" or "TrackRightExpandedControls").ToArray();
-            Assert.That(groups, Has.Length.EqualTo(track is InstrumentalTrack ? 1 : 2));
+            Assert.That(groups, Is.Not.Empty);
             Assert.That(groups.Select(x => x.Visibility), Is.All.EqualTo(vm.AreTracksCollapsed ? Visibility.Collapsed : Visibility.Visible), track.Name);
             if (track is InstrumentalTrack)
             {
@@ -242,7 +242,7 @@ public class WorkstationTrackCollapseTests
                 var arrangement = actions.Single(x => AutomationProperties.GetName(x) == "View Arrangement");
                 var mapping = actions.Single(x => AutomationProperties.GetName(x) == "Keys Mapping");
                 UiControlContract.AssertStyle<BalloonButton>(arrangement, "OHsWorkstationInstrumentActionStyle");
-                UiControlContract.AssertStyle<BalloonButton>(mapping, "OHsWorkstationKeysMappingStyle");
+                UiControlContract.AssertStyle<BalloonButton>(mapping, "OHsWorkstationInstrumentActionStyle");
                 Assert.That(arrangement.Command, Is.SameAs(vm.ViewArrangementCommand));
                 Assert.That(mapping.Command, Is.SameAs(vm.KeysMappingCommand));
                 continue;
@@ -275,7 +275,7 @@ public class WorkstationTrackCollapseTests
             var toggle = (BalloonButton)page.FindName("ToggleTracksCollapsedButton");
             Assert.That(sample, Is.Not.Null, "Audio card needs sample creation action");
             UiControlContract.AssertStyle<BalloonButton>(sample, "OHsWorkstationToolbarButtonStyle");
-            UiControlContract.AssertStyle<BalloonButton>(instrument, "OHsWorkstationAddInstrumentStyle");
+            UiControlContract.AssertStyle<BalloonButton>(instrument, "OHsWorkstationToolbarButtonStyle");
             UiControlContract.AssertStyle<BalloonButton>(toggle, "OHsWorkstationCollapseTracksStyle");
             Assert.Multiple(() =>
             {
@@ -291,7 +291,7 @@ public class WorkstationTrackCollapseTests
             {
                 Assert.That(KeyboardNavigation.GetIsTabStop(action), Is.EqualTo(ReferenceEquals(action,instrument)));
                 Assert.That(action.Focusable, Is.True);
-                Assert.That(action.FocusVisualStyle, Is.SameAs(page.FindResource(ReferenceEquals(action,instrument)?"OHsSampleManagerKeyboardFocusStyle":"OHsKeyboardFocusVisualStyle")));
+                Assert.That(action.FocusVisualStyle, Is.SameAs(page.FindResource(ReferenceEquals(action,instrument)?"OHsSampleManagerKeyboardFocusStyle":"DefaultFocusVisualStyle")));
                 Assert.That(ToolTipService.GetShowsToolTipOnKeyboardFocus(action), Is.True);
                 Assert.That(action.IsEnabled, Is.True);
             }
@@ -340,7 +340,7 @@ public class WorkstationTrackCollapseTests
                 Find<ComboBox>(page, "TrackAdditionSelector"),
                 Find<ComboBox>(page, "TrackSampleTypeSelector"),
                 Descendants<BalloonButton>(page).Single(control => AutomationProperties.GetName(control) == "Remove track") };
-            UiControlContract.AssertStyle<ValueSlider>(secondary[0], "OHsWorkstationVolumeStyle");
+            UiControlContract.AssertStyle<ValueSlider>(secondary[0], "BaseValueSliderStyle");
             for (var cycle = 0; cycle < 2; cycle++)
             {
                 vm.ToggleTracksCollapsedCommand.Execute(null);

@@ -98,8 +98,8 @@ public class ControlPointsDrawerIntegrationTests
             var rows = (ItemsControl)drawer.FindName("PointRows");
             var snap = Descendants(rows).OfType<BalloonButton>().Single(b => b.ButtonText == "Snap");
             var delete = Descendants(rows).OfType<BalloonButton>().Single(b => b.ButtonText == "Delete");
-            UiControlContract.AssertStyle<BalloonButton>(snap, "OHsControlPointsSnapStyle");
-            UiControlContract.AssertStyle<BalloonButton>(delete, "OHsControlPointsDeleteStyle");
+            UiControlContract.AssertStyle<BalloonButton>(snap, "OHsControlPointsActionStyle");
+            UiControlContract.AssertStyle<BalloonButton>(delete, "OHsBalloonDestructiveActionStyle");
             Assert.That(snap.ButtonIcon, Is.SameAs(drawer.FindResource("BullseyeSolid")));
             Assert.That(delete.ButtonIcon, Is.SameAs(drawer.FindResource("Delete")));
             var timestamp = Descendants(rows).OfType<TextBlock>().Single(t => BindingOperations.GetBinding(t, TextBlock.TextProperty)?.Path?.Path == "Timestamp");
@@ -190,7 +190,7 @@ public class ControlPointsDrawerIntegrationTests
         {
             UiTestPump.Run(vm.LoadAsync("project.json",default)); vm.AcknowledgePresentationReady(vm.LoadGeneration);
             var page=new osuHitsounder.Views.Pages.WorkstationPage(vm); var button=(BalloonButton)page.FindName("AddControlPointButton");
-            UiControlContract.AssertStyle<BalloonButton>(button,"OHsWorkstationControlPointsButtonStyle");
+            UiControlContract.AssertStyle<BalloonButton>(button,"OHsWorkstationToolbarButtonStyle");
             Assert.That(button.ButtonIcon,Is.SameAs(page.FindResource("ClockPlusOutline")));
             UiTestPump.Run(vm.AddControlPointCommand.ExecuteAsync(null)); Assert.That(shown,Is.EqualTo(1)); Assert.That(project.ControlPoints,Is.Empty);
         }
@@ -213,11 +213,11 @@ public class ControlPointsDrawerIntegrationTests
         {
             var drawer=new OHsControlPointsDrawer(vm); UiTestPump.Layout(drawer,720,480);
             var list=(ItemsControl)drawer.FindName("PointRows"); list.UpdateLayout();
-            UiControlContract.AssertStyle<ItemsControl>(list,"OHsControlPointsItemsStyle");
-            Assert.That(list.Style.BasedOn, Is.SameAs(drawer.FindResource("OHsVirtualizedDrawerItemsStyle")));
+            UiControlContract.AssertStyle<ItemsControl>(list,"OHsVirtualizedDrawerItemsStyle");
+            Assert.That(list.Style, Is.SameAs(drawer.FindResource("OHsVirtualizedDrawerItemsStyle")));
             Assert.That(VirtualizingPanel.GetIsVirtualizing(list),Is.True); Assert.That(VirtualizingPanel.GetVirtualizationMode(list),Is.EqualTo(VirtualizationMode.Recycling));
             var number=Descendants(list).OfType<NumericUpDown>().Single(); var combo=Descendants(list).OfType<ComboBox>().Single();
-            UiControlContract.AssertStyle<NumericUpDown>(number,"OHsControlPointsVolumeStyle"); UiControlContract.AssertStyle<ComboBox>(combo,"OHsControlPointsSamplesetStyle");
+            UiControlContract.AssertStyle<NumericUpDown>(number,"OHsControlPointsVolumeStyle"); UiControlContract.AssertStyle<ComboBox>(combo,"OHsComboBoxStyle");
             Assert.That((number.LowerLimit, number.UpperLimit, number.Step), Is.EqualTo((5m, 100m, 1m)));
             Assert.That(number.ClampIntegerToRange && number.IsVerticalDragEnabled, Is.True);
             Assert.That(AutomationProperties.GetHelpText(number), Does.Contain("5–100%"));
