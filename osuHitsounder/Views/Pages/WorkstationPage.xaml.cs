@@ -176,115 +176,6 @@ public partial class WorkstationPage : UserControl
         UpdatePlaybackRefreshSubscription();
     }
 
-    private void OnSampleSelectorLoaded(object sender, RoutedEventArgs e)
-    {
-        if (sender is ComboBox { Name: "TrackSampleFileSelector", DataContext: Track track } selector)
-        {
-            selector.Tag = true;
-            var saved = track.SelectedSampleFileName;
-            selector.SelectedItem = viewModel.SampleFiles.FirstOrDefault(name =>
-                string.Equals(name, saved, StringComparison.OrdinalIgnoreCase));
-            selector.Tag = false;
-            UpdateMissingSampleCue(selector, track);
-        }
-    }
-
-    private void OnTrackControlDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
-    {
-        if (sender is ToggleButton toggle) { OnTrackAuditionLoaded(toggle, new RoutedEventArgs()); return; }
-        if (sender is ComboBox { Name: "TrackSampleFileSelector" } selector) OnSampleSelectorLoaded(selector, new RoutedEventArgs());
-        else if (sender is ComboBox metadata) OnTrackMetadataSelectorLoaded(metadata, new RoutedEventArgs());
-        else if (sender is Slider slider) OnVolumeSliderLoaded(slider, new RoutedEventArgs());
-        else if (sender is TextBox input) OnTrackNameLoaded(input, new RoutedEventArgs());
-    }
-
-    private void OnTrackNameLoaded(object sender, RoutedEventArgs e)
-    {
-        if (sender is not TextBox { DataContext: Track track } input) return;
-        input.Tag = true;
-        input.SetCurrentValue(TextBox.TextProperty, track.Name);
-        input.Tag = false;
-    }
-
-    private void OnTrackNameTextChanged(object sender, TextChangedEventArgs e)
-    {
-        if (sender is TextBox { IsLoaded: true, DataContext: Track track } input && input.Tag is not true)
-            viewModel.SetTrackName(track, input.Text);
-    }
-
-    private void RefreshSampleSelectors(DependencyObject root)
-    {
-        if (root is ComboBox { Name: "TrackSampleFileSelector", DataContext: Track } selector)
-        {
-            OnSampleSelectorLoaded(selector, new RoutedEventArgs());
-            return;
-        }
-        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(root); index++)
-            RefreshSampleSelectors(VisualTreeHelper.GetChild(root, index));
-    }
-
-    private void OnSampleSelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (sender is ComboBox selector && selector.IsLoaded && selector.Tag is not true && selector.DataContext is Track track)
-        {
-            if (selector.SelectedItem is string fileName &&
-                !string.Equals(track.SelectedSampleFileName, fileName, StringComparison.OrdinalIgnoreCase))
-                viewModel.SelectSample(track, fileName);
-            UpdateMissingSampleCue(selector, track);
-        }
-    }
-
-    private void OnTrackMetadataSelectorLoaded(object sender, RoutedEventArgs e)
-    {
-        if (sender is not ComboBox { DataContext: Track track } selector) return;
-        selector.Tag = true;
-        selector.SetCurrentValue(ComboBox.SelectedItemProperty, selector.Name switch { "TrackSampleTypeSelector" => track.SampleType, _ => track.Addition });
-        selector.Tag = false;
-    }
-
-    private void OnTrackMetadataSelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (sender is not ComboBox { IsLoaded: true, DataContext: Track track } selector || selector.Tag is true) return;
-        if (selector.Name == "TrackSampleTypeSelector" && selector.SelectedItem is osuHitsounder.Core.Enums.SampleType type) { viewModel.SetTrackSampleType(track, type); return; }
-        if (selector.SelectedItem is not string value) return;
-        if (selector.Name == "TrackAdditionSelector") viewModel.SetTrackAddition(track, value);
-    }
-
-    private void OnVolumeSliderLoaded(object sender, RoutedEventArgs e)
-    {
-        if (sender is Slider slider && slider.DataContext is Track track)
-        {
-            slider.Tag = true;
-            slider.Value = track.Volume;
-            slider.Tag = false;
-        }
-    }
-
-    private void OnVolumeValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-    {
-        if (sender is Slider slider && slider.IsLoaded && slider.Tag is not true && slider.DataContext is Track track)
-            viewModel.SetTrackVolume(track, (int)Math.Round(e.NewValue));
-    }
-
-    private void OnSamplePlacementRequested(object sender, SamplePlacementRequestedEventArgs e)
-    {
-        if (sender is BeatGridView { DataContext: Track track })
-            viewModel.PlaceSample(track, e.LeftBoundaryMilliseconds);
-        e.Handled = true;
-    }
-
-    private void OnSampleRemovalRequested(object sender, SampleRemovalRequestedEventArgs e)
-    {
-        if (sender is BeatGridView { DataContext: Track track })
-            viewModel.RemoveSample(track, e.Sample);
-        e.Handled = true;
-    }
-
-    private void UpdateMissingSampleCue(ComboBox selector, Track track)
-    {
-        RefreshTrackSamplePresentation();
-    }
-
     private static T? FindVisualChild<T>(DependencyObject root, string? name = null) where T : DependencyObject
     {
         if (root is T match && (name is null || root is FrameworkElement element && element.Name == name)) return match;
@@ -294,6 +185,12 @@ public partial class WorkstationPage : UserControl
             if (found is not null) return found;
         }
         return null;
+    }
+
+    private static void RefreshRows(DependencyObject root)
+    {
+        if (root is OHsWorkstationTrackRow row) { row.RefreshPresentation(); return; }
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++) RefreshRows(VisualTreeHelper.GetChild(root, i));
     }
 
     public Task FlushSavesAsync() => viewModel.FlushSavesAsync();
@@ -329,10 +226,10 @@ public partial class WorkstationPage : UserControl
             CancelNodePointer();
         }
         if (e.PropertyName == nameof(WorkstationPageVM.IsSelectionMode) && nodeSourceGrid is not null && pointerNode is null) CancelNodePointer();
-        if (e.PropertyName == nameof(WorkstationPageVM.TrackAuditionRevision)) RefreshTrackAuditionControls(TrackList);
+        if (e.PropertyName == nameof(WorkstationPageVM.TrackAuditionRevision)) RefreshRows(TrackList);
         if (!viewModel.CanPlaceSamples || nodeDragging && !viewModel.IsNodeDragActive) CancelNodePointer();
-        if (e.PropertyName == nameof(WorkstationPageVM.SampleFiles)) RefreshSampleSelectors(TrackList);
-        if (e.PropertyName is nameof(WorkstationPageVM.SampleFiles) or nameof(WorkstationPageVM.SamplesRevision)) RefreshTrackSamplePresentation();
+        if (e.PropertyName == nameof(WorkstationPageVM.SampleFiles)) RefreshRows(TrackList);
+        if (e.PropertyName is nameof(WorkstationPageVM.SampleFiles) or nameof(WorkstationPageVM.SamplesRevision)) RefreshRows(TrackList);
         if (e.PropertyName is nameof(WorkstationPageVM.IsPlaying) or nameof(WorkstationPageVM.LoadPhase))
             UpdatePlaybackRefreshSubscription();
         if (e.PropertyName == nameof(WorkstationPageVM.ZoomFactor)) { Timeline.ApplyPendingZoomAnchor(); UpdateNodeAdornerGeometry(); }

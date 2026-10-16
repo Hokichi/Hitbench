@@ -46,11 +46,6 @@ public partial class WorkstationPage
         var item = FindAncestor<ListBoxItem>(e.NewFocus as DependencyObject);
         if (item?.DataContext is Track track) viewModel.SelectedTrack = track;
     }
-    private void OnSampleSelectionRequested(object sender, SampleSelectionRequestedEventArgs e)
-    {
-        if (sender is BeatGridView { DataContext: Track track }) viewModel.SelectNode(track, e.Sample, false);
-        e.Handled = true;
-    }
     private void OnNodePointerDown(object sender, MouseButtonEventArgs e)
     {
         var origin = e.OriginalSource as DependencyObject;

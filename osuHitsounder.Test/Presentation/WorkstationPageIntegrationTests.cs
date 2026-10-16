@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
@@ -236,7 +236,7 @@ public class WorkstationPageIntegrationTests
         Assert.That(mute.IsChecked, Is.True); Assert.That(solo.IsChecked, Is.True);
         var remove = FindVisualChildren<BalloonButton>(page).Single(control => ReferenceEquals(control.DataContext, a) &&
             AutomationProperties.GetName(control) == "Remove track");
-        Assert.That(remove.Style, Is.SameAs(page.FindResource("OHsWorkstationRemoveTrackStyle")));
+        Assert.That(remove.Style, Is.SameAs(remove.FindResource("OHsWorkstationRemoveTrackStyle")));
         Assert.That(remove.Style.BasedOn, Is.SameAs(page.FindResource("OHsBalloonDestructiveActionStyle")));
         Assert.That(remove.CommandParameter, Is.SameAs(a));
         var updates = audio.SampleUpdates.Count;
@@ -320,8 +320,8 @@ public class WorkstationPageIntegrationTests
         Assert.That(addition.Items.Cast<string>(), Is.EqualTo(new[] { "None", "Normal", "Soft", "Drum" }));
         Assert.That(addition.SelectedItem, Is.EqualTo("Soft"));
         Assert.That(addition.ItemTemplate, Is.Null, "Use the native full-string presentation for both selection and options.");
-        Assert.That(addition.Style, Is.SameAs(page.FindResource("OHsWorkstationTrackMetadataComboBoxStyle")));
-        Assert.That(addition.Style, Is.SameAs(page.FindResource("OHsWorkstationTrackMetadataComboBoxStyle")));
+        Assert.That(addition.Style, Is.SameAs(addition.FindResource("OHsWorkstationTrackMetadataComboBoxStyle")));
+        Assert.That(addition.Style, Is.SameAs(addition.FindResource("OHsWorkstationTrackMetadataComboBoxStyle")));
         Assert.That(addition.IsTabStop, Is.False);
         Assert.That(saves.Writes, Is.Zero);
         addition.SelectedItem = "None";
@@ -362,7 +362,7 @@ public class WorkstationPageIntegrationTests
         Assert.That(input.IsEnabled, Is.True);
         Assert.That(input.IsTabStop, Is.True);
         Assert.That(input.Focusable, Is.True);
-        Assert.That(input.Style, Is.SameAs(page.FindResource("OHsWorkstationTrackNameStyle")));
+        Assert.That(input.Style, Is.SameAs(input.FindResource("OHsWorkstationTrackNameStyle")));
         Assert.That(input.Style.BasedOn, Is.SameAs(page.FindResource("RoundedTextInputStyle")));
         Assert.That(saves.Writes, Is.Zero);
 
@@ -461,7 +461,7 @@ public class WorkstationPageIntegrationTests
         var button = FindVisualChildren<BalloonButton>(page)
             .Single(action => AutomationProperties.GetName(action) == "Remove track");
         Assert.That(button.CommandParameter, Is.SameAs(track));
-        Assert.That(button.Style, Is.SameAs(page.FindResource("OHsWorkstationRemoveTrackStyle")));
+        Assert.That(button.Style, Is.SameAs(button.FindResource("OHsWorkstationRemoveTrackStyle")));
         Assert.That(button.Style.BasedOn, Is.SameAs(page.FindResource("OHsBalloonDestructiveActionStyle")));
         Assert.That(AutomationProperties.GetName(button), Is.EqualTo("Remove track"));
         UiTestPump.Run(vm.RemoveTrackCommand.ExecuteAsync(button.CommandParameter));

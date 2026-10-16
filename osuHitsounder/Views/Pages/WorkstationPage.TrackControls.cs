@@ -28,45 +28,6 @@ public partial class WorkstationPage
         set => SetValue(TrackScrollBarGutterProperty, value);
     }
 
-    private void OnTrackAuditionLoaded(object sender, RoutedEventArgs e)
-    {
-        if (sender is not ToggleButton { DataContext: Track track } toggle) return;
-        toggle.Tag = true;
-        toggle.SetCurrentValue(ToggleButton.IsCheckedProperty, toggle.Name == "TrackMuteToggle"
-            ? viewModel.IsTrackMuted(track) : viewModel.IsTrackSoloed(track));
-        toggle.Tag = false;
-    }
-
-    private void OnTrackAuditionChanged(object sender, RoutedEventArgs e)
-    {
-        if (sender is not ToggleButton { IsLoaded: true, DataContext: Track track } toggle || toggle.Tag is true) return;
-        if (toggle.Name == "TrackMuteToggle") viewModel.SetTrackMuted(track, toggle.IsChecked is true);
-        else if (toggle.Name == "TrackSoloToggle") viewModel.SetTrackSoloed(track, toggle.IsChecked is true);
-        OnTrackAuditionLoaded(toggle, new RoutedEventArgs());
-    }
-
-    private void RefreshTrackAuditionControls(DependencyObject root)
-    {
-        if (root is ToggleButton { Name: "TrackMuteToggle" or "TrackSoloToggle" } toggle)
-            OnTrackAuditionLoaded(toggle, new RoutedEventArgs());
-        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
-            RefreshTrackAuditionControls(VisualTreeHelper.GetChild(root, i));
-    }
-
-    private void OnTrackControlStackLoaded(object sender, RoutedEventArgs e) => UpdateTrackHeightMinimum(sender);
-    private void OnTrackControlStackSizeChanged(object sender, SizeChangedEventArgs e) => UpdateTrackHeightMinimum(sender);
-
-    private void UpdateTrackHeightMinimum(object sender)
-    {
-        if (deactivationStarted || sender is not StackPanel stack) return;
-        var row=FindAncestor<Grid>(stack);
-        if(row is null)return;
-        var left = FindVisualChild<StackPanel>(row, "TrackLeftControls");
-        var right = FindVisualChild<StackPanel>(row, "TrackRightControls");
-        if (left is not null && (right is not null || stack.DataContext is osuHitsounder.Core.Entities.InstrumentalTrack))
-            viewModel.SetTrackHeightMinimum(Math.Max(left.DesiredSize.Height, right?.DesiredSize.Height??0));
-    }
-
     private void OnTrackListViewportChanged(object sender, ScrollChangedEventArgs e)
     {
         if (deactivationStarted || sender is not ScrollViewer scroll || !ReferenceEquals(e.OriginalSource, sender)) return;
