@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Data;
@@ -56,8 +56,12 @@ public partial class OHsWorkstationTrackRow : UserControl
     public IInputElement? GetRemovalFocusTarget() => FindVisualChild<BalloonButton>(this);
     public bool HasExpandedControlFocus(DependencyObject? origin)
     {
-        for (var current = origin; current is not null && !ReferenceEquals(current, this); current = VisualTreeHelper.GetParent(current))
-            if (current is FrameworkElement { Name: "TrackLeftExpandedControls" or "TrackRightExpandedControls" }) return true;
+        var expanded = false;
+        for (var current = origin; current is not null; current = current is Visual or System.Windows.Media.Media3D.Visual3D ? VisualTreeHelper.GetParent(current) : LogicalTreeHelper.GetParent(current))
+        {
+            if (ReferenceEquals(current, this)) return expanded;
+            if (current is FrameworkElement { Name: "TrackLeftExpandedControls" or "TrackRightExpandedControls" }) expanded = true;
+        }
         return false;
     }
     public static readonly DependencyProperty TimelineContentWidthProperty = DependencyProperty.Register(nameof(TimelineContentWidth), typeof(double), typeof(OHsWorkstationTrackRow), new PropertyMetadata(0d));

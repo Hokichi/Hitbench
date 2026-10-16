@@ -24,6 +24,30 @@ public partial class WorkstationPage : UserControl
     public double TimelineHorizontalOffset { get => (double)GetValue(TimelineHorizontalOffsetProperty); set => SetValue(TimelineHorizontalOffsetProperty, value); }
     private readonly WorkstationPageVM viewModel;
     public OHsWorkstationTimeline Timeline => AudioCard.Timeline;
+    internal Task NodeInputCompletion => TrackListComponent.NodeInputCompletion;
+    internal bool IsRegionSelectionActive => TrackListComponent.IsRegionSelectionActive;
+    internal IInputElement FindRemovalFocusTarget(int index) => TrackListComponent.FindRemovalFocusTarget(index);
+    internal bool BeginNodePointer(BeatGridView? grid, Point gridPoint, Point pagePoint, ModifierKeys modifiers = ModifierKeys.None) =>
+        TrackListComponent.BeginNodePointer(grid, gridPoint, TranslatePoint(pagePoint, TrackListComponent), modifiers);
+    internal void UpdateNodePointer(Point pagePoint, BeatGridView? targetGrid, Point targetPoint, ModifierKeys modifiers = ModifierKeys.None) =>
+        TrackListComponent.UpdateNodePointer(TranslatePoint(pagePoint, TrackListComponent), targetGrid, targetPoint, modifiers);
+    internal Task<bool> CompleteNodePointerAsync() => TrackListComponent.CompleteNodePointerAsync();
+    internal void CancelNodePointer() => TrackListComponent.CancelNodePointer();
+    private bool HandleNodeKey(Key key, ModifierKeys modifiers, bool isRepeat, DependencyObject? origin) => TrackListComponent.HandleNodeKey(key, modifiers, isRepeat, origin);
+    private bool HandleNodeDragWheel(ModifierKeys modifiers, int delta) => TrackListComponent.HandleNodeDragWheel(modifiers, delta);
+    private void OnNodeOwnerDeactivated(object? sender, EventArgs e) => CancelNodePointer();
+    private void OnPagePointerDown(object sender, MouseButtonEventArgs e)
+    {
+        var origin = e.OriginalSource as DependencyObject;
+        if (AudioCard.IsCollapseActionOrigin(origin)) return;
+        if (!deactivationStarted && !IsWithin(origin, TracksCard)) viewModel.SelectedTrack = null;
+        if (!IsWithin(origin, TrackListComponent)) TrackListComponent.BeginNodePointer(null, default, default);
+    }
+    private void OnTrackViewportChanged(object? sender, EventArgs e)
+    {
+        TrackScrollBarGutter = TrackListComponent.TrackScrollBarGutter;
+        readinessCandidate = null;
+    }
     private bool renderingSubscribed;
     private Window? ownerWindow;
     private TimeSpan lastPresentationFrame = TimeSpan.MinValue;
@@ -40,15 +64,15 @@ public partial class WorkstationPage : UserControl
         Timeline.AttachScrollBar(WaveformScrollBar);
         Timeline.ViewportChanged += OnTimelineViewportChanged;
         DataContext = viewModel;
-        ((ObjectDataProvider)Resources["OHsWorkstationPageSource"]).ObjectInstance = this;
-        InitializeNodeInteraction();
+        TrackListComponent.ViewportChanged += OnTrackViewportChanged;
+        PreviewMouseLeftButtonDown += OnPagePointerDown;
 
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
         IsVisibleChanged += OnPlaybackVisibilityChanged;
         viewModel.PropertyChanging += OnViewModelPropertyChanging;
         viewModel.PropertyChanged += OnViewModelPropertyChanged;
-        viewModel.Tracks.CollectionChanged += OnTracksCollectionChanged;
+
     }
 
     public Task LoadCompletion { get; private set; } = Task.CompletedTask;
@@ -66,6 +90,7 @@ public partial class WorkstationPage : UserControl
         if (deactivationStarted) return LoadCompletion;
         CancelNodePointer();
         deactivationStarted = true;
+        TrackListComponent.Deactivate();
         presentationReady.TrySetResult();
         UpdatePlaybackRefreshSubscription();
         LoadCompletion = DeactivateCoreAsync();
@@ -121,7 +146,7 @@ public partial class WorkstationPage : UserControl
             IsVisibleChanged -= OnPlaybackVisibilityChanged;
             viewModel.PropertyChanging -= OnViewModelPropertyChanging;
             viewModel.PropertyChanged -= OnViewModelPropertyChanged;
-            viewModel.Tracks.CollectionChanged -= OnTracksCollectionChanged;
+            TrackListComponent.ViewportChanged -= OnTrackViewportChanged;
             Timeline.Reset();
             Timeline.ViewportChanged -= OnTimelineViewportChanged;
         }
@@ -140,9 +165,9 @@ public partial class WorkstationPage : UserControl
         lastPresentationFrame = frameTime;
         if (viewModel.LoadPhase == osuHitsounder.Services.ProjectLoadPhase.AwaitingPresentation)
         {
-            if (!IsMeasureValid || !IsArrangeValid || !Timeline.PreparePresentation() || !TrackList.IsArrangeValid)
+            if (!IsMeasureValid || !IsArrangeValid || !Timeline.PreparePresentation() || !TrackListComponent.AreTracksArranged)
             { readinessCandidate = null; return; }
-            PrepareTrackDrawings(TrackList);
+            TrackListComponent.PrepareTrackDrawings();
             var candidate = (viewModel.LoadGeneration, RenderSize, TimelineContentWidth, TimelineViewportWidth);
             if (readinessCandidate != candidate) { readinessCandidate = candidate; return; }
             viewModel.AcknowledgePresentationReady(viewModel.LoadGeneration);
@@ -174,23 +199,6 @@ public partial class WorkstationPage : UserControl
         readinessCandidate = null;
         if (playbackReady && !deactivationStarted && IsVisible) viewModel.RefreshPlayback();
         UpdatePlaybackRefreshSubscription();
-    }
-
-    private static T? FindVisualChild<T>(DependencyObject root, string? name = null) where T : DependencyObject
-    {
-        if (root is T match && (name is null || root is FrameworkElement element && element.Name == name)) return match;
-        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(root); index++)
-        {
-            var found = FindVisualChild<T>(VisualTreeHelper.GetChild(root, index), name);
-            if (found is not null) return found;
-        }
-        return null;
-    }
-
-    private static void RefreshRows(DependencyObject root)
-    {
-        if (root is OHsWorkstationTrackRow row) { row.RefreshPresentation(); return; }
-        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++) RefreshRows(VisualTreeHelper.GetChild(root, i));
     }
 
     public Task FlushSavesAsync() => viewModel.FlushSavesAsync();
@@ -225,14 +233,9 @@ public partial class WorkstationPage : UserControl
             Timeline.Reset();
             CancelNodePointer();
         }
-        if (e.PropertyName == nameof(WorkstationPageVM.IsSelectionMode) && nodeSourceGrid is not null && pointerNode is null) CancelNodePointer();
-        if (e.PropertyName == nameof(WorkstationPageVM.TrackAuditionRevision)) RefreshRows(TrackList);
-        if (!viewModel.CanPlaceSamples || nodeDragging && !viewModel.IsNodeDragActive) CancelNodePointer();
-        if (e.PropertyName == nameof(WorkstationPageVM.SampleFiles)) RefreshRows(TrackList);
-        if (e.PropertyName is nameof(WorkstationPageVM.SampleFiles) or nameof(WorkstationPageVM.SamplesRevision)) RefreshRows(TrackList);
         if (e.PropertyName is nameof(WorkstationPageVM.IsPlaying) or nameof(WorkstationPageVM.LoadPhase))
             UpdatePlaybackRefreshSubscription();
-        if (e.PropertyName == nameof(WorkstationPageVM.ZoomFactor)) { Timeline.ApplyPendingZoomAnchor(); UpdateNodeAdornerGeometry(); }
+        if (e.PropertyName == nameof(WorkstationPageVM.ZoomFactor)) { Timeline.ApplyPendingZoomAnchor(); TrackListComponent.RefreshViewport(); }
         if (e.PropertyName == nameof(WorkstationPageVM.Position) && viewModel.IsPlaying) FollowPlaybackPosition();
         if (e.PropertyName == nameof(WorkstationPageVM.ScrollWithMarker) && viewModel.ScrollWithMarker && viewModel.IsPlaying)
         {
@@ -243,47 +246,6 @@ public partial class WorkstationPage : UserControl
             (System.Windows.Automation.Peers.UIElementAutomationPeer.FromElement(LoadingProjectText) ??
              System.Windows.Automation.Peers.UIElementAutomationPeer.CreatePeerForElement(LoadingProjectText))?
                 .RaiseAutomationEvent(System.Windows.Automation.Peers.AutomationEvents.LiveRegionChanged);
-    }
-
-    private void OnTracksCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
-    {
-        if (e.Action == NotifyCollectionChangedAction.Add && !deactivationStarted && viewModel.IsInteractionReady && e.NewItems is { Count: > 0 })
-        {
-            var generation = viewModel.LoadGeneration;
-            var added = e.NewItems[e.NewItems.Count - 1];
-            Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
-            {
-                if (deactivationStarted || viewModel.LoadGeneration != generation || !TrackList.Items.Contains(added)) return;
-                TrackList.UpdateLayout();
-                FindVisualChild<ScrollViewer>(TrackList)?.ScrollToBottom();
-            });
-            return;
-        }
-        if (e.Action != NotifyCollectionChangedAction.Remove || e.OldItems is null || deactivationStarted)
-            return;
-        var focus = Keyboard.FocusedElement as DependencyObject;
-        for (var current = focus; current is not null; current = GetInputParent(current))
-        {
-            if (current is FrameworkElement element && e.OldItems.Contains(element.DataContext))
-            {
-                var index = Math.Clamp(e.OldStartingIndex, 0, Math.Max(0, viewModel.Tracks.Count - 1));
-                Dispatcher.BeginInvoke(DispatcherPriority.Input, () =>
-                {
-                    if (deactivationStarted) return;
-                    if (FindRemovalFocusTarget(index) is not UIElement target || !target.Focus())
-                        Timeline.FocusTimeline();
-                });
-                break;
-            }
-        }
-    }
-
-    internal IInputElement FindRemovalFocusTarget(int index)
-    {
-        TrackList.UpdateLayout();
-        var container = TrackList.ItemContainerGenerator.ContainerFromIndex(index) as FrameworkElement;
-        return container is null ? Timeline.FocusTarget
-            : FindVisualChild<BalloonButton>(container) ?? Timeline.FocusTarget;
     }
 
     private bool HandleBeatDivisorKey(Key key, ModifierKeys modifiers, bool isRepeat, DependencyObject? origin)
@@ -395,13 +357,6 @@ public partial class WorkstationPage : UserControl
         catch (Exception error) { System.Diagnostics.Trace.TraceError("Workstation input failed: {0}", error); }
     }
 
-    private static void PrepareTrackDrawings(DependencyObject parent)
-    {
-        if (parent is BeatGridView grid) grid.PrepareDrawing();
-        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(parent); index++)
-            PrepareTrackDrawings(VisualTreeHelper.GetChild(parent, index));
-    }
-
     private async Task RevealAfterNavigationAsync(Task navigation, BeatGridView? grid = null)
     {
         try
@@ -440,7 +395,7 @@ public partial class WorkstationPage : UserControl
         TimelineContentWidth = Timeline.TimelineContentWidth;
         TimelineViewportWidth = Timeline.TimelineViewportWidth;
         TimelineHorizontalOffset = Timeline.TimelineHorizontalOffset;
-        UpdateNodeAdornerGeometry();
-        RefreshNodeDragAfterScroll();
+        TrackListComponent.RefreshViewport();
+
     }
 }

@@ -1,4 +1,4 @@
-using System.Windows.Controls;
+﻿using System.Windows.Controls;
 using System.Windows;
 using System.Windows.Documents;
 using System.Windows.Input;
@@ -25,7 +25,7 @@ public class WorkstationNodeInteractionTests
         editor.Vm.Tracks[1].Samples.Add(other); editor.Vm.SetNodeSelection([editor.Node, other]);
         editor.Page.BeginNodePointer(grids[0], new Point(100, editor.Vm.TrackHeight / 2), new Point());
         editor.Page.UpdateNodePointer(new Point(200, 200), grids[0], new Point(125, editor.Vm.TrackHeight / 2));
-        var list = (ListBox)editor.Page.FindName("TrackList");
+        var list = (ListBox)((osuHitsounder.Views.Pages.OHsWorkstationTrackList)editor.Page.FindName("TrackListComponent")).FindName("TrackList");
         var adorner = AdornerLayer.GetAdornerLayer(list)!.GetAdorners(list)!.Single();
         UiTestPump.Layout(adorner, list.ActualWidth, list.ActualHeight);
         var drawing = VisualTreeHelper.GetDrawing(adorner);
@@ -70,7 +70,7 @@ public class WorkstationNodeInteractionTests
         Assert.That(editor.Node.Timestamp, Is.EqualTo(recover ? 1250 : 1000));
         Assert.That(other.Timestamp, Is.EqualTo(recover ? 1750 : 1500));
         Assert.That(valid.DragPreviewTimestamps, Is.Null);
-        Assert.That(AdornerLayer.GetAdornerLayer((ListBox)editor.Page.FindName("TrackList"))!.GetAdorners((ListBox)editor.Page.FindName("TrackList")), Is.Null);
+        Assert.That(AdornerLayer.GetAdornerLayer((ListBox)((osuHitsounder.Views.Pages.OHsWorkstationTrackList)editor.Page.FindName("TrackListComponent")).FindName("TrackList"))!.GetAdorners((ListBox)((osuHitsounder.Views.Pages.OHsWorkstationTrackList)editor.Page.FindName("TrackListComponent")).FindName("TrackList")), Is.Null);
         UiTestPump.Run(editor.Page.DeactivateAsync());
     }
 
@@ -90,7 +90,7 @@ public class WorkstationNodeInteractionTests
         var source = grids[laterAnchor ? 1 : 0]; var anchor = laterAnchor ? other : editor.Node;
         editor.Page.BeginNodePointer(source, new Point(100, source.ActualHeight / 2), new Point());
         editor.Page.UpdateNodePointer(new Point(200, 200), source, new Point(125, source.ActualHeight / 2));
-        var list = (ListBox)editor.Page.FindName("TrackList");
+        var list = (ListBox)((osuHitsounder.Views.Pages.OHsWorkstationTrackList)editor.Page.FindName("TrackListComponent")).FindName("TrackList");
         var adorner = (OHsSampleNodeDragAdorner)AdornerLayer.GetAdornerLayer(list)!.GetAdorners(list)!.Single();
         Assert.That(adorner.NodeBounds, Has.Count.EqualTo(3));
         var anchorCenter = source.TranslatePoint(Center(source.GetSampleBounds(anchor.Timestamp)), list);
@@ -111,7 +111,7 @@ public class WorkstationNodeInteractionTests
         editor.Vm.SetNodeSelection([editor.Node, other]);
         editor.Page.BeginNodePointer(grids[0], new Point(100, grids[0].ActualHeight / 2), new Point());
         editor.Page.UpdateNodePointer(new Point(200, 200), grids[0], new Point(125, grids[0].ActualHeight / 2));
-        var list = (ListBox)editor.Page.FindName("TrackList");
+        var list = (ListBox)((osuHitsounder.Views.Pages.OHsWorkstationTrackList)editor.Page.FindName("TrackListComponent")).FindName("TrackList");
         var adorner = (OHsSampleNodeDragAdorner)AdornerLayer.GetAdornerLayer(list)!.GetAdorners(list)!.Single();
         var before = Center(adorner.NodeBounds[1]) - Center(adorner.NodeBounds[0]);
         editor.Vm.ZoomInCommand.Execute(null);
@@ -132,7 +132,7 @@ public class WorkstationNodeInteractionTests
         var grid = Descendants<BeatGridView>(editor.Page).First();
         grid.ContentWidth = 1000; grid.ViewportWidth = 500; grid.HorizontalOffset = 0;
         var distant = new Sample { Timestamp = 1500, FileName = "b.wav" }; editor.Vm.Tracks[99].Samples.Add(distant);
-        var list = (ListBox)editor.Page.FindName("TrackList");
+        var list = (ListBox)((osuHitsounder.Views.Pages.OHsWorkstationTrackList)editor.Page.FindName("TrackListComponent")).FindName("TrackList");
         Assert.That(list.ItemContainerGenerator.ContainerFromIndex(99), Is.Null);
         editor.Vm.SetNodeSelection([editor.Node, distant]);
         editor.Page.BeginNodePointer(grid, new Point(100, grid.ActualHeight / 2), new Point());
@@ -305,7 +305,7 @@ public class WorkstationNodeInteractionTests
             case "source-unload": grids[0].RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent, grids[0])); break;
             case "escape": editor.Page.HandlePlaybackKey(Key.Escape, ModifierKeys.None, false, grids[0]); break;
             case "overlay": editor.Page.ShowVolumeOverlay(false, new Point(), false, false); break;
-            case "capture": editor.Page.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, 0) { RoutedEvent = Mouse.LostMouseCaptureEvent }); break;
+            case "capture": editor.Page.TrackListComponent.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, 0) { RoutedEvent = Mouse.LostMouseCaptureEvent }); break;
             case "deactivate": UiTestPump.Run(editor.Page.DeactivateAsync()); break;
         }
         if (action is "switch" or "leave") Assert.That(grids[0].GetDisplayedSampleBounds(editor.Node).IsEmpty, Is.True);
@@ -321,7 +321,7 @@ public class WorkstationNodeInteractionTests
         Assert.That(grids[0].GetDisplayedSampleBounds(editor.Node).IsEmpty, Is.False);
         if (action is not ("recycle" or "unload")) Assert.That(grids[1].GetDisplayedSampleBounds(other).IsEmpty, Is.False);
         Assert.That(other.Timestamp, Is.EqualTo(1500));
-        var list = (ListBox)editor.Page.FindName("TrackList");
+        var list = (ListBox)((osuHitsounder.Views.Pages.OHsWorkstationTrackList)editor.Page.FindName("TrackListComponent")).FindName("TrackList");
         Assert.That(AdornerLayer.GetAdornerLayer(list)!.GetAdorners(list), Is.Null);
         Assert.That(editor.Node.Timestamp, Is.EqualTo(1000)); Assert.That(editor.Vm.CanUndo, Is.False);
         UiTestPump.Run(editor.Page.DeactivateAsync());
@@ -420,8 +420,8 @@ public class WorkstationNodeInteractionTests
     public void TrackCardsExposeNativeSingleSelection()
     {
         var page = WorkstationTestPage.Create();
-        Assert.That(page.FindName("TrackList"), Is.TypeOf<ListBox>());
-        var list = (ListBox)page.FindName("TrackList");
+        Assert.That(((osuHitsounder.Views.Pages.OHsWorkstationTrackList)page.FindName("TrackListComponent")).FindName("TrackList"), Is.TypeOf<ListBox>());
+        var list = (ListBox)((osuHitsounder.Views.Pages.OHsWorkstationTrackList)page.FindName("TrackListComponent")).FindName("TrackList");
         Assert.That(list.SelectionMode, Is.EqualTo(SelectionMode.Single));
         Assert.That(list.Style, Is.SameAs(page.FindResource("BaseListBoxStyle")));
     }
@@ -465,7 +465,7 @@ public class WorkstationNodeInteractionTests
         var grids = Descendants<BeatGridView>(editor.Page).ToArray(); Assert.That(grids.Length, Is.EqualTo(2));
         foreach (var grid in grids) { grid.ContentWidth = 1000; grid.ViewportWidth = 500; grid.HorizontalOffset = 0; }
         Assert.That(editor.Page.BeginNodePointer(grids[0], new Point(100, editor.Vm.TrackHeight / 2), new Point(0, 0)), Is.True);
-        var list = (ListBox)editor.Page.FindName("TrackList"); var layer = AdornerLayer.GetAdornerLayer(list)!;
+        var list = (ListBox)((osuHitsounder.Views.Pages.OHsWorkstationTrackList)editor.Page.FindName("TrackListComponent")).FindName("TrackList"); var layer = AdornerLayer.GetAdornerLayer(list)!;
         editor.Page.UpdateNodePointer(new Point(1, 1), grids[1], new Point(125, editor.Vm.TrackHeight / 2));
         Assert.That(layer.GetAdorners(list), Is.Null);
         editor.Page.UpdateNodePointer(new Point(20, 100), grids[1], new Point(125, editor.Vm.TrackHeight / 2));
@@ -516,7 +516,7 @@ public class WorkstationNodeInteractionTests
         Assert.That(grids[0].FindSampleAt(new Point(100, editor.Vm.TrackHeight / 2)), Is.SameAs(editor.Node));
         Assert.That(editor.Node.Timestamp, Is.EqualTo(1000));
         Assert.That(editor.Vm.Tracks[1].Samples.Single(), Is.SameAs(occupied));
-        var list = (ListBox)editor.Page.FindName("TrackList");
+        var list = (ListBox)((osuHitsounder.Views.Pages.OHsWorkstationTrackList)editor.Page.FindName("TrackListComponent")).FindName("TrackList");
         Assert.That(AdornerLayer.GetAdornerLayer(list)!.GetAdorners(list), Is.Null);
         Assert.That(editor.Vm.CanUndo, Is.False);
         UiTestPump.Run(editor.Page.DeactivateAsync());
@@ -532,7 +532,7 @@ public class WorkstationNodeInteractionTests
         var grid = new BeatGridView { DataContext = editor.Vm.Tracks[0], Samples = editor.Vm.Tracks[0].Samples,
             CanPlaceSamples = true, Duration = TimeSpan.FromSeconds(10), ContentWidth = 1000, ViewportWidth = 500 };
         UiTestPump.Layout(grid, 500, 36);
-        Assert.That(AdornerLayer.GetAdornerLayer((ListBox)detached.FindName("TrackList")), Is.Null);
+        Assert.That(AdornerLayer.GetAdornerLayer((ListBox)((osuHitsounder.Views.Pages.OHsWorkstationTrackList)detached.FindName("TrackListComponent")).FindName("TrackList")), Is.Null);
         Assert.That(detached.BeginNodePointer(grid, new Point(100, 18), new Point()), Is.True);
         detached.UpdateNodePointer(new Point(20, 20), grid, new Point(125, 18));
         Assert.That(editor.Vm.IsNodeDragActive, Is.False);
@@ -550,7 +550,7 @@ public class WorkstationNodeInteractionTests
         grid.ContentWidth = 1000; grid.ViewportWidth = 500; grid.HorizontalOffset = 0;
         editor.Page.BeginNodePointer(grid, new Point(100, editor.Vm.TrackHeight / 2), new Point(0, 0));
         editor.Page.UpdateNodePointer(new Point(20, 20), grid, new Point(125, editor.Vm.TrackHeight / 2));
-        var list = (ListBox)editor.Page.FindName("TrackList"); var layer = AdornerLayer.GetAdornerLayer(list)!;
+        var list = (ListBox)((osuHitsounder.Views.Pages.OHsWorkstationTrackList)editor.Page.FindName("TrackListComponent")).FindName("TrackList"); var layer = AdornerLayer.GetAdornerLayer(list)!;
         Assert.That(editor.Page.HandlePlaybackKey(key, modifiers, false, grid), Is.True);
         UiTestPump.Run(editor.Page.NodeInputCompletion);
         Assert.That(layer.GetAdorners(list), Is.Null);

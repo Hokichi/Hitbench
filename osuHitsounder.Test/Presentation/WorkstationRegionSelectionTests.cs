@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
@@ -55,7 +55,7 @@ public class WorkstationRegionSelectionTests
     private void Release() => UiTestPump.Run(page.CompleteNodePointerAsync());
     private void AssertNoAdorner()
     {
-        var list = (ListBox)page.FindName("TrackList");
+        var list = (ListBox)((osuHitsounder.Views.Pages.OHsWorkstationTrackList)page.FindName("TrackListComponent")).FindName("TrackList");
         Assert.That(AdornerLayer.GetAdornerLayer(list)!.GetAdorners(list), Is.Null);
     }
 
@@ -67,7 +67,7 @@ public class WorkstationRegionSelectionTests
         Assert.That(page.IsRegionSelectionActive, Is.True);
         Assert.That(vm.SelectedSamples, Is.EquivalentTo(new[] { first, second }));
         Assert.That(vm.IsNodeDragActive, Is.False); Assert.That(vm.CanUndo, Is.False);
-        var list = (ListBox)page.FindName("TrackList");
+        var list = (ListBox)((osuHitsounder.Views.Pages.OHsWorkstationTrackList)page.FindName("TrackListComponent")).FindName("TrackList");
         var adorner = AdornerLayer.GetAdornerLayer(list)!.GetAdorners(list)!.Single();
         Assert.That(adorner, Is.TypeOf<OHsSelectionRegionAdorner>());
         Assert.That(adorner.IsHitTestVisible, Is.False);
@@ -214,7 +214,7 @@ public class WorkstationRegionSelectionTests
         StartBox();
         switch (reason)
         {
-            case "capture": page.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, 0) { RoutedEvent = Mouse.LostMouseCaptureEvent }); break;
+            case "capture": page.TrackListComponent.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, 0) { RoutedEvent = Mouse.LostMouseCaptureEvent }); break;
             case "recycle": grids[0].DataContext = new Track(); break;
             case "unload": grids[0].RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent)); break;
             case "overlay": page.ShowVolumeOverlay(false, new Point(), false, false); break;
@@ -239,7 +239,7 @@ public class WorkstationRegionSelectionTests
         page.UpdateNodePointer(new Point(p.X + 210, p.Y + 10000), null, default);
         Assert.That(vm.SelectedSamples.Contains(first), Is.True);
         Assert.That(vm.SelectedSamples.Contains(vm.Tracks.Last().Samples.Single()), Is.False);
-        Assert.That(((ListBox)page.FindName("TrackList")).ItemContainerGenerator.ContainerFromItem(vm.Tracks.Last()), Is.Null);
+        Assert.That(((ListBox)((osuHitsounder.Views.Pages.OHsWorkstationTrackList)page.FindName("TrackListComponent")).FindName("TrackList")).ItemContainerGenerator.ContainerFromItem(vm.Tracks.Last()), Is.Null);
     }
     private static IEnumerable<T> Descendants<T>(DependencyObject parent) where T : DependencyObject
     {

@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using CommunityToolkit.Mvvm.Messaging;
@@ -19,7 +19,7 @@ public class InstrumentalTrackCompositionTests
         new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
         var page = WorkstationTestPage.Create(); ((osuHitsounder.ViewModels.Shell.WorkstationPageVM)page.DataContext).Tracks.Add(new InstrumentalTrack());
         UiTestPump.Layout(page, 1100, 700);
-        var list = (ListBox)page.FindName("TrackList");
+        var list = (ListBox)((osuHitsounder.Views.Pages.OHsWorkstationTrackList)page.FindName("TrackListComponent")).FindName("TrackList");
         var row = (ListBoxItem)list.ItemContainerGenerator.ContainerFromIndex(0);
         Assert.That(Children(row).OfType<ComboBox>(), Is.Empty);
         var arrangement = Children(row).OfType<osuHitsounder.Resources.CustomControls.BalloonButton>().Single(b => b.ButtonText == "View Arrangement");

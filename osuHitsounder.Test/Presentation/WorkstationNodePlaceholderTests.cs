@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -124,7 +124,7 @@ public class WorkstationNodePlaceholderTests
     {
         CreateEditor(40); vm.Tracks[3].Samples.Remove(b); vm.Tracks[30].Samples.Add(b);
         vm.SetNodeSelection([a, b]);
-        var list = (ListBox)page.FindName("TrackList");
+        var list = (ListBox)((osuHitsounder.Views.Pages.OHsWorkstationTrackList)page.FindName("TrackListComponent")).FindName("TrackList");
         Assert.That(list.ItemContainerGenerator.ContainerFromIndex(30), Is.Null);
         var source = Grid(vm.Tracks[0]);
         page.BeginNodePointer(source, new Point(100, source.ActualHeight / 2), new Point());
@@ -171,7 +171,7 @@ public class WorkstationNodePlaceholderTests
         {
             case "drop": UiTestPump.Run(page.CompleteNodePointerAsync()); break;
             case "escape": page.HandlePlaybackKey(Key.Escape, ModifierKeys.None, false, source); break;
-            case "capture": page.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, 0) { RoutedEvent = Mouse.LostMouseCaptureEvent }); break;
+            case "capture": page.TrackListComponent.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, 0) { RoutedEvent = Mouse.LostMouseCaptureEvent }); break;
             case "source-recycle": source.DataContext = new Track(); break;
             case "target-recycle": target.DataContext = new Track(); break;
             case "source-unload": source.RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent, source)); break;

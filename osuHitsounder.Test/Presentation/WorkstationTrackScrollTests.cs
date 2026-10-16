@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Threading;
@@ -28,7 +28,7 @@ public class WorkstationTrackScrollTests
         using (view)
         try
         {
-            var scroll = Descendants<ScrollViewer>((ListBox)page.FindName("TrackList")).First();
+            var scroll = Descendants<ScrollViewer>((ListBox)((osuHitsounder.Views.Pages.OHsWorkstationTrackList)page.FindName("TrackListComponent")).FindName("TrackList")).First();
             Assert.That(scroll.ScrollableHeight, Is.GreaterThan(0));
             Assert.That(scroll.VerticalOffset, Is.Zero, "Loading must not auto-scroll");
             var horizontal = page.TimelineHorizontalOffset;
@@ -51,7 +51,7 @@ public class WorkstationTrackScrollTests
         using (view)
         try
         {
-            var scroll = Descendants<ScrollViewer>((ListBox)page.FindName("TrackList")).First();
+            var scroll = Descendants<ScrollViewer>((ListBox)((osuHitsounder.Views.Pages.OHsWorkstationTrackList)page.FindName("TrackListComponent")).FindName("TrackList")).First();
             vm.AddSampleTrackCommand.Execute(null);
             UiTestPump.Run(vm.LoadAsync("next.json", default));
             Settle(page, view);
@@ -70,7 +70,7 @@ public class WorkstationTrackScrollTests
         var (page, vm, view) = Create(false, new WeakReferenceMessenger());
         using (view)
         {
-            var scroll = Descendants<ScrollViewer>((ListBox)page.FindName("TrackList")).First();
+            var scroll = Descendants<ScrollViewer>((ListBox)((osuHitsounder.Views.Pages.OHsWorkstationTrackList)page.FindName("TrackListComponent")).FindName("TrackList")).First();
             vm.AddSampleTrackCommand.Execute(null);
             UiTestPump.Run(page.DeactivateAsync());
             Settle(page, view);

@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
@@ -52,7 +52,7 @@ public class WorkstationPageIntegrationTests
         vm.SelectedTrack = track;
         vm.IsAdditionMode = true; view.UpdateLayout();
         Assert.That(vm.SelectedTrack, Is.SameAs(track));
-        UiControlContract.AssertStyle<ListBoxItem>((ListBoxItem)((ListBox)page.FindName("TrackList")).ItemContainerGenerator.ContainerFromIndex(0), "OHsWorkstationTrackItemStyle");
+        UiControlContract.AssertStyle<ListBoxItem>((ListBoxItem)((ListBox)((osuHitsounder.Views.Pages.OHsWorkstationTrackList)page.FindName("TrackListComponent")).FindName("TrackList")).ItemContainerGenerator.ContainerFromIndex(0), "OHsWorkstationTrackItemStyle");
         vm.IsReturning = true; view.UpdateLayout();
         Assert.That(selection.IsEnabled, Is.False);
         Assert.That(addition.IsEnabled, Is.False);
@@ -75,7 +75,7 @@ public class WorkstationPageIntegrationTests
         using var view = new InMemoryView(new Window { Content = page, Width = 1100, Height = 800 });
         UiTestPump.Run(page.LoadCompletion); view.UpdateLayout();
         vm.SelectNode(track, node, false);
-        var list = (ListBox)page.FindName("TrackList");
+        var list = (ListBox)((osuHitsounder.Views.Pages.OHsWorkstationTrackList)page.FindName("TrackListComponent")).FindName("TrackList");
         var origin = originName switch
         {
             "page" => (UIElement)page,
@@ -193,7 +193,7 @@ public class WorkstationPageIntegrationTests
         var page = new WorkstationPage(vm); page.SetProjectPath("project.json");
         using var view = new InMemoryView(new Window { Content = page, Width = 600, Height = 600 });
         UiTestPump.Run(page.LoadCompletion);
-        var list = (ListBox)page.FindName("TrackList");
+        var list = (ListBox)((osuHitsounder.Views.Pages.OHsWorkstationTrackList)page.FindName("TrackListComponent")).FindName("TrackList");
         Assert.That(list.ItemContainerGenerator.ContainerFromIndex(99), Is.Null);
         list.ScrollIntoView(tracks[99]); view.UpdateLayout();
         var container = (ListBoxItem)list.ItemContainerGenerator.ContainerFromIndex(99)!;
@@ -466,7 +466,7 @@ public class WorkstationPageIntegrationTests
         Assert.That(AutomationProperties.GetName(button), Is.EqualTo("Remove track"));
         UiTestPump.Run(vm.RemoveTrackCommand.ExecuteAsync(button.CommandParameter));
         view.UpdateLayout();
-        var list = (ListBox)page.FindName("TrackList");
+        var list = (ListBox)((osuHitsounder.Views.Pages.OHsWorkstationTrackList)page.FindName("TrackListComponent")).FindName("TrackList");
         Assert.That(list.Items, Is.Empty);
         Assert.That(FindVisualChildren<TextBlock>(list).Any(text => text.Text.Contains("No tracks")), Is.False);
         Assert.That(vm.AddPianoTrackCommand.CanExecute(null), Is.True);
@@ -584,7 +584,7 @@ public class WorkstationPageIntegrationTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(((ItemsControl)page.FindName("TrackList")).ItemsSource, Is.SameAs(vm.Tracks));
+            Assert.That(((ItemsControl)((osuHitsounder.Views.Pages.OHsWorkstationTrackList)page.FindName("TrackListComponent")).FindName("TrackList")).ItemsSource, Is.SameAs(vm.Tracks));
             Assert.That(((ScrollViewer)(page.Timeline).FindName("WaveformScrollViewer")).Focusable, Is.True);
         });
     }
@@ -602,7 +602,7 @@ public class WorkstationPageIntegrationTests
         UiTestPump.Run(page.LoadCompletion);
         vm.AddSampleTrackCommand.Execute(null);
         view.UpdateLayout();
-        var list = (ItemsControl)page.FindName("TrackList");
+        var list = (ItemsControl)((osuHitsounder.Views.Pages.OHsWorkstationTrackList)page.FindName("TrackListComponent")).FindName("TrackList");
         Assert.That(list.Items, Has.Count.EqualTo(1));
         var card = (FrameworkElement)list.ItemContainerGenerator.ContainerFromIndex(0)!;
         var grid = FindBeatGrid(card)!;
@@ -633,7 +633,7 @@ public class WorkstationPageIntegrationTests
         vm.SetTrackVolume(first, 20);
         vm.SetTrackVolume(second, 80);
         view.UpdateLayout();
-        var list = (ItemsControl)page.FindName("TrackList");
+        var list = (ItemsControl)((osuHitsounder.Views.Pages.OHsWorkstationTrackList)page.FindName("TrackListComponent")).FindName("TrackList");
         var card = (FrameworkElement)list.ItemContainerGenerator.ContainerFromIndex(0)!;
         var slider = FindVisualChild<ValueSlider>(card)!;
         slider.DataContext = second;
@@ -669,7 +669,7 @@ public class WorkstationPageIntegrationTests
             vm.AddSampleTrackCommand.Execute(null);
             vm.AddSampleTrackCommand.Execute(null);
             view.UpdateLayout();
-            var list = (ItemsControl)page.FindName("TrackList");
+            var list = (ItemsControl)((osuHitsounder.Views.Pages.OHsWorkstationTrackList)page.FindName("TrackListComponent")).FindName("TrackList");
             var otherCard = (FrameworkElement)list.ItemContainerGenerator.ContainerFromIndex(1)!;
             var selector = FindVisualChildren<ComboBox>(otherCard).Single(box => box.Name == "TrackSampleFileSelector");
             Assert.That(selector.SelectedItem, Is.EqualTo("a.wav"));
@@ -693,7 +693,7 @@ public class WorkstationPageIntegrationTests
         UiTestPump.Run(page.LoadCompletion);
         for (var index = 0; index < 80; index++) vm.AddSampleTrackCommand.Execute(null);
         view.UpdateLayout();
-        var list = (ItemsControl)page.FindName("TrackList");
+        var list = (ItemsControl)((osuHitsounder.Views.Pages.OHsWorkstationTrackList)page.FindName("TrackListComponent")).FindName("TrackList");
         Assert.That(list.Items, Has.Count.EqualTo(80));
         Assert.That(FindVisualChildren<ContentPresenter>(list).Count(), Is.LessThan(80));
     }
@@ -724,7 +724,7 @@ public class WorkstationPageIntegrationTests
         using var view = new InMemoryView(new Window { Content = page, Width = 880, Height = 1200 });
         UiTestPump.Run(listing.Task);
         view.UpdateLayout();
-        var list = (ItemsControl)page.FindName("TrackList");
+        var list = (ItemsControl)((osuHitsounder.Views.Pages.OHsWorkstationTrackList)page.FindName("TrackListComponent")).FindName("TrackList");
         var cards = Enumerable.Range(0, 3).Select(index => (FrameworkElement)list.ItemContainerGenerator.ContainerFromIndex(index)!).ToArray();
         Assert.That(cards, Has.All.Not.Null);
         UiTestPump.Run(Dispatcher.CurrentDispatcher.InvokeAsync(() => { }, DispatcherPriority.ContextIdle).Task);
@@ -763,7 +763,7 @@ public class WorkstationPageIntegrationTests
         using var view = new InMemoryView(window);
         UiTestPump.Run(page.LoadCompletion);
         view.UpdateLayout();
-        var list = (ItemsControl)page.FindName("TrackList");
+        var list = (ItemsControl)((osuHitsounder.Views.Pages.OHsWorkstationTrackList)page.FindName("TrackListComponent")).FindName("TrackList");
         var card = (FrameworkElement)list.ItemContainerGenerator.ContainerFromIndex(0)!;
         var cue = FindVisualChildren<TextBlock>(card).Single(block => block.Name == "MissingGridStatus");
         Assert.That(cue.Text, Is.EqualTo("Sample not found."));
@@ -782,7 +782,7 @@ public class WorkstationPageIntegrationTests
         UiTestPump.Run(page.LoadCompletion);
         vm.AddSampleTrackCommand.Execute(null);
         view.UpdateLayout();
-        var list = (ItemsControl)page.FindName("TrackList");
+        var list = (ItemsControl)((osuHitsounder.Views.Pages.OHsWorkstationTrackList)page.FindName("TrackListComponent")).FindName("TrackList");
         var card = (FrameworkElement)list.ItemContainerGenerator.ContainerFromIndex(0)!;
         var grid = FindVisualChild<BeatGridView>(card)!;
         for (var index = 0; index < 3; index++) vm.ZoomInCommand.Execute(null);
@@ -811,7 +811,7 @@ public class WorkstationPageIntegrationTests
         UiTestPump.Run(page.LoadCompletion);
         vm.AddSampleTrackCommand.Execute(null);
         view.UpdateLayout();
-        var list = (ItemsControl)page.FindName("TrackList");
+        var list = (ItemsControl)((osuHitsounder.Views.Pages.OHsWorkstationTrackList)page.FindName("TrackListComponent")).FindName("TrackList");
         var card = (FrameworkElement)list.ItemContainerGenerator.ContainerFromIndex(0)!;
         var grid = FindVisualChild<BeatGridView>(card)!;
 

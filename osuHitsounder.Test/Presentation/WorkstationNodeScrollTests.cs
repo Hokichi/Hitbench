@@ -34,7 +34,7 @@ public class WorkstationNodeScrollTests
         page.UpdateNodePointer(grid.TranslatePoint(local, page), grid, local);
         Assert.That(vm.IsNodeDragActive, Is.True);
         Assert.That(vm.NodePreviewTimestamps[node], Is.EqualTo(1125));
-        var list = (ListBox)page.FindName("TrackList");
+        var list = (ListBox)((osuHitsounder.Views.Pages.OHsWorkstationTrackList)page.FindName("TrackListComponent")).FindName("TrackList");
         return (page, vm, node, grid, Descendants<ScrollViewer>(list).First(), view);
     }
 

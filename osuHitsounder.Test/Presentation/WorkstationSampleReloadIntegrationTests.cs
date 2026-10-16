@@ -94,7 +94,7 @@ public class WorkstationSampleReloadIntegrationTests
         try
         {
             UiTestPump.Run(page.LoadCompletion);
-            var list = (ListBox)page.FindName("TrackList");
+            var list = (ListBox)((osuHitsounder.Views.Pages.OHsWorkstationTrackList)page.FindName("TrackListComponent")).FindName("TrackList");
             var scroll = Descendants(list).OfType<ScrollViewer>().First();
             scroll.ScrollToVerticalOffset(200); view.UpdateLayout();
             var vertical = scroll.VerticalOffset; var horizontal = page.TimelineHorizontalOffset;

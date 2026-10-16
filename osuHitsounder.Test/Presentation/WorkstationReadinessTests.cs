@@ -1,4 +1,4 @@
-using osuHitsounder.Services;
+﻿using osuHitsounder.Services;
 using osuHitsounder.ViewModels.Shell;
 
 namespace osuHitsounder.Test.Presentation;
@@ -24,7 +24,7 @@ public class WorkstationReadinessTests
         using var view = new InMemoryView(new System.Windows.Window { Content = page, Width = 900, Height = 600 });
         UiTestPump.Run(page.LoadCompletion);
         Assert.That(vm.CanPlay, Is.True);
-        var list = (System.Windows.Controls.ItemsControl)page.FindName("TrackList");
+        var list = (System.Windows.Controls.ItemsControl)((osuHitsounder.Views.Pages.OHsWorkstationTrackList)page.FindName("TrackListComponent")).FindName("TrackList");
         if (count > 0)
         {
             Assert.That(list.ItemContainerGenerator.ContainerFromIndex(0), Is.Not.Null);

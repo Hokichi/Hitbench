@@ -10,7 +10,7 @@ using osuHitsounder.Resources.CustomControls;
 
 namespace osuHitsounder.Views.Pages;
 
-public partial class WorkstationPage
+public partial class OHsWorkstationTrackList
 {
     private BeatGridView? nodeSourceGrid;
     private Track? nodeSourceTrack;
@@ -22,7 +22,7 @@ public partial class WorkstationPage
     private AdornerLayer? nodeLayer;
     private OHsSampleNodeDragAdorner? nodeAdorner;
     private (Sample Sample, int Timestamp, int TrackIndex)[] nodeDragGroup = [];
-    internal Task NodeInputCompletion { get; private set; } = Task.CompletedTask;
+    public Task NodeInputCompletion { get; private set; } = Task.CompletedTask;
     private ModifierKeys pointerModifiers;
     private BeatInterval? pointerInterval;
     private bool pointerMoved;
@@ -49,15 +49,14 @@ public partial class WorkstationPage
     private void OnNodePointerDown(object sender, MouseButtonEventArgs e)
     {
         var origin = e.OriginalSource as DependencyObject;
-        if (AudioCard.IsCollapseActionOrigin(origin)) return;
-        if (!deactivationStarted && !IsWithin(origin, TracksCard)) viewModel.SelectedTrack = null;
+        if (!deactivationStarted && !IsWithin(origin, this)) viewModel.SelectedTrack = null;
         var grid = FindAncestor<BeatGridView>(origin);
         if (!BeginNodePointer(grid, grid is null ? default : e.GetPosition(grid), e.GetPosition(this), Keyboard.Modifiers)) return;
         grid!.Focus();
         if (nodeSourceGrid is not null && !CaptureMouse()) CancelNodePointer();
         e.Handled = true;
     }
-    internal bool BeginNodePointer(BeatGridView? grid, Point gridPoint, Point pagePoint, ModifierKeys modifiers = ModifierKeys.None)
+    public bool BeginNodePointer(BeatGridView? grid, Point gridPoint, Point pagePoint, ModifierKeys modifiers = ModifierKeys.None)
     {
         CancelNodePointer();
         if (!double.IsFinite(pagePoint.X) || !double.IsFinite(pagePoint.Y) || deactivationStarted) return false;
@@ -84,7 +83,6 @@ public partial class WorkstationPage
         grid.Unloaded += OnNodeGridUnloaded;
         return true;
     }
-    private void OnNodeOwnerDeactivated(object? sender, EventArgs e) => CancelNodePointer();
     private void OnNodeGridUnloaded(object sender, RoutedEventArgs e) => DetachNodeGrid(sender as BeatGridView);
     private void OnNodeGridRecycled(object sender, DependencyPropertyChangedEventArgs e) => DetachNodeGrid(sender as BeatGridView);
 
@@ -120,7 +118,7 @@ public partial class WorkstationPage
         var grid = FindAncestor<BeatGridView>(InputHitTest(pagePoint) as DependencyObject);
         UpdateNodePointer(pagePoint, grid, grid is null ? default : TranslatePoint(pagePoint, grid), Keyboard.Modifiers);
     }
-    internal void UpdateNodePointer(Point pagePoint, BeatGridView? targetGrid, Point targetPoint, ModifierKeys modifiers = ModifierKeys.None)
+    public void UpdateNodePointer(Point pagePoint, BeatGridView? targetGrid, Point targetPoint, ModifierKeys modifiers = ModifierKeys.None)
     {
         if (!double.IsFinite(pagePoint.X) || !double.IsFinite(pagePoint.Y) || nodeSourceTrack is not { } source ||
             !viewModel.CanPlaceSamples || !viewModel.CanEditTrackGrid(source) || IsVolumeOverlayOpen) { CancelNodePointer(); return; }
@@ -237,7 +235,7 @@ public partial class WorkstationPage
         finally { refreshingNodeDrag = false; }
     }
 
-    private bool HandleNodeDragWheel(ModifierKeys modifiers, int delta)
+    public bool HandleNodeDragWheel(ModifierKeys modifiers, int delta)
     {
         if (!nodeDragging || modifiers != ModifierKeys.None || !viewModel.CanPlaceSamples ||
             FindVisualChild<ScrollViewer>(TrackList) is not { } scroll)
@@ -306,7 +304,7 @@ public partial class WorkstationPage
         for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
         {
             var child = VisualTreeHelper.GetChild(root, i);
-            if (child is BeatGridView grid) yield return grid;
+            if (child is OHsWorkstationTrackRow row) { if (row.SampleTimeline is { } grid) yield return grid; }
             else foreach (var nested in RealizedTrackGrids(child)) yield return nested;
         }
     }
@@ -333,7 +331,7 @@ public partial class WorkstationPage
         {
             var node = nodeDragGroup[i];
             var item = TrackList.ItemContainerGenerator.ContainerFromIndex(node.TrackIndex) as ListBoxItem;
-            var realized = item is null ? null : FindVisualChild<BeatGridView>(item);
+            var realized = item is null ? null : FindVisualChild<OHsWorkstationTrackRow>(item)?.SampleTimeline;
             var owner = realized ?? grid;
             var bounds = owner.GetSampleBounds(node.Timestamp);
             if (bounds.IsEmpty) return;
@@ -349,7 +347,7 @@ public partial class WorkstationPage
         UpdateNodePointerAt(e.GetPosition(this));
         NodeInputCompletion = ObserveNodeInputAsync(CompleteNodePointerAsync()); e.Handled = true;
     }
-    internal async Task<bool> CompleteNodePointerAsync()
+    public async Task<bool> CompleteNodePointerAsync()
     {
         if (nodeDragScrollPending) RefreshNodeDragAfterScroll();
         var commit = nodeDragging && nodeTargetValid;
@@ -381,7 +379,7 @@ public partial class WorkstationPage
         nodeDragScrollPending = false; nodeWheelRemainder = 0;
         if (IsMouseCaptured) ReleaseMouseCapture();
     }
-    internal void CancelNodePointer() { DetachNodePointer(); viewModel.CancelNodeDrag(); }
+    public void CancelNodePointer() { DetachNodePointer(); viewModel.CancelNodeDrag(); }
     private void OnNodeCaptureLost(object sender, MouseEventArgs e) { if (nodeSourceTrack is not null) CancelNodePointer(); }
     private async Task ObserveNodeInputAsync(Task operation)
     {
@@ -389,7 +387,7 @@ public partial class WorkstationPage
         catch (OperationCanceledException) { }
         catch (Exception error) { System.Diagnostics.Trace.TraceError("Node input failed: {0}", error); }
     }
-    private bool HandleNodeKey(Key key, ModifierKeys modifiers, bool isRepeat, DependencyObject? origin)
+    public bool HandleNodeKey(Key key, ModifierKeys modifiers, bool isRepeat, DependencyObject? origin)
     {
         if (key is Key.LeftCtrl or Key.RightCtrl && nodeSourceTrack is not null && !pointerModifiers.HasFlag(ModifierKeys.Control))
         { CancelNodePointer(); return true; }

@@ -38,6 +38,7 @@ public partial class WorkstationPage
         volumeWheelRemainder = 0;
         if (!wasOpen) volumePriorFocus = Keyboard.FocusedElement;
         VolumeOverlay.Visibility = Visibility.Visible;
+        TrackListComponent.IsVolumeOverlayOpen = true;
         if (!wasOpen)
         {
             VolumeOverlay.Opacity = 0;
@@ -66,6 +67,7 @@ public partial class WorkstationPage
         VolumeOverlay.BeginAnimation(OpacityProperty, null);
         VolumeOverlay.Opacity = 1;
         VolumeOverlay.Visibility = Visibility.Collapsed;
+        TrackListComponent.IsVolumeOverlayOpen = false;
         volumeBlur?.BeginAnimation(BlurEffect.RadiusProperty, null);
         if (volumeBlur is not null) volumeBlur.Radius = 0;
         WorkstationContent.Effect = null;

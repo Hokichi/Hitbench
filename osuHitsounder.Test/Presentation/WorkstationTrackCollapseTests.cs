@@ -125,7 +125,7 @@ public class WorkstationTrackCollapseTests
                 ScrollTo(page, view, target);
                 AssertRealizedTrackState(page, vm);
             }
-            var list = (ListBox)page.FindName("TrackList");
+            var list = (ListBox)((osuHitsounder.Views.Pages.OHsWorkstationTrackList)page.FindName("TrackListComponent")).FindName("TrackList");
             var missingRow = (ListBoxItem)list.ItemContainerGenerator.ContainerFromItem(missing);
             Assert.That(Find<ComboBox>(missingRow, "TrackSampleFileSelector").SelectedItem, Is.Null);
             Assert.That(Find<TextBlock>(missingRow, "MissingGridStatus").Text, Is.EqualTo("Sample not found."));
@@ -213,7 +213,7 @@ public class WorkstationTrackCollapseTests
 
     private static void ScrollTo(WorkstationPage page, InMemoryView view, Track track)
     {
-        ((ListBox)page.FindName("TrackList")).ScrollIntoView(track);
+        ((ListBox)((osuHitsounder.Views.Pages.OHsWorkstationTrackList)page.FindName("TrackListComponent")).FindName("TrackList")).ScrollIntoView(track);
         Settle(page, view);
     }
 
@@ -226,7 +226,7 @@ public class WorkstationTrackCollapseTests
 
     private static void AssertRealizedTrackState(WorkstationPage page, WorkstationPageVM vm)
     {
-        var list = (ListBox)page.FindName("TrackList");
+        var list = (ListBox)((osuHitsounder.Views.Pages.OHsWorkstationTrackList)page.FindName("TrackListComponent")).FindName("TrackList");
         var rows = Descendants<ListBoxItem>(list).ToArray();
         Assert.That(rows, Is.Not.Empty);
         Assert.That(rows.Length, Is.LessThan(vm.Tracks.Count));
@@ -404,7 +404,7 @@ public class WorkstationTrackCollapseTests
         var (page, vm, view) = Create(project: new ProjectData { Offsets = [0], BPMs = [120], Tracks = tracks });
         using (view)
         {
-            var list = (ListBox)page.FindName("TrackList");
+            var list = (ListBox)((osuHitsounder.Views.Pages.OHsWorkstationTrackList)page.FindName("TrackListComponent")).FindName("TrackList");
             vm.ToggleTracksCollapsedCommand.Execute(null);
             PressEnter((BalloonButton)((osuHitsounder.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("AddSampleTrackButton"));
             list.ScrollIntoView(vm.Tracks.Last());
