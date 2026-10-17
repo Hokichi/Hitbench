@@ -1,0 +1,65 @@
+<UserControl x:Class="osuHitsounder.Views.Pages.OHsControlPointLane"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:p="clr-namespace:osuHitsounder.Views.Pages"
+ xmlns:h="clr-namespace:osuHitsounder.Resources.Helpers">
+ <UserControl.Resources>
+  <ControlTemplate x:Key="OHsControlPointTagTemplate" TargetType="Button">
+   <Border x:Name="TagBorder" Style="{StaticResource BaseBorderStyle}" Background="{TemplateBinding Background}"
+           BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="20" Padding="{TemplateBinding Padding}">
+    <Grid Style="{StaticResource BaseGridStyle}">
+     <TextBlock Text="{Binding Label, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}" Foreground="{TemplateBinding Foreground}"
+                FontFamily="{TemplateBinding FontFamily}" FontSize="{TemplateBinding FontSize}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Style="{StaticResource BaseTextBlockStyle}" />
+     <Border x:Name="EditingCue" Style="{StaticResource BaseBorderStyle}" Background="{TemplateBinding Foreground}" Height="3" VerticalAlignment="Bottom" Visibility="Collapsed" IsHitTestVisible="False" />
+    </Grid>
+   </Border>
+   <ControlTemplate.Triggers>
+    <Trigger Property="p:OHsControlPointTag.IsEditing" Value="True"><Setter TargetName="EditingCue" Property="Visibility" Value="Visible" /></Trigger>
+   </ControlTemplate.Triggers>
+  </ControlTemplate>
+  <Style x:Key="OHsControlPointTagStyle" TargetType="Button" BasedOn="{StaticResource BaseButtonStyle}">
+   <Setter Property="Template" Value="{StaticResource OHsControlPointTagTemplate}" />
+   <Setter Property="Height" Value="40" /><Setter Property="Padding" Value="12,4" />
+   <Setter Property="FontFamily" Value="{DynamicResource Regular}" /><Setter Property="FontSize" Value="13" />
+   <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" /><Setter Property="Background" Value="{DynamicResource Brush.Background.Elevated}" />
+   <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Default}" /><Setter Property="BorderThickness" Value="1" />
+   <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
+   <Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" /><Setter Property="IsTabStop" Value="True" />
+   <Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="True" />
+   <Style.Triggers>
+    <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{DynamicResource Brush.Background.Hover}" /></Trigger>
+    <Trigger Property="p:OHsControlPointTag.IsInvalid" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource Brush.Danger}" /></Trigger>
+    <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
+     <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
+     <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+     <Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+    </DataTrigger>
+   </Style.Triggers>
+  </Style>
+  <DataTemplate x:Key="OHsControlPointContentTemplate">
+   <p:OHsControlPointTag Point="{Binding Mode=OneWay}" Style="{StaticResource OHsControlPointTagStyle}"
+    MaxWidth="{Binding ViewportWidth, RelativeSource={RelativeSource AncestorType=p:OHsControlPointLane}, Mode=OneWay}"
+    FlowDirection="{Binding FlowDirection, RelativeSource={RelativeSource AncestorType=p:OHsControlPointLane}, Mode=OneWay}"
+    IsEnabled="{Binding IsMenuOwnerActive, RelativeSource={RelativeSource AncestorType=p:OHsControlPointLane}, Mode=OneWay}"
+    IsMenuOwnerActive="{Binding IsMenuOwnerActive, RelativeSource={RelativeSource AncestorType=p:OHsControlPointLane}, Mode=OneWay}" />
+  </DataTemplate>
+  <ItemsPanelTemplate x:Key="OHsControlPointLaneItemsPanel"><p:OHsControlPointLanePanel /></ItemsPanelTemplate>
+  <Style x:Key="OHsControlPointLaneItemsStyle" TargetType="ItemsControl" BasedOn="{StaticResource BaseItemsControlStyle}">
+   <Setter Property="ItemsPanel" Value="{StaticResource OHsControlPointLaneItemsPanel}" />
+   <Setter Property="ItemTemplate" Value="{StaticResource OHsControlPointContentTemplate}" />
+   <Setter Property="VirtualizingPanel.IsVirtualizing" Value="True" /><Setter Property="VirtualizingPanel.VirtualizationMode" Value="Recycling" />
+  </Style>
+  <Style x:Key="OHsControlPointLaneEmptyStyle" TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlockStyle}">
+   <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}" /><Setter Property="TextWrapping" Value="Wrap" />
+   <Setter Property="Visibility" Value="Collapsed" />
+   <Style.Triggers>
+    <DataTrigger Binding="{Binding HasItems, ElementName=PointItems, Mode=OneWay}" Value="False"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
+    <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True"><Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" /></DataTrigger>
+   </Style.Triggers>
+  </Style>
+ </UserControl.Resources>
+ <Grid Style="{StaticResource BaseGridStyle}" ClipToBounds="True" Background="Transparent">
+  <ItemsControl x:Name="PointItems" Style="{StaticResource OHsControlPointLaneItemsStyle}" FlowDirection="LeftToRight" />
+  <TextBlock Text="No control points yet. Use Add Control Point to create one." Style="{StaticResource OHsControlPointLaneEmptyStyle}" />
+ </Grid>
+</UserControl>
