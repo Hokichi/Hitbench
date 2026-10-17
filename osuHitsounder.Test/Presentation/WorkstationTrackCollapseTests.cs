@@ -271,34 +271,36 @@ public class WorkstationTrackCollapseTests
         var (page, vm, view) = Create(direction);
         using (view)
         {
-            var sample = (BalloonButton)((osuHitsounder.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("AddSampleTrackButton");
-            var instrument = (BalloonButton)((osuHitsounder.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("AddInstrumentButton");
+            var trigger = (BalloonComboBox)page.AudioCard.FindName("AddMenuButton");
+            UiTestPump.Layout(trigger.ContextMenu, 320, 200);
+            UiTestPump.Run(trigger.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle).Task);
+            var sample = (MenuItem)trigger.ContextMenu.Items[0];
+            var instrument = (MenuItem)trigger.ContextMenu.Items[1];
             var toggle = (BalloonButton)((osuHitsounder.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("ToggleTracksCollapsedButton");
             Assert.That(sample, Is.Not.Null, "Audio card needs sample creation action");
-            UiControlContract.AssertStyle<BalloonButton>(sample, "OHsWorkstationToolbarButtonStyle");
-            UiControlContract.AssertStyle<BalloonButton>(instrument, "OHsWorkstationToolbarButtonStyle");
+            UiControlContract.AssertStyle<MenuItem>(sample, "OHsActionMenuItemStyle");
+            UiControlContract.AssertStyle<MenuItem>(instrument, "OHsActionMenuItemStyle");
             UiControlContract.AssertStyle<BalloonButton>(toggle, "OHsWorkstationCollapseTracksStyle");
             Assert.Multiple(() =>
             {
                 Assert.That(sample.Command, Is.SameAs(vm.AddSampleTrackCommand));
                 Assert.That(instrument.Command, Is.SameAs(vm.AddPianoTrackCommand));
                 Assert.That(toggle.Command, Is.SameAs(vm.ToggleTracksCollapsedCommand));
-                Assert.That(AutomationProperties.GetName(sample), Is.EqualTo("Add New Sample Track"));
-                Assert.That(AutomationProperties.GetName(instrument), Is.EqualTo("Add New Instrument"));
-                Assert.That(AutomationProperties.GetHelpText(instrument), Does.Contain("instrumental arrangement"));
+                Assert.That(sample.Header, Is.EqualTo("Sample Track"));
+                Assert.That(instrument.Header, Is.EqualTo("Instrumental Track"));
                 Assert.That(AutomationProperties.GetName(toggle), Is.EqualTo("Collapse all tracks"));
             });
-            foreach (var action in new[] { sample, instrument, toggle })
+            foreach (var action in new Control[] { sample, instrument, toggle })
             {
-                Assert.That(KeyboardNavigation.GetIsTabStop(action), Is.EqualTo(ReferenceEquals(action,instrument)));
+                Assert.That(KeyboardNavigation.GetIsTabStop(action), Is.True);
                 Assert.That(action.Focusable, Is.True);
-                Assert.That(action.FocusVisualStyle, Is.SameAs(page.FindResource(ReferenceEquals(action,instrument)?"OHsSampleManagerKeyboardFocusStyle":"DefaultFocusVisualStyle")));
+                Assert.That(action.FocusVisualStyle, Is.SameAs(page.FindResource("OHsSampleManagerKeyboardFocusStyle")));
                 Assert.That(ToolTipService.GetShowsToolTipOnKeyboardFocus(action), Is.True);
                 Assert.That(action.IsEnabled, Is.EqualTo(!ReferenceEquals(action, toggle)));
             }
-            PressEnter(sample);
+            InvokeMenuItem(sample);
             Assert.That(vm.Tracks, Has.Count.EqualTo(1));
-            PressEnter(instrument);
+            InvokeMenuItem(instrument);
             Assert.That(vm.Tracks, Has.Count.EqualTo(2));
             PressEnter(toggle);
             view.UpdateLayout();
@@ -406,7 +408,9 @@ public class WorkstationTrackCollapseTests
         {
             var list = (ListBox)((osuHitsounder.Views.Pages.OHsWorkstationTrackList)page.FindName("TrackListComponent")).FindName("TrackList");
             vm.ToggleTracksCollapsedCommand.Execute(null);
-            PressEnter((BalloonButton)((osuHitsounder.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("AddSampleTrackButton"));
+            var menu = ((BalloonComboBox)page.AudioCard.FindName("AddMenuButton")).ContextMenu;
+            UiTestPump.Layout(menu, 320, 200);
+            InvokeMenuItem((MenuItem)menu.Items[0]);
             list.ScrollIntoView(vm.Tracks.Last());
             view.UpdateLayout();
             Assert.That(vm.Tracks, Has.Count.EqualTo(81));
@@ -450,6 +454,14 @@ public class WorkstationTrackCollapseTests
             Assert.That(FocusManager.GetFocusedElement(scope), Is.SameAs(name));
             UiTestPump.Run(page.DeactivateAsync());
         }
+    }
+
+    private static void InvokeMenuItem(MenuItem item)
+    {
+        var provider = (System.Windows.Automation.Provider.IInvokeProvider)new System.Windows.Automation.Peers.MenuItemAutomationPeer(item)
+            .GetPattern(System.Windows.Automation.Peers.PatternInterface.Invoke);
+        provider.Invoke();
+        UiTestPump.Run(item.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle).Task);
     }
 
     private static void PressEnter(UIElement action)

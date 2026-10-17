@@ -9,6 +9,7 @@
     xmlns:helpers="clr-namespace:osuHitsounder.Resources.Helpers"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:pages="clr-namespace:osuHitsounder.Views.Pages"
+    xmlns:sys="clr-namespace:System;assembly=System.Runtime"
     d:DesignHeight="600"
     d:DesignWidth="1100"
     mc:Ignorable="d">
@@ -78,7 +79,6 @@
         <Style x:Key="OHsWorkstationAggregateToggleStyle" BasedOn="{StaticResource OHsWorkstationTrackToggleStyle}" TargetType="ToggleButton">
             <Setter Property="Width" Value="Auto" />
             <Setter Property="MinWidth" Value="40" />
-            <Setter Property="Padding" Value="4" />
             <Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="True" />
             <Style.Triggers>
                 <Trigger Property="IsChecked" Value="True">
@@ -145,10 +145,23 @@
             BasedOn="{StaticResource OHsWorkstationTransportButtonStyle}"
             TargetType="customControls:BalloonButton">
             <Setter Property="Margin" Value="0" />
+        </Style>
+        <Style x:Key="OHsWorkstationSamplesActionStyle" BasedOn="{StaticResource OHsBalloonDefaultActionStyle}" TargetType="customControls:BalloonButton">
+            <Setter Property="ShouldShowText" Value="True" />
+            <Setter Property="ShouldExpand" Value="False" />
             <Setter Property="IsTabStop" Value="True" />
-            <Setter Property="FocusVisualStyle" Value="{StaticResource DefaultFocusVisualStyle}" />
+            <Setter Property="helpers:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
+            <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
             <Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="True" />
         </Style>
+        <ContextMenu x:Key="OHsWorkstationAddMenu" x:Shared="False" Style="{StaticResource OHsActionContextMenuStyle}">
+            <MenuItem Header="Sample Track" Command="{Binding AddSampleTrackCommand, Mode=OneWay}"
+                InputGestureText="Ctrl+N" ToolTip="Add sample track (Ctrl+N)" Style="{StaticResource OHsActionMenuItemStyle}" />
+            <MenuItem Header="Instrumental Track" Command="{Binding AddPianoTrackCommand, Mode=OneWay}"
+                InputGestureText="Ctrl+Shift+N" ToolTip="Add instrumental track (Ctrl+Shift+N)" Style="{StaticResource OHsActionMenuItemStyle}" />
+            <MenuItem Header="Control Point" Command="{Binding AddControlPointCommand, Mode=OneWay}"
+                InputGestureText="F6" ToolTip="Add control point at playback marker (F6)" Style="{StaticResource OHsActionMenuItemStyle}" />
+        </ContextMenu>
 <Style
             x:Key="OHsWorkstationCollapseTracksStyle"
             BasedOn="{StaticResource OHsWorkstationToolbarButtonStyle}"
@@ -240,91 +253,44 @@
                                 </StackPanel>
                             </StackPanel>
                             <pages:OHsWorkstationTimeline x:Name="TimelineControl" Grid.Column="2" />
-                            <customControls:SpacedUniformGrid
-                                x:Name="TrackActionsHost"
-                                Grid.Column="4"
-                                VerticalAlignment="Center"
-                                Columns="3"
-                                HorizontalGap="4"
-                                ItemHeight="40"
-                                ItemWidth="40"
-                                VerticalGap="4">
-                                <RadioButton
-                                    x:Name="SelectionModeButton"
-                                    AutomationProperties.Name="Selection Mode"
-                                    Checked="OnEditingModeChecked"
-                                    GroupName="EditingMode"
-                                    IsChecked="{Binding IsSelectionMode, Mode=OneWay}"
-                                    IsEnabled="{Binding CanPlaceSamples, Mode=OneWay}"
-                                    Style="{StaticResource OHsTimelineEditingModeButtonStyle}"
-                                    ToolTip="Selection Mode (1): select and drag nodes">
-                                    <customControls:Icon
-                                        Width="18"
-                                        Height="18"
-                                        Path="{StaticResource ArrowCursor}"
-                                        Color="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}, Mode=OneWay}" />
-                                </RadioButton>
-                                <RadioButton
-                                    x:Name="AdditionModeButton"
-                                    AutomationProperties.Name="Addition Mode"
-                                    Checked="OnEditingModeChecked"
-                                    GroupName="EditingMode"
-                                    IsChecked="{Binding IsAdditionMode, Mode=OneWay}"
-                                    IsEnabled="{Binding CanPlaceSamples, Mode=OneWay}"
-                                    Style="{StaticResource OHsTimelineEditingModeButtonStyle}"
-                                    ToolTip="Addition Mode (2): create nodes">
-                                    <customControls:Icon
-                                        Width="18"
-                                        Height="18"
-                                        Path="{StaticResource RectangleVertical}"
-                                        Color="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}, Mode=OneWay}" />
-                                </RadioButton>
-                                <customControls:BalloonButton
-                                    x:Name="ToggleTracksCollapsedButton"
-                                    Command="{Binding ToggleTracksCollapsedCommand, Mode=OneWay}"
-                                    Style="{StaticResource OHsWorkstationCollapseTracksStyle}" />
-                                <customControls:BalloonButton
-                                    x:Name="ManageSamplesButton"
-                                    AutomationProperties.Name="Manage Samples"
-                                    ButtonIcon="{StaticResource BarsSolid}"
-                                    ButtonText="Manage Samples"
+                            <StackPanel x:Name="TrackActionsHost" Grid.Column="4" VerticalAlignment="Center">
+                                <customControls:SegmentedToggleGroup x:Name="EditingModeGroup" Margin="0,0,0,8"
+                                    AutomationProperties.Name="Workstation editing mode" IsEnabled="{Binding CanPlaceSamples, Mode=OneWay}"
+                                    SelectedValue="{Binding IsAdditionMode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                                    <customControls:SegmentedToggleOption x:Name="SelectionModeButton" Content="Select"
+                                        AutomationProperties.Name="Selection Mode" ToolTip="Select and move nodes (1)">
+                                        <customControls:SegmentedToggleOption.Value><sys:Boolean>False</sys:Boolean></customControls:SegmentedToggleOption.Value>
+                                    </customControls:SegmentedToggleOption>
+                                    <customControls:SegmentedToggleOption x:Name="AdditionModeButton" Content="Draw"
+                                        AutomationProperties.Name="Addition Mode" ToolTip="Create nodes (2)">
+                                        <customControls:SegmentedToggleOption.Value><sys:Boolean>True</sys:Boolean></customControls:SegmentedToggleOption.Value>
+                                    </customControls:SegmentedToggleOption>
+                                </customControls:SegmentedToggleGroup>
+                                <customControls:BalloonComboBox x:Name="AddMenuButton" Margin="0,0,0,8"
+                                    AutomationProperties.Name="Add" ButtonIcon="{StaticResource PlusSolid}" ButtonText="Add"
+                                    ContextMenu="{StaticResource OHsWorkstationAddMenu}" ShouldShowText="True" ShouldExpand="False"
+                                    Style="{StaticResource BaseBalloonComboBoxStyle}" ToolTip="Add a track or control point" />
+                                <customControls:BalloonButton x:Name="ManageSamplesButton" Margin="0,0,0,8"
+                                    AutomationProperties.Name="Samples" ButtonIcon="{StaticResource BarsSolid}" ButtonText="Samples"
                                     Command="{Binding ManageSamplesCommand, Mode=OneWay}"
-                                    Style="{StaticResource OHsWorkstationToolbarButtonStyle}"
-                                    ToolTip="Manage project samples (F2)"  helpers:KeyboardNavigationPolicy.AllowTabNavigation="True" FocusVisualStyle="{StaticResource OHsSampleManagerKeyboardFocusStyle}"/>
-                                <customControls:BalloonButton
-                                    x:Name="AddSampleTrackButton"
-                                    AutomationProperties.Name="Add New Sample Track"
-                                    ButtonIcon="{StaticResource MoviePlus}"
-                                    ButtonText="Add New Sample Track"
-                                    Command="{Binding AddSampleTrackCommand, Mode=OneWay}"
-                                    Style="{StaticResource OHsWorkstationToolbarButtonStyle}"
-                                    ToolTip="Add New Sample Track (Ctrl+N)" />
-                                <customControls:BalloonButton
-                                    x:Name="AddControlPointButton"
-                                    AutomationProperties.Name="Add Control Point"
-                                    ButtonIcon="{StaticResource ClockPlusOutline}"
-                                    ButtonText="Add Control Point"
-                                    Command="{Binding AddControlPointCommand, Mode=OneWay}"
-                                    Style="{StaticResource OHsWorkstationToolbarButtonStyle}"
-                                    ToolTip="Add Control Point (F6)"  helpers:KeyboardNavigationPolicy.AllowTabNavigation="True" FocusVisualStyle="{StaticResource OHsSampleManagerKeyboardFocusStyle}"/>
-                                <customControls:BalloonButton
-                                    x:Name="AddInstrumentButton"
-                                    AutomationProperties.HelpText="Create an instrumental arrangement with mapped samples."
-                                    AutomationProperties.Name="Add New Instrument"
-                                    ButtonIcon="{StaticResource MusicNotesPlusFill}"
-                                    ButtonText="Add New Instrument"
-                                    Command="{Binding AddPianoTrackCommand, Mode=OneWay}"
-                                    Style="{StaticResource OHsWorkstationToolbarButtonStyle}"
-                                    ToolTip="Add New Instrument (Ctrl+Shift+N)"  helpers:KeyboardNavigationPolicy.AllowTabNavigation="True" FocusVisualStyle="{StaticResource OHsSampleManagerKeyboardFocusStyle}"/>
-                                <customControls:BalloonButton
-                                    x:Name="ReloadSamplesButton"
-                                    AutomationProperties.Name="Reload Samples"
-                                    ButtonIcon="{StaticResource RegularRepeat}"
-                                    ButtonText="Reload Samples"
-                                    Command="{Binding ReloadSamplesCommand, Mode=OneWay}"
-                                    Style="{StaticResource OHsWorkstationToolbarButtonStyle}"
-                                    ToolTip="Reload Samples (F5)"  helpers:KeyboardNavigationPolicy.AllowTabNavigation="True" FocusVisualStyle="{StaticResource OHsSampleManagerKeyboardFocusStyle}"/>
-                            </customControls:SpacedUniformGrid>
+                                    Style="{StaticResource OHsWorkstationSamplesActionStyle}" ToolTip="Manage project samples (F2)" />
+                                <StackPanel Orientation="Horizontal">
+                                    <customControls:BalloonButton x:Name="ResnapAllSamplesButton"
+                                        AutomationProperties.Name="Resnap all nodes"
+                                        AutomationProperties.HelpText="Snap sample nodes and instrumental notes across all tracks to the current beat subdivision"
+                                        ButtonIcon="{StaticResource RegularRepeat}" ButtonText="Resnap all nodes"
+                                        Command="{Binding ResnapAllSamplesCommand, Mode=OneWay}"
+                                        Style="{StaticResource OHsWorkstationToolbarButtonStyle}"
+                                        ToolTip="Snap sample nodes and instrumental notes across all tracks to the current beat subdivision" />
+                                    <customControls:BalloonButton x:Name="ReloadSamplesButton" Margin="4,0,0,0"
+                                        AutomationProperties.Name="Refresh samples" ButtonIcon="{StaticResource RegularRepeat}" ButtonText="Refresh samples"
+                                        Command="{Binding ReloadSamplesCommand, Mode=OneWay}"
+                                        Style="{StaticResource OHsWorkstationToolbarButtonStyle}" ToolTip="Refresh project samples (F5)" />
+                                    <customControls:BalloonButton x:Name="ToggleTracksCollapsedButton" Margin="4,0,0,0"
+                                        Command="{Binding ToggleTracksCollapsedCommand, Mode=OneWay}"
+                                        Style="{StaticResource OHsWorkstationCollapseTracksStyle}" />
+                                </StackPanel>
+                            </StackPanel>
                         </Grid>
                     </Grid>
                 </Border>

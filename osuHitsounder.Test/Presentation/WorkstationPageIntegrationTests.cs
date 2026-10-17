@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
@@ -35,8 +35,8 @@ public class WorkstationPageIntegrationTests
         var page = new WorkstationPage(vm); page.SetProjectPath("project.json");
         using var view = new InMemoryView(new Window { Content = page, Width = 1100, Height = 800, FlowDirection = direction });
         UiTestPump.Run(page.LoadCompletion); view.UpdateLayout();
-        var selection = (RadioButton)((osuHitsounder.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("SelectionModeButton");
-        var addition = (RadioButton)((osuHitsounder.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("AdditionModeButton");
+        var selection = (SegmentedToggleOption)((osuHitsounder.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("SelectionModeButton");
+        var addition = (SegmentedToggleOption)((osuHitsounder.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("AdditionModeButton");
         var grid = FindVisualChild<BeatGridView>(page)!;
         foreach (var mode in new[] { selection, addition, selection })
         {
@@ -45,7 +45,7 @@ public class WorkstationPageIntegrationTests
             Assert.That(selection.IsChecked, Is.EqualTo(vm.IsSelectionMode));
             Assert.That(addition.IsChecked, Is.EqualTo(vm.IsAdditionMode));
             Assert.That(grid.AllowNodeCreation, Is.EqualTo(vm.IsAdditionMode));
-            UiControlContract.AssertStyle<RadioButton>(mode, "OHsTimelineEditingModeButtonStyle");
+            UiControlContract.AssertStyle<SegmentedToggleOption>(mode, typeof(SegmentedToggleOption));
         }
         Assert.That(AutomationProperties.GetName(selection), Is.EqualTo("Selection Mode"));
         Assert.That(AutomationProperties.GetName(addition), Is.EqualTo("Addition Mode"));
@@ -149,10 +149,10 @@ public class WorkstationPageIntegrationTests
         var page = new WorkstationPage(vm); page.SetProjectPath("project.json");
         using var view = new InMemoryView(new Window { Content = page, Width = 900, Height = 700 });
         UiTestPump.Run(page.LoadCompletion);
-        var addition = (RadioButton)((osuHitsounder.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("AdditionModeButton");
-        var selection = (RadioButton)((osuHitsounder.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("SelectionModeButton");
+        var addition = (SegmentedToggleOption)((osuHitsounder.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("AdditionModeButton");
+        var selection = (SegmentedToggleOption)((osuHitsounder.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("SelectionModeButton");
         Assert.That(addition.IsChecked, Is.True);
-        UiControlContract.AssertStyle<RadioButton>(selection, "OHsTimelineEditingModeButtonStyle");
+        UiControlContract.AssertStyle<SegmentedToggleOption>(selection, typeof(SegmentedToggleOption));
         selection.SetCurrentValue(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, true);
         Assert.That(vm.IsSelectionMode, Is.True);
         Assert.That(addition.IsChecked, Is.False);
@@ -1519,14 +1519,14 @@ public class WorkstationPageIntegrationTests
             }));
             UiTestPump.Run(page.LoadCompletion);
             view.UpdateLayout();
-            UiControlContract.AssertStyle<BalloonButton>(button, "OHsWorkstationTransportButtonStyle");
+            UiControlContract.AssertStyle<BalloonButton>(button, "OHsWorkstationToolbarButtonStyle");
             Assert.That(button.Command, Is.SameAs(vm.ResnapAllSamplesCommand));
             Assert.That(button.IsEnabled, Is.True);
-            Assert.That(button.ButtonText, Is.EqualTo("Resnap all samples"));
+            Assert.That(AutomationProperties.GetName(button), Is.EqualTo("Resnap all nodes"));
             Assert.That(button.Focusable, Is.True);
-            Assert.That(button.IsTabStop, Is.False);
-            Assert.That(button.FocusVisualStyle, Is.SameAs(page.FindResource("DefaultFocusVisualStyle")));
-            Assert.That(button.ToolTip, Is.EqualTo("Snap every sample to the nearest beat in the current subdivision"));
+            Assert.That(button.IsTabStop, Is.True);
+            Assert.That(button.FocusVisualStyle, Is.SameAs(page.FindResource("OHsSampleManagerKeyboardFocusStyle")));
+            Assert.That(button.ToolTip, Is.EqualTo("Snap sample nodes and instrumental notes across all tracks to the current beat subdivision"));
             Assert.That(AutomationProperties.GetHelpText(button), Is.EqualTo(button.ToolTip));
             Assert.That(page.HandlePlaybackKey(Key.Enter, ModifierKeys.None, false, button), Is.False);
             using var inputSource = new InMemoryPresentationSource();
@@ -1568,7 +1568,7 @@ public class WorkstationPageIntegrationTests
         UiTestPump.EnsureFontResources(app);
         foreach (var resource in new[] { $"Themes/{theme}.xaml", "Converters/Converters.xaml", "Icons.xaml",
                      "Styles/TextBlock.xaml", "Styles/ItemsControl.xaml", "Styles/StackPanel.xaml", "Styles/ColumnDefinition.xaml", "Styles/Grid.xaml", "Styles/Border.xaml", "Styles/ContentPresenter.xaml",
-                     "Styles/Button.xaml", "Styles/MenuItem.xaml", "Styles/ContextMenu.xaml", "Styles/BalloonComboBox.xaml", "Styles/ToolTip.xaml", "Styles/ScrollViewer.xaml", "Styles/TextBox.xaml", "Styles/ComboBox.xaml", "Styles/ListBox.xaml", "Styles/Slider.xaml", "BeatGrid.xaml" })
+                     "Styles/Button.xaml", "Styles/MenuItem.xaml", "Styles/ContextMenu.xaml", "Styles/BalloonComboBox.xaml", "Styles/SegmentedToggleGroup.xaml", "Styles/SegmentedToggleOption.xaml", "Styles/ToolTip.xaml", "Styles/ScrollViewer.xaml", "Styles/TextBox.xaml", "Styles/ComboBox.xaml", "Styles/ListBox.xaml", "Styles/Slider.xaml", "BeatGrid.xaml" })
             app.Resources.MergedDictionaries.Add(new ResourceDictionary
             {
                 Source = new Uri($"/osuHitsounder;component/Resources/{resource}", UriKind.Relative)

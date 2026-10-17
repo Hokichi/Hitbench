@@ -32,11 +32,15 @@ public sealed class ManageSampleHeaderTests
         var vm = (osuHitsounder.ViewModels.Shell.WorkstationPageVM)page.DataContext;
         Assert.That(button, Is.TypeOf<BalloonButton>());
         Assert.That(button.Command, Is.SameAs(vm.ManageSamplesCommand));
-        Assert.That(button.Style, Is.SameAs(button.FindResource("OHsWorkstationToolbarButtonStyle")));
-        Assert.That(button.Style, Is.SameAs(button.FindResource("OHsWorkstationToolbarButtonStyle")));
+        UiControlContract.AssertStyle<BalloonButton>(button, "OHsWorkstationSamplesActionStyle");
         Assert.That(button.IsTabStop, Is.True);
-        Assert.That(((BalloonButton)((osuHitsounder.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("AddSampleTrackButton")).Command, Is.SameAs(vm.AddSampleTrackCommand));
-        Assert.That(((BalloonButton)((osuHitsounder.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("AddInstrumentButton")).Command, Is.SameAs(vm.AddPianoTrackCommand));
+        var trigger = (BalloonComboBox)page.AudioCard.FindName("AddMenuButton");
+        // This unloaded DI page is disabled; supply the native placement boundary without opening its menu.
+        trigger.ContextMenu.PlacementTarget = trigger;
+        UiTestPump.Layout(trigger.ContextMenu, 320, 200);
+        UiTestPump.Run(trigger.Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle).Task);
+        Assert.That(((System.Windows.Controls.MenuItem)trigger.ContextMenu.Items[0]).Command, Is.SameAs(vm.AddSampleTrackCommand));
+        Assert.That(((System.Windows.Controls.MenuItem)trigger.ContextMenu.Items[1]).Command, Is.SameAs(vm.AddPianoTrackCommand));
         UiTestPump.Run(page.DeactivateAsync());
         host.Close();
     }

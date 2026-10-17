@@ -6,6 +6,7 @@ using osuHitsounder.Core.Entities;
 using osuHitsounder.Services;
 using osuHitsounder.ViewModels.Shell;
 using osuHitsounder.Views.Pages;
+using Track = osuHitsounder.Core.Entities.Track;
 
 namespace osuHitsounder.Test.Presentation;
 
@@ -14,6 +15,38 @@ namespace osuHitsounder.Test.Presentation;
 public class WorkstationTrackControlsTests
 {
     [SetUp] public void Setup() => new VolumeWheelTests().SetUp();
+
+    [TestCase(true)]
+    [TestCase(false)]
+    public void MixedAndEmptyTrackStatesUseAggregateCommands(bool empty)
+    {
+        var tracks = empty ? new List<Track>() : new List<Track> { new() { IsTrackMuted = true }, new() };
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(
+            new WorkstationSource("map", "song", new ProjectData { Tracks = tracks, Offsets = [0], BPMs = [120] })) },
+            new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler());
+        try
+        {
+            UiTestPump.Run(vm.LoadAsync("project.json", default)); vm.AcknowledgePresentationReady(vm.LoadGeneration);
+            var card = new OHsWorkstationAudioCard { DataContext = vm };
+            UiTestPump.Layout(card, 900, 300);
+            var mute = (ToggleButton)card.FindName("ClearTrackMutesToggle");
+            Assert.That(mute.IsChecked, Is.False);
+            Assert.That(mute.IsEnabled, Is.EqualTo(!empty));
+            if (empty) return;
+            var revision = vm.TrackAuditionRevision;
+            ((IToggleProvider)new ToggleButtonAutomationPeer(mute)).Toggle();
+            Assert.That(tracks.All(track => track.IsTrackMuted), Is.True);
+            Assert.That(vm.TrackAuditionRevision, Is.EqualTo(revision + 1));
+            using var input = new InMemoryPresentationSource();
+            mute.RaiseEvent(new System.Windows.Input.KeyEventArgs(System.Windows.Input.Keyboard.PrimaryDevice, input, 0, System.Windows.Input.Key.Space)
+                { RoutedEvent = System.Windows.Input.Keyboard.KeyDownEvent });
+            mute.RaiseEvent(new System.Windows.Input.KeyEventArgs(System.Windows.Input.Keyboard.PrimaryDevice, input, 0, System.Windows.Input.Key.Space)
+                { RoutedEvent = System.Windows.Input.Keyboard.KeyUpEvent });
+            Assert.That(tracks.All(track => !track.IsTrackMuted), Is.True);
+            Assert.That(vm.TrackAuditionRevision, Is.EqualTo(revision + 2));
+        }
+        finally { UiTestPump.Run(vm.DeactivateAsync()); }
+    }
 
     [TestCase(FlowDirection.LeftToRight, "Dark")]
     [TestCase(FlowDirection.LeftToRight, "Light")]

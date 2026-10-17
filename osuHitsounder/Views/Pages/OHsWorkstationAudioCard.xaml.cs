@@ -2,13 +2,11 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
-using osuHitsounder.ViewModels.Shell;
 
 namespace osuHitsounder.Views.Pages;
 
 public partial class OHsWorkstationAudioCard : UserControl
 {
-    private WorkstationPageVM viewModel => (WorkstationPageVM)DataContext;
     public OHsWorkstationAudioCard() { InitializeComponent(); }
     public OHsWorkstationTimeline Timeline => TimelineControl;
     public Thickness AudioCardBorderThickness => SongAudioCard.BorderThickness;
@@ -43,11 +41,6 @@ public partial class OHsWorkstationAudioCard : UserControl
             binding.UpdateTarget();
         }
         finally { synchronizingAggregate = false; }
-    }
-
-    private void OnEditingModeChecked(object sender, RoutedEventArgs e)
-    {
-        if (sender is RadioButton radio) viewModel.IsAdditionMode = radio.Name == "AdditionModeButton";
     }
 
 }

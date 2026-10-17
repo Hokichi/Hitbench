@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -64,7 +64,7 @@ public class WorkstationSampleReloadIntegrationTests
         Assert.That(button.Style, Is.SameAs(button.FindResource("OHsWorkstationToolbarButtonStyle")));
         Assert.That(button.FocusVisualStyle, Is.SameAs(button.FindResource("OHsSampleManagerKeyboardFocusStyle")));
         Assert.That(button.Command, Is.SameAs(vm.ReloadSamplesCommand)); Assert.That(button.IsEnabled, Is.True);
-        Assert.That(AutomationProperties.GetName(button), Is.EqualTo("Reload Samples"));
+        Assert.That(AutomationProperties.GetName(button), Is.EqualTo("Refresh samples"));
         var name = Descendants(page).OfType<TextBox>().First(input => input.DataContext is Track);
         UiTestPump.Run(StubWorkstationAudioService.WaitUntilAsync(() => name.IsLoaded));
         vm.BeginTrackRenameCommand.Execute(vm.Tracks.Single());
@@ -76,8 +76,8 @@ public class WorkstationSampleReloadIntegrationTests
         Assert.That(saves.LatestJson, Does.Contain("name edited before refresh"));
         Assert.That(vm.Tracks.Single().Name, Is.EqualTo("name edited before refresh"));
         Assert.That(vm.CanPlay, Is.True); Assert.That(button.IsEnabled, Is.True);
-        Assert.That(button.ButtonText, Is.EqualTo("Reload Samples"));
-        Assert.That(button.ToolTip, Is.EqualTo("Reload Samples (F5)"));
+        Assert.That(button.ButtonText, Is.EqualTo("Refresh samples"));
+        Assert.That(button.ToolTip, Is.EqualTo("Refresh project samples (F5)"));
         Assert.That(page.HandlePlaybackKey(Key.F5, ModifierKeys.None, true, page), Is.True);
         Assert.That(calls, Is.EqualTo(1));
         UiTestPump.Run(page.DeactivateAsync());
