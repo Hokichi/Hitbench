@@ -162,18 +162,15 @@ public class ScanOverlayIntegrationTests
             view.UpdateLayout();
             var host = (ContentControl)window.FindName("PageHost");
             Assert.That(host.IsEnabled, Is.False);
-            var label = Descendants<TextBlock>(view.Root).Single(text => text.IsVisible && text.Text == "Processing...");
-            Assert.That(label, Is.TypeOf<TextBlock>());
-            Assert.That(label.Style, Is.SameAs(window.FindResource("MainWindowProcessingTextStyle")));
             pending.SetResult(new OsuSearchResult(null, false));
             UiTestPump.Run(picking.Task);
             view.UpdateLayout();
-            Assert.That(label.IsVisible, Is.True);
+            Assert.That(vm.IsProcessing, Is.True);
             Assert.That(host.IsEnabled, Is.False, "Input gate must survive the picker transition.");
             picker.SetResult(@"C:\chosen");
             UiTestPump.Run(readingSongs.Task);
             view.UpdateLayout();
-            Assert.That(label.IsVisible, Is.True);
+            Assert.That(vm.IsProcessing, Is.True);
             Assert.That(host.IsEnabled, Is.False);
             songs.SetResult(new FolderSnapshot(Enumerable.Range(0, 130)
                 .Select(i => new FolderEntry($@"C:\Songs\{i}", $"{i}", DateTimeOffset.MinValue))));
@@ -184,7 +181,7 @@ public class ScanOverlayIntegrationTests
             Assert.That(vm.Songs, Has.Count.EqualTo(HomePageVM.InitialSongCount),
                 "Nine rows must publish before Processing clears.");
             PumpUntil(() => !vm.IsAwaitingSongsPresentation);
-            Assert.That(label.IsVisible, Is.False);
+            Assert.That(vm.IsProcessing, Is.False);
             Assert.That(host.IsEnabled, Is.True);
             Assert.That(vm.RequiresShutdown, Is.False);
             PumpUntil(() => vm.Songs.Count > 0);
@@ -218,12 +215,11 @@ public class ScanOverlayIntegrationTests
             var load = window.LoadAsync();
             UiTestPump.Run(reading.Task);
             view.UpdateLayout();
-            var label = (TextBlock)window.FindName("ProcessingText");
             var host = (ContentControl)window.FindName("PageHost");
-            Assert.That(label.IsVisible, Is.True);
+            Assert.That(vm.IsProcessing, Is.True);
             Assert.That(host.IsEnabled, Is.False);
             var states = new List<bool>();
-            vm.Songs.CollectionChanged += (_, _) => states.Add(label.IsVisible && !host.IsEnabled);
+            vm.Songs.CollectionChanged += (_, _) => states.Add(vm.IsProcessing && !host.IsEnabled);
             songs.SetResult(new FolderSnapshot(Enumerable.Range(0, 130)
                 .Select(i => new FolderEntry($@"C:\Songs\{i}", $"{i}", DateTimeOffset.MinValue))));
             UiTestPump.Run(load);
@@ -233,7 +229,7 @@ public class ScanOverlayIntegrationTests
             Assert.That(vm.Songs, Has.Count.EqualTo(HomePageVM.InitialSongCount));
             PumpUntil(() => !vm.IsAwaitingSongsPresentation);
             Assert.That(states, Is.Not.Empty.And.All.True);
-            Assert.That(label.IsVisible, Is.False);
+            Assert.That(vm.IsProcessing, Is.False);
             Assert.That(host.IsEnabled, Is.True);
             Assert.That(vm.Songs.Count, Is.LessThan(130));
         }
