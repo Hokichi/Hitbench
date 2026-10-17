@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Automation;
 using CommunityToolkit.Mvvm.Messaging;
@@ -119,7 +119,7 @@ public class WorkstationReturnIntegrationTests
         var back = (BalloonButton)((osuHitsounder.Views.Shell.OHsShellHeader)window.FindName("ShellHeader")).FindName("GoBackButton");
         Assert.That(back, Is.Not.Null);
         Assert.That(back.IsEnabled, Is.True);
-        Assert.That(AutomationProperties.GetName(back), Is.EqualTo("Go Back"));
+        Assert.That(AutomationProperties.GetName(back), Is.EqualTo("Return home"));
         back.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
         UiTestPump.Run(StubWorkstationAudioService.WaitUntilAsync(() => homes.Count == 2));
         UiTestPump.Run(window.ReturnHomeAsync());
@@ -187,4 +187,3 @@ public class WorkstationReturnIntegrationTests
         Assert.That(homes.Distinct().Count(), Is.EqualTo(3));
     }
 }
-

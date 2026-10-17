@@ -39,6 +39,24 @@ public sealed class OHsShellHeaderTests
     }
 
     [Test]
+    public void HomeChromeRetainsVisibilityAndReturnContract()
+    {
+        new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
+        var header = new OHsShellHeader { CanGoBack = true, IsWorkstationVisible = true };
+        UiTestPump.Layout(header, 900, 100);
+        var home = (BalloonButton)header.FindName("GoBackButton");
+        var actions = (FrameworkElement)header.FindName("WorkstationActions");
+        Assert.That(AutomationProperties.GetName(home), Is.EqualTo("Return home"));
+        Assert.That(home.FocusVisualStyle, Is.SameAs(home.FindResource("OHsSampleManagerKeyboardFocusStyle")));
+        UiControlContract.AssertStyle<BalloonButton>(home, "OHsMainWindowGoBackStyle");
+        header.CanGoBack = false;
+        Assert.That(home.IsEnabled, Is.False);
+        Assert.That(actions.Visibility, Is.EqualTo(Visibility.Visible));
+        header.IsWorkstationVisible = false;
+        Assert.That(actions.Visibility, Is.EqualTo(Visibility.Collapsed));
+    }
+
+    [Test]
     public void MaximizeStateUpdatesAccessibleAction()
     {
         new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
