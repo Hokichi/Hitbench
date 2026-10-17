@@ -21,8 +21,18 @@ public partial class WorkstationPageVM
     private void RegisterKeyMappingMessages()
     {
         if (messenger is null) return;
+        messenger.Register<OHsClearInstrumentalKeyMappingsRequestedMessage>(this, (_, m) => ClearInstrumentKeyMappings(m));
         messenger.Register<SetInstrumentalKeyMappingRequestedMessage>(this, (_, m) => MapInstrumentKey(m));
         messenger.Register<SetInstrumentalKeyMappingsRequestedMessage>(this, (_, m) => MapInstrumentKeys(m));
+    }
+    private void ClearInstrumentKeyMappings(OHsClearInstrumentalKeyMappingsRequestedMessage request)
+    {
+        if (ActiveInstrument(request.Context) is not { } track) return;
+        if (request.ExpectedRevision != instrumentRevision)
+        { InstrumentResult(request.Context, request.RequestId, false, null, "Mappings changed. Review them and try again."); return; }
+        var changed = track.KeyFiles.Count > 0;
+        track.KeyFiles.Clear();
+        InstrumentResult(request.Context, request.RequestId, changed, null);
     }
     private void MapInstrumentKey(SetInstrumentalKeyMappingRequestedMessage m)
     {
@@ -52,4 +62,5 @@ public partial class WorkstationPageVM
         track.FolderName = m.FolderName;
         foreach (var pair in mappings) track.KeyFiles[pair.Key] = pair.Value;
         InstrumentResult(m.Context, m.RequestId, changed, null);
-    }}
+    }
+}
