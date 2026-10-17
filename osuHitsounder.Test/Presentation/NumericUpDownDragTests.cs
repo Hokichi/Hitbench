@@ -26,7 +26,7 @@ public class NumericUpDownDragTests
     [Test]
     public void DragUpdatesBoundVolumeInBothDirectionsAndRetainsRemainder()
     {
-        var row = new ControlPointEntry(new(Guid.NewGuid(), 1000, 50, "Normal"));
+        var row = new StubNumericValue { Volume = 50 };
         var control = Create(); control.DataContext = row;
         BindingOperations.SetBinding(control, NumericUpDown.ValueProperty, new Binding("Volume") { Mode = BindingMode.TwoWay, UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged });
         control.BeginVerticalDrag(100, 1, false);
@@ -77,7 +77,7 @@ public class NumericUpDownDragTests
                 case "lost": control.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, 0) { RoutedEvent = Mouse.LostMouseCaptureEvent }); break;
                 case "cancel": control.CancelVerticalDrag(); break;
                 case "disabled": control.IsEnabled = false; break;
-                case "context": control.DataContext = new ControlPointEntry(new(Guid.NewGuid(), 2000, 52, "Normal")); break;
+                case "context": control.DataContext = new StubNumericValue { Volume = 52 }; break;
                 case "template": control.OnApplyTemplate(); break;
                 case "unload": control.RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent)); break;
                 case "deactivate": owner.NotifyDeactivated(); break;

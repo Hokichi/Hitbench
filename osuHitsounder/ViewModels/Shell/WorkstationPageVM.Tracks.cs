@@ -213,7 +213,7 @@ public partial class WorkstationPageVM
         AddSampleTrackCommand.NotifyCanExecuteChanged();
         AddPianoTrackCommand.NotifyCanExecuteChanged();
     }
-    private bool CanMoveTrack(Track? track) => CanPlaceSamples && !instrumentBusy && !controlPointsBusy && track is not null && tracks.Contains(track);
+    private bool CanMoveTrack(Track? track) => CanPlaceSamples && !instrumentBusy && track is not null && tracks.Contains(track);
     private bool CanMoveTrackUp(Track? track) => CanMoveTrack(track) && tracks.IndexOf(track!) > 0;
     private bool CanMoveTrackDown(Track? track) => CanMoveTrack(track) && tracks.IndexOf(track!) < tracks.Count - 1;
     [RelayCommand(CanExecute = nameof(CanMoveTrackUp))]

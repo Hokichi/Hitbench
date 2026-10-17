@@ -11,7 +11,7 @@ public partial class WorkstationPageVM
 
     public bool CanReloadSamples => projectPath is not null && Project is not null && sampleFiles is not null &&
         !deactivated && !IsReturning && !reloadingSamples && LoadPhase == Services.ProjectLoadPhase.Ready &&
-        !controlPointsBusy && !instrumentBusy && !managingSamples && !folderRenamesActive &&
+        !instrumentBusy && !managingSamples && !folderRenamesActive &&
         !importBusy && !removalBusy && !IsNodeEditBusy && !IsNodeDragActive;
 
     public bool IsWorkstationContentEnabled => IsInteractionReady;

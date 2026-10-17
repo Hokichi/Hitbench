@@ -1,4 +1,4 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using osuHitsounder.Core.Entities;
 using osuHitsounder.Services;
@@ -28,8 +28,7 @@ public partial class WorkstationPageVM(
     ISampleManagementDialogService? sampleManagementDialog = null,
     SampleImportBatch? sampleImports = null,
     IInstrumentalTrackDialogService? instrumentDialogs = null,
-    Func<TimeSpan, CancellationToken, Task>? folderRenameDelay = null,
-    IControlPointsDialogService? controlPointsDialog = null) : ObservableObject
+    Func<TimeSpan, CancellationToken, Task>? folderRenameDelay = null) : ObservableObject
 {
     private readonly IWorkstationAudioService audioService = playback.Audio;
     private bool subscribedToPlayback;
@@ -55,12 +54,12 @@ public partial class WorkstationPageVM(
     public ObservableCollection<string> SampleFiles => sampleTrackFiles;
     public int SamplesRevision => samplesRevision;
     public bool CanEditTracks => Project is not null && IsInteractionReady;
-    public bool CanImportSample => !controlPointsBusy && !folderRenamesActive && !instrumentBusy && !managingSamples && !IsNodeEditBusy && CanEditTracks && !importBusy && !removalBusy &&
+    public bool CanImportSample => !folderRenamesActive && !instrumentBusy && !managingSamples && !IsNodeEditBusy && CanEditTracks && !importBusy && !removalBusy &&
         sampleFiles is not null && sampleDialog is not null && projectPath is not null;
     public bool CanAddTrack => CanEditTracks && sampleTrackFiles.Count > 0;
-    public bool CanRemoveTrack => !controlPointsBusy && !folderRenamesActive && !instrumentBusy && !managingSamples && !IsNodeEditBusy && CanEditTracks && !importBusy && !removalBusy && trackRemovalDialog is not null;
+    public bool CanRemoveTrack => !folderRenamesActive && !instrumentBusy && !managingSamples && !IsNodeEditBusy && CanEditTracks && !importBusy && !removalBusy && trackRemovalDialog is not null;
     public bool CanPlaceSamples => !folderRenamesActive && !managingSamples && !IsNodeEditBusy && CanEditTracks && Waveform is not null && !importBusy && !removalBusy;
-    public bool HasPendingSaves => controlPointsBusy || folderRenamesActive || instrumentBusy || managingSamples || IsNodeEditBusy || pendingZoom is not null || importBusy || removalBusy || !saveTail.IsCompleted || lastSaveError is not null;
+    public bool HasPendingSaves => folderRenamesActive || instrumentBusy || managingSamples || IsNodeEditBusy || pendingZoom is not null || importBusy || removalBusy || !saveTail.IsCompleted || lastSaveError is not null;
     [ObservableProperty] private string? saveError;
     private CancellationTokenSource? loadCancellation;
     private Task? activeLoad;
@@ -106,7 +105,7 @@ public partial class WorkstationPageVM(
     {
         if (deactivated) return;
         if (reloadingSamples && token != reloadSamplesCancellation?.Token) reloadSamplesCancellation?.Cancel();
-        await SettleControlPointsDrawerAsync();
+        await SettleControlPointsAsync();
         controlPointIds.Clear();
         await SettleInstrumentalEditorAsync();
         await DrainProjectSaveQueueAsync();
@@ -137,7 +136,7 @@ public partial class WorkstationPageVM(
     {
         if (deactivated) return;
         reloadSamplesCancellation?.Cancel();
-        await SettleControlPointsDrawerAsync();
+        await SettleControlPointsAsync();
         await SettleInstrumentalEditorAsync();
         await SettleSampleManagerAsync();
         await SettleInstrumentalFoldersAsync();
@@ -305,7 +304,7 @@ public partial class WorkstationPageVM(
         if (deactivated || IsReturning || token.IsCancellationRequested) return false;
         reloadSamplesCancellation?.Cancel();
         if (activeSampleReload is not null) await activeSampleReload;
-        await SettleControlPointsDrawerAsync();
+        await SettleControlPointsAsync();
         await SettleInstrumentalEditorAsync();
         await SettleSampleManagerAsync();
         await SettleInstrumentalFoldersAsync();
@@ -537,6 +536,7 @@ public partial class WorkstationPageVM(
                 audioService.SetApplicationVolume(ApplicationVolume);
                 audioService.SetSamplesVolume(SamplesVolume);
                 Project = source.Project;
+                InitializeControlPoints();
                 PublishControlPointTimeline();
                 RestoreZoom(Project.WorkstationZoom);
                 InitializeTrackPresentation(Project);
@@ -557,7 +557,7 @@ public partial class WorkstationPageVM(
                     messenger.Register<ProjectSamplesChangedMessage>(this, (_, change) => ReceiveSampleChange(change));
                     RegisterInstrumentMessages();
                     RegisterKeyMappingMessages();
-                    RegisterControlPointMessages();
+
                 }
             });
             await playback.ConfigureAsync(markerClock, waveform.Duration, token);

@@ -27,8 +27,6 @@ public partial class App : Application
         registrations.AddSingleton<Func<IWorkstationAudioService>>(_ => () => new WorkstationAudioService(
             AudioDecoder.Open, audioOutputs.CreateCandidates(asioDriverName)));
         registrations.AddSingleton<IMessenger, WeakReferenceMessenger>();
-        registrations.AddSingleton<IControlPointsDialogService>(provider => new ControlPointsDialogService(() => Current.MainWindow, Current.Dispatcher,
-            initial => new ControlPointsDrawerVM(initial, provider.GetRequiredService<IMessenger>(), provider.GetRequiredService<IUiScheduler>())));
         registrations.AddSingleton<IProjectFileService>(_ => new ProjectFileService(AppContext.BaseDirectory));
         registrations.AddSingleton<IWorkstationSourceService, WorkstationSourceService>();
         registrations.AddSingleton<PlaybackVolumeSettings>();
@@ -58,7 +56,7 @@ public partial class App : Application
                 provider.GetRequiredService<ISampleFileService>(), provider.GetRequiredService<ISampleFileDialogService>(),
                 provider.GetRequiredService<IProjectFileService>(), provider.GetRequiredService<IMessenger>(),
                 provider.GetRequiredService<ITrackRemovalDialogService>(),
-                provider.GetRequiredService<PlaybackVolumeSettings>(), nodePasteDialog: provider.GetRequiredService<INodePasteDialogService>(), sampleManagementDialog: provider.GetRequiredService<ISampleManagementDialogService>(), sampleImports: provider.GetRequiredService<SampleImportBatch>(), instrumentDialogs: provider.GetRequiredService<IInstrumentalTrackDialogService>(), controlPointsDialog: provider.GetRequiredService<IControlPointsDialogService>())));
+                provider.GetRequiredService<PlaybackVolumeSettings>(), nodePasteDialog: provider.GetRequiredService<INodePasteDialogService>(), sampleManagementDialog: provider.GetRequiredService<ISampleManagementDialogService>(), sampleImports: provider.GetRequiredService<SampleImportBatch>(), instrumentDialogs: provider.GetRequiredService<IInstrumentalTrackDialogService>())));
         registrations.AddSingleton<IHomeFolderService>(_ => new HomeFolderService(AppContext.BaseDirectory));
         registrations.AddSingleton<IAppSettingsService>(_ => new AppSettingsService(AppContext.BaseDirectory));
         registrations.AddSingleton<IUiScheduler>(_ => uiScheduler ?? new UiScheduler(Current.Dispatcher));

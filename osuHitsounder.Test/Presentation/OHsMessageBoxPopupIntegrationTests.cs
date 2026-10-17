@@ -40,41 +40,6 @@ public sealed class OHsMessageBoxPopupIntegrationTests
         finally { popup.Close(); }
     }
 
-    [TestCase(true)][TestCase(false)]
-    public void ConfirmationServiceUsesSubstitutedPresenter(bool accepted)
-    {
-        EnsureResources();
-        var service = new ControlPointsDialogService(() => null, Dispatcher.CurrentDispatcher, _ => throw new AssertionException("No drawer."))
-        {
-            PresentConfirmation = (popup, _) =>
-            {
-                Assert.That(popup.PopupTitle, Is.EqualTo("Replace control point?"));
-                Assert.That(((BalloonButton)popup.FindName("SecondaryButton")).ButtonText, Is.EqualTo("Skip"));
-                return Task.FromResult(accepted);
-            }
-        };
-        var task = service.ConfirmReplaceAsync(new(Guid.NewGuid(), 500, 25, "Drum"), 1000, 2, default);
-        UiTestPump.Run(task); Assert.That(task.GetAwaiter().GetResult(), Is.EqualTo(accepted));
-    }
-
-    [TestCase("canceled")][TestCase("faulted")][TestCase("closed")]
-    public void ConfirmationServicePreservesCancellationFailureAndClosedOwner(string outcome)
-    {
-        EnsureResources(); using var cancellation = new CancellationTokenSource();
-        var service = new ControlPointsDialogService(() => null, Dispatcher.CurrentDispatcher, _ => throw new AssertionException("No drawer."))
-        {
-            PresentConfirmation = outcome == "closed" ? null : (_, _) =>
-            {
-                if (outcome == "faulted") throw new InvalidOperationException("Confirmation failed.");
-                cancellation.Cancel(); return Task.FromResult(true);
-            }
-        };
-        var task = service.ConfirmReplaceAsync(new(Guid.NewGuid(), 500, 25, "Drum"), 1000, 1, cancellation.Token);
-        if (outcome == "faulted") Assert.Throws<InvalidOperationException>(() => UiTestPump.Run(task));
-        else if (outcome == "canceled") Assert.Catch<OperationCanceledException>(() => UiTestPump.Run(task));
-        else { UiTestPump.Run(task); Assert.That(task.GetAwaiter().GetResult(), Is.False); }
-    }
-
     [Test]
     public void SampleDeletionUsesSpecificActionWithSafeDefault()
     {

@@ -65,14 +65,14 @@ public class WorkstationShortcutTests
 
     [TestCase(Key.F2)]
     [TestCase(Key.F6)]
-    public void DrawerShortcutsOpenExistingWorkflowAndSuppressRepeats(Key key)
+    public void WorkflowShortcutsInvokeOnceAndSuppressRepeats(Key key)
     {
         var opened = 0;
         var manager = new StubSampleManagementDialogService { Present = (_, _) => { opened++; return Task.CompletedTask; } };
-        var points = new StubControlPointsDialogService { Show = (_, _) => { opened++; return Task.CompletedTask; } };
         var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay),
             new ImmediateUiScheduler(), new StubSampleFileService(["hit.wav"]), new StubSampleFileDialogService([]),
-            messenger: new CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger(), sampleManagementDialog: manager, controlPointsDialog: points);
+            messenger: new CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger(), sampleManagementDialog: manager);
+        vm.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(vm.PendingControlPointAdd) && vm.PendingControlPointAdd is not null) opened++; };
         var page = new WorkstationPage(vm); page.SetProjectPath("project.json");
         using var view = new InMemoryView(new Window { Content = page, Width = 900, Height = 600 });
         UiTestPump.Run(page.LoadCompletion);

@@ -22,8 +22,7 @@ public class ControlPointsBottomHostTests
     private MainWindow shell = null!;
     private WorkstationPage page = null!;
     private WorkstationPageVM owner = null!;
-    private ControlPointsDrawerVM editor = null!;
-    private OHsControlPointsDrawer drawer = null!;
+    private StubShellDrawer drawer = null!;
     private CancellationTokenSource cancellation = null!;
     private SynchronizationContext? previousContext;
     private Task showing = Task.CompletedTask;
@@ -38,8 +37,7 @@ public class ControlPointsBottomHostTests
         owner = new(new StubWorkstationSourceService(), new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler());
         page = new(owner); UiTestPump.Run(owner.LoadAsync("project.json", default)); owner.AcknowledgePresentationReady(owner.LoadGeneration);
         ((ContentControl)shell.FindName("PageHost")).Content = page;
-        editor = new(new(new("project.json", Guid.NewGuid(), Guid.NewGuid()), [new(Guid.NewGuid(), 1000, 50, "Normal")], 1, true, null, false, null), new WeakReferenceMessenger(), new ImmediateUiScheduler());
-        drawer = new(editor); cancellation = new(); showing = Task.CompletedTask;
+        drawer = new(); cancellation = new(); showing = Task.CompletedTask;
     }
     private static void Drain() => UiTestPump.Run(Dispatcher.CurrentDispatcher.InvokeAsync(() => { }, DispatcherPriority.Background).Task);
     private void Show(bool bottom, Func<bool, CancellationToken, Task>? transition = null)
@@ -53,7 +51,7 @@ public class ControlPointsBottomHostTests
         try
         {
             cancellation.Cancel(); shell.DismissSampleManager(drawer); UiTestPump.Run(showing);
-            UiTestPump.Run(editor.DeactivateAsync()); UiTestPump.Run(page.PlaybackInputCompletion); UiTestPump.Run(page.DeactivateAsync());
+            UiTestPump.Run(page.PlaybackInputCompletion); UiTestPump.Run(page.DeactivateAsync());
             shell.Close(); services.Dispose(); cancellation.Dispose();
         }
         finally { SynchronizationContext.SetSynchronizationContext(previousContext); }
@@ -81,7 +79,7 @@ public class ControlPointsBottomHostTests
         Assert.That(shell.HandleWindowKeyDown(true, Key.D3, ModifierKeys.Control, false, page), Is.True);
         Assert.That(owner.Subdivision, Is.EqualTo(3));
         Assert.That(shell.HandleWindowKeyDown(true, Key.D4, ModifierKeys.Control, false, drawer), Is.False);
-        Assert.That(shell.HandleWindowKeyDown(true, Key.Space, ModifierKeys.None, false, (DependencyObject)drawer.FindName("AddPointButton")), Is.False);
+        Assert.That(shell.HandleWindowKeyDown(true, Key.Space, ModifierKeys.None, false, drawer.Action), Is.False);
         Assert.That(shell.HandleWindowMouseWheel(true, ModifierKeys.Control, 120, drawer), Is.False);
         Assert.That(shell.HandleWindowMouseWheel(true, ModifierKeys.Control, 120, page), Is.True);
         Assert.That(shell.HandleWindowKeyDown(true, Key.Right, ModifierKeys.None, false, page), Is.True);

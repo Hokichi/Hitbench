@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using System.Windows.Data;
 using System.Windows.Media;
 using CommunityToolkit.Mvvm.Messaging;
@@ -75,9 +75,9 @@ public class WaveformControlPointMarkerTests
         new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
         var project = new ProjectData { Offsets = [0], BPMs = [120], ControlPoints = [new() { Timestamp = 1000, Volume = 50 }] };
         var messages = new CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger();
-        var dialogs = new StubControlPointsDialogService();
+
         var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", project)) },
-            new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), messenger: messages, controlPointsDialog: dialogs);
+            new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), messenger: messages);
         try
         {
             UiTestPump.Run(owner.LoadAsync("project.json", default)); owner.AcknowledgePresentationReady(owner.LoadGeneration);
@@ -85,13 +85,9 @@ public class WaveformControlPointMarkerTests
             var view = (WaveformView)(page.Timeline).FindName("WaveformDisplay");
             Assert.That(BindingOperations.GetBinding(view, WaveformView.ControlPointTimestampsProperty)!.Mode, Is.EqualTo(BindingMode.OneWay));
             Assert.That(view.ControlPointTimestamps, Is.EqualTo(new[] { 1000 }));
-            dialogs.Show = (initial, _) =>
-            {
-                messages.Send(new osuHitsounder.Resources.Messages.DeleteControlPointRequestedMessage(initial.Context, initial.Points[0].Id));
-                Assert.That(view.ControlPointTimestamps, Is.Empty);
-                return Task.CompletedTask;
-            };
-            UiTestPump.Run(owner.AddControlPointCommand.ExecuteAsync(null)); Assert.That(owner.ErrorMessage, Is.Null);
+            var initial = owner.ControlPointsState!;
+            owner.DeleteControlPointCommand.Execute(new osuHitsounder.Resources.Messages.DeleteControlPointRequestedMessage(initial.Context, initial.Points[0].Id));
+            Assert.That(view.ControlPointTimestamps, Is.Empty); Assert.That(owner.ErrorMessage, Is.Null);
         }
         finally { UiTestPump.Run(owner.DeactivateAsync()); }
     }

@@ -1,4 +1,4 @@
-﻿using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using osuHitsounder.Core.Constants;
 using osuHitsounder.Core.Entities;
@@ -28,7 +28,7 @@ public partial class WorkstationPageVM
     private long instrumentRevision, saveStateVersion;
     private int pendingProjectWrites;
     public bool CanAddInstrumentalTrack => CanEditTracks && !instrumentBusy;
-    public bool CanOpenInstrumentalEditor => !controlPointsBusy && CanPlaceSamples && !instrumentBusy && instrumentDialogs is not null && messenger is not null;
+    public bool CanOpenInstrumentalEditor => CanPlaceSamples && !instrumentBusy && instrumentDialogs is not null && messenger is not null;
     private Guid InstrumentId(InstrumentalTrack track)
     { if (!instrumentIds.TryGetValue(track, out var id)) instrumentIds[track] = id = Guid.NewGuid(); return id; }
     private Guid InstrumentNoteId(InstrumentalNote note)

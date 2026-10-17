@@ -10,8 +10,8 @@ public class NumericUpDownIntegerTests
     public void RecycledEntryDoesNotInheritAnotherPointsInvalidDraft()
     {
         new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
-        var first=new osuHitsounder.Resources.DataModels.ControlPointEntry(new(Guid.NewGuid(),1000,50,"Normal"));
-        var second=new osuHitsounder.Resources.DataModels.ControlPointEntry(new(Guid.NewGuid(),2000,50,"Normal"));
+        var first=new StubNumericValue { Volume = 50 };
+        var second=new StubNumericValue { Volume = 50 };
         var control=new NumericUpDown { Style=(System.Windows.Style)System.Windows.Application.Current.FindResource(typeof(NumericUpDown)),IsIntegerOnly=true,LowerLimit=0,UpperLimit=100,DataContext=first };
         System.Windows.Data.BindingOperations.SetBinding(control,NumericUpDown.ValueProperty,new System.Windows.Data.Binding("Volume") {Mode=System.Windows.Data.BindingMode.TwoWay,UpdateSourceTrigger=System.Windows.Data.UpdateSourceTrigger.PropertyChanged});
         UiTestPump.Layout(control,180,40); var editor=(TextBox)control.Template.FindName("PART_TextBox",control);
