@@ -14,45 +14,86 @@
    </Style.Triggers>
   </Style>
 
-  <Style x:Key="OHsKeysWarningStyle" TargetType="TextBlock" BasedOn="{StaticResource BodyTextStyle}">
-   <Setter Property="Foreground" Value="{DynamicResource Brush.Warning}"/><Setter Property="FontSize" Value="11"/>
-  </Style>
 
-  <DataTemplate x:Key="OHsKeysRowTemplate">
-   <Grid Margin="0,8,8,0" Style="{StaticResource BaseGridStyle}">
-    <Grid.ColumnDefinitions><ColumnDefinition Width="48"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-    <TextBlock Text="{Binding Key,Mode=OneWay}" VerticalAlignment="Center" Style="{StaticResource BodyTextStyle}"/>
-    <StackPanel Grid.Column="1" Margin="0,0,8,0" Style="{StaticResource BaseStackPanelStyle}">
-     <TextBox Text="{Binding DraftFileName,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource OHsKeysInputStyle}"
-      AutomationProperties.Name="{Binding Key,Mode=OneWay,StringFormat=Sample file for {0}}" LostKeyboardFocus="OnMappingLostFocus" PreviewKeyDown="OnMappingKeyDown"/>
-     <TextBlock Text="{Binding Error,Mode=OneWay}" Style="{StaticResource ErrorTextStyle}"/>
-     <TextBlock Text="{Binding AvailabilityText,Mode=OneWay}" Style="{StaticResource OHsKeysWarningStyle}"/>
-    </StackPanel>
-    <c:BalloonButton Grid.Column="2" VerticalAlignment="Top" ButtonText="Open" ButtonIcon="{StaticResource PlusSolid}" Style="{StaticResource OHsBalloonNeutralActionStyle}"
-     AutomationProperties.Name="{Binding Key,Mode=OneWay,StringFormat=Open sample for {0}}" ToolTip="Choose a sample for this key"
-     Command="{Binding DataContext.OpenKeyCommand,RelativeSource={RelativeSource AncestorType=UserControl},Mode=OneWay}" CommandParameter="{Binding Key,Mode=OneWay}" h:KeyboardNavigationPolicy.AllowTabNavigation="True" ShouldShowText="True" IsTabStop="True" FocusVisualStyle="{StaticResource OHsSampleManagerKeyboardFocusStyle}" ToolTipService.ShowsToolTipOnKeyboardFocus="True"/>
-   </Grid>
+
+  <ItemsPanelTemplate x:Key="OHsKeysKeyboardItemsPanel"><VirtualizingStackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
+  <ControlTemplate x:Key="OHsKeysKeyboardTemplate" TargetType="ListBox">
+   <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}" Style="{StaticResource BaseBorderStyle}">
+    <ScrollViewer CanContentScroll="{TemplateBinding ScrollViewer.CanContentScroll}" HorizontalScrollBarVisibility="{TemplateBinding ScrollViewer.HorizontalScrollBarVisibility}" VerticalScrollBarVisibility="{TemplateBinding ScrollViewer.VerticalScrollBarVisibility}" Style="{StaticResource {x:Type ScrollViewer}}"><ItemsPresenter/></ScrollViewer>
+   </Border>
+  </ControlTemplate>
+  <Style x:Key="OHsKeysKeyboardStyle" TargetType="ListBox" BasedOn="{StaticResource BaseListBoxStyle}">
+   <Setter Property="Template" Value="{StaticResource OHsKeysKeyboardTemplate}"/>
+   <Setter Property="ItemsPanel" Value="{StaticResource OHsKeysKeyboardItemsPanel}"/>
+   <Setter Property="ScrollViewer.CanContentScroll" Value="True"/><Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Auto"/><Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Disabled"/>
+   <Setter Property="VirtualizingPanel.IsVirtualizing" Value="True"/><Setter Property="VirtualizingPanel.VirtualizationMode" Value="Recycling"/><Setter Property="VirtualizingPanel.ScrollUnit" Value="Pixel"/>
+   <Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True"/>
+  </Style>
+  <ControlTemplate x:Key="OHsKeysKeyboardItemTemplate" TargetType="ListBoxItem">
+   <Border x:Name="KeySurface" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}" Style="{StaticResource BaseBorderStyle}">
+    <Grid Style="{StaticResource BaseGridStyle}"><ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/><c:Icon x:Name="SelectedMarker" Path="{StaticResource Check}" Color="{Binding Foreground,RelativeSource={RelativeSource TemplatedParent},Mode=OneWay}" Width="12" Height="12" VerticalAlignment="Top" HorizontalAlignment="Center" Visibility="Collapsed"/></Grid>
+   </Border>
+   <ControlTemplate.Triggers>
+    <Trigger Property="IsSelected" Value="True"><Setter TargetName="SelectedMarker" Property="Visibility" Value="Visible"/></Trigger>
+    <DataTrigger Binding="{Binding IsSharp,Mode=OneWay}" Value="True"><Setter TargetName="KeySurface" Property="Margin" Value="0,0,0,24"/></DataTrigger>
+   </ControlTemplate.Triggers>
+  </ControlTemplate>
+  <Style x:Key="OHsKeysKeyboardItemStyle" TargetType="ListBoxItem" BasedOn="{StaticResource BaseListBoxItemStyle}">
+   <Setter Property="Template" Value="{StaticResource OHsKeysKeyboardItemTemplate}"/><Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}"/><Setter Property="Width" Value="64"/><Setter Property="MinHeight" Value="96"/>
+   <Setter Property="Padding" Value="4,20,4,4"/><Setter Property="Background" Value="{DynamicResource Brush.Background.Surface}"/><Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Default}"/><Setter Property="BorderThickness" Value="1"/>
+   <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}"/><Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True"/>
+   <Setter Property="AutomationProperties.Name" Value="{Binding Key,Mode=OneWay}"/><Setter Property="AutomationProperties.ItemStatus" Value="{Binding MappingStatus,Mode=OneWay}"/>
+   <Style.Triggers>
+    <DataTrigger Binding="{Binding IsSharp,Mode=OneWay}" Value="True"><Setter Property="Background" Value="{DynamicResource Brush.Background.Deepened}"/></DataTrigger>
+    <DataTrigger Binding="{Binding IsMapped,Mode=OneWay}" Value="False"><Setter Property="Opacity" Value="0.65"/></DataTrigger>
+    <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{DynamicResource Brush.Background.Hover}"/></Trigger>
+    <Trigger Property="IsSelected" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource Brush.Navy}"/><Setter Property="Opacity" Value="1"/></Trigger>
+    <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast),Mode=OneWay}" Value="True"><Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}"/><Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}"/><Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}"/><Setter Property="Opacity" Value="1"/></DataTrigger>
+    <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.4"/></Trigger>
+   </Style.Triggers>
+  </Style>
+  <DataTemplate x:Key="OHsKeysKeyboardContentTemplate">
+   <StackPanel Style="{StaticResource BaseStackPanelStyle}"><TextBlock Text="{Binding Key,Mode=OneWay}" Style="{StaticResource BodyTextStyle}"/><TextBlock Text="{Binding MappingStatus,Mode=OneWay}" Style="{StaticResource BodyTextStyle}"/></StackPanel>
   </DataTemplate>
  </UserControl.Resources>
  <Border Style="{StaticResource OHsPopupSurfaceBorderStyle}" Padding="16">
   <Grid Style="{StaticResource BaseGridStyle}">
    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-   <Grid Style="{StaticResource BaseGridStyle}">
-    <c:BalloonButton HorizontalAlignment="Left" ButtonText="Open" ButtonIcon="{StaticResource PlusSolid}" Style="{StaticResource OHsBalloonNeutralActionStyle}" Command="{Binding OpenFolderCommand,Mode=OneWay}"
+   <WrapPanel>
+    <c:BalloonButton x:Name="LoadAction" ButtonText="Load Samples Folder" ButtonIcon="{StaticResource PlusSolid}" Style="{StaticResource OHsBalloonNeutralActionStyle}" Command="{Binding OpenFolderCommand,Mode=OneWay}"
      AutomationProperties.Name="Import key mappings from folder" AutomationProperties.HelpText="Choose a folder of note-named audio files. Conflicts can be reviewed before importing." ToolTip="Import key mappings from folder" h:KeyboardNavigationPolicy.AllowTabNavigation="True" ShouldShowText="True" IsTabStop="True" FocusVisualStyle="{StaticResource OHsSampleManagerKeyboardFocusStyle}" ToolTipService.ShowsToolTipOnKeyboardFocus="True"/>
-    <c:BalloonButton HorizontalAlignment="Right" ButtonText="Close" ButtonIcon="{StaticResource Close}" Style="{StaticResource OHsBalloonDestructiveActionStyle}"
+    <c:BalloonButton x:Name="ClearAllMappingsAction" ButtonText="Clear All Mappings" ButtonIcon="{StaticResource Delete}" Style="{StaticResource OHsBalloonDestructiveActionStyle}" Command="{Binding ClearAllMappingsCommand,Mode=OneWay}" AutomationProperties.Name="Clear all key mappings" h:KeyboardNavigationPolicy.AllowTabNavigation="True" ShouldShowText="True" IsTabStop="True" FocusVisualStyle="{StaticResource OHsSampleManagerKeyboardFocusStyle}"/>
+    <c:BalloonButton ButtonText="Close" ButtonIcon="{StaticResource Close}" Style="{StaticResource OHsBalloonDestructiveActionStyle}"
      AutomationProperties.Name="Close Keys Mapping" ToolTip="Close (Esc)" Click="OnCloseClick" IsEnabled="{Binding CanClose,Mode=OneWay}" h:KeyboardNavigationPolicy.AllowTabNavigation="True" ShouldShowText="True" IsTabStop="True" FocusVisualStyle="{StaticResource OHsSampleManagerKeyboardFocusStyle}" ToolTipService.ShowsToolTipOnKeyboardFocus="True"/>
-   </Grid>
+   </WrapPanel>
    <StackPanel Grid.Row="1" Margin="0,16,0,12" Style="{StaticResource BaseStackPanelStyle}">
     <TextBlock Text="Keys Mapping" Style="{StaticResource OHsPopupTitleTextStyle}"/>
     <TextBlock Text="{Binding TrackName,Mode=OneWay}" Style="{StaticResource BodyTextStyle}" TextTrimming="CharacterEllipsis"/>
     <TextBlock Text="C1–B9 · Paths relative to Samples · PageUp/PageDown scroll keys; Alt+Home/End go to first/last key." Style="{StaticResource BodyTextStyle}"/>
    </StackPanel>
-   <ItemsControl x:Name="KeyRows" Grid.Row="2" IsEnabled="{Binding CanEditMapping,Mode=OneWay}" ItemsSource="{Binding Rows,Mode=OneWay}" ItemTemplate="{StaticResource OHsKeysRowTemplate}" Style="{StaticResource OHsVirtualizedDrawerItemsStyle}"/>
+   <Grid Grid.Row="2" Style="{StaticResource BaseGridStyle}">
+    <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+    <ListBox x:Name="KeySelector" ItemsSource="{Binding Rows,Mode=OneWay}" SelectedValuePath="Key" SelectedValue="{Binding SelectedEntry.Key,Mode=OneWay,UpdateSourceTrigger=PropertyChanged}" SelectionChanged="OnKeySelectionChanged" IsSynchronizedWithCurrentItem="False" IsEnabled="{Binding CanEditMapping,Mode=OneWay}" Style="{StaticResource OHsKeysKeyboardStyle}" ItemContainerStyle="{StaticResource OHsKeysKeyboardItemStyle}" ItemTemplate="{StaticResource OHsKeysKeyboardContentTemplate}" AutomationProperties.Name="Piano key mapping selector"/>
+    <TextBlock Grid.Row="1" Text="{Binding SelectionStatus,Mode=OneWay}" Style="{StaticResource BodyTextStyle}"/>
+    <Grid Grid.Row="2" Style="{StaticResource BaseGridStyle}">
+     <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+     <TextBlock Text="{Binding SelectedEntry.Key,Mode=OneWay}" Style="{StaticResource BodyTextStyle}" Margin="0,0,12,0"/>
+     <StackPanel Grid.Column="1" Style="{StaticResource BaseStackPanelStyle}" DataContext="{Binding SelectedEntry,Mode=OneWay}">
+      <TextBlock Text="Sample path" Style="{StaticResource BodyTextStyle}"/>
+      <TextBox Text="{Binding DraftFileName,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding DataContext.CanEditSelectedMapping,RelativeSource={RelativeSource AncestorType=UserControl},Mode=OneWay}" Style="{StaticResource OHsKeysInputStyle}" AutomationProperties.Name="Selected key sample path" LostKeyboardFocus="OnMappingLostFocus" PreviewKeyDown="OnMappingKeyDown"/>
+      <TextBlock Text="{Binding Error,Mode=OneWay}" Style="{StaticResource ErrorTextStyle}"/><TextBlock Text="{Binding MappingStatus,Mode=OneWay}" Style="{StaticResource BodyTextStyle}"/>
+     </StackPanel>
+     <WrapPanel Grid.Column="2" MaxWidth="160">
+      <c:BalloonButton ButtonText="Play" ButtonIcon="{StaticResource MediaPlay}" Style="{StaticResource OHsBalloonNeutralActionStyle}" Command="{Binding PlaySelectedCommand,Mode=OneWay}" AutomationProperties.Name="Audition selected key sample" ShouldShowText="True" IsTabStop="True" h:KeyboardNavigationPolicy.AllowTabNavigation="True" FocusVisualStyle="{StaticResource OHsSampleManagerKeyboardFocusStyle}"/>
+      <c:BalloonButton x:Name="DeleteSelectedMappingAction" ButtonText="Delete" ButtonIcon="{StaticResource Delete}" Style="{StaticResource OHsBalloonDestructiveActionStyle}" Command="{Binding DeleteSelectedCommand,Mode=OneWay}" AutomationProperties.Name="Unmap selected key" ShouldShowText="True" IsTabStop="True" h:KeyboardNavigationPolicy.AllowTabNavigation="True" FocusVisualStyle="{StaticResource OHsSampleManagerKeyboardFocusStyle}"/>
+     </WrapPanel>
+    </Grid>
+   </Grid>
    <ScrollViewer Grid.Row="3" Margin="0,12,0,0" Style="{StaticResource OHsStatusScrollStyle}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" AutomationProperties.Name="Mapping import and save status">
    <StackPanel Style="{StaticResource BaseStackPanelStyle}">
     <TextBlock Text="{Binding SaveStatus,Mode=OneWay}" Style="{StaticResource BodyTextStyle}"/>
     <TextBlock Text="{Binding ImportStatus,Mode=OneWay}" Style="{StaticResource BodyTextStyle}" AutomationProperties.LiveSetting="Polite"/>
+    <TextBlock Text="{Binding PreviewWarning,Mode=OneWay}" Style="{StaticResource WarningTextStyle}"/>
     <TextBlock Text="{Binding SaveError,Mode=OneWay}" Style="{StaticResource ErrorTextStyle}"/>
     <TextBlock Text="{Binding ErrorMessage,Mode=OneWay}" Style="{StaticResource ErrorTextStyle}"/>
    </StackPanel>

@@ -12,6 +12,12 @@ namespace osuHitsounder.Test.Presentation;
 public class KeysMappingDrawerIntegrationTests
 {
     [Test]
+    public void OctaveCenterUsesExplicitViewportAndClamps()
+    {
+        Assert.That(OHsKeysMappingDrawer.GetInitialKeyboardOffset(480,600,200,1080), Is.EqualTo(440));
+        Assert.That(OHsKeysMappingDrawer.GetInitialKeyboardOffset(0,120,200,1080), Is.Zero);
+    }
+    [Test]
     public void DrawerCloseDrainsCancelledQueuedEditsAndCommitsDrafts()
     {
         new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
@@ -64,6 +70,9 @@ public class KeysMappingDrawerIntegrationTests
             var open = Descendants(drawer).OfType<osuHitsounder.Resources.CustomControls.BalloonButton>().Single(button => System.Windows.Automation.AutomationProperties.GetName(button) == "Import key mappings from folder");
             open.GetBindingExpression(System.Windows.Controls.Primitives.ButtonBase.CommandProperty)!.UpdateTarget();
             Assert.That(open.Command, Is.SameAs(vm.OpenFolderCommand));
+            Assert.That(open.ButtonText, Is.EqualTo("Load Samples Folder"));
+            UiControlContract.AssertStyle<ListBox>((ListBox)drawer.FindName("KeySelector"), "OHsKeysKeyboardStyle");
+            Assert.That(vm.SelectedEntry, Is.Null);
             Assert.That(open.Style, Is.SameAs(drawer.FindResource("OHsBalloonNeutralActionStyle")));
             Assert.That(open.IsEnabled, Is.True);
         }
@@ -83,7 +92,7 @@ public class KeysMappingDrawerIntegrationTests
         try
         {
             view.UpdateLayout();
-            var rows = (ItemsControl)drawer.FindName("KeyRows");
+            var rows = (ItemsControl)drawer.FindName("KeySelector");
             UiTestPump.Run(drawer.Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.DataBind).Task);
             rows.GetBindingExpression(ItemsControl.ItemsSourceProperty)!.UpdateTarget();
             view.UpdateLayout();
@@ -94,5 +103,77 @@ public class KeysMappingDrawerIntegrationTests
             Assert.That(((KeyMappingEntry)((FrameworkElement)rows.ItemContainerGenerator.ContainerFromIndex(107)).DataContext).Key, Is.EqualTo("B9"));
         }
         finally { UiTestPump.Run(vm.DeactivateAsync()); host.Close(); }
+    }
+    [TestCase(FlowDirection.LeftToRight)]
+    [TestCase(FlowDirection.RightToLeft)]
+    public void NativeSelectionRecyclesStableKeysAndUsesAssignedContracts(FlowDirection flow)
+    {
+        new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
+        var creation=OHsKeysMappingTestContext.CreateAsync();UiTestPump.Run(creation);var c=creation.Result;
+        var drawer=new OHsKeysMappingDrawer(c.VM);var host=new Window {Content=drawer,DataContext=c.VM,Width=600,Height=500,FlowDirection=flow};
+        using var view=new InMemoryView(host);
+        try
+        {
+            var selector=(ListBox)drawer.FindName("KeySelector");view.UpdateLayout();
+            Assert.That(selector.SelectedItem,Is.Null);
+            Assert.That(c.VM.CanEditSelectedMapping,Is.False);
+            selector.SetCurrentValue(System.Windows.Controls.Primitives.Selector.SelectedValueProperty,"C5");
+            UiTestPump.Run(selector.Dispatcher.InvokeAsync(()=>{},System.Windows.Threading.DispatcherPriority.DataBind).Task);
+            Assert.That(c.VM.SelectedEntry!.Key,Is.EqualTo("C5"));
+            var entry=c.VM.SelectedEntry;
+            Assert.That(drawer.HandleNavigationKey(Key.End,ModifierKeys.Alt),Is.True);
+            view.UpdateLayout();
+            var container=(ListBoxItem)selector.ItemContainerGenerator.ContainerFromIndex(107);
+            UiControlContract.AssertStyle<ListBoxItem>(container,"OHsKeysKeyboardItemStyle");
+            UiControlContract.AssertTemplate(container,"OHsKeysKeyboardItemTemplate");
+            Assert.That(container.Style.BasedOn,Is.SameAs(container.FindResource("BaseListBoxItemStyle")));
+            Assert.That(System.Windows.Automation.AutomationProperties.GetName(container),Is.EqualTo("B9"));
+            var realized=Enumerable.Range(0,selector.Items.Count).Count(n=>selector.ItemContainerGenerator.ContainerFromIndex(n) is not null);
+            Assert.That(realized,Is.LessThan(selector.Items.Count));
+            Assert.That(drawer.HandleNavigationKey(Key.Home,ModifierKeys.Alt),Is.True);
+            Assert.That(c.VM.Rows.Single(r=>r.Key=="C5"),Is.SameAs(entry));
+        }
+        finally {UiTestPump.Run(c.DisposeAsync().AsTask());host.Close();}
+    }
+    [Test]
+    public void CancelClearFromFocusedDraftDoesNotCommitIt()
+    {
+        new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
+        var creation=OHsKeysMappingTestContext.CreateAsync((_,_)=>Task.FromResult(false));UiTestPump.Run(creation);var c=creation.Result;
+        var drawer=new OHsKeysMappingDrawer(c.VM);var host=new Window {Content=drawer,DataContext=c.VM,Width=700,Height=500};
+        using var view=new InMemoryView(host);
+        try
+        {
+            UiTestPump.Run(c.VM.SelectKeyAsync("C5"));view.UpdateLayout();
+            UiTestPump.Run(drawer.Dispatcher.InvokeAsync(()=>{},System.Windows.Threading.DispatcherPriority.DataBind).Task);
+            var editor=Descendants(drawer).OfType<TextBox>().Single();
+            UiControlContract.AssertStyle<TextBox>(editor,"OHsKeysInputStyle");
+            var clear=(osuHitsounder.Resources.CustomControls.BalloonButton)drawer.FindName("ClearAllMappingsAction");
+            c.VM.SelectedEntry!.DraftFileName="new.wav";
+            editor.GetBindingExpression(TextBox.TextProperty)!.UpdateTarget();
+            editor.RaiseEvent(new KeyboardFocusChangedEventArgs(Keyboard.PrimaryDevice,0,editor,clear){RoutedEvent=Keyboard.LostKeyboardFocusEvent});
+            UiTestPump.Run(c.VM.ClearAllMappingsCommand.ExecuteAsync(null));
+            Assert.That(c.Track.KeyFiles["C5"],Is.EqualTo("Piano/C5.wav"));
+            Assert.That(c.VM.SelectedEntry.DraftFileName,Is.EqualTo("new.wav"));
+        }
+        finally {UiTestPump.Run(c.DisposeAsync().AsTask());host.Close();}
+    }    [Test]
+    public void FirstOpenCenteringDoesNotRepeatOnFocusOrResize()
+    {
+        new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
+        var ctx=new InstrumentalTrackContext("project.json",null,Guid.NewGuid(),Guid.NewGuid(),Guid.NewGuid());
+        var vm=new KeysMappingDrawerVM(new(ctx,"Piano",100,new Dictionary<string,string>(),[],[],0),new WeakReferenceMessenger(),new ImmediateUiScheduler(),new StubSampleFileService([]),new StubSampleFileDialogService((string?)null));
+        var drawer=new OHsKeysMappingDrawer(vm);var host=new Window {Content=drawer,Width=600,Height=500};
+        using var view=new InMemoryView(host);
+        try {
+            drawer.FocusInitialAction();view.UpdateLayout();
+            var scroll=Descendants((ListBox)drawer.FindName("KeySelector")).OfType<ScrollViewer>().First();
+            scroll.ScrollToHorizontalOffset(20);view.UpdateLayout();
+            drawer.FocusInitialAction();view.UpdateLayout();
+            Assert.That(scroll.HorizontalOffset,Is.EqualTo(20));
+            host.Width=700;view.UpdateLayout();
+            Assert.That(scroll.HorizontalOffset,Is.EqualTo(20));
+            Assert.That(vm.SelectedEntry,Is.Null);
+        } finally {UiTestPump.Run(vm.DeactivateAsync());host.Close();}
     }
 }

@@ -11,37 +11,70 @@ public partial class OHsKeysMappingDrawer : UserControl, IOHsShellDrawer
 {
     private readonly KeysMappingDrawerVM viewModel;
     public OHsKeysMappingDrawer(KeysMappingDrawerVM viewModel)
-    { InitializeComponent(); this.viewModel = viewModel; DataContext = viewModel; KeyboardNavigation.SetTabNavigation(this, KeyboardNavigationMode.Cycle); }
+    {
+        InitializeComponent(); this.viewModel = viewModel; DataContext = viewModel;
+        KeyboardNavigation.SetTabNavigation(this, KeyboardNavigationMode.Cycle);
+        Loaded += (_, _) => { if (!centered) KeySelector.LayoutUpdated += OnInitialKeyboardLayout; };
+        Unloaded += (_, _) => KeySelector.LayoutUpdated -= OnInitialKeyboardLayout;
+    }
+    private bool centered, reconciling;
+    internal static double GetInitialKeyboardOffset(double start, double end, double viewport, double extent) =>
+        !double.IsFinite(start + end + viewport + extent) || viewport <= 0 || extent <= 0 ? 0 : Math.Clamp((start + end - viewport) / 2,0,Math.Max(0,extent-viewport));
+    private async void OnKeySelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (reconciling || e.AddedItems.OfType<KeyMappingEntry>().FirstOrDefault() is not { } row) return;
+        try { await viewModel.SelectKeyAsync(row.Key); }
+        catch (Exception error) { viewModel.ErrorMessage = error.Message; }
+        finally { reconciling = true; KeySelector.SelectedItem = viewModel.SelectedEntry; reconciling = false; }
+    }
     public event EventHandler? CloseRequested;
     public bool CanDismiss => viewModel.CanClose;
     public bool TryPrepareClose() { if (!CanDismiss) return false; viewModel.PrepareClose(); return true; }
     public void FocusInitialAction()
-    { KeyRows.UpdateLayout(); Descendants(KeyRows).OfType<TextBox>().FirstOrDefault(t => t.IsEnabled)?.Focus(); }
+    {
+        KeySelector.UpdateLayout();
+        TryCenterKeyboard();
+        LoadAction.Focus();
+    }
+    private void OnInitialKeyboardLayout(object? sender, EventArgs e) => TryCenterKeyboard();
+    private void TryCenterKeyboard()
+    {
+        if (centered || !viewModel.CanEditMapping) return;
+        if (Descendants(KeySelector).OfType<ScrollViewer>().FirstOrDefault() is not { ViewportWidth: > 0, ExtentWidth: > 0 } scroll ||
+            KeySelector.ItemContainerGenerator.ContainerFromIndex(0) is not FrameworkElement { ActualWidth: > 0 } first) return;
+        centered = true;
+        KeySelector.LayoutUpdated -= OnInitialKeyboardLayout;
+        scroll.ScrollToHorizontalOffset(GetInitialKeyboardOffset(48 * first.ActualWidth, 60 * first.ActualWidth, scroll.ViewportWidth, scroll.ExtentWidth));
+    }
     private static IEnumerable<DependencyObject> Descendants(DependencyObject root)
     { yield return root; for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++) foreach (var child in Descendants(VisualTreeHelper.GetChild(root, i))) yield return child; }
     internal bool HandleNavigationKey(Key key, ModifierKeys modifiers)
     {
-        var scroll = Descendants(KeyRows).OfType<ScrollViewer>().FirstOrDefault(); if (scroll is null) return false;
+        var scroll = Descendants(KeySelector).OfType<ScrollViewer>().FirstOrDefault(); if (scroll is null) return false;
         if (modifiers == ModifierKeys.Alt && key is Key.End or Key.Home)
         {
-            if (KeyRows.Items.Count == 0) return false;
+            if (KeySelector.Items.Count == 0) return false;
             var index = key == Key.End ? viewModel.Rows.Count - 1 : 0;
-            Descendants(KeyRows).OfType<VirtualizingStackPanel>().FirstOrDefault()?.BringIndexIntoViewPublic(index);
-            KeyRows.UpdateLayout();
-            if (KeyRows.ItemContainerGenerator.ContainerFromIndex(index) is DependencyObject container)
-                Descendants(container).OfType<TextBox>().FirstOrDefault(input => input.IsEnabled)?.Focus();
+            Descendants(KeySelector).OfType<VirtualizingStackPanel>().FirstOrDefault()?.BringIndexIntoViewPublic(index);
+            KeySelector.UpdateLayout();
+            if (KeySelector.ItemContainerGenerator.ContainerFromIndex(index) is DependencyObject container)
+                (container as UIElement)?.Focus();
             return true;
         }
-        if (modifiers == ModifierKeys.None && key == Key.PageDown) scroll.PageDown();
-        else if (modifiers == ModifierKeys.None && key == Key.PageUp) scroll.PageUp();
+        if (modifiers == ModifierKeys.None && key == Key.PageDown) scroll.PageRight();
+        else if (modifiers == ModifierKeys.None && key == Key.PageUp) scroll.PageLeft();
         else return false;
-        KeyRows.UpdateLayout(); FocusInitialAction(); return true;
+        KeySelector.UpdateLayout(); return true;
     }
     internal bool HandleNavigationKey(Key key, Key systemKey, ModifierKeys modifiers) =>
         HandleNavigationKey(key == Key.System ? systemKey : key, modifiers);
     private void OnCloseClick(object sender, RoutedEventArgs e) { if (CanDismiss) CloseRequested?.Invoke(this, EventArgs.Empty); }
     private async void OnMappingLostFocus(object sender, KeyboardFocusChangedEventArgs e)
-    { if (sender is TextBox { DataContext: KeyMappingEntry row } input) await CommitInputAsync(row.Key, input.Text); }
+    {
+        for (var target = e.NewFocus as DependencyObject; target is not null; target = target is FrameworkContentElement content ? content.Parent : target is Visual ? VisualTreeHelper.GetParent(target) : null)
+            if (ReferenceEquals(target,ClearAllMappingsAction) || ReferenceEquals(target,DeleteSelectedMappingAction)) return;
+        if (sender is TextBox { DataContext: KeyMappingEntry row } input) await CommitInputAsync(row.Key,input.Text);
+    }
     private async void OnMappingKeyDown(object sender, KeyEventArgs e)
     { if (e.Key == Key.Enter && sender is TextBox { DataContext: KeyMappingEntry row } input) { e.Handled = true; await CommitInputAsync(row.Key, input.Text); } }
     private async Task CommitInputAsync(string key, string text)
