@@ -25,6 +25,7 @@ public partial class OHsWorkstationTrackList : UserControl
         InitializeComponent();
         ((ObjectDataProvider)Resources["OHsWorkstationTrackListSource"]).ObjectInstance = this;
         InitializeNodeInteraction();
+        InitializeTrackReorder();
         DataContextChanged += OnViewModelChanged;
     }
     private void OnViewModelChanged(object sender, DependencyPropertyChangedEventArgs e)
@@ -38,6 +39,7 @@ public partial class OHsWorkstationTrackList : UserControl
         if (e.PropertyName == nameof(WorkstationPageVM.LoadPhase) && viewModel.IsLoading) CancelNodePointer();
         if (e.PropertyName == nameof(WorkstationPageVM.IsSelectionMode) && nodeSourceGrid is not null && pointerNode is null) CancelNodePointer();
         if (!viewModel.CanPlaceSamples || nodeDragging && !viewModel.IsNodeDragActive) CancelNodePointer();
+        RefreshTrackDragPresentation();
     }
     public void Deactivate()
     {
@@ -48,7 +50,7 @@ public partial class OHsWorkstationTrackList : UserControl
     }
     public bool RestoreTrackFocusBeforeCollapse(DependencyObject? focusedElement) =>
         !deactivationStarted && RealizedRows(TrackList).Any(row => row.HasExpandedControlFocus(focusedElement));
-    public void RefreshViewport() { UpdateNodeAdornerGeometry(); RefreshNodeDragAfterScroll(); }
+    public void RefreshViewport() { UpdateNodeAdornerGeometry(); RefreshNodeDragAfterScroll(); RefreshTrackDragPresentation(); }
     public static readonly DependencyProperty TimelineProperty = DependencyProperty.Register(nameof(Timeline), typeof(OHsWorkstationTimeline), typeof(OHsWorkstationTrackList), new PropertyMetadata(null));
     public OHsWorkstationTimeline? Timeline { get => (OHsWorkstationTimeline?)GetValue(TimelineProperty); set => SetValue(TimelineProperty, value); }
     public static readonly DependencyProperty TimelineContentWidthProperty = DependencyProperty.Register(nameof(TimelineContentWidth), typeof(double), typeof(OHsWorkstationTrackList), new PropertyMetadata(0d));
@@ -84,6 +86,8 @@ public partial class OHsWorkstationTrackList : UserControl
 
     private void OnTracksCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        trackOrderRevision++;
+        CancelTrackPointer();
         if (e.Action == NotifyCollectionChangedAction.Add && !deactivationStarted && viewModel.IsInteractionReady && e.NewItems is { Count: > 0 })
         {
             var generation = viewModel.LoadGeneration;
@@ -146,5 +150,6 @@ public partial class OHsWorkstationTrackList : UserControl
             ViewportChanged?.Invoke(this, EventArgs.Empty);
         }
         UpdateNodeAdornerGeometry();
+        RefreshTrackDragPresentation();
     }
 }

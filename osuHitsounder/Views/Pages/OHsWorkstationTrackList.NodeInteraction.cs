@@ -237,6 +237,7 @@ public partial class OHsWorkstationTrackList
 
     public bool HandleNodeDragWheel(ModifierKeys modifiers, int delta)
     {
+        if (HandleTrackDragWheel(modifiers, delta)) return true;
         if (!nodeDragging || modifiers != ModifierKeys.None || !viewModel.CanPlaceSamples ||
             FindVisualChild<ScrollViewer>(TrackList) is not { } scroll)
         {
@@ -379,7 +380,7 @@ public partial class OHsWorkstationTrackList
         nodeDragScrollPending = false; nodeWheelRemainder = 0;
         if (IsMouseCaptured) ReleaseMouseCapture();
     }
-    public void CancelNodePointer() { DetachNodePointer(); viewModel.CancelNodeDrag(); }
+    public void CancelNodePointer() { CancelTrackPointer(); DetachNodePointer(); viewModel?.CancelNodeDrag(); }
     private void OnNodeCaptureLost(object sender, MouseEventArgs e) { if (nodeSourceTrack is not null) CancelNodePointer(); }
     private async Task ObserveNodeInputAsync(Task operation)
     {
@@ -389,6 +390,7 @@ public partial class OHsWorkstationTrackList
     }
     public bool HandleNodeKey(Key key, ModifierKeys modifiers, bool isRepeat, DependencyObject? origin)
     {
+        if (HandleTrackDragKey(key)) return true;
         if (key is Key.LeftCtrl or Key.RightCtrl && nodeSourceTrack is not null && !pointerModifiers.HasFlag(ModifierKeys.Control))
         { CancelNodePointer(); return true; }
         if (key == Key.Escape && nodeSourceTrack is not null) { CancelNodePointer(); return true; }
