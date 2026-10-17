@@ -14,10 +14,12 @@ public partial class OHsKeysMappingDrawer : UserControl, IOHsShellDrawer
     {
         InitializeComponent(); this.viewModel = viewModel; DataContext = viewModel;
         KeyboardNavigation.SetTabNavigation(this, KeyboardNavigationMode.Cycle);
+        KeySelector.PreviewMouseWheel += OnKeyboardWheel;
         Loaded += (_, _) => { if (!centered) KeySelector.LayoutUpdated += OnInitialKeyboardLayout; };
         Unloaded += (_, _) => KeySelector.LayoutUpdated -= OnInitialKeyboardLayout;
     }
     private bool centered, reconciling;
+    private int keyboardWheelRemainder;
     internal static double GetInitialKeyboardOffset(double start, double end, double viewport, double extent) =>
         !double.IsFinite(start + end + viewport + extent) || viewport <= 0 || extent <= 0 ? 0 : Math.Clamp((start + end - viewport) / 2,0,Math.Max(0,extent-viewport));
     private async void OnKeySelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -44,7 +46,19 @@ public partial class OHsKeysMappingDrawer : UserControl, IOHsShellDrawer
             KeySelector.ItemContainerGenerator.ContainerFromIndex(0) is not FrameworkElement { ActualWidth: > 0 } first) return;
         centered = true;
         KeySelector.LayoutUpdated -= OnInitialKeyboardLayout;
-        scroll.ScrollToHorizontalOffset(GetInitialKeyboardOffset(48 * first.ActualWidth, 60 * first.ActualWidth, scroll.ViewportWidth, scroll.ExtentWidth));
+        // Four preceding octaves contain 28 natural keys; sharps overlay their boundaries.
+        scroll.ScrollToHorizontalOffset(GetInitialKeyboardOffset(28 * first.ActualWidth, 35 * first.ActualWidth, scroll.ViewportWidth, scroll.ExtentWidth));
+    }
+    private void OnKeyboardWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (Descendants(KeySelector).OfType<ScrollViewer>().FirstOrDefault() is not { } scroll) return;
+        keyboardWheelRemainder += e.Delta;
+        var steps = keyboardWheelRemainder / Mouse.MouseWheelDeltaForOneLine;
+        keyboardWheelRemainder %= Mouse.MouseWheelDeltaForOneLine;
+        // Use the platform's horizontal line scrolling, preserving high-resolution wheel deltas.
+        for (var step = 0; step < Math.Abs(steps); step++)
+            if (steps > 0) scroll.LineLeft(); else scroll.LineRight();
+        e.Handled = true;
     }
     private static IEnumerable<DependencyObject> Descendants(DependencyObject root)
     { yield return root; for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++) foreach (var child in Descendants(VisualTreeHelper.GetChild(root, i))) yield return child; }
@@ -55,7 +69,7 @@ public partial class OHsKeysMappingDrawer : UserControl, IOHsShellDrawer
         {
             if (KeySelector.Items.Count == 0) return false;
             var index = key == Key.End ? viewModel.Rows.Count - 1 : 0;
-            Descendants(KeySelector).OfType<VirtualizingStackPanel>().FirstOrDefault()?.BringIndexIntoViewPublic(index);
+            Descendants(KeySelector).OfType<OHsKeysMappingPianoPanel>().FirstOrDefault()?.BringIndexIntoViewPublic(index);
             KeySelector.UpdateLayout();
             if (KeySelector.ItemContainerGenerator.ContainerFromIndex(index) is DependencyObject container)
                 (container as UIElement)?.Focus();

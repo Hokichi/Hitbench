@@ -142,10 +142,6 @@
                 SizeChanged="OnTrackControlStackSizeChanged"
                 Style="{StaticResource BaseStackPanelStyle}">
                 <TextBlock Text="Name" Style="{StaticResource CardLabelTextStyle}" /><TextBlock Text="Muted" Style="{StaticResource OHsWorkstationTrackMutedStatusStyle}" /><TextBlock Text="Solo" Style="{StaticResource OHsWorkstationTrackSoloStatusStyle}" />
-                <StackPanel Orientation="Horizontal" Style="{StaticResource BaseStackPanelStyle}">
-
-                <customControls:BalloonComboBox Loaded="OnActionMenuLoaded" Style="{StaticResource OHsWorkstationTrackActionsStyle}" AutomationProperties.Name="Track actions" ToolTip="Track actions" />
-                </StackPanel>
                 <Grid Style="{StaticResource BaseGridStyle}"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                 <TextBox
                     AutomationProperties.Name="Track name"
@@ -188,6 +184,7 @@
                             Style="{StaticResource OHsWorkstationTrackToggleStyle}"
                             ToolTip="Solo track"
                             Unchecked="OnTrackAuditionChanged" />
+                        <customControls:BalloonComboBox Loaded="OnActionMenuLoaded" Style="{StaticResource OHsWorkstationTrackActionsStyle}" AutomationProperties.Name="Track actions" ToolTip="Track actions" />
                     </customControls:SpacedUniformGrid>
                     <customControls:ValueSlider
                         x:Name="VolumeSlider"

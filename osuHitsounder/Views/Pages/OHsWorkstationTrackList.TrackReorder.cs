@@ -44,7 +44,8 @@ public partial class OHsWorkstationTrackList
     {
         PreviewMouseLeftButtonDown += OnTrackPointerDown;
         PreviewMouseMove += OnTrackPointerMove;
-        PreviewMouseLeftButtonUp += OnTrackPointerUp;
+        // A release consumed elsewhere must still end our captured drag.
+        AddHandler(PreviewMouseLeftButtonUpEvent, new MouseButtonEventHandler(OnTrackPointerUp), true);
         LostMouseCapture += OnTrackPointerCaptureLost;
         MouseLeave += OnTrackPointerLeave;
         PreviewKeyDown += OnTrackDragKeyDown;

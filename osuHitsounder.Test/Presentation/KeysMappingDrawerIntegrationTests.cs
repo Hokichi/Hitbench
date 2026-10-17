@@ -12,6 +12,38 @@ namespace osuHitsounder.Test.Presentation;
 public class KeysMappingDrawerIntegrationTests
 {
     [Test]
+    public void MouseWheelCanReachBothEndsWithoutSelectingAKey()
+    {
+        new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
+        var ctx = new InstrumentalTrackContext("project.json", null, Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
+        var vm = new KeysMappingDrawerVM(new(ctx, "Piano", 100, new Dictionary<string, string>(), [], [], 0), new WeakReferenceMessenger(), new ImmediateUiScheduler(), new StubSampleFileService([]), new StubSampleFileDialogService((string?)null));
+        var drawer = new OHsKeysMappingDrawer(vm);
+        var host = new Window { Content = drawer, Width = 600, Height = 500 };
+        using var view = new InMemoryView(host);
+        try
+        {
+            drawer.FocusInitialAction(); view.UpdateLayout();
+            var selector = (ListBox)drawer.FindName("KeySelector");
+            var scroll = Descendants(selector).OfType<ScrollViewer>().First();
+            foreach (var delta in new[] { -120, 120 })
+            {
+                for (var step = 0; step < 108; step++)
+                {
+                    selector.RaiseEvent(new MouseWheelEventArgs(Mouse.PrimaryDevice, 0, delta)
+                    { RoutedEvent = Mouse.PreviewMouseWheelEvent });
+                    view.UpdateLayout();
+                }
+                Assert.That(scroll.HorizontalOffset, Is.EqualTo(delta < 0 ? scroll.ScrollableWidth : 0).Within(0.01));
+                var index = delta < 0 ? 107 : 0;
+                Assert.That(((FrameworkElement)selector.ItemContainerGenerator.ContainerFromIndex(index)).DataContext,
+                    Is.SameAs(vm.Rows[index]));
+            }
+            Assert.That(vm.SelectedEntry, Is.Null);
+        }
+        finally { UiTestPump.Run(vm.DeactivateAsync()); host.Close(); }
+    }
+
+    [Test]
     public void OctaveCenterUsesExplicitViewportAndClamps()
     {
         Assert.That(OHsKeysMappingDrawer.GetInitialKeyboardOffset(480,600,200,1080), Is.EqualTo(440));

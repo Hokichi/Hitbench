@@ -11,6 +11,26 @@ namespace osuHitsounder.Test.Presentation;
 [Apartment(ApartmentState.STA), NonParallelizable]
 public sealed class WorkstationTrackDragTests
 {
+    [TestCase(false)]
+    [TestCase(true)]
+    public void RoutedReleaseRemovesAllDragPresentationEvenWhenAlreadyHandled(bool handled)
+    {
+        using var context = new WorkstationTrackDragTestContext();
+        context.Start();
+        context.Owner.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, MouseButton.Left)
+        { RoutedEvent = UIElement.PreviewMouseLeftButtonUpEvent, Handled = handled });
+        context.View.UpdateLayout();
+        Assert.That(context.Owner.IsTrackDragActive, Is.False);
+        Assert.That(context.Owner.DraggedTrack, Is.Null);
+        Assert.That(AdornerLayer.GetAdornerLayer(context.List)!.GetAdorners(context.List), Is.Null);
+        foreach (var container in WorkstationTrackDragTestContext.Descendants<ListBoxItem>(context.List))
+        {
+            Assert.That(osuHitsounder.Resources.Helpers.OHsTrackDragPresentation.GetIsSource(container), Is.False);
+            Assert.That(osuHitsounder.Resources.Helpers.OHsTrackDragPresentation.GetGapBefore(container), Is.Zero);
+            Assert.That(osuHitsounder.Resources.Helpers.OHsTrackDragPresentation.GetGapAfter(container), Is.Zero);
+        }
+    }
+
     [Test]
     public void LeavingBeforeThresholdCancelsPendingGesture()
     {
