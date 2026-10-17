@@ -29,17 +29,6 @@
    <ScrollBar x:Name="PitchScroll" Grid.Column="1" Orientation="Vertical" Minimum="0" Maximum="{Binding MaximumVerticalOffset,ElementName=PianoRoll,Mode=OneWay}" ViewportSize="{Binding ActualHeight,ElementName=PianoRoll,Mode=OneWay}"
     Value="{Binding VerticalOffset,ElementName=PianoRoll,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" SmallChange="36" LargeChange="180" AutomationProperties.Name="Piano pitch position"/>
   </Grid>
-  <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Style="{StaticResource OHsStatusScrollStyle}" AutomationProperties.Name="Arrangement status messages">
-  <StackPanel Style="{StaticResource BaseStackPanelStyle}">
-   <TextBlock Text="{Binding EditingHint,Mode=OneWay}" Style="{StaticResource BodyTextStyle}"/>
-   <TextBlock Text="C1–B9 · Addition places; Selection selects and drags. Ctrl+A selects all; Ctrl+C/V copies/pastes; Ctrl+Z/Y undoes/redoes. Alt+arrows move selected notes; Delete removes. Shift+wheel scrolls time; Ctrl+wheel zooms; Alt+wheel changes snap; Ctrl+Shift+wheel changes pitch height." Style="{StaticResource BodyTextStyle}"/>
-   <TextBlock Text="{Binding MappingStatus,Mode=OneWay}" Style="{StaticResource WarningTextStyle}"/>
-   <TextBlock Text="{Binding PlaybackWarning,Mode=OneWay}" Style="{StaticResource WarningTextStyle}"/>
-
-   <TextBlock Text="{Binding SaveError,Mode=OneWay}" Style="{StaticResource ErrorTextStyle}"/>
-   <TextBlock Text="{Binding ErrorMessage,Mode=OneWay}" Style="{StaticResource ErrorTextStyle}"/>
-  </StackPanel>
-  </ScrollViewer>
  </Grid>
  </Border>
 </UserControl>

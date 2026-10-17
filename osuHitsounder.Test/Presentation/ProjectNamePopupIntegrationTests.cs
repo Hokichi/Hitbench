@@ -13,7 +13,7 @@ namespace osuHitsounder.Test.Presentation;
 public class ProjectNamePopupIntegrationTests
 {
     [Test]
-    public void InputIsFocusableShowsPlaceholderValidatesAndConfirms()
+    public void InputIsFocusableValidatesAndConfirms()
     {
         EnsureResources();
         var vm = new ProjectNamePopupVM("Artist - Title", new HashSet<string>());
@@ -26,8 +26,6 @@ public class ProjectNamePopupIntegrationTests
             var input = (TextBox)popup.FindName("ProjectNameTextBox");
             Assert.That(input, Is.TypeOf<TextBox>());
             Assert.That(input.Style, Is.SameAs(popup.FindResource("ProjectNamePopupInputStyle")));
-            var watermark = (TextBlock)popup.FindName("ProjectNameWatermark");
-            var validation = (TextBlock)popup.FindName("ProjectNameValidation");
             var cancel = (BalloonButton)popup.FindName("CancelButton");
             Assert.That(cancel.Style, Is.SameAs(popup.FindResource("OHsBalloonDestructiveActionStyle")));
             var create = (BalloonButton)popup.FindName("CreateButton");
@@ -37,8 +35,7 @@ public class ProjectNamePopupIntegrationTests
                 Assert.That(input.Focusable, Is.True);
                 Assert.That(input.IsTabStop, Is.False);
                 Assert.That(input.Text, Is.Empty);
-                Assert.That(watermark.Text, Is.EqualTo("Artist - Title"));
-                Assert.That(watermark.Visibility, Is.EqualTo(Visibility.Visible));
+                Assert.That(vm.EffectiveName, Is.EqualTo("Artist - Title"));
                 Assert.That(cancel.ButtonText, Is.EqualTo("Cancel"));
                 Assert.That(create.ButtonText, Is.EqualTo("Create"));
             });
@@ -49,7 +46,6 @@ public class ProjectNamePopupIntegrationTests
             Assert.Multiple(() =>
             {
                 Assert.That(create.IsEnabled, Is.False);
-                Assert.That(validation.Text, Is.EqualTo("Project name is reserved by Windows."));
             });
 
             vm.ProjectName = "Custom";

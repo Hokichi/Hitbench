@@ -35,40 +35,6 @@
                 </MultiDataTrigger>
             </Style.Triggers>
         </Style>
-        <Style
-            x:Key="ProjectNamePopupWatermarkStyle"
-            BasedOn="{StaticResource BaseTextBlockStyle}"
-            TargetType="TextBlock">
-            <Setter Property="Margin" Value="12,0" />
-            <Setter Property="VerticalAlignment" Value="Center" />
-            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Muted}" />
-            <Setter Property="Visibility" Value="Collapsed" />
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding ProjectName}" Value="">
-                    <Setter Property="Visibility" Value="Visible" />
-                </DataTrigger>
-                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
-                    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}" />
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
-        <Style
-            x:Key="ProjectNamePopupValidationStyle"
-            BasedOn="{StaticResource BaseTextBlockStyle}"
-            TargetType="TextBlock">
-            <Setter Property="Margin" Value="0,8,0,0" />
-            <Setter Property="Foreground" Value="{DynamicResource Brush.Danger}" />
-            <Setter Property="TextWrapping" Value="Wrap" />
-            <Setter Property="Visibility" Value="Visible" />
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding ValidationError, Mode=OneWay}" Value="{x:Null}">
-                    <Setter Property="Visibility" Value="Collapsed" />
-                </DataTrigger>
-                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
-                    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
 
     </customControls:BasePopup.Resources>
 
@@ -81,7 +47,6 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="Project name" />
         <Grid Grid.Row="1">
             <TextBox
                 x:Name="ProjectNameTextBox"
@@ -89,18 +54,7 @@
                 PreviewTextInput="OnPreviewTextInput"
                 Style="{StaticResource ProjectNamePopupInputStyle}"
                 Text="{Binding ProjectName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-            <TextBlock
-                x:Name="ProjectNameWatermark"
-                IsHitTestVisible="False"
-                Style="{StaticResource ProjectNamePopupWatermarkStyle}"
-                Text="{Binding SuggestedName, Mode=OneWay}" />
         </Grid>
-        <TextBlock
-            x:Name="ProjectNameValidation"
-            Grid.Row="2"
-            AutomationProperties.LiveSetting="Polite"
-            Style="{StaticResource ProjectNamePopupValidationStyle}"
-            Text="{Binding ValidationError, Mode=OneWay}" />
         <StackPanel
             Grid.Row="4"
             HorizontalAlignment="Right"

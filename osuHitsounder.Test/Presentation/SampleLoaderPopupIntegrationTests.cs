@@ -63,40 +63,33 @@ public sealed class SampleLoaderPopupIntegrationTests
     }
 
     [Test]
-    public void NoSelectionShowsOnlyAudioPrompt()
+    public void NoSelectionKeepsPreviewUnavailable()
     {
-        var prompt = (TextBlock)popup.FindName("EmptySelectionPrompt");
         var details = (Grid)popup.FindName("SelectedFileDetails");
-        Assert.That(prompt.Text, Is.EqualTo("Select a .wav, .ogg or .mp3"));
-        Assert.That(prompt.Visibility, Is.EqualTo(Visibility.Visible));
         Assert.That(details.Visibility, Is.EqualTo(Visibility.Collapsed));
         Assert.That(((BalloonButton)popup.FindName("PreviewButton")).IsVisible, Is.False);
     }
 
     [Test]
-    public void SelectionAndNavigationSwitchPromptAndDetails()
+    public void SelectionAndNavigationUpdateDetails()
     {
-        var prompt = (TextBlock)popup.FindName("EmptySelectionPrompt");
         var details = (Grid)popup.FindName("SelectedFileDetails");
         var completion = new TaskCompletionSource<SampleFileMetadata>();
         browser.Metadata = (_, _) => completion.Task;
         var selecting = vm.SelectAsync(file);
         view.UpdateLayout();
-        Assert.That(prompt.Visibility, Is.EqualTo(Visibility.Collapsed));
         Assert.That(details.Visibility, Is.EqualTo(Visibility.Visible));
         UiTestPump.Run(vm.NavigateCommand.ExecuteAsync(browser.Entries[browser.RootPath].Single(entry => entry.IsDirectory).FullPath));
         view.UpdateLayout();
-        Assert.That(prompt.Visibility, Is.EqualTo(Visibility.Visible));
         Assert.That(details.Visibility, Is.EqualTo(Visibility.Collapsed));
         completion.SetResult(new(file.FullPath, file.Name, "WAV", 100, TimeSpan.FromSeconds(1), 44100, 1));
         UiTestPump.Run(selecting);
         view.UpdateLayout();
-        Assert.That(prompt.Visibility, Is.EqualTo(Visibility.Visible));
         Assert.That(details.Visibility, Is.EqualTo(Visibility.Collapsed));
     }
 
     [Test]
-    public void CardsBindDirectoryMetadataAndCheckedCount()
+    public void SelectionBindsDirectoryMetadataAndGatesImport()
     {
         Assert.That(vm.CurrentDirectory, Is.EqualTo(browser.RootPath));
         Assert.That(((BalloonButton)popup.FindName("ImportButton")).IsEnabled, Is.False);
@@ -104,21 +97,19 @@ public sealed class SampleLoaderPopupIntegrationTests
         UiTestPump.Run(vm.SetCheckedAsync(file, true));
         view.UpdateLayout();
         Assert.That(((BalloonButton)popup.FindName("ImportButton")).IsEnabled, Is.True);
-        Assert.That(((TextBlock)popup.FindName("CheckedCountTextBlock")).Text, Is.EqualTo("1 files checked"));
+        Assert.That(vm.CheckedCount, Is.EqualTo(1));
         Assert.That(vm.Metadata!.Name, Is.EqualTo("hit.wav"));
     }
 
     [Test]
-    public void SelectedSummaryContainsOnlyFourFileFields()
+    public void SelectedSummaryBindsPrimaryFileValues()
     {
         UiTestPump.Run(vm.SelectAsync(file));
         view.UpdateLayout();
         var summary = (Grid)popup.FindName("SelectedFileDetails");
         var fields = Descendants(summary).OfType<TextBlock>().Select(block => block.Text).ToArray();
-        Assert.That(fields, Does.Contain("hit.wav").And.Contain(file.FullPath));
-        Assert.That(fields, Does.Contain("Size").And.Contain("Duration"));
+        Assert.That(fields, Does.Contain("hit.wav"));
         Assert.That(fields, Does.Contain("1.0 KiB").And.Contain("1.000 s"));
-        Assert.That(fields, Does.Not.Contain("Format").And.Not.Contain("Sample rate").And.Not.Contain("Channels"));
     }
 
     [Test]
@@ -181,8 +172,9 @@ public sealed class SampleLoaderPopupIntegrationTests
         Assert.That(vm.CurrentDirectory, Is.EqualTo(browser.RootPath));
         UiTestPump.Run(popup.HandleEntryRowClickAsync(folder, 2));
         view.UpdateLayout();
-        Assert.That(((TextBlock)popup.FindName("FolderEmptyPrompt")).Text, Is.EqualTo("No audio file to display"));
-        Assert.That(((TextBlock)popup.FindName("FolderEmptyPrompt")).Visibility, Is.EqualTo(Visibility.Visible));
+        Assert.That(vm.Entries, Is.Empty);
+        Assert.That(vm.CanConfirm, Is.False);
+        Assert.That(((ListBox)popup.FindName("DirectoryContents")).Items, Is.Empty);
     }
 
     [Test]
@@ -467,7 +459,6 @@ public sealed class SampleLoaderPopupIntegrationTests
         Assert.That(vm.CurrentDirectory, Is.Empty);
         Assert.That(vm.Entries, Has.Count.EqualTo(1));
         Assert.That(((BalloonButton)popup.FindName("ImportButton")).IsEnabled, Is.False);
-        Assert.That(Descendants(view.Root).OfType<TextBlock>().Any(block => block.Text == "Folder unavailable"), Is.True);
     }
 
     private void AssertPopupStyle<T>(FrameworkElement control, string key) where T : FrameworkElement

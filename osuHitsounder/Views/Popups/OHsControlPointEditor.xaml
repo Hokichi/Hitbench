@@ -10,21 +10,6 @@
    <Setter Property="Padding" Value="16" /><Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Default}" /><Setter Property="BorderThickness" Value="1" />
    <Style.Triggers><DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" /></DataTrigger></Style.Triggers>
   </Style>
-  <Style x:Key="OHsControlPointEditorLabelStyle" TargetType="TextBlock" BasedOn="{StaticResource CardLabelTextStyle}">
-   <Setter Property="TextWrapping" Value="Wrap" />
-   <Style.Triggers><DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True"><Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" /></DataTrigger></Style.Triggers>
-  </Style>
-  <Style x:Key="OHsControlPointEditorTextStyle" TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlockStyle}">
-   <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}" /><Setter Property="TextWrapping" Value="Wrap" />
-   <Style.Triggers><DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True"><Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" /></DataTrigger></Style.Triggers>
-  </Style>
-  <Style x:Key="OHsControlPointEditorErrorStyle" TargetType="TextBlock" BasedOn="{StaticResource OHsControlPointEditorTextStyle}">
-   <Setter Property="Foreground" Value="{DynamicResource Brush.Danger}" /><Setter Property="AutomationProperties.LiveSetting" Value="Polite" />
-   <Style.Triggers>
-    <Trigger Property="Text" Value="{x:Null}"><Setter Property="Visibility" Value="Collapsed" /></Trigger>
-    <Trigger Property="Text" Value=""><Setter Property="Visibility" Value="Collapsed" /></Trigger>
-   </Style.Triggers>
-  </Style>
   <Style x:Key="OHsControlPointEditorVolumeStyle" TargetType="c:NumericUpDown" BasedOn="{StaticResource {x:Type c:NumericUpDown}}">
    <Setter Property="IsIntegerOnly" Value="True" /><Setter Property="LowerLimit" Value="5" /><Setter Property="UpperLimit" Value="100" />
    <Setter Property="Step" Value="1" /><Setter Property="ClampIntegerToRange" Value="False" />
@@ -39,12 +24,8 @@
  </UserControl.Resources>
  <Border Style="{StaticResource OHsControlPointEditorSurfaceStyle}">
   <StackPanel Style="{StaticResource BaseStackPanelStyle}" KeyboardNavigation.TabNavigation="Continue">
-   <TextBlock Text="Volume (%)" Style="{StaticResource OHsControlPointEditorLabelStyle}" />
-   <c:NumericUpDown x:Name="VolumeInput" Margin="0,4,0,0" Style="{StaticResource OHsControlPointEditorVolumeStyle}" AutomationProperties.Name="Control point volume in percent" />
-   <TextBlock Margin="0,4,0,0" Text="{Binding AcceptedVolumeText, RelativeSource={RelativeSource AncestorType=p:OHsControlPointEditor}, Mode=OneWay}" Style="{StaticResource OHsControlPointEditorTextStyle}" />
-   <TextBlock Text="{Binding InputError, ElementName=VolumeInput, Mode=OneWay}" Style="{StaticResource OHsControlPointEditorErrorStyle}" />
-   <TextBlock Text="Sampleset" Margin="0,12,0,4" Style="{StaticResource OHsControlPointEditorLabelStyle}" />
-   <ComboBox x:Name="SamplesetInput" Style="{StaticResource OHsControlPointEditorSamplesetStyle}" ItemsSource="{x:Static e:ControlPoint.SamplesetOptions}" SelectionChanged="OnSamplesetChanged" AutomationProperties.Name="Control point sampleset" />
+   <c:NumericUpDown x:Name="VolumeInput" Style="{StaticResource OHsControlPointEditorVolumeStyle}" AutomationProperties.Name="Control point volume in percent" />
+   <ComboBox x:Name="SamplesetInput" Margin="0,12,0,0" Style="{StaticResource OHsControlPointEditorSamplesetStyle}" ItemsSource="{x:Static e:ControlPoint.SamplesetOptions}" SelectionChanged="OnSamplesetChanged" AutomationProperties.Name="Control point sampleset" />
   </StackPanel>
  </Border>
 </UserControl>

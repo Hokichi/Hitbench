@@ -8,21 +8,6 @@
     <UserControl.Resources>
 
         <Style
-            x:Key="OHsManageSamplesErrorStyle"
-            BasedOn="{StaticResource BodyTextStyle}"
-            TargetType="TextBlock">
-            <Setter Property="Foreground" Value="{DynamicResource Brush.Danger}" />
-            <Setter Property="AutomationProperties.LiveSetting" Value="Polite" />
-            <Style.Triggers>
-                <Trigger Property="Text" Value="{x:Null}">
-                    <Setter Property="Visibility" Value="Collapsed" />
-                </Trigger>
-                <Trigger Property="Text" Value="">
-                    <Setter Property="Visibility" Value="Collapsed" />
-                </Trigger>
-            </Style.Triggers>
-        </Style>
-        <Style
             x:Key="OHsManageSamplesNameStyle"
             BasedOn="{StaticResource BodyTextStyle}"
             TargetType="TextBlock">
@@ -171,11 +156,6 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock
-                            Margin="0,0,8,0"
-                            VerticalAlignment="Center"
-                            Style="{StaticResource BodyTextStyle}"
-                            Text="Filename" />
                         <TextBox
                             Grid.Column="1"
                             AutomationProperties.Name="Sample filename stem"
@@ -223,21 +203,6 @@
             </DataTemplate.Triggers>
         </DataTemplate>
 
-        <Style
-            x:Key="OHsManageSamplesEmptyStyle"
-            BasedOn="{StaticResource CenteredEmptyStateTextStyle}"
-            TargetType="TextBlock">
-            <Setter Property="TextWrapping" Value="Wrap" />
-            <Setter Property="Visibility" Value="Collapsed" />
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding IsEmpty, Mode=OneWay}" Value="True">
-                    <Setter Property="Visibility" Value="Visible" />
-                </DataTrigger>
-                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
-                    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
     </UserControl.Resources>
     <Border Style="{StaticResource CardBorderStyle}">
         <Grid Style="{StaticResource BaseGridStyle}">
@@ -272,13 +237,7 @@
                     x:Name="SampleRows"
                     ItemsSource="{Binding Entries, Mode=OneWay}"
                     Style="{StaticResource BaseItemsControlStyle}"  ItemsPanel="{StaticResource OHsVirtualizedDrawerItemsPanel}" ItemTemplate="{StaticResource OHsManageSamplesRowTemplate}" Template="{StaticResource OHsVirtualizedDrawerItemsTemplate}" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"/>
-                <TextBlock Style="{StaticResource OHsManageSamplesEmptyStyle}" Text="No samples in this project. Add a new sample to get started." />
             </Grid>
-            <TextBlock
-                Grid.Row="2"
-                Margin="0,8,0,0"
-                Style="{StaticResource OHsManageSamplesErrorStyle}"
-                Text="{Binding ErrorMessage, Mode=OneWay}" />
             <Grid
                 Grid.Row="3"
                 Margin="0,16,0,0"

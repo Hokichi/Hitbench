@@ -82,19 +82,15 @@
    <StackPanel Grid.Row="1" Margin="0,16,0,12" Style="{StaticResource BaseStackPanelStyle}">
     <TextBlock Text="Keys Mapping" Style="{StaticResource OHsPopupTitleTextStyle}"/>
     <TextBlock Text="{Binding TrackName,Mode=OneWay}" Style="{StaticResource BodyTextStyle}" TextTrimming="CharacterEllipsis"/>
-    <TextBlock Text="C1–B9 · Paths relative to Samples · Wheel or PageUp/PageDown scroll keys; Alt+Home/End go to first/last key." Style="{StaticResource BodyTextStyle}"/>
    </StackPanel>
    <Grid Grid.Row="2" Style="{StaticResource BaseGridStyle}">
     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
     <ListBox x:Name="KeySelector" ItemsSource="{Binding Rows,Mode=OneWay}" SelectedValuePath="Key" SelectedValue="{Binding SelectedEntry.Key,Mode=OneWay,UpdateSourceTrigger=PropertyChanged}" SelectionChanged="OnKeySelectionChanged" IsSynchronizedWithCurrentItem="False" IsEnabled="{Binding CanEditMapping,Mode=OneWay}" Style="{StaticResource OHsKeysKeyboardStyle}" ItemContainerStyle="{StaticResource OHsKeysKeyboardItemStyle}" ItemTemplate="{StaticResource OHsKeysKeyboardContentTemplate}" AutomationProperties.Name="Piano key mapping selector"/>
-    <TextBlock Grid.Row="1" Text="{Binding SelectionStatus,Mode=OneWay}" Style="{StaticResource BodyTextStyle}"/>
     <Grid Grid.Row="2" Style="{StaticResource BaseGridStyle}">
      <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
      <TextBlock Text="{Binding SelectedEntry.Key,Mode=OneWay}" Style="{StaticResource BodyTextStyle}" Margin="0,0,12,0"/>
      <StackPanel Grid.Column="1" Style="{StaticResource BaseStackPanelStyle}" DataContext="{Binding SelectedEntry,Mode=OneWay}">
-      <TextBlock Text="Sample path" Style="{StaticResource BodyTextStyle}"/>
       <TextBox Text="{Binding DraftFileName,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding DataContext.CanEditSelectedMapping,RelativeSource={RelativeSource AncestorType=UserControl},Mode=OneWay}" Style="{StaticResource OHsKeysInputStyle}" AutomationProperties.Name="Selected key sample path" LostKeyboardFocus="OnMappingLostFocus" PreviewKeyDown="OnMappingKeyDown"/>
-      <TextBlock Text="{Binding Error,Mode=OneWay}" Style="{StaticResource ErrorTextStyle}"/><TextBlock Text="{Binding MappingStatus,Mode=OneWay}" Style="{StaticResource BodyTextStyle}"/>
      </StackPanel>
      <WrapPanel Grid.Column="2" MaxWidth="160">
       <c:BalloonButton ButtonText="Play" ButtonIcon="{StaticResource MediaPlay}" Style="{StaticResource OHsBalloonNeutralActionStyle}" Command="{Binding PlaySelectedCommand,Mode=OneWay}" AutomationProperties.Name="Audition selected key sample" ShouldShowText="True" IsTabStop="True" h:KeyboardNavigationPolicy.AllowTabNavigation="True" FocusVisualStyle="{StaticResource OHsSampleManagerKeyboardFocusStyle}"/>
@@ -102,13 +98,6 @@
      </WrapPanel>
     </Grid>
    </Grid>
-   <StackPanel Grid.Row="3" Margin="0,12,0,0" Style="{StaticResource BaseStackPanelStyle}" AutomationProperties.Name="Mapping import and save status">
-    <TextBlock Text="{Binding SaveStatus,Mode=OneWay}" Style="{StaticResource BodyTextStyle}"/>
-    <TextBlock Text="{Binding ImportStatus,Mode=OneWay}" Style="{StaticResource BodyTextStyle}" AutomationProperties.LiveSetting="Polite"/>
-    <TextBlock Text="{Binding PreviewWarning,Mode=OneWay}" Style="{StaticResource WarningTextStyle}"/>
-    <TextBlock Text="{Binding SaveError,Mode=OneWay}" Style="{StaticResource ErrorTextStyle}"/>
-    <TextBlock Text="{Binding ErrorMessage,Mode=OneWay}" Style="{StaticResource ErrorTextStyle}"/>
-   </StackPanel>
   </Grid>
  </ScrollViewer>
  </Border>
