@@ -29,7 +29,12 @@ public partial class OHsControlPointLane : UserControl
     internal int RealizedPointCount => EnsurePanel()?.RealizedPointCount ?? 0;
     internal int RecycledPointCount => EnsurePanel()?.RecycledPointCount ?? 0;
 
-    public OHsControlPointLane() => InitializeComponent();
+    public OHsControlPointLane()
+    {
+        InitializeComponent();
+        PointItems.AddHandler(System.Windows.Controls.Primitives.ButtonBase.ClickEvent, new RoutedEventHandler(OnTagClick));
+        Unloaded += (_, _) => DismissEditor(false);
+    }
     private static DependencyProperty RegisterCoordinate(string name) => DependencyProperty.Register(name, typeof(double), typeof(OHsControlPointLane),
         new FrameworkPropertyMetadata(0d, FrameworkPropertyMetadataOptions.AffectsMeasure, (d, e) =>
         {
@@ -41,6 +46,7 @@ public partial class OHsControlPointLane : UserControl
     private static void OnStateChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var lane = (OHsControlPointLane)d;
+        lane.RefreshEditor(e.OldValue as ControlPointsSnapshot);
         lane.SetValue(IsMenuOwnerActivePropertyKey, lane.State?.CanEdit == true && lane.IsEnabled);
         var points = lane.State?.Points ?? [];
         if (lane.PointItems.ItemsSource is not IReadOnlyList<ControlPointSnapshot> previous || !previous.SequenceEqual(points))
