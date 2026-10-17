@@ -63,7 +63,6 @@
                             ButtonIcon="{StaticResource Close}"
                             ButtonText="Close"
                             Style="{StaticResource OHsPopupCloseActionStyle}"
-                            SubText="Esc"
                             Visibility="{TemplateBinding ShowCloseButton,
                                                          Converter={StaticResource BoolToVisibilityConverter}}" />
                     </Grid>

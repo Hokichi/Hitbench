@@ -3,8 +3,6 @@ using System.Windows.Controls;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Windows.Input;
-using System.Windows.Automation.Peers;
-using System.Windows.Automation;
 using System.Windows.Media;
 using System.Windows.Threading;
 using System.Windows.Interop;
@@ -164,7 +162,6 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
         DataContext = viewModel;
         PageHost.Content = page;
         viewModel.PropertyChanged += OnStateChanged;
-        ProcessingText.IsVisibleChanged += OnProcessingVisibilityChanged;
         messenger.Register<ProjectCreatedMessage>(this);
         messenger.Register<ProjectOpenRequestedMessage>(this);
         messenger.Register<ProjectCreationFailedMessage>(this);
@@ -336,7 +333,6 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
         layoutRefresh?.Abort();
         focusRestore?.Abort();
         viewModel.PropertyChanged -= OnStateChanged;
-        ProcessingText.IsVisibleChanged -= OnProcessingVisibilityChanged;
         messenger.UnregisterAll(this);
         lifetime.Cancel();
         page.Deactivate();
@@ -696,13 +692,5 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
                 priorFocus = null;
             }));
         }
-    }
-
-    private void OnProcessingVisibilityChanged(object sender, DependencyPropertyChangedEventArgs e)
-    {
-        if (ProcessingText.IsVisible)
-            (UIElementAutomationPeer.FromElement(ProcessingText) ??
-             UIElementAutomationPeer.CreatePeerForElement(ProcessingText))
-                ?.RaiseAutomationEvent(AutomationEvents.LiveRegionChanged);
     }
 }

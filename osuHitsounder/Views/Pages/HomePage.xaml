@@ -62,19 +62,6 @@
         </Style>
 
         <Style
-            x:Key="HomePageStatusStyle"
-            BasedOn="{StaticResource HomePageBodyStyle}"
-            TargetType="TextBlock">
-            <Setter Property="TextWrapping" Value="Wrap" />
-            <Setter Property="Margin" Value="0,0,0,8" />
-            <Setter Property="AutomationProperties.LiveSetting" Value="Polite" />
-            <Style.Triggers>
-                <Trigger Property="Text" Value="">
-                    <Setter Property="Visibility" Value="Collapsed" />
-                </Trigger>
-            </Style.Triggers>
-        </Style>
-        <Style
             x:Key="HomePagePanelStyle"
             BasedOn="{StaticResource BaseBorderStyle}"
             TargetType="Border">
@@ -268,10 +255,6 @@
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
                 <TextBlock Style="{StaticResource HomePageBodyStyle}" Text="Projects"  FontFamily="{DynamicResource Bold}" FontWeight="Bold" FontSize="14" TextWrapping="Wrap" Margin="0,0,0,12"/>
-                <TextBlock
-                    Grid.Row="1"
-                    Style="{StaticResource HomePageStatusStyle}"
-                    Text="{Binding ProjectsStatus, Mode=OneWay}" />
                 <customControls:BalloonButton
                     x:Name="ProjectsRetryButton"
                     Grid.Row="2"
@@ -329,12 +312,6 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock
-                                Grid.ColumnSpan="2"
-                                Margin="0,0,0,4"
-                                Style="{StaticResource HomePageBodyStyle}"
-                                Text="Search songs"
-                                TextWrapping="Wrap" />
                             <TextBox
                                 x:Name="SongSearchTextBox"
                                 Grid.Row="1"
@@ -357,10 +334,6 @@
                         </Grid>
                     </Grid>
                 </Grid>
-                <TextBlock
-                    Grid.Row="1"
-                    Style="{StaticResource HomePageStatusStyle}"
-                    Text="{Binding SongsStatus, Mode=OneWay}" />
                 <customControls:BalloonButton
                     x:Name="SongsRetryButton"
                     Grid.Row="2"

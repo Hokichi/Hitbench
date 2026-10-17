@@ -107,39 +107,6 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
-        <Style
-            x:Key="MainWindowProcessingSurfaceStyle"
-            BasedOn="{StaticResource BaseBorderStyle}"
-            TargetType="Border">
-            <Setter Property="Background" Value="{DynamicResource Brush.Background.Surface}" />
-            <Setter Property="Padding" Value="16" />
-            <Setter Property="Margin" Value="24" />
-            <Setter Property="CornerRadius" Value="8" />
-            <Setter Property="HorizontalAlignment" Value="Center" />
-            <Setter Property="VerticalAlignment" Value="Center" />
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
-        <Style
-            x:Key="MainWindowProcessingTextStyle"
-            BasedOn="{StaticResource BaseTextBlockStyle}"
-            TargetType="TextBlock">
-            <Setter Property="FontFamily" Value="{DynamicResource Bold}" />
-            <Setter Property="FontWeight" Value="Bold" />
-            <Setter Property="FontSize" Value="14" />
-            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
-            <Setter Property="TextAlignment" Value="Center" />
-            <Setter Property="TextWrapping" Value="Wrap" />
-            <Setter Property="AutomationProperties.LiveSetting" Value="Polite" />
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
-                    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
         <BlurEffect x:Key="MainWindowModalBlur" Radius="8" />
         <Style
             x:Key="OHsMainWindowSampleManagerContentStyle"
@@ -228,12 +195,6 @@
                                     <ContentControl x:Name="PageHost" />
                                 </Border>
                                 <Border FlowDirection="{Binding FlowDirection, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}" Style="{StaticResource MainWindowProcessingOverlayStyle}">
-                                    <Border Style="{StaticResource MainWindowProcessingSurfaceStyle}">
-                                        <TextBlock
-                                            x:Name="ProcessingText"
-                                            Style="{StaticResource MainWindowProcessingTextStyle}"
-                                            Text="Processing..." />
-                                    </Border>
                                 </Border>
                             </Grid>
                         </Grid>
