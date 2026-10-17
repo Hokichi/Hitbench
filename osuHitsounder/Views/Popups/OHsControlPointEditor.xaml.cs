@@ -67,15 +67,21 @@ public partial class OHsControlPointEditor : UserControl
         if (textEditor is null) return;
         textEditor.TextChanged += OnVolumeTextChanged;
         textEditor.LostKeyboardFocus += OnVolumeLostFocus;
+        textEditor.PreviewTextInput += OnExplicitTextInput;
+        DataObject.AddPastingHandler(textEditor, OnExplicitPaste);
     }
     private void DetachTextEditor()
     {
         if (textEditor is null) return;
         textEditor.TextChanged -= OnVolumeTextChanged;
         textEditor.LostKeyboardFocus -= OnVolumeLostFocus;
+        textEditor.PreviewTextInput -= OnExplicitTextInput;
+        DataObject.RemovePastingHandler(textEditor, OnExplicitPaste);
         textEditor = null;
     }
     private void OnVolumeTextChanged(object sender, TextChangedEventArgs e) { if (!applying) volumeEdited = true; }
+    private void OnExplicitTextInput(object sender, TextCompositionEventArgs e) { if (!applying && !e.Handled) volumeEdited = true; }
+    private void OnExplicitPaste(object sender, DataObjectPastingEventArgs e) { if (!applying && !e.CommandCancelled) volumeEdited = true; }
     private void OnVolumeLostFocus(object sender, KeyboardFocusChangedEventArgs e) => CommitVolumeInput(volumeEdited);
     private void OnVolumeStep(object sender, RoutedEventArgs e) => CommitVolumeInput(true);
     private void OnVolumeKey(object sender, KeyEventArgs e)
@@ -100,6 +106,7 @@ public partial class OHsControlPointEditor : UserControl
         if (SetPointCommand?.CanExecute(request) == true) SetPointCommand.Execute(request);
         return true;
     }
+    internal void CommitPendingInput() => CommitVolumeInput(volumeEdited);
 
     private void OnSamplesetChanged(object sender, SelectionChangedEventArgs e)
     {
@@ -116,7 +123,7 @@ public partial class OHsControlPointEditor : UserControl
     internal void Clear()
     {
         applying = true;
-        try { Point = null; Context = null; VolumeInput.DataContext = null; volumeEdited = false; DetachTextEditor(); }
+        try { Point = null; Context = null; SamplesetInput.IsDropDownOpen = false; VolumeInput.DataContext = null; volumeEdited = false; DetachTextEditor(); }
         finally { applying = false; }
     }
 }

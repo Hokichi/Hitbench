@@ -30,10 +30,13 @@ public partial class WorkstationPageVM
         return id;
     }
 
-    private int? ControlPointTimestamp() => Project is not null && Waveform is not null && IsInteractionReady
-        ? BeatGridCalculator.GetNearestTimestamp(Project.Offsets, Project.BPMs, Subdivision,
-            IsPlaying ? playback.Latest.Playback.Position.TotalMilliseconds : Position.TotalMilliseconds,
-            Waveform.Duration.TotalMilliseconds) : null;
+    private int? ControlPointTimestamp()
+    {
+        if (Project is null || Waveform is null || !IsInteractionReady) return null;
+        var current = playback.Latest.Playback;
+        return BeatGridCalculator.GetNearestTimestamp(Project.Offsets, Project.BPMs, Subdivision,
+            current.IsPlaying ? current.Position.TotalMilliseconds : Position.TotalMilliseconds, Waveform.Duration.TotalMilliseconds);
+    }
 
     private bool IsActiveControlPoints(ControlPointsContext context) => !deactivated &&
         controlPointsContext == context && context.ProjectPath == projectPath && Project is not null;
@@ -85,13 +88,14 @@ public partial class WorkstationPageVM
         return Task.CompletedTask;
     }
 
-    public async Task SettleControlPointsAsync()
+    public Task SettleControlPointsAsync()
     {
         controlPointsContext = null;
         SetProperty(ref pendingControlPointAdd, null, nameof(PendingControlPointAdd));
         SetProperty(ref controlPointsState, null, nameof(ControlPointsState));
         SetProperty(ref controlPointError, null, nameof(ControlPointError));
-        await saveTail;
+        // Project load, return, and deactivation already drain the shared save queue at their own boundary.
+        return Task.CompletedTask;
     }
 
     private ControlPoint? FindControlPoint(ControlPointsContext context, Guid id) =>

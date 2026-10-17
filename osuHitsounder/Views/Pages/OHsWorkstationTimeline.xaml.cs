@@ -29,7 +29,7 @@ public partial class OHsWorkstationTimeline : UserControl
     {
         InitializeComponent();
         ControlPointLane.HorizontalOffsetRequested += ScrollFromUser;
-        DataContextChanged += (_, e) => viewModel = e.NewValue as WorkstationPageVM ?? null!;
+        DataContextChanged += (_, e) => { ControlPointLane.ResetInteraction(); viewModel = e.NewValue as WorkstationPageVM ?? null!; };
     }
     public event EventHandler? ViewportChanged;
     private static readonly DependencyPropertyKey ScrollableWidthPropertyKey = DependencyProperty.RegisterReadOnly(nameof(ScrollableWidth), typeof(double), typeof(OHsWorkstationTimeline), new PropertyMetadata(0d));
@@ -62,7 +62,7 @@ public partial class OHsWorkstationTimeline : UserControl
         scrollBar = null;
     }
     public void ResetWheel() { wheelMode = ModifierKeys.None; wheelRemainder = 0; }
-    public void Reset() { hasPendingZoomAnchor = false; ResetWheel(); }
+    public void Reset() { hasPendingZoomAnchor = false; ResetWheel(); ControlPointLane.ResetInteraction(); }
     public bool PreparePresentation()
     {
         var inset = WaveformScrollViewer.BorderThickness;

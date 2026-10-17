@@ -122,4 +122,24 @@ public class WorkstationControlPointStateTests
         }
         finally { await owner.DeactivateAsync(); }
     }
+
+    [Test]
+    public async Task CancelledReturnReactivatesEditingWithNewContextAndRejectsOldEditor()
+    {
+        var project = new ProjectData { Offsets = [0], BPMs = [120], ControlPoints = [new() { Volume = 50 }] };
+        var owner = Create(project, new());
+        try
+        {
+            await Ready(owner); var old = owner.ControlPointsState!;
+            Assert.That(await owner.PrepareToReturnAsync(default), Is.True);
+            owner.CancelReturn();
+            Assert.That(owner.ControlPointsState, Is.Not.Null);
+            var current = owner.ControlPointsState!; Assert.That(current.Context, Is.Not.EqualTo(old.Context));
+            owner.SetControlPointCommand.Execute(new SetControlPointRequestedMessage(old.Context, old.Points[0].Id, 5, null));
+            Assert.That(project.ControlPoints[0].Volume, Is.EqualTo(50));
+            owner.SetControlPointCommand.Execute(new SetControlPointRequestedMessage(current.Context, current.Points[0].Id, 75, null));
+            Assert.That(project.ControlPoints[0].Volume, Is.EqualTo(75));
+        }
+        finally { await owner.DeactivateAsync(); }
+    }
 }

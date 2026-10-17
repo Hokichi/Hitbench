@@ -293,7 +293,7 @@
                                     ButtonText="Add Control Point"
                                     Command="{Binding AddControlPointCommand, Mode=OneWay}"
                                     Style="{StaticResource OHsWorkstationToolbarButtonStyle}"
-                                    ToolTip="Open Control Points (F6)"  helpers:KeyboardNavigationPolicy.AllowTabNavigation="True" FocusVisualStyle="{StaticResource OHsSampleManagerKeyboardFocusStyle}"/>
+                                    ToolTip="Add Control Point (F6)"  helpers:KeyboardNavigationPolicy.AllowTabNavigation="True" FocusVisualStyle="{StaticResource OHsSampleManagerKeyboardFocusStyle}"/>
                                 <customControls:BalloonButton
                                     x:Name="AddInstrumentButton"
                                     AutomationProperties.HelpText="Create an instrumental arrangement with mapped samples."

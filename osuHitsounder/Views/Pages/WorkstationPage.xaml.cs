@@ -35,7 +35,7 @@ public partial class WorkstationPage : UserControl
     internal void CancelNodePointer() => TrackListComponent.CancelNodePointer();
     private bool HandleNodeKey(Key key, ModifierKeys modifiers, bool isRepeat, DependencyObject? origin) => TrackListComponent.HandleNodeKey(key, modifiers, isRepeat, origin);
     private bool HandleNodeDragWheel(ModifierKeys modifiers, int delta) => TrackListComponent.HandleNodeDragWheel(modifiers, delta);
-    private void OnNodeOwnerDeactivated(object? sender, EventArgs e) => CancelNodePointer();
+    private void OnNodeOwnerDeactivated(object? sender, EventArgs e) { CancelNodePointer(); Timeline.Reset(); }
     private void OnPagePointerDown(object sender, MouseButtonEventArgs e)
     {
         var origin = e.OriginalSource as DependencyObject;
@@ -89,6 +89,7 @@ public partial class WorkstationPage : UserControl
     {
         if (deactivationStarted) return LoadCompletion;
         CancelNodePointer();
+        Timeline.Reset();
         deactivationStarted = true;
         TrackListComponent.Deactivate();
         presentationReady.TrySetResult();
@@ -267,6 +268,12 @@ public partial class WorkstationPage : UserControl
 
     internal bool HandlePlaybackKey(Key key, ModifierKeys modifiers, bool isRepeat, DependencyObject? origin)
     {
+        if (FindAncestor<osuHitsounder.Views.Popups.OHsControlPointEditor>(origin) is not null) return false;
+        if (FindAncestor<OHsControlPointTag>(origin) is not null)
+        {
+            if (key is Key.Left or Key.Right) return true;
+            if (key is Key.Space or Key.Enter) return false;
+        }
         if (IsVolumeOverlayOpen) return true;
         if (deactivationStarted) return false;
         if (HandleWorkstationShortcut(key, modifiers, isRepeat, origin)) return true;

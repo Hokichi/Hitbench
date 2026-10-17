@@ -34,6 +34,7 @@ public partial class OHsControlPointLane : UserControl
         InitializeComponent();
         PointItems.AddHandler(System.Windows.Controls.Primitives.ButtonBase.ClickEvent, new RoutedEventHandler(OnTagClick));
         Unloaded += (_, _) => ResetInteraction();
+        PointItems.LayoutUpdated += (_, _) => UpdateEditorViewport();
         IsEnabledChanged += (_, _) => { SetValue(IsMenuOwnerActivePropertyKey, State?.CanEdit == true && IsEnabled); if (!IsEnabled) ResetInteraction(); };
     }
     private static DependencyProperty RegisterCoordinate(string name) => DependencyProperty.Register(name, typeof(double), typeof(OHsControlPointLane),
@@ -42,6 +43,7 @@ public partial class OHsControlPointLane : UserControl
             var lane = (OHsControlPointLane)d;
             lane.SyncPanel();
             if (e.Property == ViewportWidthProperty) lane.panel?.InvalidateGeometry();
+            lane.UpdateEditorViewport();
         }));
 
     private static void OnStateChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -101,13 +103,27 @@ public partial class OHsControlPointLane : UserControl
 
     internal IReadOnlyList<OHsControlPointExtent> GetExtents() => EnsurePanel()?.GetExtents(true) ?? [];
 
+    private OHsControlPointTag? FindRealizedTag(Guid id)
+    {
+        var index = State?.Points.ToList().FindIndex(p => p.Id == id) ?? -1;
+        return index >= 0 && PointItems.ItemContainerGenerator.ContainerFromIndex(index) is DependencyObject container
+            ? FindChild<OHsControlPointTag>(container) : null;
+    }
+
+    protected override void OnDpiChanged(DpiScale oldDpi, DpiScale newDpi)
+    {
+        base.OnDpiChanged(oldDpi, newDpi);
+        measurementTag?.InvalidateMeasure(); panel?.InvalidateGeometry();
+    }
+
     public OHsControlPointTag? BringPointIntoView(Guid id)
     {
         if (EnsurePanel() is not { } current || GetExtents().FirstOrDefault(p => p.Id == id) is not { } extent) return null;
         current.PinnedPointId = id;
         var offset = extent.Left < HorizontalOffset ? extent.Left : extent.Left + extent.Width > HorizontalOffset + ViewportWidth
             ? extent.Left + extent.Width - ViewportWidth : HorizontalOffset;
-        HorizontalOffsetRequested?.Invoke(Math.Clamp(offset, 0, Math.Max(0, ContentWidth - ViewportWidth)));
+        var requested = Math.Clamp(offset, 0, Math.Max(0, ContentWidth - ViewportWidth));
+        if (requested != HorizontalOffset) HorizontalOffsetRequested?.Invoke(requested);
         current.InvalidateMeasure(); PointItems.UpdateLayout();
         var index = State!.Points.ToList().FindIndex(p => p.Id == id);
         return PointItems.ItemContainerGenerator.ContainerFromIndex(index) is DependencyObject container ? FindChild<OHsControlPointTag>(container) : null;

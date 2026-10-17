@@ -40,6 +40,7 @@ public class WorkstationControlPointPlacementTests
             audio.Snapshot = new(TimeSpan.FromMilliseconds(1030), false, null);
             await owner.PlayPauseCommand.ExecuteAsync(null);
             owner.Position = TimeSpan.FromMilliseconds(250);
+            owner.IsPlaying = false; // Presentation may lag the coordinator by a frame.
             await owner.AddControlPointCommand.ExecuteAsync(null);
             Assert.That(owner.PendingControlPointAdd!.Timestamp, Is.EqualTo(1000));
             Assert.That((owner.PendingControlPointAdd.Volume, owner.PendingControlPointAdd.Sampleset), Is.EqualTo((100, "Normal")));

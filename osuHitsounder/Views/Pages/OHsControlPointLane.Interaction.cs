@@ -102,7 +102,7 @@ public partial class OHsControlPointLane
     private void SetRejection(string? text)
     {
         SetValue(RejectionReasonPropertyKey, text);
-        if (dragPointId is { } id && BringPointIntoView(id) is { } tag)
+        if (dragPointId is { } id && FindRealizedTag(id) is { } tag)
         {
             tag.IsInvalid = text is not null;
             AutomationProperties.SetHelpText(tag, text ?? "Click to edit. Drag horizontally to move. Use the context menu to delete.");
@@ -167,7 +167,7 @@ public partial class OHsControlPointLane
     private void CancelPointDrag(bool clearRejection)
     {
         var wasActive = IsDragPreviewActive;
-        if (dragPointId is { } id && State?.Points.Any(p => p.Id == id) == true && BringPointIntoView(id) is { } tag) tag.IsInvalid = false;
+        if (dragPointId is { } id && FindRealizedTag(id) is { } tag) tag.IsInvalid = false;
         dragPointId = null; dragContext = null; IsDragPreviewActive = false; IsDragCandidateValid = false; PreviewTimestamp = null;
         if (panel is not null) { panel.PreviewPointId = null; panel.InvalidateMeasure(); }
         if (wasActive) { if (ReleasePointer is not null) ReleasePointer(); else if (IsMouseCaptured) ReleaseMouseCapture(); }
@@ -198,6 +198,7 @@ public partial class OHsControlPointLane
     {
         if (key == Key.Escape && dragPointId is not null) { CancelPointDrag(); return true; }
         var tag = FindTag(origin);
+        if (tag is not null && key is Key.Enter or Key.Space) suppressTagClick = false;
         if (key == Key.Apps || key == Key.F10 && modifiers == ModifierKeys.Shift) { OpenContextMenu(tag); return true; }
         return tag is not null && key is Key.Left or Key.Right;
     }

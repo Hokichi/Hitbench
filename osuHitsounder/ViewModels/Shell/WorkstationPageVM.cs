@@ -296,15 +296,20 @@ public partial class WorkstationPageVM(
 
     public void CancelReturn()
     {
-        if (!deactivated) IsReturning = false;
+        if (!deactivated)
+        {
+            IsReturning = false;
+            if (controlPointsContext is null) InitializeControlPoints();
+            NotifyEditingState();
+        }
     }
 
     public async Task<bool> PrepareToReturnAsync(CancellationToken token)
     {
         if (deactivated || IsReturning || token.IsCancellationRequested) return false;
+        await SettleControlPointsAsync();
         reloadSamplesCancellation?.Cancel();
         if (activeSampleReload is not null) await activeSampleReload;
-        await SettleControlPointsAsync();
         await SettleInstrumentalEditorAsync();
         await SettleSampleManagerAsync();
         await SettleInstrumentalFoldersAsync();
@@ -343,7 +348,7 @@ public partial class WorkstationPageVM(
         finally
         {
             IsSavingForReturn = false;
-            if (!prepared) IsReturning = false;
+            if (!prepared) CancelReturn();
         }
     }
 

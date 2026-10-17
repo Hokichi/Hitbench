@@ -138,4 +138,37 @@ public class OHsControlPointDragTests
         }
         finally { UiTestPump.Run(owner.DeactivateAsync()); }
     }
+
+    [Test]
+    public void PointerPreviewDoesNotScrollBackToAcceptedTimestamp()
+    {
+        var project = new ProjectData { Offsets = [0], BPMs = [120], ControlPoints = [new() { Timestamp = 500 }] };
+        var owner = WorkstationControlPointStateTests.Create(project, new());
+        try
+        {
+            UiTestPump.Run(WorkstationControlPointStateTests.Ready(owner)); var lane = Connect(owner);
+            var id = owner.ControlPointsState!.Points[0].Id; var scrollRequests = 0;
+            lane.BeginPointDrag(id, 500); lane.HorizontalOffsetRequested += _ => scrollRequests++;
+            lane.UpdatePointDrag(1500);
+            Assert.That(lane.IsDragPreviewActive, Is.True); Assert.That(scrollRequests, Is.Zero);
+            lane.CancelPointDrag(); Assert.That(project.ControlPoints.Single().Timestamp, Is.EqualTo(500));
+        }
+        finally { UiTestPump.Run(owner.DeactivateAsync()); }
+    }
+
+    [Test]
+    public void KeyboardInvocationStillOpensEditorAfterPointerDrop()
+    {
+        var owner = WorkstationControlPointStateTests.Create(new() { Offsets = [0], BPMs = [120], ControlPoints = [new() { Timestamp = 500 }] }, new());
+        try
+        {
+            UiTestPump.Run(WorkstationControlPointStateTests.Ready(owner)); var lane = Connect(owner); var id = owner.ControlPointsState!.Points[0].Id;
+            lane.BeginPointDrag(id, 500); lane.UpdatePointDrag(1500); Assert.That(lane.CompletePointDrag(), Is.True);
+            var tag = lane.BringPointIntoView(id)!;
+            lane.HandlePointKey(System.Windows.Input.Key.Enter, System.Windows.Input.ModifierKeys.None, tag);
+            tag.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
+            Assert.That(lane.IsEditorOpen, Is.True); lane.DismissEditor();
+        }
+        finally { UiTestPump.Run(owner.DeactivateAsync()); }
+    }
 }
