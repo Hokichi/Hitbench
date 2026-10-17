@@ -34,9 +34,10 @@ public static class ProjectDataSerializer
             root["Tracks"] = tracks;
         }
         root.Remove("Samples");
-        var collapsed = InstrumentMember(root, nameof(ProjectData.IsCollapsed));
+        var collapsed = InstrumentMember(root, "IsCollapsed");
         if (collapsed is not null && collapsed.Type != JTokenType.Boolean)
             throw new InvalidDataException("Project IsCollapsed must be a boolean.");
+        root.Remove("IsCollapsed");
         NormalizeControlPoints(root);
 
         if (root["Tracks"] is JArray trackNodes)
@@ -44,6 +45,10 @@ public static class ProjectDataSerializer
             foreach (var item in trackNodes)
             {
                 if (item is not JObject track) throw new InvalidDataException("Track must be an object.");
+                var trackCollapsed = InstrumentMember(track, nameof(Track.IsCollapsed));
+                if (trackCollapsed is not null && trackCollapsed.Type != JTokenType.Boolean)
+                    throw new InvalidDataException("Track IsCollapsed must be a boolean.");
+                if (trackCollapsed is null) track[nameof(Track.IsCollapsed)] = collapsed?.Value<bool>() ?? false;
                 var kind = InstrumentMember(track, "Kind");
                 if (kind is not null && (kind.Type != JTokenType.String || kind.Value<string>() is not ("Instrumental" or "Sample")))
                     throw new InvalidDataException("Track Kind must be Sample or Instrumental.");

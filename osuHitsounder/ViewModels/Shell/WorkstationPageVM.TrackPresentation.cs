@@ -29,7 +29,7 @@ public partial class WorkstationPageVM
     {
         if (!CanEditTracks) return;
         ApplyTrackCollapse(!AreTracksCollapsed);
-        Project!.IsCollapsed = AreTracksCollapsed;
+        foreach (var track in tracks) track.IsCollapsed = AreTracksCollapsed;
         QueueSave();
     }
 
@@ -70,5 +70,5 @@ public partial class WorkstationPageVM
     public double MinimumTrackHeight => minimumTrackHeight;
     public double MaximumTrackHeight => minimumTrackHeight + (AreTracksCollapsed ? 0 : 108);
     public double TrackHeight => trackHeight;
-    private void InitializeTrackPresentation(ProjectData project) => ApplyTrackCollapse(project.IsCollapsed);
+    private void InitializeTrackPresentation(ProjectData project) => ApplyTrackCollapse(project.Tracks.Count > 0 && project.Tracks.All(t => t.IsCollapsed));
 }

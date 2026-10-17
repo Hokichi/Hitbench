@@ -12,7 +12,7 @@ public class ProjectCollapsePreferenceTests
     [TestCase(false)]
     public async Task LoadRestoresCollapseWithoutSavingAndTogglePersists(bool collapsed)
     {
-        var project = ProjectDataSerializer.Deserialize("{\"IsCollapsed\":" + collapsed.ToString().ToLowerInvariant() + ",\"Offsets\":[0],\"BPMs\":[120]}");
+        var project = ProjectDataSerializer.Deserialize("{\"IsCollapsed\":" + collapsed.ToString().ToLowerInvariant() + ",\"Tracks\":[{}],\"Offsets\":[0],\"BPMs\":[120]}");
         var source = new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", project)) };
         var saves = new DelayedProjectFileService(); saves.Release();
         using var audio = new StubWorkstationAudioService();
@@ -26,7 +26,7 @@ public class ProjectCollapsePreferenceTests
             var updates = audio.SampleUpdates.Count;
             vm.ToggleTracksCollapsedCommand.Execute(null);
             await vm.FlushSavesAsync();
-            Assert.That(JObject.Parse(saves.LatestJson!)["IsCollapsed"]!.Value<bool>(), Is.EqualTo(!collapsed));
+            Assert.That(JObject.Parse(saves.LatestJson!)["Tracks"]![0]!["IsCollapsed"]!.Value<bool>(), Is.EqualTo(!collapsed));
             Assert.That(audio.SampleUpdates, Has.Count.EqualTo(updates));
             Assert.That(vm.CanUndo, Is.False);
             source.Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", ProjectDataSerializer.Deserialize("{\"IsCollapsed\":false}")));
@@ -45,5 +45,5 @@ public class ProjectCollapsePreferenceTests
 
     [Test]
     public void OlderProjectsDefaultExpanded() =>
-        Assert.That(JObject.Parse(ProjectDataSerializer.Serialize(ProjectDataSerializer.Deserialize("{}")))["IsCollapsed"]?.Value<bool>(), Is.False);
+        Assert.That(JObject.Parse(ProjectDataSerializer.Serialize(ProjectDataSerializer.Deserialize("{}")))["IsCollapsed"], Is.Null);
 }

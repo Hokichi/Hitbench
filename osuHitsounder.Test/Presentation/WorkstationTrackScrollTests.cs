@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Threading;
@@ -80,8 +80,8 @@ public class WorkstationTrackScrollTests
 
     private static (WorkstationPage, WorkstationPageVM, InMemoryView) Create(bool collapsed, IMessenger messenger)
     {
-        var project = new ProjectData { IsCollapsed = collapsed, Offsets = [0], BPMs = [120],
-            Tracks = Enumerable.Range(0, 60).Select(i => new Track { Name = $"Track {i}", SelectedSampleFileName = "hit.wav" }).ToList() };
+        var project = new ProjectData { Offsets = [0], BPMs = [120],
+            Tracks = Enumerable.Range(0, 60).Select(i => new Track { IsCollapsed = collapsed, Name = $"Track {i}", SelectedSampleFileName = "hit.wav" }).ToList() };
         var source = new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", project)) };
         var vm = new WorkstationPageVM(source, new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay),
             new ImmediateUiScheduler(), new StubSampleFileService(["hit.wav"]), messenger: messenger);
@@ -108,3 +108,4 @@ public class WorkstationTrackScrollTests
         }
     }
 }
+
