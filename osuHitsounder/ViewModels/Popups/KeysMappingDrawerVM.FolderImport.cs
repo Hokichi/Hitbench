@@ -22,7 +22,7 @@ public sealed partial class KeysMappingDrawerVM
         IsBusy = true; ErrorMessage = null; ImportStatus = null;
         try
         {
-            IReadOnlyList<string> selected;
+            await StopPreviewAsync(); IReadOnlyList<string> selected;
             pickerActive = true; OnPropertyChanged(nameof(CanClose));
             try { selected = await picker.SelectAsync(snapshot.Context.InitialDirectory, cancel.Token, SampleSelectionMode.Folder); }
             finally { pickerActive = false; OnPropertyChanged(nameof(CanClose)); }

@@ -31,18 +31,18 @@ public sealed partial class KeysMappingDrawerVM : ObservableObject
     private bool accepted;
     public ReadOnlyObservableCollection<KeyMappingEntry> Rows { get; }
     public string TrackName => snapshot.Name;
-    public bool CanOpenKey => !closed && !closing && !IsBusy;
+    public bool CanOpenKey => CanEditMapping;
     public bool CanClose => !closed && !pickerActive;
-    public bool CanEditMapping => !closed && !closing && !IsBusy;
+    public bool CanEditMapping => !closed && !closing && !IsBusy && !selecting;
     public string SaveStatus => saveVersion < 0 ? "Checking save status…" : SaveError is not null ? "Save failed" : IsSaving ? "Saving…" : "Autosaved";
     [ObservableProperty][NotifyCanExecuteChangedFor(nameof(OpenKeyCommand))][NotifyCanExecuteChangedFor(nameof(OpenFolderCommand))][NotifyPropertyChangedFor(nameof(CanEditMapping))] private bool isBusy;
     [ObservableProperty][NotifyPropertyChangedFor(nameof(SaveStatus))] private bool isSaving;
     [ObservableProperty][NotifyPropertyChangedFor(nameof(SaveStatus))] private string? saveError;
     [ObservableProperty] private string? errorMessage;
     [ObservableProperty] private string? importStatus;
-    public KeysMappingDrawerVM(InstrumentalTrackSnapshot initial, IMessenger messenger, IUiScheduler scheduler, ISampleFileService files, ISampleFileDialogService picker, IMappingConflictDialogService? conflicts = null)
+    public KeysMappingDrawerVM(InstrumentalTrackSnapshot initial, IMessenger messenger, IUiScheduler scheduler, ISampleFileService files, ISampleFileDialogService picker, IMappingConflictDialogService? conflicts = null, osuHitsounder.Services.ISamplePreviewService? preview = null, osuHitsounder.Services.PlaybackVolumeSettings? playbackVolumes = null, Func<string, CancellationToken, Task<bool>>? confirmClearMappings = null)
     {
-        snapshot = initial; this.messenger = messenger; this.scheduler = scheduler; this.files = files; this.picker = picker; this.conflicts = conflicts;
+        this.preview = preview; this.playbackVolumes = playbackVolumes; this.confirmClearMappings = confirmClearMappings; snapshot = initial; this.messenger = messenger; this.scheduler = scheduler; this.files = files; this.picker = picker; this.conflicts = conflicts;
         Rows = new(new ObservableCollection<KeyMappingEntry>(InstrumentalKeys.All.Select(k => new KeyMappingEntry(k))));
         ApplySnapshot(initial);
         messenger.Register<InstrumentalTrackChangedMessage>(this, (_, m) => { if (!closed && m.Snapshot.Context == snapshot.Context && m.Snapshot.Revision >= snapshot.Revision) ApplySnapshot(m.Snapshot); });
@@ -60,6 +60,7 @@ public sealed partial class KeysMappingDrawerVM : ObservableObject
     }
     private void ApplySnapshot(InstrumentalTrackSnapshot next)
     {
+        var oldSelectedFile = SelectedEntry?.FileName;
         snapshot = next; OnPropertyChanged(nameof(TrackName));
         foreach (var row in Rows)
         {
@@ -67,6 +68,9 @@ public sealed partial class KeysMappingDrawerVM : ObservableObject
             if (!dirty) row.DraftFileName = name ?? "";
             row.IsMissing = name is not null && next.AvailableFiles is not null && !next.AvailableFiles.Contains(name, StringComparer.OrdinalIgnoreCase);
         }
+        NotifySelection();
+        if (previewCancellation is not null && (SelectedEntry?.FileName != oldSelectedFile || SelectedEntry?.IsMissing == true))
+            snapshotPreviewStop = OwnAsync(StopPreviewAsync);
     }
     private bool ApplyMapping(string key, string? name, string? folderName)
     {
@@ -83,13 +87,18 @@ public sealed partial class KeysMappingDrawerVM : ObservableObject
         var error = name is null ? null : SamplePaths.GetRelativePathError(name);
         if (error is not null) { row.Error = error + " Previous mapping is retained."; return false; }
         if (name == row.FileName) return true;
-        if (name is null) return ApplyMapping(key, null, null);
+
         using var cancellation = allowClosing ? CancellationTokenSource.CreateLinkedTokenSource(token) : CancellationTokenSource.CreateLinkedTokenSource(token, lifetime.Token);
         var created = "";
-        await edits.WaitAsync(cancellation.Token);
-        IsBusy = true;
+        var acquired = false;
         try
         {
+            await edits.WaitAsync(cancellation.Token);
+            acquired = true; IsBusy = true;
+            if (closed || closing && !allowClosing) return false;
+            await StopPreviewAsync();
+            if (closed || closing && !allowClosing || cancellation.IsCancellationRequested) return false;
+            if (name is null) return ApplyMapping(key, null, null);
             var folder = await files.EnsureFolderAsync(snapshot.Context.ProjectPath, snapshot.Name, snapshot.FolderName, snapshot.ReservedFolderNames, cancellation.Token);
             if (snapshot.FolderName.Length == 0) created = folder;
             var target = folder + "/" + Path.GetFileName(name);
@@ -106,8 +115,11 @@ public sealed partial class KeysMappingDrawerVM : ObservableObject
         catch (Exception failure) { row.Error = failure.Message + " Previous mapping is retained."; return false; }
         finally
         {
-            if (created.Length > 0 && snapshot.FolderName.Length == 0) await CleanupFolderAsync(created);
-            IsBusy = false; edits.Release(); OnPropertyChanged(nameof(CanClose));
+            if (acquired)
+            {
+                if (created.Length > 0 && snapshot.FolderName.Length == 0) await CleanupFolderAsync(created);
+                IsBusy = false; edits.Release(); OnPropertyChanged(nameof(CanClose));
+            }
         }
     }
     [RelayCommand(CanExecute = nameof(CanOpenKey))]
@@ -165,8 +177,8 @@ public sealed partial class KeysMappingDrawerVM : ObservableObject
     }
     public void PrepareClose()
     {
-        if (closed || closing) return; closing = true; lifetime.Cancel(); OnPropertyChanged(nameof(CanEditMapping));
-        closeFlush = FlushCloseAsync();
+        if (closed || closing) return; closing = true; lifetime.Cancel(); NotifySelection();
+        previewCancellation?.Cancel(); closeFlush = FlushCloseAsync();
     }
     private async Task FlushCloseAsync()
     {
@@ -178,7 +190,11 @@ public sealed partial class KeysMappingDrawerVM : ObservableObject
     public Task DeactivateAsync() => deactivation ??= DeactivateCoreAsync();
     private async Task DeactivateCoreAsync()
     {
-        try { await PrepareCloseAsync(); }
-        finally { closed = true; messenger.UnregisterAll(this); edits.Dispose(); lifetime.Dispose(); }
+        try { await PrepareCloseAsync(); await StopPreviewAsync(); }
+        finally
+        {
+            try { if (preview is not null) await preview.DisposeAsync(); }
+            finally { closed = true; messenger.UnregisterAll(this); edits.Dispose(); lifetime.Dispose(); NotifySelection(); }
+        }
     }
 }
