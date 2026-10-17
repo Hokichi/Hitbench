@@ -26,6 +26,7 @@ public partial class WorkstationPageVM
         Project!.Tracks.Add(track);
         tracks.Add(track);
         SelectedTrack = track;
+        NotifyTrackPresentation(); NotifyTrackAuditionState();
         QueueSave();
     }
 
@@ -34,7 +35,7 @@ public partial class WorkstationPageVM
     {
         if (!CanAddInstrumentalTrack) return;
         var track=new InstrumentalTrack();
-        Project!.Tracks.Add(track); tracks.Add(track); SelectedTrack=track; QueueSave();
+        Project!.Tracks.Add(track); tracks.Add(track); SelectedTrack=track; NotifyTrackPresentation(); NotifyTrackAuditionState(); QueueSave();
     }
 
     [RelayCommand]
@@ -61,8 +62,10 @@ public partial class WorkstationPageVM
                 project is null || !tracks.Contains(track)) return;
             var removedIndex = tracks.IndexOf(track);
             var wasSelected = ReferenceEquals(SelectedTrack, track);
+            CancelTrackRename(track); trackExtents.Remove(track);
             project.Tracks.Remove(track);
             tracks.Remove(track);
+            NotifyTrackPresentation(); NotifyTrackAuditionState();
             if (wasSelected) SelectedTrack = tracks.Count == 0 ? null : tracks[Math.Min(removedIndex, tracks.Count - 1)];
             history.RemoveTrack(track); if (track is InstrumentalTrack instrument) instrumentHistories.Remove(instrument);
             PruneNodeSelection();
@@ -193,13 +196,62 @@ public partial class WorkstationPageVM
                     if(track is not InstrumentalTrack) track.SelectedSampleFileName ??= track.Samples.FirstOrDefault()?.FileName;
                     tracks.Add(track);
                 }
+                NotifyTrackPresentation(); NotifyTrackAuditionState();
     }
     private void NotifyTrackCommands()
     {
+        if (!IsInteractionReady && RenamingTrack is {} editing) { RenamingTrack = null; TrackNameDraft = editing.Name; }
+        MoveTrackUpCommand.NotifyCanExecuteChanged(); MoveTrackDownCommand.NotifyCanExecuteChanged();
+        ToggleTrackCollapsedCommand.NotifyCanExecuteChanged(); BeginTrackRenameCommand.NotifyCanExecuteChanged();
+        OnPropertyChanged(nameof(CanToggleTracksCollapsed));
+        ToggleTrackMutesCommand.NotifyCanExecuteChanged();
+        OnPropertyChanged(nameof(CanToggleTrackMutes));
+
         IncreaseTrackHeightCommand.NotifyCanExecuteChanged();
         DecreaseTrackHeightCommand.NotifyCanExecuteChanged();
         ToggleTracksCollapsedCommand.NotifyCanExecuteChanged();
         AddSampleTrackCommand.NotifyCanExecuteChanged();
         AddPianoTrackCommand.NotifyCanExecuteChanged();
     }
+    private bool CanMoveTrack(Track? track) => CanPlaceSamples && !instrumentBusy && !controlPointsBusy && track is not null && tracks.Contains(track);
+    private bool CanMoveTrackUp(Track? track) => CanMoveTrack(track) && tracks.IndexOf(track!) > 0;
+    private bool CanMoveTrackDown(Track? track) => CanMoveTrack(track) && tracks.IndexOf(track!) < tracks.Count - 1;
+    [RelayCommand(CanExecute = nameof(CanMoveTrackUp))]
+    private void MoveTrackUp(Track track) => MoveTrack(track, tracks.IndexOf(track) - 1);
+    [RelayCommand(CanExecute = nameof(CanMoveTrackDown))]
+    private void MoveTrackDown(Track track) => MoveTrack(track, tracks.IndexOf(track) + 1);
+    public bool MoveTrack(Track track, int finalIndex)
+    {
+        if (!CanMoveTrack(track) || finalIndex < 0 || finalIndex >= tracks.Count || Project is null || !Project.Tracks.SequenceEqual(tracks)) return false;
+        var oldIndex = tracks.IndexOf(track); if (oldIndex == finalIndex) return false;
+        Project.Tracks.RemoveAt(oldIndex); Project.Tracks.Insert(finalIndex, track);
+        tracks.Move(oldIndex, finalIndex); NotifyTrackPresentation(); NotifyTrackAuditionState(); QueueSave(); return true;
+    }
+    [ObservableProperty] private Track? renamingTrack;
+    [ObservableProperty] private string trackNameDraft = string.Empty;
+    [ObservableProperty] private bool isTrackRenamePending;
+    private bool CanBeginTrackRename(Track? track) => CanMoveTrack(track) && !IsTrackRenamePending && (RenamingTrack is null || ReferenceEquals(RenamingTrack, track));
+    [RelayCommand(CanExecute = nameof(CanBeginTrackRename))]
+    private void BeginTrackRename(Track track)
+    {
+        if (!CanBeginTrackRename(track)) return;
+        TrackNameDraft = track.Name; RenamingTrack = track; NotifyTrackCommands();
+    }
+    public void CancelTrackRename(Track track)
+    {
+        if (!ReferenceEquals(RenamingTrack, track)) return;
+        RenamingTrack = null; TrackNameDraft = track.Name; NotifyTrackCommands();
+    }
+    public async Task CommitTrackRenameAsync(Track track)
+    {
+        if (!ReferenceEquals(RenamingTrack, track) || IsTrackRenamePending) return;
+        var name = TrackNameDraft; RenamingTrack = null;
+        if (!CanMoveTrack(track) || track.Name == name) { TrackNameDraft = track.Name; return; }
+        IsTrackRenamePending = true; NotifyTrackCommands();
+        try { SetTrackName(track, name); await SettleInstrumentalFoldersAsync(); }
+        catch (OperationCanceledException) { }
+        catch (Exception error) { ErrorMessage = error.Message; }
+        finally { TrackNameDraft = track.Name; IsTrackRenamePending = false; NotifyTrackCommands(); }
+    }
+
 }
