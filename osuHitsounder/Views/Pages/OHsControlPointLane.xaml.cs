@@ -33,7 +33,8 @@ public partial class OHsControlPointLane : UserControl
     {
         InitializeComponent();
         PointItems.AddHandler(System.Windows.Controls.Primitives.ButtonBase.ClickEvent, new RoutedEventHandler(OnTagClick));
-        Unloaded += (_, _) => DismissEditor(false);
+        Unloaded += (_, _) => ResetInteraction();
+        IsEnabledChanged += (_, _) => { SetValue(IsMenuOwnerActivePropertyKey, State?.CanEdit == true && IsEnabled); if (!IsEnabled) ResetInteraction(); };
     }
     private static DependencyProperty RegisterCoordinate(string name) => DependencyProperty.Register(name, typeof(double), typeof(OHsControlPointLane),
         new FrameworkPropertyMetadata(0d, FrameworkPropertyMetadataOptions.AffectsMeasure, (d, e) =>
@@ -47,11 +48,13 @@ public partial class OHsControlPointLane : UserControl
     {
         var lane = (OHsControlPointLane)d;
         lane.RefreshEditor(e.OldValue as ControlPointsSnapshot);
+        lane.RefreshInteraction(e.OldValue as ControlPointsSnapshot);
         lane.SetValue(IsMenuOwnerActivePropertyKey, lane.State?.CanEdit == true && lane.IsEnabled);
         var points = lane.State?.Points ?? [];
         if (lane.PointItems.ItemsSource is not IReadOnlyList<ControlPointSnapshot> previous || !previous.SequenceEqual(points))
             lane.PointItems.ItemsSource = points;
         lane.panel?.InvalidateMeasure();
+        lane.UpdateSaveStatus();
     }
 
     private OHsControlPointLanePanel? EnsurePanel()
@@ -64,6 +67,13 @@ public partial class OHsControlPointLane : UserControl
 
     private Size MeasurePoint(ControlPointSnapshot point)
     {
+        var index = PointItems.Items.IndexOf(point);
+        if (index >= 0 && PointItems.ItemContainerGenerator.ContainerFromIndex(index) is DependencyObject container &&
+            FindChild<OHsControlPointTag>(container) is { } realized)
+        {
+            realized.RefreshText(); realized.Measure(new(double.PositiveInfinity, double.PositiveInfinity));
+            return realized.DesiredSize;
+        }
         measurementTag ??= new() { Style = (Style)FindResource("OHsControlPointTagStyle") };
         measurementTag.Point = point; measurementTag.RefreshText(); measurementTag.FlowDirection = FlowDirection;
         measurementTag.MaxWidth = Math.Max(0, ViewportWidth);
@@ -116,6 +126,7 @@ public partial class OHsControlPointLane : UserControl
         if (e.Key == Key.Tab && Keyboard.FocusedElement is OHsControlPointTag { Point: { } point } &&
             MovePointFocus(point.Id, (Keyboard.Modifiers & ModifierKeys.Shift) == 0) is { } next)
         { next.Focus(); e.Handled = true; }
+        if (HandlePointKey(e.Key == Key.System ? e.SystemKey : e.Key, Keyboard.Modifiers, Keyboard.FocusedElement as DependencyObject)) e.Handled = true;
         base.OnPreviewKeyDown(e);
     }
 

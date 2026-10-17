@@ -28,6 +28,7 @@ public partial class OHsWorkstationTimeline : UserControl
     public OHsWorkstationTimeline()
     {
         InitializeComponent();
+        ControlPointLane.HorizontalOffsetRequested += ScrollFromUser;
         DataContextChanged += (_, e) => viewModel = e.NewValue as WorkstationPageVM ?? null!;
     }
     public event EventHandler? ViewportChanged;
@@ -97,6 +98,9 @@ public partial class OHsWorkstationTimeline : UserControl
     }
     private void OnWaveformScrollChanged(object sender, ScrollChangedEventArgs e)
     {
+        var inset = WaveformScrollViewer.BorderThickness;
+        var padding = WaveformScrollViewer.Padding;
+        ControlPointLane.Margin = new Thickness(inset.Left + padding.Left, ControlPointLane.Margin.Top, inset.Right + padding.Right, ControlPointLane.Margin.Bottom);
         if (e.ViewportWidth > 0) WaveformDisplay.SetCurrentValue(WaveformView.ViewportWidthProperty, e.ViewportWidth);
         SetValue(ScrollableWidthPropertyKey, WaveformScrollViewer.ScrollableWidth);
         TimelineHorizontalOffset = e.HorizontalOffset;

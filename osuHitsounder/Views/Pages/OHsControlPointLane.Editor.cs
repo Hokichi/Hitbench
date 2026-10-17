@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Interop;
 using osuHitsounder.Resources.DataModels;
 
 namespace osuHitsounder.Views.Pages;
@@ -17,6 +18,7 @@ public partial class OHsControlPointLane
 
     internal bool OpenEditor(Guid id)
     {
+        if (PresentEditor is null && PresentationSource.FromVisual(this) is not HwndSource) return false;
         if (State is not { CanEdit: true } state || state.Points.FirstOrDefault(p => p.Id == id) is not { } point ||
             BringPointIntoView(id) is not { } tag) return false;
         if (IsEditorOpen) DismissEditor(false);
@@ -59,6 +61,7 @@ public partial class OHsControlPointLane
     }
     private void OnTagClick(object sender, RoutedEventArgs e)
     {
+        if (suppressTagClick) { suppressTagClick = false; e.Handled = true; return; }
         if (e.OriginalSource is OHsControlPointTag { Point: { } point }) { OpenEditor(point.Id); e.Handled = true; }
     }
 }

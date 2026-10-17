@@ -60,6 +60,8 @@
         </Style>
 
 </UserControl.Resources>
+ <Grid Style="{StaticResource BaseGridStyle}" FlowDirection="LeftToRight">
+  <Grid.RowDefinitions><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                             <ScrollViewer
                                 x:Name="WaveformScrollViewer"
                                 
@@ -91,5 +93,19 @@
                                     WaveformBrush="{DynamicResource Brush.Navy.Muted}"
                                     ZoomFactor="{Binding ZoomFactor, Mode=OneWay}" />
                             </ScrollViewer>
+  <pages:OHsControlPointLane x:Name="ControlPointLane" Grid.Row="1" Margin="0,8,0,0" HorizontalAlignment="Left"
+   FlowDirection="{Binding FlowDirection, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationTimeline}, Mode=OneWay}"
+   Width="{Binding TimelineViewportWidth, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationTimeline}, Mode=OneWay}"
+   State="{Binding ControlPointsState, Mode=OneWay}" PendingAdd="{Binding PendingControlPointAdd, Mode=OneWay}"
+   AddCommand="{Binding AddControlPointCommand, Mode=OneWay}" CommitAddCommand="{Binding CommitControlPointAddCommand, Mode=OneWay}"
+   MovePointCommand="{Binding MoveControlPointCommand, Mode=OneWay}" SetPointCommand="{Binding SetControlPointCommand, Mode=OneWay}"
+   DeletePointCommand="{Binding DeleteControlPointCommand, Mode=OneWay}" RetrySaveCommand="{Binding RetryControlPointsSaveCommand, Mode=OneWay}"
+   OwnerError="{Binding ControlPointError, Mode=OneWay}" DurationMilliseconds="{Binding Waveform.Duration.TotalMilliseconds, Mode=OneWay, FallbackValue=0}"
+   Offsets="{Binding Project.Offsets, Mode=OneWay}"
+   Bpms="{Binding Project.BPMs, Mode=OneWay}" Subdivision="{Binding Subdivision, Mode=OneWay}"
+   ContentWidth="{Binding TimelineContentWidth, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationTimeline}, Mode=OneWay}"
+   ViewportWidth="{Binding TimelineViewportWidth, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationTimeline}, Mode=OneWay}"
+   HorizontalOffset="{Binding TimelineHorizontalOffset, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationTimeline}, Mode=OneWay}" />
+ </Grid>
 </UserControl>
 

@@ -10,8 +10,9 @@ public class OHsControlPointLaneTests
     internal static OHsControlPointLane Create(IReadOnlyList<ControlPointSnapshot> points)
     {
         new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
-        var lane = new OHsControlPointLane { DurationMilliseconds = 10000, ContentWidth = 20000, ViewportWidth = 400,
-            State = new(new("project.json", Guid.NewGuid()), points, 1, true, null, false, null, 0, true) };
+        var lane = new OHsControlPointLane();
+        lane.DurationMilliseconds = 10000; lane.ContentWidth = 20000; lane.ViewportWidth = 400;
+        lane.State = new(new("project.json", Guid.NewGuid()), points, 1, true, null, false, null, 0, true);
         UiTestPump.Layout(lane, 400, 180);
         return lane;
     }
