@@ -81,7 +81,7 @@ public class WorkstationReturnIntegrationTests
     }
 
     [Test]
-    public void ReturnWaitShowsSavingAndLeavesOnlyAfterSaved()
+    public void ReturnWaitBlocksEditingAndLeavesOnlyAfterSaved()
     {
         var delayed = new DelayedProjectFileService();
         Open(delayed);
@@ -93,10 +93,6 @@ public class WorkstationReturnIntegrationTests
             Assert.That(returning.IsCompleted, Is.False);
             Assert.That(((ContentControl)window.FindName("PageHost")).Content, Is.SameAs(workstation));
             Assert.That(((Border)workstation.FindName("LoadingOverlay")).Visibility, Is.EqualTo(Visibility.Visible));
-            var toast = (TextBlock)workstation.FindName("LoadingProjectText");
-            Assert.That(toast.Text, Is.EqualTo("Saving..."));
-            Assert.That(AutomationProperties.GetLiveSetting(toast), Is.EqualTo(AutomationLiveSetting.Polite));
-            Assert.That(((Border)workstation.FindName("LoadingToast")).Visibility, Is.EqualTo(Visibility.Visible));
             Assert.That(audio.Disposed, Is.False);
             Assert.That(window.ReturnHomeAsync(), Is.SameAs(returning));
         }

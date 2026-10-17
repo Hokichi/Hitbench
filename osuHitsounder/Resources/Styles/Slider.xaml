@@ -149,13 +149,9 @@
     </GeometryGroup>
     <ControlTemplate x:Key="OHsVolumeWheelTemplate" TargetType="customControls:VolumeWheel">
         <Grid
-            MinWidth="272"
+            MinWidth="168"
             MinHeight="168"
             FlowDirection="LeftToRight">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="168" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
             <Border
                 x:Name="ActiveBorder"
                 Width="168"
@@ -197,24 +193,10 @@
                         Text="{Binding Value, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay, StringFormat={}{0:0}%}" />
                 </Grid>
             </Border>
-            <TextBlock
-                x:Name="WheelLabel"
-                Grid.Column="1"
-                MinWidth="96"
-                Margin="8,0,0,0"
-                VerticalAlignment="Center"
-                FlowDirection="{Binding FlowDirection, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}"
-                Foreground="{DynamicResource Brush.Text.Primary}"
-                Style="{StaticResource BaseTextBlockStyle}"
-                Text="{TemplateBinding Label}"
-                TextWrapping="Wrap" />
         </Grid>
         <ControlTemplate.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
                 <Setter TargetName="WheelBackground" Property="Fill" Value="{DynamicResource Brush.Background.Hover}" />
-            </Trigger>
-            <Trigger Property="IsActive" Value="True">
-                <Setter TargetName="WheelLabel" Property="FontFamily" Value="{DynamicResource Bold}" />
             </Trigger>
 
             <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
@@ -223,7 +205,6 @@
                 <Setter TargetName="WheelBackground" Property="Stroke" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
                 <Setter TargetName="WheelFill" Property="Fill" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
                 <Setter TargetName="WheelValue" Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
-                <Setter TargetName="WheelLabel" Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
             </DataTrigger>
 
         </ControlTemplate.Triggers>

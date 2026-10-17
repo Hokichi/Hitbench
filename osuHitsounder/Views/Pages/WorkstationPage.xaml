@@ -141,21 +141,6 @@
 
 
         <Style
-            x:Key="OHsWorkstationSaveErrorStyle"
-            BasedOn="{StaticResource BaseTextBlockStyle}"
-            TargetType="TextBlock">
-            <Setter Property="Foreground" Value="{DynamicResource Brush.Danger}" />
-            <Setter Property="TextWrapping" Value="Wrap" />
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding SaveError, Mode=OneWay}" Value="{x:Null}">
-                    <Setter Property="Visibility" Value="Collapsed" />
-                </DataTrigger>
-                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
-                    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
-        <Style
             x:Key="OHsWorkstationRetrySaveStyle"
             BasedOn="{StaticResource OHsBalloonNeutralActionStyle}"
             TargetType="customControls:BalloonButton">
@@ -193,37 +178,6 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
-        <Style
-            x:Key="OHsWorkstationLoadingToastStyle"
-            BasedOn="{StaticResource CardBorderStyle}"
-            TargetType="Border">
-            <Setter Property="Margin" Value="16" />
-            <Setter Property="HorizontalAlignment" Value="Center" />
-            <Setter Property="VerticalAlignment" Value="Top" />
-            <Setter Property="Visibility" Value="Collapsed" />
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding ShowStatusOverlay, Mode=OneWay}" Value="True">
-                    <Setter Property="Visibility" Value="Visible" />
-                </DataTrigger>
-                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
-                    <Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
-        <Style
-            x:Key="OHsWorkstationLoadingTextStyle"
-            BasedOn="{StaticResource BaseTextBlockStyle}"
-            TargetType="TextBlock">
-            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
-            <Setter Property="TextWrapping" Value="Wrap" />
-            <Setter Property="AutomationProperties.LiveSetting" Value="Polite" />
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
-                    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
 
 
 
@@ -245,10 +199,6 @@
                 </Grid.RowDefinitions>
                 <pages:OHsWorkstationAudioCard x:Name="AudioCard" TrackScrollBarGutter="{Binding TrackScrollBarGutter, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}" />
                 <StackPanel Grid.Row="2" Orientation="Horizontal">
-                    <TextBlock
-                        AutomationProperties.LiveSetting="Assertive"
-                        Style="{StaticResource OHsWorkstationSaveErrorStyle}"
-                        Text="{Binding SaveError, Mode=OneWay}" />
                     <customControls:BalloonButton
                         AutomationProperties.Name="Retry project save"
                         ButtonIcon="{StaticResource RegularRepeat}"
@@ -318,7 +268,7 @@
                         <customControls:VolumeWheel
                             x:Name="SongVolumeWheel"
                             IsEnabled="{Binding CanPlay, Mode=OneWay}"
-                            Label="Song"
+                            AutomationProperties.Name="Song volume"
                             MouseMove="OnVolumeWheelMouseMove"
                             PreviewMouseLeftButtonDown="OnVolumeWheelMouseDown"
                             Style="{StaticResource BaseVolumeWheelStyle}"
@@ -327,7 +277,7 @@
                         <customControls:VolumeWheel
                             x:Name="ApplicationVolumeWheel"
                             IsEnabled="{Binding CanPlay, Mode=OneWay}"
-                            Label="Application"
+                            AutomationProperties.Name="Application volume"
                             MouseMove="OnVolumeWheelMouseMove"
                             PreviewMouseLeftButtonDown="OnVolumeWheelMouseDown"
                             Style="{StaticResource BaseVolumeWheelStyle}"
@@ -336,7 +286,7 @@
                         <customControls:VolumeWheel
                             x:Name="SamplesVolumeWheel"
                             IsEnabled="{Binding CanPlay, Mode=OneWay}"
-                            Label="Samples"
+                            AutomationProperties.Name="Samples volume"
                             MouseMove="OnVolumeWheelMouseMove"
                             PreviewMouseLeftButtonDown="OnVolumeWheelMouseDown"
                             Style="{StaticResource BaseVolumeWheelStyle}"
@@ -347,13 +297,6 @@
             </Border>
         </Grid>
         <Border x:Name="LoadingOverlay" Style="{StaticResource OHsWorkstationLoadingOverlayStyle}" />
-        <Border x:Name="LoadingToast" Style="{StaticResource OHsWorkstationLoadingToastStyle}">
-            <TextBlock
-                x:Name="LoadingProjectText"
-                AutomationProperties.Name="{Binding StatusText, Mode=OneWay}"
-                Style="{StaticResource OHsWorkstationLoadingTextStyle}"
-                Text="{Binding StatusText, Mode=OneWay}" />
-        </Border>
     </Grid>
 </UserControl>
 

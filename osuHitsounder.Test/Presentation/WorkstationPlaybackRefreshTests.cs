@@ -99,7 +99,7 @@ public class WorkstationPlaybackRefreshTests
     [TestCase(900, FlowDirection.RightToLeft, "WASAPI")]
     [TestCase(640, FlowDirection.LeftToRight, "WaveOut")]
     [TestCase(900, FlowDirection.RightToLeft, "WaveOut")]
-    public void FallbackWarningBindsAndClearsWithoutDisablingTransport(int width, FlowDirection direction, string backend)
+    public void FallbackWarningStateUpdatesWithoutDisablingTransport(int width, FlowDirection direction, string backend)
     {
         host.Width = width;
         host.FlowDirection = direction;
@@ -109,24 +109,18 @@ public class WorkstationPlaybackRefreshTests
         audio.Snapshot = audio.Snapshot with { Warning = warning };
         PumpFrame();
         view.UpdateLayout();
-        var status = (System.Windows.Controls.TextBlock)((osuHitsounder.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("PlaybackWarningText");
-        Assert.That(status, Is.Not.Null);
-        UiControlContract.AssertStyle<System.Windows.Controls.TextBlock>(status, "OHsWorkstationPlaybackWarningStyle");
-        Assert.That(status.Text, Is.EqualTo(warning));
-        Assert.That(System.Windows.Automation.AutomationProperties.GetName(status), Is.EqualTo(warning));
-        Assert.That(status.Visibility, Is.EqualTo(Visibility.Visible));
-        Assert.That(status.FlowDirection, Is.EqualTo(direction));
+        Assert.That(vm.PlaybackWarning, Is.EqualTo(warning));
         Assert.That(vm.CanPlay, Is.True);
         Assert.That(vm.ErrorMessage, Is.Null);
         audio.Snapshot = audio.Snapshot with { Warning = null, Error = "Output failed" };
         PumpFrame();
         view.UpdateLayout();
-        Assert.That(status.Visibility, Is.EqualTo(Visibility.Collapsed));
+        Assert.That(vm.PlaybackWarning, Is.Null);
         Assert.That(vm.ErrorMessage, Is.EqualTo("Output failed"));
         audio.Snapshot = audio.Snapshot with { Warning = "" };
         PumpFrame();
         view.UpdateLayout();
-        Assert.That(status.Visibility, Is.EqualTo(Visibility.Collapsed));
+        Assert.That(vm.PlaybackWarning, Is.Empty);
     }
 
     private StubWorkstationAudioService audio = null!;

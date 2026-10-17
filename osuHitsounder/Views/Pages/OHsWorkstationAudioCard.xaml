@@ -105,42 +105,6 @@
             </Style.Triggers>
         </Style>
 <Style
-            x:Key="OHsWorkstationPlaybackWarningStyle"
-            BasedOn="{StaticResource BaseTextBlockStyle}"
-            TargetType="TextBlock">
-            <Setter Property="Margin" Value="0,8,0,0" />
-            <Setter Property="Foreground" Value="{DynamicResource Brush.Warning}" />
-            <Setter Property="TextWrapping" Value="Wrap" />
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding PlaybackWarning, Mode=OneWay}" Value="{x:Null}">
-                    <Setter Property="Visibility" Value="Collapsed" />
-                </DataTrigger>
-                <DataTrigger Binding="{Binding PlaybackWarning, Mode=OneWay}" Value="">
-                    <Setter Property="Visibility" Value="Collapsed" />
-                </DataTrigger>
-                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
-                    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
-<Style
-            x:Key="OHsWorkstationPlaybackWarningScrollStyle"
-            BasedOn="{StaticResource {x:Type ScrollViewer}}"
-            TargetType="ScrollViewer">
-            <Setter Property="MaxHeight" Value="120" />
-            <Setter Property="Focusable" Value="True" />
-            <Setter Property="helpers:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
-            <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding PlaybackWarning, Mode=OneWay}" Value="{x:Null}">
-                    <Setter Property="Visibility" Value="Collapsed" />
-                </DataTrigger>
-                <DataTrigger Binding="{Binding PlaybackWarning, Mode=OneWay}" Value="">
-                    <Setter Property="Visibility" Value="Collapsed" />
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
-<Style
             x:Key="OHsWorkstationToolbarButtonStyle"
             BasedOn="{StaticResource OHsWorkstationTransportButtonStyle}"
             TargetType="customControls:BalloonButton">
@@ -156,11 +120,11 @@
         </Style>
         <ContextMenu x:Key="OHsWorkstationAddMenu" x:Shared="False" Style="{StaticResource OHsActionContextMenuStyle}">
             <MenuItem Header="Sample Track" Command="{Binding AddSampleTrackCommand, Mode=OneWay}"
-                InputGestureText="Ctrl+N" ToolTip="Add sample track (Ctrl+N)" Style="{StaticResource OHsActionMenuItemStyle}" />
+                ToolTip="Add sample track (Ctrl+N)" Style="{StaticResource OHsActionMenuItemStyle}" />
             <MenuItem Header="Instrumental Track" Command="{Binding AddPianoTrackCommand, Mode=OneWay}"
-                InputGestureText="Ctrl+Shift+N" ToolTip="Add instrumental track (Ctrl+Shift+N)" Style="{StaticResource OHsActionMenuItemStyle}" />
+                ToolTip="Add instrumental track (Ctrl+Shift+N)" Style="{StaticResource OHsActionMenuItemStyle}" />
             <MenuItem Header="Control Point" Command="{Binding AddControlPointCommand, Mode=OneWay}"
-                InputGestureText="F6" ToolTip="Add control point at playback marker (F6)" Style="{StaticResource OHsActionMenuItemStyle}" />
+                ToolTip="Add control point at playback marker (F6)" Style="{StaticResource OHsActionMenuItemStyle}" />
         </ContextMenu>
 <Style
             x:Key="OHsWorkstationCollapseTracksStyle"
@@ -189,19 +153,6 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" MinHeight="128" />
                         </Grid.RowDefinitions>
-                        <ScrollViewer
-                            Grid.Row="0"
-                            AutomationProperties.Name="Playback diagnostics"
-                            HorizontalScrollBarVisibility="Disabled"
-                            Style="{StaticResource OHsWorkstationPlaybackWarningScrollStyle}"
-                            VerticalScrollBarVisibility="Auto">
-                            <TextBlock
-                                x:Name="PlaybackWarningText"
-                                AutomationProperties.LiveSetting="Polite"
-                                AutomationProperties.Name="{Binding PlaybackWarning, Mode=OneWay}"
-                                Style="{StaticResource OHsWorkstationPlaybackWarningStyle}"
-                                Text="{Binding PlaybackWarning, Mode=OneWay}" />
-                        </ScrollViewer>
                         <Grid Grid.Row="1" Style="{StaticResource BaseGridStyle}">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="{StaticResource OHsWorkstationSideColumnWidth}" />

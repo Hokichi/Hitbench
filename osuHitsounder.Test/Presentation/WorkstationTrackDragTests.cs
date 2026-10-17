@@ -177,7 +177,8 @@ public sealed class WorkstationTrackDragTests
     {
         using var context = new WorkstationTrackDragTestContext();
         var row = context.Row(0); var point = context.PointOn(row);
-        var label = WorkstationTrackDragTestContext.Descendants<TextBlock>(row).First();
+        var label = new TextBlock();
+        WorkstationTrackDragTestContext.Descendants<StackPanel>(row).Single(panel => panel.Name == "TrackLeftControls").Children.Add(label);
         var run = new Run("Label"); label.Inlines.Add(run);
         Assert.That(context.Owner.BeginTrackPointer(run, point), Is.True);
         context.Owner.CancelTrackPointer();

@@ -51,22 +51,9 @@
    <Setter Property="ItemTemplate" Value="{StaticResource OHsControlPointContentTemplate}" />
    <Setter Property="VirtualizingPanel.IsVirtualizing" Value="True" /><Setter Property="VirtualizingPanel.VirtualizationMode" Value="Recycling" />
   </Style>
-  <Style x:Key="OHsControlPointLaneTextStyle" TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlockStyle}">
-   <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}" /><Setter Property="TextWrapping" Value="Wrap" />
-   <Style.Triggers>
-    <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True"><Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" /></DataTrigger>
-   </Style.Triggers>
-  </Style>
   <Style x:Key="OHsControlPointLaneEmptyStyle" TargetType="Grid" BasedOn="{StaticResource BaseGridStyle}">
    <Setter Property="Visibility" Value="Collapsed" />
    <Style.Triggers><DataTrigger Binding="{Binding HasItems, ElementName=PointItems, Mode=OneWay}" Value="False"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
-  </Style>
-  <Style x:Key="OHsControlPointLaneErrorStyle" TargetType="TextBlock" BasedOn="{StaticResource OHsControlPointLaneTextStyle}">
-   <Setter Property="Foreground" Value="{DynamicResource Brush.Danger}" /><Setter Property="AutomationProperties.LiveSetting" Value="Polite" />
-   <Style.Triggers>
-    <Trigger Property="Text" Value="{x:Null}"><Setter Property="Visibility" Value="Collapsed" /></Trigger>
-    <Trigger Property="Text" Value=""><Setter Property="Visibility" Value="Collapsed" /></Trigger>
-   </Style.Triggers>
   </Style>
   <Style x:Key="OHsControlPointLaneActionStyle" TargetType="c:BalloonButton" BasedOn="{StaticResource OHsBalloonNeutralActionStyle}">
    <Setter Property="ShouldShowText" Value="True" /><Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
@@ -92,16 +79,10 @@
   <ItemsControl x:Name="PointItems" Style="{StaticResource OHsControlPointLaneItemsStyle}" FlowDirection="LeftToRight" />
   <Grid Style="{StaticResource OHsControlPointLaneEmptyStyle}">
    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-   <TextBlock Text="No control points yet." VerticalAlignment="Center" Style="{StaticResource OHsControlPointLaneTextStyle}" />
    <c:BalloonButton Grid.Column="1" ButtonText="Add Control Point" ButtonIcon="{StaticResource ClockPlusOutline}" Click="OnAddPointClick"
     Style="{StaticResource OHsControlPointLaneActionStyle}" IsEnabled="{Binding State.CanAdd, RelativeSource={RelativeSource AncestorType=p:OHsControlPointLane}, Mode=OneWay}" AutomationProperties.Name="Add Control Point at playback marker" />
   </Grid>
   <StackPanel Grid.Row="1" Style="{StaticResource BaseStackPanelStyle}">
-   <TextBlock Text="{Binding RejectionReason, RelativeSource={RelativeSource AncestorType=p:OHsControlPointLane}, Mode=OneWay}" Style="{StaticResource OHsControlPointLaneErrorStyle}" />
-   <TextBlock Text="{Binding OwnerError, RelativeSource={RelativeSource AncestorType=p:OHsControlPointLane}, Mode=OneWay}" Style="{StaticResource OHsControlPointLaneErrorStyle}" />
-   <TextBlock Text="{Binding State.UnavailableReason, RelativeSource={RelativeSource AncestorType=p:OHsControlPointLane}, Mode=OneWay}" Style="{StaticResource OHsControlPointLaneTextStyle}" />
-   <TextBlock Text="{Binding SaveStatus, RelativeSource={RelativeSource AncestorType=p:OHsControlPointLane}, Mode=OneWay}" Style="{StaticResource OHsControlPointLaneTextStyle}" AutomationProperties.LiveSetting="Polite" />
-   <TextBlock Text="{Binding State.SaveError, RelativeSource={RelativeSource AncestorType=p:OHsControlPointLane}, Mode=OneWay}" Style="{StaticResource OHsControlPointLaneErrorStyle}" />
    <c:BalloonButton ButtonText="Retry save" ButtonIcon="{StaticResource RegularRepeat}" Click="OnRetrySaveClick" Style="{StaticResource OHsControlPointLaneRetryStyle}"
     HorizontalAlignment="Left" IsEnabled="{Binding State.CanEdit, RelativeSource={RelativeSource AncestorType=p:OHsControlPointLane}, Mode=OneWay}" AutomationProperties.Name="Retry control point save" />
   </StackPanel>

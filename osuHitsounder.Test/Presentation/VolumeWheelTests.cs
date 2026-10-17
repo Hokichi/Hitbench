@@ -190,7 +190,8 @@ public class VolumeWheelTests
             page.ShowVolumeOverlay(false, new Point(0, 0));
             view.UpdateLayout();
             var panel = (Panel)page.FindName("VolumeWheelPanel");
-            Assert.That(panel.Children.OfType<VolumeWheel>().Select(w => w.Label), Is.EquivalentTo(new[] { "Song", "Application", "Samples" }));
+            Assert.That(panel.Children.OfType<VolumeWheel>().Select(AutomationProperties.GetName),
+                Is.EquivalentTo(new[] { "Song volume", "Application volume", "Samples volume" }));
             foreach (var wheel in panel.Children.OfType<VolumeWheel>())
                 UiControlContract.AssertStyle<VolumeWheel>(wheel, "BaseVolumeWheelStyle");
         }

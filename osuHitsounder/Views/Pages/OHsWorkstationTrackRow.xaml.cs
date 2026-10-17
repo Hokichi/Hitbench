@@ -254,14 +254,7 @@ public partial class OHsWorkstationTrackRow : UserControl
         {
             var state = viewModel.GetSampleAvailability(track); host.Tag = state;
             var content = FindVisualChild<Grid>(host, "TrackGridContent");
-            var status = FindVisualChild<TextBlock>(host, "MissingGridStatus");
             if (content is not null) content.IsEnabled = state == TrackSampleAvailability.Available;
-            if (status is not null) status.Text = state switch
-            {
-                TrackSampleAvailability.Missing => "Sample not found.",
-                TrackSampleAvailability.Unselected => "No sample selected. Choose a sample or use Manage Sample.",
-                _ => string.Empty
-            };
             return;
         }
         for (var i=0;i<VisualTreeHelper.GetChildrenCount(root);i++) RefreshTrackSamplePresentation(VisualTreeHelper.GetChild(root,i));

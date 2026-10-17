@@ -78,8 +78,6 @@
 <MenuItem Header="Rename" Icon="{StaticResource Pen}" Style="{StaticResource OHsWorkstationTrackMenuItemStyle}" Command="{Binding ViewModel.BeginTrackRenameCommand, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}" CommandParameter="{Binding Mode=OneWay}" />
 <MenuItem Header="Delete Track" Icon="{StaticResource Delete}" Style="{StaticResource OHsWorkstationTrackDeleteMenuItemStyle}" Command="{Binding ViewModel.RemoveTrackCommand, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}" IsEnabled="{Binding ViewModel.CanRemoveTrack, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}" CommandParameter="{Binding Mode=OneWay}" />
 </ContextMenu>
-<Style x:Key="OHsWorkstationTrackMutedStatusStyle" TargetType="TextBlock" BasedOn="{StaticResource CardLabelTextStyle}"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding IsTrackMuted, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger><DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True"><Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" /></DataTrigger></Style.Triggers></Style>
-<Style x:Key="OHsWorkstationTrackSoloStatusStyle" TargetType="TextBlock" BasedOn="{StaticResource CardLabelTextStyle}"><Setter Property="Foreground" Value="{DynamicResource Brush.Navy}" /><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding IsTrackSoloed, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger><DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True"><Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" /></DataTrigger></Style.Triggers></Style>
 <BlurEffect x:Key="OHsWorkstationMissingBlur" Radius="4" />
 <Style
             x:Key="OHsWorkstationGridContentStyle"
@@ -93,25 +91,6 @@
             </Style.Triggers>
         </Style>
 <Style x:Key="OHsWorkstationTrackMutedContentStyle" TargetType="Grid" BasedOn="{StaticResource OHsWorkstationGridContentStyle}"><Style.Triggers><DataTrigger Binding="{Binding IsTrackMuted, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}" Value="True"><Setter Property="Opacity" Value="0.4" /></DataTrigger><DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True"><Setter Property="Opacity" Value="1" /></DataTrigger></Style.Triggers></Style>
-<Style
-            x:Key="OHsWorkstationMissingStatusStyle"
-            BasedOn="{StaticResource CenteredEmptyStateTextStyle}"
-            TargetType="TextBlock">
-            <Setter Property="TextWrapping" Value="Wrap" />
-            <Setter Property="AutomationProperties.LiveSetting" Value="Polite" />
-            <Setter Property="Visibility" Value="Collapsed" />
-            <Style.Triggers>
-                <Trigger Property="Text" Value="Sample not found.">
-                    <Setter Property="Visibility" Value="Visible" />
-                </Trigger>
-                <Trigger Property="Text" Value="No sample selected. Choose a sample or use Manage Sample.">
-                    <Setter Property="Visibility" Value="Visible" />
-                </Trigger>
-                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
-                    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
 <Style
             x:Key="OHsWorkstationSampleFileSelectorStyle"
             BasedOn="{StaticResource OHsWorkstationTrackMetadataComboBoxStyle}"
@@ -141,7 +120,6 @@
                 Loaded="OnTrackControlStackLoaded"
                 SizeChanged="OnTrackControlStackSizeChanged"
                 Style="{StaticResource BaseStackPanelStyle}">
-                <TextBlock Text="Name" Style="{StaticResource CardLabelTextStyle}" /><TextBlock Text="Muted" Style="{StaticResource OHsWorkstationTrackMutedStatusStyle}" /><TextBlock Text="Solo" Style="{StaticResource OHsWorkstationTrackSoloStatusStyle}" />
                 <Grid Style="{StaticResource BaseGridStyle}"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                 <TextBox
                     AutomationProperties.Name="Track name"
@@ -251,10 +229,6 @@
                                 ZoomFactor="{Binding ViewModel.ZoomFactor, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}"
                                 Duration="{Binding ViewModel.Waveform.Duration, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}" />
                         </Grid>
-                        <TextBlock
-                            x:Name="MissingGridStatus"
-                            IsHitTestVisible="False"
-                            Style="{StaticResource OHsWorkstationMissingStatusStyle}" />
                     </Grid>
                 </Border>
                 <StackPanel

@@ -129,7 +129,7 @@ public class WorkstationTrackCollapseTests
             var list = (ListBox)((osuHitsounder.Views.Pages.OHsWorkstationTrackList)page.FindName("TrackListComponent")).FindName("TrackList");
             var missingRow = (ListBoxItem)list.ItemContainerGenerator.ContainerFromItem(missing);
             Assert.That(Find<ComboBox>(missingRow, "TrackSampleFileSelector").SelectedItem, Is.Null);
-            Assert.That(Find<TextBlock>(missingRow, "MissingGridStatus").Text, Is.EqualTo("Sample not found."));
+            Assert.That(Find<Grid>(missingRow, "TrackGridContent").IsEnabled, Is.False);
             Assert.That(missing.SelectedSampleFileName, Is.EqualTo("missing.wav"));
             Assert.That(missing.Samples[0].FileName, Is.EqualTo("missing.wav"));
 

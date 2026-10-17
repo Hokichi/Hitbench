@@ -84,7 +84,7 @@ public class WorkstationSampleReloadIntegrationTests
     }
 
     [Test]
-    public void ReloadUpdatesMissingSampleCuesWithoutMovingTimelineOrTracks()
+    public void ReloadUpdatesSampleEditingAvailabilityWithoutMovingTimelineOrTracks()
     {
         var tracks = Enumerable.Range(0, 30).Select(_ => new Track { SelectedSampleFileName = "hit.wav" }).ToList();
         var source = new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song",
@@ -103,13 +103,15 @@ public class WorkstationSampleReloadIntegrationTests
             files.List = (_, _) => Task.FromResult<IReadOnlyList<string>>([]);
             UiTestPump.Run(vm.ReloadSamplesCommand.ExecuteAsync(null)); view.UpdateLayout();
             Assert.That(scroll.VerticalOffset, Is.EqualTo(vertical)); Assert.That(page.TimelineHorizontalOffset, Is.EqualTo(horizontal));
-            Assert.That(Descendants(list).OfType<TextBlock>().Where(t => t.Name == "MissingGridStatus").Select(t => t.Text),
-                Is.Not.Empty.And.All.EqualTo("Sample not found."));
+            Assert.That(Descendants(list).OfType<Grid>().Where(grid => grid.Name == "TrackGridContent").Select(grid => grid.IsEnabled),
+                Is.Not.Empty.And.All.False);
             Assert.That(tracks.Select(t => t.SelectedSampleFileName), Is.All.EqualTo("hit.wav"));
             files.List = (_, _) => Task.FromResult<IReadOnlyList<string>>(["hit.wav"]);
             UiTestPump.Run(vm.ReloadSamplesCommand.ExecuteAsync(null)); view.UpdateLayout();
             Assert.That(Descendants(list).OfType<ComboBox>().Where(c => c.Name == "TrackSampleFileSelector").Select(c => c.SelectedItem),
                 Is.Not.Empty.And.All.EqualTo("hit.wav"));
+            Assert.That(Descendants(list).OfType<Grid>().Where(grid => grid.Name == "TrackGridContent").Select(grid => grid.IsEnabled),
+                Is.Not.Empty.And.All.True);
             Assert.That(scroll.VerticalOffset, Is.EqualTo(vertical));
         }
         finally { UiTestPump.Run(page.DeactivateAsync()); }

@@ -37,7 +37,6 @@
                                             Margin="0,0,12,0"
                                             VerticalAlignment="Center"
                                             Orientation="Horizontal">
-                                            <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="Beat Divisor"  Margin="0,0,8,0" VerticalAlignment="Center"/>
                                             <customControls:ValueSlider
                                                 x:Name="SubdivisionSelector"
                                                 AutomationProperties.Name="Beat subdivision"

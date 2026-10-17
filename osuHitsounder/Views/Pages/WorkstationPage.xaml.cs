@@ -102,9 +102,6 @@ public partial class WorkstationPage : UserControl
     {
         if (loadStarted || projectPath is null) return;
         loadStarted = true;
-        (System.Windows.Automation.Peers.UIElementAutomationPeer.FromElement(LoadingProjectText) ??
-            System.Windows.Automation.Peers.UIElementAutomationPeer.CreatePeerForElement(LoadingProjectText))?
-            .RaiseAutomationEvent(System.Windows.Automation.Peers.AutomationEvents.LiveRegionChanged);
         ownerWindow = Window.GetWindow(this);
         if (ownerWindow is not null) { ownerWindow.StateChanged += OnOwnerStateChanged; ownerWindow.Deactivated += OnNodeOwnerDeactivated; }
         UpdatePlaybackRefreshSubscription();
@@ -245,10 +242,6 @@ public partial class WorkstationPage : UserControl
             viewModel.RefreshPlayback();
             FollowPlaybackPosition();
         }
-        if (e.PropertyName == nameof(WorkstationPageVM.StatusText))
-            (System.Windows.Automation.Peers.UIElementAutomationPeer.FromElement(LoadingProjectText) ??
-             System.Windows.Automation.Peers.UIElementAutomationPeer.CreatePeerForElement(LoadingProjectText))?
-                .RaiseAutomationEvent(System.Windows.Automation.Peers.AutomationEvents.LiveRegionChanged);
     }
 
     private bool HandleBeatDivisorKey(Key key, ModifierKeys modifiers, bool isRepeat, DependencyObject? origin)

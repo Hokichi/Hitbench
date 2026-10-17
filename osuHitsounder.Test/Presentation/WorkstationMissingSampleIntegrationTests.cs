@@ -26,7 +26,6 @@ public sealed class WorkstationMissingSampleIntegrationTests
             var grid = Descendants(page).OfType<BeatGridView>().Single();
             var selector = Descendants(page).OfType<ComboBox>().Single(c => c.Name == "TrackSampleFileSelector");
             Assert.That(grid.IsEnabled, Is.False); Assert.That(selector.IsEnabled, Is.True);
-            Assert.That(Descendants(page).OfType<TextBlock>().Any(t => t.Text == "Sample not found." && t.Visibility == Visibility.Visible), Is.True);
             selector.SelectedItem = "hit.wav"; view.UpdateLayout();
             Assert.That(grid.IsEnabled, Is.True); Assert.That(track.Samples.Single().FileName, Is.EqualTo("hit.wav"));
         }

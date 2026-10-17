@@ -741,9 +741,9 @@ public class WorkstationPageIntegrationTests
             Assert.That(FindVisualChildren<ComboBox>(cards[0]).Single(box => box.Name == "TrackSampleFileSelector").SelectedItem, Is.EqualTo("Kick.wav"));
             Assert.That(FindVisualChildren<ComboBox>(cards[1]).Single(box => box.Name == "TrackSampleFileSelector").SelectedItem, Is.EqualTo("Snare.wav"));
             foreach (var card in cards.Take(2))
-                Assert.That(FindVisualChildren<TextBlock>(card).Single(block => block.Name == "MissingGridStatus").Visibility, Is.EqualTo(Visibility.Collapsed));
+                Assert.That(FindVisualChildren<Grid>(card).Single(grid => grid.Name == "TrackGridContent").IsEnabled, Is.True);
             Assert.That(FindVisualChildren<ComboBox>(cards[2]).Single(box => box.Name == "TrackSampleFileSelector").SelectedItem, Is.Null);
-            Assert.That(FindVisualChildren<TextBlock>(cards[2]).Single(block => block.Name == "MissingGridStatus").Text, Is.EqualTo("Sample not found."));
+            Assert.That(FindVisualChildren<Grid>(cards[2]).Single(grid => grid.Name == "TrackGridContent").IsEnabled, Is.False);
             Assert.That(tracks[0].Samples.Single().FileName, Is.EqualTo("kick.wav"));
             Assert.That(tracks[1].Samples.Single().FileName, Is.EqualTo("Snare.wav"));
             Assert.That(tracks[2].Samples.Single().FileName, Is.EqualTo("missing.wav"));
@@ -752,7 +752,7 @@ public class WorkstationPageIntegrationTests
     }
 
     [Test]
-    public void MissingSavedSampleIsShownWithoutChangingItsFilename()
+    public void MissingSavedSampleDisablesEditingWithoutChangingItsFilename()
     {
         var track = new osuHitsounder.Core.Entities.Track { Samples = [new Sample { FileName = "missing.wav" }] };
         var source = new StubWorkstationSourceService
@@ -768,8 +768,8 @@ public class WorkstationPageIntegrationTests
         view.UpdateLayout();
         var list = (ItemsControl)((osuHitsounder.Views.Pages.OHsWorkstationTrackList)page.FindName("TrackListComponent")).FindName("TrackList");
         var card = (FrameworkElement)list.ItemContainerGenerator.ContainerFromIndex(0)!;
-        var cue = FindVisualChildren<TextBlock>(card).Single(block => block.Name == "MissingGridStatus");
-        Assert.That(cue.Text, Is.EqualTo("Sample not found."));
+        var content = FindVisualChildren<Grid>(card).Single(grid => grid.Name == "TrackGridContent");
+        Assert.That(content.IsEnabled, Is.False);
         Assert.That(track.Samples.Single().FileName, Is.EqualTo("missing.wav"));
     }
 
