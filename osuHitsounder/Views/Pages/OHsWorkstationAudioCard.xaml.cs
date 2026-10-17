@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using osuHitsounder.ViewModels.Shell;
 
@@ -26,13 +27,22 @@ public partial class OHsWorkstationAudioCard : UserControl
         FocusManager.SetFocusedElement(FocusManager.GetFocusScope(ToggleTracksCollapsedButton), ToggleTracksCollapsedButton);
         return ToggleTracksCollapsedButton.Focus();
     }
-    private void OnClearTrackMutesUnchecked(object sender, RoutedEventArgs e)
+    private bool synchronizingAggregate;
+    private void OnAggregateToggleChanged(object sender, RoutedEventArgs e)
     {
-        if (viewModel.ClearTrackMutesCommand.CanExecute(null)) viewModel.ClearTrackMutesCommand.Execute(null);
-    }
-    private void OnClearTrackSolosUnchecked(object sender, RoutedEventArgs e)
-    {
-        if (viewModel.ClearTrackSolosCommand.CanExecute(null)) viewModel.ClearTrackSolosCommand.Execute(null);
+        if (synchronizingAggregate || sender is not ToggleButton toggle) return;
+        var binding = toggle.GetBindingExpression(ToggleButton.IsCheckedProperty);
+        if (binding is null) return;
+        synchronizingAggregate = true;
+        try
+        {
+            var requested = toggle.IsChecked;
+            binding.UpdateTarget();
+            if (requested != toggle.IsChecked && toggle.IsEnabled && toggle.Tag is ICommand command && command.CanExecute(null))
+                command.Execute(null);
+            binding.UpdateTarget();
+        }
+        finally { synchronizingAggregate = false; }
     }
 
     private void OnEditingModeChecked(object sender, RoutedEventArgs e)

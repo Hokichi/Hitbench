@@ -31,6 +31,10 @@
             <Setter Property="Margin" Value="0,0,8,0" />
             <Setter Property="ShouldShowText" Value="False" />
             <Setter Property="ShouldExpand" Value="False" />
+            <Setter Property="IsTabStop" Value="True" />
+            <Setter Property="helpers:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
+            <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
+            <Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="True" />
         </Style>
 <Style
             x:Key="OHsWorkstationScrollWithMarkerStyle"
@@ -40,7 +44,10 @@
             <Setter Property="Margin" Value="0,0,8,0" />
             <Setter Property="ShouldShowText" Value="False" />
             <Setter Property="IsTabStop" Value="True" />
-            <Setter Property="FocusVisualStyle" Value="{StaticResource DefaultFocusVisualStyle}" />
+            <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
+            <Setter Property="helpers:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
+            <Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="True" />
+            <Setter Property="StrokeBrush" Value="{DynamicResource Brush.Border.Strong}" />
             <Setter Property="DefaultBackground" Value="{DynamicResource Brush.BalloonButton.Background.Neutral}" />
             <Setter Property="HoveredBackground" Value="{DynamicResource Brush.BalloonButton.Background.Neutral.Hovered}" />
             <Style.Triggers>
@@ -51,6 +58,33 @@
                     <Setter Property="StrokeBrush" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
                     <Setter Property="StrokeThickness" Value="1" />
                 </DataTrigger>
+                <Trigger Property="IsChecked" Value="True">
+                    <Setter Property="StrokeThickness" Value="2" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="OHsWorkstationElapsedStyle" BasedOn="{StaticResource BaseTextBlockStyle}" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="{DynamicResource Bold}" />
+            <Setter Property="FontSize" Value="18" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+            <Setter Property="Margin" Value="0,8" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
+                    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="OHsWorkstationAggregateToggleStyle" BasedOn="{StaticResource OHsWorkstationTrackToggleStyle}" TargetType="ToggleButton">
+            <Setter Property="Width" Value="Auto" />
+            <Setter Property="MinWidth" Value="40" />
+            <Setter Property="Padding" Value="4" />
+            <Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="True" />
+            <Style.Triggers>
+                <Trigger Property="IsChecked" Value="True">
+                    <Setter Property="ContentStringFormat" Value="{}{0} On" />
+                    <Setter Property="AutomationProperties.ItemStatus" Value="On" />
+                </Trigger>
             </Style.Triggers>
         </Style>
 <Style
@@ -164,68 +198,47 @@
                                 <ColumnDefinition Width="{StaticResource OHsWorkstationSideColumnWidth}" />
                                 <ColumnDefinition Width="{Binding TrackScrollBarGutter, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationAudioCard}, Mode=OneWay}" />
                             </Grid.ColumnDefinitions>
-                            <customControls:SpacedUniformGrid
-                                Grid.Column="0"
-                                VerticalAlignment="Center"
-                                Columns="3"
-                                HorizontalGap="4"
-                                ItemHeight="40"
-                                ItemWidth="40"
-                                VerticalGap="4">
-                                <customControls:BalloonButton
-                                    x:Name="PlayPauseButton"
-                                    Margin="0"
-                                    Command="{Binding PlayPauseCommand, Mode=OneWay}"
-                                    Style="{StaticResource OHsWorkstationPlayPauseStyle}" />
-                                <customControls:BalloonButton
-                                    Margin="0"
-                                    AutomationProperties.Name="Stop audio"
-                                    ButtonIcon="{StaticResource MediaStop}"
-                                    ButtonText="Stop"
-                                    Command="{Binding StopCommand, Mode=OneWay}"
-                                    ShouldShowText="False"
-                                    Style="{StaticResource OHsWorkstationToolbarButtonStyle}"
-                                    ToolTip="Stop audio and return to the beginning" />
-                                <customControls:BalloonCheckBox
-                                    x:Name="ScrollWithMarkerCheckBox"
-                                    AutomationProperties.HelpText="Follow the current playback marker. Selecting a node turns this off."
-                                    AutomationProperties.Name="Scroll with marker"
-                                    ButtonIcon="{StaticResource AlignArrowRightFill}"
-                                    ButtonText="Scroll with marker"
-                                    CheckedIcon="{StaticResource AlignArrowRightFill}"
-                                    IsChecked="{Binding ScrollWithMarker, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                    IsEnabled="{Binding CanPlay, Mode=OneWay}"
-                                    Style="{StaticResource OHsWorkstationScrollWithMarkerStyle}"
-                                    ToolTip="Follow the current playback marker (F3). Selecting a node turns this off."  Margin="0"/>
-                                <customControls:BalloonButton
-                                    x:Name="ResnapAllSamplesButton"
-                                    Margin="0"
-                                    AutomationProperties.HelpText="Snap every sample to the nearest beat in the current subdivision"
-                                    AutomationProperties.Name="Resnap all samples"
-                                    ButtonIcon="{StaticResource RegularRepeat}"
-                                    ButtonText="Resnap all samples"
-                                    Command="{Binding ResnapAllSamplesCommand, Mode=OneWay}"
-                                    Style="{StaticResource OHsWorkstationTransportButtonStyle}"
-                                    ToolTip="Snap every sample to the nearest beat in the current subdivision"  FocusVisualStyle="{StaticResource DefaultFocusVisualStyle}" IsTabStop="True"/>
-                                <ToggleButton
-                                    x:Name="ClearTrackMutesToggle"
-                                    AutomationProperties.Name="Clear all track mutes"
-                                    Command="{Binding ClearTrackMutesCommand, Mode=OneWay}"
-                                    Content="M"
-                                    IsChecked="{Binding HasMutedTracks, Mode=OneWay}"
-                                    Style="{StaticResource OHsWorkstationTrackToggleStyle}"
-                                    ToolTip="Clear all track mutes"
-                                    Unchecked="OnClearTrackMutesUnchecked" />
-                                <ToggleButton
-                                    x:Name="ClearTrackSolosToggle"
-                                    AutomationProperties.Name="Clear all track solos"
-                                    Command="{Binding ClearTrackSolosCommand, Mode=OneWay}"
-                                    Content="S"
-                                    IsChecked="{Binding HasSoloedTracks, Mode=OneWay}"
-                                    Style="{StaticResource OHsWorkstationTrackToggleStyle}"
-                                    ToolTip="Clear all track solos"
-                                    Unchecked="OnClearTrackSolosUnchecked" />
-                            </customControls:SpacedUniformGrid>
+                            <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                <StackPanel Orientation="Horizontal">
+                                    <customControls:BalloonButton x:Name="PlayPauseButton" Margin="0"
+                                        Command="{Binding PlayPauseCommand, Mode=OneWay}" IsEnabled="{Binding CanPlay, Mode=OneWay}"
+                                        Style="{StaticResource OHsWorkstationPlayPauseStyle}" />
+                                    <customControls:BalloonButton Margin="4,0,0,0" AutomationProperties.Name="Stop audio"
+                                        ButtonIcon="{StaticResource MediaStop}" ButtonText="Stop"
+                                        Command="{Binding StopCommand, Mode=OneWay}" IsEnabled="{Binding CanPlay, Mode=OneWay}"
+                                        Style="{StaticResource OHsWorkstationTransportButtonStyle}"
+                                        ToolTip="Stop audio and return to the beginning" />
+                                    <customControls:BalloonCheckBox x:Name="ScrollWithMarkerCheckBox" Margin="4,0,0,0"
+                                        AutomationProperties.HelpText="Follow the current playback marker. Selecting a node turns this off."
+                                        AutomationProperties.Name="Scroll with marker"
+                                        ButtonIcon="{StaticResource AlignArrowRightFill}" ButtonText="Scroll with marker"
+                                        CheckedIcon="{StaticResource AlignArrowRightFill}"
+                                        IsChecked="{Binding ScrollWithMarker, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                        IsEnabled="{Binding CanPlay, Mode=OneWay}"
+                                        Style="{StaticResource OHsWorkstationScrollWithMarkerStyle}"
+                                        ToolTip="Follow the current playback marker (F3). Selecting a node turns this off." />
+                                </StackPanel>
+                                <TextBlock x:Name="ElapsedTimeText" AutomationProperties.Name="Elapsed audio time"
+                                    Style="{StaticResource OHsWorkstationElapsedStyle}" Text="{Binding ElapsedText, Mode=OneWay}" />
+                                <StackPanel Orientation="Horizontal">
+                                    <ToggleButton x:Name="ClearTrackMutesToggle"
+                                        AutomationProperties.Name="{Binding TrackMutesActionText, Mode=OneWay}"
+                                        Content="M" IsChecked="{Binding AreTracksMuted, Mode=OneWay}"
+                                        IsEnabled="{Binding CanToggleTrackMutes, Mode=OneWay}"
+                                        Tag="{Binding ToggleTrackMutesCommand, Mode=OneWay}"
+                                        Style="{StaticResource OHsWorkstationAggregateToggleStyle}"
+                                        ToolTip="{Binding TrackMutesActionText, Mode=OneWay}"
+                                        Checked="OnAggregateToggleChanged" Unchecked="OnAggregateToggleChanged" />
+                                    <ToggleButton x:Name="ClearTrackSolosToggle" Margin="4,0,0,0"
+                                        AutomationProperties.Name="Clear all track solos" Content="S"
+                                        IsChecked="{Binding HasSoloedTracks, Mode=OneWay}"
+                                        IsEnabled="{Binding CanClearTrackSolos, Mode=OneWay}"
+                                        Tag="{Binding ClearTrackSolosCommand, Mode=OneWay}"
+                                        Style="{StaticResource OHsWorkstationAggregateToggleStyle}"
+                                        ToolTip="Clear all track solos"
+                                        Checked="OnAggregateToggleChanged" Unchecked="OnAggregateToggleChanged" />
+                                </StackPanel>
+                            </StackPanel>
                             <pages:OHsWorkstationTimeline x:Name="TimelineControl" Grid.Column="2" />
                             <customControls:SpacedUniformGrid
                                 x:Name="TrackActionsHost"

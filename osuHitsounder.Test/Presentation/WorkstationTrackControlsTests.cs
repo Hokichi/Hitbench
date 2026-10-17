@@ -19,7 +19,7 @@ public class WorkstationTrackControlsTests
     [TestCase(FlowDirection.LeftToRight, "Light")]
     [TestCase(FlowDirection.RightToLeft, "Dark")]
     [TestCase(FlowDirection.RightToLeft, "Light")]
-    public void AggregateToggleClearsFlagsThroughAutomationAndFollowsBusyState(FlowDirection direction, string theme)
+    public void AggregateActionsInvokeOnceAndFollowAuthoritativeState(FlowDirection direction, string theme)
     {
         Application.Current.Resources.MergedDictionaries[0] = new ResourceDictionary { Source = new Uri($"/osuHitsounder;component/Resources/Themes/{theme}.xaml", UriKind.Relative) };
         var track = new osuHitsounder.Core.Entities.Track { IsTrackMuted = true, IsTrackSoloed = true };
@@ -31,11 +31,22 @@ public class WorkstationTrackControlsTests
         UiTestPump.Run(page.LoadCompletion);
         var mute = (ToggleButton)((osuHitsounder.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("ClearTrackMutesToggle");
         var solo = (ToggleButton)((osuHitsounder.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("ClearTrackSolosToggle");
-        UiControlContract.AssertStyle<ToggleButton>(mute, "OHsWorkstationTrackToggleStyle");
+        UiControlContract.AssertStyle<ToggleButton>(mute, "OHsWorkstationAggregateToggleStyle");
+        Assert.That(mute.Tag, Is.SameAs(vm.ToggleTrackMutesCommand));
+        Assert.That(solo.Tag, Is.SameAs(vm.ClearTrackSolosCommand));
+        var revision = vm.TrackAuditionRevision;
         Assert.That(mute.IsChecked, Is.True); Assert.That(mute.IsEnabled, Is.True);
         ((IToggleProvider)new ToggleButtonAutomationPeer(mute)).Toggle(); view.UpdateLayout();
         Assert.That(track.IsTrackMuted, Is.False); Assert.That(track.IsTrackSoloed, Is.True);
-        Assert.That(mute.IsChecked, Is.False); Assert.That(mute.IsEnabled, Is.False);
+        Assert.That(mute.IsChecked, Is.False); Assert.That(mute.IsEnabled, Is.True);
+        Assert.That(vm.TrackAuditionRevision, Is.EqualTo(revision + 1));
+        ((IToggleProvider)new ToggleButtonAutomationPeer(mute)).Toggle(); view.UpdateLayout();
+        Assert.That(track.IsTrackMuted, Is.True);
+        Assert.That(mute.IsChecked, Is.True);
+        Assert.That(vm.TrackAuditionRevision, Is.EqualTo(revision + 2));
+        vm.SetTrackMuted(track, false); view.UpdateLayout();
+        Assert.That(mute.IsChecked, Is.False);
+        Assert.That(vm.TrackAuditionRevision, Is.EqualTo(revision + 3));
         Assert.That(solo.IsChecked, Is.True);
         vm.IsReturning = true; view.UpdateLayout();
         Assert.That(solo.IsEnabled, Is.False); Assert.That(solo.IsChecked, Is.True);
