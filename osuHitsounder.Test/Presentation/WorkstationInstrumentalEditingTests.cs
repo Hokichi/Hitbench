@@ -71,12 +71,12 @@ public class WorkstationInstrumentalEditingTests
         {
             await owner.LoadAsync("project.json", default); owner.AcknowledgePresentationReady(owner.LoadGeneration);
             var editor = owner.ViewArrangementCommand.ExecuteAsync(track); var context = await entered.Task.WaitAsync(TimeSpan.FromSeconds(3));
-            Assert.That(owner.KeysMappingCommand.CanExecute(track), Is.False);
-            Assert.That(owner.PlayPauseCommand.CanExecute(null), Is.False);
+            Assert.That(owner.KeysMappingCommand.CanExecute(track), Is.True);
+            Assert.That(owner.PlayPauseCommand.CanExecute(null), Is.True);
             await owner.PlayPauseCommand.ExecuteAsync(null);
             await owner.SeekCommand.ExecuteAsync(TimeSpan.FromSeconds(2));
-            Assert.That(audio.Snapshot.IsPlaying, Is.False);
-            Assert.That(audio.Snapshot.Position, Is.EqualTo(TimeSpan.Zero));
+            Assert.That(audio.Snapshot.IsPlaying, Is.True);
+            Assert.That(audio.Snapshot.Position, Is.EqualTo(TimeSpan.FromSeconds(2)));
             Assert.That(states.Last().IsSaving, Is.True);
             var settlement = owner.SettleInstrumentalEditorAsync(); Assert.That(settlement.IsCompleted, Is.False);
             saves.Release(); await Task.WhenAll(editor, settlement).WaitAsync(TimeSpan.FromSeconds(3));

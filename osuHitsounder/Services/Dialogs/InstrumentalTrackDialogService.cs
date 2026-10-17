@@ -6,16 +6,16 @@ using osuHitsounder.Views.Popups;
 namespace osuHitsounder.Services.Dialogs;
 
 public sealed class InstrumentalTrackDialogService(Func<Window?> getOwner, Dispatcher dispatcher,
- Func<InstrumentalEditorContext, InstrumentalArrangementPopupVM> createArrangement,
+ Func<InstrumentalEditorContext, InstrumentalArrangementDrawerVM> createArrangement,
  Func<InstrumentalTrackSnapshot, KeysMappingDrawerVM> createMapping,
- Func<InstrumentalArrangementPopupVM, CancellationToken, Task>? presentArrangement = null,
+ Func<InstrumentalArrangementDrawerVM, CancellationToken, Task>? presentArrangement = null,
  Func<KeysMappingDrawerVM, CancellationToken, Task>? presentMapping = null) : IInstrumentalTrackDialogService
 {
     public async Task ShowArrangementAsync(InstrumentalEditorContext context, CancellationToken token) =>
      await dispatcher.InvokeAsync(async () =>
      {
          if (token.IsCancellationRequested) return;
-         var owner = getOwner(); if (presentArrangement is null && (owner is null || !owner.IsVisible)) return;
+         var owner = getOwner(); if (presentArrangement is null && (owner is not MainWindow || !owner.IsVisible)) return;
          var vm = createArrangement(context);
          try
          {
@@ -23,9 +23,7 @@ public sealed class InstrumentalTrackDialogService(Func<Window?> getOwner, Dispa
              if (presentArrangement is not null) await presentArrangement(vm, token);
              else
              {
-                 var popup = new OHsInstrumentalArrangementPopup(vm) { Owner = owner, FlowDirection = owner!.FlowDirection };
-                 using var cancel = token.Register(() => dispatcher.BeginInvoke(() => { if (popup.IsVisible) popup.Close(); }));
-                 popup.ShowDialog();
+                 await ((MainWindow)owner!).PresentDrawerAsync(new OHsInstrumentalArrangementDrawer(vm), token, bottomNonModal: true);
              }
          }
          finally { await vm.DeactivateAsync(); }
@@ -36,7 +34,7 @@ public sealed class InstrumentalTrackDialogService(Func<Window?> getOwner, Dispa
          if (token.IsCancellationRequested) return;
          var owner = getOwner(); if (presentMapping is null && (owner is not MainWindow || !owner.IsVisible)) return;
          var vm = createMapping(snapshot);
-         try { if (presentMapping is not null) await presentMapping(vm, token); else await ((MainWindow)owner!).PresentDrawerAsync(new OHsKeysMappingDrawer(vm), token); }
+         try { if (presentMapping is not null) await presentMapping(vm, token); else await ((MainWindow)owner!).PresentDrawerAsync(new OHsKeysMappingDrawer(vm), token, bottomNonModal: true); }
          finally { await vm.DeactivateAsync(); }
      }).Task.Unwrap();
 }

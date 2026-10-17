@@ -18,8 +18,9 @@ namespace osuHitsounder.ViewModels.Shell;
 
 public partial class WorkstationPageVM
 {
-    private bool CanResnapAllSamples() => CanPlaceSamples && tracks.Any(track => track.Samples.Count > 0);
+    private bool CanResnapAllSamples() => CanPlaceSamples && tracks.Any(track => track.Samples.Count > 0 || track is InstrumentalTrack { Notes.Count: > 0 });
 
+    // Legacy public name retained for callers; the workstation action includes instrumental notes.
     public bool ResnapAllSampleNodes()
     {
         if (!CanResnapAllSamples()) return false;
@@ -38,13 +39,46 @@ public partial class WorkstationPageVM
             if (timestamp.Value != sample.Timestamp)
                 entries.Add(new(track, sample, index, NodeHistoryOperation.Movement, sample.Timestamp, timestamp.Value));
         }
+        var instruments = new List<(InstrumentalTrack Track, IReadOnlyList<InstrumentalNoteSnapshot> Before, IReadOnlyList<InstrumentalNoteSnapshot> After)>();
+        foreach (var track in tracks.OfType<InstrumentalTrack>())
+        {
+            var before = NoteSnapshots(track);
+            var after = ResnapInstrumentNotes(before);
+            if (after is null) { ErrorMessage = "No usable grid beat for resnapping notes."; return false; }
+            if (!before.SequenceEqual(after)) instruments.Add((track, before, after));
+        }
         CancelNodeDrag();
         ErrorMessage = null;
-        if (entries.Count == 0) return false;
+        if (entries.Count == 0 && instruments.Count == 0) return false;
         foreach (var entry in entries) entry.Sample.Timestamp = entry.NextTimestamp;
-        history.RecordBatch(entries);
+        if (entries.Count > 0) history.RecordBatch(entries);
+        foreach (var item in instruments)
+        {
+            TryApplyInstrumentNotes(item.Track, item.After);
+            InstrumentHistory(item.Track).Record(item.Before, item.After,
+                item.After.Where((note, index) => note.Timestamp != item.Before[index].Timestamp).Select(note => note.Id).ToArray());
+        }
+        if (instruments.Count > 0) { instrumentRevision++; PublishInstrumentSnapshot(); }
         PublishNodeChange();
         return true;
+    }
+
+    private IReadOnlyList<InstrumentalNoteSnapshot>? ResnapInstrumentNotes(IReadOnlyList<InstrumentalNoteSnapshot> notes)
+    {
+        var occupied = notes.Select(note => (note.Key, note.Timestamp)).ToHashSet();
+        var result = notes.ToArray();
+        for (var index = 0; index < notes.Count; index++)
+        {
+            var note = notes[index];
+            var target = BeatGridCalculator.GetNearestTimestamp(Project!.Offsets, Project.BPMs, Subdivision,
+                note.Timestamp, Waveform!.Duration.TotalMilliseconds);
+            if (target is null) return null;
+            if (target == note.Timestamp || occupied.Contains((note.Key, target.Value))) continue;
+            occupied.Remove((note.Key, note.Timestamp));
+            occupied.Add((note.Key, target.Value));
+            result[index] = note with { Timestamp = target.Value };
+        }
+        return result;
     }
 
     [RelayCommand(CanExecute = nameof(CanResnapAllSamples))]

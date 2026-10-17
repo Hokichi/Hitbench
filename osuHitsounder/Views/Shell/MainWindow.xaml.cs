@@ -16,6 +16,9 @@ using osuHitsounder.Services.Ui;
 using osuHitsounder.Views.Pages;
 using osuHitsounder.ViewModels.Shell.HomePage;
 using osuHitsounder.Resources.CustomControls;
+using osuHitsounder.Views.Popups;
+using osuHitsounder.ViewModels.Shell;
+using CommunityToolkit.Mvvm.Input;
 
 namespace osuHitsounder;
 
@@ -231,6 +234,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
             if (PageHost.Content is WorkstationPage workstation)
             {
                 await workstation.SettleInstrumentalEditorAsync();
+                await DrawerInputCompletion;
                 await workstation.FlushSavesAsync();
                 await workstation.DeactivateAsync();
             }
@@ -594,10 +598,49 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
     internal bool HandleWindowKeyDown(bool isActive, Key key, ModifierKeys modifiers, bool isRepeat,
         DependencyObject? origin)
     {
-        if (!isActive || IsPopupOverlayVisible || IsBlockingDrawerVisible || IsDrawerOrigin(origin) || PageHost.Content is not WorkstationPage workstationPage) return false;
+        if (!isActive || IsPopupOverlayVisible || IsBlockingDrawerVisible || PageHost.Content is not WorkstationPage workstationPage) return false;
+        if (IsDrawerOrigin(origin))
+        {
+            if (SampleManagerHost.Content is OHsInstrumentalArrangementDrawer piano)
+                return HandleInstrumentalDrawerKey(piano, workstationPage, key, modifiers, isRepeat, origin);
+            if (SampleManagerHost.Content is OHsKeysMappingDrawer && key == Key.F2 && modifiers == ModifierKeys.None && !OHsInstrumentalArrangementDrawer.IsTextInput(origin) && workstationPage.DataContext is WorkstationPageVM vm)
+            { if (!isRepeat && vm.ManageSamplesCommand.CanExecute(null)) DrawerInputCompletion = ObserveDrawerInputAsync(vm.ManageSamplesCommand.ExecuteAsync(null)); return true; }
+            return false;
+        }
 
         return workstationPage.HandleVolumeShortcut(key, modifiers, origin) ||
                workstationPage.HandlePlaybackKey(key, modifiers, isRepeat, origin);
+    }
+
+    internal Task DrawerInputCompletion { get; private set; } = Task.CompletedTask;
+    private async Task ObserveDrawerInputAsync(Task operation)
+    {
+        try { await operation; }
+        catch (OperationCanceledException) { }
+        catch (Exception error) { System.Diagnostics.Trace.TraceError("Drawer input failed: {0}", error); }
+    }
+    private bool HandleInstrumentalDrawerKey(OHsInstrumentalArrangementDrawer drawer, WorkstationPage page,
+        Key key, ModifierKeys modifiers, bool isRepeat, DependencyObject? origin)
+    {
+        if (OHsInstrumentalArrangementDrawer.IsTextInput(origin)) return false;
+        if (drawer.HandleEditorShortcut(key, modifiers, isRepeat, origin)) return true;
+        if (page.DataContext is not WorkstationPageVM vm) return false;
+        if (key == Key.F3 && modifiers == ModifierKeys.None)
+        { if (!isRepeat && vm.CanPlay) vm.ScrollWithMarker = !vm.ScrollWithMarker; return true; }
+        IAsyncRelayCommand? command = (key, modifiers) switch
+        {
+            (Key.Space, ModifierKeys.None) => vm.PlayPauseCommand,
+            (Key.Space, ModifierKeys.Shift) => vm.StopCommand,
+            (Key.Left, ModifierKeys.Control) => vm.PreviousWholeBeatCommand,
+            (Key.Right, ModifierKeys.Control) => vm.NextWholeBeatCommand,
+            (Key.Home or Key.End, ModifierKeys.Control) => vm.SeekCommand,
+            (Key.F2, ModifierKeys.None) => vm.ManageSamplesCommand,
+            _ => null
+        };
+        if (command is null) return false;
+        object? parameter = key is Key.Home or Key.End ? (key == Key.Home ? TimeSpan.Zero : vm.Waveform?.Duration ?? TimeSpan.Zero) : null;
+        if (!isRepeat && command.CanExecute(parameter)) DrawerInputCompletion = ObserveDrawerInputAsync(command.ExecuteAsync(parameter));
+        return true;
     }
 
     internal bool HandleWindowMouseWheel(bool isActive, ModifierKeys modifiers, int delta,

@@ -15,7 +15,7 @@ public class InstrumentalArrangementEditingTests
         var a=new InstrumentalNoteSnapshot(Guid.NewGuid(),"A9",146,70);var b=new InstrumentalNoteSnapshot(Guid.NewGuid(),"B9",292,80);
         var snap=new InstrumentalTrackSnapshot(ctx,"Piano",100,new Dictionary<string,string>(),[a,b],null,0);
         var messenger=new WeakReferenceMessenger();var requests=new List<ReplaceInstrumentalNotesRequestedMessage>();messenger.Register<ReplaceInstrumentalNotesRequestedMessage>(this,(_,m)=>requests.Add(m));
-        var vm=new InstrumentalArrangementPopupVM(new(snap,"song",new(TimeSpan.FromSeconds(10),[.5f]),[0],[137],TimeSpan.Zero,3,32,100,100,100),new MarkerPlaybackCoordinator(new StubWorkstationAudioService(),Task.Delay),messenger,new ImmediateUiScheduler());
+        var vm=new InstrumentalArrangementDrawerVM(InstrumentalArrangementTestContext.Create(snap,[0],[137],TimeSpan.Zero,3,32),messenger,new ImmediateUiScheduler());
         try
         {
             await vm.InitializeAsync(default);vm.MoveNotes([a.Id,b.Id],a.Id,"A#9",146);Assert.That(requests,Is.Empty);Assert.That(vm.ErrorMessage,Is.Not.Null);
@@ -34,12 +34,12 @@ public class InstrumentalArrangementEditingTests
         var snap = new InstrumentalTrackSnapshot(ctx, "Piano", 100, new Dictionary<string,string>(), [a,b], null, 0);
         var messenger = new WeakReferenceMessenger(); ReplaceInstrumentalNotesRequestedMessage? request = null;
         messenger.Register<ReplaceInstrumentalNotesRequestedMessage>(this, (_, m) => request = m);
-        var vm = new InstrumentalArrangementPopupVM(new(snap,"song",new(TimeSpan.FromSeconds(10),[.5f]),[0],[120],TimeSpan.Zero,4,32,100,100,100),new MarkerPlaybackCoordinator(new StubWorkstationAudioService(),Task.Delay),messenger,new ImmediateUiScheduler());
+        var vm = new InstrumentalArrangementDrawerVM(InstrumentalArrangementTestContext.Create(snap,[0],[120],TimeSpan.Zero,4,32),messenger,new ImmediateUiScheduler());
         try
         {
             await vm.InitializeAsync(default);
-            vm.SetNoteSelection([a.Id,b.Id],a.Id); Assert.That(vm.ScrollWithMarker,Is.False);
-            vm.CopyNotesCommand.Execute(null); vm.Position=TimeSpan.FromMilliseconds(9750); vm.PasteNotesCommand.Execute(null);
+            vm.SetNoteSelection([a.Id,b.Id],a.Id);
+            vm.CopyNotesCommand.Execute(null); messenger.Send(new OHsInstrumentalTimelineChangedMessage(new(ctx,1,TimeSpan.FromSeconds(10),TimeSpan.FromMilliseconds(9750),false,true,true,[0],[120],32,3,false,null))); vm.PasteNotesCommand.Execute(null);
             Assert.That(request!.DesiredNotes.Count,Is.EqualTo(3));
             var pasted=request.DesiredNotes.Last(); Assert.That(pasted.Key,Is.EqualTo("C4")); Assert.That(pasted.Volume,Is.EqualTo(70)); Assert.That(pasted.Timestamp,Is.EqualTo(9750)); Assert.That(pasted.Id,Is.Not.EqualTo(a.Id));
         }

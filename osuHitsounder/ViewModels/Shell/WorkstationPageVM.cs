@@ -57,7 +57,7 @@ public partial class WorkstationPageVM(
     public bool CanImportSample => !folderRenamesActive && !instrumentBusy && !managingSamples && !IsNodeEditBusy && CanEditTracks && !importBusy && !removalBusy &&
         sampleFiles is not null && sampleDialog is not null && projectPath is not null;
     public bool CanAddTrack => CanEditTracks && sampleTrackFiles.Count > 0;
-    public bool CanRemoveTrack => !folderRenamesActive && !instrumentBusy && !managingSamples && !IsNodeEditBusy && CanEditTracks && !importBusy && !removalBusy && trackRemovalDialog is not null;
+    public bool CanRemoveTrack => !folderRenamesActive && !managingSamples && !IsNodeEditBusy && CanEditTracks && !importBusy && !removalBusy && trackRemovalDialog is not null;
     public bool CanPlaceSamples => !folderRenamesActive && !managingSamples && !IsNodeEditBusy && CanEditTracks && Waveform is not null && !importBusy && !removalBusy;
     public bool HasPendingSaves => folderRenamesActive || instrumentBusy || managingSamples || IsNodeEditBusy || pendingZoom is not null || importBusy || removalBusy || !saveTail.IsCompleted || lastSaveError is not null;
     [ObservableProperty] private string? saveError;
@@ -98,7 +98,7 @@ public partial class WorkstationPageVM(
     private double zoomFactor = 32;
 
     public double ZoomFactor => zoomFactor;
-    public bool CanPlay => Waveform is not null && IsInteractionReady;
+    public bool CanPlay => Waveform is not null && IsInteractionReady && !IsInstrumentalTransportBlocked;
     public bool CanZoom => Waveform is not null && IsInteractionReady;
 
     public async Task LoadAsync(string projectPath, CancellationToken token)
@@ -536,7 +536,6 @@ public partial class WorkstationPageVM(
             await CommitAsync(generation, token, () =>
             {
                 audioService.Open(source.AudioPath);
-                instrumentAudioPath=source.AudioPath;
                 audioService.SetSongVolume(SongVolume);
                 audioService.SetApplicationVolume(ApplicationVolume);
                 audioService.SetSamplesVolume(SamplesVolume);

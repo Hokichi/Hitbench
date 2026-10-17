@@ -60,6 +60,12 @@ public partial class WorkstationPageVM
             if ((track.Samples.Count > 0 || track is InstrumentalTrack { Notes.Count: >0 }) && !await trackRemovalDialog!.ConfirmAsync(loadCancellation?.Token ?? CancellationToken.None)) return;
             if (deactivated || generation != loadGeneration || !ReferenceEquals(Project, project) ||
                 project is null || !tracks.Contains(track)) return;
+            if (track is InstrumentalTrack instrumentTrack && activeInstrumentContext is { } context && context.TrackId == InstrumentId(instrumentTrack))
+            {
+                await SettleInstrumentalEditorAsync();
+                await DrainProjectSaveQueueAsync();
+                if (deactivated || generation != loadGeneration || !ReferenceEquals(Project, project) || !tracks.Contains(track)) return;
+            }
             var removedIndex = tracks.IndexOf(track);
             var wasSelected = ReferenceEquals(SelectedTrack, track);
             CancelTrackRename(track); trackExtents.Remove(track);

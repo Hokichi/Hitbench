@@ -46,14 +46,13 @@ public class InstrumentalTrackCompositionTests
         new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
         var ctx = new InstrumentalTrackContext("project.json", null, Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
         var snapshot = new InstrumentalTrackSnapshot(ctx, "Piano", 100, new Dictionary<string, string>(), [], [], 0);
-        var vm = new InstrumentalArrangementPopupVM(new(snapshot, "song", new(TimeSpan.FromSeconds(10), [.5f]), [0], [120], TimeSpan.Zero, 4, 32, 100, 100, 100), new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new WeakReferenceMessenger(), new ImmediateUiScheduler());
-        var popup = new OHsInstrumentalArrangementPopup(vm);
+        var vm = new InstrumentalArrangementDrawerVM(InstrumentalArrangementTestContext.Create(snapshot, [0], [120], TimeSpan.Zero, 4, 32), new WeakReferenceMessenger(), new ImmediateUiScheduler());
+        var popup = new OHsInstrumentalArrangementDrawer(vm);
         try
         {
-            Assert.That(popup.HandlePlaybackKey(Key.Space, ModifierKeys.None, false, new TextBox()), Is.False); Assert.That(popup.FindName("PianoRoll"), Is.TypeOf<osuHitsounder.Resources.CustomControls.PianoRollView>());
-            var scroller = (ScrollViewer)popup.FindName("WaveformScroll"); scroller.ApplyTemplate();
-            Assert.That(scroller.Template, Is.SameAs(popup.FindResource("DefaultScrollViewerTemplate")));
+            Assert.That(popup.HandleEditorShortcut(Key.Space, ModifierKeys.None, false, new TextBox()), Is.False); Assert.That(popup.FindName("PianoRoll"), Is.TypeOf<osuHitsounder.Resources.CustomControls.PianoRollView>());
+            UiControlContract.AssertStyle<osuHitsounder.Resources.CustomControls.PianoRollView>((osuHitsounder.Resources.CustomControls.PianoRollView)popup.FindName("PianoRoll"), "BasePianoRollViewStyle");
         }
-        finally { popup.Close(); UiTestPump.Run(vm.DeactivateAsync()); }
+        finally { popup.Detach(); UiTestPump.Run(vm.DeactivateAsync()); }
     }
 }

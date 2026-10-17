@@ -12,21 +12,14 @@ public partial class WorkstationPageVM
     private CancellationTokenSource? managerCancellation;
     private Task sampleChangeNotifications = Task.CompletedTask;
     private bool managingSamples;
-    public bool CanManageSamples => CanImportSample && sampleManagementDialog is not null && !managingSamples;
+    public bool CanManageSamples => CanRequestDrawer && sampleFiles is not null && sampleDialog is not null && projectPath is not null && sampleManagementDialog is not null;
     public TrackSampleAvailability GetSampleAvailability(Track track) => track.SelectedSampleFileName is null
         ? TrackSampleAvailability.Unselected : sampleFiles is null || sampleTrackFiles.Any(n => string.Equals(n, track.SelectedSampleFileName, StringComparison.OrdinalIgnoreCase))
             ? TrackSampleAvailability.Available : TrackSampleAvailability.Missing;
     public bool CanEditTrackGrid(Track track) => track is not InstrumentalTrack && tracks.Contains(track) && (sampleFiles is null || GetSampleAvailability(track) == TrackSampleAvailability.Available);
     [RelayCommand(CanExecute = nameof(CanManageSamples))]
-    private Task ManageSamplesAsync()
-    {
-        if (!CanManageSamples || projectPath is null) return Task.CompletedTask;
-        managingSamples = true; NotifyEditingState();
-        managerCancellation?.Dispose(); managerCancellation = CancellationTokenSource.CreateLinkedTokenSource(loadCancellation?.Token ?? CancellationToken.None);
-        activeManager = ManageSamplesCoreAsync(new(projectPath, Project?.BeatmapPath, sampleSession), managerCancellation.Token);
-        return activeManager;
-    }
-    private async Task ManageSamplesCoreAsync(SampleManagementContext context, CancellationToken token)
+    private Task ManageSamplesAsync() => CanManageSamples ? RequestWorkstationDrawerAsync(OHsWorkstationDrawerKind.Samples) : Task.CompletedTask;
+    private async Task ManageSamplesCoreAsync(SampleManagementContext context, CancellationToken token, long request)
     {
         try
         {
@@ -34,7 +27,7 @@ public partial class WorkstationPageVM
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { }
         catch (Exception error) { ErrorMessage = error.Message; }
-        finally { managingSamples = false; NotifyEditingState(); }
+        finally { managingSamples = false; if (request == drawerRequestGeneration && requestedDrawerKind == OHsWorkstationDrawerKind.Samples) requestedDrawerKind = null; NotifyEditingState(); }
     }
     private async Task SettleSampleManagerAsync()
     {

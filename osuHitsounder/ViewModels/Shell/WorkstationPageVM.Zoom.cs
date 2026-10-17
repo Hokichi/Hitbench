@@ -29,6 +29,7 @@ public partial class WorkstationPageVM
         OnPropertyChanged(nameof(ZoomFactor));
         ScheduleZoomSave();
         NotifyCommandState();
+        PublishInstrumentTimeline();
     }
 
     private void ScheduleZoomSave()

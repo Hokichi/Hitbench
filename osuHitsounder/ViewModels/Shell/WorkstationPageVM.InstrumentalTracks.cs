@@ -24,11 +24,10 @@ public partial class WorkstationPageVM
     private CancellationTokenSource? instrumentCancellation;
     private Task? instrumentWorkflow;
     private bool instrumentBusy;
-    private string? instrumentAudioPath;
     private long instrumentRevision, saveStateVersion;
     private int pendingProjectWrites;
     public bool CanAddInstrumentalTrack => CanEditTracks && !instrumentBusy;
-    public bool CanOpenInstrumentalEditor => CanPlaceSamples && !instrumentBusy && instrumentDialogs is not null && messenger is not null;
+    public bool CanOpenInstrumentalEditor => CanRequestDrawer && Waveform is not null && instrumentDialogs is not null && messenger is not null;
     private Guid InstrumentId(InstrumentalTrack track)
     { if (!instrumentIds.TryGetValue(track, out var id)) instrumentIds[track] = id = Guid.NewGuid(); return id; }
     private Guid InstrumentNoteId(InstrumentalNote note)
@@ -55,6 +54,7 @@ public partial class WorkstationPageVM
     private void RegisterInstrumentMessages()
     {
         if (messenger is null) return;
+        messenger.Register<OHsInstrumentalTimelineEditRequestedMessage>(this, (_, m) => ReceiveInstrumentTimelineEdit(m));
         messenger.Register<ReplaceInstrumentalNotesRequestedMessage>(this, (_, m) =>
         {
             if (ActiveInstrument(m.Context) is not { } track) return;
@@ -73,50 +73,128 @@ public partial class WorkstationPageVM
         messenger.Register<MoveInstrumentalNoteRequestedMessage>(this, (_, m) => MoveInstrumentNote(m));
         messenger.Register<RemoveInstrumentalNoteRequestedMessage>(this, (_, m) => RemoveInstrumentNote(m));
         messenger.Register<InstrumentalEditorReadyMessage>(this, (_, m) =>
-        { if (ActiveInstrument(m.Context) is not null) { PublishInstrumentSnapshot(); PublishInstrumentSaveState(); } });
+        { if (ActiveInstrument(m.Context) is not null) { PublishInstrumentSnapshot(); PublishInstrumentSaveState(); PublishInstrumentTimeline(); } });
     }
     private bool CanViewArrangement(InstrumentalTrack? track) =>
         CanOpenInstrumentalEditor && track is not null && tracks.Contains(track) && track.KeyFiles.Count > 0;
-    [RelayCommand(CanExecute = nameof(CanViewArrangement))]
+    [RelayCommand(CanExecute = nameof(CanViewArrangement), AllowConcurrentExecutions = true)]
     private Task ViewArrangementAsync(InstrumentalTrack track) =>
         CanViewArrangement(track) ? OpenInstrumentAsync(track, true) : Task.CompletedTask;
-    [RelayCommand(CanExecute = nameof(CanOpenInstrumentalEditor))]
+    [RelayCommand(CanExecute = nameof(CanOpenInstrumentalEditor), AllowConcurrentExecutions = true)]
     private Task KeysMappingAsync(InstrumentalTrack track) => OpenInstrumentAsync(track, false);
-    private async Task OpenInstrumentAsync(InstrumentalTrack track, bool arrangement)
+    private OHsWorkstationDrawerKind? requestedDrawerKind;
+    private InstrumentalTrack? requestedDrawerTrack;
+    private long drawerRequestGeneration;
+    private Task drawerTransitions = Task.CompletedTask;
+    private InstrumentalTrackContext? mappingTransportOwner;
+    private bool settlingDrawers;
+    public bool IsInstrumentalTransportBlocked => mappingTransportOwner is not null;
+    private bool CanRequestDrawer => !settlingDrawers && CanEditTracks && !folderRenamesActive && !IsNodeEditBusy && !importBusy && !removalBusy;
+
+    private Task OpenInstrumentAsync(InstrumentalTrack track, bool arrangement) =>
+        RequestWorkstationDrawerAsync(arrangement ? OHsWorkstationDrawerKind.Arrangement : OHsWorkstationDrawerKind.KeysMapping, track);
+
+    private Task RequestWorkstationDrawerAsync(OHsWorkstationDrawerKind kind, InstrumentalTrack? track = null)
     {
-        await SettleInstrumentalFoldersAsync();
-        if (!CanOpenInstrumentalEditor || !tracks.Contains(track) || projectPath is null) return;
-        instrumentBusy = true;
-        instrumentCancellation?.Dispose();
-        instrumentCancellation = CancellationTokenSource.CreateLinkedTokenSource(loadCancellation?.Token ?? default);
-        activeInstrumentContext = new(projectPath, Project!.BeatmapPath, sampleSession, Guid.NewGuid(), InstrumentId(track));
-        NotifyInstrumentState();
-        await (instrumentWorkflow = RunInstrumentWorkflowAsync(track, arrangement, activeInstrumentContext, instrumentCancellation.Token));
+        if (!CanRequestDrawer || projectPath is null || kind != OHsWorkstationDrawerKind.Samples && (track is null || !tracks.Contains(track))) return Task.CompletedTask;
+        if (requestedDrawerKind == kind && ReferenceEquals(requestedDrawerTrack, track)) return Task.CompletedTask;
+        var request = ++drawerRequestGeneration;
+        var session = sampleSession;
+        requestedDrawerKind = kind; requestedDrawerTrack = track;
+        instrumentCancellation?.Cancel(); managerCancellation?.Cancel();
+        Task ownedLifetime = Task.CompletedTask;
+        var transition = TransitionDrawerAsync(drawerTransitions, request, session, kind, track, task => ownedLifetime = task);
+        drawerTransitions = transition;
+        return AwaitRequestAsync();
+        async Task AwaitRequestAsync() { await transition; await ownedLifetime; }
     }
-    private async Task RunInstrumentWorkflowAsync(InstrumentalTrack track, bool arrangement, InstrumentalTrackContext context, CancellationToken token)
+    private async Task TransitionDrawerAsync(Task previous, long request, Guid session, OHsWorkstationDrawerKind kind, InstrumentalTrack? track, Action<Task> ownLifetime)
+    {
+        try
+        {
+            await previous;
+            await SettlePresentedDrawerAsync();
+            await DrainProjectSaveQueueAsync();
+            if (request != drawerRequestGeneration || session != sampleSession || !CanRequestDrawer) return;
+            await SettleInstrumentalFoldersAsync();
+            if (request != drawerRequestGeneration || session != sampleSession || !CanRequestDrawer || projectPath is null) return;
+            if (kind == OHsWorkstationDrawerKind.Samples)
+            {
+                if (sampleManagementDialog is null) return;
+                managingSamples = true; NotifyEditingState();
+                managerCancellation = CancellationTokenSource.CreateLinkedTokenSource(loadCancellation?.Token ?? default);
+                activeManager = ManageSamplesCoreAsync(new(projectPath, Project?.BeatmapPath, sampleSession), managerCancellation.Token, request);
+                ownLifetime(activeManager);
+                return;
+            }
+            if (track is null || !tracks.Contains(track) || kind == OHsWorkstationDrawerKind.Arrangement && track.KeyFiles.Count == 0) return;
+            instrumentBusy = true;
+            instrumentCancellation = CancellationTokenSource.CreateLinkedTokenSource(loadCancellation?.Token ?? default);
+            activeInstrumentContext = new(projectPath, Project!.BeatmapPath, sampleSession, Guid.NewGuid(), InstrumentId(track));
+            NotifyInstrumentState();
+            instrumentWorkflow = RunInstrumentWorkflowAsync(track, kind == OHsWorkstationDrawerKind.Arrangement, activeInstrumentContext, request, instrumentCancellation.Token);
+            ownLifetime(instrumentWorkflow);
+            // Completed presenters are common in tests; preserve their observable completion without holding the queue for an open drawer.
+            if (instrumentWorkflow.IsCompleted) await instrumentWorkflow;
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception error) { ErrorMessage = error.Message; }
+        finally
+        {
+            if (request == drawerRequestGeneration && !instrumentBusy && !managingSamples)
+            { requestedDrawerKind = null; requestedDrawerTrack = null; }
+        }
+    }
+    private async Task RunInstrumentWorkflowAsync(InstrumentalTrack track, bool arrangement, InstrumentalTrackContext context, long request, CancellationToken token)
     {
         try
         {
             if (arrangement)
+                await instrumentDialogs!.ShowArrangementAsync(new(InstrumentSnapshot(track, context), InstrumentTimeline(context)), token);
+            else
             {
+                mappingTransportOwner = context; NotifyInstrumentState(); PublishInstrumentTimeline();
                 pendingPlayCancellation?.Cancel();
-                await playback.PauseAsync(token); RefreshPlayback();
-                await instrumentDialogs!.ShowArrangementAsync(new(InstrumentSnapshot(track, context), instrumentAudioPath!, Waveform!,
-                    Project!.Offsets, Project.BPMs, Position, Subdivision, ZoomFactor, SongVolume, SamplesVolume, ApplicationVolume,
-                    Project.ControlPoints.Select(p => new ControlPointVolumeSnapshot(p.Timestamp, p.Volume)).ToArray()), token);
+                // Coordinator serializes an already-entered Play ahead of Stop. Cancellation prevents a queued Play from entering later.
+                await playback.StopAsync(token); RefreshPlayback();
+                token.ThrowIfCancellationRequested();
+                if (request != drawerRequestGeneration) return;
+                await instrumentDialogs!.ShowKeysMappingAsync(InstrumentSnapshot(track, context), token);
             }
-            else await instrumentDialogs!.ShowKeysMappingAsync(InstrumentSnapshot(track, context), token);
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { }
         catch (Exception error) { ErrorMessage = error.Message; }
         finally
         {
             try { await DrainProjectSaveQueueAsync(); } catch (Exception error) { SaveError = error.Message; }
-            activeInstrumentContext = null; instrumentBusy = false; NotifyInstrumentState();
+            if (mappingTransportOwner == context) mappingTransportOwner = null;
+            if (activeInstrumentContext == context)
+            {
+                activeInstrumentContext = null; instrumentBusy = false;
+                if (request == drawerRequestGeneration) { requestedDrawerKind = null; requestedDrawerTrack = null; }
+                NotifyInstrumentState();
+            }
         }
     }
+    private async Task SettlePresentedDrawerAsync()
+    {
+        instrumentCancellation?.Cancel(); managerCancellation?.Cancel();
+        if (instrumentWorkflow is { } editor) await editor;
+        if (activeManager is { } manager) await manager;
+        await instrumentTimelineNotifications;
+        if (instrumentBusy || managingSamples) await DrainProjectSaveQueueAsync();
+        instrumentWorkflow = null; activeManager = null;
+        instrumentCancellation?.Dispose(); instrumentCancellation = null;
+        managerCancellation?.Dispose(); managerCancellation = null;
+    }
     public async Task SettleInstrumentalEditorAsync()
-    { instrumentCancellation?.Cancel(); if (instrumentWorkflow is { } task) await task; instrumentWorkflow = null; instrumentCancellation?.Dispose(); instrumentCancellation = null; }
+    {
+        settlingDrawers = true;
+        ++drawerRequestGeneration; requestedDrawerKind = null; requestedDrawerTrack = null;
+        instrumentCancellation?.Cancel(); managerCancellation?.Cancel();
+        try { await drawerTransitions; await SettlePresentedDrawerAsync(); }
+        finally { settlingDrawers = false; }
+    }
     private async Task DrainProjectSaveQueueAsync()
     { await sampleChangeNotifications; await saveTail; if (lastSaveError is not null) throw new IOException("Could not save project.", lastSaveError); }
     private void NotifyInstrumentState()
@@ -125,6 +203,8 @@ public partial class WorkstationPageVM
         AddPianoTrackCommand.NotifyCanExecuteChanged(); ViewArrangementCommand.NotifyCanExecuteChanged(); KeysMappingCommand.NotifyCanExecuteChanged();
         NotifyEditingState();
         NotifyCommandState();
+        OnPropertyChanged(nameof(IsInstrumentalTransportBlocked));
+        PublishInstrumentTimeline();
     }
     private int? InstrumentTimestamp(double requested, int subdivision, bool moving)
     {
@@ -136,7 +216,7 @@ public partial class WorkstationPageVM
     }
     private void InstrumentResult(InstrumentalTrackContext context, Guid request, bool changed, Guid? selected, string? error = null)
     {
-        if (changed) { instrumentRevision++; QueueSave(); QueuePlaybackUpdate(); PublishInstrumentSnapshot(); }
+        if (changed) { instrumentRevision++; QueueSave(); QueuePlaybackUpdate(); PublishInstrumentSnapshot(); NotifyHistoryState(); }
         messenger?.Send(new InstrumentalEditResultMessage(context, request, changed, selected, error));
     }
     private bool TryApplyInstrumentNotes(InstrumentalTrack track, IReadOnlyList<InstrumentalNoteSnapshot> desired)
@@ -159,7 +239,7 @@ public partial class WorkstationPageVM
     }
     private void PublishInstrumentTransaction(InstrumentalTrackContext context, Guid request, bool changed, IReadOnlyList<Guid> affected, string? error)
     {
-        if (changed) { instrumentRevision++; QueueSave(); QueuePlaybackUpdate(); PublishInstrumentSnapshot(); }
+        if (changed) { instrumentRevision++; QueueSave(); QueuePlaybackUpdate(); PublishInstrumentSnapshot(); NotifyHistoryState(); }
         var ids = ActiveInstrument(context) is { } track ? affected.Where(id => track.Notes.Any(n => InstrumentNoteId(n) == id)).ToArray() : [];
         messenger?.Send(new InstrumentalEditResultMessage(context, request, changed, ids.Length > 0 ? ids[0] : null, error) { SelectedNoteIds = Array.AsReadOnly(ids) });
     }

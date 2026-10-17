@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Controls;
+using System.Windows.Data;
 using osuHitsounder.Resources.CustomControls;
 using osuHitsounder.Views.Pages;
 using osuHitsounder.Views.Popups;
@@ -111,7 +112,22 @@ public partial class MainWindow
         SetValue(IsBottomDrawerPropertyKey, bottomNonModal);
         SetSampleManagerPhase(OHsSampleDrawerPhase.Opening);
         drawer.IsEnabled = true;
+        var instrumentDrawer = drawer is OHsInstrumentalArrangementDrawer or OHsKeysMappingDrawer;
         SampleManagerHost.Content = drawer;
+        // Content attachment sets local flow direction; bind after attachment so shell changes remain live.
+        if (instrumentDrawer)
+            drawer.SetBinding(FlowDirectionProperty, new Binding(nameof(FlowDirection)) { Source = this, Mode = BindingMode.OneWay });
+        OHsInstrumentalArrangementDrawer? piano = drawer as OHsInstrumentalArrangementDrawer;
+        Action<double>? scrollPiano = null;
+        if (piano is not null && PageHost.Content is WorkstationPage page)
+        {
+            piano.SetBinding(OHsInstrumentalArrangementDrawer.TimelineContentWidthProperty, new Binding(nameof(page.Timeline.TimelineContentWidth)) { Source = page.Timeline, Mode = BindingMode.OneWay });
+            piano.SetBinding(OHsInstrumentalArrangementDrawer.TimelineViewportWidthProperty, new Binding(nameof(page.Timeline.TimelineViewportWidth)) { Source = page.Timeline, Mode = BindingMode.OneWay });
+            piano.SetBinding(OHsInstrumentalArrangementDrawer.TimelineHorizontalOffsetProperty, new Binding(nameof(page.Timeline.TimelineHorizontalOffset)) { Source = page.Timeline, Mode = BindingMode.OneWay });
+            scrollPiano = offset => { if (ReferenceEquals(SampleManagerHost.Content, piano) && ReferenceEquals(PageHost.Content, page)) page.Timeline.ScrollFromUser(offset); };
+            piano.HorizontalOffsetRequested += scrollPiano;
+            piano.Attach();
+        }
         SystemParameters.StaticPropertyChanged += OnSampleManagerAnimationSettingChanged;
         using var cancellation = presentation.Token.Register(() => completion.TrySetResult());
         try
@@ -140,7 +156,16 @@ public partial class MainWindow
                 SystemParameters.StaticPropertyChanged -= OnSampleManagerAnimationSettingChanged;
                 drawer.CloseRequested -= OnCloseRequested;
                 drawer.Loaded -= OnLoaded;
-                ResetSampleManagerAnimation();
+                if (instrumentDrawer) BindingOperations.ClearBinding(drawer, FlowDirectionProperty);
+                if (piano is not null)
+                {
+                    piano.Detach();
+                    if (scrollPiano is not null) piano.HorizontalOffsetRequested -= scrollPiano;
+                    BindingOperations.ClearBinding(piano, OHsInstrumentalArrangementDrawer.TimelineContentWidthProperty);
+                    BindingOperations.ClearBinding(piano, OHsInstrumentalArrangementDrawer.TimelineViewportWidthProperty);
+                    BindingOperations.ClearBinding(piano, OHsInstrumentalArrangementDrawer.TimelineHorizontalOffsetProperty);
+                }
+                if (ReferenceEquals(sampleManagerCompletion, completion)) ResetSampleManagerAnimation();
                 if (ReferenceEquals(SampleManagerHost.Content, drawer)) SampleManagerHost.Content = null;
                 if (ReferenceEquals(sampleManagerCompletion, completion))
                 {

@@ -11,8 +11,7 @@ namespace osuHitsounder;
 
 public partial class App
 {
-    private static Func<InstrumentalEditorContext, InstrumentalArrangementPopupVM> CreateInstrumentEditorFactory(IServiceProvider provider) =>
-        context => new InstrumentalArrangementPopupVM(context,
-                new MarkerPlaybackCoordinator(provider.GetRequiredService<Func<IWorkstationAudioService>>()(),MarkerPlaybackCoordinator.DelayAsync),
+    private static Func<InstrumentalEditorContext, InstrumentalArrangementDrawerVM> CreateInstrumentEditorFactory(IServiceProvider provider) =>
+        context => new InstrumentalArrangementDrawerVM(context,
                 provider.GetRequiredService<IMessenger>(),provider.GetRequiredService<IUiScheduler>());
 }

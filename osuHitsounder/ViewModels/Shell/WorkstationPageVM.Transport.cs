@@ -18,6 +18,52 @@ namespace osuHitsounder.ViewModels.Shell;
 
 public partial class WorkstationPageVM
 {
+    private long instrumentTimelineRevision;
+    private long instrumentTimelineRequestSequence;
+    private Guid instrumentTimelineEditor;
+    private Task instrumentTimelineNotifications = Task.CompletedTask;
+
+    private OHsInstrumentalTimelineSnapshot InstrumentTimeline(InstrumentalTrackContext context) =>
+        new(context, ++instrumentTimelineRevision, Waveform?.Duration ?? TimeSpan.Zero, Position,
+            IsPlaying, ActiveInstrument(context) is not null && markerClock.IsValid && Waveform?.Duration > TimeSpan.Zero,
+            CanUseTransport(), Project?.Offsets ?? [], Project?.BPMs ?? [], ZoomFactor,
+            SelectedSubdivisionIndex, ScrollWithMarker, PlaybackWarning);
+
+    private void PublishInstrumentTimeline()
+    {
+        if (!deactivated && activeInstrumentContext is { } context && ActiveInstrument(context) is not null)
+            messenger?.Send(new OHsInstrumentalTimelineChangedMessage(InstrumentTimeline(context)));
+    }
+
+    private void ReceiveInstrumentTimelineEdit(OHsInstrumentalTimelineEditRequestedMessage message)
+    {
+        instrumentTimelineNotifications = ApplyInstrumentTimelineEditAsync(instrumentTimelineNotifications, message);
+    }
+
+    private async Task ApplyInstrumentTimelineEditAsync(Task previous, OHsInstrumentalTimelineEditRequestedMessage message)
+    {
+        try
+        {
+            await previous;
+            await uiScheduler.InvokeAsync(() =>
+            {
+                if (deactivated || ActiveInstrument(message.Context) is null || message is { ZoomFactor: null, SelectedSubdivisionIndex: null, ScrollWithMarker: null }) return;
+                if (instrumentTimelineEditor != message.Context.EditorSessionId)
+                { instrumentTimelineEditor = message.Context.EditorSessionId; instrumentTimelineRequestSequence = 0; }
+                if (message.Sequence <= instrumentTimelineRequestSequence ||
+                    message.ZoomFactor is { } zoom && !double.IsFinite(zoom) ||
+                    message.SelectedSubdivisionIndex is < 0 or > 8) return;
+                instrumentTimelineRequestSequence = message.Sequence;
+                if (message.ZoomFactor is { } value) SetZoom((int)Math.Clamp(value, 8, 128));
+                if (message.SelectedSubdivisionIndex is { } index) SelectedSubdivisionIndex = index;
+                if (message.ScrollWithMarker is { } follow) ScrollWithMarker = follow;
+                PublishInstrumentTimeline();
+            }, CancellationToken.None);
+        }
+        catch (Exception error) { System.Diagnostics.Trace.TraceError("Instrument timeline update failed: {0}", error); }
+    }
+
+    partial void OnScrollWithMarkerChanged(bool value) => PublishInstrumentTimeline();
     public void RefreshPlayback()
     {
         if (deactivated) return;
@@ -32,6 +78,7 @@ public partial class WorkstationPageVM
         IsPlaying = snapshot.IsPlaying;
         ElapsedText = $"{(int)Position.TotalMinutes:00}:{Position.Seconds:00}.{Position.Milliseconds:000}";
         if (!string.IsNullOrWhiteSpace(snapshot.Error)) ErrorMessage = snapshot.Error;
+        PublishInstrumentTimeline();
     }
 
     private void OnPlaybackStateChanged()
@@ -208,9 +255,10 @@ public partial class WorkstationPageVM
             IncreaseSubdivisionCommand.NotifyCanExecuteChanged();
             DecreaseSubdivisionCommand.NotifyCanExecuteChanged();
             OnPropertyChanged(nameof(Subdivision));
+            PublishInstrumentTimeline();
         }
     }
-    private bool CanUseTransport() => CanPlay && !instrumentBusy;
+    private bool CanUseTransport() => CanPlay;
     private bool CanIncreaseSubdivision() => IsInteractionReady && SelectedSubdivisionIndex < 8;
     private bool CanDecreaseSubdivision() => IsInteractionReady && SelectedSubdivisionIndex > 0;
 

@@ -11,20 +11,19 @@ namespace osuHitsounder.Test.Presentation;
 public sealed class InstrumentalTrackDialogServiceTests
 {
     [Test]
-    public void FailedPresenterAlwaysDisposesLocalOutput()
+    public void FailedPresenterAlwaysDeactivatesDrawer()
     {
         var messenger = new WeakReferenceMessenger();
-        var audio = new StubWorkstationAudioService();
+        InstrumentalArrangementDrawerVM? vm = null;
         var snapshot = Snapshot();
-        var context = new InstrumentalEditorContext(snapshot, "song.wav", new(TimeSpan.FromSeconds(10), [.5f]),
-            [0], [120], TimeSpan.Zero, 4, 32, 100, 100, 100);
+        var context = InstrumentalArrangementTestContext.Create(snapshot,
+            [0], [120], TimeSpan.Zero, 4, 32);
         var service = new InstrumentalTrackDialogService(() => null, Dispatcher.CurrentDispatcher,
-            data => new(data, new MarkerPlaybackCoordinator(audio, Task.Delay), messenger, new ImmediateUiScheduler()),
+            data => vm = new(data, messenger, new ImmediateUiScheduler()),
             _ => throw new AssertionException("Mapping factory should not run."),
             (_, _) => Task.FromException(new InvalidOperationException("presenter failed")));
         Assert.Throws<InvalidOperationException>(() => UiTestPump.Run(service.ShowArrangementAsync(context, default)));
-        Assert.That(audio.Disposed, Is.True);
-        Assert.That(audio.Snapshot.IsPlaying, Is.False);
+        Assert.That(vm!.CanEdit, Is.False);
     }
 
     [Test]
