@@ -22,11 +22,11 @@ public partial class OHsWorkstationTrackRow : UserControl
         InitializeComponent();
         ((ObjectDataProvider)Resources["OHsWorkstationTrackRowSource"]).ObjectInstance = this;
         Loaded += (_, _) => { Subscribe(); RefreshPresentation(); };
-        Unloaded += (_, _) => Unsubscribe();
+        Unloaded += (_, _) => { if (Track is {} track) ViewModel?.CancelTrackRename(track); DetachActionMenu(); Unsubscribe(); };
     }
-    public static readonly DependencyProperty TrackProperty = DependencyProperty.Register(nameof(Track), typeof(Track), typeof(OHsWorkstationTrackRow));
+    public static readonly DependencyProperty TrackProperty = DependencyProperty.Register(nameof(Track), typeof(Track), typeof(OHsWorkstationTrackRow), new PropertyMetadata(null, OnTrackChanged));
     public Track? Track { get => (Track?)GetValue(TrackProperty); set => SetValue(TrackProperty, value); }
-    public static readonly DependencyProperty ViewModelProperty = DependencyProperty.Register(nameof(ViewModel), typeof(WorkstationPageVM), typeof(OHsWorkstationTrackRow), new PropertyMetadata(null, (d, _) => ((OHsWorkstationTrackRow)d).Subscribe()));
+    public static readonly DependencyProperty ViewModelProperty = DependencyProperty.Register(nameof(ViewModel), typeof(WorkstationPageVM), typeof(OHsWorkstationTrackRow), new PropertyMetadata(null, OnOwnerChanged));
     public WorkstationPageVM? ViewModel { get => (WorkstationPageVM?)GetValue(ViewModelProperty); set => SetValue(ViewModelProperty, value); }
     private void Subscribe()
     {
@@ -42,18 +42,39 @@ public partial class OHsWorkstationTrackRow : UserControl
     }
     private void OnPresentationChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(WorkstationPageVM.SampleFiles) or nameof(WorkstationPageVM.SamplesRevision) or nameof(WorkstationPageVM.TrackAuditionRevision)) RefreshPresentation();
+        if (e.PropertyName is nameof(WorkstationPageVM.SampleFiles) or nameof(WorkstationPageVM.SamplesRevision)
+            or nameof(WorkstationPageVM.TrackAuditionRevision) or nameof(WorkstationPageVM.TrackPresentationRevision)
+            or nameof(WorkstationPageVM.RenamingTrack) or nameof(WorkstationPageVM.TrackNameDraft)
+            or nameof(WorkstationPageVM.IsTrackRenamePending)) RefreshPresentation();
     }
     public BeatGridView? SampleTimeline => FindVisualChild<BeatGridView>(this);
     public void PrepareDrawing() => SampleTimeline?.PrepareDrawing();
     public void RefreshPresentation()
     {
         if (viewModel is null) return;
+        if (Track is {} current)
+        {
+            if (!IsTrackCollapsed && current.IsCollapsed && HasExpandedControlFocus(Keyboard.FocusedElement as DependencyObject ?? FocusManager.GetFocusedElement(FocusManager.GetFocusScope(this)) as DependencyObject)) FindVisualChild<BalloonButton>(this, "TrackCollapseAction")?.Focus();
+            IsTrackCollapsed = current.IsCollapsed; CurrentTrackExtent = viewModel.GetTrackExtent(current);
+            IsTrackMuted = current.IsTrackMuted; IsTrackSoloed = current.IsTrackSoloed;
+            var wasRenaming = IsRenaming;
+            IsRenaming = ReferenceEquals(viewModel.RenamingTrack, current);
+            if (IsRenaming && !wasRenaming)
+            {
+                var owner = ViewModel; var generation = owner!.LoadGeneration;
+                Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Input, () =>
+                {
+                    if (!IsLoaded || !ReferenceEquals(Track, current) || !ReferenceEquals(ViewModel, owner) || owner.LoadGeneration != generation || !ReferenceEquals(owner.RenamingTrack, current)) return;
+                    var input = FindVisualChild<TextBox>(this); input?.Focus(); input?.SelectAll();
+                });
+            }
+            SetCurrentValue(TrackNameDraftProperty, IsRenaming ? viewModel.TrackNameDraft : current.Name);
+        }
         RefreshSampleSelectors(this);
         RefreshTrackAuditionControls(this);
         RefreshTrackSamplePresentation();
     }
-    public IInputElement? GetRemovalFocusTarget() => FindVisualChild<BalloonButton>(this);
+    public IInputElement? GetRemovalFocusTarget() => FindVisualChild<BalloonComboBox>(this);
     public bool HasExpandedControlFocus(DependencyObject? origin)
     {
         var expanded = false;
@@ -108,14 +129,8 @@ public partial class OHsWorkstationTrackRow : UserControl
     {
         if (sender is not TextBox { DataContext: Track track } input) return;
         input.Tag = true;
-        input.SetCurrentValue(TextBox.TextProperty, track.Name);
+        input.SetCurrentValue(TextBox.TextProperty, ReferenceEquals(viewModel.RenamingTrack, track) ? viewModel.TrackNameDraft : track.Name);
         input.Tag = false;
-    }
-
-    private void OnTrackNameTextChanged(object sender, TextChangedEventArgs e)
-    {
-        if (sender is TextBox { IsLoaded: true, DataContext: Track track } input && input.Tag is not true)
-            viewModel.SetTrackName(track, input.Text);
     }
 
     private void RefreshSampleSelectors(DependencyObject root)
@@ -227,7 +242,7 @@ public partial class OHsWorkstationTrackRow : UserControl
         var left = FindVisualChild<StackPanel>(row, "TrackLeftControls");
         var right = FindVisualChild<StackPanel>(row, "TrackRightControls");
         if (left is not null && (right is not null || stack.DataContext is osuHitsounder.Core.Entities.InstrumentalTrack))
-            viewModel.SetTrackHeightMinimum(Math.Max(left.DesiredSize.Height, right?.DesiredSize.Height??0));
+            if (Track is {} track) viewModel.SetTrackMinimumExtent(track, track.IsCollapsed, Math.Max(left.DesiredSize.Height, right?.DesiredSize.Height??0));
     }
 
     private void OnTrackGridHostLoaded(object sender, RoutedEventArgs e) => RefreshTrackSamplePresentation();
@@ -254,6 +269,66 @@ public partial class OHsWorkstationTrackRow : UserControl
     {
         if (sender is BeatGridView { DataContext: Track track }) viewModel.SelectNode(track, e.Sample, false);
         e.Handled = true;
+    }    private static readonly DependencyPropertyKey IsTrackCollapsedPropertyKey = DependencyProperty.RegisterReadOnly(nameof(IsTrackCollapsed), typeof(bool), typeof(OHsWorkstationTrackRow), new PropertyMetadata(false));
+    public static readonly DependencyProperty IsTrackCollapsedProperty = IsTrackCollapsedPropertyKey.DependencyProperty;
+    public bool IsTrackCollapsed { get => (bool)GetValue(IsTrackCollapsedProperty); private set => SetValue(IsTrackCollapsedPropertyKey, value); }
+    private static readonly DependencyPropertyKey IsTrackMutedPropertyKey = DependencyProperty.RegisterReadOnly(nameof(IsTrackMuted), typeof(bool), typeof(OHsWorkstationTrackRow), new PropertyMetadata(false));
+    public static readonly DependencyProperty IsTrackMutedProperty = IsTrackMutedPropertyKey.DependencyProperty;
+    public bool IsTrackMuted { get => (bool)GetValue(IsTrackMutedProperty); private set => SetValue(IsTrackMutedPropertyKey, value); }
+    private static readonly DependencyPropertyKey IsTrackSoloedPropertyKey = DependencyProperty.RegisterReadOnly(nameof(IsTrackSoloed), typeof(bool), typeof(OHsWorkstationTrackRow), new PropertyMetadata(false));
+    public static readonly DependencyProperty IsTrackSoloedProperty = IsTrackSoloedPropertyKey.DependencyProperty;
+    public bool IsTrackSoloed { get => (bool)GetValue(IsTrackSoloedProperty); private set => SetValue(IsTrackSoloedPropertyKey, value); }
+    private static readonly DependencyPropertyKey IsRenamingPropertyKey = DependencyProperty.RegisterReadOnly(nameof(IsRenaming), typeof(bool), typeof(OHsWorkstationTrackRow), new PropertyMetadata(false));
+    public static readonly DependencyProperty IsRenamingProperty = IsRenamingPropertyKey.DependencyProperty;
+    public bool IsRenaming { get => (bool)GetValue(IsRenamingProperty); private set => SetValue(IsRenamingPropertyKey, value); }
+    private static readonly DependencyPropertyKey CurrentTrackExtentPropertyKey = DependencyProperty.RegisterReadOnly(nameof(CurrentTrackExtent), typeof(double), typeof(OHsWorkstationTrackRow), new PropertyMetadata(36d));
+    public static readonly DependencyProperty CurrentTrackExtentProperty = CurrentTrackExtentPropertyKey.DependencyProperty;
+    public double CurrentTrackExtent { get => (double)GetValue(CurrentTrackExtentProperty); private set => SetValue(CurrentTrackExtentPropertyKey, value); }
+    public static readonly DependencyProperty TrackNameDraftProperty = DependencyProperty.Register(nameof(TrackNameDraft), typeof(string), typeof(OHsWorkstationTrackRow), new PropertyMetadata("", (d,e) => { var row = (OHsWorkstationTrackRow)d; if (row.IsRenaming && ReferenceEquals(row.ViewModel?.RenamingTrack, row.Track)) row.ViewModel!.TrackNameDraft = (string)e.NewValue; }));
+    public string TrackNameDraft { get => (string)GetValue(TrackNameDraftProperty); set => SetValue(TrackNameDraftProperty, value); }
+    private static void OnTrackChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var row = (OHsWorkstationTrackRow)d;
+        if (e.OldValue is Track old) row.ViewModel?.CancelTrackRename(old);
+        row.DetachActionMenu();
+        row.RefreshPresentation();
+        row.AttachActionMenu();
     }
+    private async void OnTrackNameLostFocus(object sender, RoutedEventArgs e)
+    {
+        if (sender is not TextBox { DataContext: Track track } || !ReferenceEquals(track, Track)) return;
+        try { await viewModel.CommitTrackRenameAsync(track); }
+        catch (Exception error) { viewModel.ErrorMessage = error.Message; }
+    }
+    private async void OnTrackNameKeyDown(object sender, KeyEventArgs e)
+    {
+        if (sender is not TextBox { DataContext: Track track } || !ReferenceEquals(track, Track)) return;
+        if (e.Key == Key.Escape) { e.Handled = true; viewModel.CancelTrackRename(track); }
+        else if (e.Key == Key.Enter) { e.Handled = true; try { await viewModel.CommitTrackRenameAsync(track); } catch (Exception error) { viewModel.ErrorMessage = error.Message; } }
+    }
+    private static void OnOwnerChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var row = (OHsWorkstationTrackRow)d;
+        if (e.OldValue is WorkstationPageVM old && row.Track is {} track) old.CancelTrackRename(track);
+        row.DetachActionMenu(); row.Subscribe(); row.RefreshPresentation(); row.AttachActionMenu();
+    }
+    private void OnActionMenuLoaded(object sender, RoutedEventArgs e) => AttachActionMenu();
+    private void DetachActionMenu()
+    {
+        if (FindVisualChild<BalloonComboBox>(this) is {} trigger) trigger.ContextMenu = null;
+    }
+    private void AttachActionMenu()
+    {
+        if (Track is null || ViewModel is null || FindVisualChild<BalloonComboBox>(this) is not {} trigger || trigger.ContextMenu is not null) return;
+        var menu = (ContextMenu)FindResource("OHsWorkstationTrackActionMenu");
+        menu.DataContext = Track;
+        foreach (var item in menu.Items.OfType<MenuItem>())
+        {
+            item.DataContext = Track; item.CommandParameter = Track;
+            BindingOperations.GetBindingExpression(item, MenuItem.CommandProperty)?.UpdateTarget();
+        }
+        trigger.ContextMenu = menu;
+    }
+
 }
 

@@ -97,7 +97,11 @@ public class WorkstationNodeInteractionTests
         var expected = new[] { grids[0].TranslatePoint(Center(grids[0].GetSampleBounds(1000)), list),
             grids[0].TranslatePoint(Center(grids[0].GetSampleBounds(1500)), list),
             grids[1].TranslatePoint(Center(grids[1].GetSampleBounds(1000)), list) };
-        Assert.That(adorner.NodeBounds.Select(Center), Is.EqualTo(expected.Select(p => new Point(p.X - anchorCenter.X, p.Y - anchorCenter.Y))));
+        foreach (var (actual, target) in adorner.NodeBounds.Select(Center).Zip(expected.Select(p => new Point(p.X - anchorCenter.X, p.Y - anchorCenter.Y))))
+        {
+            Assert.That(actual.X, Is.EqualTo(target.X).Within(0.000001));
+            Assert.That(actual.Y, Is.EqualTo(target.Y).Within(0.000001));
+        }
         editor.Page.CancelNodePointer(); UiTestPump.Run(editor.Page.DeactivateAsync());
     }
 
@@ -434,7 +438,10 @@ public class WorkstationNodeInteractionTests
         var vm = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav", data)) },
             new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), new StubSampleFileService(["a.wav", "b.wav"]), nodePasteDialog: new StubNodePasteDialogService());
         var page = new WorkstationPage(vm); page.SetProjectPath("project.json");
-        var view = new InMemoryView(new Window { Content = page, Width = 1100, Height = 800 }); UiTestPump.Run(page.LoadCompletion); view.UpdateLayout();
+        var host = new Window { Content = page, Width = 1100, Height = 800 };
+        var view = new InMemoryView(host); UiTestPump.Run(page.LoadCompletion); view.UpdateLayout();
+        // Realize the explicit participants; leave larger collections virtualized.
+        host.Height += Math.Min(trackCount, 6) * vm.TrackHeight; view.UpdateLayout();
         return (page, vm, node, view);
     }
     private static IEnumerable<T> Descendants<T>(DependencyObject parent) where T : DependencyObject

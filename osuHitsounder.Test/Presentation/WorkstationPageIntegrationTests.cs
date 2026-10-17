@@ -234,10 +234,9 @@ public class WorkstationPageIntegrationTests
         Assert.That(mute.Style.BasedOn, Is.SameAs(page.FindResource("BaseToggleButtonStyle")));
         Assert.That(mute.Template, Is.SameAs(page.FindResource("OHsWorkstationTrackToggleTemplate")));
         Assert.That(mute.IsChecked, Is.True); Assert.That(solo.IsChecked, Is.True);
-        var remove = FindVisualChildren<BalloonButton>(page).Single(control => ReferenceEquals(control.DataContext, a) &&
-            AutomationProperties.GetName(control) == "Remove track");
-        Assert.That(remove.Style, Is.SameAs(remove.FindResource("OHsWorkstationRemoveTrackStyle")));
-        Assert.That(remove.Style.BasedOn, Is.SameAs(page.FindResource("OHsBalloonDestructiveActionStyle")));
+        var remove = FindRemovalAction(page, a);
+        Assert.That(remove.Style, Is.SameAs(FindVisualChildren<OHsWorkstationTrackRow>(page).Single(row => ReferenceEquals(row.Track, a)).FindResource("OHsWorkstationTrackDeleteMenuItemStyle")));
+        Assert.That(remove.Style.BasedOn, Is.SameAs(page.FindResource("OHsDestructiveActionMenuItemStyle")));
         Assert.That(remove.CommandParameter, Is.SameAs(a));
         var updates = audio.SampleUpdates.Count;
         mute.DataContext = b; solo.DataContext = b;
@@ -366,18 +365,24 @@ public class WorkstationPageIntegrationTests
         Assert.That(input.Style.BasedOn, Is.SameAs(page.FindResource("RoundedTextInputStyle")));
         Assert.That(saves.Writes, Is.Zero);
 
-        input.Text = "กลอง";
+        vm.BeginTrackRenameCommand.Execute(first);
+        input.SetCurrentValue(TextBox.TextProperty, "กลอง");
+        UiTestPump.Run(vm.CommitTrackRenameAsync(first));
         UiTestPump.Run(vm.FlushSavesAsync());
         Assert.That(first.Name, Is.EqualTo("กลอง"));
         Assert.That(ProjectDataSerializer.Deserialize(saves.LatestJson!).Tracks[0].Name, Is.EqualTo("กลอง"));
         var writes = saves.Writes;
-        input.DataContext = second;
+        var recycledRow = FindVisualChildren<OHsWorkstationTrackRow>(page).Single(row => ReferenceEquals(row.Track, first));
+        recycledRow.Track = second; view.UpdateLayout();
+        input = FindVisualChildren<TextBox>(recycledRow).Single();
         UiTestPump.Run(vm.FlushSavesAsync());
         Assert.That(input.Text, Is.EqualTo("Snare"));
         Assert.That(first.Name, Is.EqualTo("กลอง"));
         Assert.That(second.Name, Is.EqualTo("Snare"));
         Assert.That(saves.Writes, Is.EqualTo(writes));
-        input.Text = "";
+        vm.BeginTrackRenameCommand.Execute(second);
+        input.SetCurrentValue(TextBox.TextProperty, "");
+        UiTestPump.Run(vm.CommitTrackRenameAsync(second));
         UiTestPump.Run(vm.FlushSavesAsync());
         Assert.That(second.Name, Is.Empty);
         Assert.That(ProjectDataSerializer.Deserialize(saves.LatestJson!).Tracks[1].Name, Is.Empty);
@@ -458,12 +463,11 @@ public class WorkstationPageIntegrationTests
         using var view = new InMemoryView(new Window { Content = page, Width = 640, Height = 480 });
         UiTestPump.Run(page.LoadCompletion);
         view.UpdateLayout();
-        var button = FindVisualChildren<BalloonButton>(page)
-            .Single(action => AutomationProperties.GetName(action) == "Remove track");
+        var button = FindRemovalAction(page, track);
         Assert.That(button.CommandParameter, Is.SameAs(track));
-        Assert.That(button.Style, Is.SameAs(button.FindResource("OHsWorkstationRemoveTrackStyle")));
-        Assert.That(button.Style.BasedOn, Is.SameAs(page.FindResource("OHsBalloonDestructiveActionStyle")));
-        Assert.That(AutomationProperties.GetName(button), Is.EqualTo("Remove track"));
+        Assert.That(button.Style, Is.SameAs(FindVisualChildren<OHsWorkstationTrackRow>(page).Single(row => ReferenceEquals(row.Track, track)).FindResource("OHsWorkstationTrackDeleteMenuItemStyle")));
+        Assert.That(button.Style.BasedOn, Is.SameAs(page.FindResource("OHsDestructiveActionMenuItemStyle")));
+        Assert.That(button.Header, Is.EqualTo("Delete Track"));
         UiTestPump.Run(vm.RemoveTrackCommand.ExecuteAsync(button.CommandParameter));
         view.UpdateLayout();
         var list = (ListBox)((osuHitsounder.Views.Pages.OHsWorkstationTrackList)page.FindName("TrackListComponent")).FindName("TrackList");
@@ -489,8 +493,7 @@ public class WorkstationPageIntegrationTests
         using var view = new InMemoryView(new Window { Content = page, Width = 640, Height = 480 });
         UiTestPump.Run(page.LoadCompletion);
         view.UpdateLayout();
-        var button = FindVisualChildren<BalloonButton>(page)
-            .Single(action => AutomationProperties.GetName(action) == "Remove track");
+        var button = FindRemovalAction(page, track);
         Assert.That(button.IsEnabled, Is.True);
         UiTestPump.Run(page.DeactivateAsync());
         view.UpdateLayout();
@@ -517,7 +520,7 @@ public class WorkstationPageIntegrationTests
         UiTestPump.Run(vm.RemoveTrackCommand.ExecuteAsync(first));
         view.UpdateLayout();
         var next = page.FindRemovalFocusTarget(0);
-        Assert.That(next, Is.TypeOf<BalloonButton>());
+        Assert.That(next, Is.TypeOf<BalloonComboBox>());
         Assert.That(((FrameworkElement)next).DataContext, Is.SameAs(second));
         UiTestPump.Run(vm.RemoveTrackCommand.ExecuteAsync(second));
         view.UpdateLayout();
@@ -1565,11 +1568,18 @@ public class WorkstationPageIntegrationTests
         UiTestPump.EnsureFontResources(app);
         foreach (var resource in new[] { $"Themes/{theme}.xaml", "Converters/Converters.xaml", "Icons.xaml",
                      "Styles/TextBlock.xaml", "Styles/ItemsControl.xaml", "Styles/StackPanel.xaml", "Styles/ColumnDefinition.xaml", "Styles/Grid.xaml", "Styles/Border.xaml", "Styles/ContentPresenter.xaml",
-                     "Styles/Button.xaml", "Styles/ToolTip.xaml", "Styles/ScrollViewer.xaml", "Styles/TextBox.xaml", "Styles/ComboBox.xaml", "Styles/ListBox.xaml", "Styles/Slider.xaml", "BeatGrid.xaml" })
+                     "Styles/Button.xaml", "Styles/MenuItem.xaml", "Styles/ContextMenu.xaml", "Styles/BalloonComboBox.xaml", "Styles/ToolTip.xaml", "Styles/ScrollViewer.xaml", "Styles/TextBox.xaml", "Styles/ComboBox.xaml", "Styles/ListBox.xaml", "Styles/Slider.xaml", "BeatGrid.xaml" })
             app.Resources.MergedDictionaries.Add(new ResourceDictionary
             {
                 Source = new Uri($"/osuHitsounder;component/Resources/{resource}", UriKind.Relative)
             });
     }
+
+    private static MenuItem FindRemovalAction(DependencyObject root, Track track)
+    {
+        var trigger = FindVisualChildren<BalloonComboBox>(root).Single(control => ReferenceEquals(control.DataContext, track));
+        return trigger.ContextMenu!.Items.OfType<MenuItem>().Single(item => Equals(item.Header, "Delete Track"));
+    }
+
 }
 

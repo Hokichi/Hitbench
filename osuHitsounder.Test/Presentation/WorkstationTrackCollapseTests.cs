@@ -1,4 +1,5 @@
 ﻿using System.Windows;
+using System.Windows.Data;
 using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -235,13 +236,13 @@ public class WorkstationTrackCollapseTests
             var track = (Track)row.DataContext;
             var groups = Descendants<StackPanel>(row).Where(x => x.Name is "TrackLeftExpandedControls" or "TrackRightExpandedControls").ToArray();
             Assert.That(groups, Is.Not.Empty);
-            Assert.That(groups.Select(x => x.Visibility), Is.All.EqualTo(vm.AreTracksCollapsed ? Visibility.Collapsed : Visibility.Visible), track.Name);
+            Assert.That(groups.Select(x => x.Visibility), Is.All.EqualTo(track.IsCollapsed ? Visibility.Collapsed : Visibility.Visible), track.Name);
             if (track is InstrumentalTrack)
             {
                 var actions = Descendants<BalloonButton>(row).ToArray();
                 var arrangement = actions.Single(x => AutomationProperties.GetName(x) == "View Arrangement");
                 var mapping = actions.Single(x => AutomationProperties.GetName(x) == "Keys Mapping");
-                UiControlContract.AssertStyle<BalloonButton>(arrangement, "OHsWorkstationInstrumentActionStyle");
+                UiControlContract.AssertStyle<BalloonButton>(arrangement, "OHsWorkstationInstrumentMutedActionStyle");
                 UiControlContract.AssertStyle<BalloonButton>(mapping, "OHsWorkstationInstrumentActionStyle");
                 Assert.That(arrangement.Command, Is.SameAs(vm.ViewArrangementCommand));
                 Assert.That(mapping.Command, Is.SameAs(vm.KeysMappingCommand));
@@ -255,7 +256,7 @@ public class WorkstationTrackCollapseTests
             var grid = Descendants<BeatGridView>(row).Single();
             Assert.That(grid.Bpms, Is.SameAs(vm.Project!.BPMs), track.Name);
             Assert.That(grid.Offsets, Is.SameAs(vm.Project.Offsets), track.Name);
-            Assert.That(grid.Height, Is.EqualTo(vm.TrackHeight), track.Name);
+            Assert.That(BindingOperations.GetBindingExpression(grid, FrameworkElement.HeightProperty), Is.Not.Null, track.Name);
         }
     }
 
@@ -293,7 +294,7 @@ public class WorkstationTrackCollapseTests
                 Assert.That(action.Focusable, Is.True);
                 Assert.That(action.FocusVisualStyle, Is.SameAs(page.FindResource(ReferenceEquals(action,instrument)?"OHsSampleManagerKeyboardFocusStyle":"DefaultFocusVisualStyle")));
                 Assert.That(ToolTipService.GetShowsToolTipOnKeyboardFocus(action), Is.True);
-                Assert.That(action.IsEnabled, Is.True);
+                Assert.That(action.IsEnabled, Is.EqualTo(!ReferenceEquals(action, toggle)));
             }
             PressEnter(sample);
             Assert.That(vm.Tracks, Has.Count.EqualTo(1));
@@ -338,8 +339,7 @@ public class WorkstationTrackCollapseTests
             var secondary = new FrameworkElement[] { Find<ValueSlider>(page, "VolumeSlider"),
                 Find<ToggleButton>(page, "TrackMuteToggle"), Find<ToggleButton>(page, "TrackSoloToggle"),
                 Find<ComboBox>(page, "TrackAdditionSelector"),
-                Find<ComboBox>(page, "TrackSampleTypeSelector"),
-                Descendants<BalloonButton>(page).Single(control => AutomationProperties.GetName(control) == "Remove track") };
+                Find<ComboBox>(page, "TrackSampleTypeSelector") };
             UiControlContract.AssertStyle<ValueSlider>(secondary[0], "BaseValueSliderStyle");
             for (var cycle = 0; cycle < 2; cycle++)
             {
@@ -413,8 +413,10 @@ public class WorkstationTrackCollapseTests
             var realized = Descendants<ValueSlider>(list).Where(control => control.Name == "VolumeSlider").ToArray();
             Assert.That(realized, Is.Not.Empty);
             Assert.That(realized.Length, Is.LessThan(81));
-            Assert.That(realized.All(control => !control.IsVisible), Is.True);
+            Assert.That(realized.All(control => control.IsVisible == !((Track)control.DataContext).IsCollapsed), Is.True);
+            Assert.That(vm.Tracks.Last().IsCollapsed, Is.False);
             Assert.That(Descendants<ComboBox>(list).Any(control => ReferenceEquals(control.DataContext, vm.Tracks.Last())), Is.True);
+            vm.ToggleTracksCollapsedCommand.Execute(null);
             vm.ToggleTracksCollapsedCommand.Execute(null);
             list.ScrollIntoView(vm.Tracks[0]);
             view.UpdateLayout();

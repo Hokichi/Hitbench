@@ -13,6 +13,7 @@ public class WorkstationZoomTests
     {
         var (vm, saves) = Create((_, token) => Task.Delay(Timeout.Infinite, token));
         await Load(vm);
+        vm.Project!.Tracks.Add(new Track()); vm.Tracks.Add(vm.Project.Tracks.Last());
         vm.SetTrackHeightMinimum(200);
         vm.IncreaseTrackHeightCommand.Execute(null);
         vm.IncreaseTrackHeightCommand.Execute(null);
@@ -55,6 +56,8 @@ public class WorkstationZoomTests
         Assert.That(vm.AreTracksCollapsed, Is.False);
         await Load(vm);
         Assert.That(vm.Tracks, Is.Empty);
+        Assert.That(vm.ToggleTracksCollapsedCommand.CanExecute(null), Is.False);
+        vm.AddPianoTrackCommand.Execute(null);
         Assert.That(vm.ToggleTracksCollapsedCommand.CanExecute(null), Is.True);
         vm.IsReturning = true;
         Assert.That(vm.ToggleTracksCollapsedCommand.CanExecute(null), Is.False);

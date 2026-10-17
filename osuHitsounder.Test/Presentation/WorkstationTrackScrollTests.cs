@@ -39,7 +39,8 @@ public class WorkstationTrackScrollTests
             Assert.That(scroll.VerticalOffset, Is.EqualTo(scroll.ScrollableHeight).Within(.01));
             Assert.That(page.TimelineHorizontalOffset, Is.EqualTo(horizontal));
             Assert.That(vm.SelectedTrack, Is.SameAs(vm.Tracks[^1]));
-            Assert.That(vm.AreTracksCollapsed, Is.EqualTo(collapsed));
+            Assert.That(vm.AreTracksCollapsed, Is.False);
+            Assert.That(vm.Tracks[^1].IsCollapsed, Is.False);
         }
         finally { UiTestPump.Run(page.DeactivateAsync()); }
     }
@@ -108,4 +109,3 @@ public class WorkstationTrackScrollTests
         }
     }
 }
-

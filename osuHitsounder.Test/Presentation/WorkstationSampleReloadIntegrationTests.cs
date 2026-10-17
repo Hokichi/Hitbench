@@ -67,7 +67,9 @@ public class WorkstationSampleReloadIntegrationTests
         Assert.That(AutomationProperties.GetName(button), Is.EqualTo("Reload Samples"));
         var name = Descendants(page).OfType<TextBox>().First(input => input.DataContext is Track);
         UiTestPump.Run(StubWorkstationAudioService.WaitUntilAsync(() => name.IsLoaded));
-        name.Text = "name edited before refresh";
+        vm.BeginTrackRenameCommand.Execute(vm.Tracks.Single());
+        name.SetCurrentValue(TextBox.TextProperty, "name edited before refresh");
+        UiTestPump.Run(vm.CommitTrackRenameAsync(vm.Tracks.Single()));
         Assert.That(vm.Tracks.Single().Name, Is.EqualTo("name edited before refresh"));
         Assert.That(page.HandlePlaybackKey(Key.F5, ModifierKeys.None, false, name), Is.True);
         UiTestPump.Run(page.PlaybackInputCompletion);

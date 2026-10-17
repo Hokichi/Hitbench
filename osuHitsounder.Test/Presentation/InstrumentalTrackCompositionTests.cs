@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using CommunityToolkit.Mvvm.Messaging;
@@ -23,7 +23,8 @@ public class InstrumentalTrackCompositionTests
         var row = (ListBoxItem)list.ItemContainerGenerator.ContainerFromIndex(0);
         Assert.That(Children(row).OfType<ComboBox>(), Is.Empty);
         var arrangement = Children(row).OfType<osuHitsounder.Resources.CustomControls.BalloonButton>().Single(b => b.ButtonText == "View Arrangement");
-        UiControlContract.AssertStyle<osuHitsounder.Resources.CustomControls.BalloonButton>(arrangement, "OHsWorkstationInstrumentActionStyle");
+        UiControlContract.AssertStyle<osuHitsounder.Resources.CustomControls.BalloonButton>(arrangement, "OHsWorkstationInstrumentMutedActionStyle");
+        Assert.That(arrangement.Style.BasedOn, Is.SameAs(arrangement.FindResource("OHsWorkstationInstrumentActionStyle")));
         var mapping = Children(row).OfType<osuHitsounder.Resources.CustomControls.BalloonButton>().Single(b => System.Windows.Automation.AutomationProperties.GetName(b) == "Keys Mapping");
         UiControlContract.AssertStyle<osuHitsounder.Resources.CustomControls.BalloonButton>(mapping, "OHsWorkstationInstrumentActionStyle");
         Assert.That(Children(row).OfType<osuHitsounder.Resources.CustomControls.BeatGridView>(), Is.Empty);

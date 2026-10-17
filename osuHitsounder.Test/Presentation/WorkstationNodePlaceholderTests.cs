@@ -39,6 +39,7 @@ public class WorkstationNodePlaceholderTests
         host = new Window { Content = page, Width = 1100, Height = 800 };
         view = new InMemoryView(host); UiTestPump.Run(page.LoadCompletion);
         vm.ToggleTracksCollapsedCommand.Execute(null); view.UpdateLayout();
+        host.Height += Math.Min(trackCount, 6) * vm.TrackHeight; view.UpdateLayout();
         foreach (var grid in Grids()) { grid.ContentWidth = 1000; grid.ViewportWidth = 500; grid.HorizontalOffset = 0; }
     }
 
