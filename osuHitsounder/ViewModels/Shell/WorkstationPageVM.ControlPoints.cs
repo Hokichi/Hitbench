@@ -107,6 +107,40 @@ public partial class WorkstationPageVM
         PublishControlPointsSnapshot();
     }
 
+    private bool CanPlaceControlPoint(ControlPointsContext context, long revision, Guid pointId, int timestamp)
+    {
+        if (!CanEditControlPoints || !IsActiveControlPoints(context)) return false;
+        var error = revision != controlPointsRevision ? "Control points changed. Try again."
+            : Waveform is null || timestamp < 0 || timestamp >= Waveform.Duration.TotalMilliseconds
+                ? "Choose a position within the song."
+            : Project!.ControlPoints.Any(p => ControlPointId(p) != pointId && p.Timestamp == timestamp)
+                ? "A control point already exists at this timestamp." : null;
+        SetProperty(ref controlPointError, error, nameof(ControlPointError));
+        return error is null;
+    }
+
+    [RelayCommand]
+    private void CommitControlPointAdd(AddControlPointRequestedMessage? request)
+    {
+        if (request is null || request != pendingControlPointAdd) return;
+        SetProperty(ref pendingControlPointAdd, null, nameof(PendingControlPointAdd));
+        if (!CanPlaceControlPoint(request.Context, request.ExpectedRevision, request.PointId, request.Timestamp)) return;
+        var point = new ControlPoint { Timestamp = request.Timestamp, Volume = request.Volume, Sampleset = request.Sampleset };
+        controlPointIds[point] = request.PointId;
+        Project!.ControlPoints.Add(point);
+        FinishControlPointMutation(true);
+    }
+
+    [RelayCommand]
+    private void MoveControlPoint(MoveControlPointRequestedMessage? request)
+    {
+        if (request is null || FindControlPoint(request.Context, request.PointId) is not { } point ||
+            point.Timestamp == request.Timestamp ||
+            !CanPlaceControlPoint(request.Context, request.ExpectedRevision, request.PointId, request.Timestamp)) return;
+        point.Timestamp = request.Timestamp;
+        FinishControlPointMutation(true);
+    }
+
     [RelayCommand]
     private void DeleteControlPoint(DeleteControlPointRequestedMessage? request)
     {
