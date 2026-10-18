@@ -28,7 +28,8 @@ public partial class WorkstationPageVM(
     ISampleManagementDialogService? sampleManagementDialog = null,
     SampleImportBatch? sampleImports = null,
     IInstrumentalTrackDialogService? instrumentDialogs = null,
-    Func<TimeSpan, CancellationToken, Task>? folderRenameDelay = null) : ObservableObject
+    Func<TimeSpan, CancellationToken, Task>? folderRenameDelay = null,
+    TimeProvider? timeProvider = null) : ObservableObject
 {
     private readonly IWorkstationAudioService audioService = playback.Audio;
     private bool subscribedToPlayback;
@@ -229,6 +230,11 @@ public partial class WorkstationPageVM(
             if (sources.Count == 0 || !IsCurrentProject(path, project, generation)) return Array.Empty<string>();
             var batch = await (sampleImports ?? new SampleImportBatch(sampleFiles!)).ImportAsync(path, sources, token);
             imported.AddRange(batch.ImportedFiles); failures.AddRange(batch.Failures);
+            if (imported.Count > 0)
+                await uiScheduler.InvokeAsync(() =>
+                {
+                    if (IsCurrentProject(path, project, generation)) QueueSave();
+                }, CancellationToken.None);
             token.ThrowIfCancellationRequested();
             if (!IsCurrentProject(path, project, generation)) return Array.Empty<string>();
             try
@@ -331,8 +337,7 @@ public partial class WorkstationPageVM(
                 if (activeRemoval is not null) await WaitForReturnAsync(activeRemoval);
                 if (activeNodeEdit is not null) await WaitForReturnAsync(activeNodeEdit);
                 await WaitForReturnAsync(playbackUpdates);
-                CommitPendingZoom(false);
-                QueueSave();
+                QueueSave(CommitPendingZoom(false));
                 await WaitForReturnAsync(saveTail);
                 if (lastSaveError is not null) throw new IOException("Could not save project.", lastSaveError);
             }
@@ -444,19 +449,6 @@ public partial class WorkstationPageVM(
         await current;
     }
 
-    [RelayCommand]
-    private void RetrySave() => QueueSave();
-
-    private void QueueSave()
-    {
-        if (projectFiles is null || projectPath is null || Project is null) return;
-        var json = ProjectDataSerializer.Serialize(Project);
-        var previous = saveTail;
-        pendingProjectWrites++; PublishInstrumentSaveState();
-        PublishControlPointsSnapshot();
-        saveTail = SaveSnapshotAsync(previous, projectPath, json);
-    }
-
     private static bool IsDirectSample(string name) => !name.Contains('/') && !name.Contains('\\');
 
     private void RefreshAvailableSamples(IReadOnlyList<string> choices, bool initializeSelections = true, bool includesSubfolders = true)
@@ -484,23 +476,6 @@ public partial class WorkstationPageVM(
             else target.Insert(index, choices[index]);
         }
         while (target.Count > choices.Count) target.RemoveAt(target.Count - 1);
-    }
-
-    private async Task SaveSnapshotAsync(Task previous, string path, string json)
-    {
-        await previous;
-        try
-        {
-            await projectFiles!.SaveAsync(path, json, CancellationToken.None);
-            lastSaveError = null;
-            SaveError = null;
-        }
-        catch (Exception error)
-        {
-            lastSaveError = error;
-            SaveError = error.Message;
-        }
-        finally { pendingProjectWrites--; PublishInstrumentSaveState(); PublishControlPointsSnapshot(); }
     }
 
     private async Task LoadCoreAsync(string projectPath, int generation, CancellationToken token)
@@ -540,6 +515,7 @@ public partial class WorkstationPageVM(
                 audioService.SetApplicationVolume(ApplicationVolume);
                 audioService.SetSamplesVolume(SamplesVolume);
                 Project = source.Project;
+                latestRequestedLastChanged = Project.LastChanged;
                 InitializeControlPoints();
                 PublishControlPointTimeline();
                 RestoreZoom(Project.WorkstationZoom);
