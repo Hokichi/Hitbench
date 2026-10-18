@@ -7,6 +7,24 @@ namespace osuHitsounder.Test.Presentation;
 public sealed class WorkstationHeaderStateTests
 {
     [Test]
+    public async Task CollapsedRowsUseCommonMeasuredMinimum()
+    {
+        var sample = new Track { IsCollapsed = true };
+        var instrument = new InstrumentalTrack { IsCollapsed = true };
+        var project = new ProjectData { Tracks = [sample, instrument] };
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", project)) },
+            new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), MarkerPlaybackCoordinator.DelayAsync), new ImmediateUiScheduler());
+        try
+        {
+            await vm.LoadAsync("project.json", default);
+            vm.SetTrackMinimumExtent(sample, true, 51);
+            vm.SetTrackMinimumExtent(instrument, true, 47);
+            Assert.That(vm.GetTrackExtent(instrument), Is.EqualTo(vm.GetTrackExtent(sample)));
+            Assert.That(vm.GetTrackExtent(sample), Is.GreaterThanOrEqualTo(51));
+        }
+        finally { await vm.DeactivateAsync(); }
+    }
+    [Test]
     public async Task HeaderFollowsProjectAndPlaybackTiming()
     {
         var project = new ProjectData { Offsets = [100, 1000, 1000], BPMs = [120, 150, 180],

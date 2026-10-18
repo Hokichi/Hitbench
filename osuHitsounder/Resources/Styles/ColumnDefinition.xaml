@@ -5,7 +5,7 @@
         x:Key="BaseColumnDefinitionStyle"
         TargetType="ColumnDefinition" />
 
-<GridLength x:Key="OHsWorkstationSideColumnWidth">128</GridLength>
+<GridLength x:Key="OHsWorkstationSideColumnWidth">180</GridLength>
 <GridLength x:Key="OHsWorkstationColumnGap">12</GridLength>
 </ResourceDictionary>
 

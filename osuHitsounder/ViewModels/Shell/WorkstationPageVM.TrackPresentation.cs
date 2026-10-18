@@ -4,7 +4,7 @@ namespace osuHitsounder.ViewModels.Shell;
 public partial class WorkstationPageVM
 {
     private readonly Dictionary<Track, (double Collapsed, double Expanded)> trackExtents = new(ReferenceEqualityComparer.Instance);
-    private double trackHeight = 36, minimumTrackHeight = 36, expandedTrackGrowth;
+    private double trackHeight = 76, minimumTrackHeight = 76, expandedTrackGrowth;
     private int trackPresentationRevision;
     public int TrackPresentationRevision => trackPresentationRevision;
     public bool AreTracksCollapsed => tracks.Count > 0 && tracks.All(t => t.IsCollapsed);
@@ -14,11 +14,11 @@ public partial class WorkstationPageVM
     public double MinimumTrackHeight => minimumTrackHeight;
     public double MaximumTrackHeight => minimumTrackHeight + (AreTracksCollapsed ? 0 : 108);
     public double TrackHeight => AreTracksCollapsed ? minimumTrackHeight : trackHeight;
-    public double GetTrackExtent(Track track) => track.IsCollapsed ? trackExtents.GetValueOrDefault(track, (36,36)).Collapsed : trackHeight;
+    public double GetTrackExtent(Track track) => track.IsCollapsed ? Math.Max(44, trackExtents.Where(entry => tracks.Contains(entry.Key)).Select(entry => entry.Value.Collapsed).DefaultIfEmpty(44).Max()) : trackHeight;
     public void SetTrackMinimumExtent(Track track, bool collapsed, double minimum)
     {
         if (deactivated || !tracks.Contains(track) || !double.IsFinite(minimum) || minimum <= 0) return;
-        var old = trackExtents.GetValueOrDefault(track, (36,36));
+        var old = trackExtents.GetValueOrDefault(track, (44,76));
         var next = collapsed ? (minimum, old.Expanded) : (old.Collapsed, minimum);
         if (old == next) return;
         trackExtents[track] = next;
@@ -62,12 +62,13 @@ public partial class WorkstationPageVM
     }
     private void NotifyTrackPresentation()
     {
+        foreach (var removed in trackExtents.Keys.Where(track => !tracks.Contains(track)).ToArray()) trackExtents.Remove(removed);
         foreach (var name in new[] { nameof(AreTracksCollapsed), nameof(HasCollapsedTracks), nameof(CanToggleTracksCollapsed), nameof(CollapseTracksActionText), nameof(TrackHeight), nameof(MinimumTrackHeight), nameof(MaximumTrackHeight) }) OnPropertyChanged(name);
         trackPresentationRevision++; OnPropertyChanged(nameof(TrackPresentationRevision)); NotifyTrackCommands();
     }
     private void InitializeTrackPresentation(ProjectData project)
     {
         if (RenamingTrack is {} editing) CancelTrackRename(editing);
-        trackExtents.Clear(); minimumTrackHeight = trackHeight = 36; expandedTrackGrowth = 0;
+        trackExtents.Clear(); minimumTrackHeight = trackHeight = 76; expandedTrackGrowth = 0;
     }
 }

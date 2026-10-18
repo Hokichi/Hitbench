@@ -342,7 +342,8 @@ public class WorkstationTrackCollapseTests
                 Find<ToggleButton>(page, "TrackMuteToggle"), Find<ToggleButton>(page, "TrackSoloToggle"),
                 Find<ComboBox>(page, "TrackAdditionSelector"),
                 Find<ComboBox>(page, "TrackSampleTypeSelector") };
-            UiControlContract.AssertStyle<ValueSlider>(secondary[0], "BaseValueSliderStyle");
+            UiControlContract.AssertStyle<ValueSlider>(secondary[0], "OHsWorkstationCompactVolumeStyle");
+            Assert.That(secondary[0].Style.BasedOn, Is.SameAs(secondary[0].FindResource("BaseValueSliderStyle")));
             for (var cycle = 0; cycle < 2; cycle++)
             {
                 vm.ToggleTracksCollapsedCommand.Execute(null);

@@ -20,9 +20,22 @@ public partial class OHsWorkstationTrackRow : UserControl
     public OHsWorkstationTrackRow()
     {
         InitializeComponent();
+        PreviewMouseRightButtonUp += (_, e) => { if (TryOpenTrackMenu(e.OriginalSource as DependencyObject)) e.Handled = true; };
+        PreviewKeyDown += (_, e) => { if ((e.Key == Key.Apps || e.Key == Key.F10 && Keyboard.Modifiers == ModifierKeys.Shift) && TryOpenTrackMenu(e.OriginalSource as DependencyObject)) e.Handled = true; };
         ((ObjectDataProvider)Resources["OHsWorkstationTrackRowSource"]).ObjectInstance = this;
-        Loaded += (_, _) => { Subscribe(); RefreshPresentation(); };
+        Loaded += (_, _) => { UseTouchTargets = Tablet.TabletDevices.Cast<TabletDevice>().Any(device => device.Type == TabletDeviceType.Touch); Subscribe(); RefreshPresentation(); };
         Unloaded += (_, _) => { if (Track is {} track) ViewModel?.CancelTrackRename(track); DetachActionMenu(); Unsubscribe(); };
+    }
+    public static readonly DependencyProperty UseTouchTargetsProperty = DependencyProperty.Register(nameof(UseTouchTargets), typeof(bool), typeof(OHsWorkstationTrackRow), new PropertyMetadata(false));
+    public bool UseTouchTargets { get => (bool)GetValue(UseTouchTargetsProperty); set => SetValue(UseTouchTargetsProperty, value); }
+    protected virtual void OpenTrackActionMenu(BalloonComboBox trigger) => trigger.InvokeActionMenu();
+    private bool TryOpenTrackMenu(DependencyObject? origin)
+    {
+        for (var current = origin; current is not null && current != this; current = current is Visual ? VisualTreeHelper.GetParent(current) : LogicalTreeHelper.GetParent(current))
+            if (current is ComboBox || current is TextBox { IsReadOnly: false }) return false;
+        if (FindVisualChild<BalloonComboBox>(this) is not { IsMenuOwnerActive: true } trigger) return false;
+        OpenTrackActionMenu(trigger);
+        return true;
     }
     public static readonly DependencyProperty TrackProperty = DependencyProperty.Register(nameof(Track), typeof(Track), typeof(OHsWorkstationTrackRow), new PropertyMetadata(null, OnTrackChanged));
     public Track? Track { get => (Track?)GetValue(TrackProperty); set => SetValue(TrackProperty, value); }
@@ -54,7 +67,7 @@ public partial class OHsWorkstationTrackRow : UserControl
         if (viewModel is null) return;
         if (Track is {} current)
         {
-            if (!IsTrackCollapsed && current.IsCollapsed && HasExpandedControlFocus(Keyboard.FocusedElement as DependencyObject ?? FocusManager.GetFocusedElement(FocusManager.GetFocusScope(this)) as DependencyObject)) FindVisualChild<BalloonButton>(this, "TrackCollapseAction")?.Focus();
+            if (!IsTrackCollapsed && current.IsCollapsed && HasExpandedControlFocus(Keyboard.FocusedElement as DependencyObject ?? FocusManager.GetFocusedElement(FocusManager.GetFocusScope(this)) as DependencyObject)) FindVisualChild<BalloonComboBox>(this)?.Focus();
             IsTrackCollapsed = current.IsCollapsed; CurrentTrackExtent = viewModel.GetTrackExtent(current);
             IsTrackMuted = current.IsTrackMuted; IsTrackSoloed = current.IsTrackSoloed;
             var wasRenaming = IsRenaming;
