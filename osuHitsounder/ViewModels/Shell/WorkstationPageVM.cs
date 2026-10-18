@@ -60,7 +60,7 @@ public partial class WorkstationPageVM(
     public bool CanAddTrack => CanEditTracks && sampleTrackFiles.Count > 0;
     public bool CanRemoveTrack => !folderRenamesActive && !managingSamples && !IsNodeEditBusy && CanEditTracks && !importBusy && !removalBusy && trackRemovalDialog is not null;
     public bool CanPlaceSamples => !folderRenamesActive && !managingSamples && !IsNodeEditBusy && CanEditTracks && Waveform is not null && !importBusy && !removalBusy;
-    public bool HasPendingSaves => folderRenamesActive || instrumentBusy || managingSamples || IsNodeEditBusy || pendingZoom is not null || importBusy || removalBusy || !saveTail.IsCompleted || lastSaveError is not null;
+    public bool HasPendingSaves => playbackVolumes.HasPendingSaves || folderRenamesActive || instrumentBusy || managingSamples || IsNodeEditBusy || pendingZoom is not null || importBusy || removalBusy || !saveTail.IsCompleted || lastSaveError is not null;
     [ObservableProperty] private string? saveError;
     private CancellationTokenSource? loadCancellation;
     private Task? activeLoad;
@@ -268,6 +268,7 @@ public partial class WorkstationPageVM(
 
     public async Task FlushSavesAsync()
     {
+        await playbackVolumes.FlushAsync();
         if(instrumentWorkflow is { } workflow) await workflow;
         if (activeManager is not null) await activeManager;
         await SettleInstrumentalFoldersAsync();
@@ -342,6 +343,7 @@ public partial class WorkstationPageVM(
                 if (lastSaveError is not null) throw new IOException("Could not save project.", lastSaveError);
             }
             if (token.IsCancellationRequested) return false;
+            await WaitForReturnAsync(playbackVolumes.FlushAsync());
             prepared = true;
             return true;
         }

@@ -20,7 +20,7 @@ public partial class App : Application
     public static ServiceProvider CreateServices(string? asioDriverName = null, AudioOutputFactory? audioOutputs = null)
         => CreateServices(asioDriverName, audioOutputs, null);
 
-    internal static ServiceProvider CreateServices(string? asioDriverName, AudioOutputFactory? audioOutputs, IUiScheduler? uiScheduler)
+    internal static ServiceProvider CreateServices(string? asioDriverName, AudioOutputFactory? audioOutputs, IUiScheduler? uiScheduler, int applicationVolume = 100)
     {
         audioOutputs ??= new AudioOutputFactory();
         var registrations = new ServiceCollection();
@@ -29,7 +29,7 @@ public partial class App : Application
         registrations.AddSingleton<IMessenger, WeakReferenceMessenger>();
         registrations.AddSingleton<IProjectFileService>(_ => new ProjectFileService(AppContext.BaseDirectory));
         registrations.AddSingleton<IWorkstationSourceService, WorkstationSourceService>();
-        registrations.AddSingleton<PlaybackVolumeSettings>();
+        registrations.AddSingleton(provider => new PlaybackVolumeSettings(provider.GetRequiredService<IAppSettingsService>(), applicationVolume));
         registrations.AddSingleton<ISampleFileService, SampleFileService>();
         registrations.AddSingleton<SampleImportBatch>();
         registrations.AddSingleton<Func<osuHitsounder.Resources.DataModels.SampleManagementContext, ISampleFileDialogService, ISampleRemovalDialogService, ManageSamplesPopupVM>>(provider => (context, picker, removal) => new ManageSamplesPopupVM(context, provider.GetRequiredService<ISampleFileService>(), provider.GetRequiredService<SampleImportBatch>(), picker, removal, provider.GetRequiredService<IMessenger>(), provider.GetRequiredService<IUiScheduler>(), new SamplePreviewService(AudioDecoder.Open, audioOutputs.CreateCandidates(null)), provider.GetRequiredService<PlaybackVolumeSettings>()));
@@ -88,7 +88,7 @@ public partial class App : Application
         {
             using var startupSettings = new AppSettingsService(AppContext.BaseDirectory);
             var settings = await startupSettings.LoadAsync(CancellationToken.None);
-            services = CreateServices(settings.AsioDriverName);
+            services = CreateServices(settings.AsioDriverName, null, null, settings.Volume);
             window = services.GetRequiredService<MainWindow>();
             window.ApplySettings(settings);
             MainWindow = window;

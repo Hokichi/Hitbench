@@ -231,6 +231,7 @@ public partial class WorkstationPageVM
             if (previous == playbackVolumes.ApplicationVolume) return;
             OnPropertyChanged();
             audioService.SetApplicationVolume(playbackVolumes.ApplicationVolume);
+            OnPropertyChanged(nameof(HasPendingSaves));
         }
     }
     public int SamplesVolume
