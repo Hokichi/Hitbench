@@ -4,6 +4,24 @@ public sealed class FolderSnapshot
 {
     private readonly FolderEntry[] entries;
     public int Count => entries.Length;
+    public static FolderSnapshot ForProjects(IEnumerable<FolderEntry> entries, bool groupPinned, CancellationToken token = default) =>
+        new(entries, token, (left, right) =>
+        {
+            var order = groupPinned ? right.IsPinned.CompareTo(left.IsPinned) : 0;
+            return order != 0 ? order : right.LastChanged.CompareTo(left.LastChanged);
+        });
+
+    public FolderSnapshot FilterProjects(string query, CancellationToken token = default)
+    {
+        token.ThrowIfCancellationRequested();
+        query = query.Trim();
+        return ForProjects(entries.Where(entry =>
+        {
+            token.ThrowIfCancellationRequested();
+            return query.Length == 0 || new[] { entry.Name, entry.Artist, entry.Title, entry.MapsetName, entry.MapsetFolderName }
+                .Any(value => value.Contains(query, StringComparison.OrdinalIgnoreCase));
+        }), query.Length == 0, token);
+    }
     public FolderSnapshot FilterSongs(string query, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -20,6 +38,9 @@ public sealed class FolderSnapshot
     }
 
     public FolderSnapshot(IEnumerable<FolderEntry> entries, CancellationToken cancellationToken = default)
+        : this(entries, cancellationToken, (left, right) => right.LastWriteTimeUtc.CompareTo(left.LastWriteTimeUtc)) { }
+
+    private FolderSnapshot(IEnumerable<FolderEntry> entries, CancellationToken cancellationToken, Comparison<FolderEntry> comparison)
     {
         this.entries = entries.Select(entry =>
         {
@@ -31,7 +52,7 @@ public sealed class FolderSnapshot
             Array.Sort(this.entries, (left, right) =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var order = right.LastWriteTimeUtc.CompareTo(left.LastWriteTimeUtc);
+                var order = comparison(left, right);
                 if (order == 0) order = StringComparer.OrdinalIgnoreCase.Compare(left.Name, right.Name);
                 return order != 0 ? order : StringComparer.Ordinal.Compare(left.FullName, right.FullName);
             });

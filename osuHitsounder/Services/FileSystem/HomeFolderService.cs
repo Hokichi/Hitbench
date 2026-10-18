@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Text.Json;
 using osuHitsounder.Core.Entities;
 using osuHitsounder.Resources.DataModels;
+using osuHitsounder.Services.ProjectFiles;
 
 namespace osuHitsounder.Services.FileSystem;
 
@@ -20,8 +21,42 @@ public sealed class HomeFolderService(string applicationDirectory, Func<Cancella
         {
             cancellationToken.ThrowIfCancellationRequested();
             var path = Directory.CreateDirectory(Path.Combine(applicationDirectory, "projects")).FullName;
-            return ReadSnapshot(path, cancellationToken);
+            var entries = ReadSnapshot(path, cancellationToken);
+            var mapsets = new Dictionary<string, FolderEntry?>(StringComparer.OrdinalIgnoreCase);
+            return FolderSnapshot.ForProjects(entries.ReadPage(0, entries.Count).Select(entry =>
+                ReadProjectEntry(entry, mapsets, cancellationToken)), true, cancellationToken);
         }, cancellationToken);
+
+    private static FolderEntry ReadProjectEntry(FolderEntry entry, Dictionary<string, FolderEntry?> mapsets, CancellationToken token)
+    {
+        token.ThrowIfCancellationRequested();
+        try
+        {
+            if ((entry.Directory.Attributes & FileAttributes.ReparsePoint) != 0) return entry;
+            var project = ProjectDataSerializer.Deserialize(File.ReadAllText(Path.Combine(entry.FullName, "project.json")));
+            var result = entry with { IsPinned = project.IsPinned, LastChanged = project.LastChanged,
+                BeatmapPath = project.BeatmapPath ?? "", HasProjectMetadata = true };
+            if (!string.IsNullOrWhiteSpace(project.BeatmapPath))
+            {
+                if (!mapsets.TryGetValue(project.BeatmapPath, out var mapset))
+                {
+                    try
+                    {
+                        var folder = new DirectoryInfo(project.BeatmapPath);
+                        mapset = ReadSongEntry(new FolderEntry(folder.FullName, folder.Name, default), token);
+                    }
+                    catch (Exception error) when (error is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+                    { Trace.TraceWarning("Project mapset could not be read: {0}", error.Message); }
+                    mapsets[project.BeatmapPath] = mapset;
+                }
+                result = result with { Artist = mapset?.Artist ?? "", Title = mapset?.Title ?? "",
+                    MapsetName = mapset?.DisplayName ?? result.MapsetFolderName, BackgroundPath = mapset?.BackgroundPath ?? "" };
+            }
+            return result;
+        }
+        catch (Exception error) when (error is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        { Trace.TraceWarning("Project metadata could not be read: {0}", error.Message); return entry; }
+    }
 
     public Task<FolderSnapshot?> LoadSongsAsync(string osuDirectory, CancellationToken cancellationToken) =>
         LoadSongsAsync(osuDirectory, false, cancellationToken);

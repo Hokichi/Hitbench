@@ -12,8 +12,23 @@ public static class ProjectDataSerializer
     public static ProjectData Deserialize(string json)
     {
         JObject root;
-        try { root = JObject.Parse(json); }
+        try { root = JObject.Parse(json, new JsonLoadSettings { DuplicatePropertyNameHandling = DuplicatePropertyNameHandling.Error }); }
         catch (JsonException error) { throw new InvalidDataException("Project JSON is invalid.", error); }
+
+        var pinned = InstrumentMember(root, nameof(ProjectData.IsPinned));
+        if (pinned is not null && pinned.Type != JTokenType.Boolean)
+            throw new InvalidDataException("Project IsPinned must be a boolean.");
+        var changed = InstrumentMember(root, nameof(ProjectData.LastChanged));
+        if (changed is not null)
+        {
+            DateTimeOffset instant;
+            if (changed.Type == JTokenType.Date) instant = changed.ToObject<DateTimeOffset>();
+            else if (changed.Type != JTokenType.String ||
+                !DateTimeOffset.TryParse(changed.Value<string>(), System.Globalization.CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.RoundtripKind, out instant))
+                throw new InvalidDataException("Project LastChanged must be a timestamp.");
+            root[nameof(ProjectData.LastChanged)] = instant.ToUniversalTime();
+        }
 
         if (root["Tracks"] is not null && root["Tracks"] is not JArray)
             throw new InvalidDataException("Project Tracks must be an array.");
@@ -91,9 +106,10 @@ public static class ProjectDataSerializer
         catch (JsonException error) { throw new InvalidDataException("Project data is invalid.", error); }
     }
 
-    public static string Serialize(ProjectData project)
+    public static string Serialize(ProjectData project, DateTimeOffset? lastChanged = null)
     {
         var root=JObject.FromObject(project);
+        root[nameof(ProjectData.LastChanged)] = (lastChanged ?? project.LastChanged).ToUniversalTime();
         var nodes=(JArray)root["Tracks"]!;
         for (var i=0;i<project.Tracks.Count;i++)
             if (project.Tracks[i] is InstrumentalTrack)
