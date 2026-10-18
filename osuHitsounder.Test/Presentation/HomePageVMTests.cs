@@ -6,6 +6,21 @@ namespace osuHitsounder.Test.Presentation;
 
 public class HomePageVMTests
 {
+    [Test]
+    public async Task MapsetInventoryCaptionKeepsFullCountWhileSearching()
+    {
+        var vm = CreateVM(new StubHomeFolderService { Songs = (_, _) => Task.FromResult<FolderSnapshot?>(new FolderSnapshot([
+            new FolderEntry("one", "one", default), new FolderEntry("two", "two", default)])) });
+        try
+        {
+            await vm.LoadAsync(default); await PresentAsync(vm);
+            Assert.That(vm.MapsetInventoryText, Is.EqualTo("2 in your osu! Songs folder"));
+            vm.SongSearchText = "one"; await vm.SearchSongsCommand.ExecutionTask!;
+            Assert.That(vm.MapsetInventoryText, Is.EqualTo("2 in your osu! Songs folder"));
+        }
+        finally { vm.Deactivate(); }
+    }
+
     private static async Task PresentAsync(HomePageVM vm)
     {
         await vm.LoadInitialSongsAsync(CancellationToken.None);

@@ -16,13 +16,16 @@ namespace osuHitsounder.ViewModels.Shell.HomePage;
 public partial class HomePageVM(
     IHomeFolderService folders, IAppSettingsService settings, IInstallationDialogService dialogs,
     IProjectCreationDialogService projectDialogs, IUiScheduler ui,
-    IProjectFileService projectFiles, IMessenger messenger) : ObservableObject
+    IProjectFileService projectFiles, IMessenger messenger,
+    IProjectRemovalDialogService? removalDialogs = null) : ObservableObject
 {
     internal const int InitialSongCount = 9 * 5;
     [ObservableProperty] private string songSearchText = "";
     [ObservableProperty] private bool isSongSearchExpanded;
     [ObservableProperty] private bool isSearchingSongs;
     public int SongsInventoryGeneration => songsInventoryGeneration;
+    public string MapsetInventoryText => songsInventory is null ? "" : string.Format(
+        System.Globalization.CultureInfo.CurrentCulture, "{0} in your osu! Songs folder", songsInventory.Count);
 
     public ObservableCollection<FolderEntry> Projects { get; } = [];
     public ObservableCollection<FolderEntry> Songs { get; } = [];
@@ -56,7 +59,7 @@ public partial class HomePageVM(
     private int songsGeneration;
 
     public bool IsLoading => IsLoadingProjects || IsLoadingSongs;
-    public bool CanInteract => active && !IsInteractionBlocked && !RequiresShutdown && FatalError is null;
+    public bool CanInteract => active && !IsInteractionBlocked && !RequiresShutdown && FatalError is null && !IsMutatingProjects;
     public string SongsStatus => IsCreatingProject ? "Creating project..." : SongsLoadStatus;
     public bool HasMoreProjects => active && projectsSnapshot is not null && Projects.Count < projectsSnapshot.Count;
     public bool HasMoreSongs => active && !IsSearchingSongs && songsSnapshot is not null && Songs.Count < songsSnapshot.Count;
@@ -163,6 +166,8 @@ public partial class HomePageVM(
         ReloadSongsCommand.NotifyCanExecuteChanged();
         OpenSongSearchCommand.NotifyCanExecuteChanged();
         CloseSongSearchCommand.NotifyCanExecuteChanged();
+        ToggleProjectPinCommand.NotifyCanExecuteChanged();
+        DeleteProjectCommand.NotifyCanExecuteChanged();
     }
 
     private bool CanCreateProject(FolderEntry? entry) => entry is not null && CanInteract && !IsCreatingProject;
@@ -185,6 +190,7 @@ public partial class HomePageVM(
     private async Task CreateProjectAsync(FolderEntry? entry, CancellationToken cancellationToken)
     {
         if (!CanCreateProject(entry)) return;
+        SelectedMapset = entry;
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, lifetime.Token);
         IsCreatingProject = true;
         try
@@ -360,7 +366,12 @@ public partial class HomePageVM(
                 : await folders.LoadSongsAsync(osuDirectory!, token);
             token.ThrowIfCancellationRequested();
             if (!IsCurrent(projects, generation)) return;
-            if (projects) projectsSnapshot = snapshot;
+            if (projects)
+            {
+                projectsInventory = snapshot;
+                snapshot = snapshot?.FilterProjects(ProjectSearchText, token);
+                projectsSnapshot = snapshot;
+            }
             else
             {
                 FolderSnapshot? filtered;
@@ -378,12 +389,14 @@ public partial class HomePageVM(
                 appliedSongSearchText = query;
                 songsInventoryGeneration++;
                 OnPropertyChanged(nameof(SongsInventoryGeneration));
+                OnPropertyChanged(nameof(MapsetInventoryText));
                 OnPropertyChanged(nameof(SongsPresentationGeneration));
             }
             var rows = projects ? Projects : Songs;
             rows.Clear();
             if (projects && snapshot is not null)
                 await PublishPageAsync(true, snapshot, generation, 64, token);
+            if (projects) RebuildProjectItems();
             token.ThrowIfCancellationRequested();
             if (!IsCurrent(projects, generation)) return;
             if (projects) ProjectsStatus = rows.Count == 0 ? "No project folders found." : "";
@@ -427,6 +440,7 @@ public partial class HomePageVM(
             if (!IsCurrent(projects, generation)) return;
             collection.Add(row);
         }
+        if (projects) RebuildProjectItems();
         RefreshCommands();
     }
 
@@ -509,6 +523,9 @@ public partial class HomePageVM(
         RetrySongsCommand.Cancel();
         ReloadSongsCommand.Cancel();
         SearchSongsCommand.Cancel();
+        SearchProjectsCommand.Cancel();
+        ToggleProjectPinCommand.Cancel();
+        DeleteProjectCommand.Cancel();
         RefreshCommands();
         cleanup = CleanupAsync();
     }
@@ -524,7 +541,7 @@ public partial class HomePageVM(
     {
         var tasks = new[] { loading, CreateProjectCommand.ExecutionTask, LoadMoreProjectsCommand.ExecutionTask,
             LoadMoreSongsCommand.ExecutionTask, RetryProjectsCommand.ExecutionTask, RetrySongsCommand.ExecutionTask,
-            ReloadSongsCommand.ExecutionTask }.Concat(searchOperations).ToArray();
+            ReloadSongsCommand.ExecutionTask }.Concat(searchOperations).Concat(projectOperations).ToArray();
         try { await Task.WhenAll(tasks.OfType<Task>()); }
         catch (OperationCanceledException) { }
         catch (Exception error) { Trace.TraceError("HomePage cleanup: {0}", error); }
