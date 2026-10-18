@@ -270,7 +270,7 @@ public partial class WorkstationPageVM
     [ObservableProperty] private TimeSpan position;
     [ObservableProperty] private string elapsedText = "00:00.0";
     [ObservableProperty] private bool isPlaying;
-    partial void OnPositionChanged(TimeSpan value) => NotifyControlPointCommands();
+    partial void OnPositionChanged(TimeSpan value) { NotifyControlPointCommands(); OnPropertyChanged(nameof(CurrentBpmText)); }
     partial void OnIsPlayingChanged(bool value) => NotifyControlPointCommands();
     private TimeSpan? lastGridTarget;
     private TimeSpan? lastGridAudioPosition;

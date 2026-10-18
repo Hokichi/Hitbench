@@ -16,6 +16,7 @@ public sealed class PlaybackMarkerClock
     }
 
     public bool IsValid { get; }
+    public int? GetBpm(TimeSpan position) => IsValid ? GetSegment(position).Bpm : null;
 
     public TimeSpan GetDelayToNextBoundary(TimeSpan position)
     {

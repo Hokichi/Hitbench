@@ -40,6 +40,9 @@ public partial class WorkstationPageVM(
     private readonly ObservableCollection<string> availableSamples = [];
     private readonly ObservableCollection<string> sampleTrackFiles = [];
     private string? projectPath;
+    public string ProjectName => projectPath is null ? "" : Path.GetFileName(Path.GetDirectoryName(Path.GetFullPath(projectPath))) ?? "";
+    public int ControlPointCount => Project?.ControlPoints.Count ?? 0;
+    public string CurrentBpmText => markerClock.GetBpm(Position) is { } bpm ? string.Format(System.Globalization.CultureInfo.CurrentCulture, "{0} BPM", bpm) : "";
     private Task saveTail = Task.CompletedTask;
     private Task<IReadOnlyList<string>>? activeImport;
     private Exception? lastSaveError;
@@ -127,6 +130,7 @@ public partial class WorkstationPageVM(
         loadCancellation = CancellationTokenSource.CreateLinkedTokenSource(token);
         var generation = ++loadGeneration;
         this.projectPath = projectPath;
+        OnPropertyChanged(nameof(ProjectName));
         activeLoad = LoadCoreAsync(projectPath, generation, loadCancellation.Token);
         await activeLoad;
     }
@@ -496,6 +500,7 @@ public partial class WorkstationPageVM(
                 sampleTrackFiles.Clear();
                 RefreshControlPointTimestamps();
                 markerClock = new([], []);
+                OnPropertyChanged(nameof(CurrentBpmText));
 
                 Position = TimeSpan.Zero;
                 IsPlaying = false;
@@ -523,6 +528,7 @@ public partial class WorkstationPageVM(
                 RestoreZoom(Project.WorkstationZoom);
                 InitializeTrackPresentation(Project);
                 markerClock = new PlaybackMarkerClock(Project.Offsets, Project.BPMs);
+                OnPropertyChanged(nameof(CurrentBpmText));
                 SetProperty(ref playbackInterval, markerClock.IsValid ? markerClock.GetInterval(TimeSpan.Zero) : TimeSpan.Zero,
                     nameof(PlaybackInterval));
                 if (!markerClock.IsValid)

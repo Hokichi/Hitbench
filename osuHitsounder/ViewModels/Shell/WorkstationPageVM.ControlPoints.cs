@@ -71,6 +71,7 @@ public partial class WorkstationPageVM
 
     private void RefreshControlPointTimestamps()
     {
+        OnPropertyChanged(nameof(ControlPointCount));
         var timestamps = Project?.ControlPoints.Select(p => p.Timestamp).Distinct().Order().ToArray() ?? [];
         if (controlPointTimestamps.SequenceEqual(timestamps)) return;
         controlPointTimestamps = Array.AsReadOnly(timestamps);
