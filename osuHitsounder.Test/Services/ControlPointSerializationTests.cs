@@ -5,6 +5,23 @@ namespace osuHitsounder.Test.Services;
 
 public class ControlPointSerializationTests
 {
+    [Test]
+    public void DisabledStateRoundTripsAndMissingDefaultsFalse()
+    {
+        var project = ProjectDataSerializer.Deserialize("{\"ControlPoints\":[{\"Timestamp\":0},{\"Timestamp\":900,\"Volume\":0,\"Sampleset\":\"Drum\",\"IsDisabled\":true}]}");
+        Assert.That(project.ControlPoints.Select(p => p.IsDisabled), Is.EqualTo(new[] { false, true }));
+        var point = ProjectDataSerializer.Deserialize(ProjectDataSerializer.Serialize(project)).ControlPoints[1];
+        Assert.That((point.Timestamp, point.Volume, point.Sampleset, point.IsDisabled), Is.EqualTo((900, 0, "Drum", true)));
+    }
+
+    [TestCase("null")][TestCase("\"true\"")][TestCase("1")]
+    public void InvalidDisabledFlagIsRejected(string value) =>
+        Assert.Throws<InvalidDataException>(() => ProjectDataSerializer.Deserialize("{\"ControlPoints\":[{\"Timestamp\":0,\"IsDisabled\":" + value + "}]}"));
+
+    [Test]
+    public void DuplicateDisabledAliasesAreRejected() => Assert.Throws<InvalidDataException>(() =>
+        ProjectDataSerializer.Deserialize("{\"ControlPoints\":[{\"Timestamp\":0,\"IsDisabled\":true,\"isdisabled\":false}]}"));
+
     [TestCase("{}")]
     [TestCase("{\"ControlPoints\":null}")]
     public void MissingPointsAreEmpty(string json) => Assert.That(ProjectDataSerializer.Deserialize(json).ControlPoints, Is.Empty);

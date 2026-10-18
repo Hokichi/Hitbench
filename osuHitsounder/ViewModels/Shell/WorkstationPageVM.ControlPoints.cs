@@ -56,15 +56,16 @@ public partial class WorkstationPageVM
         var canAdd = CanOpenControlPoints;
         SetProperty(ref controlPointsState, new ControlPointsSnapshot(context,
             Project!.ControlPoints.OrderBy(p => p.Timestamp).Select(p =>
-                new ControlPointSnapshot(ControlPointId(p), p.Timestamp, p.Volume, p.Sampleset)).ToArray(),
+                new ControlPointSnapshot(ControlPointId(p), p.Timestamp, p.Volume, p.Sampleset, p.IsDisabled)).ToArray(),
             ++controlPointsVersion, canAdd, canAdd ? null : "Adding control points requires an active project, valid BPM timing, and a song duration.",
             pendingProjectWrites > 0, SaveError, controlPointsRevision, CanEditControlPoints), nameof(ControlPointsState));
+        NotifyControlPointCommands();
     }
 
     private void PublishControlPointTimeline()
     {
         audioService.SetControlPoints(Project?.ControlPoints
-            .Select(p => new ControlPointVolumeSnapshot(p.Timestamp, p.Volume)).ToArray() ?? []);
+            .Select(p => new ControlPointVolumeSnapshot(p.Timestamp, p.Volume, p.IsDisabled)).ToArray() ?? []);
         RefreshControlPointTimestamps();
     }
 
@@ -95,6 +96,7 @@ public partial class WorkstationPageVM
         SetProperty(ref controlPointsState, null, nameof(ControlPointsState));
         SetProperty(ref controlPointError, null, nameof(ControlPointError));
         // Project load, return, and deactivation already drain the shared save queue at their own boundary.
+        NotifyControlPointCommands();
         return Task.CompletedTask;
     }
 
@@ -154,11 +156,15 @@ public partial class WorkstationPageVM
         FinishControlPointMutation(true);
     }
 
-    [RelayCommand]
+    private bool CanSetControlPoint(SetControlPointRequestedMessage? request) =>
+        request is not null && (request.ExpectedRevision is null || request.ExpectedRevision == controlPointsRevision) &&
+        FindControlPoint(request.Context, request.PointId) is not null;
+
+    [RelayCommand(CanExecute = nameof(CanSetControlPoint))]
     private void SetControlPoint(SetControlPointRequestedMessage? request)
     {
-        if (request is null || FindControlPoint(request.Context, request.PointId) is not { } point) return;
-        if (request.Volume is { } volume && (volume is < 5 or > 100 || decimal.Truncate(volume) != volume))
+        if (!CanSetControlPoint(request) || FindControlPoint(request!.Context, request.PointId) is not { } point) return;
+        if (request.Volume is { } volume && (volume is < ControlPoint.MinimumEditableVolume or > ControlPoint.MaximumVolume || decimal.Truncate(volume) != volume))
         {
             SetProperty(ref controlPointError, "Enter a whole number from 5 to 100.", nameof(ControlPointError));
             return;
@@ -174,6 +180,55 @@ public partial class WorkstationPageVM
         if (volumeChanged) point.Volume = (int)request.Volume!.Value;
         if (samplesetChanged) point.Sampleset = request.Sampleset!;
         FinishControlPointMutation(volumeChanged);
+    }
+
+    private void NotifyControlPointCommands()
+    {
+        SetControlPointCommand.NotifyCanExecuteChanged();
+        SetControlPointDisabledCommand.NotifyCanExecuteChanged();
+        SplitControlPointCommand.NotifyCanExecuteChanged();
+    }
+
+    private bool CanSetControlPointDisabled(SetControlPointDisabledRequestedMessage? request) =>
+        request is not null && request.ExpectedRevision == controlPointsRevision &&
+        FindControlPoint(request.Context, request.PointId) is { } point && point.IsDisabled != request.IsDisabled;
+
+    [RelayCommand(CanExecute = nameof(CanSetControlPointDisabled))]
+    private void SetControlPointDisabled(SetControlPointDisabledRequestedMessage? request)
+    {
+        if (!CanSetControlPointDisabled(request) || FindControlPoint(request!.Context, request.PointId) is not { } point) return;
+        point.IsDisabled = request.IsDisabled;
+        FinishControlPointMutation(true);
+    }
+
+    private int? GetControlPointSplitTimestamp(Guid pointId)
+    {
+        if (!CanOpenControlPoints || Waveform is null || Project is null) return null;
+        var point = Project.ControlPoints.FirstOrDefault(p => ControlPointId(p) == pointId);
+        if (point is null || Project.ControlPoints.Last(p => p.Timestamp == point.Timestamp) != point) return null;
+        var end = Math.Min(Waveform.Duration.TotalMilliseconds,
+            Project.ControlPoints.Where(p => p.Timestamp > point.Timestamp).Select(p => (double)p.Timestamp).DefaultIfEmpty(double.PositiveInfinity).Min());
+        var playbackState = playback.Latest.Playback;
+        var marker = (playbackState.IsPlaying ? playbackState.Position : Position).TotalMilliseconds;
+        var rounded = Math.Round(marker, MidpointRounding.AwayFromZero);
+        if (!double.IsFinite(rounded) || rounded < 0 || rounded > int.MaxValue || rounded <= point.Timestamp || rounded >= end ||
+            Project.ControlPoints.Any(p => p.Timestamp == rounded)) return null;
+        return (int)rounded;
+    }
+
+    private bool CanSplitControlPoint(SplitControlPointRequestedMessage? request) =>
+        request is not null && request.ExpectedRevision == controlPointsRevision &&
+        FindControlPoint(request.Context, request.PointId) is not null && GetControlPointSplitTimestamp(request.PointId) is not null;
+
+    [RelayCommand(CanExecute = nameof(CanSplitControlPoint))]
+    private void SplitControlPoint(SplitControlPointRequestedMessage? request)
+    {
+        if (!CanSplitControlPoint(request) || FindControlPoint(request!.Context, request.PointId) is not { } source ||
+            GetControlPointSplitTimestamp(request.PointId) is not { } timestamp) return;
+        var point = new ControlPoint { Timestamp = timestamp, Volume = source.Volume, Sampleset = source.Sampleset, IsDisabled = source.IsDisabled };
+        controlPointIds[point] = Guid.NewGuid();
+        Project!.ControlPoints.Add(point);
+        FinishControlPointMutation(true);
     }
 
     [RelayCommand]

@@ -8,31 +8,38 @@ public class OHsControlPointLayoutTests
     [Test]
     public void MappingUsesSharedContentCoordinates() => Assert.That(OHsControlPointLayout.GetLeft(1000, 4000, 800) - 80, Is.EqualTo(120));
 
-    [TestCase(150, 40, false)][TestCase(160, 40, true)][TestCase(60, 40, true)]
-    public void OverlapUsesWholePillAndAllowsTouchingEdges(double left, double width, bool expected)
+    [Test]
+    public void IntervalsShareBoundariesAndFinalZoneEndsAtDuration()
     {
-        OHsControlPointExtent[] extents = [new(Guid.NewGuid(), 500, 100, 60)];
-        Assert.That(OHsControlPointLayout.CanPlace(Guid.Empty, 750, left, width, extents), Is.EqualTo(expected));
+        ControlPointSnapshot[] points = [new(Guid.NewGuid(), 1000, 50, "Normal"), new(Guid.NewGuid(), 3000, 25, "Soft")];
+        var extents = OHsControlPointLayout.GetExtents(points, 10000, 1000);
+        Assert.That(extents.Select(e => (e.Left, e.Width)), Is.EqualTo(new[] { (100d, 200d), (300d, 700d) }));
+        Assert.That(OHsControlPointLayout.CanPlace(Guid.Empty, 1001, 10000, points), Is.True);
+        Assert.That(OHsControlPointLayout.CanPlace(Guid.Empty, 1000, 10000, points), Is.False);
+        Assert.That(OHsControlPointLayout.CanPlace(points[0].Id, 1000, 10000, points), Is.True);
     }
 
     [Test]
-    public void OnlyMovingIdentityIsExcludedAndDuplicateTimestampAlwaysRejects()
+    public void EarlierDuplicatesAreZeroLengthButRemainInStableOrder()
     {
-        var moving = Guid.NewGuid(); var other = Guid.NewGuid();
-        OHsControlPointExtent[] extents = [new(moving, 500, 100, 60), new(other, 500, 100, 0)];
-        Assert.That(OHsControlPointLayout.CanPlace(moving, 500, 300, 40, extents), Is.False);
-        Assert.That(OHsControlPointLayout.CanPlace(moving, 1000, 100, 40, extents.Take(1).ToArray()), Is.True);
+        ControlPointSnapshot[] points = [new(Guid.NewGuid(), 1000, 20, "Normal"), new(Guid.NewGuid(), 1000, 50, "Soft"), new(Guid.NewGuid(), 3000, 75, "Drum")];
+        var extents = OHsControlPointLayout.GetExtents(points, 10000, 1000);
+        Assert.That(extents.Select(e => e.Id), Is.EqualTo(points.Select(p => p.Id)));
+        Assert.That(extents.Select(e => e.Width), Is.EqualTo(new[] { 0d, 200d, 700d }));
+        Assert.That(OHsControlPointLayout.CanPlace(points[0].Id, 1000, 10000, points), Is.False);
     }
-
-    [TestCase(double.NaN, 40)][TestCase(100, double.PositiveInfinity)][TestCase(100, -1)]
-    public void UnknownOrInvalidBoundsCannotAuthorizePlacement(double left, double width) =>
-        Assert.That(OHsControlPointLayout.CanPlace(Guid.Empty, 1000, left, width, []), Is.False);
 
     [Test]
-    public void OffscreenAndUnknownOtherExtentsStillParticipate()
+    public void OutOfRangePointsAreClippedAndSubpixelIntervalsRemainValid()
     {
-        Assert.That(OHsControlPointLayout.CanPlace(Guid.Empty, 2000, 1200, 50, [new(Guid.NewGuid(), 1900, 1190, 40)]), Is.False);
-        Assert.That(OHsControlPointLayout.CanPlace(Guid.Empty, 2000, 1200, 50, [new(Guid.NewGuid(), 1900, double.NaN, 40)]), Is.False);
-        Assert.That(OHsControlPointLayout.GetLeft(1, 0, 800), Is.NaN);
+        ControlPointSnapshot[] points = [new(Guid.NewGuid(), 1, 0, "Normal"), new(Guid.NewGuid(), 2, 4, "Soft"), new(Guid.NewGuid(), 10000, 50, "Normal"), new(Guid.NewGuid(), 12000, 50, "Normal")];
+        var extents = OHsControlPointLayout.GetExtents(points, 10000, 1000);
+        Assert.That(extents[0].Width, Is.EqualTo(.1).Within(.00001));
+        Assert.That(extents.Skip(2).Select(e => (e.Left, e.Width)), Is.EqualTo(new[] { (1000d, 0d), (1000d, 0d) }));
+        Assert.That(OHsControlPointLayout.CanPlace(Guid.Empty, 10000, 10000, points), Is.False);
+        Assert.That(OHsControlPointLayout.GetExtents([], 10000, 1000), Is.Empty);
     }
+
+    [TestCase(0, 1000)][TestCase(double.NaN, 1000)][TestCase(1000, double.PositiveInfinity)]
+    public void InvalidGeometryProducesNoExtents(double duration, double width) => Assert.That(OHsControlPointLayout.GetExtents([new(Guid.NewGuid(), 0, 50, "Normal")], duration, width), Is.Empty);
 }

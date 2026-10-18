@@ -6,6 +6,15 @@ namespace osuHitsounder.Test.Services;
 public class ControlPointVolumeTimelineTests
 {
     [Test]
+    public void DisabledChainsAndLastDuplicateInheritPreviousEffectiveVolume()
+    {
+        var timeline = new ControlPointVolumeTimeline([new(0, 20, true), new(1000, 80), new(2000, 10),
+            new(2000, 20, true), new(3000, 60, true), new(4000, 40)]);
+        Assert.That(new[] { 0L, 44100L, 88200L, 132300L, 176400L }.Select(timeline.GetGain),
+            Is.EqualTo(new[] { 1f, .8f, .8f, .8f, .4f }));
+    }
+
+    [Test]
     public void LatestPointWinsAndInputIsCopied()
     {
         var points = new List<ControlPointVolumeSnapshot> { new(1000, 50), new(900, 75), new(1000, 25), new(2000, 100), new(3000, 0) };

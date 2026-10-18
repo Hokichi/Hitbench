@@ -13,6 +13,32 @@ namespace osuHitsounder.Test.Presentation;
 public class OHsControlPointLifecycleTests
 {
     [Test]
+    public void GlobalKeyRoutingExecutesZoneInputOnce()
+    {
+        var project = new ProjectData { Offsets = [0], BPMs = [120], ControlPoints = [new() { Timestamp = 1000, Volume = 50 }] };
+        var audio = new StubWorkstationAudioService(); var owner = WorkstationControlPointStateTests.Create(project, audio);
+        try
+        {
+            UiTestPump.Run(WorkstationControlPointStateTests.Ready(owner));
+            new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
+            var page = new WorkstationPage(owner); UiTestPump.Layout(page, 1100, 700);
+            var lane = (OHsControlPointLane)page.Timeline.FindName("ControlPointLane");
+            lane.PresentEditor = (_, _) => { }; var menus = 0; lane.PresentMenu = (_, _) => menus++;
+            var state = owner.ControlPointsState!; var id = state.Points[0].Id; var zone = lane.BringPointIntoView(id)!;
+            Assert.That(page.HandlePlaybackKey(Key.Up, ModifierKeys.None, false, zone), Is.True);
+            Assert.That(project.ControlPoints[0].Volume, Is.EqualTo(51)); Assert.That(owner.ControlPointsState!.Revision, Is.EqualTo(state.Revision + 1));
+            UiTestPump.Layout(page, 1100, 700); zone = lane.BringPointIntoView(id)!;
+            Assert.That(page.HandlePlaybackKey(Key.Right, ModifierKeys.Alt, false, zone), Is.True);
+            Assert.That(project.ControlPoints[0].Timestamp, Is.EqualTo(1125));
+            UiTestPump.Layout(page, 1100, 700); zone = lane.BringPointIntoView(id)!;
+            Assert.That(page.HandlePlaybackKey(Key.Apps, ModifierKeys.None, false, zone), Is.True); Assert.That(menus, Is.EqualTo(1));
+            Assert.That((audio.PlayCalls, audio.PauseCalls, audio.SeekCalls), Is.EqualTo((0, 0, 0)));
+            Assert.That(page.HandlePlaybackKey(Key.Enter, ModifierKeys.None, false, zone), Is.False);
+        }
+        finally { UiTestPump.Run(owner.DeactivateAsync()); }
+    }
+
+    [Test]
     public void TimelineResetDismissesEditorAndPreviewWithoutMutatingPoint()
     {
         var project = new ProjectData { Offsets = [0], BPMs = [120], ControlPoints = [new() { Timestamp = 1000, Volume = 4 }] };
@@ -82,15 +108,15 @@ public class OHsControlPointLifecycleTests
         finally { UiTestPump.Run(owner.DeactivateAsync()); }
     }
 
-    [Test]
-    public void OffscreenAnchorClosesPopupAndDeactivatedOwnerClearsPendingWork()
+    [TestCase(4000)][TestCase(5000)]
+    public void OffscreenAnchorClosesPopupAndDeactivatedOwnerClearsPendingWork(double offset)
     {
-        var project = new ProjectData { Offsets = [0], BPMs = [120], ControlPoints = [new() { Timestamp = 500 }] };
+        var project = new ProjectData { Offsets = [0], BPMs = [120], ControlPoints = [new() { Timestamp = 500 }, new() { Timestamp = 4000 }] };
         var owner = WorkstationControlPointStateTests.Create(project, new());
         try
         {
             UiTestPump.Run(WorkstationControlPointStateTests.Ready(owner)); var lane = OHsControlPointDragTests.Connect(owner);
-            lane.OpenEditor(owner.ControlPointsState!.Points[0].Id); lane.HorizontalOffset = 5000;
+            lane.OpenEditor(owner.ControlPointsState!.Points[0].Id); lane.HorizontalOffset = offset;
             Assert.That(lane.IsEditorOpen, Is.False);
             lane.HorizontalOffset = 0; lane.OpenEditor(owner.ControlPointsState.Points[0].Id);
             UiTestPump.Run(owner.DeactivateAsync());
@@ -158,7 +184,7 @@ public class OHsControlPointLifecycleTests
         try
         {
             UiTestPump.Run(WorkstationControlPointStateTests.Ready(owner)); var lane = OHsControlPointDragTests.Connect(owner);
-            OHsControlPointTag? restored = null; lane.PresentEditor = (open, target) => { if (!open) restored = target as OHsControlPointTag; };
+            OHsControlPointZone? restored = null; lane.PresentEditor = (open, target) => { if (!open) restored = target as OHsControlPointZone; };
             var id = owner.ControlPointsState!.Points[0].Id; lane.OpenEditor(id);
             var editor = (OHsControlPointEditor)lane.FindName("ValueEditor"); UiTestPump.Layout(editor, 320, 260);
             ((TextBox)editor.VolumeControl.Template.FindName("PART_TextBox", editor.VolumeControl)).Text = "25";

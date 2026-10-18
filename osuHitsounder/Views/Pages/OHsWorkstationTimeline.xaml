@@ -99,6 +99,7 @@
    State="{Binding ControlPointsState, Mode=OneWay}" PendingAdd="{Binding PendingControlPointAdd, Mode=OneWay}"
    AddCommand="{Binding AddControlPointCommand, Mode=OneWay}" CommitAddCommand="{Binding CommitControlPointAddCommand, Mode=OneWay}"
    MovePointCommand="{Binding MoveControlPointCommand, Mode=OneWay}" SetPointCommand="{Binding SetControlPointCommand, Mode=OneWay}"
+   SetPointDisabledCommand="{Binding SetControlPointDisabledCommand, Mode=OneWay}" SplitPointCommand="{Binding SplitControlPointCommand, Mode=OneWay}"
    DeletePointCommand="{Binding DeleteControlPointCommand, Mode=OneWay}" RetrySaveCommand="{Binding RetryControlPointsSaveCommand, Mode=OneWay}"
    OwnerError="{Binding ControlPointError, Mode=OneWay}" DurationMilliseconds="{Binding Waveform.Duration.TotalMilliseconds, Mode=OneWay, FallbackValue=0}"
    Offsets="{Binding Project.Offsets, Mode=OneWay}"

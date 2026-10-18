@@ -7,6 +7,17 @@ namespace osuHitsounder.Test.Presentation;
 [Apartment(ApartmentState.STA), NonParallelizable]
 public class OHsControlPointLaneTests
 {
+    [Test]
+    public void LongZoneStartingBeforeViewportIsRealizedAndFocusDoesNotJump()
+    {
+        ControlPointSnapshot[] points = [new(Guid.NewGuid(), 0, 50, "Normal"), new(Guid.NewGuid(), 9000, 50, "Soft")];
+        var lane = Create(points); lane.ContentWidth = 10000; lane.HorizontalOffset = 4000;
+        UiTestPump.Layout(lane, 400, 180); var requests = 0;
+        lane.HorizontalOffsetRequested += _ => requests++;
+        Assert.That(lane.BringPointIntoView(points[0].Id)!.Point!.Id, Is.EqualTo(points[0].Id));
+        Assert.That(requests, Is.Zero);
+    }
+
     internal static OHsControlPointLane Create(IReadOnlyList<ControlPointSnapshot> points)
     {
         new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
@@ -40,9 +51,9 @@ public class OHsControlPointLaneTests
         var tag = lane.BringPointIntoView(second.Id);
         Assert.That(requested, Is.Not.Null); Assert.That(tag!.Point!.Id, Is.EqualTo(second.Id));
         Assert.That(lane.GetExtents(), Has.Count.EqualTo(2));
-        UiControlContract.AssertStyle<OHsControlPointTag>(tag, "OHsControlPointTagStyle");
-        UiControlContract.AssertTemplate(tag, "OHsControlPointTagTemplate");
-        Assert.That(tag.Label, Is.EqualTo("Drum - 4%"));
+        UiControlContract.AssertStyle<OHsControlPointZone>(tag, "OHsControlPointZoneStyle");
+        UiControlContract.AssertTemplate(tag, "OHsControlPointZoneTemplate");
+        Assert.That(tag.Label, Does.Contain("Drum").And.Contain("4%"));
         Assert.That(System.Windows.Automation.AutomationProperties.GetName(tag), Does.Contain("8000"));
     }
 

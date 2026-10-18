@@ -14,7 +14,7 @@ public partial class OHsControlPointLane
     internal Action<bool, UIElement?>? PresentEditor { get; set; }
     internal bool IsEditorOpen { get; private set; }
     private Guid? editingPointId;
-    private OHsControlPointTag? editorInvoker;
+    private OHsControlPointZone? editorInvoker;
     private bool editorAwaitingPlacement;
 
     internal bool OpenEditor(Guid id)
@@ -45,6 +45,7 @@ public partial class OHsControlPointLane
         if (restoreFocus && pointId is { } id && State?.Points.Any(p => p.Id == id) == true)
             invoker = BringPointIntoView(id) ?? invoker;
         editorInvoker = null; editingPointId = null; ValueEditor.Clear();
+        if (!restoreFocus && panel is not null) { panel.PinnedPointId = null; panel.InvalidateMeasure(); }
         if (PresentEditor is not null) { if (wasPresented) PresentEditor(false, invoker); }
         else
         {
@@ -79,17 +80,20 @@ public partial class OHsControlPointLane
             if (editorInvoker is not null) editorInvoker.IsEditing = false;
             editorInvoker = currentTag; currentTag.IsEditing = true;
         }
-        var left = osuHitsounder.Resources.Helpers.OHsControlPointLayout.GetLeft(point.Timestamp, DurationMilliseconds, ContentWidth);
-        var width = editorInvoker?.DesiredSize.Width ?? 0;
-        if (!double.IsFinite(left) || ViewportWidth <= 0 || left < 0 || left > ContentWidth || editorInvoker?.Point?.Id != editingPointId)
+        var extent = GetExtents().FirstOrDefault(e => e.Id == point.Id);
+        var left = extent?.Left ?? double.NaN;
+        var width = extent?.Width ?? 0;
+        if (!double.IsFinite(left) || ViewportWidth <= 0 || editorInvoker?.Point?.Id != editingPointId)
         { DismissEditor(false); return; }
-        if (left > HorizontalOffset + ViewportWidth || left + width < HorizontalOffset)
+        if (width > 0 && (left >= HorizontalOffset + ViewportWidth || left + width <= HorizontalOffset))
         { if (!editorAwaitingPlacement) DismissEditor(false); return; }
         if (PresentEditor is null && editorInvoker is { } tag)
         {
             var origin = tag.TranslatePoint(new Point(), this);
+            var visibleLeft = Math.Max(0, origin.X);
+            var visibleRight = Math.Min(ViewportWidth, origin.X + tag.RenderSize.Width);
             EditorPopup.PlacementTarget = this;
-            EditorPopup.PlacementRectangle = new Rect(origin, tag.RenderSize);
+            EditorPopup.PlacementRectangle = new Rect(new Point(visibleLeft, origin.Y), new Size(Math.Max(0, visibleRight - visibleLeft), tag.RenderSize.Height));
         }
         if (editorAwaitingPlacement)
         {
@@ -103,9 +107,9 @@ public partial class OHsControlPointLane
     {
         if (e.Key == Key.Escape && ValueEditor.HandleEscape()) { e.Handled = true; DismissEditor(); }
     }
-    private void OnTagClick(object sender, RoutedEventArgs e)
+    private void OnZoneClick(object sender, RoutedEventArgs e)
     {
         if (suppressTagClick) { suppressTagClick = false; e.Handled = true; return; }
-        if (e.OriginalSource is OHsControlPointTag { Point: { } point }) { OpenEditor(point.Id); e.Handled = true; }
+        if (e.OriginalSource is OHsControlPointZone { Point: { } point }) { OpenEditor(point.Id); e.Handled = true; }
     }
 }

@@ -23,7 +23,6 @@ public partial class OHsControlPointLane : UserControl
     public double HorizontalOffset { get => (double)GetValue(HorizontalOffsetProperty); set => SetValue(HorizontalOffsetProperty, value); }
     public bool IsMenuOwnerActive => (bool)GetValue(IsMenuOwnerActiveProperty);
     private OHsControlPointLanePanel? panel;
-    private OHsControlPointTag? measurementTag;
     private string? measuredCulture;
     public event Action<double>? HorizontalOffsetRequested;
     internal int RealizedPointCount => EnsurePanel()?.RealizedPointCount ?? 0;
@@ -32,8 +31,9 @@ public partial class OHsControlPointLane : UserControl
     public OHsControlPointLane()
     {
         InitializeComponent();
-        PointItems.AddHandler(System.Windows.Controls.Primitives.ButtonBase.ClickEvent, new RoutedEventHandler(OnTagClick));
+        PointItems.AddHandler(System.Windows.Controls.Primitives.ButtonBase.ClickEvent, new RoutedEventHandler(OnZoneClick));
         Unloaded += (_, _) => ResetInteraction();
+        SizeChanged += (_, _) => CancelVolumeDrag();
         PointItems.LayoutUpdated += (_, _) => UpdateEditorViewport();
         IsEnabledChanged += (_, _) => { SetValue(IsMenuOwnerActivePropertyKey, State?.CanEdit == true && IsEnabled); if (!IsEnabled) ResetInteraction(); };
     }
@@ -41,6 +41,7 @@ public partial class OHsControlPointLane : UserControl
         new FrameworkPropertyMetadata(0d, FrameworkPropertyMetadataOptions.AffectsMeasure, (d, e) =>
         {
             var lane = (OHsControlPointLane)d;
+            lane.CancelVolumeDrag();
             lane.SyncPanel();
             if (e.Property == ViewportWidthProperty) lane.panel?.InvalidateGeometry();
             lane.UpdateEditorViewport();
@@ -63,24 +64,8 @@ public partial class OHsControlPointLane : UserControl
     {
         PointItems.ApplyTemplate();
         panel ??= FindChild<OHsControlPointLanePanel>(PointItems);
-        if (panel is not null) { panel.MeasurePoint = MeasurePoint; SyncPanel(); }
+        if (panel is not null) SyncPanel();
         return panel;
-    }
-
-    private Size MeasurePoint(ControlPointSnapshot point)
-    {
-        var index = PointItems.Items.IndexOf(point);
-        if (index >= 0 && PointItems.ItemContainerGenerator.ContainerFromIndex(index) is DependencyObject container &&
-            FindChild<OHsControlPointTag>(container) is { } realized)
-        {
-            realized.RefreshText(); realized.Measure(new(double.PositiveInfinity, double.PositiveInfinity));
-            return realized.DesiredSize;
-        }
-        measurementTag ??= new() { Style = (Style)FindResource("OHsControlPointTagStyle") };
-        measurementTag.Point = point; measurementTag.RefreshText(); measurementTag.FlowDirection = FlowDirection;
-        measurementTag.MaxWidth = Math.Max(0, ViewportWidth);
-        measurementTag.Measure(new(double.PositiveInfinity, double.PositiveInfinity));
-        return measurementTag.DesiredSize;
     }
 
     private void SyncPanel()
@@ -103,33 +88,35 @@ public partial class OHsControlPointLane : UserControl
 
     internal IReadOnlyList<OHsControlPointExtent> GetExtents() => EnsurePanel()?.GetExtents(true) ?? [];
 
-    private OHsControlPointTag? FindRealizedTag(Guid id)
+    private OHsControlPointZone? FindRealizedTag(Guid id)
     {
         var index = State?.Points.ToList().FindIndex(p => p.Id == id) ?? -1;
         return index >= 0 && PointItems.ItemContainerGenerator.ContainerFromIndex(index) is DependencyObject container
-            ? FindChild<OHsControlPointTag>(container) : null;
+            ? FindChild<OHsControlPointZone>(container) : null;
     }
 
     protected override void OnDpiChanged(DpiScale oldDpi, DpiScale newDpi)
     {
         base.OnDpiChanged(oldDpi, newDpi);
-        measurementTag?.InvalidateMeasure(); panel?.InvalidateGeometry();
+        CancelVolumeDrag();
+        panel?.InvalidateGeometry();
     }
 
-    public OHsControlPointTag? BringPointIntoView(Guid id)
+    public OHsControlPointZone? BringPointIntoView(Guid id)
     {
         if (EnsurePanel() is not { } current || GetExtents().FirstOrDefault(p => p.Id == id) is not { } extent) return null;
         current.PinnedPointId = id;
-        var offset = extent.Left < HorizontalOffset ? extent.Left : extent.Left + extent.Width > HorizontalOffset + ViewportWidth
-            ? extent.Left + extent.Width - ViewportWidth : HorizontalOffset;
+        var reveal = Math.Min(40, extent.Width);
+        var offset = extent.Left + extent.Width <= HorizontalOffset ? extent.Left + extent.Width - reveal :
+            extent.Left >= HorizontalOffset + ViewportWidth ? extent.Left - ViewportWidth + reveal : HorizontalOffset;
         var requested = Math.Clamp(offset, 0, Math.Max(0, ContentWidth - ViewportWidth));
         if (requested != HorizontalOffset) HorizontalOffsetRequested?.Invoke(requested);
         current.InvalidateMeasure(); PointItems.UpdateLayout();
         var index = State!.Points.ToList().FindIndex(p => p.Id == id);
-        return PointItems.ItemContainerGenerator.ContainerFromIndex(index) is DependencyObject container ? FindChild<OHsControlPointTag>(container) : null;
+        return PointItems.ItemContainerGenerator.ContainerFromIndex(index) is DependencyObject container ? FindChild<OHsControlPointZone>(container) : null;
     }
 
-    internal OHsControlPointTag? MovePointFocus(Guid currentId, bool forward)
+    internal OHsControlPointZone? MovePointFocus(Guid currentId, bool forward)
     {
         if (State is null) return null;
         var index = State.Points.ToList().FindIndex(p => p.Id == currentId);
@@ -139,11 +126,18 @@ public partial class OHsControlPointLane : UserControl
 
     protected override void OnPreviewKeyDown(KeyEventArgs e)
     {
-        if (e.Key == Key.Tab && Keyboard.FocusedElement is OHsControlPointTag { Point: { } point } &&
+        if (e.Key == Key.Tab && Keyboard.FocusedElement is OHsControlPointZone { Point: { } point } &&
             MovePointFocus(point.Id, (Keyboard.Modifiers & ModifierKeys.Shift) == 0) is { } next)
         { next.Focus(); e.Handled = true; }
         if (HandlePointKey(e.Key == Key.System ? e.SystemKey : e.Key, Keyboard.Modifiers, Keyboard.FocusedElement as DependencyObject)) e.Handled = true;
         base.OnPreviewKeyDown(e);
+    }
+
+    protected override void OnLostKeyboardFocus(KeyboardFocusChangedEventArgs e)
+    {
+        base.OnLostKeyboardFocus(e);
+        if (!IsEditorOpen && dragPointId is null && volumeDragPointId is null && FindZone(e.NewFocus as DependencyObject) is null && panel is not null)
+        { panel.PinnedPointId = null; panel.InvalidateMeasure(); }
     }
 
     internal static T? FindChild<T>(DependencyObject root) where T : DependencyObject

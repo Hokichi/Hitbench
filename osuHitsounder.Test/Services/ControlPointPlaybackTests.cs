@@ -6,6 +6,18 @@ namespace osuHitsounder.Test.Services;
 public class ControlPointPlaybackTests
 {
     [Test]
+    public void DisabledBoundaryAndSeekPreserveSampleTailAndSongGain()
+    {
+        foreach (var start in new[] { 0, 44 })
+        {
+            var mixer = Mixer(start); mixer.SetControlPoints(new([new(0, 80), new(1, 20, true), new(2, 40)]));
+            var output = new float[300 - start * 2]; mixer.Read(output, 0, output.Length);
+            Assert.That(output[0], Is.EqualTo(.09f).Within(.0001f));
+            Assert.That(output[176 - start * 2], Is.EqualTo(.07f).Within(.0001f));
+        }
+    }
+
+    [Test]
     public async Task LiveServiceEditsPreserveOutputPreparationAndTransport()
     {
         using var project = new TestProjectFolder("hit.wav", "slow.wav");

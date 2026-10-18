@@ -179,6 +179,9 @@ public static class ProjectDataSerializer
             var time = InstrumentMember(point, nameof(ControlPoint.Timestamp));
             var volume = InstrumentMember(point, nameof(ControlPoint.Volume));
             var sampleset = InstrumentMember(point, nameof(ControlPoint.Sampleset));
+            var disabled = InstrumentMember(point, nameof(ControlPoint.IsDisabled));
+            if (disabled is not null && disabled.Type != JTokenType.Boolean)
+                throw new InvalidDataException("Control point IsDisabled must be a boolean.");
             if (!IsIntegerInRange(time, int.MaxValue)) throw new InvalidDataException("Control point Timestamp must be a nonnegative integer.");
             if (volume is null) point[nameof(ControlPoint.Volume)] = 100;
             else if (!IsIntegerInRange(volume, 100)) throw new InvalidDataException("Control point Volume must be an integer from 0 to 100.");

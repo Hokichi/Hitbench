@@ -16,7 +16,13 @@ public sealed class ControlPointVolumeTimeline
             throw new ArgumentException("Control points require nonnegative timestamps and volumes 0–100.", nameof(points));
         var sorted = copy.OrderBy(p => p.Timestamp).GroupBy(p => p.Timestamp).Select(g => g.Last()).ToArray();
         frames = sorted.Select(p => (long)Math.Round(p.Timestamp * 44100m / 1000m, MidpointRounding.AwayFromZero)).ToArray();
-        gains = sorted.Select(p => p.Volume / 100f).ToArray();
+        gains = new float[sorted.Length];
+        var effective = 1f;
+        for (var index = 0; index < sorted.Length; index++)
+        {
+            if (!sorted[index].IsDisabled) effective = sorted[index].Volume / 100f;
+            gains[index] = effective;
+        }
     }
 
     public float GetGain(long frame)

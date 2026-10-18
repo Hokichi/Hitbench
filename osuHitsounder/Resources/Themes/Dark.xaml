@@ -30,6 +30,12 @@
     <!--  ACCENT (MIDNIGHT NAVY)  -->
     <!--  =============================  -->
 
+    <Color x:Key="Color.OHs.ControlPoint.Normal">#76A9FF</Color>
+    <Color x:Key="Color.OHs.ControlPoint.Soft">#52CDBE</Color>
+    <Color x:Key="Color.OHs.ControlPoint.Drum">#BE92F4</Color>
+    <SolidColorBrush x:Key="Brush.OHs.ControlPoint.Normal" Color="{StaticResource Color.OHs.ControlPoint.Normal}" />
+    <SolidColorBrush x:Key="Brush.OHs.ControlPoint.Soft" Color="{StaticResource Color.OHs.ControlPoint.Soft}" />
+    <SolidColorBrush x:Key="Brush.OHs.ControlPoint.Drum" Color="{StaticResource Color.OHs.ControlPoint.Drum}" />
     <Color x:Key="Color.Navy">#4A6FE0</Color>
     <Color x:Key="Color.Navy.Muted">#3557C4</Color>
     <Color x:Key="Color.Navy.Tint">#0F1B33</Color>
