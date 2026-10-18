@@ -16,6 +16,40 @@ public partial class HomePage
     private const int SongImageDecodeWidth = 336;
     private readonly Dictionary<Image, SongImageRequest> imageRequests = [];
     private readonly Dictionary<Image, Button> imageOwners = [];
+    private readonly HashSet<Image> projectImages = [];
+
+    private void OnProjectImageLoaded(object sender, RoutedEventArgs e)
+    {
+        var image = (Image)sender;
+        if (lifetime.IsCancellationRequested || !projectImages.Add(image)) return;
+        StartProjectImage(image);
+    }
+
+    private void OnProjectImageUnloaded(object sender, RoutedEventArgs e)
+    {
+        var image = (Image)sender;
+        projectImages.Remove(image);
+        CancelSongImage(image);
+    }
+
+    private void OnProjectImageDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        var image = (Image)sender;
+        CancelSongImage(image);
+        if (projectImages.Contains(image)) StartProjectImage(image);
+    }
+
+    private void StartProjectImage(Image image)
+    {
+        var request = new SongImageRequest();
+        imageRequests.Add(image, request);
+        request.LoadingTask = LoadSongImageAsync(image, (image.DataContext as FolderEntry)?.BackgroundPath ?? "", request, 64);
+    }
+
+    private void ReleaseProjectImages()
+    {
+        foreach (var image in projectImages.ToArray()) OnProjectImageUnloaded(image, new RoutedEventArgs());
+    }
 
     private void OnSongImageLoaded(object sender, RoutedEventArgs e)
     {
@@ -57,12 +91,12 @@ public partial class HomePage
         request.LoadingTask = LoadSongImageAsync(image, (image.DataContext as FolderEntry)?.BackgroundPath ?? "", request);
     }
 
-    private async Task LoadSongImageAsync(Image image, string path, SongImageRequest request)
+    private async Task LoadSongImageAsync(Image image, string path, SongImageRequest request, int decodeWidth = SongImageDecodeWidth)
     {
         var cancellation = request.Cancellation!;
         try
         {
-            var source = await ImageLoader.LoadAsync(path, SongImageDecodeWidth, cancellation.Token);
+            var source = await ImageLoader.LoadAsync(path, decodeWidth, cancellation.Token);
             if (!cancellation.IsCancellationRequested && imageRequests.TryGetValue(image, out var current) &&
                 ReferenceEquals(current, request)) image.Source = source;
         }

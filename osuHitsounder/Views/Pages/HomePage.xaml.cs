@@ -7,6 +7,7 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Input;
 using System.Windows.Threading;
+using System.Windows.Data;
 using CommunityToolkit.Mvvm.Input;
 using osuHitsounder.Resources.CustomControls;
 using osuHitsounder.ViewModels.Shell.HomePage;
@@ -48,6 +49,7 @@ public partial class HomePage : UserControl
     {
         this.viewModel = viewModel;
         InitializeComponent();
+        ((ObjectDataProvider)Resources["OHsHomePageSource"]).ObjectInstance = this;
         DataContext = viewModel;
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
@@ -165,6 +167,7 @@ public partial class HomePage : UserControl
         viewModel.Deactivate();
         HideSongs();
         ReleaseSongImages();
+        ReleaseProjectImages();
         ImageLoader.Clear();
     }
 
@@ -227,7 +230,7 @@ public partial class HomePage : UserControl
         var inputs = (RenderSize, SongsList.RenderSize, maximizedSize, headerHeight, lane, nativeLane,
             SongsList.Padding, FlowDirection, (object)panel, (object?)viewer.Template,
             SongsPanel.Padding, SongsPanel.BorderThickness, SongsPanel.Margin, PageLayout.Margin,
-            PageLayout.ColumnDefinitions[0].ActualWidth, panel.HorizontalGap, panel.VerticalGap);
+            PageLayout.ColumnDefinitions[1].ActualWidth, panel.HorizontalGap, panel.VerticalGap);
         if (lastSongsLayout == inputs) return;
         lastSongsLayout = inputs;
         CancelSongsScrollMotion();
@@ -246,7 +249,7 @@ public partial class HomePage : UserControl
             var verticalChrome = SongsPanel.Padding.Top + SongsPanel.Padding.Bottom +
                 SongsPanel.BorderThickness.Top + SongsPanel.BorderThickness.Bottom;
             var outsideWidth = PageLayout.Margin.Left + PageLayout.Margin.Right +
-                PageLayout.ColumnDefinitions[0].ActualWidth + SongsPanel.Margin.Left + SongsPanel.Margin.Right;
+                PageLayout.ColumnDefinitions[1].ActualWidth + SongsPanel.Margin.Left + SongsPanel.Margin.Right;
             var outsideHeight = PageLayout.Margin.Top + PageLayout.Margin.Bottom +
                 SongsPanel.Margin.Top + SongsPanel.Margin.Bottom;
             if (tileLayout is null || maximizedPageSize != maximizedSize ||
@@ -254,7 +257,7 @@ public partial class HomePage : UserControl
             {
                 var width = maximizedSize.Width - outsideWidth - horizontalChrome - lane;
                 var height = maximizedSize.Height - outsideHeight - verticalChrome - headerHeight;
-                if (width <= 4 * panel.HorizontalGap || height <= 7 * panel.VerticalGap) return;
+                if (width <= 3 * panel.HorizontalGap || height <= 3 * panel.VerticalGap) return;
                 tileLayout = new SongTileLayout(width, height, panel.HorizontalGap, panel.VerticalGap);
                 baselineHeaderHeight = headerHeight;
                 maximizedPageSize = maximizedSize;
@@ -299,8 +302,7 @@ public partial class HomePage : UserControl
             Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() =>
             {
                 if (!attached || lifetime.IsCancellationRequested || expanded != viewModel.IsSongSearchExpanded) return;
-                if (expanded) SongSearchTextBox.Focus();
-                else SongSearchButton.Focus();
+                SongSearchTextBox.Focus();
             }));
         }
         if (!viewModel.IsProcessing) presentation.TrySetResult();
@@ -319,6 +321,14 @@ public partial class HomePage : UserControl
     {
         if (e.Key != Key.Escape || !viewModel.CloseSongSearchCommand.CanExecute(null)) return;
         viewModel.CloseSongSearchCommand.Execute(null);
+        e.Handled = true;
+    }
+
+    private void OnHomePageKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Handled || e.Key != Key.OemQuestion || Keyboard.Modifiers != ModifierKeys.None ||
+            e.OriginalSource is TextBoxBase || !viewModel.CanInteract) return;
+        SongSearchTextBox.Focus();
         e.Handled = true;
     }
 
@@ -412,7 +422,7 @@ public partial class HomePage : UserControl
     }
 
     private static ScrollViewer? FindScrollViewer(ItemsControl list) =>
-        list.Template?.FindName("PART_ScrollViewer", list) as ScrollViewer;
+        list.Template?.FindName("PART_ScrollViewer", list) as ScrollViewer ?? FindDescendant<ScrollViewer>(list);
 
     private static T? FindDescendant<T>(DependencyObject parent) where T : DependencyObject
     {

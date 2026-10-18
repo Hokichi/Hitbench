@@ -14,8 +14,8 @@ public sealed class SongTileLayout
         if (!double.IsFinite(verticalGap) || verticalGap < 0)
             throw new ArgumentOutOfRangeException(nameof(verticalGap));
         this.horizontalGap = horizontalGap;
-        BaselineWidth = (maximizedWidth - 4 * horizontalGap) / 5;
-        TileHeight = (maximizedHeight - 7 * verticalGap) / 8;
+        BaselineWidth = (maximizedWidth - 3 * horizontalGap) / 4;
+        TileHeight = (maximizedHeight - 3 * verticalGap) / 4;
         RequirePositive(BaselineWidth, nameof(maximizedWidth));
         RequirePositive(TileHeight, nameof(maximizedHeight));
         MinimumViewportWidth = .75 * BaselineWidth;
@@ -30,7 +30,7 @@ public sealed class SongTileLayout
     public int GetColumns(double viewportWidth)
     {
         RequirePositive(viewportWidth, nameof(viewportWidth));
-        var columns = 5;
+        var columns = 4;
         while (columns > 1 &&
                (viewportWidth - (columns - 1) * horizontalGap) / columns <= MinimumViewportWidth)
             columns--;

@@ -26,7 +26,7 @@ namespace osuHitsounder.Test.Presentation;
 public class HomePageIntegrationTests
 {
     [Test]
-    public void SongSearchOpensBindsFiltersAndClosesWithEscape()
+    public void PersistentSongSearchBindsFiltersAndClearsWithEscape()
     {
         EnsureResources();
         var vm = CreateVM(new StubHomeFolderService
@@ -39,17 +39,9 @@ public class HomePageIntegrationTests
         var window = new Window { Content = page, Width = 1280, Height = 720 };
         using var view = new InMemoryView(window);
         UiTestPump.Run(page.LoadAsync(CancellationToken.None));
-        var opener = (BalloonButton?)page.FindName("SongSearchButton");
-        Assert.That(opener, Is.Not.Null, "Songs search action must exist.");
         var input = (TextBox)page.FindName("SongSearchTextBox");
-        var close = (BalloonButton)page.FindName("SongSearchCloseButton");
-        Assert.That(input.IsVisible, Is.False);
-        opener!.Command.Execute(opener.CommandParameter);
-        view.UpdateLayout();
         Assert.That(input.IsVisible, Is.True);
-        Assert.That(AutomationProperties.GetName(input), Is.EqualTo("Search songs"));
-        Assert.That(opener.ToolTip, Is.Not.Null);
-        Assert.That(close.ToolTip, Is.Not.Null);
+        Assert.That(AutomationProperties.GetName(input), Is.EqualTo("Search mapsets"));
         input.Text = "two";
         UiTestPump.Run(vm.SearchSongsCommand.ExecutionTask!);
         PumpUntil(() => !vm.IsAwaitingSongsPresentation);
@@ -61,12 +53,7 @@ public class HomePageIntegrationTests
         view.UpdateLayout();
         Assert.That(vm.SongSearchText, Is.Empty);
         Assert.That(vm.IsSongSearchExpanded, Is.False);
-        Assert.That(input.IsVisible, Is.False);
-        Assert.That(opener.IsVisible, Is.True);
-        opener.Command.Execute(opener.CommandParameter);
-        view.UpdateLayout();
-        close.Command.Execute(close.CommandParameter);
-        Assert.That(vm.IsSongSearchExpanded, Is.False);
+        Assert.That(input.IsVisible, Is.True);
         window.Close();
     }
 
@@ -637,7 +624,7 @@ public class HomePageIntegrationTests
             UiTestPump.Run(page.LoadAsync(CancellationToken.None));
             view.UpdateLayout();
             var projects = (ItemsControl)page.FindName("ProjectsList");
-            var button = Descendants<Button>(projects).Single(value => value.DataContext is FolderEntry);
+            var button = Descendants<Button>(projects).Single(value => value.Command == vm.OpenProjectCommand);
             var name = Descendants<TextBlock>(button).Single(block =>
                 ReferenceEquals(block.Style, page.FindResource("HomePageProjectNameStyle")));
             button.Width = 280;
@@ -648,13 +635,13 @@ public class HomePageIntegrationTests
             button.Foreground = Brushes.Green;
             name.FontSize = 17;
             view.UpdateLayout();
-            UiControlContract.AssertStyle<Button>(button, "FolderActionButtonStyle");
+            UiControlContract.AssertStyle<Button>(button, "OHsHomePageProjectContentButtonStyle");
             UiControlContract.AssertStyle<TextBlock>(name, "HomePageProjectNameStyle");
             var originalStyle = button.Style;
             button.Style = (Style)page.FindResource("BaseButtonStyle");
-            Assert.Throws<AssertionException>(() => UiControlContract.AssertStyle<Button>(button, "FolderActionButtonStyle"));
+            Assert.Throws<AssertionException>(() => UiControlContract.AssertStyle<Button>(button, "OHsHomePageProjectContentButtonStyle"));
             button.Style = originalStyle;
-            Assert.Throws<AssertionException>(() => UiControlContract.AssertStyle<TextBox>(button, "FolderActionButtonStyle"));
+            Assert.Throws<AssertionException>(() => UiControlContract.AssertStyle<TextBox>(button, "OHsHomePageProjectContentButtonStyle"));
             var peer = new ButtonAutomationPeer(button);
 
             ((IInvokeProvider)peer.GetPattern(PatternInterface.Invoke)).Invoke();
@@ -670,7 +657,7 @@ public class HomePageIntegrationTests
                 Assert.That(button.IsEnabled, Is.False);
                 Assert.That(opened, Is.EqualTo(new[] { Path.Combine(row.FullName, "project.json") }));
                 Assert.That(name.Text, Is.EqualTo(row.Name));
-                UiControlContract.AssertStyle<Button>(button, "FolderActionButtonStyle");
+                UiControlContract.AssertStyle<Button>(button, "OHsHomePageProjectContentButtonStyle");
                 UiControlContract.AssertStyle<TextBlock>(name, "HomePageProjectNameStyle");
                 Assert.That(VirtualizingPanel.GetIsVirtualizing(projects), Is.True);
                 Assert.That(VirtualizingPanel.GetVirtualizationMode(projects), Is.EqualTo(VirtualizationMode.Recycling));
@@ -748,7 +735,7 @@ public class HomePageIntegrationTests
                     var peer = new ButtonAutomationPeer(button);
                     Assert.Multiple(() =>
                     {
-                        Assert.That(((ItemsControl)page.FindName("ProjectsList")).Items.Count, Is.EqualTo(1));
+                        Assert.That(((ItemsControl)page.FindName("ProjectsList")).Items.OfType<OHsHomeProjectListItem>().Count(item => !item.IsHeading), Is.EqualTo(1));
                         Assert.That(songsList.Items.Count, Is.EqualTo(45));
                         Assert.That(panel.ExtentWidth, Is.EqualTo(panel.ViewportWidth).Within(.01));
                         Assert.That(panel.Children.Count, Is.LessThanOrEqualTo((panel.VisibleRowCount + 3) * panel.Columns));
@@ -826,22 +813,26 @@ public class HomePageIntegrationTests
             window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
             Assert.That(vm.Songs, Has.Count.EqualTo(45), "Resize/layout must not count as user scrolling.");
 
-            scroll.ScrollToVerticalOffset(1);
-            PumpUntil(() => vm.Songs.Count == 85);
+            var batch = panel.ItemsPerViewport;
+            var expected = HomePageVM.InitialSongCount + batch;
+            scroll.ScrollToVerticalOffset(Math.Max(0, scroll.ScrollableHeight - panel.RowStride / 2));
+            PumpUntil(() => vm.Songs.Count == expected);
 
             scroll.ScrollToEnd();
             scroll.ScrollToVerticalOffset(Math.Max(0, scroll.ScrollableHeight - 1));
             scroll.ScrollToEnd();
-            PumpUntil(() => vm.Songs.Count == 125);
+            expected += batch;
+            PumpUntil(() => vm.Songs.Count == expected);
             window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
-            Assert.That(vm.Songs, Has.Count.EqualTo(125), "Repeated notifications must coalesce to one batch.");
+            Assert.That(vm.Songs, Has.Count.EqualTo(expected), "Repeated notifications must coalesce to one batch.");
 
             scroll.ScrollToVerticalOffset(Math.Max(0, scroll.ScrollableHeight - panel.RowStride * 2));
             view.UpdateLayout();
             window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
-            Assert.That(vm.Songs, Has.Count.EqualTo(125));
+            Assert.That(vm.Songs, Has.Count.EqualTo(expected));
             scroll.LineDown();
-            PumpUntil(() => vm.Songs.Count == 165);
+            expected += batch;
+            PumpUntil(() => vm.Songs.Count == expected);
 
             window.Width = page.MinWidth;
             view.UpdateLayout();

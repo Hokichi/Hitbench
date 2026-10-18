@@ -107,9 +107,8 @@ public class SongsResponsiveLayoutTests
         view.UpdateLayout();
         var input = (TextBox?)page.FindName("SongSearchTextBox");
         Assert.That(input, Is.Not.Null, "Expanded search input must exist.");
-        var close = (BalloonButton)page.FindName("SongSearchCloseButton");
         UiControlContract.AssertStyle<TextBox>(input!, "HomePageSearchInputStyle");
-        UiControlContract.AssertStyle<BalloonButton>(close, "OHsBalloonDestructiveActionStyle");
+        Assert.That(input!.IsVisible, Is.True);
         Assert.That(vm.SongSearchText, Is.EqualTo(new string('W', 200)));
         window.Close();
     }
