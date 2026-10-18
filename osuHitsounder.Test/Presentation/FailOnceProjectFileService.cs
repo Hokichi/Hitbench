@@ -4,6 +4,8 @@ namespace osuHitsounder.Test.Presentation;
 
 public sealed class FailOnceProjectFileService : IProjectFileService
 {
+    public Task SetPinnedAsync(string path, bool pinned, CancellationToken token) => throw new NotSupportedException();
+    public Task DeleteAsync(string path, CancellationToken token) => throw new NotSupportedException();
     public string? SavedJson { get; private set; }
     public Task<IReadOnlySet<string>> GetExistingNamesAsync(CancellationToken token) =>
         Task.FromResult<IReadOnlySet<string>>(new HashSet<string>());

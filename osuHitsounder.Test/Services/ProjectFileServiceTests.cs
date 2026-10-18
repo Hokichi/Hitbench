@@ -5,6 +5,102 @@ namespace osuHitsounder.Test.Services;
 
 public class ProjectFileServiceTests
 {
+    [Test]
+    public void MetadataMutationsRejectProjectRootAndNestedPaths()
+    {
+        var service = new ProjectFileService(applicationDirectory);
+        foreach (var path in new[] { Path.Combine(applicationDirectory, "projects", "project.json"),
+                     Path.Combine(applicationDirectory, "projects", "one", "nested", "project.json") })
+        {
+            Assert.ThrowsAsync<ArgumentException>(() => service.SetPinnedAsync(path, true, default));
+            Assert.ThrowsAsync<ArgumentException>(() => service.DeleteAsync(path, default));
+        }
+    }
+
+    [Test]
+    public async Task PinPreservesDateLikeExtensionStrings()
+    {
+        const string extension = "2026-10-18T08:00:00-11:00";
+        var service = new ProjectFileService(applicationDirectory);
+        var path = await service.CreateAsync(song, "Extension", default);
+        var json = JObject.Parse(await File.ReadAllTextAsync(path));
+        json["DateLikeExtension"] = extension;
+        await File.WriteAllTextAsync(path, json.ToString());
+        await service.SetPinnedAsync(path, true, default);
+        var data = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(await File.ReadAllTextAsync(path),
+            new Newtonsoft.Json.JsonSerializerSettings { DateParseHandling = Newtonsoft.Json.DateParseHandling.None });
+        Assert.That(data!["DateLikeExtension"], Is.EqualTo(extension));
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task DeletionRejectsLinkedDescendantsIncludingDanglingLinks(bool dangling)
+    {
+        var service = new ProjectFileService(applicationDirectory);
+        var path = await service.CreateAsync(song, "Linked", default);
+        var outside = Directory.CreateDirectory(Path.Combine(root, "External"));
+        await File.WriteAllTextAsync(Path.Combine(outside.FullName, "keep.txt"), "keep");
+        var link = Path.Combine(Path.GetDirectoryName(path)!, "LinkedSamples");
+        Directory.CreateSymbolicLink(link, outside.FullName);
+        if (dangling) outside.Delete(true);
+        Assert.ThrowsAsync<ArgumentException>(() => service.DeleteAsync(path, default));
+        Assert.That(File.Exists(path), Is.True);
+        if (!dangling) Assert.That(await File.ReadAllTextAsync(Path.Combine(outside.FullName, "keep.txt")), Is.EqualTo("keep"));
+    }
+
+    [Test]
+    public async Task PinRejectsLinkedJsonAndLockedWritesPreserveOriginal()
+    {
+        var service = new ProjectFileService(applicationDirectory);
+        var path = await service.CreateAsync(song, "Locked", default);
+        var before = await File.ReadAllTextAsync(path);
+        using (var locked = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read))
+            await Assert.ThatAsync(() => service.SetPinnedAsync(path, true, default),
+                Throws.InstanceOf<IOException>().Or.InstanceOf<UnauthorizedAccessException>());
+        Assert.That(await File.ReadAllTextAsync(path), Is.EqualTo(before));
+        var outside = Path.Combine(root, "external.json");
+        await File.WriteAllTextAsync(outside, before);
+        File.Delete(path); File.CreateSymbolicLink(path, outside);
+        Assert.ThrowsAsync<ArgumentException>(() => service.SetPinnedAsync(path, true, default));
+        Assert.ThrowsAsync<ArgumentException>(() => service.DeleteAsync(path, default));
+        Assert.That(await File.ReadAllTextAsync(outside), Is.EqualTo(before));
+    }
+
+    [Test]
+    public async Task PinOnlyChangesPinnedMetadataAndDeletionPreservesOriginalMapset()
+    {
+        var service = new ProjectFileService(applicationDirectory);
+        var path = await service.CreateAsync(song, "History", default);
+        var before = JObject.Parse(await File.ReadAllTextAsync(path));
+        before["Extension"] = new JObject { ["Keep"] = true };
+        await File.WriteAllTextAsync(path, before.ToString());
+        await service.SetPinnedAsync(path, true, default);
+        var after = JObject.Parse(await File.ReadAllTextAsync(path));
+        Assert.That(after.Value<bool>("IsPinned"), Is.True);
+        after.Remove("IsPinned"); before.Remove("IsPinned");
+        Assert.That(JToken.DeepEquals(before, after), Is.True);
+        await service.SetPinnedAsync(path, false, default);
+        Assert.That(JObject.Parse(await File.ReadAllTextAsync(path)).Value<bool>("IsPinned"), Is.False);
+        Directory.CreateDirectory(Path.Combine(Path.GetDirectoryName(path)!, "Samples"));
+        await service.DeleteAsync(path, default);
+        Assert.That(Directory.Exists(Path.GetDirectoryName(path)), Is.False);
+        Assert.That(song.Exists, Is.True);
+    }
+
+    [Test]
+    public async Task MetadataMutationsRejectOutsideAndCancelledTargets()
+    {
+        var service = new ProjectFileService(applicationDirectory);
+        var outside = Path.Combine(song.FullName, "project.json");
+        await File.WriteAllTextAsync(outside, "{}");
+        Assert.ThrowsAsync<ArgumentException>(() => service.SetPinnedAsync(outside, true, default));
+        Assert.ThrowsAsync<ArgumentException>(() => service.DeleteAsync(outside, default));
+        var path = await service.CreateAsync(song, "Cancelled", default);
+        var before = await File.ReadAllTextAsync(path);
+        Assert.CatchAsync<OperationCanceledException>(() => service.SetPinnedAsync(path, true, new CancellationToken(true)));
+        Assert.That(await File.ReadAllTextAsync(path), Is.EqualTo(before));
+    }
+
     private string root = null!;
     private string applicationDirectory = null!;
     private DirectoryInfo song = null!;

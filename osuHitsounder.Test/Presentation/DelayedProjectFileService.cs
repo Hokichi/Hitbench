@@ -4,6 +4,8 @@ namespace osuHitsounder.Test.Presentation;
 
 public sealed class DelayedProjectFileService : IProjectFileService
 {
+    public Task SetPinnedAsync(string path, bool pinned, CancellationToken token) => throw new NotSupportedException();
+    public Task DeleteAsync(string path, CancellationToken token) => throw new NotSupportedException();
     private readonly TaskCompletionSource release = new(TaskCreationOptions.RunContinuationsAsynchronously);
     public string? LatestJson { get; private set; }
     public bool FirstWriteStarted { get; private set; }

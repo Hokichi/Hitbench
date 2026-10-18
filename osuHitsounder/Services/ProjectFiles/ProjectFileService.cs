@@ -1,11 +1,64 @@
 using System.IO;
 using osuHitsounder.Core.Entities;
 using osuHitsounder.Services.FileSystem;
+using Newtonsoft.Json.Linq;
+using Newtonsoft.Json;
 
 namespace osuHitsounder.Services.ProjectFiles;
 
 public sealed class ProjectFileService(string applicationDirectory) : IProjectFileService
 {
+    public async Task SetPinnedAsync(string projectPath, bool isPinned, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var target = ResolveProjectPath(projectPath);
+        var json = await File.ReadAllTextAsync(target, cancellationToken);
+        ProjectDataSerializer.Deserialize(json);
+        using var reader = new JsonTextReader(new StringReader(json)) { DateParseHandling = DateParseHandling.None };
+        var root = JObject.Load(reader);
+        var pinned = root.Properties().SingleOrDefault(property =>
+            string.Equals(property.Name, "IsPinned", StringComparison.OrdinalIgnoreCase));
+        if (pinned is null) root["IsPinned"] = isPinned;
+        else pinned.Value = isPinned;
+        await SaveAsync(target, root.ToString(), cancellationToken);
+    }
+
+    public Task DeleteAsync(string projectPath, CancellationToken cancellationToken) => Task.Run(() =>
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var directory = Path.GetDirectoryName(ResolveProjectPath(projectPath))!;
+        foreach (var entry in Directory.EnumerateFileSystemEntries(directory, "*", new EnumerationOptions
+                 { RecurseSubdirectories = true, AttributesToSkip = 0, IgnoreInaccessible = false }))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            RejectLink(entry);
+        }
+        cancellationToken.ThrowIfCancellationRequested();
+        Directory.Delete(directory, recursive: true);
+    }, cancellationToken);
+
+    private string ResolveProjectPath(string projectPath)
+    {
+        var target = Path.GetFullPath(projectPath);
+        var root = Path.GetFullPath(Path.Combine(applicationDirectory, "projects"));
+        var directory = Path.GetDirectoryName(target)!;
+        if (!string.Equals(Path.GetFileName(target), "project.json", StringComparison.OrdinalIgnoreCase) ||
+            !string.Equals(Path.GetDirectoryName(directory), root, StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException("Project must be a direct child of the projects folder.", nameof(projectPath));
+        RejectLink(Path.GetFullPath(applicationDirectory));
+        RejectLink(root);
+        RejectLink(directory);
+        RejectLink(target);
+        if (!Directory.Exists(directory)) throw new DirectoryNotFoundException(directory);
+        return target;
+    }
+
+    private static void RejectLink(string path)
+    {
+        if ((File.Exists(path) || Directory.Exists(path)) && (File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0)
+            throw new ArgumentException("Linked project files and folders are not supported.");
+    }
+
     public async Task SaveAsync(string projectPath, string json, CancellationToken cancellationToken)
     {
         var target = Path.GetFullPath(projectPath);
