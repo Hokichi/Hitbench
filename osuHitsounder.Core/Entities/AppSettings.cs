@@ -2,6 +2,7 @@ namespace osuHitsounder.Core.Entities;
 
 public class AppSettings
 {
+    public int Volume { get; set; } = 100;
     public string? AsioDriverName { get; set; }
     public string OsuPath { get; set; } = string.Empty;
     public bool IsMaximized { get; set; }

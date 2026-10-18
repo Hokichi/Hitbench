@@ -18,6 +18,13 @@ public sealed class AppSettingsService(string applicationDirectory) : IAppSettin
         {
             var json = await ReadAsync(cancellationToken);
             var changed = false;
+            var volume = json["volume"] is { Type: not JTokenType.Null } token
+                ? (int)Math.Clamp(token.Value<double>(), 0, 100) : 100;
+            if (json["volume"]?.Type != JTokenType.Integer || json["volume"]!.Value<double>() != volume)
+            {
+                json["volume"] = volume;
+                changed = true;
+            }
             if (!json.ContainsKey("osuPath"))
             {
                 json["osuPath"] = "";
@@ -49,6 +56,18 @@ public sealed class AppSettingsService(string applicationDirectory) : IAppSettin
             if (json["restoredWidth"]?.Type == JTokenType.Null) settings.RestoredWidth = 1280;
             if (json["restoredHeight"]?.Type == JTokenType.Null) settings.RestoredHeight = 720;
             return settings;
+        }
+        finally { gate.Release(); }
+    }
+
+    public async Task SaveVolumeAsync(int volume, CancellationToken cancellationToken)
+    {
+        await gate.WaitAsync(cancellationToken);
+        try
+        {
+            var json = await ReadAsync(cancellationToken);
+            json["volume"] = Math.Clamp(volume, 0, 100);
+            await WriteAsync(json, cancellationToken);
         }
         finally { gate.Release(); }
     }
@@ -91,6 +110,9 @@ public sealed class AppSettingsService(string applicationDirectory) : IAppSettin
         try
         {
             var json = JObject.Parse(await File.ReadAllTextAsync(path, token));
+            if (json.TryGetValue("volume", out var volume) && volume.Type != JTokenType.Null &&
+                (volume.Type is not (JTokenType.Integer or JTokenType.Float) || !double.IsFinite(volume.Value<double>())))
+                throw new JsonSerializationException("volume must be a finite number or null.");
             if (json.TryGetValue("asioDriverName", out var driver) && driver.Type is not (JTokenType.String or JTokenType.Null))
                 throw new JsonSerializationException("asioDriverName must be a string or null.");
             if (json.TryGetValue("osuPath", out var value) &&
