@@ -24,6 +24,7 @@ public partial class WorkstationPage : UserControl
     public double TimelineHorizontalOffset { get => (double)GetValue(TimelineHorizontalOffsetProperty); set => SetValue(TimelineHorizontalOffsetProperty, value); }
     private readonly WorkstationPageVM viewModel;
     public OHsWorkstationTimeline Timeline => AudioCard.Timeline;
+    internal OHsWorkstationFooter Footer => AudioCard.Footer;
     internal Task NodeInputCompletion => TrackListComponent.NodeInputCompletion;
     internal bool IsRegionSelectionActive => TrackListComponent.IsRegionSelectionActive;
     internal IInputElement FindRemovalFocusTarget(int index) => TrackListComponent.FindRemovalFocusTarget(index) ?? Timeline.FocusTarget;

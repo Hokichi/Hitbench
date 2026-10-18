@@ -62,7 +62,7 @@ public class WorkstationPageIntegrationTests
     [TestCase("page", false)]
     [TestCase("SongAudioCard", false)]
     [TestCase("PlayPauseButton", false)]
-    [TestCase("ZoomFooter", true)]
+    [TestCase("ZoomFooter", false)]
     [TestCase("track", true)]
     public void TracksCardBoundaryControlsPointerDeselection(string originName, bool inside)
     {
@@ -230,8 +230,9 @@ public class WorkstationPageIntegrationTests
         var solo = FindVisualChildren<ToggleButton>(page).Single(control => control.Name == "TrackSoloToggle" && ReferenceEquals(control.DataContext, a));
         Assert.That(mute.GetType(), Is.EqualTo(typeof(ToggleButton)));
         Assert.That(mute.IsTabStop, Is.True);
-        Assert.That(mute.Style, Is.SameAs(page.FindResource("OHsWorkstationTrackToggleStyle")));
-        Assert.That(mute.Style.BasedOn, Is.SameAs(page.FindResource("BaseToggleButtonStyle")));
+        Assert.That(mute.Style, Is.SameAs(mute.FindResource("OHsWorkstationCompactToggleStyle")));
+        Assert.That(mute.Style.BasedOn, Is.SameAs(page.FindResource("OHsWorkstationTrackToggleStyle")));
+        Assert.That(mute.Style.BasedOn.BasedOn, Is.SameAs(page.FindResource("BaseToggleButtonStyle")));
         Assert.That(mute.Template, Is.SameAs(page.FindResource("OHsWorkstationTrackToggleTemplate")));
         Assert.That(mute.IsChecked, Is.True); Assert.That(solo.IsChecked, Is.True);
         var remove = FindRemovalAction(page, a);
@@ -941,7 +942,7 @@ public class WorkstationPageIntegrationTests
         UiTestPump.Run(page.LoadCompletion);
         view.UpdateLayout();
 
-        var selector = (ValueSlider)((osuHitsounder.Views.Pages.OHsWorkstationFooter)page.FindName("Footer")).FindName("SubdivisionSelector");
+        var selector = (ValueSlider)((osuHitsounder.Views.Pages.OHsWorkstationFooter)page.Footer).FindName("SubdivisionSelector");
         var before = audio.Snapshot;
         Assert.Multiple(() =>
         {
@@ -966,8 +967,8 @@ public class WorkstationPageIntegrationTests
         UiTestPump.Run(page.LoadCompletion);
         view.UpdateLayout();
 
-        var controls = (StackPanel)((osuHitsounder.Views.Pages.OHsWorkstationFooter)page.FindName("Footer")).FindName("ZoomControls");
-        var selector = (ValueSlider)((osuHitsounder.Views.Pages.OHsWorkstationFooter)page.FindName("Footer")).FindName("SubdivisionSelector");
+        var controls = (StackPanel)((osuHitsounder.Views.Pages.OHsWorkstationFooter)page.Footer).FindName("ZoomControls");
+        var selector = (ValueSlider)((osuHitsounder.Views.Pages.OHsWorkstationFooter)page.Footer).FindName("SubdivisionSelector");
         var buttons = controls.Children.OfType<BalloonButton>().ToArray();
         Assert.That(buttons.Length, Is.EqualTo(2));
         Assert.That(AutomationProperties.GetName(buttons[0]), Is.EqualTo("Zoom waveform out"));
@@ -1413,9 +1414,9 @@ public class WorkstationPageIntegrationTests
             UiTestPump.Run(page.LoadCompletion);
             view.UpdateLayout();
 
-            var selector = (ValueSlider)((osuHitsounder.Views.Pages.OHsWorkstationFooter)page.FindName("Footer")).FindName("SubdivisionSelector");
+            var selector = (ValueSlider)((osuHitsounder.Views.Pages.OHsWorkstationFooter)page.Footer).FindName("SubdivisionSelector");
             var bar = (ScrollBar)page.FindName("WaveformScrollBar");
-            var zoomControls = (StackPanel)((osuHitsounder.Views.Pages.OHsWorkstationFooter)page.FindName("Footer")).FindName("ZoomControls");
+            var zoomControls = (StackPanel)((osuHitsounder.Views.Pages.OHsWorkstationFooter)page.Footer).FindName("ZoomControls");
             var buttons = zoomControls.Children.OfType<BalloonButton>().ToArray();
             listener.Flush();
             Assert.Multiple(() =>
@@ -1451,7 +1452,7 @@ public class WorkstationPageIntegrationTests
         using var view = new InMemoryView(window);
         view.UpdateLayout();
 
-        var buttons = ((StackPanel)((osuHitsounder.Views.Pages.OHsWorkstationFooter)page.FindName("Footer")).FindName("ZoomControls")).Children.OfType<BalloonButton>().ToArray();
+        var buttons = ((StackPanel)((osuHitsounder.Views.Pages.OHsWorkstationFooter)page.Footer).FindName("ZoomControls")).Children.OfType<BalloonButton>().ToArray();
         var scrollBar = (ScrollBar)page.FindName("WaveformScrollBar");
         Assert.Multiple(() =>
         {
@@ -1485,7 +1486,7 @@ public class WorkstationPageIntegrationTests
             window.Width = width + cardHeight - 200;
             window.Height = height + cardHeight - 200;
             view.UpdateLayout();
-            var selector = (ValueSlider)((osuHitsounder.Views.Pages.OHsWorkstationFooter)page.FindName("Footer")).FindName("SubdivisionSelector");
+            var selector = (ValueSlider)((osuHitsounder.Views.Pages.OHsWorkstationFooter)page.Footer).FindName("SubdivisionSelector");
             UiControlContract.AssertStyle<ValueSlider>(selector, "BaseValueSliderStyle");
             Assert.That(selector.Value, Is.EqualTo(vm.SelectedSubdivisionIndex));
         }

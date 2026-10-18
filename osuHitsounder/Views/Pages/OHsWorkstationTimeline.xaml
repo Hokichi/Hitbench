@@ -63,7 +63,7 @@
  <Grid Style="{StaticResource BaseGridStyle}" FlowDirection="LeftToRight">
   <Grid.RowDefinitions><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                             <ScrollViewer
-                                x:Name="WaveformScrollViewer"
+                                x:Name="WaveformScrollViewer" Height="80"
                                 
                                 AutomationProperties.HelpText="Click to seek. Left and Right move between subdivision lines. Control plus Left or Right moves between whole beats. Use Shift plus wheel to scroll, Control plus wheel to zoom, or Alt plus wheel over this song card to change subdivision."
                                 AutomationProperties.Name="Audio waveform"

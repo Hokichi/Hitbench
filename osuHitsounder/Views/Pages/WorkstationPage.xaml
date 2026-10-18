@@ -245,7 +245,6 @@
  TimelineContentWidth="{Binding TimelineContentWidth, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
  TimelineViewportWidth="{Binding TimelineViewportWidth, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
  TimelineHorizontalOffset="{Binding TimelineHorizontalOffset, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}" />
-                        <pages:OHsWorkstationFooter x:Name="Footer" Grid.Row="1" AudioCardBorderThickness="{Binding AudioCardBorderThickness, ElementName=AudioCard, Mode=OneWay}" />
                     </Grid>
                 </Border>
 

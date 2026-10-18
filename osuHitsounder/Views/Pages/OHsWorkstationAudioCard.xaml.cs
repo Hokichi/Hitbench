@@ -9,10 +9,11 @@ public partial class OHsWorkstationAudioCard : UserControl
 {
     public OHsWorkstationAudioCard() { InitializeComponent(); }
     public OHsWorkstationTimeline Timeline => TimelineControl;
+    public OHsWorkstationFooter Footer => FooterControls;
     public Thickness AudioCardBorderThickness => SongAudioCard.BorderThickness;
     public static readonly DependencyProperty TrackScrollBarGutterProperty = DependencyProperty.Register(nameof(TrackScrollBarGutter), typeof(double), typeof(OHsWorkstationAudioCard), new PropertyMetadata(0d));
     public double TrackScrollBarGutter { get => (double)GetValue(TrackScrollBarGutterProperty); set => SetValue(TrackScrollBarGutterProperty, value); }
-    public bool ContainsInputOrigin(DependencyObject? origin) => IsWithin(origin, this);
+    public bool ContainsInputOrigin(DependencyObject? origin) => IsWithin(origin, SongAudioCard);
     public bool IsCollapseActionOrigin(DependencyObject? origin) => IsWithin(origin, ToggleTracksCollapsedButton);
     private static bool IsWithin(DependencyObject? origin, DependencyObject owner)
     {
