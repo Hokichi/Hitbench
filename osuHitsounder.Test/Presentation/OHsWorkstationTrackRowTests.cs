@@ -10,6 +10,42 @@ namespace osuHitsounder.Test.Presentation;
 public sealed class OHsWorkstationTrackRowTests
 {
     [Test]
+    public void ContextMenuInputUsesCurrentTrackAndPreservesNameEditing()
+    {
+        new VolumeWheelTests().SetUp();
+        var vm = (WorkstationPageVM)WorkstationTestPage.Create().DataContext;
+        UiTestPump.Run(vm.LoadAsync("project.json", default));
+        vm.AcknowledgePresentationReady(vm.LoadGeneration);
+        vm.AddPianoTrackCommand.Execute(null);
+        vm.AddPianoTrackCommand.Execute(null);
+        var requests = new List<osuHitsounder.Resources.CustomControls.BalloonComboBox>();
+        var row = new OHsWorkstationTrackRow(requests.Add) { Track = vm.Tracks[0], ViewModel = vm };
+        using var view = new InMemoryView(new Window { Content = row, Width = 900, Height = 300 });
+        using var source = new InMemoryPresentationSource();
+        try
+        {
+            var press = new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, MouseButton.Right) { RoutedEvent = UIElement.PreviewMouseRightButtonDownEvent };
+            row.RaiseEvent(press);
+            Assert.That(press.Handled, Is.True, "Track menu press must not reach a destructive child right-click handler.");
+            var pointer = new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, MouseButton.Right) { RoutedEvent = UIElement.PreviewMouseRightButtonUpEvent };
+            row.RaiseEvent(pointer);
+            Assert.That(pointer.Handled, Is.True);
+            Assert.That(requests.Last().ContextMenu.DataContext, Is.SameAs(vm.Tracks[0]));
+            var old = requests.Last().ContextMenu;
+            row.Track = vm.Tracks[1]; view.UpdateLayout();
+            row.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, source, 0, Key.Apps) { RoutedEvent = Keyboard.PreviewKeyDownEvent });
+            Assert.That(requests.Count, Is.EqualTo(2));
+            Assert.That(requests.Last().ContextMenu.DataContext, Is.SameAs(vm.Tracks[1]));
+            Assert.That(old.IsEnabled, Is.False);
+            vm.BeginTrackRenameCommand.Execute(vm.Tracks[1]); view.UpdateLayout();
+            var input = FindNameInput(row)!;
+            input.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, source, 0, Key.Apps) { RoutedEvent = Keyboard.PreviewKeyDownEvent });
+            Assert.That(requests.Count, Is.EqualTo(2));
+            Assert.That(requests.Last().ContextMenu.IsOpen, Is.False);
+        }
+        finally { UiTestPump.Run(vm.DeactivateAsync()); }
+    }
+    [Test]
     public void EditorInputEventsCommitAndCancelDraft()
     {
         new VolumeWheelTests().SetUp();

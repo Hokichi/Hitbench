@@ -17,23 +17,31 @@ public partial class OHsWorkstationTrackRow : UserControl
 {
     private WorkstationPageVM viewModel => ViewModel!;
     private WorkstationPageVM? subscribedViewModel;
-    public OHsWorkstationTrackRow()
+    private readonly Action<BalloonComboBox> presentMenu;
+    public OHsWorkstationTrackRow() : this(null) { }
+    internal OHsWorkstationTrackRow(Action<BalloonComboBox>? presentMenu)
     {
+        this.presentMenu = presentMenu ?? (trigger => trigger.InvokeActionMenu());
         InitializeComponent();
+        PreviewMouseRightButtonDown += (_, e) => { if (IsTrackMenuOrigin(e.OriginalSource as DependencyObject)) e.Handled = true; };
         PreviewMouseRightButtonUp += (_, e) => { if (TryOpenTrackMenu(e.OriginalSource as DependencyObject)) e.Handled = true; };
         PreviewKeyDown += (_, e) => { if ((e.Key == Key.Apps || e.Key == Key.F10 && Keyboard.Modifiers == ModifierKeys.Shift) && TryOpenTrackMenu(e.OriginalSource as DependencyObject)) e.Handled = true; };
         ((ObjectDataProvider)Resources["OHsWorkstationTrackRowSource"]).ObjectInstance = this;
-        Loaded += (_, _) => { UseTouchTargets = Tablet.TabletDevices.Cast<TabletDevice>().Any(device => device.Type == TabletDeviceType.Touch); Subscribe(); RefreshPresentation(); };
+        Loaded += (_, _) => { UseTouchTargets = Tablet.TabletDevices.Cast<TabletDevice>().Any(device => device.Type == TabletDeviceType.Touch); Subscribe(); RefreshPresentation(); if (FindVisualChild<StackPanel>(this, "TrackLeftControls") is { } controls) UpdateTrackHeightMinimum(controls); };
         Unloaded += (_, _) => { if (Track is {} track) ViewModel?.CancelTrackRename(track); DetachActionMenu(); Unsubscribe(); };
     }
     public static readonly DependencyProperty UseTouchTargetsProperty = DependencyProperty.Register(nameof(UseTouchTargets), typeof(bool), typeof(OHsWorkstationTrackRow), new PropertyMetadata(false));
     public bool UseTouchTargets { get => (bool)GetValue(UseTouchTargetsProperty); set => SetValue(UseTouchTargetsProperty, value); }
-    protected virtual void OpenTrackActionMenu(BalloonComboBox trigger) => trigger.InvokeActionMenu();
-    private bool TryOpenTrackMenu(DependencyObject? origin)
+    private void OpenTrackActionMenu(BalloonComboBox trigger) => presentMenu(trigger);
+    private bool IsTrackMenuOrigin(DependencyObject? origin)
     {
         for (var current = origin; current is not null && current != this; current = current is Visual ? VisualTreeHelper.GetParent(current) : LogicalTreeHelper.GetParent(current))
             if (current is ComboBox || current is TextBox { IsReadOnly: false }) return false;
-        if (FindVisualChild<BalloonComboBox>(this) is not { IsMenuOwnerActive: true } trigger) return false;
+        return FindVisualChild<BalloonComboBox>(this) is { IsMenuOwnerActive: true };
+    }
+    private bool TryOpenTrackMenu(DependencyObject? origin)
+    {
+        if (!IsTrackMenuOrigin(origin) || FindVisualChild<BalloonComboBox>(this) is not { } trigger) return false;
         OpenTrackActionMenu(trigger);
         return true;
     }
@@ -254,8 +262,12 @@ public partial class OHsWorkstationTrackRow : UserControl
         if(row is null)return;
         var left = FindVisualChild<StackPanel>(row, "TrackLeftControls");
         var right = FindVisualChild<StackPanel>(row, "TrackRightControls");
-        if (left is not null && (right is not null || stack.DataContext is osuHitsounder.Core.Entities.InstrumentalTrack))
-            if (Track is {} track) viewModel.SetTrackMinimumExtent(track, track.IsCollapsed, Math.Max(left.DesiredSize.Height, right?.DesiredSize.Height??0));
+        if (left is null || right is null && stack.DataContext is not InstrumentalTrack) return;
+        // Measure controls independently of the timeline's current extent, including touch target growth.
+        left.Measure(new Size(left.ActualWidth, double.PositiveInfinity));
+        right?.Measure(new Size(right.ActualWidth, double.PositiveInfinity));
+        if (Track is { } track) viewModel.SetTrackMinimumExtent(track, track.IsCollapsed,
+            Math.Max(left.DesiredSize.Height, right?.DesiredSize.Height ?? 0));
     }
 
     private void OnTrackGridHostLoaded(object sender, RoutedEventArgs e) => RefreshTrackSamplePresentation();

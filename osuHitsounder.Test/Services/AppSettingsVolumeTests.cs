@@ -49,6 +49,8 @@ public sealed class AppSettingsVolumeTests
     [TestCase("{\"volume\":42.9}", 42)]
     [TestCase("{\"volume\":-10}", 0)]
     [TestCase("{\"volume\":1000}", 100)]
+    [TestCase("{\"volume\":9223372036854775808}", 100)]
+    [TestCase("{\"volume\":1e200}", 100)]
     public async Task LoadNormalizesVolume(string json, int expected)
     {
         var directory = Directory.CreateTempSubdirectory();

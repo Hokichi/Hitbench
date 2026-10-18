@@ -19,8 +19,8 @@ public sealed class AppSettingsService(string applicationDirectory) : IAppSettin
             var json = await ReadAsync(cancellationToken);
             var changed = false;
             var volume = json["volume"] is { Type: not JTokenType.Null } token
-                ? (int)Math.Clamp(token.Value<double>(), 0, 100) : 100;
-            if (json["volume"]?.Type != JTokenType.Integer || json["volume"]!.Value<double>() != volume)
+                ? (int)Math.Clamp((double)token, 0, 100) : 100;
+            if (json["volume"]?.Type != JTokenType.Integer || (double)json["volume"]! != volume)
             {
                 json["volume"] = volume;
                 changed = true;
@@ -111,7 +111,7 @@ public sealed class AppSettingsService(string applicationDirectory) : IAppSettin
         {
             var json = JObject.Parse(await File.ReadAllTextAsync(path, token));
             if (json.TryGetValue("volume", out var volume) && volume.Type != JTokenType.Null &&
-                (volume.Type is not (JTokenType.Integer or JTokenType.Float) || !double.IsFinite(volume.Value<double>())))
+                (volume.Type is not (JTokenType.Integer or JTokenType.Float) || !double.IsFinite((double)volume)))
                 throw new JsonSerializationException("volume must be a finite number or null.");
             if (json.TryGetValue("asioDriverName", out var driver) && driver.Type is not (JTokenType.String or JTokenType.Null))
                 throw new JsonSerializationException("asioDriverName must be a string or null.");
