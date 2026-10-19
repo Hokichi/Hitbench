@@ -152,7 +152,7 @@ public sealed class SampleLoaderPopupVMTests
     }
 
     [Test]
-    public async Task NavigationClearsChecksButSelectionAndSameFolderDoNot()
+    public async Task NavigationPreservesChecksSelectionAndSameFolder()
     {
         await vm.SetCheckedAsync(first, true);
         await vm.SelectAsync(b);
@@ -160,8 +160,8 @@ public sealed class SampleLoaderPopupVMTests
         await vm.NavigateCommand.ExecuteAsync(a.FullPath);
         Assert.That(first.IsChecked, Is.True);
         await vm.NavigateCommand.ExecuteAsync(b.FullPath);
-        Assert.That(first.IsChecked, Is.False);
-        Assert.That(vm.CheckedCount, Is.Zero);
+        Assert.That(first.IsChecked, Is.True);
+        Assert.That(vm.CheckedCount, Is.EqualTo(1));
     }
     [Test]
     public async Task InvalidPathPreservesCommittedFolderAndChecks()
@@ -177,9 +177,9 @@ public sealed class SampleLoaderPopupVMTests
     {
         await vm.SetCheckedAsync(first, true);
         await vm.SetCheckedAsync(second, true);
-        Assert.That(first.IsChecked, Is.False);
+        Assert.That(first.IsChecked, Is.True);
         Assert.That(vm.CurrentDirectory, Is.EqualTo(b.FullPath));
-        Assert.That(await vm.ConfirmAsync(), Is.EqualTo(new[] { second.FullPath }));
+        Assert.That(await vm.ConfirmAsync(), Is.EqualTo(new[] { first.FullPath, second.FullPath }));
     }
     [Test]
     public async Task SelectionLoadsMetadataWithoutTogglingOrPlaying()

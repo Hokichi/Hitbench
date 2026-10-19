@@ -51,7 +51,7 @@ public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, I
     public void ConfigureSelectionMode(SampleSelectionMode mode) { SelectionMode = mode; OnPropertyChanged(nameof(SelectionMode)); NotifyState(); }
     public bool IsFolderSelection => SelectionMode == SampleSelectionMode.Folder;
     public string PopupTitle => IsFolderSelection ? "Select sample folder" : "Load samples";
-    public string ConfirmActionText => IsFolderSelection ? "Select folder" : "Import";
+    public string ConfirmActionText => IsFolderSelection ? "Select folder" : CheckedCount == 0 ? "Import samples" : string.Format(CultureInfo.CurrentCulture, CheckedCount == 1 ? "Import {0} sample" : "Import {0} samples", CheckedCount);
     public string ConfirmAutomationName => IsFolderSelection ? "Select sample folder" : "Import checked files";
     public string SelectionPrompt => IsFolderSelection ? "Choose a folder, then select it to map note-named audio files." : "Select a .wav, .ogg or .mp3";
     public string FolderEmptyPromptText => IsFolderSelection ? "No subfolders. Select this folder to import its audio files." : "No audio file to display";
@@ -83,7 +83,7 @@ public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, I
     public string PlaybackTimeText => string.Format(CultureInfo.CurrentCulture, "{0:0.000} / {1:0.000} s",
         PlaybackPositionSeconds, PlaybackDurationSeconds);
 
-    public int CheckedCount => Entries.Count(entry => !entry.IsDirectory && entry.IsChecked);
+    public int CheckedCount => selectedSamples.Count;
     public string CheckedCountText => IsFolderSelection ? string.Format(CultureInfo.CurrentCulture, "Selected folder: {0}", SelectedFolderPath.Length == 0 ? "None" : SelectedFolderPath) : string.Format(CultureInfo.CurrentCulture, "{0:N0} files checked", CheckedCount);
     public bool CanNavigate => !deactivated && !IsConfirming;
     public bool CanConfirm => !deactivated && !IsNavigating && !IsConfirming && (IsFolderSelection ? SelectedFolderPath.Length > 0 && DirectoryError is null : CheckedCount > 0 && (SelectionMode!=SampleSelectionMode.Single || CheckedCount==1));
@@ -158,9 +158,17 @@ public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, I
             await UpdateAsync(() =>
             {
                 if (request != navigationGeneration || deactivated || cancellation.IsCancellationRequested) return;
-                foreach (var entry in observed.ToArray()) { entry.IsChecked = false; entry.IsSelected = false; Forget(entry); }
+                foreach (var entry in observed.ToArray()) { entry.IsSelected = false; if (!selectedSamples.Contains(entry)) Forget(entry); }
                 Entries.Clear();
-                foreach (var child in children.Where(child => !IsFolderSelection || child.IsDirectory)) { Entries.Add(child); Observe(child); }
+                foreach (var child in children.Where(child => !IsFolderSelection || child.IsDirectory))
+                {
+                    var entry = selectedSamples.FirstOrDefault(x => SamePath(x.FullPath, child.FullPath)) ?? child;
+                    entry.IsAlreadyInProject = IsImportedPath(entry.FullPath);
+                    Entries.Add(entry); Observe(entry);
+                }
+                rangeAnchor = null;
+                SearchText = "";
+                RefreshVisibleEntries();
                 SelectedFolder = null;
                 BuildBreadcrumbs(path);
                 CurrentDirectory = path;
@@ -173,6 +181,7 @@ public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, I
                 IsMetadataLoading = false;
                 NotifyState();
             });
+            if (!IsFolderSelection) StartListingMetadata(request, cancellation.Token);
         }
         catch (OperationCanceledException) { }
         catch (Exception error) { if (request == navigationGeneration) await ReportAsync(() => { if (request == navigationGeneration) DirectoryError = error.Message; }); }
@@ -250,8 +259,8 @@ public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, I
         });
         try
         {
-            var result = await browser.ReadMetadataAsync(actual.FullPath, cancellation.Token);
-            if (request == selectionGeneration && !deactivated) await UpdateAsync(() => { Metadata = result; NotifyState(); });
+            var result = await ReadMetadataBoundedAsync(actual.FullPath, cancellation.Token);
+            if (request == selectionGeneration && !deactivated) await UpdateAsync(() => { Metadata = result; actual.Metadata = result; NotifyState(); });
         }
         catch (OperationCanceledException) { }
         catch (Exception error) { if (request == selectionGeneration) await ReportAsync(() => MetadataError = error.Message); }
@@ -263,16 +272,27 @@ public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, I
     public Task SetCheckedAsync(SampleBrowserEntry entry, bool value) => OwnAsync(async () =>
     {
         if (IsFolderSelection || entry.IsDirectory || deactivated || IsConfirming) return;
-        await SelectCoreAsync(entry);
+        var parent = Path.GetDirectoryName(entry.FullPath)!;
+        if (!SamePath(parent, CurrentDirectory)) await NavigateToAsync(parent);
+        if (!SamePath(parent, CurrentDirectory) || deactivated) return;
         await UpdateAsync(() =>
         {
             var actual = Entries.FirstOrDefault(child => SamePath(child.FullPath, entry.FullPath));
-            if(value && SelectionMode==SampleSelectionMode.Single)
-                foreach(var other in Entries.Where(child=>!ReferenceEquals(child,actual))) other.IsChecked=false;
-            if (actual is not null && !actual.IsDirectory) actual.IsChecked = value;
-            NotifyState();
+            if (actual is not null) { actual.IsChecked = value; SynchronizeChecked(actual); }
         });
+        var inspection = SelectCoreAsync(entry);
+        if (inspection.IsCompleted) await inspection;
+        else _ = ObserveInspectionAsync(inspection);
     });
+
+    private async Task ObserveInspectionAsync(Task inspection)
+    {
+        lock (operations) operations.Add(inspection);
+        try { await inspection; }
+        catch (OperationCanceledException) { }
+        catch (Exception error) { await ReportAsync(() => MetadataError = error.Message); }
+        finally { lock (operations) operations.Remove(inspection); }
+    }
 
     [RelayCommand(CanExecute = nameof(CanPreview))]
     private Task TogglePreviewAsync() => OwnAsync(async () =>
@@ -392,7 +412,7 @@ public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, I
         if (!CanImport) return Array.Empty<string>();
         IsConfirming = true;
         NotifyState();
-        var result = IsFolderSelection ? new[] { SelectedFolderPath } : Entries.Where(entry => !entry.IsDirectory && entry.IsChecked).Select(entry => entry.FullPath).ToArray();
+        var result = IsFolderSelection ? new[] { SelectedFolderPath } : selectedSamples.Select(entry => entry.FullPath).ToArray();
         try { await StopPreviewAsync(); return deactivated ? Array.Empty<string>() : Array.AsReadOnly(result); }
         catch (Exception error) { PreviewError = error.Message; IsConfirming = false; NotifyState(); return Array.Empty<string>(); }
     }
@@ -407,17 +427,18 @@ public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, I
     }
     private void EntryChanged(object? sender, PropertyChangedEventArgs args)
     {
-        if (args.PropertyName == nameof(SampleBrowserEntry.IsChecked)) NotifyState();
+        if (args.PropertyName == nameof(SampleBrowserEntry.IsChecked) && sender is SampleBrowserEntry entry) SynchronizeChecked(entry);
     }
     private void NotifyState()
     {
-        foreach (var name in new[] { nameof(CheckedCount), nameof(CheckedCountText), nameof(CanConfirm), nameof(CanImport), nameof(CanPreview), nameof(BrowserStatusText),
+        foreach (var name in new[] { nameof(SelectedDurationText), nameof(CheckedCount), nameof(CheckedCountText), nameof(CanConfirm), nameof(CanImport), nameof(CanPreview), nameof(BrowserStatusText),
             nameof(IsFolderSelection), nameof(PopupTitle), nameof(ConfirmActionText), nameof(ConfirmAutomationName), nameof(SelectionPrompt), nameof(SelectedFolderPath), nameof(FolderEmptyPromptText), nameof(ContentsAutomationName),
             nameof(PreviewActionText), nameof(MetadataStatusText), nameof(SizeText), nameof(DurationText),
             nameof(PlaybackPositionSeconds), nameof(PlaybackDurationSeconds), nameof(PlaybackTimeText), nameof(CanSeek), nameof(IsSeeking), nameof(IsThisPc), nameof(IsFolderEmpty) }) OnPropertyChanged(name);
         TogglePreviewCommand.NotifyCanExecuteChanged();
         NavigateCommand.NotifyCanExecuteChanged();
         NavigateLocationCommand.NotifyCanExecuteChanged();
+        RemoveSelectedCommand.NotifyCanExecuteChanged(); ClearSelectedCommand.NotifyCanExecuteChanged(); ActivateSelectedCommand.NotifyCanExecuteChanged();
     }
     private Task UpdateAsync(Action action) => uiScheduler.InvokeAsync(action, lifetime.Token);
     private Task ReportAsync(Action action) => deactivated ? Task.CompletedTask : uiScheduler.InvokeAsync(action, CancellationToken.None);
