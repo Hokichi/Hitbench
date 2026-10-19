@@ -58,7 +58,6 @@
             <Setter Property="IsTabStop" Value="True" />
             <Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
             <Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="True" />
-            <Setter Property="ShouldExpand" Value="False" />
         </Style>
 
         <Style
@@ -121,7 +120,6 @@
             <Setter Property="IsTabStop" Value="True" />
             <Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
             <Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="True" />
-            <Setter Property="ShouldExpand" Value="False" />
             <Setter Property="ButtonText" Value="Save" />
             <Setter Property="ButtonIcon" Value="{StaticResource Check}" />
             <Setter Property="ToolTip" Value="{Binding FileName, Mode=OneWay, StringFormat=Save {0}}" />
@@ -193,7 +191,7 @@
                         Command="{Binding DataContext.DeleteCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}, Mode=OneWay}"
                         CommandParameter="{Binding Mode=OneWay}"
                         Style="{StaticResource OHsBalloonDestructiveActionStyle}"
-                        ToolTip="{Binding FileName, Mode=OneWay, StringFormat=Delete {0}}"  FocusVisualStyle="{StaticResource OHsSampleManagerKeyboardFocusStyle}" IsTabStop="True" h:KeyboardNavigationPolicy.AllowTabNavigation="True" ToolTipService.ShowsToolTipOnKeyboardFocus="True" ShouldExpand="False"/>
+                        ToolTip="{Binding FileName, Mode=OneWay, StringFormat=Delete {0}}"  FocusVisualStyle="{StaticResource OHsSampleManagerKeyboardFocusStyle}" IsTabStop="True" h:KeyboardNavigationPolicy.AllowTabNavigation="True" ToolTipService.ShowsToolTipOnKeyboardFocus="True"/>
                 </Grid>
             </Border>
             <DataTemplate.Triggers>
@@ -230,7 +228,7 @@
                     Click="OnCloseClick"
                     IsEnabled="{Binding CanClose, Mode=OneWay}"
                     Style="{StaticResource OHsBalloonDestructiveActionStyle}"
-                    ToolTip="Close Manage Samples"  FocusVisualStyle="{StaticResource OHsSampleManagerKeyboardFocusStyle}" IsTabStop="True" h:KeyboardNavigationPolicy.AllowTabNavigation="True" ToolTipService.ShowsToolTipOnKeyboardFocus="True" ShouldExpand="False"/>
+                    ToolTip="Close Manage Samples"  FocusVisualStyle="{StaticResource OHsSampleManagerKeyboardFocusStyle}" IsTabStop="True" h:KeyboardNavigationPolicy.AllowTabNavigation="True" ToolTipService.ShowsToolTipOnKeyboardFocus="True"/>
             </Grid>
             <Grid Grid.Row="1" Style="{StaticResource BaseGridStyle}">
                 <ItemsControl

@@ -1,5 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
+using System.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using osuHitsounder.Resources.CustomControls;
 
@@ -8,6 +10,57 @@ namespace osuHitsounder.Test.Presentation;
 [Apartment(ApartmentState.STA), NonParallelizable]
 public sealed class BalloonControlBehaviorTests
 {
+    [TestCase(false)]
+    [TestCase(true)]
+    public void HasIconDefaultsTrueAndCanChangeAtRuntime(bool showText)
+    {
+        new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
+        var button = new BalloonButton { ButtonIcon = Application.Current.FindResource("Check"), ButtonText = "Action", SubText = "F2", ShouldShowText = showText };
+        button.Style = (Style)Application.Current.FindResource(typeof(BalloonButton));
+        UiTestPump.Layout(button, 200, 80);
+        var property = DependencyPropertyDescriptor.FromName("HasIcon", typeof(BalloonControl), typeof(BalloonControl));
+        Assert.That(property, Is.Not.Null, "BalloonControl must expose the HasIcon dependency property.");
+        Assert.That(button.GetValue(property!.DependencyProperty), Is.True);
+        var iconSlot = (FrameworkElement)button.Template.FindName("PART_IconSlot", button);
+        button.SetValue(property.DependencyProperty, false);
+        Assert.That(iconSlot.Visibility, Is.EqualTo(Visibility.Collapsed));
+        button.SetValue(property.DependencyProperty, true);
+        Assert.That(iconSlot.Visibility, Is.EqualTo(Visibility.Visible));
+        Assert.That(button.ButtonText, Is.EqualTo("Action"));
+    }
+
+    [Test]
+    public void HiddenIconRestoresPrecedenceAndDerivedState()
+    {
+        new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
+        var button = new BalloonCheckBox { ButtonIcon = Application.Current.FindResource("PlusSolid"), CheckedIcon = Application.Current.FindResource("Check") };
+        button.Style = (Style)Application.Current.FindResource(typeof(BalloonCheckBox));
+        UiTestPump.Layout(button, 200, 80);
+        var property = DependencyPropertyDescriptor.FromName("HasIcon", typeof(BalloonControl), typeof(BalloonControl));
+        Assert.That(property, Is.Not.Null);
+        button.SetValue(property!.DependencyProperty, false);
+        button.IsChecked = true;
+        button.SetValue(property.DependencyProperty, true);
+        var icon = (System.Windows.Shapes.Path)button.Template.FindName("PART_Icon", button);
+        Assert.That(icon.Data, Is.SameAs(button.CheckedIcon));
+        Assert.That(button.IsChecked, Is.True);
+    }
+
+    [Test]
+    public void PresentationChangesPreserveCallerWidthBinding()
+    {
+        var source = new Border { Width = 140 };
+        var button = new BalloonButton { ButtonText = "Action" };
+        button.SetBinding(FrameworkElement.WidthProperty, new Binding(nameof(FrameworkElement.Width)) { Source = source, Mode = BindingMode.OneWay });
+        var expression = BindingOperations.GetBindingExpression(button, FrameworkElement.WidthProperty);
+        button.ShouldShowText = true;
+        button.ShouldShowText = false;
+        Assert.That(BindingOperations.GetBindingExpression(button, FrameworkElement.WidthProperty), Is.SameAs(expression));
+        Assert.That(button.Width, Is.EqualTo(140), "Presentation changes must not replace a caller's explicit width value.");
+        source.Width = 180;
+        Assert.That(button.Width, Is.EqualTo(180));
+    }
+
     [Test]
     public void IconPrecedenceAndCommandParameterRemainStable()
     {

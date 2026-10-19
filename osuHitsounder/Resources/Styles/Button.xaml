@@ -195,15 +195,15 @@
             CommandParameter="{Binding Mode=OneWay}"
             CornerRadius="{Binding Tag.CornerRadius, RelativeSource={RelativeSource AncestorType={x:Type ItemsControl}}, Mode=OneWay}"
             IconSize="{Binding Tag.IconSize, RelativeSource={RelativeSource AncestorType={x:Type ItemsControl}}, Mode=OneWay}"
-            ShouldExpand="True"
-            ShouldShowText="False" />
+            ShouldShowText="True" />
     </DataTemplate>
     <ControlTemplate
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Key="BalloonControlTemplate"
         TargetType="{x:Type c:BalloonControl}">
-        <Grid>
+        <Grid Background="Transparent">
+            <Canvas IsHitTestVisible="False">
             <!-- Shared action shape. -->
             <Path
                 x:Name="PART_Shape"
@@ -216,6 +216,7 @@
                 Fill="{DynamicResource Brush.Overlay}"
                 IsHitTestVisible="False"
                 Opacity="0" />
+            </Canvas>
             <!-- Content area follows the public padding contract. -->
             <Grid
                 x:Name="PART_ContentHost"
@@ -243,12 +244,9 @@
                         </Path>
                     </Grid>
                     <Border
-                        x:Name="PART_TextReveal"
-                        Width="0"
-                        ClipToBounds="True"
-                        Opacity="0">
+                        x:Name="PART_TextContent"
+                        ClipToBounds="True">
                         <StackPanel
-                            Margin="24,0,0,0"
                             VerticalAlignment="Center"
                             Orientation="Horizontal">
                             <TextBlock
@@ -256,7 +254,6 @@
                                 VerticalAlignment="Center"
                                 FontFamily="{DynamicResource Bold}"
                                 FontSize="{TemplateBinding FontSize}"
-                                Opacity="0"
                                 Text="{TemplateBinding ButtonText}"
                                 TextTrimming="CharacterEllipsis"
                                 TextWrapping="NoWrap">
@@ -268,7 +265,6 @@
                                 VerticalAlignment="Center"
                                 FontFamily="{DynamicResource Light}"
                                 FontSize="10"
-                                Opacity="0"
                                 Text="{TemplateBinding SubText}"
                                 TextTrimming="CharacterEllipsis"
                                 TextWrapping="NoWrap"

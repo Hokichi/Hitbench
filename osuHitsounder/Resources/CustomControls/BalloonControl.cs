@@ -1,9 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
-using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Animation;
 using System.Windows.Shapes;
 
 namespace osuHitsounder.Resources.CustomControls;
@@ -12,7 +10,7 @@ namespace osuHitsounder.Resources.CustomControls;
 [TemplatePart(Name = PartOverlay, Type = typeof(Path))]
 [TemplatePart(Name = PartIconSlot, Type = typeof(FrameworkElement))]
 [TemplatePart(Name = PartIcon, Type = typeof(Path))]
-[TemplatePart(Name = PartTextReveal, Type = typeof(Border))]
+[TemplatePart(Name = PartTextContent, Type = typeof(Border))]
 [TemplatePart(Name = PartButtonText, Type = typeof(TextBlock))]
 [TemplatePart(Name = PartSubText, Type = typeof(TextBlock))]
 public class BalloonControl : ButtonBase
@@ -21,15 +19,9 @@ public class BalloonControl : ButtonBase
     private const string PartOverlay = "PART_Overlay";
     private const string PartIconSlot = "PART_IconSlot";
     private const string PartIcon = "PART_Icon";
-    private const string PartTextReveal = "PART_TextReveal";
+    private const string PartTextContent = "PART_TextContent";
     private const string PartButtonText = "PART_ButtonText";
     private const string PartSubText = "PART_SubText";
-    private static readonly Thickness ButtonTextMargin = new(24, 0, 8, 0);
-    private static readonly Thickness SubTextMargin = new(8, 0, 0, 0);
-
-    private static readonly Duration ExpandDuration = new(TimeSpan.FromSeconds(0.18));
-    private static readonly Duration CollapseDuration = new(TimeSpan.FromSeconds(0.16));
-
     // --- DefaultBackground ---
     public static readonly DependencyProperty DefaultBackgroundProperty =
         DependencyProperty.Register(nameof(DefaultBackground), typeof(Brush), typeof(BalloonControl),
@@ -78,15 +70,14 @@ public class BalloonControl : ButtonBase
         DependencyProperty.Register(nameof(SubText), typeof(string), typeof(BalloonControl),
             new PropertyMetadata(null, OnPresentationPropertyChanged));
 
-    // --- ShouldExpand ---
-    public static readonly DependencyProperty ShouldExpandProperty =
-        DependencyProperty.Register(nameof(ShouldExpand), typeof(bool), typeof(BalloonControl),
-            new FrameworkPropertyMetadata(false, OnLayoutPropertyChanged, CoerceShouldExpand));
+    public static readonly DependencyProperty HasIconProperty =
+        DependencyProperty.Register(nameof(HasIcon), typeof(bool), typeof(BalloonControl),
+            new FrameworkPropertyMetadata(true, FrameworkPropertyMetadataOptions.AffectsMeasure, OnPresentationPropertyChanged));
 
     // --- ShouldShowText ---
     public static readonly DependencyProperty ShouldShowTextProperty =
         DependencyProperty.Register(nameof(ShouldShowText), typeof(bool), typeof(BalloonControl),
-            new PropertyMetadata(false, OnShouldShowTextChanged));
+            new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsMeasure, OnPresentationPropertyChanged));
 
     // --- ButtonSize ---
     public static readonly DependencyProperty ButtonSizeProperty =
@@ -115,9 +106,7 @@ public class BalloonControl : ButtonBase
     private Path? _shape;
     private TextBlock? _buttonHotkeys;
     private TextBlock? _buttonText;
-    private Border? _textReveal;
-    private double? _explicitWidth;
-    private bool _isApplyingWidth;
+    private Border? _textContent;
 
     static BalloonControl()
     {
@@ -138,7 +127,7 @@ public class BalloonControl : ButtonBase
 
     private void OnSystemSettingsChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is not (nameof(SystemParameters.HighContrast) or nameof(SystemParameters.ClientAreaAnimation))) return;
+        if (e.PropertyName != nameof(SystemParameters.HighContrast)) return;
         if (Dispatcher.CheckAccess()) RefreshPresentation();
         else Dispatcher.BeginInvoke(RefreshPresentation);
     }
@@ -191,10 +180,10 @@ public class BalloonControl : ButtonBase
         set => SetValue(SubTextProperty, value);
     }
 
-    public bool ShouldExpand
+    public bool HasIcon
     {
-        get => (bool)GetValue(ShouldExpandProperty);
-        set => SetValue(ShouldExpandProperty, value);
+        get => (bool)GetValue(HasIconProperty);
+        set => SetValue(HasIconProperty, value);
     }
 
     public bool ShouldShowText
@@ -236,25 +225,17 @@ public class BalloonControl : ButtonBase
         _overlay = GetTemplateChild(PartOverlay) as Path;
         _iconSlot = GetTemplateChild(PartIconSlot) as FrameworkElement;
         _icon = GetTemplateChild(PartIcon) as Path;
-        _textReveal = GetTemplateChild(PartTextReveal) as Border;
+        _textContent = GetTemplateChild(PartTextContent) as Border;
         _buttonText = GetTemplateChild(PartButtonText) as TextBlock;
         _buttonHotkeys = GetTemplateChild(PartSubText) as TextBlock;
         RefreshPresentation();
         RebuildGeometry();
     }
 
-    protected override void OnMouseEnter(MouseEventArgs e)
+    protected override Size MeasureOverride(Size constraint)
     {
-        base.OnMouseEnter(e);
-        ResetShapeFill();
-        AnimateExpansion(isExpanded: true);
-    }
-
-    protected override void OnMouseLeave(MouseEventArgs e)
-    {
-        base.OnMouseLeave(e);
-        ResetShapeFill();
-        AnimateExpansion(isExpanded: false);
+        var desired = base.MeasureOverride(constraint);
+        return new Size(Math.Max(ButtonSize, ShouldShowText ? desired.Width : ButtonSize), desired.Height);
     }
 
     protected override void OnRenderSizeChanged(SizeChangedInfo info)
@@ -274,15 +255,7 @@ public class BalloonControl : ButtonBase
         }
         if (e.Property == ForegroundProperty || e.Property == IsEnabledProperty)
             ApplyForeground();
-        if (e.Property == IsKeyboardFocusWithinProperty)
-            AnimateExpansion(IsMouseOver || IsKeyboardFocusWithin);
-        if (e.Property == PaddingProperty)
-            ResetExpansion();
-        else if (e.Property == WidthProperty && !_isApplyingWidth)
-            _explicitWidth = ReadLocalValue(WidthProperty) == DependencyProperty.UnsetValue ||
-                double.IsNaN((double)e.NewValue)
-                    ? null
-                    : (double)e.NewValue;
+
     }
 
     private static void OnGeometryInvalidated(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -292,19 +265,7 @@ public class BalloonControl : ButtonBase
 
     private static void OnLayoutPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        ((BalloonControl)d).ResetExpansion();
-    }
-
-    private static void OnShouldShowTextChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        var button = (BalloonControl)d;
-        button.CoerceValue(ShouldExpandProperty);
-        button.ResetExpansion();
-    }
-
-    private static object CoerceShouldExpand(DependencyObject d, object baseValue)
-    {
-        return ((BalloonControl)d).ShouldShowText ? false : baseValue;
+        ((BalloonControl)d).RefreshPresentation();
     }
 
     private static void OnDefaultBackgroundChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -343,7 +304,13 @@ public class BalloonControl : ButtonBase
         ApplyIcon();
         ApplyText();
         ApplyForeground();
-        ResetExpansion();
+        if (_iconSlot is not null) _iconSlot.Visibility = HasIcon ? Visibility.Visible : Visibility.Collapsed;
+        if (_textContent is not null)
+        {
+            _textContent.Visibility = ShouldShowText ? Visibility.Visible : Visibility.Collapsed;
+            _textContent.Margin = HasIcon ? new Thickness(4, 0, 0, 0) : new Thickness(0);
+        }
+        InvalidateMeasure();
     }
 
     // Snaps the fill back to DefaultBackground (no animation); called on template apply or DP change.
@@ -358,150 +325,6 @@ public class BalloonControl : ButtonBase
             _shape.Fill = background;
     }
 
-    private void ResetExpansion()
-    {
-        BeginAnimation(WidthProperty, null);
-        ApplyIconSlotLayout(ShouldShowText || ShouldExpand);
-        var openWidth = GetEffectiveOpenWidth();
-        SetCurrentWidth(ShouldShowText || ShouldExpand
-            ? _explicitWidth ?? openWidth
-            : ButtonSize);
-        MinWidth = ShouldShowText || ShouldExpand ? openWidth : ButtonSize;
-
-        if (_textReveal is not null)
-        {
-            _textReveal.BeginAnimation(WidthProperty, null);
-            _textReveal.BeginAnimation(OpacityProperty, null);
-            _textReveal.Width = ShouldShowText || ShouldExpand ? GetTextRevealWidth(Width) : 0;
-            _textReveal.Opacity = ShouldShowText ? 1 : 0;
-        }
-
-        if (_buttonText is not null)
-        {
-            _buttonText.BeginAnimation(OpacityProperty, null);
-            _buttonText.Opacity = ShouldShowText ? 1 : 0;
-        }
-
-        if (_buttonHotkeys is not null)
-        {
-            _buttonHotkeys.BeginAnimation(OpacityProperty, null);
-            _buttonHotkeys.Opacity = ShouldShowText ? 1 : 0;
-        }
-        AnimateExpansion(IsMouseOver || IsKeyboardFocusWithin);
-    }
-
-    private void AnimateExpansion(bool isExpanded)
-    {
-        if (!ShouldExpand) return;
-        var visible = isExpanded || IsKeyboardFocusWithin;
-        var opacity = visible ? 1d : 0d;
-        var animation = SystemParameters.ClientAreaAnimation
-            ? new DoubleAnimation(opacity, visible ? ExpandDuration : CollapseDuration)
-              { EasingFunction = new CubicEase { EasingMode = visible ? EasingMode.EaseOut : EasingMode.EaseIn } }
-            : null;
-        foreach (var element in new UIElement?[] { _textReveal, _buttonText, _buttonHotkeys })
-        {
-            if (element is null) continue;
-            element.BeginAnimation(OpacityProperty, null);
-            element.Opacity = opacity;
-            if (animation is not null) element.BeginAnimation(OpacityProperty, animation);
-        }
-    }
-
-    internal double GetEffectiveOpenWidth()
-    {
-        var autoWidth = CalculateAutoOpenWidth(
-            ButtonSize,
-            IconSize,
-            Padding,
-            MeasureButtonTextWidth(),
-            MeasureSubTextWidth());
-
-        return ResolveOpenWidth(ButtonSize, autoWidth);
-    }
-
-    internal static double ResolveOpenWidth(double buttonSize, double autoWidth)
-    {
-        return Math.Max(buttonSize, autoWidth);
-    }
-
-    internal static double CalculateAutoOpenWidth(
-        double buttonSize,
-        double iconSize,
-        Thickness padding,
-        double textWidth,
-        Thickness textMargin)
-    {
-        var contentWidth = ResolveOpenIconSlotWidth(buttonSize, iconSize, padding) +
-            textMargin.Left +
-            textWidth +
-            textMargin.Right;
-        var totalWidth = padding.Left + contentWidth + padding.Right;
-        return Math.Max(buttonSize, Math.Ceiling(totalWidth));
-    }
-
-    internal static double CalculateAutoOpenWidth(
-        double buttonSize,
-        double iconSize,
-        Thickness padding,
-        double textWidth,
-        double hotkeysWidth)
-    {
-        var contentWidth = ResolveOpenIconSlotWidth(buttonSize, iconSize, padding);
-        if (textWidth > 0)
-            contentWidth += ButtonTextMargin.Left + textWidth + ButtonTextMargin.Right;
-        if (hotkeysWidth > 0)
-            contentWidth += SubTextMargin.Left + hotkeysWidth + SubTextMargin.Right;
-
-        var totalWidth = padding.Left + contentWidth + padding.Right;
-        return Math.Max(buttonSize, Math.Ceiling(totalWidth));
-    }
-
-    internal static double ResolveOpenIconSlotWidth(double buttonSize, double iconSize, Thickness padding)
-    {
-        return Math.Max(iconSize, buttonSize - padding.Left - padding.Right);
-    }
-
-    private double GetTextRevealWidth(double width)
-    {
-        _ = width;
-        var widthTarget = ButtonTextMargin.Left + MeasureButtonTextWidth() + ButtonTextMargin.Right;
-        var hotkeysWidth = MeasureSubTextWidth();
-        if (hotkeysWidth > 0)
-            widthTarget += SubTextMargin.Left + hotkeysWidth + SubTextMargin.Right;
-        return widthTarget;
-    }
-
-    private void ApplyIconSlotLayout(bool useExpandedSlot)
-    {
-        if (_iconSlot is null)
-            return;
-
-        _iconSlot.Width = useExpandedSlot ? GetOpenIconSlotWidth() : IconSize;
-    }
-
-    private double GetOpenIconSlotWidth()
-    {
-        return ResolveOpenIconSlotWidth(ButtonSize, IconSize, Padding);
-    }
-
-    private double MeasureButtonTextWidth()
-    {
-        var buttonText = ResolveButtonText();
-        if (string.IsNullOrEmpty(buttonText))
-            return 0;
-
-        return MeasureText(buttonText, _buttonText, FontFamily, FontSize, FontStretch, FontStyle, FontWeight);
-    }
-
-    private double MeasureSubTextWidth()
-    {
-        if (string.IsNullOrEmpty(SubText))
-            return 0;
-
-        return MeasureText(SubText, _buttonHotkeys, FontFamily, 10, FontStretch, FontStyle, FontWeight);
-    }
-
     private void ApplyIcon()
     {
         if (_icon is not null)
@@ -510,52 +333,18 @@ public class BalloonControl : ButtonBase
 
     private void ApplyText()
     {
+        var text = ResolveButtonText();
         if (_buttonText is not null)
-            _buttonText.Text = ResolveButtonText();
+        {
+            _buttonText.Text = text;
+            _buttonText.Visibility = string.IsNullOrEmpty(text) ? Visibility.Collapsed : Visibility.Visible;
+        }
         if (_buttonHotkeys is not null)
         {
             _buttonHotkeys.Text = SubText;
+            _buttonHotkeys.Margin = string.IsNullOrEmpty(text) ? new Thickness(0) : new Thickness(8, 2, 0, 0);
             _buttonHotkeys.Visibility = string.IsNullOrEmpty(SubText) ? Visibility.Collapsed : Visibility.Visible;
         }
-    }
-
-    private void SetCurrentWidth(double width)
-    {
-        _isApplyingWidth = true;
-        if (ReadLocalValue(WidthProperty) == DependencyProperty.UnsetValue)
-            SetValue(WidthProperty, width);
-        else
-            SetCurrentValue(WidthProperty, width);
-        _isApplyingWidth = false;
-    }
-
-    private static double MeasureText(
-        string text,
-        TextBlock? textBlock,
-        FontFamily fontFamily,
-        double fontSize,
-        FontStretch fontStretch,
-        FontStyle fontStyle,
-        FontWeight fontWeight)
-    {
-        if (textBlock is not null)
-        {
-            textBlock.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-            return textBlock.DesiredSize.Width;
-        }
-
-        var measuredText = new TextBlock
-        {
-            Text = text,
-            FontFamily = fontFamily,
-            FontSize = fontSize,
-            FontStretch = fontStretch,
-            FontStyle = fontStyle,
-            FontWeight = fontWeight
-        };
-
-        measuredText.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-        return measuredText.DesiredSize.Width;
     }
 
     private static Geometry? ResolveGeometry(object? source)

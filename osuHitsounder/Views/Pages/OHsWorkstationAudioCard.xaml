@@ -32,7 +32,6 @@
             TargetType="customControls:BalloonButton">
             <Setter Property="Margin" Value="0,0,8,0" />
             <Setter Property="ShouldShowText" Value="False" />
-            <Setter Property="ShouldExpand" Value="False" />
             <Setter Property="IsTabStop" Value="True" />
             <Setter Property="helpers:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
             <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
@@ -119,7 +118,6 @@
             BasedOn="{StaticResource OHsBalloonDefaultActionStyle}"
             TargetType="customControls:BalloonButton">
             <Setter Property="ShouldShowText" Value="True" />
-            <Setter Property="ShouldExpand" Value="False" />
             <Setter Property="IsTabStop" Value="True" />
             <Setter Property="helpers:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
             <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
@@ -332,7 +330,6 @@
                             ButtonIcon="{StaticResource PlusSolid}"
                             ButtonText="Add"
                             ContextMenu="{StaticResource OHsWorkstationAddMenu}"
-                            ShouldExpand="False"
                             ShouldShowText="False"
                             Style="{StaticResource BaseBalloonComboBoxStyle}"
                             ToolTip="Add a track" />

@@ -89,7 +89,6 @@
             BasedOn="{StaticResource BaseBalloonComboBoxStyle}"
             TargetType="customControls:BalloonComboBox">
             <Setter Property="ButtonSize" Value="{StaticResource Size.Control.Dense}" />
-            <Setter Property="ShouldExpand" Value="False" />
             <Setter Property="ButtonIcon" Value="{StaticResource BarsSolid}" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding UseTouchTargets, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}" Value="True">
