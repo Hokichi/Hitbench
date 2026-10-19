@@ -1,10 +1,7 @@
 using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Animation;
-using System.Windows.Media.Effects;
 using osuHitsounder.Resources.DataModels;
 using osuHitsounder.Services.Ui;
 
@@ -15,7 +12,7 @@ public partial class HomePage
     // Thumbnail decoding stays independent of layout; WPF owns displayed image dimensions.
     private const int SongImageDecodeWidth = 336;
     private readonly Dictionary<Image, SongImageRequest> imageRequests = [];
-    private readonly Dictionary<Image, Button> imageOwners = [];
+    private readonly HashSet<Image> loadedSongImages = [];
     private readonly HashSet<Image> projectImages = [];
 
     private void OnProjectImageLoaded(object sender, RoutedEventArgs e)
@@ -54,15 +51,7 @@ public partial class HomePage
     private void OnSongImageLoaded(object sender, RoutedEventArgs e)
     {
         var image = (Image)sender;
-        if (lifetime.IsCancellationRequested || imageOwners.ContainsKey(image)) return;
-        DependencyObject? parent = image;
-        while (parent is not null && parent is not Button) parent = VisualTreeHelper.GetParent(parent);
-        if (parent is not Button button) return;
-        imageOwners.Add(image, button);
-        image.Effect = new BlurEffect { Radius = button.IsMouseOver || button.IsKeyboardFocusWithin ? 0 : 10 };
-        button.MouseEnter += OnSongMouseEnter;
-        button.MouseLeave += OnSongMouseLeave;
-        button.IsKeyboardFocusWithinChanged += OnSongFocusChanged;
+        if (lifetime.IsCancellationRequested || !loadedSongImages.Add(image)) return;
         StartSongImage(image);
     }
 
@@ -72,7 +61,7 @@ public partial class HomePage
     {
         var image = (Image)sender;
         CancelSongImage(image);
-        if (imageOwners.ContainsKey(image)) StartSongImage(image);
+        if (loadedSongImages.Contains(image)) StartSongImage(image);
     }
 
     private void OnSongCardSizeChanged(object sender, SizeChangedEventArgs e)
@@ -83,7 +72,7 @@ public partial class HomePage
 
     private void StartSongImage(Image image)
     {
-        if (lifetime.IsCancellationRequested || !imageOwners.ContainsKey(image)) return;
+        if (lifetime.IsCancellationRequested || !loadedSongImages.Contains(image)) return;
         if (imageRequests.ContainsKey(image)) return;
         CancelSongImage(image);
         var request = new SongImageRequest();
@@ -118,41 +107,12 @@ public partial class HomePage
     private void ReleaseSongImage(Image image)
     {
         CancelSongImage(image);
-        if (!imageOwners.Remove(image, out var button)) return;
-        button.MouseEnter -= OnSongMouseEnter;
-        button.MouseLeave -= OnSongMouseLeave;
-        button.IsKeyboardFocusWithinChanged -= OnSongFocusChanged;
-        if (image.Effect is BlurEffect blur) blur.BeginAnimation(BlurEffect.RadiusProperty, null);
+        loadedSongImages.Remove(image);
     }
 
     private void ReleaseSongImages()
     {
-        foreach (var image in imageOwners.Keys.ToArray()) ReleaseSongImage(image);
+        foreach (var image in loadedSongImages.ToArray()) ReleaseSongImage(image);
     }
 
-    private void OnSongMouseEnter(object sender, MouseEventArgs e) => SetSongBlur((Button)sender, false);
-    private void OnSongMouseLeave(object sender, MouseEventArgs e) => SetSongBlur((Button)sender, !((Button)sender).IsKeyboardFocusWithin);
-    private void OnSongFocusChanged(object sender, DependencyPropertyChangedEventArgs e)
-    {
-        var button = (Button)sender;
-        SetSongBlur(button, !button.IsMouseOver && !button.IsKeyboardFocusWithin);
-    }
-
-    private void SetSongBlur(Button button, bool blurred)
-    {
-        foreach (var image in imageOwners.Where(pair => ReferenceEquals(pair.Value, button)).Select(pair => pair.Key))
-        {
-            if (image.Effect is not BlurEffect blur) continue;
-            var target = blurred ? 10d : 0d;
-            var current = blur.Radius;
-            blur.BeginAnimation(BlurEffect.RadiusProperty, null);
-            blur.Radius = target;
-            if (!SystemParameters.ClientAreaAnimation || SystemParameters.HighContrast) continue;
-            blur.BeginAnimation(BlurEffect.RadiusProperty, new DoubleAnimation(current, target, TimeSpan.FromMilliseconds(160))
-            {
-                EasingFunction = new QuadraticEase { EasingMode = blurred ? EasingMode.EaseIn : EasingMode.EaseOut },
-                FillBehavior = FillBehavior.Stop
-            });
-        }
-    }
 }

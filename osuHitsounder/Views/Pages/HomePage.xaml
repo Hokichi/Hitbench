@@ -138,7 +138,10 @@
             BasedOn="{StaticResource BaseImageStyle}"
             TargetType="Image">
             <Setter Property="Stretch" Value="UniformToFill" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
             <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Width" Value="{Binding ActualWidth, ElementName=SongArtworkViewport, Mode=OneWay}" />
+            <Setter Property="Height" Value="{Binding ActualHeight, ElementName=SongArtworkViewport, Mode=OneWay}" />
             <Setter Property="IsHitTestVisible" Value="False" />
             <Setter Property="Focusable" Value="False" />
             <Style.Triggers>
@@ -163,6 +166,7 @@
             </Style.Triggers>
         </Style>
 
+        <DropShadowEffect x:Key="OHsHomePageSongCardGlowEffect" ShadowDepth="0" BlurRadius="12" Opacity="0.35" Color="{DynamicResource Color.Navy.Text}" />
         <Style
             x:Key="HomePageSongCardButtonStyle"
             BasedOn="{StaticResource FolderActionButtonStyle}"
@@ -171,6 +175,22 @@
             <Setter Property="VerticalContentAlignment" Value="Stretch" />
             <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
             <Style.Triggers>
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource Self}, Mode=OneWay}" Value="True" />
+                        <Condition Binding="{Binding IsEnabled, RelativeSource={RelativeSource Self}, Mode=OneWay}" Value="True" />
+                        <Condition Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="False" />
+                    </MultiDataTrigger.Conditions>
+                    <Setter Property="Effect" Value="{StaticResource OHsHomePageSongCardGlowEffect}" />
+                </MultiDataTrigger>
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding IsKeyboardFocusWithin, RelativeSource={RelativeSource Self}, Mode=OneWay}" Value="True" />
+                        <Condition Binding="{Binding IsEnabled, RelativeSource={RelativeSource Self}, Mode=OneWay}" Value="True" />
+                        <Condition Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="False" />
+                    </MultiDataTrigger.Conditions>
+                    <Setter Property="Effect" Value="{StaticResource OHsHomePageSongCardGlowEffect}" />
+                </MultiDataTrigger>
                 <DataTrigger Value="True">
                     <DataTrigger.Binding>
                         <MultiBinding Converter="{StaticResource OHsHomePageSameFolderConverter}" Mode="OneWay">
@@ -198,7 +218,7 @@
                 Command="{Binding DataContext.CreateProjectCommand, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=OneWay}"
                 CommandParameter="{Binding Mode=OneWay}"
                 Style="{StaticResource HomePageSongCardButtonStyle}">
-                <Grid SizeChanged="OnSongCardSizeChanged" Style="{StaticResource HomePageSongArtworkStyle}">
+                <Grid x:Name="SongArtworkViewport" SizeChanged="OnSongCardSizeChanged" Style="{StaticResource HomePageSongArtworkStyle}">
                     <Image
                         x:Name="SongArtwork"
                         DataContextChanged="OnSongImageDataContextChanged"

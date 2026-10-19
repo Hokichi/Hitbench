@@ -459,7 +459,7 @@ public partial class HomePage : UserControl
         var backgrounds = Descendants<Image>(SongsList).ToArray();
         foreach (var background in backgrounds)
         {
-            if (!imageOwners.ContainsKey(background))
+            if (!loadedSongImages.Contains(background))
                 OnSongImageLoaded(background, new RoutedEventArgs());
             StartSongImage(background);
         }
