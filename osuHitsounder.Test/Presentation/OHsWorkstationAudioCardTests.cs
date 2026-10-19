@@ -90,7 +90,8 @@ public sealed class OHsWorkstationAudioCardTests
             Assert.That(items.Select(item => item.Header), Is.EqualTo(new[] { "Sample Track", "Instrumental Track" }));
             Assert.That(items.Select(item => item.Command), Is.EqualTo(new System.Windows.Input.ICommand[]
                 { vm.AddSampleTrackCommand, vm.AddPianoTrackCommand }));
-            UiControlContract.AssertStyle<BalloonComboBox>(trigger, "BaseBalloonComboBoxStyle");
+            UiControlContract.AssertStyle<BalloonComboBox>(trigger, "OHsWorkstationSplitAddActionStyle");
+            Assert.That(trigger.Style.BasedOn, Is.SameAs(trigger.FindResource("BaseBalloonComboBoxStyle")));
             foreach (var item in items) UiControlContract.AssertStyle<MenuItem>(item, "OHsActionMenuItemStyle");
             Assert.That(items.All(item => !item.IsEnabled), Is.True);
             UiTestPump.Run(vm.LoadAsync("project.json", default));

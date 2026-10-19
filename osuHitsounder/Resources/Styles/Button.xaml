@@ -224,10 +224,13 @@
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
                 ClipToBounds="True">
-                <StackPanel
+                <Grid
                     HorizontalAlignment="Center"
-                    VerticalAlignment="Center"
-                    Orientation="Horizontal">
+                    VerticalAlignment="Center">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
                     <Grid
                         x:Name="PART_IconSlot"
                         Width="{TemplateBinding IconSize}"
@@ -245,10 +248,13 @@
                     </Grid>
                     <Border
                         x:Name="PART_TextContent"
+                        Grid.Column="1"
                         ClipToBounds="True">
-                        <StackPanel
-                            VerticalAlignment="Center"
-                            Orientation="Horizontal">
+                        <Grid VerticalAlignment="Center">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
                             <TextBlock
                                 x:Name="PART_ButtonText"
                                 VerticalAlignment="Center"
@@ -261,6 +267,7 @@
                             </TextBlock>
                             <TextBlock
                                 x:Name="PART_SubText"
+                                Grid.Column="1"
                                 Margin="8,2,0,0"
                                 VerticalAlignment="Center"
                                 FontFamily="{DynamicResource Light}"
@@ -271,9 +278,9 @@
                                 Visibility="Collapsed">
                                 <TextBlock.Foreground><TemplateBinding Property="Foreground" /></TextBlock.Foreground>
                             </TextBlock>
-                        </StackPanel>
+                        </Grid>
                     </Border>
-                </StackPanel>
+                </Grid>
             </Grid>
             <Popup
                 x:Name="PART_StatePopup"

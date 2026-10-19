@@ -32,7 +32,8 @@ public sealed class ManageSampleHeaderTests
         var vm = (osuHitsounder.ViewModels.Shell.WorkstationPageVM)page.DataContext;
         Assert.That(button, Is.TypeOf<BalloonButton>());
         Assert.That(button.Command, Is.SameAs(vm.ManageSamplesCommand));
-        UiControlContract.AssertStyle<BalloonButton>(button, "OHsWorkstationSamplesActionStyle");
+        UiControlContract.AssertStyle<BalloonButton>(button, "OHsWorkstationSplitSamplesActionStyle");
+        Assert.That(button.Style.BasedOn, Is.SameAs(button.FindResource("OHsWorkstationSamplesActionStyle")));
         Assert.That(button.IsTabStop, Is.True);
         var trigger = (BalloonComboBox)page.AudioCard.FindName("AddMenuButton");
         // This unloaded DI page is disabled; supply the native placement boundary without opening its menu.
