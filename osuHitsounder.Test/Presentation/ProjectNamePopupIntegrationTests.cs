@@ -20,7 +20,7 @@ public class ProjectNamePopupIntegrationTests
         bool? completion = null;
         var popup = new ProjectNamePopup(vm, accepted => completion = accepted);
         using var source = new InMemoryPresentationSource();
-        UiTestPump.Layout((FrameworkElement)popup.Content, 420, 300);
+        using var view = new InMemoryView(popup, scheduleLayout: false);
         try
         {
             var input = (TextBox)popup.FindName("ProjectNameTextBox");
@@ -41,7 +41,7 @@ public class ProjectNamePopupIntegrationTests
             });
 
             vm.ProjectName = "CON";
-            UiTestPump.Layout((FrameworkElement)popup.Content, 420, 300);
+            view.UpdateLayout();
             popup.Dispatcher.Invoke(() => { }, DispatcherPriority.DataBind);
             Assert.Multiple(() =>
             {
@@ -49,7 +49,7 @@ public class ProjectNamePopupIntegrationTests
             });
 
             vm.ProjectName = "Custom";
-            UiTestPump.Layout((FrameworkElement)popup.Content, 420, 300);
+            view.UpdateLayout();
             popup.Dispatcher.Invoke(() => { }, DispatcherPriority.DataBind);
             popup.RaiseEvent(CreateKeyEvent(source, Key.Enter));
 
@@ -70,7 +70,7 @@ public class ProjectNamePopupIntegrationTests
         var popup = new ProjectNamePopup(new ProjectNamePopupVM("Artist - Title", new HashSet<string>()),
             accepted => completion = accepted);
         using var source = new InMemoryPresentationSource();
-        UiTestPump.Layout((FrameworkElement)popup.Content, 420, 300);
+        using var view = new InMemoryView(popup, scheduleLayout: false);
         try
         {
             var input = (TextBox)popup.FindName("ProjectNameTextBox");
@@ -112,7 +112,7 @@ public class ProjectNamePopupIntegrationTests
         bool? completion = null;
         var popup = new ProjectNamePopup(vm, accepted => completion = accepted);
         using var source = new InMemoryPresentationSource();
-        UiTestPump.Layout((FrameworkElement)popup.Content, 420, 300);
+        using var view = new InMemoryView(popup, scheduleLayout: false);
         try
         {
             var create = (BalloonButton)popup.FindName("CreateButton");
@@ -148,9 +148,9 @@ public class ProjectNamePopupIntegrationTests
         UiTestPump.EnsureFontResources(app);
         foreach (var resource in new[]
         {
-            "Themes/Dark.xaml", "Converters/Converters.xaml", "Icons.xaml",
-            "Styles/TextBlock.xaml", "Styles/TextBox.xaml", "Styles/Button.xaml",
-            "Styles/Border.xaml", "Styles/ContentPresenter.xaml", "Styles/Window.xaml", "Styles/Popup.xaml",
+            "Themes/Dark.xaml", "Themes/Tokens.xaml", "Converters/Converters.xaml", "Icons.xaml",
+            "Styles/TextBlock.xaml", "Styles/TextBox.xaml", "Styles/Border.xaml",
+            "Styles/ContentPresenter.xaml", "Styles/Button.xaml", "Styles/Window.xaml", "Styles/Popup.xaml",
             "Styles/ScrollViewer.xaml"
         })
             app.Resources.MergedDictionaries.Add(new ResourceDictionary

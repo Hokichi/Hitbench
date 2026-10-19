@@ -15,7 +15,7 @@ public sealed class FocusVisualTests
         var app = Application.Current ?? new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
         app.Resources.MergedDictionaries.Clear();
         UiTestPump.EnsureFontResources(app);
-        foreach (var resource in new[] { "Themes/Dark.xaml", "Converters/Converters.xaml", "Icons.xaml",
+        foreach (var resource in new[] { "Themes/Dark.xaml", "Themes/Tokens.xaml", "Converters/Converters.xaml", "Icons.xaml",
                      "Styles/TextBlock.xaml", "Styles/Border.xaml", "Styles/Button.xaml", "Styles/ScrollViewer.xaml",
                      "Styles/TextBox.xaml", "Styles/ComboBox.xaml", "Styles/Slider.xaml" })
             app.Resources.MergedDictionaries.Add(new ResourceDictionary

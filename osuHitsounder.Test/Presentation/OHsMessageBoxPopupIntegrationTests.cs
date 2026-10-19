@@ -196,8 +196,8 @@ public sealed class OHsMessageBoxPopupIntegrationTests
         UiTestPump.EnsureFontResources(app);
         foreach (var resource in new[]
                  {
-                     "Themes/Dark.xaml", "Converters/Converters.xaml", "Icons.xaml",
-                     "Styles/TextBlock.xaml", "Styles/Button.xaml", "Styles/Border.xaml",
+                     "Themes/Dark.xaml", "Themes/Tokens.xaml", "Converters/Converters.xaml", "Icons.xaml",
+                     "Styles/TextBlock.xaml", "Styles/Border.xaml", "Styles/Button.xaml",
                      "Styles/ContentPresenter.xaml", "Styles/Window.xaml", "Styles/Popup.xaml"
                  })
             app.Resources.MergedDictionaries.Add(new ResourceDictionary

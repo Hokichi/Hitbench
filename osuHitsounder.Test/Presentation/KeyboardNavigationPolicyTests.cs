@@ -35,9 +35,9 @@ public class KeyboardNavigationPolicyTests
         var focus = new Control();
         focus.Style = (Style)Application.Current.FindResource("OHsSampleManagerKeyboardFocusStyle");
         Assert.That(focus.Style.BasedOn, Is.SameAs(focus.FindResource("DefaultFocusVisualStyle")));
-        Assert.That(focus.Template, Is.SameAs(focus.FindResource("OHsSampleManagerKeyboardFocusTemplate")));
+        Assert.That(focus.Template, Is.SameAs(focus.FindResource("OHsKeyboardFocusRingTemplate")));
         var ordinary = new Control { Style = (Style)focus.FindResource("DefaultFocusVisualStyle") };
-        Assert.That(ordinary.Template, Is.Null);
+        UiControlContract.AssertTemplate(ordinary, "OHsKeyboardFocusRingTemplate");
     }
 
     [Test]
@@ -75,12 +75,12 @@ public class KeyboardNavigationPolicyTests
     }
 
     [Test]
-    public void SharedFocusResourceHasNoUnderlineAndTemplateChildrenHaveNoTabStops()
+    public void SharedFocusResourcePreservesNonInteractiveTemplateChildren()
     {
         var app = Application.Current ?? new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
         app.Resources.MergedDictionaries.Clear();
         UiTestPump.EnsureFontResources(app);
-        foreach (var resource in new[] { "Themes/Dark.xaml", "Converters/Converters.xaml", "Icons.xaml",
+        foreach (var resource in new[] { "Themes/Dark.xaml", "Themes/Tokens.xaml", "Converters/Converters.xaml", "Icons.xaml",
                      "Styles/TextBlock.xaml", "Styles/ContentPresenter.xaml", "Styles/Border.xaml", "Styles/Button.xaml",
                      "Styles/TextBox.xaml", "Styles/ScrollViewer.xaml", "Styles/Popup.xaml" })
             app.Resources.MergedDictionaries.Add(new ResourceDictionary
@@ -88,7 +88,7 @@ public class KeyboardNavigationPolicyTests
                 Source = new Uri($"/osuHitsounder;component/Resources/{resource}", UriKind.Relative)
             });
         var focus = new Control { Style = (Style)app.FindResource("DefaultFocusVisualStyle") };
-        Assert.That(focus.Template, Is.Null);
+        UiControlContract.AssertTemplate(focus, "OHsKeyboardFocusRingTemplate");
         var numeric = new NumericUpDown { Style = (Style)app.FindResource(typeof(NumericUpDown)) };
         UiTestPump.Layout(numeric, 220, 40);
         Assert.That(numeric.ApplyTemplate() || VisualTreeHelper.GetChildrenCount(numeric) > 0, Is.True);

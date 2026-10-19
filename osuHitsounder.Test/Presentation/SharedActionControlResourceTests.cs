@@ -42,7 +42,7 @@ public sealed class SharedActionControlResourceTests
             }) resources[key] = new FontFamily($"pack://application:,,,/osuHitsounder;component/Resources/Fonts/{file}.ttf#{face}");
         }
         if (!deferFonts) Fonts();
-        foreach (var path in new[] { $"Themes/{theme}.xaml", "Converters/Converters.xaml", "Icons.xaml",
+        foreach (var path in new[] { $"Themes/{theme}.xaml", "Themes/Tokens.xaml", "Converters/Converters.xaml", "Icons.xaml",
             "Styles/Grid.xaml", "Styles/StackPanel.xaml", "Styles/TextBlock.xaml", "Styles/ItemsControl.xaml",
             "Styles/Border.xaml", "Styles/ContentPresenter.xaml", "Styles/Button.xaml", "Styles/ScrollViewer.xaml",
             "Styles/MenuItem.xaml", "Styles/ContextMenu.xaml", "Styles/BalloonComboBox.xaml" })

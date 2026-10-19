@@ -85,7 +85,7 @@ public sealed class SharedUiResourceIntegrationTests
         {
             foreach (var resource in new[]
                      {
-                         "Themes/Dark.xaml", "Converters/Converters.xaml", "Icons.xaml",
+                         "Themes/Dark.xaml", "Themes/Tokens.xaml", "Converters/Converters.xaml", "Icons.xaml",
                          "Styles/ColumnDefinition.xaml", "Styles/Grid.xaml", "Styles/StackPanel.xaml",
                          "Styles/TextBlock.xaml", "Styles/ItemsControl.xaml", "Styles/Image.xaml", "Styles/Border.xaml",
                          "Styles/ContentPresenter.xaml", "Styles/Button.xaml", "Styles/MenuItem.xaml", "Styles/ContextMenu.xaml", "Styles/BalloonComboBox.xaml", "Styles/SegmentedToggleGroup.xaml", "Styles/SegmentedToggleOption.xaml", "Styles/PianoRollView.xaml", "Styles/ToolTip.xaml",
@@ -123,7 +123,7 @@ public sealed class SharedUiResourceIntegrationTests
 
         foreach (var resource in new[]
                  {
-                     "Themes/Dark.xaml", "Converters/Converters.xaml", "Icons.xaml",
+                     "Themes/Dark.xaml", "Themes/Tokens.xaml", "Converters/Converters.xaml", "Icons.xaml",
                      "Styles/ColumnDefinition.xaml", "Styles/Grid.xaml", "Styles/StackPanel.xaml",
                      "Styles/TextBlock.xaml", "Styles/ItemsControl.xaml", "Styles/Image.xaml", "Styles/Border.xaml",
                      "Styles/ContentPresenter.xaml", "Styles/Button.xaml", "Styles/MenuItem.xaml", "Styles/ContextMenu.xaml", "Styles/BalloonComboBox.xaml", "Styles/SegmentedToggleGroup.xaml", "Styles/SegmentedToggleOption.xaml", "Styles/PianoRollView.xaml", "Styles/ToolTip.xaml",
@@ -166,6 +166,10 @@ public sealed class SharedUiResourceIntegrationTests
         app.Resources.MergedDictionaries.Add(new ResourceDictionary
         {
             Source = new Uri("/osuHitsounder;component/Resources/Converters/Converters.xaml", UriKind.Relative)
+        });
+        app.Resources.MergedDictionaries.Add(new ResourceDictionary
+        {
+            Source = new Uri("/osuHitsounder;component/Resources/Themes/Tokens.xaml", UriKind.Relative)
         });
         app.Resources.MergedDictionaries.Add(new ResourceDictionary
         {

@@ -14,7 +14,8 @@ public class ValueSliderTests
         var app = Application.Current ?? new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
         app.Resources.MergedDictionaries.Clear();
         UiTestPump.EnsureFontResources(app);
-        foreach (var resource in new[] { "Themes/Dark.xaml", "Styles/TextBlock.xaml", "Styles/Button.xaml",
+        foreach (var resource in new[] { "Themes/Dark.xaml", "Themes/Tokens.xaml", "Styles/TextBlock.xaml",
+                     "Styles/Border.xaml", "Styles/ContentPresenter.xaml", "Styles/Button.xaml",
                      "Styles/ScrollViewer.xaml", "Styles/Slider.xaml" })
             app.Resources.MergedDictionaries.Add(new ResourceDictionary
             {
