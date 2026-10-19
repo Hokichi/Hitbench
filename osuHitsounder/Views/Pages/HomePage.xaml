@@ -140,8 +140,6 @@
             <Setter Property="Stretch" Value="UniformToFill" />
             <Setter Property="HorizontalAlignment" Value="Center" />
             <Setter Property="VerticalAlignment" Value="Center" />
-            <Setter Property="Width" Value="{Binding ActualWidth, ElementName=SongArtworkViewport, Mode=OneWay}" />
-            <Setter Property="Height" Value="{Binding ActualHeight, ElementName=SongArtworkViewport, Mode=OneWay}" />
             <Setter Property="IsHitTestVisible" Value="False" />
             <Setter Property="Focusable" Value="False" />
             <Style.Triggers>
@@ -166,7 +164,12 @@
             </Style.Triggers>
         </Style>
 
-        <DropShadowEffect x:Key="OHsHomePageSongCardGlowEffect" ShadowDepth="0" BlurRadius="12" Opacity="0.35" Color="{DynamicResource Color.Navy.Text}" />
+        <DropShadowEffect
+            x:Key="OHsHomePageSongCardGlowEffect"
+            BlurRadius="12"
+            Opacity="0.35"
+            ShadowDepth="0"
+            Color="{DynamicResource Color.Navy.Text}" />
         <Style
             x:Key="HomePageSongCardButtonStyle"
             BasedOn="{StaticResource FolderActionButtonStyle}"
@@ -218,14 +221,21 @@
                 Command="{Binding DataContext.CreateProjectCommand, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=OneWay}"
                 CommandParameter="{Binding Mode=OneWay}"
                 Style="{StaticResource HomePageSongCardButtonStyle}">
-                <Grid x:Name="SongArtworkViewport" SizeChanged="OnSongCardSizeChanged" Style="{StaticResource HomePageSongArtworkStyle}">
+                <Grid
+                    x:Name="SongArtworkViewport"
+                    SizeChanged="OnSongCardSizeChanged"
+                    Style="{StaticResource HomePageSongArtworkStyle}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
                     <Image
                         x:Name="SongArtwork"
                         DataContextChanged="OnSongImageDataContextChanged"
                         Loaded="OnSongImageLoaded"
                         Style="{StaticResource HomePageSongBackgroundStyle}"
                         Unloaded="OnSongImageUnloaded" />
-                    <Border Style="{StaticResource OHsHomePageSongCaptionStyle}">
+                    <Border Grid.Row="1" Style="{StaticResource OHsHomePageSongCaptionStyle}">
                         <StackPanel HorizontalAlignment="Stretch" IsHitTestVisible="False">
                             <TextBlock
                                 Margin="0,0,0,4"
@@ -350,14 +360,16 @@
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
-                            <Image
+                            <Border
                                 Width="40"
                                 Height="40"
-                                Margin="0,0,8,0"
-                                DataContextChanged="OnProjectImageDataContextChanged"
-                                Loaded="OnProjectImageLoaded"
-                                Style="{StaticResource HomePageSongBackgroundStyle}"
-                                Unloaded="OnProjectImageUnloaded" />
+                                Margin="0,0,8,0">
+                                <Image
+                                    DataContextChanged="OnProjectImageDataContextChanged"
+                                    Loaded="OnProjectImageLoaded"
+                                    Style="{StaticResource HomePageSongBackgroundStyle}"
+                                    Unloaded="OnProjectImageUnloaded" />
+                            </Border>
                             <StackPanel
                                 Grid.Column="1"
                                 VerticalAlignment="Center"
