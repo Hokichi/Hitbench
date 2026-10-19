@@ -23,6 +23,11 @@ public sealed class WaveformView : FrameworkElement
         nameof(HorizontalOffset), typeof(double), typeof(WaveformView), new FrameworkPropertyMetadata(0d, FrameworkPropertyMetadataOptions.AffectsRender));
     public static readonly DependencyProperty WaveformBrushProperty = DependencyProperty.Register(
         nameof(WaveformBrush), typeof(Brush), typeof(WaveformView), new FrameworkPropertyMetadata(SystemColors.HighlightBrush, FrameworkPropertyMetadataOptions.AffectsRender));
+    public static readonly DependencyProperty PlayedWaveformBrushProperty = DependencyProperty.Register(
+        nameof(PlayedWaveformBrush), typeof(Brush), typeof(WaveformView), new FrameworkPropertyMetadata(SystemColors.HighlightBrush, FrameworkPropertyMetadataOptions.AffectsRender));
+    public Brush PlayedWaveformBrush { get => (Brush)GetValue(PlayedWaveformBrushProperty); set => SetValue(PlayedWaveformBrushProperty, value); }
+    private readonly RectangleGeometry playedClip = new();
+
     public static readonly DependencyProperty MarkerBrushProperty = DependencyProperty.Register(
         nameof(MarkerBrush), typeof(Brush), typeof(WaveformView), new FrameworkPropertyMetadata(SystemColors.HighlightTextBrush, FrameworkPropertyMetadataOptions.AffectsRender));
     public static readonly DependencyProperty ControlPointTimestampsProperty = DependencyProperty.Register(
@@ -121,7 +126,13 @@ public sealed class WaveformView : FrameworkElement
 
     private void UpdateMarker()
     {
-        if (Data is null || Data.Duration <= TimeSpan.Zero) return;
+        if (Data is null || Data.Duration <= TimeSpan.Zero)
+        {
+            playedClip.Rect = Rect.Empty;
+            return;
+        }
+        var playedWidth = Math.Clamp(Position.TotalSeconds / Data.Duration.TotalSeconds * ActualWidth, 0, Math.Max(0, ActualWidth));
+        playedClip.Rect = new Rect(0, 0, playedWidth, Math.Max(0, ActualHeight));
         var x = Math.Clamp(Position.TotalSeconds / Data.Duration.TotalSeconds * ActualWidth, .75, Math.Max(.75, ActualWidth - .75));
         var viewport = IsPositiveFinite(ViewportWidth) ? Math.Min(ViewportWidth, ActualWidth) : ActualWidth;
         var offset = double.IsFinite(HorizontalOffset) ? Math.Clamp(HorizontalOffset, 0, Math.Max(0, ActualWidth - viewport)) : 0;
@@ -161,6 +172,8 @@ public sealed class WaveformView : FrameworkElement
         drawingContext.DrawLine(baselinePen, new Point(offset, baselineY), new Point(offset + viewport, baselineY));
         var startPixel = Math.Max(0, (int)Math.Floor(offset));
         var endPixel = Math.Min((int)Math.Ceiling(width), (int)Math.Ceiling(offset + viewport));
+        var peaks = new StreamGeometry();
+        using (var geometry = peaks.Open())
         for (var pixel = startPixel; pixel < endPixel; pixel++)
         {
             var peakStart = Math.Clamp((int)(pixel / width * data.Peaks.Count), 0, data.Peaks.Count - 1);
@@ -168,8 +181,16 @@ public sealed class WaveformView : FrameworkElement
             var peak = 0f;
             for (var index = peakStart; index < peakEnd; index++) peak = Math.Max(peak, data.Peaks[index]);
             var extent = peak * amplitude;
-            drawingContext.DrawLine(waveformPen, new Point(pixel + 0.5, baselineY - extent), new Point(pixel + 0.5, baselineY + extent));
+            geometry.BeginFigure(new Point(pixel + 0.5, baselineY - extent), false, false);
+            geometry.LineTo(new Point(pixel + 0.5, baselineY + extent), true, false);
         }
+
+        peaks.Freeze();
+        drawingContext.DrawGeometry(null, waveformPen, peaks);
+        var played = new DrawingGroup { ClipGeometry = playedClip };
+        played.Children.Add(new GeometryDrawing(null,
+            new Pen(SystemParameters.HighContrast ? SystemColors.HighlightBrush : PlayedWaveformBrush, 1), peaks));
+        drawingContext.DrawDrawing(played);
 
         if(ShowBeatRuler && Offsets is not null && Bpms is not null)
         {

@@ -68,6 +68,22 @@ public class WaveformPlaybackMarkerTests
         Assert.That(((DrawingVisual)VisualTreeHelper.GetChild(view, 1)).Drawing, Is.Null);
     }
 
+    [Test]
+    public void PlayedWaveformPositionChangesReusePeakContent()
+    {
+        var view = CreateView();
+        UiTestPump.Layout(view, 3200, 160);
+        view.PrepareDrawing();
+        var content = view.ContentDrawing;
+        foreach (var seconds in new[] { 1d, 8d, 0.5d, 0d, 10d })
+        {
+            view.Position = TimeSpan.FromSeconds(seconds);
+            view.PrepareDrawing();
+            Assert.That(view.ContentDrawing, Is.SameAs(content));
+            Assert.That(view.GetPositionAt(1600), Is.EqualTo(TimeSpan.FromSeconds(5)));
+        }
+    }
+
     private static WaveformView CreateView() => new()
     {
         Data = new WaveformData(TimeSpan.FromSeconds(10), [0, 0.5f, 1]),

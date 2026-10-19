@@ -1,8 +1,2 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <SolidColorBrush x:Key="Brush.Beat.Whole" Color="White" />
-    <SolidColorBrush x:Key="Brush.Beat.Half" Color="Red" />
-    <SolidColorBrush x:Key="Brush.Beat.Fourth" Color="Blue" />
-    <SolidColorBrush x:Key="Brush.Beat.Triplet" Color="Purple" />
-    <SolidColorBrush x:Key="Brush.Beat.FifthEighth" Color="Yellow" />
-    <SolidColorBrush x:Key="Brush.Beat.Sixteenth" Color="LightGray" />
 </ResourceDictionary>

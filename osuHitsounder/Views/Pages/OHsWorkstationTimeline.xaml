@@ -81,7 +81,7 @@
                                     Data="{Binding Waveform, Mode=OneWay}"
                                     FontFamily="{DynamicResource Regular}"
                                     HorizontalOffset="{Binding ElementName=WaveformScrollViewer, Path=HorizontalOffset, Mode=OneWay}"
-                                    MarkerBrush="{DynamicResource Brush.Text.Primary}"
+                                    MarkerBrush="{DynamicResource Brush.Playhead}"
                                     MouseLeftButtonDown="OnWaveformMouseLeftButtonDown"
                                     Offsets="{Binding Project.Offsets, Mode=OneWay}"
                                     Position="{Binding Position, Mode=OneWay}"
@@ -90,7 +90,8 @@
                                     Subdivision="{Binding Subdivision, Mode=OneWay}"
                                     TextBrush="{DynamicResource Brush.Text.Secondary}"
                                     ViewportWidth="{Binding ElementName=WaveformScrollViewer, Path=ViewportWidth, Mode=OneWay}"
-                                    WaveformBrush="{DynamicResource Brush.Navy.Muted}"
+                                    WaveformBrush="{DynamicResource Brush.Waveform.Unplayed}"
+                                    PlayedWaveformBrush="{DynamicResource Brush.Waveform.Played}"
                                     ZoomFactor="{Binding ZoomFactor, Mode=OneWay}" />
                             </ScrollViewer>
   <pages:OHsControlPointLane x:Name="ControlPointLane" Grid.Row="1" Margin="0,8,0,0" HorizontalAlignment="Left"

@@ -17,7 +17,6 @@
                 <ResourceDictionary Source="Resources/Themes/Tokens.xaml" />
                 <ResourceDictionary Source="Resources/Converters/Converters.xaml" />
                 <ResourceDictionary Source="Resources/Icons.xaml" />
-                <ResourceDictionary Source="Resources/BeatGrid.xaml" />
                 <ResourceDictionary Source="Resources/Styles/ColumnDefinition.xaml" />
                 <ResourceDictionary Source="Resources/Styles/Grid.xaml" />
                 <ResourceDictionary Source="Resources/Styles/StackPanel.xaml" />
