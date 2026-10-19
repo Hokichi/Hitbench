@@ -277,6 +277,18 @@ public class WorkstationTrackCollapseTests
             var sample = (MenuItem)trigger.ContextMenu.Items[0];
             var instrument = (MenuItem)trigger.ContextMenu.Items[1];
             var toggle = (BalloonButton)((osuHitsounder.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("ToggleTracksCollapsedButton");
+            var refresh = (BalloonButton)page.AudioCard.FindName("ReloadSamplesButton");
+            var resnap = (BalloonButton)page.AudioCard.FindName("ResnapAllSamplesButton");
+            Assert.That(refresh.Command, Is.SameAs(vm.ReloadSamplesCommand));
+            Assert.That(resnap.Command, Is.SameAs(vm.ResnapAllSamplesCommand));
+            Assert.That(AutomationProperties.GetName(refresh), Is.EqualTo("Refresh samples"));
+            Assert.That(AutomationProperties.GetName(resnap), Is.EqualTo("Resnap all nodes"));
+            foreach (var action in new[] { refresh, resnap })
+            {
+                UiControlContract.AssertStyle<BalloonButton>(action, "OHsWorkstationToolbarButtonStyle");
+                Assert.That(action.IsEnabled, Is.EqualTo(action.Command!.CanExecute(null)));
+                Assert.That(action.IsTabStop && action.Focusable, Is.True);
+            }
             Assert.That(sample, Is.Not.Null, "Audio card needs sample creation action");
             UiControlContract.AssertStyle<MenuItem>(sample, "OHsActionMenuItemStyle");
             UiControlContract.AssertStyle<MenuItem>(instrument, "OHsActionMenuItemStyle");
@@ -312,9 +324,13 @@ public class WorkstationTrackCollapseTests
             Assert.That(sample.IsEnabled, Is.False);
             Assert.That(instrument.IsEnabled, Is.False);
             Assert.That(toggle.IsEnabled, Is.False);
+            Assert.That(refresh.IsEnabled, Is.False);
+            Assert.That(resnap.IsEnabled, Is.False);
             vm.IsReturning = false;
             view.UpdateLayout();
             Assert.That(sample.IsEnabled, Is.True);
+            Assert.That(refresh.IsEnabled, Is.EqualTo(vm.ReloadSamplesCommand.CanExecute(null)));
+            Assert.That(resnap.IsEnabled, Is.EqualTo(vm.ResnapAllSamplesCommand.CanExecute(null)));
             UiTestPump.Run(page.DeactivateAsync());
         }
     }

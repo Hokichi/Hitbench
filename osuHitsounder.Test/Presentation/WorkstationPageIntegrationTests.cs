@@ -76,8 +76,8 @@ public class WorkstationPageIntegrationTests
             UiTestPump.Run(page.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle).Task);
             Assert.That(add.ContextMenu.Items.OfType<MenuItem>().Select(item => item.Command),
                 Is.EqualTo(new[] { owner.AddSampleTrackCommand, owner.AddPianoTrackCommand }));
-            UiControlContract.AssertStyle<BalloonComboBox>(add, "OHsWorkstationSplitAddActionStyle");
-            UiControlContract.AssertStyle<BalloonButton>(samples, "OHsWorkstationSplitSamplesActionStyle");
+            UiControlContract.AssertStyle<BalloonComboBox>(add, "OHsWorkstationAddActionStyle");
+            UiControlContract.AssertStyle<BalloonButton>(samples, "OHsWorkstationSamplesActionStyle");
         }
         finally { UiTestPump.Run(page.DeactivateAsync()); }
     }

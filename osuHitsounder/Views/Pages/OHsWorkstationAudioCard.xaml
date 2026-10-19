@@ -130,21 +130,10 @@
             <Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="True" />
         </Style>
         <Style
-            x:Key="OHsWorkstationSplitAddActionStyle"
+            x:Key="OHsWorkstationAddActionStyle"
             BasedOn="{StaticResource BaseBalloonComboBoxStyle}"
             TargetType="customControls:BalloonComboBox">
             <Setter Property="ShouldShowText" Value="True" />
-            <Setter Property="FontSize" Value="{StaticResource FontSize.Caption}" />
-            <Setter Property="IconSize" Value="10" />
-            <Setter Property="Padding" Value="2,0" />
-        </Style>
-        <Style
-            x:Key="OHsWorkstationSplitSamplesActionStyle"
-            BasedOn="{StaticResource OHsWorkstationSamplesActionStyle}"
-            TargetType="customControls:BalloonButton">
-            <Setter Property="FontSize" Value="{StaticResource FontSize.Caption}" />
-            <Setter Property="IconSize" Value="10" />
-            <Setter Property="Padding" Value="2,0" />
         </Style>
         <ContextMenu
             x:Key="OHsWorkstationAddMenu"
@@ -256,6 +245,32 @@
                     </customControls:SegmentedToggleOption>
                 </customControls:SegmentedToggleGroup>
                 <Border Style="{StaticResource OHsWorkstationToolbarSeparatorStyle}" />
+                <StackPanel Orientation="Horizontal" Style="{StaticResource BaseStackPanelStyle}">
+                    <customControls:BalloonButton
+                        x:Name="ResnapAllSamplesButton"
+                        AutomationProperties.HelpText="Snap sample nodes and instrumental notes across all tracks to the current beat subdivision"
+                        AutomationProperties.Name="Resnap all nodes"
+                        ButtonIcon="{StaticResource RegularRepeat}"
+                        ButtonText="Resnap all nodes"
+                        Command="{Binding ResnapAllSamplesCommand, Mode=OneWay}"
+                        Style="{StaticResource OHsWorkstationToolbarButtonStyle}"
+                        ToolTip="Snap sample nodes and instrumental notes across all tracks to the current beat subdivision" />
+                    <customControls:BalloonButton
+                        x:Name="ReloadSamplesButton"
+                        Margin="4,0,0,0"
+                        AutomationProperties.Name="Refresh samples"
+                        ButtonIcon="{StaticResource RegularRepeat}"
+                        ButtonText="Refresh samples"
+                        Command="{Binding ReloadSamplesCommand, Mode=OneWay}"
+                        Style="{StaticResource OHsWorkstationToolbarButtonStyle}"
+                        ToolTip="Refresh project samples (F5)" />
+                    <customControls:BalloonButton
+                        x:Name="ToggleTracksCollapsedButton"
+                        Margin="4,0,0,0"
+                        Command="{Binding ToggleTracksCollapsedCommand, Mode=OneWay}"
+                        Style="{StaticResource OHsWorkstationCollapseTracksStyle}" />
+                </StackPanel>
+                <Border Style="{StaticResource OHsWorkstationToolbarSeparatorStyle}" />
                 <pages:OHsWorkstationFooter x:Name="FooterControls" VerticalAlignment="Center" />
             </WrapPanel>
         </Border>
@@ -341,70 +356,26 @@
                     x:Name="TrackActionsHost"
                     Grid.Column="4"
                     VerticalAlignment="Center">
-                    <Grid Margin="0,0,0,4" Style="{StaticResource BaseGridStyle}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="4" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <customControls:BalloonComboBox
-                            x:Name="AddMenuButton"
-                            Margin="0"
-                            AutomationProperties.Name="Add"
-                            ButtonIcon="{StaticResource PlusSolid}"
-                            ButtonText="Add"
-                            ContextMenu="{StaticResource OHsWorkstationAddMenu}"
-                            Style="{StaticResource OHsWorkstationSplitAddActionStyle}"
-                            ToolTip="Add a track" />
-                        <customControls:BalloonButton
-                            x:Name="ManageSamplesButton"
-                            Grid.Column="2"
-                            Margin="0"
-                            AutomationProperties.Name="Samples"
-                            ButtonIcon="{StaticResource BarsSolid}"
-                            ButtonText="Samples"
-                            Command="{Binding ManageSamplesCommand, Mode=OneWay}"
-                            Style="{StaticResource OHsWorkstationSplitSamplesActionStyle}"
-                            ToolTip="Manage project samples (F2)" />
-                    </Grid>
-                    <Grid Style="{StaticResource BaseGridStyle}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="4" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="4" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-                        <customControls:BalloonButton
-                            x:Name="ReloadSamplesButton"
-                            Margin="0"
-                            AutomationProperties.Name="Refresh samples"
-                            ButtonIcon="{StaticResource RegularRepeat}"
-                            ButtonText="Refresh samples"
-                            Command="{Binding ReloadSamplesCommand, Mode=OneWay}"
-                            Style="{StaticResource OHsWorkstationToolbarButtonStyle}"
-                            ToolTip="Refresh project samples (F5)" />
-                        <customControls:BalloonButton
-                            x:Name="ResnapAllSamplesButton"
-                            Grid.Column="2"
-                            Margin="0"
-                            AutomationProperties.HelpText="Snap sample nodes and instrumental notes across all tracks to the current beat subdivision"
-                            AutomationProperties.Name="Resnap all nodes"
-                            ButtonIcon="{StaticResource RegularRepeat}"
-                            ButtonText="Resnap all nodes"
-                            Command="{Binding ResnapAllSamplesCommand, Mode=OneWay}"
-                            Style="{StaticResource OHsWorkstationToolbarButtonStyle}"
-                            ToolTip="Snap sample nodes and instrumental notes across all tracks to the current beat subdivision" />
-                        <customControls:BalloonButton
-                            x:Name="ToggleTracksCollapsedButton"
-                            Grid.Row="2"
-                            Margin="0"
-                            Command="{Binding ToggleTracksCollapsedCommand, Mode=OneWay}"
-                            Style="{StaticResource OHsWorkstationCollapseTracksStyle}" />
-                    </Grid>
+                    <customControls:BalloonComboBox
+                        x:Name="AddMenuButton"
+                        Margin="0,0,0,4"
+                        HorizontalAlignment="Stretch"
+                        AutomationProperties.Name="Add"
+                        ButtonIcon="{StaticResource PlusSolid}"
+                        ButtonText="Add"
+                        ContextMenu="{StaticResource OHsWorkstationAddMenu}"
+                        Style="{StaticResource OHsWorkstationAddActionStyle}"
+                        ToolTip="Add a track" />
+                    <customControls:BalloonButton
+                        x:Name="ManageSamplesButton"
+                        Margin="0"
+                        HorizontalAlignment="Stretch"
+                        AutomationProperties.Name="Samples"
+                        ButtonIcon="{StaticResource BarsSolid}"
+                        ButtonText="Samples"
+                        Command="{Binding ManageSamplesCommand, Mode=OneWay}"
+                        Style="{StaticResource OHsWorkstationSamplesActionStyle}"
+                        ToolTip="Manage project samples (F2)" />
                 </StackPanel>
             </Grid>
         </Border>
