@@ -8,6 +8,53 @@ namespace osuHitsounder.Test.Presentation;
 public class OHsControlPointLaneTests
 {
     [Test]
+    public void NonfinitePointerCannotStartZoneGesture()
+    {
+        var point = new ControlPointSnapshot(Guid.NewGuid(), 0, 50, "Normal");
+        var lane = Create([point]); lane.CapturePointer = () => true; lane.ReleasePointer = () => { };
+        lane.BeginZoneGesture(point.Id, new Point(double.NaN, 100), 200);
+        lane.UpdateZoneGesture(new Point(100, 50));
+        Assert.That(lane.IsVolumePreviewActive, Is.False);
+        Assert.That(lane.IsDragPreviewActive, Is.False);
+    }
+
+    [Test]
+    public void ClippedAndNarrowZonesResolveOnlyActualBoundaries()
+    {
+        ControlPointSnapshot[] points = [new(Guid.NewGuid(), 0, 50, "Normal"), new(Guid.NewGuid(), 1000, 50, "Soft"), new(Guid.NewGuid(), 1004, 50, "Drum")];
+        var lane = Create(points); lane.ContentWidth = 10000; lane.HorizontalOffset = 500;
+        Assert.That(lane.HitTestTimingBoundary(points[0].Id, 0), Is.Null);
+        lane.HorizontalOffset = 900;
+        Assert.That(lane.HitTestTimingBoundary(points[1].Id, 101), Is.EqualTo(points[1].Id));
+        Assert.That(lane.HitTestTimingBoundary(points[1].Id, 103), Is.EqualTo(points[2].Id));
+        Assert.That(lane.HitTestTimingBoundary(points[1].Id, 102), Is.EqualTo(points[1].Id));
+        Assert.That(lane.GetZoneCursor(points[1].Id, 101), Is.SameAs(System.Windows.Input.Cursors.SizeWE));
+        Assert.That(lane.GetZoneCursor(points[2].Id, 200), Is.SameAs(System.Windows.Input.Cursors.Hand));
+        lane.IsEnabled = false;
+        Assert.That(lane.GetZoneCursor(points[1].Id, 101), Is.SameAs(System.Windows.Input.Cursors.Arrow));
+    }
+
+    [Test]
+    public void OffscreenNextPointStillOwnsRightBoundary()
+    {
+        ControlPointSnapshot[] points = [new(Guid.NewGuid(), 0, 50, "Normal"), new(Guid.NewGuid(), 1000, 50, "Soft")];
+        var lane = Create(points); lane.ContentWidth = 10000; lane.ViewportWidth = 1000;
+        UiTestPump.Layout(lane, 1000, 200);
+        Assert.That(lane.RealizedPointCount, Is.EqualTo(1));
+        Assert.That(lane.HitTestTimingBoundary(points[0].Id, 999), Is.EqualTo(points[1].Id));
+    }
+
+    [Test]
+    public void FinalEdgeAndZeroWidthLegacyTargetsHaveNoResizeHandle()
+    {
+        ControlPointSnapshot[] points = [new(Guid.NewGuid(), 0, 50, "Normal"), new(Guid.NewGuid(), 1000, 50, "Soft"), new(Guid.NewGuid(), 1000, 50, "Drum")];
+        var lane = Create(points); lane.ContentWidth = lane.ViewportWidth = 10000;
+        Assert.That(lane.HitTestTimingBoundary(points[1].Id, 1000), Is.Null);
+        Assert.That(lane.HitTestTimingBoundary(points[2].Id, 10000), Is.Null);
+        Assert.That(lane.HitTestTimingBoundary(points[2].Id, 1000), Is.EqualTo(points[2].Id));
+    }
+
+    [Test]
     public void PlaybackUpdatesDoNotResetZonePreview()
     {
         var point = new ControlPointSnapshot(Guid.NewGuid(), 0, 50, "Normal");

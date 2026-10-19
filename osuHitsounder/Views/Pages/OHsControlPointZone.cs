@@ -56,6 +56,7 @@ public sealed class OHsControlPointZone : Button
         SetValue(VolumeLineOffsetPropertyKey, Math.Clamp(height - fill, 0, Math.Max(0, height - 1)));
         AutomationProperties.SetName(this, Point is { } current ? string.Format(CultureInfo.CurrentCulture,
             "{0}, control point at {1} milliseconds, {2}", text, current.Timestamp, current.IsDisabled ? "disabled" : "enabled") : "Control point");
+        AutomationProperties.SetHelpText(this, "Click to edit. Drag vertically to change volume; drag the left or right boundary horizontally to move timing. Up/Down adjusts volume; Alt+Left/Right adjusts timing.");
         ToolTip = text;
     }
 

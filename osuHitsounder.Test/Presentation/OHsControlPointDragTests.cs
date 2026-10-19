@@ -12,6 +12,59 @@ namespace osuHitsounder.Test.Presentation;
 [Apartment(ApartmentState.STA), NonParallelizable]
 public class OHsControlPointDragTests
 {
+    [TestCase("volume", 1000, 100, 1000, 50, true, 0, 75)]
+    [TestCase("body horizontal", 1000, 100, 1500, 100, false, 0, 50)]
+    [TestCase("left edge", 0, 100, 500, 100, true, 500, 50)]
+    [TestCase("right edge", 2000, 100, 2500, 100, true, 2500, 50)]
+    public void ZoneGesturesChangeOnlyTheCorrespondingValue(string gesture, double startX, double startY, double endX, double endY, bool commits, int timestamp, int volume)
+    {
+        var project = new ProjectData { Offsets = [0], BPMs = [120], ControlPoints = [new() { Volume = 50 }, new() { Timestamp = 2000, Volume = 50 }, new() { Timestamp = 8000 }] };
+        var files = new DelayedProjectFileService(); var owner = WorkstationControlPointStateTests.Create(project, new(), files);
+        try
+        {
+            UiTestPump.Run(WorkstationControlPointStateTests.Ready(owner)); var lane = Connect(owner);
+            lane.Offsets = [0]; lane.Bpms = [120];
+            var id = owner.ControlPointsState!.Points[0].Id;
+            lane.BeginZoneGesture(id, new Point(startX, startY), 200);
+            lane.UpdateZoneGesture(new Point(endX, endY));
+            Assert.That(files.Writes, Is.Zero);
+            Assert.That(project.ControlPoints[0].Volume, Is.EqualTo(50));
+            Assert.That(project.ControlPoints[1].Timestamp, Is.EqualTo(2000));
+            Assert.That(lane.CompleteZoneGesture(), Is.EqualTo(commits));
+            Assert.That(files.Writes, Is.EqualTo(commits ? 1 : 0));
+            var changed = project.ControlPoints[gesture == "right edge" ? 1 : 0];
+            Assert.That((changed.Timestamp, changed.Volume), Is.EqualTo((timestamp, volume)));
+            Assert.That(lane.CompleteZoneGesture(), Is.False);
+        }
+        finally { files.Release(); UiTestPump.Run(owner.DeactivateAsync()); }
+    }
+
+    [Test]
+    public void NoOpOrStaleBoundaryDropDoesNotSave()
+    {
+        var project = new ProjectData { Offsets = [0], BPMs = [120], ControlPoints = [new() { Timestamp = 500 }, new() { Timestamp = 2000 }] };
+        var files = new DelayedProjectFileService(); var owner = WorkstationControlPointStateTests.Create(project, new(), files);
+        try
+        {
+            UiTestPump.Run(WorkstationControlPointStateTests.Ready(owner)); var lane = Connect(owner);
+            lane.Offsets = [0]; lane.Bpms = [120];
+            var id = owner.ControlPointsState!.Points[0].Id;
+            lane.BeginZoneGesture(id, new Point(500, 10), 200);
+            lane.UpdateZoneGesture(new Point(510, 10));
+            Assert.That(lane.CompleteZoneGesture(), Is.False);
+            Assert.That(files.Writes, Is.Zero);
+            lane.BeginZoneGesture(id, new Point(500, 10), 200);
+            lane.UpdateZoneGesture(new Point(1000, 10));
+            var state = owner.ControlPointsState!;
+            owner.SetControlPointCommand.Execute(new osuHitsounder.Resources.Messages.SetControlPointRequestedMessage(state.Context, id, 60, null, state.Revision));
+            var writes = files.Writes;
+            Assert.That(lane.CompleteZoneGesture(), Is.False);
+            Assert.That(files.Writes, Is.EqualTo(writes));
+            Assert.That(project.ControlPoints[0].Timestamp, Is.EqualTo(500));
+        }
+        finally { files.Release(); UiTestPump.Run(owner.DeactivateAsync()); }
+    }
+
     internal static OHsControlPointLane Connect(WorkstationPageVM owner)
     {
         var lane = OHsControlPointLaneTests.Create(owner.ControlPointsState!.Points);

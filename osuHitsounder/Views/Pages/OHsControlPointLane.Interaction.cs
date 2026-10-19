@@ -116,7 +116,7 @@ public partial class OHsControlPointLane
         if (dragPointId is { } id && FindRealizedTag(id) is { } tag)
         {
             tag.IsInvalid = text is not null;
-            AutomationProperties.SetHelpText(tag, text ?? "Click to edit. Drag horizontally to move. Use the context menu to delete.");
+            AutomationProperties.SetHelpText(tag, text ?? "Click to edit. Drag vertically to change volume or drag zone edges horizontally to move timing. Use the context menu to delete.");
         }
     }
     private void RefreshInteraction(ControlPointsSnapshot? previous)
@@ -166,7 +166,7 @@ public partial class OHsControlPointLane
         if (!IsDragPreviewActive || dragPointId is not { } id) { CancelPointDrag(); return false; }
         UpdatePointDrag(lastPointerX);
         var accepted = false;
-        if (IsDragCandidateValid && PreviewTimestamp is { } target && State is { } state && state.Context == dragContext)
+        if (IsDragCandidateValid && PreviewTimestamp is { } target && target != originalTimestamp && State is { } state && state.Context == dragContext)
         {
             var request = new MoveControlPointRequestedMessage(state.Context, id, dragRevision, target);
             if (MovePointCommand?.CanExecute(request) == true) MovePointCommand.Execute(request);
@@ -187,35 +187,97 @@ public partial class OHsControlPointLane
     }
     public void ResetInteraction() { CancelVolumeDrag(); CancelPointDrag(); DismissEditor(false); DismissMenus(); pendingEditorId = null; if (panel is not null) { panel.PinnedPointId = null; panel.InvalidateGeometry(); } }
 
+    internal Guid? HitTestTimingBoundary(Guid zoneId, double viewportX)
+    {
+        if (!IsMenuOwnerActive || State is not { CanEdit: true } state || !double.IsFinite(viewportX) ||
+            !double.IsFinite(ViewportWidth) || ViewportWidth <= 0 || !double.IsFinite(HorizontalOffset) ||
+            HorizontalOffset < 0 || viewportX < 0 || viewportX > ViewportWidth) return null;
+        // ponytail: scan snapshot extents; cache by snapshot if pointer profiling warrants it.
+        var extents = OHsControlPointLayout.GetExtents(state.Points, DurationMilliseconds, ContentWidth);
+        for (var index = 0; index < extents.Count; index++)
+        {
+            var extent = extents[index];
+            if (extent.Id != zoneId) continue;
+            if (extent.Width <= 0) return null;
+            var left = extent.Left - HorizontalOffset;
+            var leftDistance = extent.Timestamp >= 0 && left >= 0 && left <= ViewportWidth
+                ? Math.Abs(viewportX - left) : double.PositiveInfinity;
+            var right = index + 1 < extents.Count ? extents[index + 1].Left - HorizontalOffset : double.NaN;
+            var rightDistance = right >= 0 && right <= ViewportWidth && extents[index + 1].Timestamp < DurationMilliseconds
+                ? Math.Abs(viewportX - right) : double.PositiveInfinity;
+            if (leftDistance <= 6 && leftDistance <= rightDistance) return extent.Id;
+            if (rightDistance <= 6) return extents[index + 1].Id;
+            return null;
+        }
+        return null;
+    }
+
+    internal Cursor GetZoneCursor(Guid zoneId, double viewportX) => !IsMenuOwnerActive || !IsEnabled
+        ? Cursors.Arrow : HitTestTimingBoundary(zoneId, viewportX) is not null ? Cursors.SizeWE : Cursors.Hand;
+
+    internal void BeginZoneGesture(Guid zoneId, Point pointer, double usableHeight)
+    {
+        if (!double.IsFinite(pointer.X) || !double.IsFinite(pointer.Y))
+        { CancelVolumeDrag(); CancelPointDrag(); return; }
+        if (HitTestTimingBoundary(zoneId, pointer.X) is { } boundaryId) BeginPointDrag(boundaryId, pointer.X);
+        else BeginVolumeDrag(zoneId, pointer.Y, usableHeight);
+    }
+
+    internal void UpdateZoneGesture(Point pointer)
+    {
+        if (volumeDragPointId is not null) UpdateVolumeDrag(pointer.Y);
+        else if (dragPointId is not null) UpdatePointDrag(pointer.X);
+    }
+
+    internal bool CompleteZoneGesture()
+    {
+        if (IsVolumePreviewActive) return CompleteVolumeDrag();
+        if (IsDragPreviewActive) return CompletePointDrag();
+        var id = volumeDragPointId ?? dragPointId;
+        CancelVolumeDrag(); CancelPointDrag();
+        if (id is { } pointId) OpenEditor(pointId);
+        return false;
+    }
+
+    protected override void OnQueryCursor(QueryCursorEventArgs e)
+    {
+        base.OnQueryCursor(e);
+        if (dragPointId is not null || volumeDragPointId is not null)
+            e.Cursor = !IsMenuOwnerActive ? Cursors.Arrow : dragPointId is not null ? Cursors.SizeWE : Cursors.Hand;
+        else if (FindZone(e.OriginalSource as DependencyObject) is { Point: { } point })
+            e.Cursor = GetZoneCursor(point.Id, Mouse.GetPosition(PointItems).X);
+        else return;
+        e.Handled = true;
+    }
+
     protected override void OnPreviewMouseLeftButtonDown(MouseButtonEventArgs e)
     {
         if (FindZone(e.OriginalSource as DependencyObject) is { Point: { } point } zone)
         {
-            if (Math.Abs(e.GetPosition(zone).Y - zone.VolumeLineOffset) <= 6)
-            {
-                zone.Focus(); BeginVolumeDrag(point.Id, e.GetPosition(PointItems).Y, zone.ActualHeight); e.Handled = true;
-            }
-            else BeginPointDrag(point.Id, e.GetPosition(PointItems).X);
+            zone.Focus();
+            BeginZoneGesture(point.Id, e.GetPosition(PointItems), zone.ActualHeight);
+            e.Handled = true;
         }
         base.OnPreviewMouseLeftButtonDown(e);
     }
     protected override void OnPreviewMouseMove(MouseEventArgs e)
     {
-        if (volumeDragPointId is not null && e.LeftButton == MouseButtonState.Pressed)
-        { UpdateVolumeDrag(e.GetPosition(PointItems).Y); if (IsVolumePreviewActive) e.Handled = true; }
-        else if (dragPointId is not null && e.LeftButton == MouseButtonState.Pressed) { UpdatePointDrag(e.GetPosition(PointItems).X); if (IsDragPreviewActive) e.Handled = true; }
+        if (e.LeftButton == MouseButtonState.Pressed)
+        {
+            UpdateZoneGesture(e.GetPosition(PointItems));
+            if (IsVolumePreviewActive || IsDragPreviewActive) e.Handled = true;
+        }
+        else if (volumeDragPointId is not null || dragPointId is not null)
+        { CancelVolumeDrag(); CancelPointDrag(); }
         base.OnPreviewMouseMove(e);
     }
     protected override void OnPreviewMouseLeftButtonUp(MouseButtonEventArgs e)
     {
-        if (volumeDragPointId is { } volumeId)
+        if (volumeDragPointId is not null || dragPointId is not null)
         {
-            if (IsVolumePreviewActive) CompleteVolumeDrag();
-            else { CancelVolumeDrag(); OpenEditor(volumeId); }
+            CompleteZoneGesture();
             e.Handled = true;
         }
-        else if (IsDragPreviewActive) { CompletePointDrag(); e.Handled = true; }
-        else CancelPointDrag();
         base.OnPreviewMouseLeftButtonUp(e);
     }
     protected override void OnLostMouseCapture(MouseEventArgs e)
