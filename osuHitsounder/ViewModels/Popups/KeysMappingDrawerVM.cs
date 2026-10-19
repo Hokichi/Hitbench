@@ -132,7 +132,7 @@ public sealed partial class KeysMappingDrawerVM : ObservableObject
         {
             pickerActive = true; OnPropertyChanged(nameof(CanClose));
             IReadOnlyList<string> selected;
-            try { selected = await picker.SelectAsync(snapshot.Context.InitialDirectory, cancel.Token, SampleSelectionMode.Single); }
+            try { selected = await picker.SelectAsync(new SamplePickerContext(snapshot.Context.ProjectPath, snapshot.Context.InitialDirectory, SampleSelectionMode.Single), cancel.Token); }
             finally { pickerActive = false; OnPropertyChanged(nameof(CanClose)); }
             cancel.Token.ThrowIfCancellationRequested(); if (selected.Count == 0) return;
             if (selected.Count != 1) throw new InvalidOperationException("Select one file for this key.");

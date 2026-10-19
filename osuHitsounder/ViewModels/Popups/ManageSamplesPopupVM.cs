@@ -214,7 +214,7 @@ public sealed partial class ManageSamplesPopupVM(SampleManagementContext context
         if (!CanAct()) return;
         operation = MutateAsync(async () =>
         {
-            var selected = await picker.SelectAsync(Context.InitialDirectory, lifetime.Token);
+            var selected = await picker.SelectAsync(new SamplePickerContext(Context.ProjectPath, Context.InitialDirectory), lifetime.Token);
             var result = await imports.ImportAsync(Context.ProjectPath, selected, lifetime.Token);
             foreach (var name in result.ImportedFiles)
                 if (!Entries.Any(e => string.Equals(e.FileName, name, StringComparison.OrdinalIgnoreCase))) Entries.Add(new(name));

@@ -28,6 +28,25 @@ public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, I
     private double playbackPositionSeconds;
     private bool isSeeking;
     public ObservableCollection<SampleBrowserEntry> Entries { get; } = [];
+    public ObservableCollection<SampleBrowserLocation> Locations { get; } = [];
+    [ObservableProperty] private SampleBrowserLocation? activeLocation;
+    public SamplePickerContext? Context { get; private set; }
+
+    public Task InitializeAsync(SamplePickerContext context, CancellationToken token)
+    {
+        Context = context;
+        ConfigureSelectionMode(context.Mode);
+        return InitializeAsync(context.InitialDirectory ?? context.SongDirectory, token);
+    }
+
+    [RelayCommand(CanExecute = nameof(CanNavigate))]
+    private Task NavigateLocationAsync(SampleBrowserLocation location) => OwnAsync(async () =>
+    {
+        if (!location.IsAvailable || location.FullPath is null) return;
+        await NavigateToAsync(location.FullPath);
+        if (SamePath(CurrentDirectory, location.FullPath) && DirectoryError is null)
+            await UpdateAsync(() => ActiveLocation = location);
+    });
     public SampleSelectionMode SelectionMode { get; private set; }
     public void ConfigureSelectionMode(SampleSelectionMode mode) { SelectionMode = mode; OnPropertyChanged(nameof(SelectionMode)); NotifyState(); }
     public bool IsFolderSelection => SelectionMode == SampleSelectionMode.Folder;
@@ -76,11 +95,30 @@ public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, I
     public string SizeText => Metadata is { } data ? string.Format(CultureInfo.CurrentCulture, "{0:N1} KiB", data.Length / 1024d) : "";
     public string DurationText => Metadata is { } data ? string.Format(CultureInfo.CurrentCulture, "{0:N3} s", data.Duration.TotalSeconds) : "";
 
-    public Task InitializeAsync(CancellationToken token) => InitializeAsync(null, token);
+    public Task InitializeAsync(CancellationToken token) => InitializeAsync((string?)null, token);
 
     public Task InitializeAsync(string? initialDirectory, CancellationToken token) => OwnAsync(async () =>
     {
         externalCancellation = token.Register(lifetime.Cancel);
+        await UpdateAsync(() =>
+        {
+            Locations.Clear();
+            Locations.Add(new("Song folder", Context?.SongDirectory, "This project", !string.IsNullOrWhiteSpace(Context?.SongDirectory)));
+            string? saved = null;
+            try { if (Context?.ProjectPath is { } project) saved = SamplePaths.SavedRoot(project); }
+            catch (ArgumentException) { }
+            Locations.Add(new("Saved Samples", saved, "This project", saved is not null));
+        });
+        try
+        {
+            var roots = await browser.GetRootsAsync(lifetime.Token);
+            if (!deactivated) await UpdateAsync(() =>
+            {
+                foreach (var root in roots) Locations.Add(new(root.Name, root.FullPath, "Drives", true));
+            });
+        }
+        catch (OperationCanceledException) { return; }
+        catch (Exception error) { System.Diagnostics.Trace.TraceWarning("Sample drives unavailable: {0}", error.Message); }
         try
         {
             var folder = string.IsNullOrWhiteSpace(initialDirectory)
@@ -126,6 +164,9 @@ public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, I
                 SelectedFolder = null;
                 BuildBreadcrumbs(path);
                 CurrentDirectory = path;
+                ActiveLocation = Locations.Where(location => location.FullPath is { } root &&
+                    (SamePath(root, path) || path.StartsWith(Path.TrimEndingDirectorySeparator(root) + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)))
+                    .OrderByDescending(location => location.FullPath!.Length).FirstOrDefault();
                 SelectedFile = null;
                 Metadata = null;
                 MetadataError = null;
@@ -376,6 +417,7 @@ public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, I
             nameof(PlaybackPositionSeconds), nameof(PlaybackDurationSeconds), nameof(PlaybackTimeText), nameof(CanSeek), nameof(IsSeeking), nameof(IsThisPc), nameof(IsFolderEmpty) }) OnPropertyChanged(name);
         TogglePreviewCommand.NotifyCanExecuteChanged();
         NavigateCommand.NotifyCanExecuteChanged();
+        NavigateLocationCommand.NotifyCanExecuteChanged();
     }
     private Task UpdateAsync(Action action) => uiScheduler.InvokeAsync(action, lifetime.Token);
     private Task ReportAsync(Action action) => deactivated ? Task.CompletedTask : uiScheduler.InvokeAsync(action, CancellationToken.None);

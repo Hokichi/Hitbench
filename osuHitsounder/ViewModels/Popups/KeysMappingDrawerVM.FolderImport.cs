@@ -24,7 +24,7 @@ public sealed partial class KeysMappingDrawerVM
         {
             await StopPreviewAsync(); IReadOnlyList<string> selected;
             pickerActive = true; OnPropertyChanged(nameof(CanClose));
-            try { selected = await picker.SelectAsync(snapshot.Context.InitialDirectory, cancel.Token, SampleSelectionMode.Folder); }
+            try { selected = await picker.SelectAsync(new SamplePickerContext(snapshot.Context.ProjectPath, snapshot.Context.InitialDirectory, SampleSelectionMode.Folder), cancel.Token); }
             finally { pickerActive = false; OnPropertyChanged(nameof(CanClose)); }
             cancel.Token.ThrowIfCancellationRequested(); if (selected.Count == 0) return;
             if (selected.Count != 1) throw new InvalidOperationException("Select one folder.");

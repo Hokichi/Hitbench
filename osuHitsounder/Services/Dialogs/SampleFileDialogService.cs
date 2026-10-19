@@ -26,23 +26,26 @@ public sealed class SampleFileDialogService : ISampleFileDialogService
         this.select = select;
     }
 
-    public async Task<IReadOnlyList<string>> SelectAsync(string? initialDirectory, CancellationToken token, SampleSelectionMode mode=SampleSelectionMode.Multiple) =>
-        await dispatcher.InvokeAsync(() => SelectCoreAsync(initialDirectory, token, mode)).Task.Unwrap();
+    public Task<IReadOnlyList<string>> SelectAsync(SamplePickerContext context, CancellationToken token) =>
+        dispatcher.InvokeAsync(() => SelectCoreAsync(context, token)).Task.Unwrap();
 
-    private async Task<IReadOnlyList<string>> SelectCoreAsync(string? initialDirectory, CancellationToken token, SampleSelectionMode mode)
+    public async Task<IReadOnlyList<string>> SelectAsync(string? initialDirectory, CancellationToken token, SampleSelectionMode mode=SampleSelectionMode.Multiple) =>
+        await dispatcher.InvokeAsync(() => SelectCoreAsync(new SamplePickerContext(null, initialDirectory, mode), token)).Task.Unwrap();
+
+    private async Task<IReadOnlyList<string>> SelectCoreAsync(SamplePickerContext context, CancellationToken token)
     {
         if (token.IsCancellationRequested) return Array.Empty<string>();
         var owner = select is null ? getOwner() : null;
         if (select is null && (owner is null || !owner.IsVisible)) return Array.Empty<string>();
         var vm = createViewModel();
-        vm.ConfigureSelectionMode(mode);
+        vm.ConfigureSelectionMode(context.Mode);
         SampleLoaderPopup? popup = null;
         try
         {
             IReadOnlyList<string> paths;
             if (select is not null)
             {
-                await vm.InitializeAsync(initialDirectory, token);
+                await vm.InitializeAsync(context, token);
                 token.ThrowIfCancellationRequested();
                 paths = await select(vm, token);
             }
@@ -53,12 +56,12 @@ public sealed class SampleFileDialogService : ISampleFileDialogService
                 {
                     if (popup.IsVisible) popup.Close();
                 })));
-                await popup.InitializeAsync(initialDirectory, token);
+                await popup.InitializeAsync(context, token);
                 token.ThrowIfCancellationRequested();
                 paths = popup.ShowDialog() == true ? popup.Result : Array.Empty<string>();
             }
             token.ThrowIfCancellationRequested();
-            if(mode != SampleSelectionMode.Multiple && paths.Count > 1) throw new InvalidOperationException("Select one sample or folder.");
+            if(context.Mode != SampleSelectionMode.Multiple && paths.Count > 1) throw new InvalidOperationException("Select one sample or folder.");
             return Array.AsReadOnly(paths.ToArray());
         }
         catch (OperationCanceledException) { return Array.Empty<string>(); }

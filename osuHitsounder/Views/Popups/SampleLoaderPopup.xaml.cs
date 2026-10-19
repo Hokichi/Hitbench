@@ -46,7 +46,16 @@ public partial class SampleLoaderPopup : BasePopup
 
     protected override bool ShouldBubbleApplicationClose => false;
 
-    public Task InitializeAsync(CancellationToken token) => InitializeAsync(null, token);
+    public async Task InitializeAsync(SamplePickerContext context, CancellationToken token)
+    {
+        sizingOwner = Owner;
+        if (sizingOwner is not null) sizingOwner.SizeChanged += OnOwnerSizeChanged;
+        DpiChanged += OnPopupDpiChanged;
+        UpdateSize();
+        await viewModel.InitializeAsync(context, token);
+    }
+
+    public Task InitializeAsync(CancellationToken token) => InitializeAsync((string?)null, token);
 
     public async Task InitializeAsync(string? initialDirectory, CancellationToken token)
     {

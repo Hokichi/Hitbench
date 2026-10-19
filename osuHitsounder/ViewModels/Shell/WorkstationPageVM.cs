@@ -11,6 +11,8 @@ using CommunityToolkit.Mvvm.Messaging;
 using System.Collections.ObjectModel;
 using System.IO;
 
+using osuHitsounder.Resources.DataModels;
+
 namespace osuHitsounder.ViewModels.Shell;
 
 public partial class WorkstationPageVM(
@@ -230,7 +232,7 @@ public partial class WorkstationPageVM(
             await playback.PauseAsync(token);
             RefreshPlayback();
             if (!IsCurrentProject(path, project, generation)) return Array.Empty<string>();
-            var sources = await sampleDialog!.SelectAsync(project?.BeatmapPath, token);
+            var sources = await sampleDialog!.SelectAsync(new SamplePickerContext(path, project?.BeatmapPath), token);
             if (sources.Count == 0 || !IsCurrentProject(path, project, generation)) return Array.Empty<string>();
             var batch = await (sampleImports ?? new SampleImportBatch(sampleFiles!)).ImportAsync(path, sources, token);
             imported.AddRange(batch.ImportedFiles); failures.AddRange(batch.Failures);

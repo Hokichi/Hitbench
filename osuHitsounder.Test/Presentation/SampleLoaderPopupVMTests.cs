@@ -6,6 +6,26 @@ namespace osuHitsounder.Test.Presentation;
 
 public sealed class SampleLoaderPopupVMTests
 {
+    [Test]
+    public async Task SavedShortcutUsesProjectDirectoryAndMissingContextDisablesShortcuts()
+    {
+        var projectPath = Path.Combine(browser.RootPath, "Project", "project.json");
+        var savedPath = Path.Combine(browser.RootPath, "Project", "Saved Samples");
+        browser.Entries[savedPath] = [];
+        var model = new SampleLoaderPopupVM(browser, new StubSamplePreviewService(), new ImmediateUiScheduler(), new PlaybackVolumeSettings());
+        try
+        {
+            await model.InitializeAsync(new SamplePickerContext(projectPath, a.FullPath), default);
+            var saved = model.Locations.Single(x => x.Name == "Saved Samples");
+            Assert.That(saved.FullPath, Is.EqualTo(savedPath));
+            Assert.That(saved.IsAvailable, Is.True);
+            await model.NavigateLocationCommand.ExecuteAsync(saved);
+            Assert.That(model.CurrentDirectory, Is.EqualTo(savedPath));
+            Assert.That(model.ActiveLocation, Is.SameAs(saved));
+            Assert.That(vm.Locations.Where(x => x.Section == "This project").All(x => !x.IsAvailable), Is.True);
+        }
+        finally { await model.DeactivateAsync(); }
+    }
     private StubSampleBrowserService browser = null!;
     private StubSamplePreviewService preview = null!;
     private SampleLoaderPopupVM vm = null!;
