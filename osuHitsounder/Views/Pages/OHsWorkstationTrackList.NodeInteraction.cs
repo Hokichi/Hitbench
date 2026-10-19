@@ -152,7 +152,8 @@ public partial class OHsWorkstationTrackList
             if (nodeLayer is null) { CancelNodePointer(); return; }
             nodeDragGroup = viewModel.Tracks.SelectMany((track, index) => track.Samples
                 .Where(viewModel.SelectedSamples.Contains).Select(sample => (sample, sample.Timestamp, index))).ToArray();
-            nodeAdorner = new OHsSampleNodeDragAdorner(TrackList);
+            nodeAdorner = new OHsSampleNodeDragAdorner(TrackList)
+            { TrackColorIndices = nodeDragGroup.Select(node => node.TrackIndex).ToArray() };
             nodeLayer.Add(nodeAdorner); nodeDragging = true;
             TrackList.LayoutUpdated += OnNodeDragLayoutUpdated;
             TrackList.AddHandler(ScrollViewer.ScrollChangedEvent, new ScrollChangedEventHandler(OnNodeDragScrollChanged));

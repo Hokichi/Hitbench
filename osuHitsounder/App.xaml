@@ -32,6 +32,7 @@
                 <ResourceDictionary Source="Resources/Styles/SegmentedToggleGroup.xaml" />
                 <ResourceDictionary Source="Resources/Styles/SegmentedToggleOption.xaml" />
                 <ResourceDictionary Source="Resources/Styles/PianoRollView.xaml" />
+                <ResourceDictionary Source="Resources/Styles/BeatGridView.xaml" />
                 <ResourceDictionary Source="Resources/Styles/ToolTip.xaml" />
                 <ResourceDictionary Source="Resources/Styles/Window.xaml" />
                 <ResourceDictionary Source="Resources/Styles/ListBox.xaml" />

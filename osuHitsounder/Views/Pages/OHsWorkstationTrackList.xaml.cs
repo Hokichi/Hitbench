@@ -87,6 +87,7 @@ public partial class OHsWorkstationTrackList : UserControl
     private void OnTracksCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         trackOrderRevision++;
+        foreach (var row in RealizedRows(TrackList)) row.RefreshPresentation();
         CancelTrackPointer();
         if (e.Action == NotifyCollectionChangedAction.Add && !deactivationStarted && viewModel.IsInteractionReady && e.NewItems is { Count: > 0 })
         {

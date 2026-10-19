@@ -91,8 +91,15 @@ public sealed class PianoRollView : Control
     public static readonly DependencyProperty MaximumVerticalOffsetProperty = MaximumVerticalOffsetPropertyKey.DependencyProperty;
     public double MaximumVerticalOffset => (double)GetValue(MaximumVerticalOffsetProperty);
     public string ActiveCell => string.Format(CultureInfo.CurrentCulture, "{0}, {1:0.###} ms", InstrumentalKeys.GetName(activeKey), activeMs);
+    public static readonly DependencyProperty TrackColorIndexProperty = DependencyProperty.Register(
+        nameof(TrackColorIndex), typeof(int), typeof(PianoRollView), new PropertyMetadata(0, (d, _) => ((PianoRollView)d).RefreshTrackPalette()));
+    public int TrackColorIndex { get => (int)GetValue(TrackColorIndexProperty); set => SetValue(TrackColorIndexProperty, value); }
+    private void RefreshTrackPalette() => SetResourceReference(MarkerBrushProperty,
+        osuHitsounder.Resources.Helpers.OHsTrackPalette.GetResourceKey(TrackColorIndex));
+
     public PianoRollView()
     {
+        RefreshTrackPalette();
         Focusable = true; FlowDirection = FlowDirection.LeftToRight;
         Loaded += (_, _) => { SystemParameters.StaticPropertyChanged -= OnSystemChanged; SystemParameters.StaticPropertyChanged += OnSystemChanged; };
         Unloaded += (_, _) => { SystemParameters.StaticPropertyChanged -= OnSystemChanged; CancelInteraction(); };
@@ -253,9 +260,9 @@ public sealed class PianoRollView : Control
         base.OnRender(dc); dc.DrawRectangle(SystemParameters.HighContrast ? SystemColors.WindowBrush : BrushOr(Background, "Brush.Background.Deepened"), null, new Rect(RenderSize));
         if (ActualWidth <= KeyColumnWidth || ActualHeight <= 0 || LaneHeight <= 0 || !double.IsFinite(LaneHeight)) return;
         var hc = SystemParameters.HighContrast; var text = hc ? SystemColors.WindowTextBrush : BrushOr(Foreground, "Brush.Text.Primary");
-        var marker = hc ? SystemColors.WindowTextBrush : BrushOr(MarkerBrush, "Brush.Navy.Muted");
+        var marker = hc ? SystemColors.WindowTextBrush : BrushOr(MarkerBrush, "Brush.Track.1");
         var selection = hc ? SystemColors.HighlightBrush : BrushOr(SelectionBrush, "Brush.Navy");
-        var cue = hc ? SystemColors.HighlightTextBrush : BrushOr(SelectionCueBrush, "Brush.Text.Primary");
+        var cue = hc ? SystemColors.HighlightTextBrush : BrushOr(SelectionCueBrush, "Brush.Node.SelectedOutline");
         var border = new Pen(hc ? SystemColors.WindowTextBrush : BrushOr(NodeBorderBrush, "Brush.Border.Default"), 1);
         var first = Math.Max(0, (int)Math.Floor(VerticalOffset / LaneHeight)); var last = Math.Min(107, (int)Math.Ceiling((VerticalOffset + ActualHeight) / LaneHeight));
         for (var row = first; row <= last; row++)
@@ -282,27 +289,27 @@ public sealed class PianoRollView : Control
                 var movedTime=(long)note.Timestamp+timestamp-anchor.Timestamp;
                 if(pitch is <0 or >107 || movedTime<0 || movedTime>=Duration.TotalMilliseconds || movedTime>int.MaxValue)continue;
                 var bounds=GetNoteBounds(note with{Key=InstrumentalKeys.GetName(pitch),Timestamp=(int)movedTime});
-                if(!bounds.IsEmpty)OHsSampleNodeDrawing.Draw(dc,selection,new Pen(cue,1),OHsSampleNodeDrawing.Inset(bounds));
+                if(!bounds.IsEmpty)OHsSampleNodeDrawing.Draw(dc,marker,new Pen(cue,2),OHsSampleNodeDrawing.Inset(bounds));
             }
         }
         if (IsAdditionMode && hover is { } cell)
         {
             var ts = dragging ? BeatGridCalculator.GetNearestTimestamp(Offsets, Bpms, Subdivision, cell.Time, Duration.TotalMilliseconds) : BeatGridCalculator.GetContainingInterval(Offsets, Bpms, Subdivision, cell.Time, Duration.TotalMilliseconds) is { } interval ? (int?)Math.Round(interval.StartMilliseconds, MidpointRounding.AwayFromZero) : null;
-            if (ts is { } t) { var rect = GetNoteBounds(new(Guid.Empty, cell.Key, t, 100)); if (!rect.IsEmpty) OHsSampleNodeDrawing.Draw(dc, hc ? SystemColors.HighlightBrush : BrushOr(HoverBrush, "Brush.Background.Hover"), null, OHsSampleNodeDrawing.Inset(rect)); }
+            if (ts is { } t) { var rect = GetNoteBounds(new(Guid.Empty, cell.Key, t, 100)); if (!rect.IsEmpty) OHsSampleNodeDrawing.Draw(dc, marker, new Pen(cue, 2), OHsSampleNodeDrawing.Inset(rect)); }
         }
         foreach (var note in Notes.OrderBy(n => n.Id == SelectedNoteId))
         {
             var rect = GetNoteBounds(note); if (rect.IsEmpty || !rect.IntersectsWith(new Rect(KeyColumnWidth, 0, Math.Max(0, ActualWidth - KeyColumnWidth), ActualHeight)) || dragging && !IsAdditionMode && gestureIds.Contains(note.Id)) continue;
             var chosen = SelectedNoteIds.Contains(note.Id) || note.Id == SelectedNoteId;
-            OHsSampleNodeDrawing.Draw(dc, chosen ? selection : marker, chosen ? new Pen(cue, 1) : border, OHsSampleNodeDrawing.Inset(rect));
-            if (note == pressedNote) OHsSampleNodeDrawing.Draw(dc, null, new Pen(hc ? SystemColors.HighlightTextBrush : BrushOr(PressedBrush, "Brush.Navy"), 2), OHsSampleNodeDrawing.Inset(rect));
+            OHsSampleNodeDrawing.Draw(dc, marker, chosen ? new Pen(cue, 2) : border, OHsSampleNodeDrawing.Inset(rect));
+            if (note == pressedNote) OHsSampleNodeDrawing.Draw(dc, null, new Pen(chosen ? cue : hc ? SystemColors.HighlightTextBrush : BrushOr(PressedBrush, "Brush.Navy.Pressed"), 2), OHsSampleNodeDrawing.Inset(rect));
         }
         if (IsKeyboardFocused)
         {
             var t = (int)Math.Round(activeMs, MidpointRounding.AwayFromZero); var r = GetNoteBounds(new(Guid.Empty, InstrumentalKeys.GetName(activeKey), t, 100));
             if (!r.IsEmpty) dc.DrawEllipse(text,null,new Point(r.Left+4,r.Top+4),2,2);
         }
-        if (Duration > TimeSpan.Zero && ContentWidth > 0) { var x = KeyColumnWidth + Position.TotalMilliseconds / Duration.TotalMilliseconds * ContentWidth - HorizontalOffset; dc.DrawLine(new Pen(hc ? SystemColors.WindowTextBrush : BrushOr(PlaybackMarkerBrush, "Brush.Text.Primary"), 1.5), new(x, 0), new(x, ActualHeight)); }
+        if (Duration > TimeSpan.Zero && ContentWidth > 0) { var x = KeyColumnWidth + Position.TotalMilliseconds / Duration.TotalMilliseconds * ContentWidth - HorizontalOffset; dc.DrawLine(new Pen(hc ? SystemColors.WindowTextBrush : BrushOr(PlaybackMarkerBrush, "Brush.Playhead"), 1.5), new(x, 0), new(x, ActualHeight)); }
         dc.Pop();
     }
 }

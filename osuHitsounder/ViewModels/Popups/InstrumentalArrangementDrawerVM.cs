@@ -16,6 +16,7 @@ public sealed partial class InstrumentalArrangementDrawerVM : ObservableObject
     private bool closed, registered;
     private long saveVersion = -1, requestSequence;
     private Guid pendingRequest;
+    public int TrackColorIndex => snapshot.TrackColorIndex;
     public IReadOnlyList<InstrumentalNoteSnapshot> Notes => snapshot.Notes;
     public IReadOnlyDictionary<string, string> KeyFiles => snapshot.KeyFiles;
     public IReadOnlyList<int> Offsets => timeline.Offsets;
@@ -74,7 +75,7 @@ public sealed partial class InstrumentalArrangementDrawerVM : ObservableObject
         {
             if (m.Snapshot.Context != snapshot.Context || m.Snapshot.Revision < snapshot.Revision) return;
             snapshot = m.Snapshot;
-            foreach (var name in new[] { nameof(Notes), nameof(KeyFiles), nameof(PopupTitle), nameof(MappingStatus), nameof(EditingHint) }) OnPropertyChanged(name);
+            foreach (var name in new[] { nameof(TrackColorIndex), nameof(Notes), nameof(KeyFiles), nameof(PopupTitle), nameof(MappingStatus), nameof(EditingHint) }) OnPropertyChanged(name);
             SetNoteSelection(SelectedNoteIds, SelectedNoteId);
         }));
         messenger.Register<InstrumentalEditResultMessage>(this, (_, m) => Schedule(() =>

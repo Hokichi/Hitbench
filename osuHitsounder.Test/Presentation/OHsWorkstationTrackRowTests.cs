@@ -10,6 +10,36 @@ namespace osuHitsounder.Test.Presentation;
 public sealed class OHsWorkstationTrackRowTests
 {
     [Test]
+    public void TrackIdentityFollowsReorderedAndRecycledContainers()
+    {
+        new VolumeWheelTests().SetUp();
+        var vm = (WorkstationPageVM)WorkstationTestPage.Create().DataContext;
+        foreach (var index in Enumerable.Range(0, 9)) vm.Tracks.Add(new Track { Name = $"Track {index}" });
+        var list = new OHsWorkstationTrackList { DataContext = vm };
+        using var view = new InMemoryView(new Window { Content = list, Width = 900, Height = 180 });
+        var items = (ListBox)list.FindName("TrackList");
+        var last = vm.Tracks[8];
+        try
+        {
+            items.ScrollIntoView(last); view.UpdateLayout();
+            Assert.That(Rows(items).Single(row => ReferenceEquals(row.Track, last)).TrackColorIndex, Is.EqualTo(8));
+            vm.Tracks.Move(8, 1); items.ScrollIntoView(last); view.UpdateLayout();
+            Assert.That(Rows(items).Single(row => ReferenceEquals(row.Track, last)).TrackColorIndex, Is.EqualTo(1));
+            items.ScrollIntoView(vm.Tracks[^1]); view.UpdateLayout();
+            foreach (var row in Rows(items))
+                Assert.That(row.TrackColorIndex, Is.EqualTo(vm.Tracks.IndexOf(row.Track!)));
+        }
+        finally { list.Deactivate(); UiTestPump.Run(vm.DeactivateAsync()); }
+
+        static IEnumerable<OHsWorkstationTrackRow> Rows(DependencyObject element)
+        {
+            if (element is OHsWorkstationTrackRow row) { yield return row; yield break; }
+            for (var i = 0; i < VisualTreeHelper.GetChildrenCount(element); i++)
+                foreach (var child in Rows(VisualTreeHelper.GetChild(element, i))) yield return child;
+        }
+    }
+
+    [Test]
     public void ContextMenuInputUsesCurrentTrackAndPreservesNameEditing()
     {
         new VolumeWheelTests().SetUp();

@@ -23,6 +23,7 @@ public partial class OHsWorkstationTrackRow : UserControl
     {
         this.presentMenu = presentMenu ?? (trigger => trigger.InvokeActionMenu());
         InitializeComponent();
+        RefreshTrackPalette();
         PreviewMouseRightButtonDown += (_, e) => { if (IsTrackMenuOrigin(e.OriginalSource as DependencyObject)) e.Handled = true; };
         PreviewMouseRightButtonUp += (_, e) => { if (TryOpenTrackMenu(e.OriginalSource as DependencyObject)) e.Handled = true; };
         PreviewKeyDown += (_, e) => { if ((e.Key == Key.Apps || e.Key == Key.F10 && Keyboard.Modifiers == ModifierKeys.Shift) && TryOpenTrackMenu(e.OriginalSource as DependencyObject)) e.Handled = true; };
@@ -68,6 +69,15 @@ public partial class OHsWorkstationTrackRow : UserControl
             or nameof(WorkstationPageVM.RenamingTrack) or nameof(WorkstationPageVM.TrackNameDraft)
             or nameof(WorkstationPageVM.IsTrackRenamePending)) RefreshPresentation();
     }
+    public static readonly DependencyProperty TrackColorIndexProperty = DependencyProperty.Register(
+        nameof(TrackColorIndex), typeof(int), typeof(OHsWorkstationTrackRow), new PropertyMetadata(0, (d, _) => ((OHsWorkstationTrackRow)d).RefreshTrackPalette()));
+    public int TrackColorIndex { get => (int)GetValue(TrackColorIndexProperty); set => SetValue(TrackColorIndexProperty, value); }
+    public static readonly DependencyProperty TrackBrushProperty = DependencyProperty.Register(
+        nameof(TrackBrush), typeof(Brush), typeof(OHsWorkstationTrackRow));
+    public Brush? TrackBrush => (Brush?)GetValue(TrackBrushProperty);
+    private void RefreshTrackPalette() => SetResourceReference(TrackBrushProperty,
+        osuHitsounder.Resources.Helpers.OHsTrackPalette.GetResourceKey(TrackColorIndex));
+
     public BeatGridView? SampleTimeline => FindVisualChild<BeatGridView>(this);
     public void PrepareDrawing() => SampleTimeline?.PrepareDrawing();
     public void RefreshPresentation()
@@ -75,6 +85,7 @@ public partial class OHsWorkstationTrackRow : UserControl
         if (viewModel is null) return;
         if (Track is {} current)
         {
+            SetCurrentValue(TrackColorIndexProperty, viewModel.Tracks.IndexOf(current));
             if (!IsTrackCollapsed && current.IsCollapsed && HasExpandedControlFocus(Keyboard.FocusedElement as DependencyObject ?? FocusManager.GetFocusedElement(FocusManager.GetFocusScope(this)) as DependencyObject)) FindVisualChild<BalloonComboBox>(this)?.Focus();
             IsTrackCollapsed = current.IsCollapsed; CurrentTrackExtent = viewModel.GetTrackExtent(current);
             IsTrackMuted = current.IsTrackMuted; IsTrackSoloed = current.IsTrackSoloed;

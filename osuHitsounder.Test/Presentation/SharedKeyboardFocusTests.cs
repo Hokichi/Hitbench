@@ -7,6 +7,15 @@ namespace osuHitsounder.Test.Presentation;
 [Apartment(ApartmentState.STA), NonParallelizable]
 public sealed class SharedKeyboardFocusTests
 {
+    [Test]
+    public void NodeGridResolvesItsSharedControlStyle()
+    {
+        new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
+        var grid = new BeatGridView { Style = Application.Current.TryFindResource(typeof(BeatGridView)) as Style };
+        UiControlContract.AssertStyle<BeatGridView>(grid, typeof(BeatGridView));
+        Assert.That(grid.FocusVisualStyle, Is.SameAs(grid.FindResource("DefaultFocusVisualStyle")));
+    }
+
     [TestCase("Dark")]
     [TestCase("Light")]
     public void CompatibleFocusStylesAssignTheSharedTemplate(string theme)

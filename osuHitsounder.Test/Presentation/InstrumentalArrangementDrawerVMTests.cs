@@ -8,6 +8,28 @@ namespace osuHitsounder.Test.Presentation;
 public sealed class InstrumentalArrangementDrawerVMTests
 {
     [Test]
+    public async Task TrackIdentityUpdatesIgnoreStaleAndForeignSnapshots()
+    {
+        var context = new InstrumentalTrackContext("project.json", null, Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
+        InstrumentalTrackSnapshot Snapshot(int index, long revision, InstrumentalTrackContext? other = null) =>
+            new(other ?? context, "Piano", 100, new Dictionary<string, string>(), [], null, revision, trackColorIndex: index);
+        var messenger = new WeakReferenceMessenger();
+        var vm = new InstrumentalArrangementDrawerVM(InstrumentalArrangementTestContext.Create(Snapshot(8, 0),
+            [0], [120], TimeSpan.Zero, 4, 32), messenger, new ImmediateUiScheduler());
+        await vm.InitializeAsync(default);
+        var notifications = new List<string?>();
+        vm.PropertyChanged += (_, e) => notifications.Add(e.PropertyName);
+        messenger.Send(new InstrumentalTrackChangedMessage(Snapshot(1, 2)));
+        messenger.Send(new InstrumentalTrackChangedMessage(Snapshot(3, 1)));
+        messenger.Send(new InstrumentalTrackChangedMessage(Snapshot(5, 3, context with { EditorSessionId = Guid.NewGuid() })));
+        Assert.That(vm.TrackColorIndex, Is.EqualTo(1));
+        Assert.That(notifications, Does.Contain(nameof(vm.TrackColorIndex)));
+        await vm.DeactivateAsync();
+        messenger.Send(new InstrumentalTrackChangedMessage(Snapshot(7, 4)));
+        Assert.That(vm.TrackColorIndex, Is.EqualTo(1));
+    }
+
+    [Test]
     public async Task TimelineUpdatesAreSessionQualifiedAndStopAfterDeactivation()
     {
         var ctx = new InstrumentalTrackContext("project.json", null, Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());

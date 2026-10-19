@@ -231,7 +231,7 @@ public partial class WorkstationPageVM
         if (!CanMoveTrack(track) || finalIndex < 0 || finalIndex >= tracks.Count || Project is null || !Project.Tracks.SequenceEqual(tracks)) return false;
         var oldIndex = tracks.IndexOf(track); if (oldIndex == finalIndex) return false;
         Project.Tracks.RemoveAt(oldIndex); Project.Tracks.Insert(finalIndex, track);
-        tracks.Move(oldIndex, finalIndex); NotifyTrackPresentation(); NotifyTrackAuditionState(); QueueSave(); return true;
+        tracks.Move(oldIndex, finalIndex); PublishInstrumentSnapshot(); NotifyTrackPresentation(); NotifyTrackAuditionState(); QueueSave(); return true;
     }
     [ObservableProperty] private Track? renamingTrack;
     [ObservableProperty] private string trackNameDraft = string.Empty;

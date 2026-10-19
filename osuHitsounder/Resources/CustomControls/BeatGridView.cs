@@ -388,11 +388,10 @@ public sealed class BeatGridView : FrameworkElement
         var hover = highContrast ? SystemColors.HighlightBrush : HoverBrush;
         var pressed = highContrast ? SystemColors.HighlightTextBrush : PressedBrush;
         var marker = highContrast ? SystemColors.WindowTextBrush : MarkerBrush;
-        var selection = highContrast ? SystemColors.HighlightBrush : SelectionBrush ?? marker;
-        var selectionCue = highContrast ? SystemColors.HighlightTextBrush : SelectionCueBrush ?? FocusBrush;
+        var selectionCue = highContrast ? SystemColors.HighlightBrush : SelectionCueBrush ?? TryFindResource("Brush.Node.SelectedOutline") as Brush ?? SystemColors.WindowTextBrush;
         var nodeBorder = new Pen(highContrast ? SystemColors.WindowTextBrush :
             TryFindResource("Brush.Border.Default") as Brush ?? marker, 1);
-        var selectedBorder = selectionCue is null ? nodeBorder : new Pen(selectionCue, 1);
+        var selectedBorder = new Pen(selectionCue, 2);
         context.PushOpacity(0.5);
         BeatGridDrawing.Draw(context, this, Offsets, Bpms, Subdivision, Duration.TotalMilliseconds,
             ContentWidth, HorizontalOffset, ViewportWidth, ActualHeight, false);
@@ -414,7 +413,7 @@ public sealed class BeatGridView : FrameworkElement
                     var rect = GetDisplayedSampleBounds(sample);
                     if (rect.IsEmpty) continue;
                     rect = Inset(rect);
-                    OHsSampleNodeDrawing.Draw(context,selectedLayer ? selection : marker, selectedLayer ? selectedBorder : nodeBorder, rect);
+                    OHsSampleNodeDrawing.Draw(context,marker, selectedLayer ? selectedBorder : nodeBorder, rect);
                 }
             if (Samples is not null)
                 foreach (var sample in Samples)
@@ -433,7 +432,7 @@ public sealed class BeatGridView : FrameworkElement
             foreach (var preview in previews)
             {
                 var bounds = GetSampleBounds(preview);
-                if (!bounds.IsEmpty) OHsSampleNodeDrawing.Draw(context,hover, null, Inset(bounds));
+                if (!bounds.IsEmpty) OHsSampleNodeDrawing.Draw(context,marker, selectedBorder, Inset(bounds));
             }
         context.Pop();
     }
