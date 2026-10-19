@@ -268,9 +268,11 @@ public class WorkstationPageIntegrationTests
         UiTestPump.Run(page.DeactivateAsync());
     }
 
-    [TestCase(480d, FlowDirection.RightToLeft, "Light")]
-    [TestCase(1100d, FlowDirection.LeftToRight, "Dark")]
-    public void TrackAuditionControlsUseExpectedResourcesAndRecycleWithoutMutation(double width, FlowDirection direction, string theme)
+    [TestCase(480d, FlowDirection.RightToLeft, "Light", false)]
+    [TestCase(480d, FlowDirection.RightToLeft, "Light", true)]
+    [TestCase(1100d, FlowDirection.LeftToRight, "Dark", false)]
+    [TestCase(1100d, FlowDirection.LeftToRight, "Dark", true)]
+    public void TrackAuditionControlsUseExpectedResourcesAndRecycleWithoutMutation(double width, FlowDirection direction, string theme, bool useTouchTargets)
     {
         EnsureResources(theme);
         var a = new Track { Name = "กลอง " + new string('a', 100), IsTrackMuted = true, IsTrackSoloed = true };
@@ -284,14 +286,15 @@ public class WorkstationPageIntegrationTests
         var page = new WorkstationPage(vm); page.SetProjectPath("project.json");
         using var view = new InMemoryView(new Window { Content = page, Width = width, Height = 900, FlowDirection = direction });
         UiTestPump.Run(page.LoadCompletion); view.UpdateLayout();
+        foreach (var row in FindVisualChildren<OHsWorkstationTrackRow>(page)) row.UseTouchTargets = useTouchTargets;
+        view.UpdateLayout();
         a = vm.Tracks[0]; b = vm.Tracks[1];
         var mute = FindVisualChildren<ToggleButton>(page).Single(control => control.Name == "TrackMuteToggle" && ReferenceEquals(control.DataContext, a));
         var solo = FindVisualChildren<ToggleButton>(page).Single(control => control.Name == "TrackSoloToggle" && ReferenceEquals(control.DataContext, a));
         Assert.That(mute.GetType(), Is.EqualTo(typeof(ToggleButton)));
         Assert.That(mute.IsTabStop, Is.True);
-        Assert.That(mute.Style, Is.SameAs(mute.FindResource("OHsWorkstationCompactToggleStyle")));
-        Assert.That(mute.Style.BasedOn, Is.SameAs(page.FindResource("OHsWorkstationTrackToggleStyle")));
-        Assert.That(mute.Style.BasedOn.BasedOn, Is.SameAs(page.FindResource("BaseToggleButtonStyle")));
+        Assert.That(mute.Style, Is.SameAs(mute.FindResource("OHsWorkstationTrackToggleStyle")));
+        Assert.That(mute.Style.BasedOn, Is.SameAs(page.FindResource("BaseToggleButtonStyle")));
         Assert.That(mute.Template, Is.SameAs(page.FindResource("OHsWorkstationTrackToggleTemplate")));
         Assert.That(mute.IsChecked, Is.True); Assert.That(solo.IsChecked, Is.True);
         var remove = FindRemovalAction(page, a);

@@ -27,12 +27,8 @@
             <Setter Property="IsTabStop" Value="True" />
             <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
             <Setter Property="Margin" Value="0,0,0,4" />
-            <Setter Property="Height" Value="28" />
             <Setter Property="IsReadOnly" Value="True" />
             <Style.Triggers>
-                <DataTrigger Binding="{Binding UseTouchTargets, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}" Value="True">
-                    <Setter Property="MinHeight" Value="40" />
-                </DataTrigger>
                 <DataTrigger Binding="{Binding IsRenaming, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}" Value="True">
                     <Setter Property="IsReadOnly" Value="False" />
                 </DataTrigger>
@@ -51,11 +47,7 @@
             BasedOn="{StaticResource OHsComboBoxStyle}"
             TargetType="ComboBox">
             <Setter Property="IsTabStop" Value="True" />
-            <Setter Property="Height" Value="28" />
             <Style.Triggers>
-                <DataTrigger Binding="{Binding UseTouchTargets, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}" Value="True">
-                    <Setter Property="MinHeight" Value="40" />
-                </DataTrigger>
                 <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
                     <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
                     <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
@@ -87,13 +79,7 @@
             x:Key="OHsWorkstationTrackActionsStyle"
             BasedOn="{StaticResource BaseBalloonComboBoxStyle}"
             TargetType="customControls:BalloonComboBox">
-            <Setter Property="ButtonSize" Value="{StaticResource Size.Control.Dense}" />
             <Setter Property="ButtonIcon" Value="{StaticResource BarsSolid}" />
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding UseTouchTargets, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}" Value="True">
-                    <Setter Property="ButtonSize" Value="{StaticResource Size.Control.Primary}" />
-                </DataTrigger>
-            </Style.Triggers>
         </Style>
         <DataTemplate x:Key="OHsWorkstationTrackActionHeaderTemplate">
             <StackPanel Orientation="Horizontal" Style="{StaticResource BaseStackPanelStyle}">
@@ -215,50 +201,22 @@
             </Style.Triggers>
         </Style>
         <Style
-            x:Key="OHsWorkstationCompactToggleStyle"
-            BasedOn="{StaticResource OHsWorkstationTrackToggleStyle}"
-            TargetType="ToggleButton">
-            <Setter Property="Height" Value="28" />
-            <Setter Property="Width" Value="28" />
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding UseTouchTargets, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}" Value="True">
-                    <Setter Property="MinHeight" Value="40" />
-                    <Setter Property="MinWidth" Value="40" />
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
-        <Style
             x:Key="OHsWorkstationCompactVolumeStyle"
             BasedOn="{StaticResource BaseValueSliderStyle}"
             TargetType="customControls:ValueSlider">
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding UseTouchTargets, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}" Value="True">
-                    <Setter Property="MinHeight" Value="40" />
-                    <Setter Property="MinWidth" Value="40" />
-                </DataTrigger>
-            </Style.Triggers>
+            <Setter Property="Height" Value="{StaticResource Size.Control.Primary}" />
         </Style>
         <Style
             x:Key="OHsWorkstationActionRegionStyle"
             BasedOn="{StaticResource BaseColumnDefinitionStyle}"
             TargetType="ColumnDefinition">
-            <Setter Property="Width" Value="64" />
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding UseTouchTargets, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}" Value="True">
-                    <Setter Property="Width" Value="88" />
-                </DataTrigger>
-            </Style.Triggers>
+            <Setter Property="Width" Value="48" />
         </Style>
         <Style
             x:Key="OHsWorkstationActionColumnStyle"
             BasedOn="{StaticResource BaseColumnDefinitionStyle}"
             TargetType="ColumnDefinition">
-            <Setter Property="Width" Value="28" />
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding UseTouchTargets, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}" Value="True">
-                    <Setter Property="Width" Value="40" />
-                </DataTrigger>
-            </Style.Triggers>
+            <Setter Property="Width" Value="40" />
         </Style>
         <DataTemplate x:Key="OHsWorkstationTrackLeftTemplate">
             <StackPanel
@@ -302,7 +260,6 @@
                         </Grid.ColumnDefinitions>
                         <customControls:ValueSlider
                             x:Name="VolumeSlider"
-                            Height="28"
                             helpers:KeyboardNavigationPolicy.AllowTabNavigation="True"
                             AutomationProperties.Name="Track volume percent"
                             DataContextChanged="OnTrackControlDataContextChanged"
@@ -330,7 +287,7 @@
                             DataContextChanged="OnTrackControlDataContextChanged"
                             IsEnabled="{Binding ViewModel.CanPlaceSamples, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}"
                             Loaded="OnTrackAuditionLoaded"
-                            Style="{StaticResource OHsWorkstationCompactToggleStyle}"
+                            Style="{StaticResource OHsWorkstationTrackToggleStyle}"
                             ToolTip="Mute track"
                             Unchecked="OnTrackAuditionChanged" />
                         <ToggleButton
@@ -342,7 +299,7 @@
                             DataContextChanged="OnTrackControlDataContextChanged"
                             IsEnabled="{Binding ViewModel.CanPlaceSamples, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}"
                             Loaded="OnTrackAuditionLoaded"
-                            Style="{StaticResource OHsWorkstationCompactToggleStyle}"
+                            Style="{StaticResource OHsWorkstationTrackToggleStyle}"
                             ToolTip="Solo track"
                             Unchecked="OnTrackAuditionChanged" />
                     </Grid>
