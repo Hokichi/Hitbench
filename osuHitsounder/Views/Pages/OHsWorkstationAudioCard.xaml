@@ -154,13 +154,13 @@
             x:Key="OHsWorkstationCollapseTracksStyle"
             BasedOn="{StaticResource OHsWorkstationToolbarButtonStyle}"
             TargetType="customControls:BalloonButton">
-            <Setter Property="ButtonIcon" Value="{StaticResource ArrowDropUpRound}" />
+            <Setter Property="ButtonIcon" Value="{StaticResource CompressAlt}" />
             <Setter Property="ButtonText" Value="Collapse all tracks" />
             <Setter Property="ToolTip" Value="Collapse all tracks (F4)" />
             <Setter Property="AutomationProperties.Name" Value="Collapse all tracks" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding AreTracksCollapsed, Mode=OneWay}" Value="True">
-                    <Setter Property="ButtonIcon" Value="{StaticResource ArrowDropDownRound}" />
+                    <Setter Property="ButtonIcon" Value="{StaticResource ExpandAlt}" />
                     <Setter Property="ButtonText" Value="Expand all tracks" />
                     <Setter Property="ToolTip" Value="Expand all tracks (F4)" />
                     <Setter Property="AutomationProperties.Name" Value="Expand all tracks" />
@@ -250,16 +250,17 @@
                         x:Name="ResnapAllSamplesButton"
                         AutomationProperties.HelpText="Snap sample nodes and instrumental notes across all tracks to the current beat subdivision"
                         AutomationProperties.Name="Resnap all nodes"
-                        ButtonIcon="{StaticResource RegularRepeat}"
+                        ButtonIcon="{StaticResource ResnapGrid}"
                         ButtonText="Resnap all nodes"
                         Command="{Binding ResnapAllSamplesCommand, Mode=OneWay}"
+                        IconSize="20"
                         Style="{StaticResource OHsWorkstationToolbarButtonStyle}"
                         ToolTip="Snap sample nodes and instrumental notes across all tracks to the current beat subdivision" />
                     <customControls:BalloonButton
                         x:Name="ReloadSamplesButton"
                         Margin="4,0,0,0"
                         AutomationProperties.Name="Refresh samples"
-                        ButtonIcon="{StaticResource RegularRepeat}"
+                        ButtonIcon="{StaticResource ArrowsRotateSolid}"
                         ButtonText="Refresh samples"
                         Command="{Binding ReloadSamplesCommand, Mode=OneWay}"
                         Style="{StaticResource OHsWorkstationToolbarButtonStyle}"

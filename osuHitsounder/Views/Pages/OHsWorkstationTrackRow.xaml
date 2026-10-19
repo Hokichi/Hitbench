@@ -249,7 +249,10 @@
                         Style="{StaticResource OHsWorkstationTrackActionsStyle}"
                         ToolTip="Track actions" />
                 </Grid>
-                <StackPanel x:Name="TrackLeftExpandedControls" Style="{StaticResource OHsWorkstationExpandedTrackControlsStyle}">
+                <StackPanel
+                    x:Name="TrackLeftExpandedControls"
+                    Margin="0,4,0,0"
+                    Style="{StaticResource OHsWorkstationExpandedTrackControlsStyle}">
                     <Grid Style="{StaticResource BaseGridStyle}">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
@@ -385,11 +388,11 @@
                         ToolTip="{Binding SelectedItem, RelativeSource={RelativeSource Self}, Mode=OneWay}" />
                     <StackPanel x:Name="TrackRightExpandedControls" Style="{StaticResource OHsWorkstationExpandedTrackControlsStyle}">
                         <Grid Style="{StaticResource BaseGridStyle}">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="4" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="4" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
                             <ComboBox
                                 x:Name="TrackAdditionSelector"
                                 AutomationProperties.Name="Sampleset"
@@ -402,7 +405,7 @@
                                 ToolTip="Sampleset" />
                             <ComboBox
                                 x:Name="TrackSampleTypeSelector"
-                                Grid.Row="2"
+                                Grid.Column="2"
                                 AutomationProperties.Name="Track sample type"
                                 DataContextChanged="OnTrackControlDataContextChanged"
                                 IsEnabled="{Binding ViewModel.CanEditTracks, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}"
