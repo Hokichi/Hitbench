@@ -34,7 +34,7 @@
             CornerRadius="{StaticResource Radius.Control}">
             <customControls:FadingScrollViewer
                 x:Name="PART_ContentHost"
-                Margin="{TemplateBinding Padding}"
+                Padding="{TemplateBinding Padding}"
                 VerticalAlignment="Stretch" />
         </Border>
         <ControlTemplate.Triggers>
