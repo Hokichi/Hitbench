@@ -444,6 +444,7 @@
                     Command="{Binding ViewModel.ViewArrangementCommand, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}"
                     CommandParameter="{Binding Mode=OneWay}"
                     FocusVisualStyle="{StaticResource OHsSampleManagerKeyboardFocusStyle}"
+                    HasIcon="False"
                     IsTabStop="True"
                     ShouldShowText="True"
                     Style="{StaticResource OHsWorkstationInstrumentMutedActionStyle}"

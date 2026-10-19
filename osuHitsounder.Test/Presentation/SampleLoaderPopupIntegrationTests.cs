@@ -16,6 +16,35 @@ namespace osuHitsounder.Test.Presentation;
 [NonParallelizable]
 public sealed class SampleLoaderPopupIntegrationTests
 {
+    [TestCase(200d, 0)]
+    [TestCase(180d, 1)]
+    [TestCase(150d, 2)]
+    [TestCase(20d, 2)]
+    public void BreadcrumbOverflowUsesExplicitActionAndSeparatorWidths(double available, int first)
+    {
+        Assert.That(SampleLoaderPopup.GetFirstVisibleBreadcrumb(new double[] { 50, 60, 70 }, available, 30, 10), Is.EqualTo(first));
+        Assert.That(SampleLoaderPopup.GetFirstVisibleBreadcrumb(Array.Empty<double>(), available, 30, 10), Is.Zero);
+    }
+
+    [Test]
+    public void SharedCheckboxTemplateKeepsIndependentBindings()
+    {
+        view.UpdateLayout();
+        var entryCheck = Descendants((ListBox)popup.FindName("DirectoryContents")).OfType<CheckBox>().Single(box => ReferenceEquals(box.DataContext, file));
+        var autoPlay = (CheckBox)popup.FindName("AutoPlayCheckBox");
+        Assert.That(autoPlay.Template, Is.SameAs(popup.FindResource("SampleLoaderCheckTemplate")));
+        Assert.That(entryCheck.Template, Is.SameAs(autoPlay.Template));
+        autoPlay.SetCurrentValue(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, true);
+        Assert.That(vm.AutoPlaySamples, Is.True);
+        Assert.That(file.IsChecked, Is.False);
+        entryCheck.SetCurrentValue(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, true);
+        Assert.That(file.IsChecked, Is.True);
+        autoPlay.SetCurrentValue(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, false);
+        Assert.That(vm.AutoPlaySamples, Is.False);
+        Assert.That(file.IsChecked, Is.True);
+        Assert.That(autoPlay.Content, Is.EqualTo("Auto-play on select"));
+    }
+
     [Test]
     public void PopupUsesTheApplicationFontResource()
     {
@@ -29,7 +58,7 @@ public sealed class SampleLoaderPopupIntegrationTests
     {
         UiTestPump.Run(vm.SetCheckedAsync(file, true));
         Assert.That(vm.SelectionAnnouncement, Is.EqualTo("1 sample selected"));
-        Assert.That(vm.SelectionSummary, Does.StartWith("1 sample · ").And.EndsWith(" total"));
+        Assert.That(vm.SelectionSummary, Is.EqualTo("1 sample"));
         var count = (TextBlock)popup.FindName("SelectedCount");
         Assert.That(System.Windows.Automation.AutomationProperties.GetLiveSetting(count), Is.EqualTo(System.Windows.Automation.AutomationLiveSetting.Polite));
         vm.ClearSelectedCommand.Execute(null);
@@ -203,14 +232,16 @@ public sealed class SampleLoaderPopupIntegrationTests
     }
 
     [Test]
-    public void SelectedSummaryBindsPrimaryFileValues()
+    public void SelectedFileRetainsPreviewMetadata()
     {
         UiTestPump.Run(vm.SelectAsync(file));
         view.UpdateLayout();
         var summary = (Grid)popup.FindName("SelectedFileDetails");
         var fields = Descendants(summary).OfType<TextBlock>().Select(block => block.Text).ToArray();
         Assert.That(fields, Does.Contain("hit.wav"));
-        Assert.That(string.Join(" ", fields), Does.Contain("1.0 KiB").And.Contain("1.000 s"));
+        Assert.That(vm.Metadata!.Length, Is.EqualTo(1000));
+        Assert.That(vm.Metadata.Duration, Is.EqualTo(TimeSpan.FromSeconds(1)));
+        Assert.That(vm.PlaybackTimeText, Does.Contain("1.000 s"));
     }
 
     [Test]
@@ -403,7 +434,7 @@ public sealed class SampleLoaderPopupIntegrationTests
         AssertPopupStyle<ValueSlider>((ValueSlider)popup.FindName("PlaybackTimeline"), "BaseValueSliderStyle");
         var footer = (CheckBox)popup.FindName("AutoPlayCheckBox");
         AssertPopupStyle<CheckBox>(footer, "SampleLoaderAutoPlayStyle");
-        Assert.That(footer.Template, Is.SameAs(popup.FindResource("SampleLoaderAutoPlayTemplate")));
+        Assert.That(footer.Template, Is.SameAs(popup.FindResource("SampleLoaderCheckTemplate")));
     }
 
     [Test]

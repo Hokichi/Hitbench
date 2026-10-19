@@ -6,6 +6,34 @@ namespace osuHitsounder.Test.Presentation;
 
 public sealed class SampleLoaderBasketTests
 {
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task SummaryCountsSelectionsAcrossFoldersWithoutMetadata(bool metadataFails)
+    {
+        var browser = new StubSampleBrowserService { DefaultDirectory = "" };
+        browser.DefaultDirectory = browser.RootPath;
+        var first = new SampleBrowserEntry(Path.Combine(browser.RootPath, "one.wav"), "one.wav", false);
+        var other = Path.Combine(browser.RootPath, "Other");
+        var second = new SampleBrowserEntry(Path.Combine(other, "two.wav"), "two.wav", false);
+        browser.Entries[browser.RootPath] = [first]; browser.Entries[other] = [second];
+        var pending = new TaskCompletionSource<SampleFileMetadata>();
+        browser.Metadata = (_, token) => metadataFails
+            ? Task.FromException<SampleFileMetadata>(new IOException("Unavailable")) : pending.Task.WaitAsync(token);
+        var vm = new SampleLoaderPopupVM(browser, new StubSamplePreviewService(), new ImmediateUiScheduler(), new PlaybackVolumeSettings()) { AutoPlaySamples = false };
+        try
+        {
+            await vm.InitializeAsync(default(CancellationToken));
+            Assert.That(vm.SelectionSummary, Is.EqualTo("0 samples"));
+            await vm.SetCheckedAsync(first, true);
+            Assert.That(vm.SelectionSummary, Is.EqualTo("1 sample"));
+            await vm.SetCheckedAsync(second, true);
+            Assert.That(vm.SelectionSummary, Is.EqualTo("2 samples"));
+            vm.ClearSelectedCommand.Execute(null);
+            Assert.That(vm.SelectionSummary, Is.EqualTo("0 samples"));
+        }
+        finally { await vm.DeactivateAsync(); }
+    }
+
     [Test]
     public async Task ListingMetadataUsesAtMostTwoReadersAndCancelsOnNavigation()
     {

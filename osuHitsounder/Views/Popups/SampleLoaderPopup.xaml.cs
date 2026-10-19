@@ -28,7 +28,9 @@ public partial class SampleLoaderPopup : BasePopup
     private SampleBrowserEntry? scrubbingFile;
     public IReadOnlyList<string> Result { get; private set; } = Array.Empty<string>();
 
-    public SampleLoaderPopup(SampleLoaderPopupVM viewModel) : this(viewModel, null, null) { }
+    public SampleLoaderPopup(SampleLoaderPopupVM viewModel) : this(viewModel, null, null)
+    {
+    }
 
     internal SampleLoaderPopup(SampleLoaderPopupVM viewModel, Action<bool>? completeDialog,
         Func<Window, Size>? getWorkArea = null)
@@ -42,9 +44,6 @@ public partial class SampleLoaderPopup : BasePopup
         KeyboardNavigation.SetTabNavigation(this, KeyboardNavigationMode.None);
         viewModel.PropertyChanged += OnBrowserStateChanged;
         Loaded += OnPopupLoaded;
-        PlaybackTimeline.ValueChanged += OnTimelineValueChanged;
-        PlaybackTimeline.AddHandler(Thumb.DragStartedEvent, new DragStartedEventHandler(OnTimelineDragStarted));
-        PlaybackTimeline.AddHandler(Thumb.DragCompletedEvent, new DragCompletedEventHandler(OnTimelineDragCompleted));
     }
 
     public override void OnApplyTemplate()
@@ -92,9 +91,6 @@ public partial class SampleLoaderPopup : BasePopup
         initialFocus?.Abort();
         Loaded -= OnPopupLoaded;
         viewModel.PropertyChanged -= OnBrowserStateChanged;
-        PlaybackTimeline.ValueChanged -= OnTimelineValueChanged;
-        PlaybackTimeline.RemoveHandler(Thumb.DragStartedEvent, new DragStartedEventHandler(OnTimelineDragStarted));
-        PlaybackTimeline.RemoveHandler(Thumb.DragCompletedEvent, new DragCompletedEventHandler(OnTimelineDragCompleted));
         DpiChanged -= OnPopupDpiChanged;
         if (sizingOwner is not null) sizingOwner.SizeChanged -= OnOwnerSizeChanged;
         await viewModel.DeactivateAsync();
@@ -102,8 +98,10 @@ public partial class SampleLoaderPopup : BasePopup
 
     private static readonly DependencyPropertyKey IsCompactLayoutPropertyKey = DependencyProperty.RegisterReadOnly(
         nameof(IsCompactLayout), typeof(bool), typeof(SampleLoaderPopup), new PropertyMetadata(false));
+
     public static readonly DependencyProperty IsCompactLayoutProperty = IsCompactLayoutPropertyKey.DependencyProperty;
     public bool IsCompactLayout => (bool)GetValue(IsCompactLayoutProperty);
+
     private async void OnLocationSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (LocationList.SelectedItem is SampleBrowserLocation location && !ReferenceEquals(location, viewModel.ActiveLocation))
@@ -112,7 +110,9 @@ public partial class SampleLoaderPopup : BasePopup
             if (!deactivated) LocationList.SetCurrentValue(Selector.SelectedItemProperty, viewModel.ActiveLocation);
         }
     }
+
     private bool activatingBasket;
+
     private async void OnBasketSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (activatingBasket || e.AddedItems.OfType<SampleBrowserEntry>().FirstOrDefault() is not { } entry || ReferenceEquals(entry, viewModel.SelectedFile)) return;
@@ -120,12 +120,14 @@ public partial class SampleLoaderPopup : BasePopup
         try { await HandleInteractionAsync(() => viewModel.ActivateSelectedCommand.ExecuteAsync(entry)); }
         finally { activatingBasket = false; }
     }
+
     private async void OnBasketKeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key != Key.Enter || SelectedSamplesList.SelectedItem is not SampleBrowserEntry entry) return;
         e.Handled = true;
         await HandleInteractionAsync(() => viewModel.ActivateSelectedCommand.ExecuteAsync(entry));
     }
+
     private void OnRemoveSelectedClick(object sender, RoutedEventArgs e)
     {
         if (sender is not FrameworkElement { DataContext: SampleBrowserEntry entry }) return;
@@ -154,7 +156,9 @@ public partial class SampleLoaderPopup : BasePopup
     }
 
     private void OnOwnerSizeChanged(object sender, SizeChangedEventArgs e) => UpdateSize();
+
     private void OnPopupDpiChanged(object sender, DpiChangedEventArgs e) => UpdateSize();
+
     private void OnPopupLoaded(object sender, RoutedEventArgs e) => initialFocus = Dispatcher.BeginInvoke(
         DispatcherPriority.Input, new Action(() => { if (!deactivated) DirectoryContents.Focus(); }));
 
@@ -163,7 +167,6 @@ public partial class SampleLoaderPopup : BasePopup
         if (!viewModel.CanSeek || e.OriginalSource is not DependencyObject source) return;
         for (DependencyObject? current = source; current is not null && !ReferenceEquals(current, sender); current = DependencyObjectTree.GetParent(current))
             if (current is Thumb) return;
-        PlaybackTimeline.Focus();
         if (PreviewWaveform.SeekAt(e.GetPosition(PreviewWaveform).X)) e.Handled = true;
     }
 
@@ -178,25 +181,6 @@ public partial class SampleLoaderPopup : BasePopup
         if (!viewModel.CanSeek) return;
         isScrubbing = true;
         scrubbingFile = viewModel.SelectedFile;
-        var value = PlaybackTimeline.Value;
-        BindingOperations.ClearBinding(PlaybackTimeline, RangeBase.ValueProperty);
-        PlaybackTimeline.Value = value;
-    }
-
-    private async void OnTimelineDragCompleted(object sender, DragCompletedEventArgs e)
-    {
-        if (!isScrubbing) return;
-        try
-        {
-            if (!e.Canceled && ReferenceEquals(scrubbingFile, viewModel.SelectedFile))
-                await HandleInteractionAsync(() => viewModel.SeekAsync(PlaybackTimeline.Value));
-        }
-        finally
-        {
-            PlaybackTimeline.SetBinding(RangeBase.ValueProperty, new Binding(nameof(SampleLoaderPopupVM.PlaybackPositionSeconds)) { Mode = BindingMode.OneWay });
-            isScrubbing = false;
-            scrubbingFile = null;
-        }
     }
 
     private void OnBrowserStateChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -219,31 +203,46 @@ public partial class SampleLoaderPopup : BasePopup
 
     private void OnBreadcrumbWidthChanged(object sender, SizeChangedEventArgs e) => RefreshBreadcrumbPresentation();
 
+    internal static int GetFirstVisibleBreadcrumb(IReadOnlyList<double> actionWidths, double availableWidth, double overflowWidth, double separatorWidth)
+    {
+        if (actionWidths.Count == 0 || actionWidths.Sum() + (actionWidths.Count - 1) * separatorWidth <= availableWidth) return 0;
+        var start = actionWidths.Count;
+        var used = overflowWidth + separatorWidth;
+        while (start > 0)
+        {
+            var candidate = actionWidths[start - 1] + (start < actionWidths.Count ? separatorWidth : 0);
+            if (start < actionWidths.Count && used + candidate > availableWidth) break;
+            used += candidate;
+            start--;
+        }
+        return start;
+    }
+
     private void RefreshBreadcrumbPresentation()
     {
         if (deactivated) return;
         var all = viewModel.Breadcrumbs.ToArray();
         var width = (EarlierFolders.Parent as FrameworkElement)?.ActualWidth ?? 0;
         if (width <= 0) width = 400;
-        var start = all.Length;
-        var used = 36d;
-        while (start > 0)
-        {
-            var item = all[start - 1];
-            var text = new FormattedText(item.Name, System.Globalization.CultureInfo.CurrentUICulture, FlowDirection,
-                new Typeface(FontFamily, FontStyles.Normal, FontWeights.Normal, FontStretches.Normal), 12, Brushes.White, VisualTreeHelper.GetDpi(this).PixelsPerDip);
-            if (start < all.Length && used + text.Width + 32 > width) break;
-            used += text.Width + 32;
-            start--;
-        }
+        var dpi = VisualTreeHelper.GetDpi(this).PixelsPerDip;
+        var widths = all.Select(item => new FormattedText(item.Name, System.Globalization.CultureInfo.CurrentUICulture, FlowDirection,
+            new Typeface((FontFamily)FindResource(item.IsCurrent ? "Bold" : "Regular"), FontStyles.Normal,
+                item.IsCurrent ? FontWeights.Bold : FontWeights.Normal, FontStretches.Normal), 12, Brushes.White, dpi).Width + 24).ToArray();
+        var start = GetFirstVisibleBreadcrumb(widths, width, 36, 16);
         DirectoryBreadcrumbs.ItemsSource = all.Skip(start).ToArray();
         EarlierFolders.Visibility = start > 0 ? Visibility.Visible : Visibility.Collapsed;
         var menu = EarlierFolders.ContextMenu;
         menu.Items.Clear();
         foreach (var item in all.Take(start))
         {
-            var action = new MenuItem { Header = item.Name, Command = viewModel.NavigateCommand, CommandParameter = item.FullPath,
-                Style = (Style)FindResource("OHsActionMenuItemStyle"), IsTabStop = false };
+            var action = new MenuItem
+            {
+                Header = item.Name,
+                Command = viewModel.NavigateCommand,
+                CommandParameter = item.FullPath,
+                Style = (Style)FindResource("OHsActionMenuItemStyle"),
+                IsTabStop = false
+            };
             KeyboardNavigationPolicy.SetAllowTabNavigation(action, false);
             System.Windows.Automation.AutomationProperties.SetName(action, item.Name);
             menu.Items.Add(action);
@@ -256,6 +255,7 @@ public partial class SampleLoaderPopup : BasePopup
         if (DirectoryContents.SelectedItem is SampleBrowserEntry entry)
             await HandleInteractionAsync(() => viewModel.SelectAsync(entry));
     }
+
     private async void OnContentsKeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key == Key.Space && Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) && DirectoryContents.SelectedItem is SampleBrowserEntry rangeEnd)
@@ -275,6 +275,7 @@ public partial class SampleLoaderPopup : BasePopup
         e.Handled = true;
         await HandleInteractionAsync(ActivateSelectedEntryAsync);
     }
+
     internal Task ActivateSelectedEntryAsync() => DirectoryContents.SelectedItem is SampleBrowserEntry entry
         ? entry.IsDirectory ? viewModel.NavigateCommand.ExecuteAsync(entry.FullPath) : viewModel.SetCheckedAsync(entry, true)
         : Task.CompletedTask;
