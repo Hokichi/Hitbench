@@ -17,6 +17,31 @@ namespace osuHitsounder.Test.Presentation;
 public sealed class SampleLoaderPopupIntegrationTests
 {
     [Test]
+    public void PopupUsesTheApplicationFontResource()
+    {
+        Assert.That(popup.FontFamily, Is.SameAs(popup.FindResource("Regular")));
+        Assert.That(popup.Resources.Contains("Regular"), Is.False);
+        Assert.That(popup.Resources.Contains("Bold"), Is.False);
+    }
+
+    [Test]
+    public void SelectionSummaryAndPoliteCountFollowMembership()
+    {
+        UiTestPump.Run(vm.SetCheckedAsync(file, true));
+        Assert.That(vm.SelectionAnnouncement, Is.EqualTo("1 sample selected"));
+        Assert.That(vm.SelectionSummary, Does.StartWith("1 sample · ").And.EndsWith(" total"));
+        var count = (TextBlock)popup.FindName("SelectedCount");
+        Assert.That(System.Windows.Automation.AutomationProperties.GetLiveSetting(count), Is.EqualTo(System.Windows.Automation.AutomationLiveSetting.Polite));
+        vm.ClearSelectedCommand.Execute(null);
+        Assert.That(vm.SelectionAnnouncement, Is.EqualTo("0 samples selected"));
+    }
+    [Test]
+    public void WrittenSpecUsesOwnerLocalChromeContract()
+    {
+        Assert.That(popup.Style, Is.SameAs(popup.FindResource("OHsSampleLoaderPopupStyle")));
+        Assert.That(popup.Template, Is.SameAs(popup.FindResource("OHsSampleLoaderPopupTemplate")));
+    }
+    [Test]
     public void SpaceTogglesTheFocusedFileWithoutImporting()
     {
         var list = (ListBox)popup.FindName("DirectoryContents");
@@ -126,9 +151,12 @@ public sealed class SampleLoaderPopupIntegrationTests
     [Test]
     public void BreadcrumbClickListsDrivesWithoutImporting()
     {
-        var node = Descendants(view.Root).OfType<BalloonButton>().Single(button => button.DataContext is SampleBrowserBreadcrumb { FullPath: null });
-        Assert.That(node.Command, Is.SameAs(vm.NavigateCommand));
-        node.Command.Execute(node.CommandParameter);
+        var node = Descendants(view.Root).OfType<BalloonButton>().FirstOrDefault(button => button.DataContext is SampleBrowserBreadcrumb { FullPath: null });
+        var overflow = (BalloonComboBox)popup.FindName("EarlierFolders");
+        var earlier = overflow.ContextMenu.Items.OfType<MenuItem>().FirstOrDefault(item => item.CommandParameter is null);
+        var command = node?.Command ?? earlier?.Command;
+        Assert.That(command, Is.SameAs(vm.NavigateCommand));
+        command!.Execute(node?.CommandParameter ?? earlier?.CommandParameter);
         UiTestPump.Run(vm.NavigateCommand.ExecutionTask!);
         view.UpdateLayout();
         Assert.That(vm.IsThisPc, Is.True);
@@ -302,7 +330,7 @@ public sealed class SampleLoaderPopupIntegrationTests
     [Test]
     public void ChildHeaderHoverKeepsAssignedRowContracts()
     {
-        foreach (var container in Descendants(view.Root).OfType<ListBoxItem>())
+        foreach (var container in Descendants((ListBox)popup.FindName("DirectoryContents")).OfType<ListBoxItem>())
             AssertPopupStyle<ListBoxItem>(container, "SampleLoaderContentItemStyle");
     }
 

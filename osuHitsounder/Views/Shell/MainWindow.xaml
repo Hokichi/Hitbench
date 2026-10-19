@@ -171,7 +171,7 @@
                     <Setter Property="Effect" Value="{StaticResource MainWindowModalBlur}" />
                     <Setter Property="IsEnabled" Value="False" />
                 </DataTrigger>
-            </Style.Triggers>
+            <DataTrigger Binding="{Binding PopupOverlayUsesBlur, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}" Value="False"><Setter Property="Effect" Value="{x:Null}"/></DataTrigger></Style.Triggers>
         </Style>
         <Style
             x:Key="MainWindowModalOverlayStyle"
@@ -184,7 +184,7 @@
                 <DataTrigger Binding="{Binding IsPopupOverlayVisible, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}" Value="True">
                     <Setter Property="Visibility" Value="Visible" />
                 </DataTrigger>
-            </Style.Triggers>
+            <DataTrigger Binding="{Binding PopupOverlayUsesBlur, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}" Value="False"><Setter Property="Background" Value="Black"/><Setter Property="Opacity" Value="{Binding PopupOverlayOpacity, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}"/></DataTrigger></Style.Triggers>
         </Style>
     </Window.Resources>
     <Window.Style>

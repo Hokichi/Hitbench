@@ -156,7 +156,7 @@ public class BasePopup : Window, IPopupHost
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         _popupHost = Owner as IPopupHost;
-        _popupHost?.ShowPopupOverlay();
+        _popupHost?.ShowPopupOverlay(RequestedOverlayOpacity, RequestedOverlayBlur);
         BecomeApplicationMainWindow();
         Dispatcher.BeginInvoke(DispatcherPriority.Input,
             () => MoveFocus(new TraversalRequest(FocusNavigationDirection.First)));
@@ -371,29 +371,36 @@ public class BasePopup : Window, IPopupHost
         _isPopupOverlayHandoffPending = true;
     }
 
-    public void ShowPopupOverlay()
+    protected virtual double RequestedOverlayOpacity => 0.5;
+    protected virtual bool RequestedOverlayBlur => true;
+    private readonly Stack<(double Opacity, bool Blur)> overlayAppearances = new();
+    public void ShowPopupOverlay(double opacity, bool useBlur)
+    {
+        overlayAppearances.Push((opacity, useBlur));
+        ShowPopupOverlayCore(opacity, useBlur);
+    }
+    public void ShowPopupOverlay() => ShowPopupOverlay(0.5, true);
+    private void ShowPopupOverlayCore(double opacity, bool useBlur)
     {
         if (_contentRoot is null || _popupOverlay is null)
             return;
 
         CancelPendingPopupOverlayDeferredHide();
 
-        var hostAction = _popupOverlayHandoffState.OnPopupShown();
-        if (hostAction != PopupOverlayHostAction.ShowOverlay)
-            return;
-
-        _contentRoot.Effect = new BlurEffect { Radius = 20, RenderingBias = RenderingBias.Performance };
+        _popupOverlayHandoffState.OnPopupShown();
+        _contentRoot.Effect = useBlur ? new BlurEffect { Radius = 20, RenderingBias = RenderingBias.Performance } : null;
+        if (_popupOverlay is System.Windows.Shapes.Shape shape) shape.Fill = useBlur ? (Brush)FindResource("Brush.Overlay") : Brushes.Black;
 
         _popupOverlay.BeginAnimation(OpacityProperty, null);
         _popupOverlay.Visibility = Visibility.Visible;
 
         if (!SystemParameters.ClientAreaAnimation)
         {
-            _popupOverlay.Opacity = 0.5;
+            _popupOverlay.Opacity = opacity;
             return;
         }
 
-        var fadeIn = new DoubleAnimation(_popupOverlay.Opacity, 0.5, TimeSpan.FromMilliseconds(OverlayAnimDuration))
+        var fadeIn = new DoubleAnimation(_popupOverlay.Opacity, opacity, TimeSpan.FromMilliseconds(OverlayAnimDuration))
         {
             EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
         };
@@ -409,6 +416,7 @@ public class BasePopup : Window, IPopupHost
             return;
         }
 
+        RestoreOverlayAppearance();
         var hostAction = _popupOverlayHandoffState.OnPopupHidden();
         if (hostAction != PopupOverlayHostAction.HideOverlay)
             return;
@@ -418,6 +426,7 @@ public class BasePopup : Window, IPopupHost
 
     public void HidePopupOverlayForHandoff()
     {
+        RestoreOverlayAppearance();
         var hostAction = _popupOverlayHandoffState.OnPopupHiddenForHandoff(out var deferredHideGeneration);
         if (hostAction == PopupOverlayHostAction.HideOverlay)
         {
@@ -429,6 +438,18 @@ public class BasePopup : Window, IPopupHost
             return;
 
         SchedulePopupOverlayDeferredHide(deferredHideGeneration);
+    }
+
+    private void RestoreOverlayAppearance()
+    {
+        if (overlayAppearances.Count > 0) overlayAppearances.Pop();
+        if (overlayAppearances.TryPeek(out var appearance) && _contentRoot is not null && _popupOverlay is not null)
+        {
+            _contentRoot.Effect = appearance.Blur ? new BlurEffect { Radius = 20 } : null;
+            _popupOverlay.BeginAnimation(OpacityProperty, null);
+            _popupOverlay.Opacity = appearance.Opacity;
+            if (_popupOverlay is System.Windows.Shapes.Shape shape) shape.Fill = appearance.Blur ? (Brush)FindResource("Brush.Overlay") : Brushes.Black;
+        }
     }
 
     private void SchedulePopupOverlayDeferredHide(int deferredHideGeneration)

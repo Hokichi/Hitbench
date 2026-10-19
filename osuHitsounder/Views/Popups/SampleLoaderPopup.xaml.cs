@@ -22,6 +22,7 @@ public partial class SampleLoaderPopup : BasePopup
     private bool deactivated;
     private DispatcherOperation? initialFocus;
     private bool navigationHadFocus;
+    private int lastAnnouncedCount = -1;
     private bool isScrubbing;
     private bool isSelectingFileRow;
     private SampleBrowserEntry? scrubbingFile;
@@ -37,6 +38,7 @@ public partial class SampleLoaderPopup : BasePopup
         this.completeDialog = completeDialog ?? (accepted => DialogResult = accepted);
         this.getWorkArea = getWorkArea ?? WindowWorkArea.GetClientSize;
         DataContext = viewModel;
+        InitializePalette();
         KeyboardNavigation.SetTabNavigation(this, KeyboardNavigationMode.None);
         viewModel.PropertyChanged += OnBrowserStateChanged;
         Loaded += OnPopupLoaded;
@@ -55,6 +57,9 @@ public partial class SampleLoaderPopup : BasePopup
         }
     }
 
+    protected override double RequestedOverlayOpacity => 0.58;
+    protected override bool RequestedOverlayBlur => false;
+
     protected override bool ShouldBubbleApplicationClose => false;
 
     public async Task InitializeAsync(SamplePickerContext context, CancellationToken token)
@@ -64,6 +69,7 @@ public partial class SampleLoaderPopup : BasePopup
         DpiChanged += OnPopupDpiChanged;
         UpdateSize();
         await viewModel.InitializeAsync(context, token);
+        RefreshBreadcrumbPresentation();
     }
 
     public Task InitializeAsync(CancellationToken token) => InitializeAsync((string?)null, token);
@@ -75,12 +81,14 @@ public partial class SampleLoaderPopup : BasePopup
         DpiChanged += OnPopupDpiChanged;
         UpdateSize();
         await viewModel.InitializeAsync(initialDirectory, token);
+        RefreshBreadcrumbPresentation();
     }
 
     public async Task DeactivateAsync()
     {
         if (deactivated) return;
         deactivated = true;
+        SystemParameters.StaticPropertyChanged -= OnSystemPaletteChanged;
         initialFocus?.Abort();
         Loaded -= OnPopupLoaded;
         viewModel.PropertyChanged -= OnBrowserStateChanged;
@@ -140,13 +148,9 @@ public partial class SampleLoaderPopup : BasePopup
 
     private void UpdateSize()
     {
-        var area = getWorkArea(sizingOwner ?? this);
-        if (area.IsEmpty || area.Width <= 0 || area.Height <= 0)
-            area = sizingOwner?.RenderSize ?? SystemParameters.WorkArea.Size;
-        var ownerSize = sizingOwner?.RenderSize ?? area;
-        Width = Math.Max(1, Math.Min(960, Math.Min(area.Width, ownerSize.Width) - 32));
-        Height = Math.Max(1, Math.Min(640, Math.Min(area.Height, ownerSize.Height) - 32));
-        SetValue(IsCompactLayoutPropertyKey, Width - 32 < 880);
+        Width = 1200;
+        Height = 640;
+        SetValue(IsCompactLayoutPropertyKey, false);
     }
 
     private void OnOwnerSizeChanged(object sender, SizeChangedEventArgs e) => UpdateSize();
@@ -197,13 +201,52 @@ public partial class SampleLoaderPopup : BasePopup
 
     private void OnBrowserStateChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(SampleLoaderPopupVM.SelectionAnnouncement) && lastAnnouncedCount != viewModel.CheckedCount)
+        {
+            lastAnnouncedCount = viewModel.CheckedCount;
+            System.Windows.Automation.Peers.UIElementAutomationPeer.FromElement(SelectedCount)?.RaiseAutomationEvent(System.Windows.Automation.Peers.AutomationEvents.LiveRegionChanged);
+        }
         if (e.PropertyName != nameof(SampleLoaderPopupVM.IsNavigating)) return;
+        if (!viewModel.IsNavigating) RefreshBreadcrumbPresentation();
         if (viewModel.IsNavigating)
             navigationHadFocus |= DirectoryContents.IsKeyboardFocusWithin || DirectoryBreadcrumbs.IsKeyboardFocusWithin;
         else if (navigationHadFocus)
         {
             navigationHadFocus = false;
             initialFocus = Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() => { if (!deactivated) DirectoryContents.Focus(); }));
+        }
+    }
+
+    private void OnBreadcrumbWidthChanged(object sender, SizeChangedEventArgs e) => RefreshBreadcrumbPresentation();
+
+    private void RefreshBreadcrumbPresentation()
+    {
+        if (deactivated) return;
+        var all = viewModel.Breadcrumbs.ToArray();
+        var width = (EarlierFolders.Parent as FrameworkElement)?.ActualWidth ?? 0;
+        if (width <= 0) width = 400;
+        var start = all.Length;
+        var used = 36d;
+        while (start > 0)
+        {
+            var item = all[start - 1];
+            var text = new FormattedText(item.Name, System.Globalization.CultureInfo.CurrentUICulture, FlowDirection,
+                new Typeface(FontFamily, FontStyles.Normal, FontWeights.Normal, FontStretches.Normal), 12, Brushes.White, VisualTreeHelper.GetDpi(this).PixelsPerDip);
+            if (start < all.Length && used + text.Width + 32 > width) break;
+            used += text.Width + 32;
+            start--;
+        }
+        DirectoryBreadcrumbs.ItemsSource = all.Skip(start).ToArray();
+        EarlierFolders.Visibility = start > 0 ? Visibility.Visible : Visibility.Collapsed;
+        var menu = EarlierFolders.ContextMenu;
+        menu.Items.Clear();
+        foreach (var item in all.Take(start))
+        {
+            var action = new MenuItem { Header = item.Name, Command = viewModel.NavigateCommand, CommandParameter = item.FullPath,
+                Style = (Style)FindResource("OHsActionMenuItemStyle"), IsTabStop = false };
+            KeyboardNavigationPolicy.SetAllowTabNavigation(action, false);
+            System.Windows.Automation.AutomationProperties.SetName(action, item.Name);
+            menu.Items.Add(action);
         }
     }
 

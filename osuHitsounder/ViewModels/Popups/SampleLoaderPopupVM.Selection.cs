@@ -65,6 +65,8 @@ public sealed partial class SampleLoaderPopupVM
     [ObservableProperty] private string searchText = "";
     public ReadOnlyObservableCollection<SampleBrowserEntry> SelectedSamples => selectedView ??= new(selectedSamples);
     public ReadOnlyObservableCollection<SampleBrowserEntry> VisibleEntries => visibleView ??= new(visibleEntries);
+    public string SelectionAnnouncement => string.Format(CultureInfo.CurrentCulture, CheckedCount == 1 ? "{0} sample selected" : "{0} samples selected", CheckedCount);
+    public string SelectionSummary => string.Format(CultureInfo.CurrentCulture, CheckedCount == 1 ? "{0} sample · {1} total" : "{0} samples · {1} total", CheckedCount, SelectedDurationText);
     public string SelectedDurationText => selectedSamples.Any(x => x.Metadata is null || x.IsMetadataLoading || x.IsMetadataUnavailable) ? "—" :
         string.Format(CultureInfo.CurrentCulture, "{0:0.000} s", selectedSamples.Sum(x => x.Metadata!.Duration.TotalSeconds));
     partial void OnSearchTextChanged(string value) { rangeAnchor = null; RefreshVisibleEntries(); }

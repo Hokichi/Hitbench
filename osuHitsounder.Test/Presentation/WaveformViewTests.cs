@@ -10,6 +10,20 @@ namespace osuHitsounder.Test.Presentation;
 [NonParallelizable]
 public class WaveformViewTests
 {
+    [Test]
+    public void CompactBarsPreserveFullSampleSeekMapping()
+    {
+        TimeSpan? requested = null;
+        var view = new WaveformView { BarCount = 90, Data = new WaveformData(TimeSpan.FromSeconds(10), [0.2f, 0.8f]),
+            SeekCommand = new RelayCommand<TimeSpan>(value => requested = value) };
+        view.Measure(new Size(400, 44));
+        view.Arrange(new Rect(0, 0, 400, 44));
+        Assert.That(view.SeekAt(200), Is.True);
+        Assert.That(requested, Is.EqualTo(TimeSpan.FromSeconds(5)));
+        Assert.That(view.GetPositionAt(-1), Is.EqualTo(TimeSpan.Zero));
+        Assert.That(view.GetPositionAt(500), Is.EqualTo(TimeSpan.FromSeconds(10)));
+    }
+
     [TestCase(80d)]
     [TestCase(160d)]
     [TestCase(240d)]

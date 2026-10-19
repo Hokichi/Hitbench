@@ -8,6 +8,12 @@ namespace osuHitsounder.Resources.CustomControls;
 
 public sealed class WaveformView : FrameworkElement
 {
+    public static readonly DependencyProperty BarCountProperty = DependencyProperty.Register(nameof(BarCount), typeof(int), typeof(WaveformView), new FrameworkPropertyMetadata(0, FrameworkPropertyMetadataOptions.AffectsRender));
+    public int BarCount { get => (int)GetValue(BarCountProperty); set => SetValue(BarCountProperty, value); }
+    public static readonly DependencyProperty BarThicknessProperty = DependencyProperty.Register(nameof(BarThickness), typeof(double), typeof(WaveformView), new FrameworkPropertyMetadata(1d, FrameworkPropertyMetadataOptions.AffectsRender));
+    public double BarThickness { get => (double)GetValue(BarThicknessProperty); set => SetValue(BarThicknessProperty, value); }
+    public static readonly DependencyProperty MarkerThicknessProperty = DependencyProperty.Register(nameof(MarkerThickness), typeof(double), typeof(WaveformView), new FrameworkPropertyMetadata(1.5d, FrameworkPropertyMetadataOptions.AffectsRender));
+    public double MarkerThickness { get => (double)GetValue(MarkerThicknessProperty); set => SetValue(MarkerThicknessProperty, value); }
     public static readonly DependencyProperty ShowBeatRulerProperty=DependencyProperty.Register(nameof(ShowBeatRuler),typeof(bool),typeof(WaveformView),new FrameworkPropertyMetadata(false,FrameworkPropertyMetadataOptions.AffectsRender));
     public bool ShowBeatRuler {get=>(bool)GetValue(ShowBeatRulerProperty);set=>SetValue(ShowBeatRulerProperty,value);}
     public static readonly DependencyProperty DataProperty = DependencyProperty.Register(
@@ -120,8 +126,8 @@ public sealed class WaveformView : FrameworkElement
     {
         if (Data is null || Data.Duration <= TimeSpan.Zero || Data.Peaks.Count == 0) return;
         var end = new Point(0, ActualHeight);
-        if (!SystemParameters.HighContrast) context.DrawLine(new Pen(WaveformBrush, 3.5), new Point(), end);
-        context.DrawLine(new Pen(SystemParameters.HighContrast ? SystemColors.WindowTextBrush : MarkerBrush, 1.5), new Point(), end);
+        if (!SystemParameters.HighContrast && BarCount == 0) context.DrawLine(new Pen(WaveformBrush, 3.5), new Point(), end);
+        context.DrawLine(new Pen(SystemParameters.HighContrast ? SystemColors.WindowTextBrush : MarkerBrush, MarkerThickness), new Point(), end);
     }
 
     private void UpdateMarker()
@@ -155,6 +161,23 @@ public sealed class WaveformView : FrameworkElement
         var height = ActualHeight;
         if (width > 0 && height > 0) drawingContext.DrawRectangle(Brushes.Transparent, null, new Rect(0, 0, width, height));
         if (data is null || data.Peaks.Count == 0 || data.Duration <= TimeSpan.Zero || width <= 0 || height <= 0) return;
+
+        if (BarCount > 0)
+        {
+            var pen = new Pen(SystemParameters.HighContrast ? SystemColors.HighlightBrush : WaveformBrush, BarThickness);
+            var count = Math.Min(BarCount, 4096);
+            for (var bar = 0; bar < count; bar++)
+            {
+                var first = bar * data.Peaks.Count / count;
+                var last = Math.Max(first + 1, (bar + 1) * data.Peaks.Count / count);
+                var peak = 0f;
+                for (var index = first; index < Math.Min(last, data.Peaks.Count); index++) peak = Math.Max(peak, data.Peaks[index]);
+                var px = (bar + 0.5) * width / count;
+                var extent = Math.Max(1, peak * (height / 2 - 4));
+                drawingContext.DrawLine(pen, new Point(px, height / 2 - extent), new Point(px, height / 2 + extent));
+            }
+            return;
+        }
 
         var viewport = IsPositiveFinite(ViewportWidth) ? Math.Min(ViewportWidth, width) : width;
         var offset = double.IsFinite(HorizontalOffset) ? Math.Clamp(HorizontalOffset, 0, Math.Max(0, width - viewport)) : 0;

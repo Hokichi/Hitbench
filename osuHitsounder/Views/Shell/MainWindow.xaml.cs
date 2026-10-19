@@ -32,7 +32,20 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
     public static readonly DependencyProperty IsPopupOverlayVisibleProperty = IsPopupOverlayVisiblePropertyKey.DependencyProperty;
     public bool IsPopupOverlayVisible => (bool)GetValue(IsPopupOverlayVisibleProperty);
 
-    public void ShowPopupOverlay()
+    private readonly Stack<(double Opacity, bool Blur)> popupAppearances = new();
+    public static readonly DependencyProperty PopupOverlayUsesBlurProperty = DependencyProperty.Register(nameof(PopupOverlayUsesBlur), typeof(bool), typeof(MainWindow), new PropertyMetadata(true));
+    public bool PopupOverlayUsesBlur { get => (bool)GetValue(PopupOverlayUsesBlurProperty); private set => SetValue(PopupOverlayUsesBlurProperty, value); }
+    public static readonly DependencyProperty PopupOverlayOpacityProperty = DependencyProperty.Register(nameof(PopupOverlayOpacity), typeof(double), typeof(MainWindow), new PropertyMetadata(0.5));
+    public double PopupOverlayOpacity { get => (double)GetValue(PopupOverlayOpacityProperty); private set => SetValue(PopupOverlayOpacityProperty, value); }
+    public void ShowPopupOverlay(double opacity, bool useBlur)
+    {
+        popupAppearances.Push((opacity, useBlur));
+        PopupOverlayOpacity = opacity;
+        PopupOverlayUsesBlur = useBlur;
+        ShowPopupOverlayCore();
+    }
+    public void ShowPopupOverlay() => ShowPopupOverlay(0.5, true);
+    private void ShowPopupOverlayCore()
     {
         CancelBackgroundDrag();
         popupOverlayTimer.Stop();
@@ -50,17 +63,29 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
             popupHandoffPending = false;
             HidePopupOverlayForHandoff();
         }
-        else if (popupOverlayState.OnPopupHidden() == PopupOverlayHostAction.HideOverlay)
-            SetValue(IsPopupOverlayVisiblePropertyKey, false);
+        else
+        {
+            RestorePopupAppearance();
+            if (popupOverlayState.OnPopupHidden() == PopupOverlayHostAction.HideOverlay)
+                SetValue(IsPopupOverlayVisiblePropertyKey, false);
+        }
     }
 
     public void HidePopupOverlayForHandoff()
     {
+        RestorePopupAppearance();
         if (popupOverlayState.OnPopupHiddenForHandoff(out popupHideGeneration) == PopupOverlayHostAction.DeferHide)
         {
             popupOverlayTimer.Stop();
             popupOverlayTimer.Start();
         }
+    }
+
+    private void RestorePopupAppearance()
+    {
+        if (popupAppearances.Count > 0) popupAppearances.Pop();
+        if (popupAppearances.TryPeek(out var appearance)) { PopupOverlayOpacity = appearance.Opacity; PopupOverlayUsesBlur = appearance.Blur; }
+
     }
 
     private void OnPopupOverlayTimerTick(object? sender, EventArgs e)

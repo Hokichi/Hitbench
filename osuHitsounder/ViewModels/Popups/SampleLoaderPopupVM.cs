@@ -327,7 +327,7 @@ public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, I
     {
         foreach (var entry in observed) entry.IsPreviewing = IsPreviewPlaying && SamePath(entry.FullPath, SelectedFile?.FullPath);
         PlayPreviewCommand.NotifyCanExecuteChanged(); StopPreviewCommand.NotifyCanExecuteChanged(); SeekPreviewCommand.NotifyCanExecuteChanged();
-        foreach (var name in new[] { nameof(PlaybackPosition), nameof(CanPlayPreview), nameof(CanStopPreview), nameof(PreviewMetadataText), nameof(SelectedDurationText), nameof(CheckedCount), nameof(CheckedCountText), nameof(CanConfirm), nameof(CanImport), nameof(CanPreview), nameof(BrowserStatusText),
+        foreach (var name in new[] { nameof(PlaybackPosition), nameof(CanPlayPreview), nameof(CanStopPreview), nameof(PreviewMetadataText), nameof(SelectionAnnouncement), nameof(SelectionSummary), nameof(SelectedDurationText), nameof(CheckedCount), nameof(CheckedCountText), nameof(CanConfirm), nameof(CanImport), nameof(CanPreview), nameof(BrowserStatusText),
             nameof(IsFolderSelection), nameof(PopupTitle), nameof(ConfirmActionText), nameof(ConfirmAutomationName), nameof(SelectionPrompt), nameof(SelectedFolderPath), nameof(FolderEmptyPromptText), nameof(ContentsAutomationName),
             nameof(PreviewActionText), nameof(MetadataStatusText), nameof(SizeText), nameof(DurationText),
             nameof(PlaybackPositionSeconds), nameof(PlaybackDurationSeconds), nameof(PlaybackTimeText), nameof(CanSeek), nameof(IsSeeking), nameof(IsThisPc), nameof(IsFolderEmpty) }) OnPropertyChanged(name);

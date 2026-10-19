@@ -27,6 +27,22 @@ public sealed class MainWindowPopupHostTests
     }
 
     [Test]
+    public void OverlayAppearanceRestoresAfterNestedPopup()
+    {
+        var window = Create();
+        try
+        {
+            window.ShowPopupOverlay(0.58, false);
+            Assert.That(window.PopupOverlayUsesBlur, Is.False);
+            window.ShowPopupOverlay();
+            Assert.That(window.PopupOverlayUsesBlur, Is.True);
+            window.HidePopupOverlay();
+            Assert.That(window.PopupOverlayUsesBlur, Is.False);
+            window.HidePopupOverlay();
+        }
+        finally { window.Close(); }
+    }
+    [Test]
     public void ScanHeaderDimmingFollowsProcessing()
     {
         var window = Create();
