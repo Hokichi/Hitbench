@@ -67,7 +67,7 @@
                     <Track.DecreaseRepeatButton>
                         <RepeatButton
                             Command="ScrollBar.PageLeftCommand"
-                            CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"
+                            CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}"
                             Style="{StaticResource BaseRepeatButtonStyle}"  Background="Transparent" BorderThickness="0" Focusable="False" Opacity="0"/>
                     </Track.DecreaseRepeatButton>
                     <Track.Thumb>
@@ -76,7 +76,7 @@
                     <Track.IncreaseRepeatButton>
                         <RepeatButton
                             Command="ScrollBar.PageRightCommand"
-                            CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"
+                            CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}"
                             Style="{StaticResource BaseRepeatButtonStyle}"  Background="Transparent" BorderThickness="0" Focusable="False" Opacity="0"/>
                     </Track.IncreaseRepeatButton>
                 </Track>

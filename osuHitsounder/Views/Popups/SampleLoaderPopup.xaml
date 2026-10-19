@@ -74,15 +74,13 @@
         </Style>
         <Style
             x:Key="SampleLoaderBreadcrumbButtonStyle"
-            BasedOn="{StaticResource OHsBalloonActionStyle}"
+            BasedOn="{StaticResource OHsBalloonNavInfoActionStyle}"
             TargetType="c:BalloonButton">
             <Setter Property="ShouldShowText" Value="True" />
             <Setter Property="IsTabStop" Value="True" />
             <Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
             <Setter Property="ButtonIcon" Value="{StaticResource AngleRight}" />
             <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
-            <Setter Property="DefaultBackground" Value="{DynamicResource Brush.BalloonButton.Background.NavInfo}" />
-            <Setter Property="HoveredBackground" Value="{DynamicResource Brush.BalloonButton.Background.NavInfo.Hovered}" />
             <Setter Property="FontFamily" Value="{DynamicResource Regular}" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsCurrent, Mode=OneWay}" Value="True">
@@ -246,7 +244,7 @@
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
             <Setter Property="FontFamily" Value="{DynamicResource Regular}" />
-            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontSize" Value="{StaticResource FontSize.Body}" />
             <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsFolderSelection, Mode=OneWay}" Value="True">

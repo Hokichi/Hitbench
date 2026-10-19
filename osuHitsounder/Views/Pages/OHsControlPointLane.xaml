@@ -40,7 +40,7 @@
   </ControlTemplate>
   <Style x:Key="OHsControlPointZoneStyle" TargetType="p:OHsControlPointZone" BasedOn="{StaticResource BaseButtonStyle}">
    <Setter Property="Template" Value="{StaticResource OHsControlPointZoneTemplate}" />
-   <Setter Property="FontFamily" Value="{DynamicResource Regular}" /><Setter Property="FontSize" Value="12" />
+   <Setter Property="FontFamily" Value="{DynamicResource Regular}" /><Setter Property="FontSize" Value="{StaticResource FontSize.Label}" />
    <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
    <Setter Property="Background" Value="{DynamicResource Brush.OHs.ControlPoint.Normal}" /><Setter Property="BorderBrush" Value="{DynamicResource Brush.OHs.ControlPoint.Normal}" />
    <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />

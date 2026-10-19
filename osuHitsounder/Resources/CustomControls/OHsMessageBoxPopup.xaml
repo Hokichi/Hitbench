@@ -11,7 +11,7 @@
     <customControls:BasePopup.Resources>
 
         <Style x:Key="OHsMessageBoxBodyTextStyle" TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlockStyle}">
-            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontSize" Value="{StaticResource FontSize.Label}" />
             <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}" />
             <Setter Property="LineHeight" Value="20" />
             <Setter Property="TextWrapping" Value="Wrap" />
@@ -48,7 +48,7 @@
             <StackPanel Grid.Column="2">
                 <TextBlock
                     Style="{StaticResource OHsPopupTitleTextStyle}"
-                    Text="{Binding PopupTitle, RelativeSource={RelativeSource AncestorType=customControls:BasePopup}, Mode=OneWay}"  FontSize="14" TextWrapping="Wrap" TextTrimming="None"/>
+                    Text="{Binding PopupTitle, RelativeSource={RelativeSource AncestorType=customControls:BasePopup}, Mode=OneWay}"  FontSize="{StaticResource FontSize.Title}" TextWrapping="Wrap" TextTrimming="None"/>
                 <TextBlock
                     x:Name="MessageTextBlock"
                     Margin="0,10,0,0"

@@ -18,7 +18,7 @@
             <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Danger}" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding ValidationError, Mode=OneWay}" Value="{x:Null}">
-                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Subtle}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Control}" />
                 </DataTrigger>
                 <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
                     <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />

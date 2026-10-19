@@ -5,9 +5,7 @@
     xmlns:helpers="clr-namespace:osuHitsounder.Resources.Helpers"
     xmlns:customControls="clr-namespace:osuHitsounder.Resources.CustomControls">
     <UserControl.Resources>
-        <Style x:Key="OHsMainWindowGoBackStyle" BasedOn="{StaticResource OHsBalloonActionStyle}" TargetType="customControls:BalloonButton">
-            <Setter Property="DefaultBackground" Value="{DynamicResource Brush.BalloonButton.Background.NavInfo}" />
-            <Setter Property="HoveredBackground" Value="{DynamicResource Brush.BalloonButton.Background.NavInfo.Hovered}" />
+        <Style x:Key="OHsMainWindowGoBackStyle" BasedOn="{StaticResource OHsBalloonNavInfoActionStyle}" TargetType="customControls:BalloonButton">
             <Setter Property="ShouldShowText" Value="False" />
             <Setter Property="ShouldExpand" Value="False" />
             <Setter Property="IsTabStop" Value="True" />
@@ -29,7 +27,7 @@
         </Style>
         <Style x:Key="MainWindowTitleStyle" BasedOn="{StaticResource BaseTextBlockStyle}" TargetType="TextBlock">
             <Setter Property="FontFamily" Value="{DynamicResource Bold}" />
-            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontSize" Value="{StaticResource FontSize.Title}" />
             <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
             <Setter Property="TextTrimming" Value="CharacterEllipsis" />
             <Setter Property="VerticalAlignment" Value="Center" />

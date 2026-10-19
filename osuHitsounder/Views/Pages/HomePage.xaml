@@ -153,7 +153,7 @@
             TargetType="TextBlock">
             <Setter Property="Text" Value="{Binding Artist, Mode=OneWay}" />
 
-            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontSize" Value="{StaticResource FontSize.Caption}" />
             <Setter Property="TextTrimming" Value="CharacterEllipsis" />
             <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}, Mode=OneWay}" />
             <Style.Triggers>
@@ -210,7 +210,7 @@
                             <TextBlock
                                 Margin="0,0,0,4"
                                 FontFamily="{DynamicResource Bold}"
-                                FontSize="14"
+                                FontSize="{StaticResource FontSize.Title}"
                                 Style="{StaticResource HomePageSongArtistStyle}"
                                 Text="{Binding Title, Mode=OneWay}" />
                             <TextBlock Style="{StaticResource HomePageSongArtistStyle}" />
@@ -224,8 +224,8 @@
             x:Key="OHsHomePageMetadataStyle"
             BasedOn="{StaticResource HomePageBodyStyle}"
             TargetType="TextBlock">
-            <Setter Property="FontSize" Value="11" />
-            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Muted}" />
+            <Setter Property="FontSize" Value="{StaticResource FontSize.Caption}" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}" />
             <Setter Property="TextTrimming" Value="CharacterEllipsis" />
         </Style>
         <Style
@@ -251,10 +251,8 @@
         </Style>
         <Style
             x:Key="OHsHomePageOpenActionStyle"
-            BasedOn="{StaticResource OHsBalloonActionStyle}"
+            BasedOn="{StaticResource OHsBalloonNavInfoActionStyle}"
             TargetType="customControls:BalloonButton">
-            <Setter Property="DefaultBackground" Value="{DynamicResource Brush.BalloonButton.Background.NavInfo}" />
-            <Setter Property="HoveredBackground" Value="{DynamicResource Brush.BalloonButton.Background.NavInfo.Hovered}" />
             <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
         </Style>
         <Style
@@ -263,6 +261,9 @@
             TargetType="customControls:BalloonComboBox">
             <Setter Property="DefaultBackground" Value="{DynamicResource Brush.BalloonButton.Background.Neutral}" />
             <Setter Property="HoveredBackground" Value="{DynamicResource Brush.BalloonButton.Background.Neutral.Hovered}" />
+            <Setter Property="StrokeThickness" Value="0" />
+            <Setter Property="PressedBackground" Value="{DynamicResource Brush.BalloonButton.Background.Neutral.Pressed}" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.BalloonButton.Foreground.Neutral}" />
         </Style>
         <Style
             x:Key="OHsHomePageProjectContentButtonStyle"
@@ -476,7 +477,7 @@
                     </Grid.ColumnDefinitions>
                     <TextBlock
                         FontFamily="{DynamicResource Bold}"
-                        FontSize="14"
+                        FontSize="{StaticResource FontSize.Title}"
                         Style="{StaticResource HomePageBodyStyle}"
                         Text="Mapsets" />
                     <TextBlock

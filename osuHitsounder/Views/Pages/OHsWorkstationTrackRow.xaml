@@ -17,10 +17,8 @@
         <ObjectDataProvider x:Key="OHsWorkstationTrackRowSource" />
         <Style
             x:Key="OHsWorkstationInstrumentActionStyle"
-            BasedOn="{StaticResource OHsBalloonNeutralActionStyle}"
+            BasedOn="{StaticResource OHsBalloonSurfaceActionStyle}"
             TargetType="customControls:BalloonButton">
-            <Setter Property="DefaultBackground" Value="{DynamicResource Brush.BalloonButton.Background.NavInfo}" />
-            <Setter Property="HoveredBackground" Value="{DynamicResource Brush.BalloonButton.Background.NavInfo.Hovered}" />
         </Style>
         <Style
             x:Key="OHsWorkstationTrackNameStyle"
@@ -90,12 +88,12 @@
             x:Key="OHsWorkstationTrackActionsStyle"
             BasedOn="{StaticResource BaseBalloonComboBoxStyle}"
             TargetType="customControls:BalloonComboBox">
-            <Setter Property="ButtonSize" Value="28" />
+            <Setter Property="ButtonSize" Value="{StaticResource Size.Control.Dense}" />
             <Setter Property="ShouldExpand" Value="False" />
             <Setter Property="ButtonIcon" Value="{StaticResource BarsSolid}" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding UseTouchTargets, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}" Value="True">
-                    <Setter Property="ButtonSize" Value="40" />
+                    <Setter Property="ButtonSize" Value="{StaticResource Size.Control.Primary}" />
                 </DataTrigger>
             </Style.Triggers>
         </Style>
