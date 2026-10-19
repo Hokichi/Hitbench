@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using System.Windows.Controls;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -203,7 +203,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
             viewModel = (HomePageVM)next.DataContext;
             DataContext = viewModel;
             viewModel.PropertyChanged += OnStateChanged;
-            SetHeaderBlurSource(null);
+            SetHeaderPresentationSource(null);
             PageHost.Content = next;
             ShellHeader.IsWorkstationVisible = false;
             MinWidth = defaultMinWidth;
@@ -273,24 +273,33 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
             workstation.SetProjectPath(projectPath);
             page.Deactivate();
             PageHost.Content = workstation;
-            SetHeaderBlurSource(workstation);
+            SetHeaderPresentationSource(workstation);
             ShellHeader.IsWorkstationVisible = true;
             MinWidth = defaultMinWidth;
             MinHeight = defaultMinHeight;
         }
         catch (Exception error)
         {
-            SetHeaderBlurSource(PageHost.Content as WorkstationPage);
+            SetHeaderPresentationSource(PageHost.Content as WorkstationPage);
             reportError($"Unable to open workstation: {error.Message}");
         }
     }
 
-    private void SetHeaderBlurSource(WorkstationPage? workstation)
+    private void SetHeaderPresentationSource(WorkstationPage? workstation)
     {
         System.Windows.Data.BindingOperations.ClearBinding(HeaderVolumeBlurHost, UIElement.EffectProperty);
+        System.Windows.Data.BindingOperations.ClearBinding(HeaderWorkstationOverlay, UIElement.VisibilityProperty);
         if (workstation is not null)
+        {
             HeaderVolumeBlurHost.SetBinding(UIElement.EffectProperty, new System.Windows.Data.Binding(nameof(WorkstationPage.HeaderBlurEffect))
             { Source = workstation, Mode = System.Windows.Data.BindingMode.OneWay });
+            HeaderWorkstationOverlay.SetBinding(UIElement.VisibilityProperty, new System.Windows.Data.Binding(nameof(WorkstationPage.IsHeaderDimmed))
+            {
+                Source = workstation,
+                Mode = System.Windows.Data.BindingMode.OneWay,
+                Converter = (System.Windows.Data.IValueConverter)FindResource("BoolToVisibilityConverter")
+            });
+        }
     }
 
     public void Receive(ProjectCreationFailedMessage message)
@@ -321,7 +330,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
 
     protected override void OnClosed(EventArgs e)
     {
-        SetHeaderBlurSource(null);
+        SetHeaderPresentationSource(null);
         clearSampleFocusRestore?.Invoke();
         CancelBackgroundDrag();
         ComponentDispatcher.EnterThreadModal -= OnEnterThreadModal;

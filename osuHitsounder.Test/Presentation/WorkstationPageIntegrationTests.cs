@@ -23,6 +23,31 @@ namespace osuHitsounder.Test.Presentation;
 [NonParallelizable]
 public class WorkstationPageIntegrationTests
 {
+    [Test]
+    public void HeaderDimmingFollowsStatusAndDeactivation()
+    {
+        EnsureResources();
+        var page = WorkstationTestPage.Create();
+        var vm = (WorkstationPageVM)page.DataContext;
+        try
+        {
+            Assert.That(page.IsHeaderDimmed, Is.True);
+            foreach (var phase in Enum.GetValues<osuHitsounder.Services.ProjectLoadPhase>())
+            {
+                vm.LoadPhase = phase;
+                Assert.That(page.IsHeaderDimmed, Is.EqualTo(vm.ShowStatusOverlay), phase.ToString());
+            }
+            vm.LoadPhase = osuHitsounder.Services.ProjectLoadPhase.Ready;
+            vm.IsSavingForReturn = true;
+            Assert.That(page.IsHeaderDimmed, Is.True);
+            UiTestPump.Run(page.DeactivateAsync());
+            Assert.That(page.IsHeaderDimmed, Is.False);
+            vm.LoadPhase = osuHitsounder.Services.ProjectLoadPhase.PreparingData;
+            Assert.That(page.IsHeaderDimmed, Is.False);
+        }
+        finally { UiTestPump.Run(page.DeactivateAsync()); }
+    }
+
     [TestCase(FlowDirection.LeftToRight, "Dark")]
     [TestCase(FlowDirection.RightToLeft, "Light")]
     public void AudioRightActionsKeepLabelsCommandsAndMenuOwnership(FlowDirection direction, string theme)

@@ -65,6 +65,7 @@ public partial class WorkstationPage : UserControl
         Timeline.AttachScrollBar(WaveformScrollBar);
         Timeline.ViewportChanged += OnTimelineViewportChanged;
         DataContext = viewModel;
+        RefreshHeaderDimming();
         TrackListComponent.ViewportChanged += OnTrackViewportChanged;
         PreviewMouseLeftButtonDown += OnPagePointerDown;
 
@@ -92,6 +93,7 @@ public partial class WorkstationPage : UserControl
         CancelNodePointer();
         Timeline.Reset();
         deactivationStarted = true;
+        RefreshHeaderDimming();
         TrackListComponent.Deactivate();
         presentationReady.TrySetResult();
         UpdatePlaybackRefreshSubscription();
@@ -227,6 +229,7 @@ public partial class WorkstationPage : UserControl
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(WorkstationPageVM.ShowStatusOverlay)) RefreshHeaderDimming();
         if (e.PropertyName == nameof(WorkstationPageVM.LoadPhase) && viewModel.LoadPhase == osuHitsounder.Services.ProjectLoadPhase.PreparingData)
         {
             playbackReady = false;

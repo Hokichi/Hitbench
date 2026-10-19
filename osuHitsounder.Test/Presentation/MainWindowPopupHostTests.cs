@@ -15,7 +15,7 @@ public sealed class MainWindowPopupHostTests
     [SetUp]
     public void Setup() => new SongsResponsiveLayoutTests().SetUp();
 
-    private static MainWindow Create()
+    private static MainWindow Create(Func<WorkstationPage>? createWorkstation = null)
     {
         var settings = new StubAppSettingsService();
         var messenger = new WeakReferenceMessenger();
@@ -23,7 +23,98 @@ public sealed class MainWindowPopupHostTests
             new StubProjectCreationDialogService(), new ImmediateUiScheduler(),
             new StubProjectFileService((_, _, _) => Task.FromResult("saved.json")), messenger));
         var page = CreateHome();
-        return TestShell.Create(page, messenger, WorkstationTestPage.Create, (HomePageVM)page.DataContext, settings, createHome: CreateHome);
+        return TestShell.Create(page, messenger, createWorkstation ?? WorkstationTestPage.Create, (HomePageVM)page.DataContext, settings, createHome: CreateHome);
+    }
+
+    [Test]
+    public void ScanHeaderDimmingFollowsProcessing()
+    {
+        var window = Create();
+        using var view = new InMemoryView(window);
+        try
+        {
+            var vm = (HomePageVM)window.DataContext;
+            var dimmer = window.FindName("HeaderProcessingOverlay") as Border;
+            Assert.That(dimmer, Is.Not.Null);
+            Assert.That(dimmer, Is.TypeOf<Border>());
+            Assert.That(dimmer!.Style, Is.SameAs(window.FindResource("MainWindowProcessingOverlayStyle")));
+            Assert.That(dimmer!.Visibility, Is.EqualTo(Visibility.Collapsed));
+            Assert.That(dimmer.IsHitTestVisible, Is.False);
+            Assert.That(dimmer.Focusable, Is.False);
+            vm.IsProcessing = true;
+            view.UpdateLayout();
+            Assert.That(dimmer.Visibility, Is.EqualTo(Visibility.Visible));
+            window.ShowPopupOverlay();
+            window.HidePopupOverlay();
+            Assert.That(dimmer.Visibility, Is.EqualTo(Visibility.Visible));
+            var drawer = new StubShellDrawer();
+            var showing = window.PresentDrawerAsync(drawer, default, (_, _) => Task.CompletedTask);
+            window.DismissSampleManager(drawer);
+            UiTestPump.Run(showing);
+            Assert.That(dimmer.Visibility, Is.EqualTo(Visibility.Visible));
+            vm.IsProcessing = false;
+            view.UpdateLayout();
+            Assert.That(dimmer.Visibility, Is.EqualTo(Visibility.Collapsed));
+        }
+        finally { window.Close(); }
+    }
+
+    [Test]
+    public void HeaderDimmingBindingTracksNavigation()
+    {
+        var window = Create();
+        window.Receive(new ProjectOpenRequestedMessage("project.json"));
+        var page = (WorkstationPage)((ContentControl)window.FindName("PageHost")).Content;
+        using var view = new InMemoryView(window);
+        try
+        {
+            UiTestPump.Run(page.LoadCompletion);
+            var dimmer = window.FindName("HeaderWorkstationOverlay") as Border;
+            Assert.That(dimmer, Is.Not.Null);
+            Assert.That(dimmer, Is.TypeOf<Border>());
+            Assert.That(dimmer!.Style, Is.SameAs(window.FindResource("OHsMainWindowHeaderStatusOverlayStyle")));
+            Assert.That(dimmer!.IsHitTestVisible, Is.False);
+            Assert.That(dimmer.Focusable, Is.False);
+            var vm = (osuHitsounder.ViewModels.Shell.WorkstationPageVM)page.DataContext;
+            vm.IsSavingForReturn = true;
+            UiTestPump.Run(window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle).Task);
+            Assert.That(dimmer.Visibility, Is.EqualTo(Visibility.Visible));
+            var binding = System.Windows.Data.BindingOperations.GetBinding(dimmer, UIElement.VisibilityProperty)!;
+            Assert.That(binding.Source, Is.SameAs(page));
+            Assert.That(binding.Mode, Is.EqualTo(System.Windows.Data.BindingMode.OneWay));
+            vm.IsSavingForReturn = false;
+            UiTestPump.Run(window.ReturnHomeAsync());
+            Assert.That(dimmer.Visibility, Is.EqualTo(Visibility.Collapsed));
+            Assert.That(System.Windows.Data.BindingOperations.IsDataBound(dimmer, UIElement.VisibilityProperty), Is.False);
+        }
+        finally { window.Close(); }
+    }
+
+    [Test]
+    public void HeaderDimmingBindingClearsAfterFailedOpen()
+    {
+        var window = Create(() => throw new InvalidOperationException("Cannot create page"));
+        try
+        {
+            Assert.Throws<AssertionException>(() => window.Receive(new ProjectOpenRequestedMessage("project.json")));
+            Assert.That(((ContentControl)window.FindName("PageHost")).Content, Is.TypeOf<HomePage>());
+            var dimmer = (Border)window.FindName("HeaderWorkstationOverlay");
+            Assert.That(dimmer.Visibility, Is.EqualTo(Visibility.Collapsed));
+            Assert.That(System.Windows.Data.BindingOperations.IsDataBound(dimmer, UIElement.VisibilityProperty), Is.False);
+        }
+        finally { window.Close(); }
+    }
+
+    [Test]
+    public void HeaderDimmingBindingClearsOnClose()
+    {
+        var window = Create();
+        window.Receive(new ProjectOpenRequestedMessage("project.json"));
+        var dimmer = (Border)window.FindName("HeaderWorkstationOverlay");
+        Assert.That(System.Windows.Data.BindingOperations.IsDataBound(dimmer, UIElement.VisibilityProperty), Is.True);
+        window.Close();
+        Assert.That(System.Windows.Data.BindingOperations.IsDataBound(dimmer, UIElement.VisibilityProperty), Is.False);
+        Assert.That(dimmer.Visibility, Is.EqualTo(Visibility.Collapsed));
     }
 
     [Test]
