@@ -4,7 +4,7 @@
     <Style x:Key="BaseMenuItemStyle" TargetType="MenuItem">
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="FontFamily" Value="{DynamicResource Regular}" />
-        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontSize" Value="{StaticResource FontSize.Body}" />
         <Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
         <Setter Property="IsTabStop" Value="True" />
         <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
@@ -13,6 +13,7 @@
             <Trigger Property="IsEnabled" Value="False">
                 <Setter Property="Cursor" Value="Arrow" />
                 <Setter Property="Opacity" Value="0.4" />
+                <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Disabled}" />
             </Trigger>
         </Style.Triggers>
     </Style>
@@ -38,15 +39,14 @@
         <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
-        <Setter Property="MinHeight" Value="40" />
+        <Setter Property="MinHeight" Value="{StaticResource Size.Control.Primary}" />
         <Setter Property="Padding" Value="12,8" />
         <Style.Triggers>
             <Trigger Property="IsHighlighted" Value="True">
                 <Setter Property="Background" Value="{DynamicResource Brush.Background.Hover}" />
             </Trigger>
             <Trigger Property="IsPressed" Value="True">
-                <Setter Property="Background" Value="{DynamicResource Brush.Navy.Tint}" />
-                <Setter Property="Opacity" Value="0.75" />
+                <Setter Property="Background" Value="{DynamicResource Brush.Background.Pressed}" />
             </Trigger>
             <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
                 <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />

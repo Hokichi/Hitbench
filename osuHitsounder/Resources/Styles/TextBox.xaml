@@ -20,7 +20,7 @@
         <Setter Property="FocusVisualStyle" Value="{StaticResource DefaultFocusVisualStyle}" />
         <Setter Property="OverridesDefaultStyle" Value="True" />
         <Setter Property="Validation.ErrorTemplate" Value="{x:Null}" />
-        <Setter Property="Height" Value="40" />
+        <Setter Property="Height" Value="{StaticResource Size.Control.Primary}" />
         <Setter Property="Padding" Value="4,0" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
@@ -31,7 +31,7 @@
             Background="{TemplateBinding Background}"
             BorderBrush="{TemplateBinding BorderBrush}"
             BorderThickness="{TemplateBinding BorderThickness}"
-            CornerRadius="8">
+            CornerRadius="{StaticResource Radius.Control}">
             <customControls:FadingScrollViewer
                 x:Name="PART_ContentHost"
                 Margin="{TemplateBinding Padding}"
@@ -43,7 +43,7 @@
                     <Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}" Value="True" />
                     <Condition Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="False" />
                 </MultiDataTrigger.Conditions>
-                <Setter TargetName="InputRoot" Property="Background" Value="{DynamicResource Brush.Background.Hover}" />
+                <Setter TargetName="InputRoot" Property="BorderBrush" Value="{DynamicResource Brush.Navy.Text}" />
             </MultiDataTrigger>
             <MultiDataTrigger>
                 <MultiDataTrigger.Conditions>
@@ -54,7 +54,10 @@
             </MultiDataTrigger>
             <Trigger Property="IsEnabled" Value="False">
                 <Setter TargetName="InputRoot" Property="Opacity" Value="0.4" />
+                <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Disabled}" />
             </Trigger>
+
+            <Trigger Property="Validation.HasError" Value="True"><Setter TargetName="InputRoot" Property="BorderBrush" Value="{DynamicResource Brush.Border.Danger}" /></Trigger>
         </ControlTemplate.Triggers>
     </ControlTemplate>
     <Style
@@ -64,15 +67,15 @@
         BasedOn="{StaticResource BaseTextBoxStyle}"
         TargetType="TextBox">
         <Setter Property="Validation.ErrorTemplate" Value="{x:Null}" />
-        <Setter Property="Height" Value="40" />
+        <Setter Property="Height" Value="{StaticResource Size.Control.Primary}" />
         <Setter Property="Padding" Value="4,0" />
         <Setter Property="Background" Value="{DynamicResource Brush.Background.Elevated}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Subtle}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Control}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CaretBrush" Value="{DynamicResource Brush.Text.Primary}" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
         <Setter Property="FontFamily" Value="{DynamicResource Regular}" />
-        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontSize" Value="{StaticResource FontSize.Body}" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
         <Setter Property="Template" Value="{StaticResource RoundedTextInputTemplate}" />
     </Style>
@@ -100,8 +103,10 @@
         <Setter Property="Template" Value="{StaticResource NumericUpDownArrowButtonTemplate}" />
         <Setter Property="Cursor" Value="Hand" />
         <Style.Triggers>
-            <Trigger Property="IsPressed" Value="True"><Setter Property="Opacity" Value="0.75" /></Trigger>
-            <Trigger Property="IsEnabled" Value="False"><Setter Property="Cursor" Value="Arrow" /></Trigger>
+            <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{DynamicResource Brush.Background.Hover}" /></Trigger>
+            <Trigger Property="IsPressed" Value="True"><Setter Property="Background" Value="{DynamicResource Brush.Background.Pressed}" /></Trigger>
+            <Trigger Property="IsEnabled" Value="False"><Setter Property="Cursor" Value="Arrow" />    <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Disabled}" />
+            </Trigger>
         </Style.Triggers>
     </Style>
     <Style
@@ -111,9 +116,9 @@
         TargetType="{x:Type customControls:NumericUpDown}">
         <Setter Property="FocusVisualStyle" Value="{StaticResource DefaultFocusVisualStyle}" />
         <Setter Property="OverridesDefaultStyle" Value="True" />
-        <Setter Property="Height" Value="40" />
+        <Setter Property="Height" Value="{StaticResource Size.Control.Primary}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontSize" Value="{StaticResource FontSize.Body}" />
     </Style>
     <Style
         x:Key="NumericUpDownEditorStyle"
@@ -139,7 +144,7 @@
             Background="{TemplateBinding Background}"
             BorderBrush="{TemplateBinding BorderBrush}"
             BorderThickness="{TemplateBinding BorderThickness}"
-            CornerRadius="8">
+            CornerRadius="{StaticResource Radius.Control}">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
@@ -198,23 +203,25 @@
             </Grid>
         </Border>
         <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="InputRoot" Property="BorderBrush" Value="{DynamicResource Brush.Navy.Text}" />
+            </Trigger>
+            <Trigger SourceName="PART_UpButton" Property="IsMouseOver" Value="True">
+                <Setter TargetName="UpIcon" Property="Color" Value="{DynamicResource Brush.Navy.Text}" />
+            </Trigger>
+            <Trigger SourceName="PART_DownButton" Property="IsMouseOver" Value="True">
+                <Setter TargetName="DownIcon" Property="Color" Value="{DynamicResource Brush.Navy.Text}" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter TargetName="InputRoot" Property="Opacity" Value="0.4" />
+                <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Disabled}" />
+            </Trigger>
+
             <Trigger Property="Validation.HasError" Value="True">
                 <Setter TargetName="InputRoot" Property="BorderBrush" Value="{DynamicResource Brush.Danger}" />
             </Trigger>
             <Trigger Property="HasInputError" Value="True">
                 <Setter TargetName="InputRoot" Property="BorderBrush" Value="{DynamicResource Brush.Danger}" />
-            </Trigger>
-            <Trigger Property="IsMouseOver" Value="True">
-                <Setter TargetName="InputRoot" Property="Background" Value="{DynamicResource Brush.Background.Hover}" />
-            </Trigger>
-            <Trigger SourceName="PART_UpButton" Property="IsMouseOver" Value="True">
-                <Setter TargetName="UpIcon" Property="Color" Value="{DynamicResource Brush.Navy}" />
-            </Trigger>
-            <Trigger SourceName="PART_DownButton" Property="IsMouseOver" Value="True">
-                <Setter TargetName="DownIcon" Property="Color" Value="{DynamicResource Brush.Navy}" />
-            </Trigger>
-            <Trigger Property="IsEnabled" Value="False">
-                <Setter TargetName="InputRoot" Property="Opacity" Value="0.4" />
             </Trigger>
             <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
                 <Setter TargetName="UpIcon" Property="Color" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
@@ -251,7 +258,7 @@
         BasedOn="{StaticResource BaseNumericUpDownStyle}"
         TargetType="{x:Type customControls:NumericUpDown}">
         <Setter Property="Background" Value="{DynamicResource Brush.Background.Elevated}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Subtle}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Control}" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
         <Setter Property="FontFamily" Value="{DynamicResource Regular}" />
         <Setter Property="Template" Value="{StaticResource NumericUpDownTemplate}" />

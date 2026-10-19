@@ -26,7 +26,7 @@
                 BorderBrush="{TemplateBinding BorderBrush}"
                 BorderThickness="{TemplateBinding BorderThickness}"
                 Padding="{TemplateBinding Padding}"
-                CornerRadius="10">
+                CornerRadius="{StaticResource Radius.Control}">
                 <ContentPresenter Style="{StaticResource BaseContentPresenterStyle}"
                     Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
                     ContentTemplateSelector="{TemplateBinding ContentTemplateSelector}"
@@ -52,8 +52,8 @@
         <Setter Property="BorderBrush" Value="Transparent" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Muted}" />
         <Setter Property="FontFamily" Value="{DynamicResource Bold}" />
-        <Setter Property="FontSize" Value="11" />
-        <Setter Property="MinHeight" Value="40" />
+        <Setter Property="FontSize" Value="{StaticResource FontSize.Caption}" />
+        <Setter Property="MinHeight" Value="{StaticResource Size.Control.Primary}" />
         <Setter Property="HorizontalContentAlignment" Value="Center" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
         <Setter Property="ContentTemplate" Value="{StaticResource SegmentedToggleOptionContentTemplate}" />
@@ -68,7 +68,7 @@
                 <Setter Property="Background" Value="{DynamicResource Brush.Navy.Tint}" />
                 <Setter Property="BorderBrush" Value="{DynamicResource Brush.Navy}" />
                 <Setter Property="BorderThickness" Value="1" />
-                <Setter Property="Foreground" Value="{DynamicResource Brush.Navy}" />
+                <Setter Property="Foreground" Value="{DynamicResource Brush.Navy.Text}" />
             </Trigger>
             <MultiDataTrigger>
                 <MultiDataTrigger.Conditions>
@@ -76,14 +76,16 @@
                     <Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource Self}, Mode=OneWay}" Value="True" />
                 </MultiDataTrigger.Conditions>
                 <Setter Property="Background" Value="{DynamicResource Brush.Navy.Tint}" />
-                <Setter Property="Foreground" Value="{DynamicResource Brush.Navy}" />
+                <Setter Property="Foreground" Value="{DynamicResource Brush.Navy.Text}" />
             </MultiDataTrigger>
             <Trigger Property="IsPressed" Value="True">
-                <Setter Property="Opacity" Value="0.75" />
+                <Setter Property="Background" Value="{DynamicResource Brush.Background.Pressed}" />
+                <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
             </Trigger>
             <Trigger Property="IsEnabled" Value="False">
                 <Setter Property="Opacity" Value="0.4" />
                 <Setter Property="Cursor" Value="Arrow" />
+                <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Disabled}" />
             </Trigger>
             <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
                 <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />

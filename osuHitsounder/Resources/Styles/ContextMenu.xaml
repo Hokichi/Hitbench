@@ -2,14 +2,14 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Style x:Key="BaseContextMenuStyle" TargetType="ContextMenu">
         <Setter Property="FontFamily" Value="{DynamicResource Regular}" />
-        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontSize" Value="{StaticResource FontSize.Body}" />
         <Setter Property="KeyboardNavigation.DirectionalNavigation" Value="Cycle" />
         <Setter Property="KeyboardNavigation.TabNavigation" Value="Cycle" />
     </Style>
     <ControlTemplate x:Key="OHsActionContextMenuTemplate" TargetType="ContextMenu">
         <Border Style="{StaticResource BaseBorderStyle}" Background="{TemplateBinding Background}"
                 BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
-                Padding="{TemplateBinding Padding}" CornerRadius="16">
+                Padding="{TemplateBinding Padding}" CornerRadius="{StaticResource Radius.Card}">
             <!-- Public scrolling part for this template's in-memory scrolling/virtualization contract. -->
             <ScrollViewer x:Name="PART_ScrollViewer" CanContentScroll="True"
                           HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">

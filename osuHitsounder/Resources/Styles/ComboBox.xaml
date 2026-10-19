@@ -14,6 +14,7 @@
             <Trigger Property="IsEnabled" Value="False">
                 <Setter Property="Cursor" Value="Arrow" />
                 <Setter Property="Opacity" Value="0.4" />
+                <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Disabled}" />
             </Trigger>
         </Style.Triggers>
     </Style>
@@ -29,6 +30,7 @@
             <Trigger Property="IsEnabled" Value="False">
                 <Setter Property="Cursor" Value="Arrow" />
                 <Setter Property="Opacity" Value="0.4" />
+                <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Disabled}" />
             </Trigger>
         </Style.Triggers>
     </Style>
@@ -42,7 +44,7 @@
             Margin="2"
             Padding="{TemplateBinding Padding}"
             Background="Transparent"
-            CornerRadius="12">
+            CornerRadius="{StaticResource Radius.Control}">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
@@ -75,7 +77,7 @@
                 <Setter TargetName="ItemBackground" Property="Background" Value="{DynamicResource Brush.Background.Hover}" />
             </Trigger>
             <Trigger Property="IsSelected" Value="True">
-                <Setter TargetName="ItemBackground" Property="Background" Value="{DynamicResource Brush.Background.Hover}" />
+                <Setter TargetName="ItemBackground" Property="Background" Value="{DynamicResource Brush.Navy.Tint}" />
                 <Setter TargetName="SelectedCheckmark" Property="Opacity" Value="1" />
             </Trigger>
             <MultiDataTrigger>
@@ -113,7 +115,7 @@
         <Setter Property="Height" Value="36" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
         <Setter Property="FontFamily" Value="{DynamicResource Regular}" />
-        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontSize" Value="{StaticResource FontSize.Body}" />
         <Setter Property="Padding" Value="12,8" />
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
@@ -129,28 +131,28 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Key="OHsComboBoxToggleButtonTemplate"
         TargetType="ToggleButton">
-        <Border
+        <Border x:Name="ToggleSurface"
             Padding="10,0,12,0"
             Background="{TemplateBinding Background}"
             BorderBrush="{TemplateBinding BorderBrush}"
             BorderThickness="{TemplateBinding BorderThickness}"
-            CornerRadius="8">
+            CornerRadius="{StaticResource Radius.Control}">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <ContentPresenter
-                    HorizontalAlignment="{Binding HorizontalContentAlignment, RelativeSource={RelativeSource AncestorType=ComboBox}}"
+                    HorizontalAlignment="{Binding HorizontalContentAlignment, RelativeSource={RelativeSource AncestorType=ComboBox}, Mode=OneWay}"
                     VerticalAlignment="Center"
                     Content="{Binding SelectionBoxItem, RelativeSource={RelativeSource AncestorType=ComboBox}, Mode=OneWay}"
                     ContentTemplate="{Binding SelectionBoxItemTemplate, RelativeSource={RelativeSource AncestorType=ComboBox}, Mode=OneWay}"
                     ContentTemplateSelector="{Binding ItemTemplateSelector, RelativeSource={RelativeSource AncestorType=ComboBox}, Mode=OneWay}"
                     RecognizesAccessKey="True"
                     SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"
-                    TextElement.FontFamily="{Binding FontFamily, RelativeSource={RelativeSource AncestorType=ComboBox}}"
-                    TextElement.FontSize="{Binding FontSize, RelativeSource={RelativeSource AncestorType=ComboBox}}"
-                    TextElement.Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ComboBox}}" />
+                    TextElement.FontFamily="{Binding FontFamily, RelativeSource={RelativeSource AncestorType=ComboBox}, Mode=OneWay}"
+                    TextElement.FontSize="{Binding FontSize, RelativeSource={RelativeSource AncestorType=ComboBox}, Mode=OneWay}"
+                    TextElement.Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ComboBox}, Mode=OneWay}" />
                 <Path
                     x:Name="DropDownChevron"
                     Grid.Column="1"
@@ -158,12 +160,19 @@
                     Height="8"
                     VerticalAlignment="Center"
                     Data="{StaticResource AngleDown}"
-                    Fill="{DynamicResource Brush.Text.Muted}"
+                    Fill="{DynamicResource Brush.Text.Secondary}"
                     RenderTransformOrigin="0.5,0.5"
                     Stretch="Uniform" />
             </Grid>
         </Border>
         <ControlTemplate.Triggers>
+            <MultiDataTrigger>
+                <MultiDataTrigger.Conditions>
+                    <Condition Binding="{Binding IsPressed, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}" Value="True" />
+                    <Condition Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="False" />
+                </MultiDataTrigger.Conditions>
+                <Setter TargetName="ToggleSurface" Property="Background" Value="{DynamicResource Brush.Background.Pressed}" />
+            </MultiDataTrigger>
             <Trigger Property="IsChecked" Value="True">
                 <Setter TargetName="DropDownChevron" Property="RenderTransform">
                     <Setter.Value>
@@ -181,17 +190,25 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Key="OHsComboBoxTemplate"
         TargetType="ComboBox">
+        <ControlTemplate.Resources>
+            <Style x:Key="OHsComboBoxTriggerStyle" TargetType="ToggleButton" BasedOn="{StaticResource BaseToggleButtonStyle}">
+                <Style.Triggers>
+                    <!-- The owning ComboBox supplies disabled opacity for its complete content. -->
+                    <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="1" /></Trigger>
+                </Style.Triggers>
+            </Style>
+        </ControlTemplate.Resources>
         <Grid SnapsToDevicePixels="True">
             <ToggleButton
-                x:Name="ToggleButton"
-                Height="{Binding Height, RelativeSource={RelativeSource AncestorType=ComboBox}}"
+                x:Name="ToggleButton" Style="{StaticResource OHsComboBoxTriggerStyle}"
+                Height="{Binding Height, RelativeSource={RelativeSource AncestorType=ComboBox}, Mode=OneWay}"
                 HorizontalAlignment="Stretch"
-                Background="{Binding Background, RelativeSource={RelativeSource TemplatedParent}}"
-                BorderBrush="{Binding BorderBrush, RelativeSource={RelativeSource TemplatedParent}}"
-                BorderThickness="{Binding BorderThickness, RelativeSource={RelativeSource TemplatedParent}}"
+                Background="{Binding Background, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}"
+                BorderBrush="{Binding BorderBrush, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}"
+                BorderThickness="{Binding BorderThickness, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}"
                 ClickMode="Press"
                 Focusable="False"
-                Foreground="{Binding Foreground, RelativeSource={RelativeSource TemplatedParent}}"
+                Foreground="{Binding Foreground, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}"
                 IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
                 <ToggleButton.Template>
                     <StaticResource ResourceKey="OHsComboBoxToggleButtonTemplate" />
@@ -204,16 +221,16 @@
                 HorizontalOffset="0"
                 IsOpen="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
                 Placement="Bottom"
-                PlacementTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"
+                PlacementTarget="{Binding RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}"
                 PopupAnimation="None"
                 VerticalOffset="8">
                 <Border
                     x:Name="DropDownBorder"
                     MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}"
-                    Background="{DynamicResource Brush.Background.Elevated}"
-                    BorderBrush="{DynamicResource Brush.Border.Subtle}"
+                    Background="{DynamicResource Brush.Background.Popup}"
+                    BorderBrush="{DynamicResource Brush.Border.Control}"
                     BorderThickness="1"
-                    CornerRadius="8">
+                    CornerRadius="{StaticResource Radius.Control}">
                     <customControls:FadingScrollViewer
                         MaxHeight="{TemplateBinding MaxDropDownHeight}"
                         Margin="4"
@@ -227,7 +244,10 @@
         </Grid>
         <ControlTemplate.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
-                <Setter Property="BorderBrush" Value="{DynamicResource Brush.Navy.Muted}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource Brush.Navy.Text}" />
+            </Trigger>
+            <Trigger Property="Validation.HasError" Value="True">
+                <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Danger}" />
             </Trigger>
             <Trigger Property="HasItems" Value="False">
                 <Setter TargetName="DropDownBorder" Property="MinHeight" Value="0" />
@@ -253,13 +273,13 @@
         BasedOn="{StaticResource BaseComboBoxStyle}"
         TargetType="ComboBox">
         <Setter Property="Validation.ErrorTemplate" Value="{x:Null}" />
-        <Setter Property="Height" Value="40" />
+        <Setter Property="Height" Value="{StaticResource Size.Control.Primary}" />
         <Setter Property="Background" Value="{DynamicResource Brush.Background.Elevated}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Subtle}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Control}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
         <Setter Property="FontFamily" Value="{DynamicResource Regular}" />
-        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontSize" Value="{StaticResource FontSize.Body}" />
         <Setter Property="Padding" Value="0" />
         <Setter Property="HorizontalContentAlignment" Value="Left" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
@@ -272,6 +292,7 @@
             <Trigger Property="IsEnabled" Value="False">
                 <Setter Property="Cursor" Value="Arrow" />
                 <Setter Property="Opacity" Value="0.4" />
+                <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Disabled}" />
             </Trigger>
             <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
                 <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />

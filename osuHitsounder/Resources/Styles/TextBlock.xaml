@@ -5,7 +5,7 @@
         x:Key="BaseTextBlockStyle"
         TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{DynamicResource Regular}" />
-        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontSize" Value="{StaticResource FontSize.Body}" />
     </Style>
 
     <Style
@@ -27,7 +27,7 @@
         BasedOn="{StaticResource BaseTextBlockStyle}"
         TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{DynamicResource Bold}" />
-        <Setter Property="FontSize" Value="11" />
+        <Setter Property="FontSize" Value="{StaticResource FontSize.Caption}" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Muted}" />
     </Style>
     <Style
@@ -46,7 +46,7 @@
         BasedOn="{StaticResource BaseTextBlockStyle}"
         TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{DynamicResource Bold}" />
-        <Setter Property="FontSize" Value="18" />
+        <Setter Property="FontSize" Value="{StaticResource FontSize.Heading}" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
         <Setter Property="TextTrimming" Value="CharacterEllipsis" />
         <Style.Triggers>

@@ -8,7 +8,7 @@
         x:Key="BaseToolTipStyle"
         TargetType="ToolTip">
         <Setter Property="FontFamily" Value="{DynamicResource Regular}" />
-        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontSize" Value="{StaticResource FontSize.Body}" />
     </Style>
 
     <ControlTemplate
@@ -21,7 +21,7 @@
             Background="{TemplateBinding Background}"
             BorderBrush="{TemplateBinding BorderBrush}"
             BorderThickness="{TemplateBinding BorderThickness}"
-            CornerRadius="4">
+            CornerRadius="{StaticResource Radius.Control}">
             <ContentPresenter />
         </Border>
     </ControlTemplate>
@@ -29,12 +29,14 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         BasedOn="{StaticResource BaseToolTipStyle}"
         TargetType="ToolTip">
-        <Setter Property="Background" Value="{DynamicResource Brush.BalloonButton.Background.Default}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Subtle}" />
+        <Setter Property="Background" Value="{DynamicResource Brush.Background.Popup}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Default}" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
         <Setter Property="FontFamily" Value="{DynamicResource Regular}" />
-        <Setter Property="FontSize" Value="11" />
+        <Setter Property="FontSize" Value="{StaticResource FontSize.Caption}" />
         <Setter Property="Template" Value="{StaticResource DefaultToolTipTemplate}" />
+        <Setter Property="Effect" Value="{DynamicResource Effect.Shadow.Tooltip}" />
+        <Setter Property="Padding" Value="8" />
     </Style>
 
 </ResourceDictionary>
