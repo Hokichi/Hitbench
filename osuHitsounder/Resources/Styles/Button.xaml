@@ -193,16 +193,15 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Key="BalloonStateItemTemplate">
         <c:BalloonButton
+            Style="{DynamicResource OHsBalloonStateItemStyle}"
             Margin="0,4,0,0"
             HorizontalAlignment="Right"
-            ButtonIcon="{Binding ButtonIcon}"
+            ButtonIcon="{Binding ButtonIcon, Mode=OneWay}"
             ButtonSize="40"
-            ButtonText="{Binding ButtonText}"
-            CommandParameter="{Binding}"
-            CornerRadius="{Binding Tag.CornerRadius, RelativeSource={RelativeSource AncestorType={x:Type ItemsControl}}}"
-            DefaultBackground="{Binding DefaultBackground}"
-            HoveredBackground="{Binding HoverBackground}"
-            IconSize="{Binding Tag.IconSize, RelativeSource={RelativeSource AncestorType={x:Type ItemsControl}}}"
+            ButtonText="{Binding ButtonText, Mode=OneWay}"
+            CommandParameter="{Binding Mode=OneWay}"
+            CornerRadius="{Binding Tag.CornerRadius, RelativeSource={RelativeSource AncestorType={x:Type ItemsControl}}, Mode=OneWay}"
+            IconSize="{Binding Tag.IconSize, RelativeSource={RelativeSource AncestorType={x:Type ItemsControl}}, Mode=OneWay}"
             ShouldExpand="True"
             ShouldShowText="False" />
     </DataTemplate>
@@ -212,19 +211,19 @@
         x:Key="BalloonControlTemplate"
         TargetType="{x:Type c:BalloonControl}">
         <Grid>
-            <!--  Balloon shape  -->
+            <!-- Shared action shape. -->
             <Path
                 x:Name="PART_Shape"
                 Fill="{TemplateBinding DefaultBackground}"
                 Stroke="{TemplateBinding StrokeBrush}"
                 StrokeThickness="{TemplateBinding StrokeThickness}" />
-            <!--  Pressed overlay shares geometry with PART_Shape via code-behind  -->
+            <!-- Compatibility shape part; the control owns pressed fill. -->
             <Path
                 x:Name="PART_Overlay"
                 Fill="{DynamicResource Brush.Overlay}"
                 IsHitTestVisible="False"
                 Opacity="0" />
-            <!--  Content area, inset by Padding to clear the bulging edges  -->
+            <!-- Content area follows the public padding contract. -->
             <Grid
                 x:Name="PART_ContentHost"
                 Margin="{TemplateBinding Padding}"
@@ -247,12 +246,7 @@
                             VerticalAlignment="Center"
                             IsHitTestVisible="False"
                             Stretch="Uniform">
-                            <Path.Fill>
-                                <Binding
-                                    Converter="{StaticResource BackgroundToForegroundConverter}"
-                                    ElementName="PART_Shape"
-                                    Path="Fill" />
-                            </Path.Fill>
+                            <Path.Fill><TemplateBinding Property="Foreground" /></Path.Fill>
                         </Path>
                     </Grid>
                     <Border
@@ -273,12 +267,7 @@
                                 Text="{TemplateBinding ButtonText}"
                                 TextTrimming="CharacterEllipsis"
                                 TextWrapping="NoWrap">
-                                <TextBlock.Foreground>
-                                    <Binding
-                                        Converter="{StaticResource BackgroundToForegroundConverter}"
-                                        ElementName="PART_Shape"
-                                        Path="Fill" />
-                                </TextBlock.Foreground>
+                                <TextBlock.Foreground><TemplateBinding Property="Foreground" /></TextBlock.Foreground>
                             </TextBlock>
                             <TextBlock
                                 x:Name="PART_SubText"
@@ -291,12 +280,7 @@
                                 TextTrimming="CharacterEllipsis"
                                 TextWrapping="NoWrap"
                                 Visibility="Collapsed">
-                                <TextBlock.Foreground>
-                                    <Binding
-                                        Converter="{StaticResource BackgroundToForegroundConverter}"
-                                        ElementName="PART_Shape"
-                                        Path="Fill" />
-                                </TextBlock.Foreground>
+                                <TextBlock.Foreground><TemplateBinding Property="Foreground" /></TextBlock.Foreground>
                             </TextBlock>
                         </StackPanel>
                     </Border>
@@ -308,11 +292,11 @@
                 AllowsTransparency="True"
                 HorizontalOffset="4"
                 Placement="Bottom"
-                PlacementTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"
+                PlacementTarget="{Binding RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}"
                 PopupAnimation="None"
                 StaysOpen="False">
-                <Border Padding="4" Background="#01000000">
-                    <ItemsControl x:Name="PART_StateItems" Tag="{Binding RelativeSource={RelativeSource TemplatedParent}}">
+                <Border Padding="4" Background="{DynamicResource Brush.Background.Popup}" CornerRadius="{StaticResource Radius.Popup}" Style="{StaticResource BaseBorderStyle}">
+                    <ItemsControl x:Name="PART_StateItems" Tag="{Binding RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}">
                         <ItemsControl.ItemsPanel>
                             <StaticResource ResourceKey="BalloonStateItemsPanelTemplate" />
                         </ItemsControl.ItemsPanel>
@@ -323,28 +307,29 @@
                 </Border>
             </Popup>
         </Grid>
-        <ControlTemplate.Triggers>
-            <Trigger Property="IsPressed" Value="True">
-                <Setter TargetName="PART_Overlay" Property="Opacity" Value="0.3" />
-            </Trigger>
-        </ControlTemplate.Triggers>
     </ControlTemplate>
     <Style
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         BasedOn="{StaticResource BaseBalloonControlStyle}"
         TargetType="{x:Type c:BalloonControl}">
-        <Setter Property="Background" Value="{Binding DefaultBackground, RelativeSource={RelativeSource Self}}" />
-        <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
-        <Setter Property="Height" Value="{Binding RelativeSource={RelativeSource Self}, Path=ButtonSize}" />
+        <Setter Property="DefaultBackground" Value="{DynamicResource Brush.BalloonButton.Background.Neutral}" />
+        <Setter Property="HoveredBackground" Value="{DynamicResource Brush.BalloonButton.Background.Neutral.Hovered}" />
+        <Setter Property="PressedBackground" Value="{DynamicResource Brush.BalloonButton.Background.Neutral.Pressed}" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.BalloonButton.Foreground.Neutral}" />
+        <Setter Property="FontFamily" Value="{DynamicResource Regular}" />
+        <Setter Property="FontSize" Value="{StaticResource FontSize.Body}" />
+        <Setter Property="Background" Value="{Binding DefaultBackground, RelativeSource={RelativeSource Self}, Mode=OneWay}" />
+        <Setter Property="Height" Value="{Binding RelativeSource={RelativeSource Self}, Path=ButtonSize, Mode=OneWay}" />
         <Setter Property="Template" Value="{StaticResource BalloonControlTemplate}" />
         <Style.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
-                <Setter Property="Background" Value="{Binding HoveredBackground, RelativeSource={RelativeSource Self}}" />
+                <Setter Property="Background" Value="{Binding HoveredBackground, RelativeSource={RelativeSource Self}, Mode=OneWay}" />
             </Trigger>
 
             <Trigger Property="IsEnabled" Value="False">
-                <Setter Property="Opacity" Value="0.4" />
+                <Setter Property="Opacity" Value="{StaticResource Opacity.Disabled}" />
                 <Setter Property="Cursor" Value="Arrow" />
+                <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Disabled}" />
             </Trigger>
         </Style.Triggers>
     </Style>
@@ -364,13 +349,13 @@
         x:Key="OHsBalloonActionStyle"
         BasedOn="{StaticResource BaseBalloonButtonStyle}"
         TargetType="{x:Type c:BalloonButton}">
-        <Setter Property="ButtonSize" Value="40" />
+        <Setter Property="ButtonSize" Value="{StaticResource Size.Control.Primary}" />
         <Setter Property="CornerRadius" Value="8" />
-        <Setter Property="CurveHeight" Value="8" />
+        <Setter Property="CurveHeight" Value="0" />
         <Setter Property="IconSize" Value="12" />
         <Setter Property="Padding" Value="12" />
         <Setter Property="FontFamily" Value="{DynamicResource Bold}" />
-        <Setter Property="FontSize" Value="12" />
+        <Setter Property="FontSize" Value="{StaticResource FontSize.Label}" />
         <Style.Triggers>
             <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
                 <Setter Property="DefaultBackground" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
@@ -384,8 +369,6 @@
         x:Key="OHsBalloonNeutralActionStyle"
         BasedOn="{StaticResource OHsBalloonActionStyle}"
         TargetType="{x:Type c:BalloonButton}">
-        <Setter Property="DefaultBackground" Value="{DynamicResource Brush.BalloonButton.Background.Neutral}" />
-        <Setter Property="HoveredBackground" Value="{DynamicResource Brush.BalloonButton.Background.Neutral.Hovered}" />
     </Style>
     <Style
         x:Key="OHsBalloonDefaultActionStyle"
@@ -393,6 +376,8 @@
         TargetType="{x:Type c:BalloonButton}">
         <Setter Property="DefaultBackground" Value="{DynamicResource Brush.BalloonButton.Background.Default}" />
         <Setter Property="HoveredBackground" Value="{DynamicResource Brush.BalloonButton.Background.Default.Hovered}" />
+        <Setter Property="PressedBackground" Value="{DynamicResource Brush.BalloonButton.Background.Default.Pressed}" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.BalloonButton.Foreground.Default}" />
     </Style>
     <Style
         x:Key="OHsBalloonConfirmActionStyle"
@@ -400,6 +385,8 @@
         TargetType="{x:Type c:BalloonButton}">
         <Setter Property="DefaultBackground" Value="{DynamicResource Brush.BalloonButton.Background.ConfirmSave}" />
         <Setter Property="HoveredBackground" Value="{DynamicResource Brush.BalloonButton.Background.ConfirmSave.Hovered}" />
+        <Setter Property="PressedBackground" Value="{DynamicResource Brush.BalloonButton.Background.ConfirmSave.Pressed}" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.BalloonButton.Foreground.ConfirmSave}" />
     </Style>
     <Style
         x:Key="OHsBalloonDestructiveActionStyle"
@@ -407,6 +394,53 @@
         TargetType="{x:Type c:BalloonButton}">
         <Setter Property="DefaultBackground" Value="{DynamicResource Brush.BalloonButton.Background.Destructive}" />
         <Setter Property="HoveredBackground" Value="{DynamicResource Brush.BalloonButton.Background.Destructive.Hovered}" />
+        <Setter Property="PressedBackground" Value="{DynamicResource Brush.BalloonButton.Background.Destructive.Pressed}" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.BalloonButton.Foreground.Destructive}" />
+    </Style>
+    <Style x:Key="OHsBalloonNavInfoActionStyle" TargetType="c:BalloonButton" BasedOn="{StaticResource OHsBalloonActionStyle}">
+        <Setter Property="DefaultBackground" Value="{DynamicResource Brush.BalloonButton.Background.NavInfo}" />
+        <Setter Property="HoveredBackground" Value="{DynamicResource Brush.BalloonButton.Background.NavInfo.Hovered}" />
+        <Setter Property="PressedBackground" Value="{DynamicResource Brush.BalloonButton.Background.NavInfo.Pressed}" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.BalloonButton.Foreground.NavInfo}" />
+        <Setter Property="StrokeBrush" Value="{DynamicResource Brush.BalloonButton.Border.NavInfo}" />
+        <Setter Property="StrokeThickness" Value="1" />
+    </Style>
+    <Style x:Key="OHsBalloonSurfaceActionStyle" TargetType="c:BalloonButton" BasedOn="{StaticResource OHsBalloonActionStyle}">
+        <Setter Property="DefaultBackground" Value="{DynamicResource Brush.BalloonButton.Background.Surface}" />
+        <Setter Property="HoveredBackground" Value="{DynamicResource Brush.BalloonButton.Background.Surface.Hovered}" />
+        <Setter Property="PressedBackground" Value="{DynamicResource Brush.BalloonButton.Background.Surface.Pressed}" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.BalloonButton.Foreground.Surface}" />
+    </Style>
+    <Style x:Key="OHsBalloonDestructiveSolidActionStyle" TargetType="c:BalloonButton" BasedOn="{StaticResource OHsBalloonActionStyle}">
+        <Setter Property="DefaultBackground" Value="{DynamicResource Brush.BalloonButton.Background.DestructiveSolid}" />
+        <Setter Property="HoveredBackground" Value="{DynamicResource Brush.BalloonButton.Background.DestructiveSolid.Hovered}" />
+        <Setter Property="PressedBackground" Value="{DynamicResource Brush.BalloonButton.Background.DestructiveSolid.Pressed}" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.BalloonButton.Foreground.DestructiveSolid}" />
+    </Style>
+    <Style x:Key="OHsBalloonStateItemStyle" TargetType="c:BalloonButton" BasedOn="{StaticResource OHsBalloonNavInfoActionStyle}">
+        <Setter Property="DefaultBackground" Value="{Binding DefaultBackground, Mode=OneWay}" />
+        <Setter Property="HoveredBackground" Value="{Binding HoverBackground, Mode=OneWay}" />
+        <Setter Property="PressedBackground" Value="{Binding PressedBackground, Mode=OneWay}" />
+        <Setter Property="Foreground" Value="{Binding Foreground, Mode=OneWay}" />
+        <Setter Property="ToolTip" Value="{Binding ButtonText, Mode=OneWay}" />
+        <Setter Property="AutomationProperties.Name" Value="{Binding ButtonText, Mode=OneWay}" />
+        <Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
+        <Setter Property="IsTabStop" Value="True" />
+        <Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="True" />
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding DefaultBackground, Mode=OneWay, FallbackValue={x:Null}}" Value="{x:Null}">
+                <Setter Property="DefaultBackground" Value="{DynamicResource Brush.BalloonButton.Background.NavInfo}" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding HoverBackground, Mode=OneWay, FallbackValue={x:Null}}" Value="{x:Null}">
+                <Setter Property="HoveredBackground" Value="{DynamicResource Brush.BalloonButton.Background.NavInfo.Hovered}" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding PressedBackground, Mode=OneWay, FallbackValue={x:Null}}" Value="{x:Null}">
+                <Setter Property="PressedBackground" Value="{DynamicResource Brush.BalloonButton.Background.NavInfo.Pressed}" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding Foreground, Mode=OneWay, FallbackValue={x:Null}}" Value="{x:Null}">
+                <Setter Property="Foreground" Value="{DynamicResource Brush.BalloonButton.Foreground.NavInfo}" />
+            </DataTrigger>
+        </Style.Triggers>
     </Style>
     <Style
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -433,17 +467,19 @@
         BasedOn="{StaticResource BaseBalloonCheckBoxStyle}"
         TargetType="{x:Type c:BalloonCheckBox}">
         <Setter Property="CheckedBackground" Value="{DynamicResource Brush.Navy}" />
+        <Setter Property="StrokeBrush" Value="{DynamicResource Brush.Border.Control}" />
         <Style.Triggers>
             <Trigger Property="IsChecked" Value="True">
-                <Setter Property="Background" Value="{Binding CheckedBackground, RelativeSource={RelativeSource Self}}" />
+                <Setter Property="Background" Value="{Binding CheckedBackground, RelativeSource={RelativeSource Self}, Mode=OneWay}" />
                 <Setter Property="StrokeThickness" Value="2" />
+                <Setter Property="StrokeBrush" Value="{DynamicResource Brush.Text.OnAccent}" />
             </Trigger>
             <MultiDataTrigger>
                 <MultiDataTrigger.Conditions>
-                    <Condition Binding="{Binding IsChecked, RelativeSource={RelativeSource Self}}" Value="True" />
-                    <Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource Self}}" Value="True" />
+                    <Condition Binding="{Binding IsChecked, RelativeSource={RelativeSource Self}, Mode=OneWay}" Value="True" />
+                    <Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource Self}, Mode=OneWay}" Value="True" />
                 </MultiDataTrigger.Conditions>
-                <Setter Property="Background" Value="{Binding HoveredBackground, RelativeSource={RelativeSource Self}}" />
+                <Setter Property="Background" Value="{Binding HoveredBackground, RelativeSource={RelativeSource Self}, Mode=OneWay}" />
             </MultiDataTrigger>
         </Style.Triggers>
     </Style>
@@ -587,7 +623,7 @@
             BasedOn="{StaticResource BaseRadioButtonStyle}"
             TargetType="RadioButton">
             <Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" /><Setter Property="Width" Value="40" />
-            <Setter Property="Height" Value="40" />
+            <Setter Property="Height" Value="{StaticResource Size.Control.Primary}" />
             <Setter Property="Background" Value="{DynamicResource Brush.Background.Elevated}" />
             <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
             <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
@@ -598,7 +634,7 @@
                     <Setter Property="Background" Value="{DynamicResource Brush.Background.Hover}" />
                 </Trigger>
                 <Trigger Property="IsChecked" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource Brush.Navy.Tint}" />
+                    <Setter Property="Background" Value="{DynamicResource Brush.Background.Pressed}" />
                 </Trigger>
                 <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
                     <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
@@ -629,9 +665,9 @@
             <Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
             <Setter Property="IsTabStop" Value="True" />
             <Setter Property="Width" Value="40" />
-            <Setter Property="Height" Value="40" />
+            <Setter Property="Height" Value="{StaticResource Size.Control.Primary}" />
             <Setter Property="FontFamily" Value="{DynamicResource Regular}" />
-            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontSize" Value="{StaticResource FontSize.Body}" />
             <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
             <Setter Property="Background" Value="{DynamicResource Brush.Background.Elevated}" />
             <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
@@ -641,7 +677,7 @@
                     <Setter Property="Background" Value="{DynamicResource Brush.Background.Hover}" />
                 </Trigger>
                 <Trigger Property="IsChecked" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource Brush.Navy.Tint}" />
+                    <Setter Property="Background" Value="{DynamicResource Brush.Background.Pressed}" />
                     <Setter Property="FontFamily" Value="{DynamicResource Bold}" />
                 </Trigger>
                 <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">

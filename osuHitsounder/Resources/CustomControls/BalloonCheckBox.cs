@@ -104,7 +104,17 @@ public class BalloonCheckBox : BalloonControl
     protected virtual void OnUnchecked(RoutedEventArgs e) => RaiseEvent(e);
 
     protected override Brush ResolveRestingBackground() =>
-        IsChecked ? CheckedBackground : DefaultBackground;
+        IsChecked ? SystemParameters.HighContrast ? SystemColors.HighlightBrush : CheckedBackground : base.ResolveRestingBackground();
+
+    protected override Brush ResolveHoveredBackground() => IsChecked
+        ? SystemParameters.HighContrast ? SystemColors.HighlightBrush : TryFindResource("Brush.Navy.Hover") as Brush ?? base.ResolveHoveredBackground() : base.ResolveHoveredBackground();
+    protected override Brush ResolvePressedBackground() => IsChecked
+        ? SystemParameters.HighContrast ? SystemColors.HighlightBrush : TryFindResource("Brush.Navy.Pressed") as Brush ?? base.ResolvePressedBackground() : base.ResolvePressedBackground();
+
+    protected override Brush ResolveForeground() => IsChecked
+        ? SystemParameters.HighContrast ? SystemColors.HighlightTextBrush
+            : TryFindResource("Brush.Text.OnAccent") as Brush ?? Foreground
+        : base.ResolveForeground();
 
     protected override object? ResolveButtonIcon() =>
         IsChecked ? CheckedIcon ?? ButtonIcon : UncheckedIcon ?? ButtonIcon;

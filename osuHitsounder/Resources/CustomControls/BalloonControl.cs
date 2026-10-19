@@ -29,7 +29,6 @@ public class BalloonControl : ButtonBase
 
     private static readonly Duration ExpandDuration = new(TimeSpan.FromSeconds(0.18));
     private static readonly Duration CollapseDuration = new(TimeSpan.FromSeconds(0.16));
-    private static readonly Duration TextFadeDuration = new(TimeSpan.FromSeconds(0.12));
 
     // --- DefaultBackground ---
     public static readonly DependencyProperty DefaultBackgroundProperty =
@@ -39,7 +38,16 @@ public class BalloonControl : ButtonBase
     // --- HoveredBackground ---
     public static readonly DependencyProperty HoveredBackgroundProperty =
         DependencyProperty.Register(nameof(HoveredBackground), typeof(Brush), typeof(BalloonControl),
-            new PropertyMetadata(Brushes.RoyalBlue));
+            new PropertyMetadata(Brushes.RoyalBlue, OnPresentationPropertyChanged));
+
+    public static readonly DependencyProperty PressedBackgroundProperty =
+        DependencyProperty.Register(nameof(PressedBackground), typeof(Brush), typeof(BalloonControl),
+            new PropertyMetadata(null, OnPresentationPropertyChanged));
+    public Brush? PressedBackground
+    {
+        get => (Brush?)GetValue(PressedBackgroundProperty);
+        set => SetValue(PressedBackgroundProperty, value);
+    }
 
     // --- StrokeBrush ---
     public static readonly DependencyProperty StrokeBrushProperty =
@@ -73,7 +81,7 @@ public class BalloonControl : ButtonBase
     // --- ShouldExpand ---
     public static readonly DependencyProperty ShouldExpandProperty =
         DependencyProperty.Register(nameof(ShouldExpand), typeof(bool), typeof(BalloonControl),
-            new FrameworkPropertyMetadata(false, null, CoerceShouldExpand));
+            new FrameworkPropertyMetadata(false, OnLayoutPropertyChanged, CoerceShouldExpand));
 
     // --- ShouldShowText ---
     public static readonly DependencyProperty ShouldShowTextProperty =
@@ -88,12 +96,12 @@ public class BalloonControl : ButtonBase
     // --- CurveHeight ---
     public static readonly DependencyProperty CurveHeightProperty =
         DependencyProperty.Register(nameof(CurveHeight), typeof(double), typeof(BalloonControl),
-            new FrameworkPropertyMetadata(13.0, FrameworkPropertyMetadataOptions.AffectsRender, OnGeometryInvalidated));
+            new FrameworkPropertyMetadata(0.0, FrameworkPropertyMetadataOptions.AffectsRender, OnGeometryInvalidated));
 
     // --- CornerRadius ---
     public static readonly DependencyProperty CornerRadiusProperty =
         DependencyProperty.Register(nameof(CornerRadius), typeof(double), typeof(BalloonControl),
-            new FrameworkPropertyMetadata(15.0, FrameworkPropertyMetadataOptions.AffectsRender, OnGeometryInvalidated));
+            new FrameworkPropertyMetadata(8.0, FrameworkPropertyMetadataOptions.AffectsRender, OnGeometryInvalidated));
 
     // --- IconSize ---
     public static readonly DependencyProperty IconSizeProperty =
@@ -115,6 +123,24 @@ public class BalloonControl : ButtonBase
     {
         DefaultStyleKeyProperty.OverrideMetadata(typeof(BalloonControl),
             new FrameworkPropertyMetadata(typeof(BalloonControl)));
+    }
+
+    public BalloonControl()
+    {
+        Loaded += (_, _) =>
+        {
+            SystemParameters.StaticPropertyChanged -= OnSystemSettingsChanged;
+            SystemParameters.StaticPropertyChanged += OnSystemSettingsChanged;
+            RefreshPresentation();
+        };
+        Unloaded += (_, _) => SystemParameters.StaticPropertyChanged -= OnSystemSettingsChanged;
+    }
+
+    private void OnSystemSettingsChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is not (nameof(SystemParameters.HighContrast) or nameof(SystemParameters.ClientAreaAnimation))) return;
+        if (Dispatcher.CheckAccess()) RefreshPresentation();
+        else Dispatcher.BeginInvoke(RefreshPresentation);
     }
 
     public Brush DefaultBackground
@@ -220,14 +246,14 @@ public class BalloonControl : ButtonBase
     protected override void OnMouseEnter(MouseEventArgs e)
     {
         base.OnMouseEnter(e);
-        SetShapeFill(ResolveHoveredBackground());
+        ResetShapeFill();
         AnimateExpansion(isExpanded: true);
     }
 
     protected override void OnMouseLeave(MouseEventArgs e)
     {
         base.OnMouseLeave(e);
-        SetShapeFill(ResolveRestingBackground());
+        ResetShapeFill();
         AnimateExpansion(isExpanded: false);
     }
 
@@ -241,6 +267,15 @@ public class BalloonControl : ButtonBase
     {
         base.OnPropertyChanged(e);
 
+        if (e.Property == IsPressedProperty || e.Property == IsMouseOverProperty || e.Property == IsEnabledProperty)
+        {
+            ResetShapeFill();
+            ApplyForeground();
+        }
+        if (e.Property == ForegroundProperty || e.Property == IsEnabledProperty)
+            ApplyForeground();
+        if (e.Property == IsKeyboardFocusWithinProperty)
+            AnimateExpansion(IsMouseOver || IsKeyboardFocusWithin);
         if (e.Property == PaddingProperty)
             ResetExpansion();
         else if (e.Property == WidthProperty && !_isApplyingWidth)
@@ -282,9 +317,21 @@ public class BalloonControl : ButtonBase
         ((BalloonControl)d).RefreshPresentation();
     }
 
-    protected virtual Brush ResolveRestingBackground() => DefaultBackground;
+    protected virtual Brush ResolveRestingBackground() => SystemParameters.HighContrast ? SystemColors.WindowBrush : DefaultBackground;
 
-    protected virtual Brush ResolveHoveredBackground() => HoveredBackground;
+    protected virtual Brush ResolveHoveredBackground() => SystemParameters.HighContrast ? SystemColors.HighlightBrush : HoveredBackground;
+
+    protected virtual Brush ResolvePressedBackground() => SystemParameters.HighContrast ? SystemColors.HighlightBrush : PressedBackground ?? ResolveHoveredBackground();
+    protected virtual Brush ResolveForeground() => SystemParameters.HighContrast
+        ? !IsEnabled ? SystemColors.GrayTextBrush : IsMouseOver || IsPressed ? SystemColors.HighlightTextBrush : SystemColors.WindowTextBrush
+        : Foreground;
+    private void ApplyForeground()
+    {
+        var brush = ResolveForeground();
+        if (_icon is not null) _icon.Fill = brush;
+        if (_buttonText is not null) _buttonText.Foreground = brush;
+        if (_buttonHotkeys is not null) _buttonHotkeys.Foreground = brush;
+    }
 
     protected virtual object? ResolveButtonIcon() => Icon ?? ButtonIcon;
 
@@ -295,13 +342,14 @@ public class BalloonControl : ButtonBase
         ResetShapeFill();
         ApplyIcon();
         ApplyText();
+        ApplyForeground();
         ResetExpansion();
     }
 
     // Snaps the fill back to DefaultBackground (no animation); called on template apply or DP change.
     private void ResetShapeFill()
     {
-        SetShapeFill(ResolveRestingBackground());
+        SetShapeFill(IsEnabled && IsPressed ? ResolvePressedBackground() : IsEnabled && IsMouseOver ? ResolveHoveredBackground() : ResolveRestingBackground());
     }
 
     private void SetShapeFill(Brush background)
@@ -313,18 +361,18 @@ public class BalloonControl : ButtonBase
     private void ResetExpansion()
     {
         BeginAnimation(WidthProperty, null);
-        ApplyIconSlotLayout(ShouldShowText);
+        ApplyIconSlotLayout(ShouldShowText || ShouldExpand);
         var openWidth = GetEffectiveOpenWidth();
-        SetCurrentWidth(ShouldShowText
+        SetCurrentWidth(ShouldShowText || ShouldExpand
             ? _explicitWidth ?? openWidth
             : ButtonSize);
-        MinWidth = ShouldShowText ? openWidth : ButtonSize;
+        MinWidth = ShouldShowText || ShouldExpand ? openWidth : ButtonSize;
 
         if (_textReveal is not null)
         {
             _textReveal.BeginAnimation(WidthProperty, null);
             _textReveal.BeginAnimation(OpacityProperty, null);
-            _textReveal.Width = ShouldShowText ? GetTextRevealWidth(Width) : 0;
+            _textReveal.Width = ShouldShowText || ShouldExpand ? GetTextRevealWidth(Width) : 0;
             _textReveal.Opacity = ShouldShowText ? 1 : 0;
         }
 
@@ -337,74 +385,27 @@ public class BalloonControl : ButtonBase
         if (_buttonHotkeys is not null)
         {
             _buttonHotkeys.BeginAnimation(OpacityProperty, null);
-            _buttonHotkeys.Opacity = ShouldShowText ? 0.5 : 0;
+            _buttonHotkeys.Opacity = ShouldShowText ? 1 : 0;
         }
+        AnimateExpansion(IsMouseOver || IsKeyboardFocusWithin);
     }
 
     private void AnimateExpansion(bool isExpanded)
     {
-        if (!ShouldExpand)
-            return;
-
-        ApplyIconSlotLayout(isExpanded);
-        var openWidth = GetEffectiveOpenWidth();
-        var widthTarget = isExpanded ? openWidth : ButtonSize;
-        var textWidthTarget = isExpanded ? GetTextRevealWidth(openWidth) : 0;
-        var opacityTarget = isExpanded ? 1 : 0;
-        var duration = isExpanded ? ExpandDuration : CollapseDuration;
-        var easingMode = isExpanded ? EasingMode.EaseOut : EasingMode.EaseIn;
-        var easing = new CubicEase { EasingMode = easingMode };
-
-        if (double.IsNaN(Width))
-            SetCurrentWidth(ButtonSize);
-
-        if (!SystemParameters.ClientAreaAnimation)
+        if (!ShouldExpand) return;
+        var visible = isExpanded || IsKeyboardFocusWithin;
+        var opacity = visible ? 1d : 0d;
+        var animation = SystemParameters.ClientAreaAnimation
+            ? new DoubleAnimation(opacity, visible ? ExpandDuration : CollapseDuration)
+              { EasingFunction = new CubicEase { EasingMode = visible ? EasingMode.EaseOut : EasingMode.EaseIn } }
+            : null;
+        foreach (var element in new UIElement?[] { _textReveal, _buttonText, _buttonHotkeys })
         {
-            BeginAnimation(WidthProperty, null);
-            Width = widthTarget;
-
-            if (_textReveal is not null)
-            {
-                _textReveal.BeginAnimation(WidthProperty, null);
-                _textReveal.BeginAnimation(OpacityProperty, null);
-                _textReveal.Width = textWidthTarget;
-                _textReveal.Opacity = opacityTarget;
-            }
-
-            if (_buttonText is not null)
-            {
-                _buttonText.BeginAnimation(OpacityProperty, null);
-                _buttonText.Opacity = opacityTarget;
-            }
-
-            if (_buttonHotkeys is not null)
-            {
-                _buttonHotkeys.BeginAnimation(OpacityProperty, null);
-                _buttonHotkeys.Opacity = isExpanded ? 0.5 : 0;
-            }
-
-            return;
+            if (element is null) continue;
+            element.BeginAnimation(OpacityProperty, null);
+            element.Opacity = opacity;
+            if (animation is not null) element.BeginAnimation(OpacityProperty, animation);
         }
-
-        BeginAnimation(WidthProperty, new DoubleAnimation(widthTarget, duration)
-        {
-            EasingFunction = easing
-        });
-
-        if (_textReveal is not null)
-        {
-            _textReveal.BeginAnimation(WidthProperty, new DoubleAnimation(textWidthTarget, duration)
-            {
-                EasingFunction = easing
-            });
-            _textReveal.BeginAnimation(OpacityProperty, new DoubleAnimation(opacityTarget, TextFadeDuration));
-        }
-
-        if (_buttonText is not null)
-            _buttonText.BeginAnimation(OpacityProperty, new DoubleAnimation(opacityTarget, TextFadeDuration));
-
-        if (_buttonHotkeys is not null)
-            _buttonHotkeys.BeginAnimation(OpacityProperty, new DoubleAnimation(isExpanded ? 0.5 : 0, TextFadeDuration));
     }
 
     internal double GetEffectiveOpenWidth()
@@ -585,28 +586,9 @@ public class BalloonControl : ButtonBase
 
         var w = ActualWidth;
         var h = ActualHeight;
-        var c = CurveHeight;
         var r = CornerRadius;
-
         if (w <= 0 || h <= 0) return;
-
-        var figure = new PathFigure { StartPoint = new Point(r, 0), IsClosed = true };
-
-        figure.Segments.Add(new BezierSegment(new Point(w * 0.25, -c), new Point(w * 0.75, -c), new Point(w - r, 0),
-            true));
-        figure.Segments.Add(new ArcSegment(new Point(w, r), new Size(r, r), 0, false, SweepDirection.Clockwise, true));
-        figure.Segments.Add(new BezierSegment(new Point(w + c, h * 0.25), new Point(w + c, h * 0.75),
-            new Point(w, h - r), true));
-        figure.Segments.Add(new ArcSegment(new Point(w - r, h), new Size(r, r), 0, false, SweepDirection.Clockwise,
-            true));
-        figure.Segments.Add(new BezierSegment(new Point(w * 0.75, h + c), new Point(w * 0.25, h + c), new Point(r, h),
-            true));
-        figure.Segments.Add(new ArcSegment(new Point(0, h - r), new Size(r, r), 0, false, SweepDirection.Clockwise,
-            true));
-        figure.Segments.Add(new BezierSegment(new Point(-c, h * 0.75), new Point(-c, h * 0.25), new Point(0, r), true));
-        figure.Segments.Add(new ArcSegment(new Point(r, 0), new Size(r, r), 0, false, SweepDirection.Clockwise, true));
-
-        var geometry = new PathGeometry(new[] { figure });
+        var geometry = new RectangleGeometry(new Rect(0, 0, w, h), r, r);
         _shape.Data = geometry;
         _overlay.Data = geometry;
     }

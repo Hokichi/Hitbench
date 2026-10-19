@@ -27,7 +27,7 @@ public sealed class OHsMessageBoxPopupIntegrationTests
             var secondary = (BalloonButton)popup.FindName("SecondaryButton");
             Assert.That(primary.ButtonIcon, Is.SameAs(popup.FindResource("Delete")));
             Assert.That(secondary.ButtonIcon, Is.SameAs(popup.FindResource("Ban")));
-            Assert.That(primary.Style, Is.SameAs(popup.FindResource("OHsBalloonDestructiveActionStyle")));
+            Assert.That(primary.Style, Is.SameAs(popup.FindResource("OHsBalloonDestructiveSolidActionStyle")));
             Assert.That(secondary.Style, Is.SameAs(popup.FindResource("OHsBalloonNeutralActionStyle")));
             Assert.That(secondary.ButtonText, Is.EqualTo("Skip"));
             Assert.That(AutomationProperties.GetName(secondary), Is.EqualTo("Skip"));
@@ -109,7 +109,7 @@ public sealed class OHsMessageBoxPopupIntegrationTests
             var remove = (BalloonButton)popup.FindName("PrimaryButton");
             var cancel = (BalloonButton)popup.FindName("SecondaryButton");
             Assert.That(remove.ButtonText, Is.EqualTo("Remove Track"));
-            Assert.That(remove.Style, Is.SameAs(popup.FindResource("OHsBalloonDestructiveActionStyle")));
+            Assert.That(remove.Style, Is.SameAs(popup.FindResource("OHsBalloonDestructiveSolidActionStyle")));
             Assert.That(cancel.Style, Is.SameAs(popup.FindResource("OHsBalloonNeutralActionStyle")));
             using var source = new InMemoryPresentationSource();
             popup.RaiseEvent(CreateKeyEvent(source, Key.Enter));

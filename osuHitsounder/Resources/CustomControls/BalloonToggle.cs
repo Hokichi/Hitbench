@@ -186,10 +186,15 @@ public class BalloonToggle : BalloonControl
     }
 
     protected override Brush ResolveRestingBackground() =>
-        _activeState?.DefaultBackground ?? base.ResolveRestingBackground();
+        SystemParameters.HighContrast ? base.ResolveRestingBackground() : _activeState?.DefaultBackground ?? base.ResolveRestingBackground();
 
     protected override Brush ResolveHoveredBackground() =>
-        _activeState?.HoverBackground ?? base.ResolveHoveredBackground();
+        SystemParameters.HighContrast ? base.ResolveHoveredBackground() : _activeState?.HoverBackground ?? base.ResolveHoveredBackground();
+
+    protected override Brush ResolvePressedBackground() =>
+        SystemParameters.HighContrast ? base.ResolvePressedBackground() : _activeState?.PressedBackground ?? base.ResolvePressedBackground();
+    protected override Brush ResolveForeground() =>
+        SystemParameters.HighContrast ? base.ResolveForeground() : _activeState?.Foreground ?? base.ResolveForeground();
 
     protected override object? ResolveButtonIcon() =>
         _activeState?.ButtonIcon ?? base.ResolveButtonIcon();

@@ -3,7 +3,7 @@
                     xmlns:c="clr-namespace:osuHitsounder.Resources.CustomControls"
                     xmlns:h="clr-namespace:osuHitsounder.Resources.Helpers">
     <Style x:Key="BaseBalloonComboBoxStyle" TargetType="c:BalloonComboBox"
-           BasedOn="{StaticResource OHsBalloonDefaultActionStyle}">
+           BasedOn="{StaticResource OHsBalloonNavInfoActionStyle}">
         <Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
         <Setter Property="IsTabStop" Value="True" />
         <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />

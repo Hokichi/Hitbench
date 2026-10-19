@@ -34,7 +34,7 @@ public partial class OHsMessageBoxPopup : BasePopup
         {
             PrimaryButton.ButtonText = destructiveButtonText ?? "Remove Track";
             PrimaryButton.ButtonIcon = FindResource(destructiveButtonIconKey ?? "Close");
-            PrimaryButton.Style = (Style)FindResource("OHsBalloonDestructiveActionStyle");
+            PrimaryButton.Style = (Style)FindResource("OHsBalloonDestructiveSolidActionStyle");
             AutomationProperties.SetName(PrimaryButton, destructiveButtonAutomationName ?? "Remove track");
             SecondaryButton.Style = (Style)FindResource("OHsBalloonNeutralActionStyle");
             defaultButton = SecondaryButton;
