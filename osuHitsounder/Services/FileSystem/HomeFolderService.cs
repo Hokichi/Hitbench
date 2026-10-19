@@ -34,6 +34,7 @@ public sealed class HomeFolderService(string applicationDirectory, Func<Cancella
         {
             if ((entry.Directory.Attributes & FileAttributes.ReparsePoint) != 0) return entry;
             var project = ProjectDataSerializer.Deserialize(File.ReadAllText(Path.Combine(entry.FullName, "project.json")));
+            SamplePaths.TryEnsureSavedRoot(Path.Combine(entry.FullName, "project.json"), token);
             var result = entry with { IsPinned = project.IsPinned, LastChanged = project.LastChanged,
                 BeatmapPath = project.BeatmapPath ?? "", HasProjectMetadata = true };
             if (!string.IsNullOrWhiteSpace(project.BeatmapPath))

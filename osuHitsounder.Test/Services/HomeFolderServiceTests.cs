@@ -4,6 +4,28 @@ namespace osuHitsounder.Test.Services;
 
 public class HomeFolderServiceTests
 {
+    [Test]
+    public async Task BootCreatesSavedSamplesForValidProjectsAndPreservesFailures()
+    {
+        foreach (var name in new[] { "One", "Two", "Blocked", "Invalid" })
+        {
+            var folder = Directory.CreateDirectory(Path.Combine(appRoot, "projects", name));
+            File.WriteAllText(Path.Combine(folder.FullName, "project.json"), name == "Invalid" ? "broken" : "{\"BeatmapPath\":\"\"}");
+        }
+        var blocked = Path.Combine(appRoot, "projects", "Blocked", "Saved Samples");
+        File.WriteAllText(blocked, "keep");
+        var service = new HomeFolderService(appRoot);
+        var snapshot = await service.LoadProjectsAsync(default);
+        Assert.That(snapshot.Count, Is.EqualTo(4));
+        foreach (var name in new[] { "One", "Two" })
+            Assert.That(Directory.Exists(Path.Combine(appRoot, "projects", name, "Saved Samples")), Is.True);
+        Assert.That(Directory.Exists(Path.Combine(appRoot, "projects", "Invalid", "Saved Samples")), Is.False);
+        Assert.That(File.ReadAllText(blocked), Is.EqualTo("keep"));
+        var sentinel = Path.Combine(appRoot, "projects", "One", "Saved Samples", "keep.wav");
+        File.WriteAllText(sentinel, "audio");
+        await service.LoadProjectsAsync(default);
+        Assert.That(File.ReadAllText(sentinel), Is.EqualTo("audio"));
+    }
     private string root = null!;
     private string appRoot = null!;
     [SetUp] public void SetUp()

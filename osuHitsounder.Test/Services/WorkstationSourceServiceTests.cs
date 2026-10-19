@@ -7,6 +7,19 @@ namespace osuHitsounder.Test.Services;
 public class WorkstationSourceServiceTests
 {
     [Test]
+    public async Task OpeningEnsuresSavedSamplesWithoutChangingImportedAudio()
+    {
+        File.WriteAllText(Path.Combine(songFolder, "a.osu"), "[General]\nAudioFilename: song.wav\n[TimingPoints]\n0,500,4,1,0,100,1,0\n");
+        File.WriteAllText(Path.Combine(songFolder, "song.wav"), "audio");
+        await new WorkstationSourceService().LoadAsync(projectPath, default);
+        var saved = Path.Combine(Path.GetDirectoryName(projectPath)!, "Saved Samples");
+        Assert.That(Directory.Exists(saved), Is.True);
+        File.WriteAllText(Path.Combine(saved, "keep.wav"), "keep");
+        await new WorkstationSourceService().LoadAsync(projectPath, default);
+        Assert.That(File.ReadAllText(Path.Combine(saved, "keep.wav")), Is.EqualTo("keep"));
+        Assert.That(Directory.Exists(Path.Combine(Path.GetDirectoryName(projectPath)!, "Samples")), Is.True);
+    }
+    [Test]
     public async Task LoadsPersistedTrackFlagsWithoutRewritingProject()
     {
         File.WriteAllText(Path.Combine(songFolder, "a.osu"), "[General]\nAudioFilename: song.wav\n[TimingPoints]\n0,500,4,1,0,100,1,0\n");

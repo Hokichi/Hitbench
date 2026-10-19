@@ -117,6 +117,7 @@ public sealed class ProjectFileService(string applicationDirectory) : IProjectFi
             await File.WriteAllTextAsync(temporary, json, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
             File.Move(temporary, target, overwrite: false);
+            await Task.Run(() => SamplePaths.TryEnsureSavedRoot(target, cancellationToken), cancellationToken);
             return target;
         }
         catch (Exception error)

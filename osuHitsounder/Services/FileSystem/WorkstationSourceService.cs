@@ -65,6 +65,7 @@ public sealed class WorkstationSourceService : IWorkstationSourceService
         RejectReparsePoints(songFolder, audioPath);
         BeatmapTimingReader.Populate(project, beatmapPath, token);
         Directory.CreateDirectory(Path.Combine(Path.GetDirectoryName(Path.GetFullPath(projectPath))!, "Samples"));
+        SamplePaths.TryEnsureSavedRoot(projectPath, token);
         return new WorkstationSource(beatmapPath, audioPath, project);
     }
 

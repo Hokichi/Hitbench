@@ -4,6 +4,36 @@ namespace osuHitsounder.Services.FileSystem;
 
 public static class SamplePaths
 {
+    public static string SavedRoot(string projectPath)
+    {
+        var folder = Path.GetDirectoryName(Path.GetFullPath(projectPath))!;
+        for (var current = new DirectoryInfo(folder); current is not null; current = current.Parent)
+            RejectLink(current.FullName);
+        var saved = Path.Combine(folder, "Saved Samples");
+        RejectLink(saved);
+        return saved;
+    }
+
+    public static bool TryEnsureSavedRoot(string projectPath, CancellationToken token) =>
+        TryEnsureSavedRoot(projectPath, token, path => Directory.CreateDirectory(path));
+
+    internal static bool TryEnsureSavedRoot(string projectPath, CancellationToken token, Action<string> createDirectory)
+    {
+        token.ThrowIfCancellationRequested();
+        try
+        {
+            var path = SavedRoot(projectPath);
+            token.ThrowIfCancellationRequested();
+            createDirectory(path);
+            return true;
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            System.Diagnostics.Trace.TraceWarning("Saved Samples folder could not be initialized for {0}: {1}", projectPath, error.Message);
+            return false;
+        }
+    }
+
     public static string NormalizeFolderName(string trackName)
     {
         var name = new string(trackName.Where(c => char.IsLetterOrDigit(c) || c is ' ' or '_' or '-').ToArray()).Trim();
