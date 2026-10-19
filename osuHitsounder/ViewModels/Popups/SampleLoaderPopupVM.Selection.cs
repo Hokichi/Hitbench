@@ -42,20 +42,20 @@ public sealed partial class SampleLoaderPopupVM
                         await UpdateAsync(() =>
                         {
                             if (generation != navigationGeneration || cancellation.IsCancellationRequested) return;
-                            entry.Metadata = metadata; entry.IsMetadataUnavailable = false; NotifyState();
+                            entry.Metadata = metadata; entry.IsMetadataUnavailable = false; entry.IsMetadataLoading = false; NotifyState();
                         });
                     }
                     catch (OperationCanceledException) { }
                     catch (Exception error)
                     {
                         if (!deactivated && generation == navigationGeneration)
-                            await ReportAsync(() => { entry.IsMetadataUnavailable = true; NotifyState(); });
+                            await ReportAsync(() => { if (generation != navigationGeneration) return; entry.Metadata = null; entry.IsMetadataUnavailable = true; entry.IsMetadataLoading = false; NotifyState(); });
                         System.Diagnostics.Trace.TraceWarning("Sample metadata unavailable: {0}", error.Message);
                     }
                     finally
                     {
                         if (!deactivated && generation == navigationGeneration)
-                            await ReportAsync(() => entry.IsMetadataLoading = false);
+                            await ReportAsync(() => { if (generation == navigationGeneration) { entry.IsMetadataLoading = false; NotifyState(); } });
                     }
                 });
             }
@@ -65,7 +65,7 @@ public sealed partial class SampleLoaderPopupVM
     [ObservableProperty] private string searchText = "";
     public ReadOnlyObservableCollection<SampleBrowserEntry> SelectedSamples => selectedView ??= new(selectedSamples);
     public ReadOnlyObservableCollection<SampleBrowserEntry> VisibleEntries => visibleView ??= new(visibleEntries);
-    public string SelectedDurationText => selectedSamples.Any(x => x.Metadata is null) ? "—" :
+    public string SelectedDurationText => selectedSamples.Any(x => x.Metadata is null || x.IsMetadataLoading || x.IsMetadataUnavailable) ? "—" :
         string.Format(CultureInfo.CurrentCulture, "{0:0.000} s", selectedSamples.Sum(x => x.Metadata!.Duration.TotalSeconds));
     partial void OnSearchTextChanged(string value) { rangeAnchor = null; RefreshVisibleEntries(); }
     private void RefreshVisibleEntries()

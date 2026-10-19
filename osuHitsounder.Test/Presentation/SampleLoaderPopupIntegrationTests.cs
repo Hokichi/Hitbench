@@ -16,6 +16,79 @@ namespace osuHitsounder.Test.Presentation;
 [NonParallelizable]
 public sealed class SampleLoaderPopupIntegrationTests
 {
+    [Test]
+    public void SpaceTogglesTheFocusedFileWithoutImporting()
+    {
+        var list = (ListBox)popup.FindName("DirectoryContents");
+        list.SelectedItem = file;
+        using var source = new InMemoryPresentationSource();
+        list.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, source, 0, Key.Space) { RoutedEvent = UIElement.PreviewKeyDownEvent });
+        Assert.That(file.IsChecked, Is.True);
+        list.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, source, 0, Key.Space) { RoutedEvent = UIElement.PreviewKeyDownEvent });
+        Assert.That(file.IsChecked, Is.False);
+        Assert.That(completion, Is.Null);
+    }
+    [Test]
+    public void FilteringThePreviewedFileRetainsItsBasketHighlight()
+    {
+        UiTestPump.Run(vm.SetCheckedAsync(file, true));
+        view.UpdateLayout();
+        var basket = (ListBox)popup.FindName("SelectedSamplesList");
+        Assert.That(basket.SelectedItem, Is.SameAs(file));
+        vm.SearchText = "does-not-match";
+        view.UpdateLayout();
+        Assert.That(basket.SelectedItem, Is.SameAs(file));
+        Assert.That(vm.SelectedFile, Is.SameAs(file));
+    }
+    [Test]
+    public void WaveformUsesExistingRendererAndSeparateTransportCommands()
+    {
+        UiTestPump.Run(vm.SelectAsync(file));
+        view.UpdateLayout();
+        Assert.That(popup.FindName("PreviewWaveform"), Is.TypeOf<WaveformView>());
+        var waveform = (WaveformView)popup.FindName("PreviewWaveform");
+        Assert.That(waveform.Data, Is.SameAs(vm.Waveform));
+        Assert.That(waveform.SeekCommand, Is.SameAs(vm.SeekPreviewCommand));
+        Assert.That(((BalloonButton)popup.FindName("PreviewButton")).Command, Is.SameAs(vm.PlayPreviewCommand));
+        Assert.That(((BalloonButton)popup.FindName("StopPreviewButton")).Command, Is.SameAs(vm.StopPreviewCommand));
+    }
+    [Test]
+    public void BasketUsesVirtualizedSelectionAndRemovalCommands()
+    {
+        Assert.That(popup.FindName("SelectedSamplesList"), Is.TypeOf<ListBox>());
+        var list = (ListBox)popup.FindName("SelectedSamplesList");
+        Assert.That(list.ItemContainerStyle, Is.SameAs(popup.FindResource("OHsSampleLoaderBasketItemStyle")));
+        Assert.That(VirtualizingPanel.GetIsVirtualizing(list), Is.True);
+        UiTestPump.Run(vm.SetCheckedAsync(file, true));
+        view.UpdateLayout();
+        Assert.That(list.Items.Cast<SampleBrowserEntry>(), Is.EqualTo(new[] { file }));
+        Assert.That(((BalloonButton)popup.FindName("ClearSelectedButton")).Command, Is.SameAs(vm.ClearSelectedCommand));
+        vm.ClearSelectedCommand.Execute(null);
+        Assert.That(list.Items, Is.Empty);
+        Assert.That(file.IsChecked, Is.False);
+    }
+    [Test]
+    public void CompactLocationItemsUseCheckedSelectionContractWithoutTabStops()
+    {
+        var item = new MenuItem { Style = (Style)popup.FindResource("OHsSampleLoaderCompactLocationItemStyle") };
+        item.ApplyTemplate();
+        Assert.That(item.Template, Is.SameAs(popup.FindResource("OHsSampleLoaderCompactLocationItemTemplate")));
+        Assert.That(item.IsCheckable, Is.True);
+        Assert.That(item.IsTabStop, Is.False);
+        foreach (var control in Descendants(view.Root).OfType<Control>())
+            Assert.That(control.IsTabStop, Is.False, control.GetType().Name);
+    }
+    [Test]
+    public void FolderSearchUsesExistingInputContract()
+    {
+        var search = popup.FindName("FolderSearch");
+        Assert.That(search, Is.TypeOf<TextBox>());
+        var input = (TextBox)search;
+        Assert.That(input.Style, Is.SameAs(popup.FindResource("OHsSampleLoaderSearchStyle")));
+        Assert.That(input.Style.BasedOn, Is.SameAs(popup.FindResource("RoundedTextInputStyle")));
+        input.SetCurrentValue(TextBox.TextProperty, "clap");
+        Assert.That(vm.SearchText, Is.EqualTo("clap"));
+    }
     private SampleLoaderPopup popup = null!;
     private SampleLoaderPopupVM vm = null!;
     private StubSampleBrowserService browser = null!;
@@ -109,7 +182,7 @@ public sealed class SampleLoaderPopupIntegrationTests
         var summary = (Grid)popup.FindName("SelectedFileDetails");
         var fields = Descendants(summary).OfType<TextBlock>().Select(block => block.Text).ToArray();
         Assert.That(fields, Does.Contain("hit.wav"));
-        Assert.That(fields, Does.Contain("1.0 KiB").And.Contain("1.000 s"));
+        Assert.That(string.Join(" ", fields), Does.Contain("1.0 KiB").And.Contain("1.000 s"));
     }
 
     [Test]
@@ -269,10 +342,10 @@ public sealed class SampleLoaderPopupIntegrationTests
     [Test]
     public void PopupAndOtherScreensKeepTabStopsDisabled()
     {
-        Assert.That(Descendants(view.Root).OfType<BalloonButton>().First(button => button.DataContext is SampleBrowserBreadcrumb).IsTabStop, Is.True);
-        Assert.That(((BalloonButton)popup.FindName("ImportButton")).IsTabStop, Is.True);
+        Assert.That(Descendants(view.Root).OfType<BalloonButton>().First(button => button.DataContext is SampleBrowserBreadcrumb).IsTabStop, Is.False);
+        Assert.That(((BalloonButton)popup.FindName("ImportButton")).IsTabStop, Is.False);
         var checkbox = Descendants(view.Root).OfType<CheckBox>().Single(box => ReferenceEquals(box.DataContext, file));
-        Assert.That(checkbox.IsTabStop, Is.True);
+        Assert.That(checkbox.IsTabStop, Is.False);
         var shellAction = new BalloonButton { Style = (Style)popup.FindResource("OHsBalloonNeutralActionStyle") };
         Assert.That(shellAction.IsTabStop, Is.False);
     }
@@ -310,11 +383,11 @@ public sealed class SampleLoaderPopupIntegrationTests
     {
         var checkbox = (CheckBox)popup.FindName("AutoPlayCheckBox");
         Assert.That(checkbox, Is.Not.Null);
-        Assert.That(checkbox.Content, Is.EqualTo("Auto-play samples"));
+        Assert.That(checkbox.Content, Is.EqualTo("Auto-play on select"));
         checkbox.SetCurrentValue(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, true);
         Assert.That(vm.AutoPlaySamples, Is.True);
-        Assert.That(checkbox.IsTabStop, Is.True);
-        Assert.That(System.Windows.Automation.AutomationProperties.GetName(checkbox), Is.EqualTo("Auto-play samples"));
+        Assert.That(checkbox.IsTabStop, Is.False);
+        Assert.That(System.Windows.Automation.AutomationProperties.GetName(checkbox), Is.EqualTo("Auto-play on select"));
     }
 
     [Test]
@@ -330,7 +403,7 @@ public sealed class SampleLoaderPopupIntegrationTests
         Assert.That(timeline.Maximum, Is.EqualTo(1));
         Assert.That(timeline.Value, Is.EqualTo(.35));
         Assert.That(timeline.IsEnabled, Is.True);
-        Assert.That(timeline.IsTabStop, Is.True);
+        Assert.That(timeline.IsTabStop, Is.False);
         Assert.That(((TextBlock)popup.FindName("PlaybackTimeTextBlock")).Text, Is.EqualTo(vm.PlaybackTimeText));
     }
 

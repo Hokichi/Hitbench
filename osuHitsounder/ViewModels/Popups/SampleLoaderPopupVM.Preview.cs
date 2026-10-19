@@ -7,6 +7,7 @@ namespace osuHitsounder.ViewModels.Popups;
 
 public sealed partial class SampleLoaderPopupVM
 {
+    private int stoppedSelectionGeneration = -1;
     [ObservableProperty] private WaveformData? waveform;
     public TimeSpan PlaybackPosition => TimeSpan.FromSeconds(PlaybackPositionSeconds);
     public bool CanPlayPreview => CanPreview && !IsPreviewPlaying;
@@ -16,6 +17,7 @@ public sealed partial class SampleLoaderPopupVM
     [RelayCommand(CanExecute = nameof(CanStopPreview))]
     private Task StopPreviewAsync() => OwnAsync(async () =>
     {
+        stoppedSelectionGeneration = selectionGeneration;
         try { await StopPreviewCoreAsync(); }
         catch (Exception error) { await ReportAsync(() => PreviewError = error.Message); }
     });

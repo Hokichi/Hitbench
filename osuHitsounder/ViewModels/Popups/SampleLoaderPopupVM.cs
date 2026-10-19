@@ -92,6 +92,9 @@ public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, I
     public string BrowserStatusText => IsNavigating ? "Loading folder..." : CurrentDirectory.Length == 0 ? Entries.Count == 0 ? "No drives to display" : "Choose a drive." : "";
     public string PreviewActionText => IsPreviewPlaying ? "Stop" : "Play";
     public string MetadataStatusText => IsMetadataLoading ? "Reading metadata..." : SelectedFile is null ? "Select a file to inspect and preview." : "";
+    public string PreviewMetadataText => Metadata is { } data ? string.Format(CultureInfo.CurrentCulture,
+        "{0:0.000} s · {1:N1} KiB · {2:0.#} kHz · {3}", data.Duration.TotalSeconds, data.Length / 1024d,
+        data.SampleRate / 1000d, data.Channels == 1 ? "mono" : data.Channels == 2 ? "stereo" : string.Format(CultureInfo.CurrentCulture, "{0} channels", data.Channels)) : "";
     public string SizeText => Metadata is { } data ? string.Format(CultureInfo.CurrentCulture, "{0:N1} KiB", data.Length / 1024d) : "";
     public string DurationText => Metadata is { } data ? string.Format(CultureInfo.CurrentCulture, "{0:N3} s", data.Duration.TotalSeconds) : "";
 
@@ -266,9 +269,9 @@ public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, I
             if (request == selectionGeneration && !deactivated) await UpdateAsync(() => { Metadata = result; actual.Metadata = result; NotifyState(); });
         }
         catch (OperationCanceledException) { }
-        catch (Exception error) { if (request == selectionGeneration) await ReportAsync(() => MetadataError = error.Message); }
+        catch (Exception error) { if (request == selectionGeneration) await ReportAsync(() => { if (request != selectionGeneration) return; MetadataError = error.Message; actual.Metadata = null; actual.IsMetadataUnavailable = true; }); }
         finally { if (request == selectionGeneration) await ReportAsync(() => { IsMetadataLoading = false; NotifyState(); }); }
-        if (request == selectionGeneration && !deactivated && AutoPlaySamples && CanPreview)
+        if (request == selectionGeneration && !deactivated && AutoPlaySamples && CanPreview && stoppedSelectionGeneration != request)
             await StartPreviewAsync();
     }
 
@@ -318,12 +321,13 @@ public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, I
     private void EntryChanged(object? sender, PropertyChangedEventArgs args)
     {
         if (args.PropertyName == nameof(SampleBrowserEntry.IsChecked) && sender is SampleBrowserEntry entry) SynchronizeChecked(entry);
+        else if (args.PropertyName is nameof(SampleBrowserEntry.Metadata) or nameof(SampleBrowserEntry.IsMetadataLoading) or nameof(SampleBrowserEntry.IsMetadataUnavailable)) NotifyState();
     }
     private void NotifyState()
     {
         foreach (var entry in observed) entry.IsPreviewing = IsPreviewPlaying && SamePath(entry.FullPath, SelectedFile?.FullPath);
         PlayPreviewCommand.NotifyCanExecuteChanged(); StopPreviewCommand.NotifyCanExecuteChanged(); SeekPreviewCommand.NotifyCanExecuteChanged();
-        foreach (var name in new[] { nameof(PlaybackPosition), nameof(CanPlayPreview), nameof(CanStopPreview), nameof(SelectedDurationText), nameof(CheckedCount), nameof(CheckedCountText), nameof(CanConfirm), nameof(CanImport), nameof(CanPreview), nameof(BrowserStatusText),
+        foreach (var name in new[] { nameof(PlaybackPosition), nameof(CanPlayPreview), nameof(CanStopPreview), nameof(PreviewMetadataText), nameof(SelectedDurationText), nameof(CheckedCount), nameof(CheckedCountText), nameof(CanConfirm), nameof(CanImport), nameof(CanPreview), nameof(BrowserStatusText),
             nameof(IsFolderSelection), nameof(PopupTitle), nameof(ConfirmActionText), nameof(ConfirmAutomationName), nameof(SelectionPrompt), nameof(SelectedFolderPath), nameof(FolderEmptyPromptText), nameof(ContentsAutomationName),
             nameof(PreviewActionText), nameof(MetadataStatusText), nameof(SizeText), nameof(DurationText),
             nameof(PlaybackPositionSeconds), nameof(PlaybackDurationSeconds), nameof(PlaybackTimeText), nameof(CanSeek), nameof(IsSeeking), nameof(IsThisPc), nameof(IsFolderEmpty) }) OnPropertyChanged(name);
@@ -342,8 +346,14 @@ public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, I
         try { await task; }
         finally { lock (operations) operations.Remove(task); }
     }
-    private static bool SamePath(string? left, string? right) => left is not null && right is not null &&
-        string.Equals(Path.TrimEndingDirectorySeparator(left), Path.TrimEndingDirectorySeparator(right), StringComparison.OrdinalIgnoreCase);
+    private static bool SamePath(string? left, string? right)
+    {
+        if (left is null || right is null) return false;
+        if (left.Length == 0 || right.Length == 0) return left.Length == right.Length;
+        try { return string.Equals(Path.TrimEndingDirectorySeparator(Path.GetFullPath(left)),
+            Path.TrimEndingDirectorySeparator(Path.GetFullPath(right)), StringComparison.OrdinalIgnoreCase); }
+        catch (Exception error) when (error is ArgumentException or NotSupportedException or System.Security.SecurityException) { return false; }
+    }
 
     public Task DeactivateAsync() => deactivation ??= DeactivateCoreAsync();
     private async Task DeactivateCoreAsync()

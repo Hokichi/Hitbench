@@ -37,11 +37,22 @@ public partial class SampleLoaderPopup : BasePopup
         this.completeDialog = completeDialog ?? (accepted => DialogResult = accepted);
         this.getWorkArea = getWorkArea ?? WindowWorkArea.GetClientSize;
         DataContext = viewModel;
+        KeyboardNavigation.SetTabNavigation(this, KeyboardNavigationMode.None);
         viewModel.PropertyChanged += OnBrowserStateChanged;
         Loaded += OnPopupLoaded;
         PlaybackTimeline.ValueChanged += OnTimelineValueChanged;
         PlaybackTimeline.AddHandler(Thumb.DragStartedEvent, new DragStartedEventHandler(OnTimelineDragStarted));
         PlaybackTimeline.AddHandler(Thumb.DragCompletedEvent, new DragCompletedEventHandler(OnTimelineDragCompleted));
+    }
+
+    public override void OnApplyTemplate()
+    {
+        base.OnApplyTemplate();
+        if (GetTemplateChild("PART_CloseButton") is UIElement close)
+        {
+            KeyboardNavigationPolicy.SetAllowTabNavigation(close, false);
+            KeyboardNavigation.SetIsTabStop(close, false);
+        }
     }
 
     protected override bool ShouldBubbleApplicationClose => false;
@@ -81,6 +92,52 @@ public partial class SampleLoaderPopup : BasePopup
         await viewModel.DeactivateAsync();
     }
 
+    private static readonly DependencyPropertyKey IsCompactLayoutPropertyKey = DependencyProperty.RegisterReadOnly(
+        nameof(IsCompactLayout), typeof(bool), typeof(SampleLoaderPopup), new PropertyMetadata(false));
+    public static readonly DependencyProperty IsCompactLayoutProperty = IsCompactLayoutPropertyKey.DependencyProperty;
+    public bool IsCompactLayout => (bool)GetValue(IsCompactLayoutProperty);
+    private async void OnLocationSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (LocationList.SelectedItem is SampleBrowserLocation location && !ReferenceEquals(location, viewModel.ActiveLocation))
+        {
+            await HandleInteractionAsync(() => viewModel.NavigateLocationCommand.ExecuteAsync(location));
+            if (!deactivated) LocationList.SetCurrentValue(Selector.SelectedItemProperty, viewModel.ActiveLocation);
+        }
+    }
+    private bool activatingBasket;
+    private async void OnBasketSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (activatingBasket || e.AddedItems.OfType<SampleBrowserEntry>().FirstOrDefault() is not { } entry || ReferenceEquals(entry, viewModel.SelectedFile)) return;
+        activatingBasket = true;
+        try { await HandleInteractionAsync(() => viewModel.ActivateSelectedCommand.ExecuteAsync(entry)); }
+        finally { activatingBasket = false; }
+    }
+    private async void OnBasketKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter || SelectedSamplesList.SelectedItem is not SampleBrowserEntry entry) return;
+        e.Handled = true;
+        await HandleInteractionAsync(() => viewModel.ActivateSelectedCommand.ExecuteAsync(entry));
+    }
+    private void OnRemoveSelectedClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: SampleBrowserEntry entry }) return;
+        var index = SelectedSamplesList.Items.IndexOf(entry);
+        Dispatcher.BeginInvoke(DispatcherPriority.Input, () =>
+        {
+            if (deactivated) return;
+            if (SelectedSamplesList.Items.Count > 0 && SelectedSamplesList.ItemContainerGenerator.ContainerFromIndex(Math.Clamp(index, 0, SelectedSamplesList.Items.Count - 1)) is ListBoxItem next) next.Focus();
+            else SelectedSamplesList.Focus();
+        });
+    }
+
+    private void OnLocationMenuOpened(object sender, RoutedEventArgs e)
+    {
+        if (sender is not ContextMenu menu) return;
+        foreach (var location in menu.Items.OfType<SampleBrowserLocation>())
+            if (menu.ItemContainerGenerator.ContainerFromItem(location) is MenuItem item)
+                item.SetCurrentValue(MenuItem.IsCheckedProperty, ReferenceEquals(location, viewModel.ActiveLocation));
+    }
+
     private void UpdateSize()
     {
         var area = getWorkArea(sizingOwner ?? this);
@@ -89,12 +146,22 @@ public partial class SampleLoaderPopup : BasePopup
         var ownerSize = sizingOwner?.RenderSize ?? area;
         Width = Math.Max(1, Math.Min(960, Math.Min(area.Width, ownerSize.Width) - 32));
         Height = Math.Max(1, Math.Min(640, Math.Min(area.Height, ownerSize.Height) - 32));
+        SetValue(IsCompactLayoutPropertyKey, Width - 32 < 880);
     }
 
     private void OnOwnerSizeChanged(object sender, SizeChangedEventArgs e) => UpdateSize();
     private void OnPopupDpiChanged(object sender, DpiChangedEventArgs e) => UpdateSize();
     private void OnPopupLoaded(object sender, RoutedEventArgs e) => initialFocus = Dispatcher.BeginInvoke(
         DispatcherPriority.Input, new Action(() => { if (!deactivated) DirectoryContents.Focus(); }));
+
+    private void OnWaveformSeekMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (!viewModel.CanSeek || e.OriginalSource is not DependencyObject source) return;
+        for (DependencyObject? current = source; current is not null && !ReferenceEquals(current, sender); current = DependencyObjectTree.GetParent(current))
+            if (current is Thumb) return;
+        PlaybackTimeline.Focus();
+        if (PreviewWaveform.SeekAt(e.GetPosition(PreviewWaveform).X)) e.Handled = true;
+    }
 
     private async void OnTimelineValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
@@ -148,6 +215,19 @@ public partial class SampleLoaderPopup : BasePopup
     }
     private async void OnContentsKeyDown(object sender, KeyEventArgs e)
     {
+        if (e.Key == Key.Space && Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) && DirectoryContents.SelectedItem is SampleBrowserEntry rangeEnd)
+        {
+            e.Handled = true;
+            await HandleInteractionAsync(() => viewModel.SetRangeCheckedAsync(rangeEnd, true));
+            return;
+        }
+        if (e.Key == Key.Space && Keyboard.Modifiers == ModifierKeys.None && DirectoryContents.SelectedItem is SampleBrowserEntry file && !file.IsDirectory)
+        {
+            e.Handled = true;
+            viewModel.SetRangeAnchor(file);
+            await HandleInteractionAsync(() => viewModel.SetCheckedAsync(file, !file.IsChecked));
+            return;
+        }
         if (e.Key != Key.Enter || Keyboard.Modifiers != ModifierKeys.None) return;
         e.Handled = true;
         await HandleInteractionAsync(ActivateSelectedEntryAsync);
@@ -161,10 +241,10 @@ public partial class SampleLoaderPopup : BasePopup
         if (e.Handled || e.OriginalSource is not DependencyObject source ||
             !ReferenceEquals(sender, GetEntryRow(source))) return;
         e.Handled = true;
-        await HandleEntryRowClickAsync(source, e.ClickCount);
+        await HandleEntryRowClickAsync(source, e.ClickCount, Keyboard.Modifiers.HasFlag(ModifierKeys.Shift));
     }
 
-    internal Task HandleEntryRowClickAsync(DependencyObject source, int clickCount)
+    internal Task HandleEntryRowClickAsync(DependencyObject source, int clickCount, bool extendRange = false)
     {
         if (deactivated || clickCount is not (1 or 2) || GetEntryRow(source) is not { DataContext: SampleBrowserEntry entry } row)
             return Task.CompletedTask;
@@ -176,6 +256,8 @@ public partial class SampleLoaderPopup : BasePopup
         }
         finally { isSelectingFileRow = false; }
         if (entry.IsDirectory) return HandleInteractionAsync(() => clickCount == 2 ? viewModel.NavigateCommand.ExecuteAsync(entry.FullPath) : viewModel.SelectAsync(entry));
+        if (extendRange) return HandleInteractionAsync(() => viewModel.SetRangeCheckedAsync(entry, true));
+        viewModel.SetRangeAnchor(entry);
         return HandleInteractionAsync(() => clickCount == 2
             ? viewModel.SetCheckedAsync(entry, true) : viewModel.ActivateFileAsync(entry));
     }
@@ -197,7 +279,14 @@ public partial class SampleLoaderPopup : BasePopup
         if (sender is not CheckBox { DataContext: SampleBrowserEntry entry } checkbox) return;
         e.Handled = true;
         var value = checkbox.IsChecked == true;
-        await HandleInteractionAsync(() => viewModel.SetCheckedAsync(entry, value));
+        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)) await HandleInteractionAsync(() => viewModel.SetRangeCheckedAsync(entry, value));
+        else { viewModel.SetRangeAnchor(entry); await HandleInteractionAsync(() => viewModel.SetCheckedAsync(entry, value)); }
+    }
+
+    protected override void OnPreviewKeyDown(KeyEventArgs e)
+    {
+        if (e.Key == Key.Tab) { e.Handled = true; return; }
+        base.OnPreviewKeyDown(e);
     }
 
     protected override void OnKeyDown(KeyEventArgs e)
