@@ -35,6 +35,8 @@ public sealed class WorkstationSampleImportTests
             model.AcknowledgePresentationReady(model.LoadGeneration);
             await model.ImportSamplesAsync();
             Assert.That(dialog.InitialDirectory, Is.EqualTo(directory));
+            Assert.That(dialog.Context?.ProjectPath, Is.EqualTo("project.json"));
+            Assert.That(dialog.Context?.SongDirectory, Is.EqualTo(directory));
         }
         finally { await model.DeactivateAsync(); }
     }

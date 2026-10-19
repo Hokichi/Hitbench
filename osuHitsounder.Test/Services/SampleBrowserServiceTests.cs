@@ -5,20 +5,25 @@ namespace osuHitsounder.Test.Services;
 
 public sealed class SampleBrowserServiceTests
 {
-    [Test]
-    public async Task ReadsRealWaveformAndReleasesDecoder()
+    [TestCase("wav")]
+    [TestCase("ogg")]
+    [TestCase("mp3")]
+    public async Task ReadsRealWaveformAndReleasesDecoder(string extension)
     {
         var root = Directory.CreateTempSubdirectory();
-        var path = Path.Combine(root.FullName, "hit.wav");
+        var path = Path.Combine(root.FullName, "hit." + extension);
         try
         {
+            if (extension == "wav")
             using (var writer = new WaveFileWriter(path, new WaveFormat(44100, 16, 1)))
             {
                 var bytes = Enumerable.Range(0, 8820).Select(i => (byte)(i % 128)).ToArray();
                 writer.Write(bytes, 0, bytes.Length);
             }
+            else File.Copy(Path.Combine(TestContext.CurrentContext.TestDirectory, "Fixtures", "Audio", "tone." + extension), path);
             var data = await new SampleBrowserService().ReadWaveformAsync(path, default);
-            Assert.That(data.Duration.TotalSeconds, Is.EqualTo(.1).Within(.0001));
+            Assert.That(data.Duration, Is.GreaterThan(TimeSpan.Zero));
+            if (extension == "wav") Assert.That(data.Duration.TotalSeconds, Is.EqualTo(.1).Within(.0001));
             Assert.That(data.Peaks.Any(x => x > 0), Is.True);
             using var exclusive = File.Open(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
         }
