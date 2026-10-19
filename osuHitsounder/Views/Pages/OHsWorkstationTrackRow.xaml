@@ -18,8 +18,7 @@
         <Style
             x:Key="OHsWorkstationInstrumentActionStyle"
             BasedOn="{StaticResource OHsBalloonSurfaceActionStyle}"
-            TargetType="customControls:BalloonButton">
-        </Style>
+            TargetType="customControls:BalloonButton" />
         <Style
             x:Key="OHsWorkstationTrackNameStyle"
             BasedOn="{StaticResource RoundedTextInputStyle}"

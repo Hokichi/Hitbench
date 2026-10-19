@@ -55,7 +55,8 @@
             x:Key="OHsHomePageSearchPlaceholderStyle"
             BasedOn="{StaticResource CardLabelTextStyle}"
             TargetType="TextBlock">
-            <Setter Property="Margin" Value="32,0,8,0" />
+            <!-- Search padding plus the input border and native TextBox text inset. -->
+            <Setter Property="Margin" Value="35,0,27,0" />
             <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="IsHitTestVisible" Value="False" />
             <Setter Property="TextTrimming" Value="CharacterEllipsis" />
