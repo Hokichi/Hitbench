@@ -8,6 +8,13 @@ public sealed class SampleBrowserService(Func<string, WaveStream>? openDecoder =
 {
     private readonly Func<string, WaveStream> openDecoder = openDecoder ?? AudioDecoder.Open;
     private static bool IsSupported(string path) => Path.GetExtension(path).ToLowerInvariant() is ".wav" or ".ogg" or ".mp3";
+    public Task<osuHitsounder.Core.Entities.WaveformData> ReadWaveformAsync(string path, CancellationToken token) => Task.Run(() =>
+    {
+        token.ThrowIfCancellationRequested();
+        if (!IsSupported(path)) throw new InvalidDataException("Select a WAV, OGG, or MP3 file.");
+        using var reader = openDecoder(Path.GetFullPath(path));
+        return new WaveformPeakReader().Read(reader.ToSampleProvider(), token);
+    }, token);
 
     public Task<IReadOnlyList<SampleBrowserEntry>> GetRootsAsync(CancellationToken token) => Task.Run<IReadOnlyList<SampleBrowserEntry>>(() =>
         DriveInfo.GetDrives().Select(drive => new SampleBrowserEntry(drive.RootDirectory.FullName, drive.Name, true)).ToArray(), token);

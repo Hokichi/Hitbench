@@ -14,6 +14,9 @@ public sealed class StubSampleBrowserService : ISampleBrowserService
     public Func<CancellationToken, Task<IReadOnlyList<SampleBrowserEntry>>>? RootListing { get; set; }
     public List<string> RequestedDirectories { get; } = [];
     public int DefaultDirectoryRequests { get; private set; }
+    public Func<string, CancellationToken, Task<osuHitsounder.Core.Entities.WaveformData>>? Waveform { get; set; }
+    public Task<osuHitsounder.Core.Entities.WaveformData> ReadWaveformAsync(string path, CancellationToken token) => Waveform?.Invoke(path, token) ??
+        Task.FromResult(new osuHitsounder.Core.Entities.WaveformData(TimeSpan.FromSeconds(1), new float[] { .2f, .5f, .1f }));
     public Task<IReadOnlyList<SampleBrowserEntry>> GetRootsAsync(CancellationToken token) => RootListing?.Invoke(token) ?? Task.FromResult<IReadOnlyList<SampleBrowserEntry>>(RootEntries ?? [new(RootPath, "Root", true)]);
     public Task<string> GetDefaultDirectoryAsync(CancellationToken token)
     {

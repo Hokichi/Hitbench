@@ -6,6 +6,25 @@ namespace osuHitsounder.Test.Services;
 public sealed class SampleBrowserServiceTests
 {
     [Test]
+    public async Task ReadsRealWaveformAndReleasesDecoder()
+    {
+        var root = Directory.CreateTempSubdirectory();
+        var path = Path.Combine(root.FullName, "hit.wav");
+        try
+        {
+            using (var writer = new WaveFileWriter(path, new WaveFormat(44100, 16, 1)))
+            {
+                var bytes = Enumerable.Range(0, 8820).Select(i => (byte)(i % 128)).ToArray();
+                writer.Write(bytes, 0, bytes.Length);
+            }
+            var data = await new SampleBrowserService().ReadWaveformAsync(path, default);
+            Assert.That(data.Duration.TotalSeconds, Is.EqualTo(.1).Within(.0001));
+            Assert.That(data.Peaks.Any(x => x > 0), Is.True);
+            using var exclusive = File.Open(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+        }
+        finally { root.Delete(true); }
+    }
+    [Test]
     public async Task ListsDirectoriesFirstAndOnlySupportedAudioCaseInsensitively()
     {
         var root = Directory.CreateTempSubdirectory();
