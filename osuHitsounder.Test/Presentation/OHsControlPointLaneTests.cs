@@ -8,6 +8,26 @@ namespace osuHitsounder.Test.Presentation;
 public class OHsControlPointLaneTests
 {
     [Test]
+    public void PlaybackUpdatesDoNotResetZonePreview()
+    {
+        var point = new ControlPointSnapshot(Guid.NewGuid(), 0, 50, "Normal");
+        var lane = Create([point]);
+        lane.CapturePointer = () => true;
+        lane.ReleasePointer = () => { };
+        lane.BeginVolumeDrag(point.Id, 100, 200);
+        lane.UpdateVolumeDrag(50);
+        lane.Position = TimeSpan.FromMilliseconds(100);
+        Assert.That(lane.PlaybackMarkerX, Is.EqualTo(200));
+        Assert.That(lane.IsVolumePreviewActive, Is.True);
+        Assert.That(lane.PreviewVolume, Is.EqualTo(75));
+        lane.CancelVolumeDrag();
+        lane.HorizontalOffset = 100;
+        Assert.That(lane.PlaybackMarkerX, Is.EqualTo(100));
+        lane.Position = TimeSpan.FromMilliseconds(1000);
+        Assert.That(lane.PlaybackMarkerX, Is.Null);
+    }
+
+    [Test]
     public void LongZoneStartingBeforeViewportIsRealizedAndFocusDoesNotJump()
     {
         ControlPointSnapshot[] points = [new(Guid.NewGuid(), 0, 50, "Normal"), new(Guid.NewGuid(), 9000, 50, "Soft")];

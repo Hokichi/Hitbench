@@ -4,6 +4,17 @@ namespace osuHitsounder.Resources.Helpers;
 
 public static class OHsControlPointLayout
 {
+    public static double? GetPlaybackMarkerX(double positionMilliseconds, double durationMilliseconds,
+        double contentWidth, double horizontalOffset, double viewportWidth)
+    {
+        if (!double.IsFinite(positionMilliseconds) || !double.IsFinite(durationMilliseconds) ||
+            !double.IsFinite(contentWidth) || !double.IsFinite(horizontalOffset) || !double.IsFinite(viewportWidth) ||
+            durationMilliseconds <= 0 || contentWidth <= 0 || viewportWidth <= 0 || horizontalOffset < 0 ||
+            positionMilliseconds < 0 || positionMilliseconds > durationMilliseconds) return null;
+        var x = positionMilliseconds / durationMilliseconds * contentWidth - horizontalOffset;
+        return double.IsFinite(x) && x >= 0 && x <= viewportWidth ? x : null;
+    }
+
     public static int? GetDraggedVolume(int originalVolume, double startY, double pointerY, double usableHeight)
     {
         if (!double.IsFinite(startY) || !double.IsFinite(pointerY) || !double.IsFinite(usableHeight) || usableHeight <= 0) return null;

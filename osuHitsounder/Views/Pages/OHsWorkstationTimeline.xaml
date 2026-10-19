@@ -98,6 +98,7 @@
    FlowDirection="{Binding FlowDirection, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationTimeline}, Mode=OneWay}"
    Width="{Binding TimelineViewportWidth, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationTimeline}, Mode=OneWay}"
    State="{Binding ControlPointsState, Mode=OneWay}" PendingAdd="{Binding PendingControlPointAdd, Mode=OneWay}"
+   Position="{Binding Position, Mode=OneWay}" PlaybackMarkerBrush="{DynamicResource Brush.Playhead}" PlaybackMarkerOutlineBrush="{DynamicResource Brush.Background.Deepened}"
    AddCommand="{Binding AddControlPointCommand, Mode=OneWay}" CommitAddCommand="{Binding CommitControlPointAddCommand, Mode=OneWay}"
    MovePointCommand="{Binding MoveControlPointCommand, Mode=OneWay}" SetPointCommand="{Binding SetControlPointCommand, Mode=OneWay}"
    SetPointDisabledCommand="{Binding SetControlPointDisabledCommand, Mode=OneWay}" SplitPointCommand="{Binding SplitControlPointCommand, Mode=OneWay}"

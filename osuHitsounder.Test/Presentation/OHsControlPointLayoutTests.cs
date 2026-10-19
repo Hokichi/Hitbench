@@ -5,6 +5,26 @@ namespace osuHitsounder.Test.Presentation;
 
 public class OHsControlPointLayoutTests
 {
+    [TestCase(1000, 4000, 800, 80, 400, 120)]
+    [TestCase(0, 4000, 800, 0, 400, 0)]
+    [TestCase(4000, 4000, 800, 400, 400, 400)]
+    [TestCase(1000, 4000, 1600, 200, 400, 200)]
+    [TestCase(1000, 0, 800, 80, 400, null)]
+    [TestCase(1000, 4000, 0, 80, 400, null)]
+    [TestCase(1000, 4000, 800, 80, 0, null)]
+    [TestCase(1000, 4000, 800, -1, 400, null)]
+    [TestCase(-1, 4000, 800, 0, 400, null)]
+    [TestCase(4001, 4000, 800, 0, 400, null)]
+    [TestCase(1000, 4000, 800, 300, 400, null)]
+    [TestCase(3000, 4000, 800, 0, 400, null)]
+    [TestCase(double.NaN, 4000, 800, 0, 400, null)]
+    [TestCase(1000, double.PositiveInfinity, 800, 0, 400, null)]
+    [TestCase(1000, 4000, double.NaN, 0, 400, null)]
+    [TestCase(1000, 4000, 800, double.PositiveInfinity, 400, null)]
+    [TestCase(1000, 4000, 800, 0, double.NaN, null)]
+    public void PlaybackMarkerUsesExplicitTimelineCoordinates(double position, double duration, double width, double offset, double viewport, double? expected) =>
+        Assert.That(OHsControlPointLayout.GetPlaybackMarkerX(position, duration, width, offset, viewport), Is.EqualTo(expected));
+
     [Test]
     public void MappingUsesSharedContentCoordinates() => Assert.That(OHsControlPointLayout.GetLeft(1000, 4000, 800) - 80, Is.EqualTo(120));
 

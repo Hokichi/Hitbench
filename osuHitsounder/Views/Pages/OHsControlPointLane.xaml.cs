@@ -31,6 +31,7 @@ public partial class OHsControlPointLane : UserControl
     public OHsControlPointLane()
     {
         InitializeComponent();
+        UpdatePlaybackMarker();
         PointItems.AddHandler(System.Windows.Controls.Primitives.ButtonBase.ClickEvent, new RoutedEventHandler(OnZoneClick));
         Unloaded += (_, _) => ResetInteraction();
         SizeChanged += (_, _) => CancelVolumeDrag();
@@ -43,6 +44,7 @@ public partial class OHsControlPointLane : UserControl
             var lane = (OHsControlPointLane)d;
             lane.CancelVolumeDrag();
             lane.SyncPanel();
+            lane.UpdatePlaybackMarker();
             if (e.Property == ViewportWidthProperty) lane.panel?.InvalidateGeometry();
             lane.UpdateEditorViewport();
         }));

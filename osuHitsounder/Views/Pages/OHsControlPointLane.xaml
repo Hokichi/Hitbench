@@ -66,7 +66,7 @@
   </DataTemplate>
   <ItemsPanelTemplate x:Key="OHsControlPointLaneItemsPanel"><p:OHsControlPointLanePanel /></ItemsPanelTemplate>
   <Style x:Key="OHsControlPointLaneItemsStyle" TargetType="ItemsControl" BasedOn="{StaticResource BaseItemsControlStyle}">
-   <Setter Property="Height" Value="96" /><Setter Property="Background" Value="{DynamicResource Brush.Background.Deepened}" /><Setter Property="ItemsPanel" Value="{StaticResource OHsControlPointLaneItemsPanel}" />
+   <Setter Property="Height" Value="48" /><Setter Property="Background" Value="{DynamicResource Brush.Background.Deepened}" /><Setter Property="ItemsPanel" Value="{StaticResource OHsControlPointLaneItemsPanel}" />
    <Setter Property="ItemTemplate" Value="{StaticResource OHsControlPointContentTemplate}" />
    <Setter Property="VirtualizingPanel.IsVirtualizing" Value="True" /><Setter Property="VirtualizingPanel.VirtualizationMode" Value="Recycling" />
   </Style>
@@ -94,6 +94,20 @@
    <MenuItem Header="Split" Style="{StaticResource OHsActionMenuItemStyle}" Command="{Binding SplitPointCommand, Mode=OneWay}" CommandParameter="{Binding MenuSplitRequest, Mode=OneWay}" AutomationProperties.Name="Split control point zone at playback marker" />
    <MenuItem Header="Delete" Style="{StaticResource OHsDestructiveActionMenuItemStyle}" Click="OnDeletePointClick" AutomationProperties.Name="Delete control point" />
   </ContextMenu>
+  <Style x:Key="OHsControlPointPlayheadHostStyle" TargetType="Grid" BasedOn="{StaticResource BaseGridStyle}">
+   <Setter Property="Width" Value="3.5" /><Setter Property="HorizontalAlignment" Value="Left" />
+   <Setter Property="IsHitTestVisible" Value="False" /><Setter Property="Focusable" Value="False" />
+   <Setter Property="FlowDirection" Value="LeftToRight" />
+  </Style>
+  <Style x:Key="OHsControlPointPlayheadOutlineStyle" TargetType="Border" BasedOn="{StaticResource BaseBorderStyle}">
+   <Setter Property="Background" Value="{Binding PlaybackMarkerOutlineBrush, RelativeSource={RelativeSource AncestorType=p:OHsControlPointLane}, Mode=OneWay}" />
+   <Style.Triggers><DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers>
+  </Style>
+  <Style x:Key="OHsControlPointPlayheadStyle" TargetType="Border" BasedOn="{StaticResource BaseBorderStyle}">
+   <Setter Property="Width" Value="1.5" /><Setter Property="HorizontalAlignment" Value="Center" />
+   <Setter Property="Background" Value="{Binding PlaybackMarkerBrush, RelativeSource={RelativeSource AncestorType=p:OHsControlPointLane}, Mode=OneWay}" />
+   <Style.Triggers><DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True"><Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" /></DataTrigger></Style.Triggers>
+  </Style>
  </UserControl.Resources>
  <Grid Style="{StaticResource BaseGridStyle}" ClipToBounds="True" Background="Transparent">
   <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
@@ -102,6 +116,11 @@
    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
    <c:BalloonButton Grid.Column="1" ButtonText="Add Control Point" ButtonIcon="{StaticResource ClockPlusOutline}" Click="OnAddPointClick"
     Style="{StaticResource OHsControlPointLaneActionStyle}" IsEnabled="{Binding State.CanAdd, RelativeSource={RelativeSource AncestorType=p:OHsControlPointLane}, Mode=OneWay}" AutomationProperties.Name="Add Control Point at playback marker" />
+  </Grid>
+  <Grid x:Name="PlaybackMarker" Style="{StaticResource OHsControlPointPlayheadHostStyle}" Visibility="Collapsed">
+   <Grid.RenderTransform><TranslateTransform x:Name="PlaybackMarkerTranslation" /></Grid.RenderTransform>
+   <Border Style="{StaticResource OHsControlPointPlayheadOutlineStyle}" />
+   <Border Style="{StaticResource OHsControlPointPlayheadStyle}" />
   </Grid>
   <StackPanel Grid.Row="1" Style="{StaticResource BaseStackPanelStyle}">
    <c:BalloonButton ButtonText="Retry save" ButtonIcon="{StaticResource RegularRepeat}" Click="OnRetrySaveClick" Style="{StaticResource OHsControlPointLaneRetryStyle}"
