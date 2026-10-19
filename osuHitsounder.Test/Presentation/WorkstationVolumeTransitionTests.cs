@@ -10,6 +10,26 @@ namespace osuHitsounder.Test.Presentation;
 [NonParallelizable]
 public class WorkstationVolumeTransitionTests
 {
+    [Test]
+    public void VolumePresentationPublishesAndClearsHeaderEffect()
+    {
+        var page = CreatePage();
+        using var view = new InMemoryView(new Window { Content = page, Width = 900, Height = 600 });
+        UiTestPump.Run(page.LoadCompletion);
+        var content = (Grid)page.FindName("WorkstationContent");
+        page.ShowVolumeOverlay(false, new Point(), false, false);
+        Assert.That(page.HeaderBlurEffect, Is.Not.Null.And.SameAs(content.Effect));
+        page.ShowVolumeOverlay(false, new Point(), false, true);
+        Assert.That(page.HeaderBlurEffect, Is.Null);
+        page.ShowVolumeOverlay(false, new Point(), false, false);
+        Assert.That(page.HeaderBlurEffect, Is.Not.Null.And.SameAs(content.Effect));
+        page.DismissVolumeOverlay();
+        Assert.That(page.HeaderBlurEffect, Is.Null);
+        page.ShowVolumeOverlay(false, new Point(), true, false);
+        UiTestPump.Run(page.DeactivateAsync());
+        Assert.That(page.HeaderBlurEffect, Is.Null);
+    }
+
     [SetUp]
     public void Setup() => new VolumeWheelTests().SetUp();
 

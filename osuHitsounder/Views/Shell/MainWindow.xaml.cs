@@ -203,6 +203,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
             viewModel = (HomePageVM)next.DataContext;
             DataContext = viewModel;
             viewModel.PropertyChanged += OnStateChanged;
+            SetHeaderBlurSource(null);
             PageHost.Content = next;
             ShellHeader.IsWorkstationVisible = false;
             MinWidth = defaultMinWidth;
@@ -272,14 +273,24 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
             workstation.SetProjectPath(projectPath);
             page.Deactivate();
             PageHost.Content = workstation;
+            SetHeaderBlurSource(workstation);
             ShellHeader.IsWorkstationVisible = true;
             MinWidth = defaultMinWidth;
             MinHeight = defaultMinHeight;
         }
         catch (Exception error)
         {
+            SetHeaderBlurSource(PageHost.Content as WorkstationPage);
             reportError($"Unable to open workstation: {error.Message}");
         }
+    }
+
+    private void SetHeaderBlurSource(WorkstationPage? workstation)
+    {
+        System.Windows.Data.BindingOperations.ClearBinding(HeaderVolumeBlurHost, UIElement.EffectProperty);
+        if (workstation is not null)
+            HeaderVolumeBlurHost.SetBinding(UIElement.EffectProperty, new System.Windows.Data.Binding(nameof(WorkstationPage.HeaderBlurEffect))
+            { Source = workstation, Mode = System.Windows.Data.BindingMode.OneWay });
     }
 
     public void Receive(ProjectCreationFailedMessage message)
@@ -310,6 +321,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
 
     protected override void OnClosed(EventArgs e)
     {
+        SetHeaderBlurSource(null);
         clearSampleFocusRestore?.Invoke();
         CancelBackgroundDrag();
         ComponentDispatcher.EnterThreadModal -= OnEnterThreadModal;

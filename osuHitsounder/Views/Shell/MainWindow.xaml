@@ -81,6 +81,13 @@
         </Style>
         
         <BlurEffect x:Key="MainWindowScanBlur" Radius="8" />
+        <Style x:Key="OHsMainWindowHeaderScanBlurStyle" TargetType="Border" BasedOn="{StaticResource BaseBorderStyle}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsProcessing, Mode=OneWay}" Value="True">
+                    <Setter Property="Effect" Value="{StaticResource MainWindowScanBlur}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
         <Style
             x:Key="MainWindowScanContentStyle"
             BasedOn="{StaticResource BaseBorderStyle}"
@@ -187,9 +194,13 @@
                                 <RowDefinition Height="Auto" MinHeight="40" />
                                 <RowDefinition Height="*" />
                             </Grid.RowDefinitions>
+                            <Border x:Name="HeaderScanBlurHost" Style="{StaticResource OHsMainWindowHeaderScanBlurStyle}">
+                            <Border x:Name="HeaderVolumeBlurHost" Style="{StaticResource BaseBorderStyle}">
                             <shell:OHsShellHeader x:Name="ShellHeader"
                                 GoBackRequested="OnGoBackClick" MinimizeRequested="OnMinimizeClick"
                                 MaximizeRestoreRequested="OnMaximizeRestoreClick" CloseRequested="OnCloseClick" />
+                            </Border>
+                            </Border>
                             <Grid Grid.Row="1" FlowDirection="LeftToRight">
                                 <Border FlowDirection="{Binding FlowDirection, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}" Style="{StaticResource MainWindowScanContentStyle}">
                                     <ContentControl x:Name="PageHost" />

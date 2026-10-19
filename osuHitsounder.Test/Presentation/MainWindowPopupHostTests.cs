@@ -3,6 +3,8 @@ using System.Windows.Controls;
 using CommunityToolkit.Mvvm.Messaging;
 using osuHitsounder.Views.Pages;
 using osuHitsounder.ViewModels.Shell.HomePage;
+using osuHitsounder.Resources.Messages;
+using System.Windows.Threading;
 
 namespace osuHitsounder.Test.Presentation;
 
@@ -17,10 +19,59 @@ public sealed class MainWindowPopupHostTests
     {
         var settings = new StubAppSettingsService();
         var messenger = new WeakReferenceMessenger();
-        var vm = new HomePageVM(new StubHomeFolderService(), settings, new StubInstallationDialogService(),
+        HomePage CreateHome() => new(new HomePageVM(new StubHomeFolderService(), settings, new StubInstallationDialogService(),
             new StubProjectCreationDialogService(), new ImmediateUiScheduler(),
-            new StubProjectFileService((_, _, _) => Task.FromResult("saved.json")), messenger);
-        return TestShell.Create(new HomePage(vm), messenger, WorkstationTestPage.Create, vm, settings);
+            new StubProjectFileService((_, _, _) => Task.FromResult("saved.json")), messenger));
+        var page = CreateHome();
+        return TestShell.Create(page, messenger, WorkstationTestPage.Create, (HomePageVM)page.DataContext, settings, createHome: CreateHome);
+    }
+
+    [Test]
+    public void HeaderBindingTracksVolumeAndNavigation()
+    {
+        var window = Create();
+        window.Receive(new ProjectOpenRequestedMessage("project.json"));
+        var page = (WorkstationPage)((ContentControl)window.FindName("PageHost")).Content;
+        using var view = new InMemoryView(window);
+        try
+        {
+            UiTestPump.Run(page.LoadCompletion);
+            var host = (Border)window.FindName("HeaderVolumeBlurHost");
+            Assert.That(host, Is.Not.Null);
+            page.ShowVolumeOverlay(false, new Point(), false, false);
+            UiTestPump.Run(window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle).Task);
+            Assert.That(host.Effect, Is.Not.Null.And.SameAs(page.HeaderBlurEffect));
+            UiTestPump.Run(window.ReturnHomeAsync());
+            Assert.That(((ContentControl)window.FindName("PageHost")).Content, Is.TypeOf<HomePage>());
+            Assert.That(host.Effect, Is.Null);
+            Assert.That(System.Windows.Data.BindingOperations.IsDataBound(host, UIElement.EffectProperty), Is.False);
+        }
+        finally { window.Close(); }
+    }
+
+    [Test]
+    public void ClosingOneOverlayPreservesOtherHeaderBlur()
+    {
+        var window = Create();
+        try
+        {
+            window.ApplyTemplate();
+            var vm = (HomePageVM)window.DataContext;
+            vm.IsProcessing = true;
+            UiTestPump.Layout((FrameworkElement)window.Content, 1280, 720);
+            var header = (Border)window.FindName("HeaderScanBlurHost");
+            Assert.That(header, Is.Not.Null);
+            Assert.That(header.Effect, Is.Not.Null);
+            var scanEffect = header.Effect;
+            window.ShowPopupOverlay();
+            UiTestPump.Layout((FrameworkElement)window.Content, 1280, 720);
+            window.HidePopupOverlay();
+            UiTestPump.Layout((FrameworkElement)window.Content, 1280, 720);
+            Assert.That(header.Effect, Is.SameAs(scanEffect));
+            vm.IsProcessing = false;
+            Assert.That(header.Effect, Is.Null);
+        }
+        finally { window.Close(); }
     }
 
     [Test]

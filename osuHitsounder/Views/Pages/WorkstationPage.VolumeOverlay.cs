@@ -11,6 +11,11 @@ namespace osuHitsounder.Views.Pages;
 
 public partial class WorkstationPage
 {
+    private static readonly DependencyPropertyKey HeaderBlurEffectPropertyKey = DependencyProperty.RegisterReadOnly(
+        nameof(HeaderBlurEffect), typeof(Effect), typeof(WorkstationPage), new PropertyMetadata(null));
+    public static readonly DependencyProperty HeaderBlurEffectProperty = HeaderBlurEffectPropertyKey.DependencyProperty;
+    public Effect? HeaderBlurEffect => (Effect?)GetValue(HeaderBlurEffectProperty);
+
     private int volumeWheelRemainder;
     private IInputElement? volumePriorFocus;
     private DispatcherTimer? volumeIdleTimer;
@@ -45,11 +50,13 @@ public partial class WorkstationPage
             volumeBlur ??= ((BlurEffect)FindResource("OHsWorkstationVolumeBlurEffect")).Clone();
             volumeBlur.Radius = 0;
             WorkstationContent.Effect = volumeBlurRadius > 0 ? volumeBlur : null;
+            SetValue(HeaderBlurEffectPropertyKey, WorkstationContent.Effect);
             AnimateVolumeOverlay(true, animate);
         }
         else
         {
             WorkstationContent.Effect = volumeBlurRadius > 0 ? volumeBlur : null;
+            SetValue(HeaderBlurEffectPropertyKey, WorkstationContent.Effect);
             if (settingsChanged && !volumeFading) AnimateVolumeOverlay(true, animate);
         }
         ActivateVolumeWheel(ApplicationVolumeWheel);
@@ -71,6 +78,7 @@ public partial class WorkstationPage
         volumeBlur?.BeginAnimation(BlurEffect.RadiusProperty, null);
         if (volumeBlur is not null) volumeBlur.Radius = 0;
         WorkstationContent.Effect = null;
+        SetValue(HeaderBlurEffectPropertyKey, null);
         var restore = volumePriorFocus as UIElement;
         volumePriorFocus = null;
         volumeWheelRemainder = 0;
