@@ -216,7 +216,7 @@
                         <ColumnDefinition Width="{StaticResource OHsWorkstationColumnGap}" />
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="{StaticResource OHsWorkstationColumnGap}" />
-                        <ColumnDefinition Width="{StaticResource OHsWorkstationSideColumnWidth}" />
+                        <ColumnDefinition Width="{StaticResource OHsWorkstationRightColumnWidth}" />
                         <ColumnDefinition Width="{Binding TrackScrollBarGutter, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}" />
                     </Grid.ColumnDefinitions>
                     <ScrollBar

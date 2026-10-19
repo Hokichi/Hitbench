@@ -357,7 +357,7 @@
                     <ColumnDefinition Width="{StaticResource OHsWorkstationColumnGap}" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="{StaticResource OHsWorkstationColumnGap}" />
-                    <ColumnDefinition Width="{StaticResource OHsWorkstationSideColumnWidth}" />
+                    <ColumnDefinition Width="{StaticResource OHsWorkstationRightColumnWidth}" />
                 </Grid.ColumnDefinitions>
                 <ContentPresenter
                     Content="{Binding Mode=OneWay}"
@@ -429,11 +429,11 @@
                         ToolTip="{Binding SelectedItem, RelativeSource={RelativeSource Self}, Mode=OneWay}" />
                     <StackPanel x:Name="TrackRightExpandedControls" Style="{StaticResource OHsWorkstationExpandedTrackControlsStyle}">
                         <Grid Style="{StaticResource BaseGridStyle}">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="4" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="4" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
                             <ComboBox
                                 x:Name="TrackAdditionSelector"
                                 AutomationProperties.Name="Sampleset"
@@ -446,7 +446,7 @@
                                 ToolTip="Sampleset" />
                             <ComboBox
                                 x:Name="TrackSampleTypeSelector"
-                                Grid.Column="2"
+                                Grid.Row="2"
                                 AutomationProperties.Name="Track sample type"
                                 DataContextChanged="OnTrackControlDataContextChanged"
                                 IsEnabled="{Binding ViewModel.CanEditTracks, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}"
@@ -467,7 +467,7 @@
                     <ColumnDefinition Width="{StaticResource OHsWorkstationColumnGap}" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="{StaticResource OHsWorkstationColumnGap}" />
-                    <ColumnDefinition Width="{StaticResource OHsWorkstationSideColumnWidth}" />
+                    <ColumnDefinition Width="{StaticResource OHsWorkstationRightColumnWidth}" />
                 </Grid.ColumnDefinitions>
                 <ContentPresenter
                     Content="{Binding Mode=OneWay}"

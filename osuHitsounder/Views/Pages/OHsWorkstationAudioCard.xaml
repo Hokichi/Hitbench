@@ -14,6 +14,9 @@
     d:DesignWidth="1100"
     mc:Ignorable="d">
     <UserControl.Resources>
+        <Style x:Key="OHsWorkstationHeaderCardStyle" TargetType="Border" BasedOn="{StaticResource CardBorderStyle}">
+            <Setter Property="Margin" Value="0,0,0,8" />
+        </Style>
         <Style
             x:Key="OHsWorkstationPanelStyle"
             BasedOn="{StaticResource CardBorderStyle}"
@@ -123,6 +126,17 @@
             <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
             <Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="True" />
         </Style>
+        <Style x:Key="OHsWorkstationSplitAddActionStyle" TargetType="customControls:BalloonComboBox" BasedOn="{StaticResource BaseBalloonComboBoxStyle}">
+            <Setter Property="ShouldShowText" Value="True" />
+            <Setter Property="FontSize" Value="{StaticResource FontSize.Caption}" />
+            <Setter Property="IconSize" Value="10" />
+            <Setter Property="Padding" Value="2,0" />
+        </Style>
+        <Style x:Key="OHsWorkstationSplitSamplesActionStyle" TargetType="customControls:BalloonButton" BasedOn="{StaticResource OHsWorkstationSamplesActionStyle}">
+            <Setter Property="FontSize" Value="{StaticResource FontSize.Caption}" />
+            <Setter Property="IconSize" Value="10" />
+            <Setter Property="Padding" Value="2,0" />
+        </Style>
         <ContextMenu
             x:Key="OHsWorkstationAddMenu"
             x:Shared="False"
@@ -161,7 +175,8 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
-        <WrapPanel Margin="0,0,0,8" VerticalAlignment="Center">
+        <Border Style="{StaticResource OHsWorkstationHeaderCardStyle}">
+        <WrapPanel VerticalAlignment="Center">
             <StackPanel Orientation="Horizontal">
                 <customControls:BalloonButton
                     x:Name="PlayPauseButton"
@@ -234,6 +249,7 @@
             <Border Style="{StaticResource OHsWorkstationToolbarSeparatorStyle}" />
             <pages:OHsWorkstationFooter x:Name="FooterControls" VerticalAlignment="Center" />
         </WrapPanel>
+        </Border>
         <Border
             x:Name="SongAudioCard"
             Grid.Row="1"
@@ -245,7 +261,7 @@
                     <ColumnDefinition Width="{StaticResource OHsWorkstationColumnGap}" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="{StaticResource OHsWorkstationColumnGap}" />
-                    <ColumnDefinition Width="{StaticResource OHsWorkstationSideColumnWidth}" />
+                    <ColumnDefinition Width="{StaticResource OHsWorkstationRightColumnWidth}" />
                     <ColumnDefinition Width="{Binding TrackScrollBarGutter, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationAudioCard}, Mode=OneWay}" />
                 </Grid.ColumnDefinitions>
                 <Grid Style="{StaticResource BaseGridStyle}">
@@ -322,7 +338,8 @@
                     x:Name="TrackActionsHost"
                     Grid.Column="4"
                     VerticalAlignment="Center">
-                    <StackPanel Margin="0,0,0,4" Orientation="Horizontal">
+                    <Grid Margin="0,0,0,4" Style="{StaticResource BaseGridStyle}">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="4" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                         <customControls:BalloonComboBox
                             x:Name="AddMenuButton"
                             Margin="0"
@@ -330,21 +347,22 @@
                             ButtonIcon="{StaticResource PlusSolid}"
                             ButtonText="Add"
                             ContextMenu="{StaticResource OHsWorkstationAddMenu}"
-                            ShouldShowText="False"
-                            Style="{StaticResource BaseBalloonComboBoxStyle}"
+                            Style="{StaticResource OHsWorkstationSplitAddActionStyle}"
                             ToolTip="Add a track" />
                         <customControls:BalloonButton
                             x:Name="ManageSamplesButton"
-                            Margin="4,0,0,0"
+                            Grid.Column="2"
+                            Margin="0"
                             AutomationProperties.Name="Samples"
                             ButtonIcon="{StaticResource BarsSolid}"
                             ButtonText="Samples"
                             Command="{Binding ManageSamplesCommand, Mode=OneWay}"
-                            ShouldShowText="False"
-                            Style="{StaticResource OHsWorkstationSamplesActionStyle}"
+                            Style="{StaticResource OHsWorkstationSplitSamplesActionStyle}"
                             ToolTip="Manage project samples (F2)" />
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal">
+                    </Grid>
+                    <Grid Style="{StaticResource BaseGridStyle}">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="4" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="4" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                         <customControls:BalloonButton
                             x:Name="ReloadSamplesButton"
                             Margin="0"
@@ -356,7 +374,8 @@
                             ToolTip="Refresh project samples (F5)" />
                         <customControls:BalloonButton
                             x:Name="ResnapAllSamplesButton"
-                            Margin="4,0,0,0"
+                            Grid.Column="2"
+                            Margin="0"
                             AutomationProperties.HelpText="Snap sample nodes and instrumental notes across all tracks to the current beat subdivision"
                             AutomationProperties.Name="Resnap all nodes"
                             ButtonIcon="{StaticResource RegularRepeat}"
@@ -366,10 +385,11 @@
                             ToolTip="Snap sample nodes and instrumental notes across all tracks to the current beat subdivision" />
                         <customControls:BalloonButton
                             x:Name="ToggleTracksCollapsedButton"
-                            Margin="4,0,0,0"
+                            Grid.Row="2"
+                            Margin="0"
                             Command="{Binding ToggleTracksCollapsedCommand, Mode=OneWay}"
                             Style="{StaticResource OHsWorkstationCollapseTracksStyle}" />
-                    </StackPanel>
+                    </Grid>
                 </StackPanel>
             </Grid>
         </Border>

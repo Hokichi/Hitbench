@@ -25,6 +25,40 @@ public class WorkstationPageIntegrationTests
 {
     [TestCase(FlowDirection.LeftToRight, "Dark")]
     [TestCase(FlowDirection.RightToLeft, "Light")]
+    public void AudioRightActionsKeepLabelsCommandsAndMenuOwnership(FlowDirection direction, string theme)
+    {
+        EnsureResources(theme);
+        var page = WorkstationTestPage.Create();
+        using var view = new InMemoryView(new Window { Content = page, Width = 1100, Height = 800, FlowDirection = direction });
+        try
+        {
+            var add = (BalloonComboBox)page.AudioCard.FindName("AddMenuButton");
+            var samples = (BalloonButton)page.AudioCard.FindName("ManageSamplesButton");
+            Assert.That(add.ShouldShowText, Is.True);
+            Assert.That(samples.ShouldShowText, Is.True);
+            Assert.That((add.ButtonText, samples.ButtonText), Is.EqualTo(("Add", "Samples")));
+            Assert.That(add.ButtonIcon, Is.SameAs(add.FindResource("PlusSolid")));
+            Assert.That(samples.ButtonIcon, Is.SameAs(samples.FindResource("BarsSolid")));
+            var owner = (WorkstationPageVM)page.DataContext;
+            Assert.That(samples.Command, Is.SameAs(owner.ManageSamplesCommand));
+            // Supply the native popup's inherited context without opening its window.
+            add.ContextMenu.DataContext = owner;
+            foreach (var item in add.ContextMenu.Items.OfType<MenuItem>())
+            {
+                item.DataContext = owner;
+                item.GetBindingExpression(MenuItem.CommandProperty)!.UpdateTarget();
+            }
+            UiTestPump.Run(page.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle).Task);
+            Assert.That(add.ContextMenu.Items.OfType<MenuItem>().Select(item => item.Command),
+                Is.EqualTo(new[] { owner.AddSampleTrackCommand, owner.AddPianoTrackCommand }));
+            UiControlContract.AssertStyle<BalloonComboBox>(add, "OHsWorkstationSplitAddActionStyle");
+            UiControlContract.AssertStyle<BalloonButton>(samples, "OHsWorkstationSplitSamplesActionStyle");
+        }
+        finally { UiTestPump.Run(page.DeactivateAsync()); }
+    }
+
+    [TestCase(FlowDirection.LeftToRight, "Dark")]
+    [TestCase(FlowDirection.RightToLeft, "Light")]
     public void EditingModeControlsUpdateRealizedGrid(FlowDirection direction, string theme)
     {
         EnsureResources(theme);
@@ -300,17 +334,17 @@ public class WorkstationPageIntegrationTests
 
     [TestCase(480d, FlowDirection.LeftToRight, "Dark")]
     [TestCase(1100d, FlowDirection.RightToLeft, "Light")]
-    public void TrackMetadataSelectorsInitializeEditAndRecycleIndependently(double width, FlowDirection direction, string theme)
+    public void CompactRightControlsPreserveMetadataEditing(double width, FlowDirection direction, string theme)
     {
         EnsureResources(theme);
-        var node = new Sample { FileName = "kick.wav", Timestamp = 125 };
-        var first = new Track { SelectedSampleFileName = "kick.wav", Addition = "Soft", Samples = [node] };
+        var node = new Sample { FileName = "long-descriptive-sample-file-name-for-track-metadata.wav", Timestamp = 125 };
+        var first = new Track { SelectedSampleFileName = "long-descriptive-sample-file-name-for-track-metadata.wav", Addition = "Soft", Samples = [node] };
         var second = new Track { Addition = "None" };
         var source = new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(
             new WorkstationSource("map.osu", "audio.wav", new ProjectData { Tracks = [first, second] })) };
         var saves = new DelayedProjectFileService(); saves.Release();
         var vm = new WorkstationPageVM(source, new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay),
-            new ImmediateUiScheduler(), new StubSampleFileService(["kick.wav"]), projectFiles: saves);
+            new ImmediateUiScheduler(), new StubSampleFileService(["long-descriptive-sample-file-name-for-track-metadata.wav"]), projectFiles: saves);
         var page = new WorkstationPage(vm); page.SetProjectPath("project.json");
         using var view = new InMemoryView(new Window { Content = page, Width = width, Height = 900, FlowDirection = direction });
         UiTestPump.Run(page.LoadCompletion); view.UpdateLayout();
@@ -327,7 +361,7 @@ public class WorkstationPageIntegrationTests
         addition.SelectedItem = "None";
         UiTestPump.Run(vm.FlushSavesAsync());
         Assert.That(first.Addition, Is.EqualTo("None"));
-        Assert.That(node.FileName, Is.EqualTo("kick.wav"));
+        Assert.That(node.FileName, Is.EqualTo("long-descriptive-sample-file-name-for-track-metadata.wav"));
         var writes = saves.Writes;
         addition.DataContext = second;
         Assert.That(saves.Writes, Is.EqualTo(writes));

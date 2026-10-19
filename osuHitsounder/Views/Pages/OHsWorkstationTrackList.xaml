@@ -100,7 +100,7 @@
                     <ColumnDefinition Width="{StaticResource OHsWorkstationColumnGap}" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="{StaticResource OHsWorkstationColumnGap}" />
-                    <ColumnDefinition Width="{StaticResource OHsWorkstationSideColumnWidth}" />
+                    <ColumnDefinition Width="{StaticResource OHsWorkstationRightColumnWidth}" />
                 </Grid.ColumnDefinitions>
                 <Border
                     Grid.Column="2"
