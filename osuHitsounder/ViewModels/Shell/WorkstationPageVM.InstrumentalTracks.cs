@@ -155,8 +155,8 @@ public partial class WorkstationPageVM
             {
                 mappingTransportOwner = context; NotifyInstrumentState(); PublishInstrumentTimeline();
                 pendingPlayCancellation?.Cancel();
-                // Coordinator serializes an already-entered Play ahead of Stop. Cancellation prevents a queued Play from entering later.
-                await playback.StopAsync(token); RefreshPlayback();
+                // Coordinator serializes an already-entered Play ahead of Pause. Cancellation prevents a queued Play from entering later.
+                await playback.PauseAsync(token); RefreshPlayback();
                 token.ThrowIfCancellationRequested();
                 if (request != drawerRequestGeneration) return;
                 await instrumentDialogs!.ShowKeysMappingAsync(InstrumentSnapshot(track, context), token);

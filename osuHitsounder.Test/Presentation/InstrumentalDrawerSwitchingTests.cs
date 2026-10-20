@@ -112,7 +112,7 @@ public sealed class InstrumentalDrawerSwitchingTests
         finally { await owner.DeactivateAsync(); }
     }
     [Test]
-    public async Task PianoKeepsPlaybackAndMappingStopsWithoutAutoResume()
+    public async Task PianoKeepsPlaybackAndMappingPausesWithoutAutoResume()
     {
         var track = new InstrumentalTrack { KeyFiles = new() { ["C4"] = "piano.wav" } };
         var audio = new StubWorkstationAudioService(); var dialogs = new StubInstrumentalTrackDialogService();
@@ -134,6 +134,7 @@ public sealed class InstrumentalDrawerSwitchingTests
             await owner.SettleInstrumentalEditorAsync(); await piano;
             Assert.That(audio.Snapshot.IsPlaying, Is.True);
             Assert.That(audio.Disposed, Is.False);
+            audio.Snapshot = audio.Snapshot with { Position = TimeSpan.FromMilliseconds(1500) };
             var mapping = owner.KeysMappingCommand.ExecuteAsync(track);
             await mappingOpened.Task.WaitAsync(TimeSpan.FromSeconds(3));
             Assert.That(audio.Snapshot.IsPlaying, Is.False);
@@ -142,7 +143,7 @@ public sealed class InstrumentalDrawerSwitchingTests
             await owner.SeekCommand.ExecuteAsync(TimeSpan.FromSeconds(2));
             foreach (var command in new[] { owner.StopCommand, owner.NextGridLineCommand, owner.PreviousGridLineCommand, owner.NextWholeBeatCommand, owner.PreviousWholeBeatCommand })
             { Assert.That(command.CanExecute(null), Is.False); await command.ExecuteAsync(null); }
-            Assert.That(audio.Snapshot.Position, Is.EqualTo(TimeSpan.Zero));
+            Assert.That(audio.Snapshot.Position, Is.EqualTo(TimeSpan.FromMilliseconds(1500)));
             Assert.That(audio.Snapshot.IsPlaying, Is.False);
             await owner.SettleInstrumentalEditorAsync();
             await Task.WhenAll(piano, mapping);
