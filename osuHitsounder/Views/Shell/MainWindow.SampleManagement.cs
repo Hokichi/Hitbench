@@ -113,6 +113,8 @@ public partial class MainWindow
         SetSampleManagerPhase(OHsSampleDrawerPhase.Opening);
         drawer.IsEnabled = true;
         var instrumentDrawer = drawer is OHsInstrumentalArrangementDrawer or OHsKeysMappingDrawer;
+        SampleManagerHost.SetResourceReference(StyleProperty, drawer is OHsKeysMappingDrawer
+            ? "OHsMainWindowKeysMappingDrawerHostStyle" : "OHsMainWindowShellDrawerHostStyle");
         SampleManagerHost.Content = drawer;
         // Content attachment sets local flow direction; bind after attachment so shell changes remain live.
         if (instrumentDrawer)
@@ -166,7 +168,11 @@ public partial class MainWindow
                     BindingOperations.ClearBinding(piano, OHsInstrumentalArrangementDrawer.TimelineHorizontalOffsetProperty);
                 }
                 if (ReferenceEquals(sampleManagerCompletion, completion)) ResetSampleManagerAnimation();
-                if (ReferenceEquals(SampleManagerHost.Content, drawer)) SampleManagerHost.Content = null;
+                if (ReferenceEquals(SampleManagerHost.Content, drawer))
+                {
+                    SampleManagerHost.Content = null;
+                    SampleManagerHost.SetResourceReference(StyleProperty, "OHsMainWindowShellDrawerHostStyle");
+                }
                 if (ReferenceEquals(sampleManagerCompletion, completion))
                 {
                     sampleManagerCompletion = null;

@@ -41,6 +41,13 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
+        <Style x:Key="OHsMainWindowKeysMappingDrawerHostStyle" TargetType="ContentControl" BasedOn="{StaticResource OHsMainWindowSampleManagerHostStyle}">
+            <Setter Property="Grid.RowSpan" Value="2"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="VerticalAlignment" Value="Bottom"/>
+            <Setter Property="Width" Value="Auto"/>
+            <Setter Property="MaxHeight" Value="{Binding ActualHeight, ElementName=SampleManagerMotionHost, Mode=OneWay}"/>
+        </Style>
         <SolidColorBrush x:Key="OHsMainWindowAcrylicBackground" Color="Transparent" />
 
         <Style

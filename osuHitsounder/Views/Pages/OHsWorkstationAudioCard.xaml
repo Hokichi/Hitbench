@@ -220,7 +220,7 @@
                 <Border Style="{StaticResource OHsWorkstationToolbarSeparatorStyle}" />
                 <customControls:SegmentedToggleGroup
                     x:Name="EditingModeGroup"
-                    Width="240"
+                    Width="160"
                     Margin="0"
                     AutomationProperties.Name="Workstation editing mode"
                     IsEnabled="{Binding CanPlaceSamples, Mode=OneWay}"
