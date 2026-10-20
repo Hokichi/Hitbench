@@ -25,6 +25,13 @@ public class KeysMappingDrawerIntegrationTests
             drawer.FocusInitialAction(); view.UpdateLayout();
             var selector = (ListBox)drawer.FindName("KeySelector");
             var scroll = Descendants(selector).OfType<ScrollViewer>().First();
+            var bar = (System.Windows.Controls.Primitives.ScrollBar)drawer.FindName("PianoScrollBar");
+            Assert.That(bar.Style, Is.SameAs(bar.FindResource(typeof(System.Windows.Controls.Primitives.ScrollBar))));
+            var offset = scroll.ScrollableWidth / 2;
+            bar.RaiseEvent(new System.Windows.Controls.Primitives.ScrollEventArgs(System.Windows.Controls.Primitives.ScrollEventType.ThumbTrack, offset));
+            view.UpdateLayout();
+            Assert.That(scroll.HorizontalOffset, Is.EqualTo(offset).Within(.01));
+            Assert.That(bar.Value, Is.EqualTo(scroll.HorizontalOffset).Within(.01));
             foreach (var delta in new[] { -120, 120 })
             {
                 for (var step = 0; step < 108; step++)
@@ -34,6 +41,7 @@ public class KeysMappingDrawerIntegrationTests
                     view.UpdateLayout();
                 }
                 Assert.That(scroll.HorizontalOffset, Is.EqualTo(delta < 0 ? scroll.ScrollableWidth : 0).Within(0.01));
+                Assert.That(bar.Value, Is.EqualTo(scroll.HorizontalOffset).Within(.01));
                 var index = delta < 0 ? 107 : 0;
                 Assert.That(((FrameworkElement)selector.ItemContainerGenerator.ContainerFromIndex(index)).DataContext,
                     Is.SameAs(vm.Rows[index]));

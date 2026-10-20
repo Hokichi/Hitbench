@@ -18,6 +18,18 @@ public partial class OHsKeysMappingDrawer : UserControl, IOHsShellDrawer
         Loaded += (_, _) => { if (!centered) KeySelector.LayoutUpdated += OnInitialKeyboardLayout; };
         Unloaded += (_, _) => KeySelector.LayoutUpdated -= OnInitialKeyboardLayout;
     }
+    private void OnPianoScrollChanged(object sender, ScrollChangedEventArgs e)
+    {
+        if (!ReferenceEquals(e.OriginalSource, sender) || sender is not ScrollViewer scroll || PianoScrollBar is null) return;
+        PianoScrollBar.SetCurrentValue(System.Windows.Controls.Primitives.RangeBase.MaximumProperty, scroll.ScrollableWidth);
+        PianoScrollBar.SetCurrentValue(System.Windows.Controls.Primitives.ScrollBar.ViewportSizeProperty, scroll.ViewportWidth);
+        PianoScrollBar.SetCurrentValue(System.Windows.Controls.Primitives.RangeBase.ValueProperty, scroll.HorizontalOffset);
+    }
+    private void OnPianoScroll(object sender, System.Windows.Controls.Primitives.ScrollEventArgs e)
+    {
+        Descendants(KeySelector).OfType<ScrollViewer>().FirstOrDefault()?.ScrollToHorizontalOffset(e.NewValue);
+        e.Handled = true;
+    }
     private bool centered, reconciling;
     private int keyboardWheelRemainder;
     internal static double GetInitialKeyboardOffset(double start, double end, double viewport, double extent) =>
