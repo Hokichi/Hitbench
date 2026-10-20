@@ -10,7 +10,7 @@ public sealed class InstrumentalTrack : Track
     public InstrumentalTrack() { Addition = "Soft"; SampleType = Enums.SampleType.Whistle; }
     public bool TryAddNote(InstrumentalNote note)
     {
-        if (!Valid(note.Key, note.Timestamp) || note.Volume is < 0 or > 100 || Notes.Contains(note) || Collides(note.Key, note.Timestamp, null)) return false;
+        if (!Valid(note.Key, note.Timestamp) || Notes.Contains(note) || Collides(note.Key, note.Timestamp, null)) return false;
         Notes.Add(note); return true;
     }
     public bool TryMoveNote(InstrumentalNote note, string key, int timestamp)
@@ -22,7 +22,7 @@ public sealed class InstrumentalTrack : Track
     public bool TryReplaceNotes(IReadOnlyList<InstrumentalNote> notes)
     {
         var replacement = notes.ToArray();
-        if (replacement.Any(n => !Valid(n.Key, n.Timestamp) || n.Volume is < 0 or > 100) ||
+        if (replacement.Any(n => !Valid(n.Key, n.Timestamp)) ||
             replacement.Distinct().Count() != replacement.Length ||
             replacement.Select(n => (n.Key, n.Timestamp)).Distinct().Count() != replacement.Length) return false;
         Notes.Clear(); Notes.AddRange(replacement); return true;

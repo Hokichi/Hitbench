@@ -15,7 +15,7 @@ public class MarkerTriggerLifecycleTests
             ? Stream([.1f,.1f,.2f,.2f,.3f,.3f,.4f,.4f]) : Stream(new float[40]),
             () => { var player = new StubWavePlayer(); players.Add(player); return player; });
         audio.Open("song.wav");
-        await audio.UpdateSamplesAsync(project.ProjectPath, [new(1,"hit.wav",0,100,100)], CancellationToken.None);
+        await audio.UpdateSamplesAsync(project.ProjectPath, [new(1, "hit.wav", 0, 100)], CancellationToken.None);
         audio.Play();
         Read(players[^1], 16);
         players[^1].Position = 2 * 8;
@@ -33,7 +33,7 @@ public class MarkerTriggerLifecycleTests
             ? Stream(Enumerable.Repeat(.25f, 882).ToArray()) : Stream(new float[4410]),
             () => { var player = new StubWavePlayer(); players.Add(player); return player; });
         audio.Open("song.wav");
-        await audio.UpdateSamplesAsync(project.ProjectPath, [new(1,"hit.wav",10,100,100)], CancellationToken.None);
+        await audio.UpdateSamplesAsync(project.ProjectPath, [new(1, "hit.wav", 10, 100)], CancellationToken.None);
         audio.Seek(TimeSpan.FromMilliseconds(15));
         audio.Play();
         Assert.That(Read(players[^1], 2), Is.All.EqualTo(.25f));
@@ -70,7 +70,7 @@ public class MarkerTriggerLifecycleTests
         audio.Open("song.wav");
         await audio.UpdateSamplesAsync(project.ProjectPath, [], CancellationToken.None);
         audio.Play();
-        var update = audio.UpdateSamplesAsync(project.ProjectPath, [new(1,"slow.wav",100,100,100)], cancellation.Token);
+        var update = audio.UpdateSamplesAsync(project.ProjectPath, [new(1, "slow.wav", 100, 100)], cancellation.Token);
         try
         {
             await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));

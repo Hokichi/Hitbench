@@ -446,7 +446,7 @@ public partial class WorkstationPageVM(
                 id = nextSampleEventId++;
                 sampleEventIds.Add(sample, id);
             }
-            events.Add(new SamplePlaybackEvent(id, sample.FileName, sample.Timestamp, sample.Volume, track.Volume));
+                events.Add(new SamplePlaybackEvent(id, sample.FileName, sample.Timestamp, track.Volume));
         }
         return events;
     }

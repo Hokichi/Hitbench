@@ -7,6 +7,21 @@ namespace osuHitsounder.Test.Services;
 public class WorkstationAudioServiceTests
 {
     [Test]
+    public async Task LegacyNodeGainDoesNotAttenuateTrackGain()
+    {
+        using var project = new TestProjectFolder("hit.wav");
+        var track = osuHitsounder.Services.ProjectFiles.ProjectDataSerializer.Deserialize("{\"Tracks\":[{\"Volume\":70,\"Samples\":[{\"FileName\":\"hit.wav\",\"Timestamp\":0,\"Volume\":0}]}]}").Tracks.Single();
+        var sample = track.Samples.Single();
+        var player = new StubWavePlayer();
+        using var service = new WorkstationAudioService(_ => CreateStream(Enumerable.Repeat(.2f, 128).ToArray(), 44_100, 2), () => player);
+        service.Open("song.wav"); service.SetSongVolume(0);
+        await service.UpdateSamplesAsync(project.ProjectPath, [new SamplePlaybackEvent(1, sample.FileName, sample.Timestamp, track.Volume)], default);
+        service.Play();
+        var output = new float[2]; player.Provider!.ToSampleProvider().Read(output, 0, 2);
+        Assert.That(output, Is.EqualTo(new[] { .14f, .14f }).Within(.0001));
+    }
+
+    [Test]
     public async Task ForcedSampleRefreshBypassesMetadataCacheAndKeepsSong()
     {
         using var project = new TestProjectFolder("hit.wav");
@@ -19,7 +34,7 @@ public class WorkstationAudioServiceTests
             songDecodes++; return CreateStream(new float[256], 44_100, 2);
         }, () => player);
         service.Open("song.wav"); service.SetSongVolume(0);
-        SamplePlaybackEvent[] events = [new(1, "hit.wav", 0, 100, 100)];
+        SamplePlaybackEvent[] events = [new(1, "hit.wav", 0, 100)];
         await service.UpdateSamplesAsync(project.ProjectPath, events, default);
         amplitude = .8f;
         await service.UpdateSamplesAsync(project.ProjectPath, events, default);
@@ -47,7 +62,7 @@ public class WorkstationAudioServiceTests
             return CreateStream(Enumerable.Repeat(sample ? amplitude : 0, 128).ToArray(), 44_100, 2);
         }, () => player);
         service.Open("song.wav");
-        SamplePlaybackEvent[] events = [new(1, "hit.wav", 0, 100, 100)];
+        SamplePlaybackEvent[] events = [new(1, "hit.wav", 0, 100)];
         await service.UpdateSamplesAsync(project.ProjectPath, events, default);
         using var cancellation = new CancellationTokenSource(); block = true;
         var stale = service.UpdateSamplesAsync(project.ProjectPath, events, cancellation.Token, forceReload: true);
@@ -90,7 +105,7 @@ public class WorkstationAudioServiceTests
         service.SetSongVolume(50);
 
         await service.UpdateSamplesAsync(project.ProjectPath,
-            [new SamplePlaybackEvent(1, "hit.wav", 0, 50, 50)], CancellationToken.None);
+            [new SamplePlaybackEvent(1, "hit.wav", 0, 25)], CancellationToken.None);
         service.Play();
 
         var output = new float[2];
@@ -118,7 +133,7 @@ public class WorkstationAudioServiceTests
         service.SetSamplesVolume(50);
         service.SetApplicationVolume(50);
         await service.UpdateSamplesAsync(project.ProjectPath,
-            [new SamplePlaybackEvent(1, "hit.wav", 0, 50, 100)], CancellationToken.None);
+            [new SamplePlaybackEvent(1, "hit.wav", 0, 50)], CancellationToken.None);
 
         service.Play();
 
@@ -153,7 +168,7 @@ public class WorkstationAudioServiceTests
         service.SetSongVolume(0);
 
         await service.UpdateSamplesAsync(project.ProjectPath,
-            [new SamplePlaybackEvent(1, "hit.wav", 0, 50, 50)], CancellationToken.None);
+            [new SamplePlaybackEvent(1, "hit.wav", 0, 25)], CancellationToken.None);
         service.Play();
 
         var output = new float[2];
@@ -171,7 +186,7 @@ public class WorkstationAudioServiceTests
         service.Open("song.wav");
 
         await service.UpdateSamplesAsync(project.ProjectPath,
-            [new SamplePlaybackEvent(1, "missing.wav", 0, 100, 100)], CancellationToken.None);
+            [new SamplePlaybackEvent(1, "missing.wav", 0, 100)], CancellationToken.None);
         service.Play();
 
 
@@ -227,8 +242,8 @@ public class WorkstationAudioServiceTests
 
         await service.UpdateSamplesAsync(project.ProjectPath,
         [
-            new SamplePlaybackEvent(1, "hit.wav", 0, 100, 100),
-            new SamplePlaybackEvent(2, "hit.wav", 10, 100, 100)
+            new SamplePlaybackEvent(1, "hit.wav", 0, 100),
+            new SamplePlaybackEvent(2, "hit.wav", 10, 100)
         ], CancellationToken.None);
 
         Assert.That(sampleDecodes, Is.EqualTo(1));
@@ -248,7 +263,7 @@ public class WorkstationAudioServiceTests
         service.Open("song.wav");
 
         await service.UpdateSamplesAsync(project.ProjectPath,
-            [new SamplePlaybackEvent(1, fileName, 0, 100, 100)], CancellationToken.None);
+            [new SamplePlaybackEvent(1, fileName, 0, 100)], CancellationToken.None);
 
         Assert.Multiple(() =>
         {
@@ -267,7 +282,7 @@ public class WorkstationAudioServiceTests
         using var service = new WorkstationAudioService(path => path.EndsWith("C3.wav", StringComparison.OrdinalIgnoreCase)
             ? CreateStream([0.4f, 0.4f], 44_100, 2) : CreateStream([0f, 0f], 44_100, 2), () => player);
         service.Open("song.wav");
-        await service.UpdateSamplesAsync(project.ProjectPath, [new(1, "Piano/C3.wav", 0, 100, 100)], default);
+        await service.UpdateSamplesAsync(project.ProjectPath, [new(1, "Piano/C3.wav", 0, 100)], default);
         service.Play();
         var output = new float[2]; player.Provider!.ToSampleProvider().Read(output, 0, 2);
         Assert.That(output, Is.EqualTo(new[] { 0.4f, 0.4f }).Within(0.0001));

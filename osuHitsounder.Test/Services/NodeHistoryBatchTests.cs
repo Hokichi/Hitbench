@@ -24,18 +24,18 @@ public class NodeHistoryBatchTests
     [Test]
     public void PinnedPlacementRedoKeepsCopiedFile()
     {
-        var sample = new Sample { Timestamp = 500, FileName = "a.wav", Volume = 37 };
+        var sample = new Sample { Timestamp = 500, FileName = "a.wav" };
         var track = new Track { Samples = [sample], SelectedSampleFileName = "b.wav" };
         var history = new NodeHistoryManager();
         history.RecordBatch([new(track, sample, 0, NodeHistoryOperation.Placement, NextFileName: "a.wav")]);
         Assert.That(history.Undo([track]), Is.True); Assert.That(history.Redo([track]), Is.True);
-        Assert.That(sample.FileName, Is.EqualTo("a.wav")); Assert.That(sample.Volume, Is.EqualTo(37));
+        Assert.That(sample.FileName, Is.EqualTo("a.wav"));
     }
 
     [Test]
     public void TransferUndoRestoresSourceTrackTimeAndFile()
     {
-        var sample = new Sample { Timestamp = 500, FileName = "b.wav", Volume = 37 };
+        var sample = new Sample { Timestamp = 500, FileName = "b.wav" };
         var source = new Track { SelectedSampleFileName = "a.wav" };
         var destination = new Track { SelectedSampleFileName = "b.wav", Samples = [sample] };
         var history = new NodeHistoryManager();
@@ -47,13 +47,12 @@ public class NodeHistoryBatchTests
         Assert.That(sample.FileName, Is.EqualTo("a.wav"));
         Assert.That(history.Redo([source, destination]), Is.True);
         Assert.That(destination.Samples.Single(), Is.SameAs(sample));
-        Assert.That(sample.Volume, Is.EqualTo(37));
     }
 
     [Test]
     public void MovementReplaysWholeGroupWithOriginalIdentity()
     {
-        var a = new Sample { Timestamp = 375, Volume = 37 };
+        var a = new Sample { Timestamp = 375 };
         var b = new Sample { Timestamp = 500 };
         var first = new Track { Samples = [a] };
         var second = new Track { Samples = [b] };
@@ -61,7 +60,6 @@ public class NodeHistoryBatchTests
         history.RecordBatch([new(first, a, 0, NodeHistoryOperation.Movement, 125, 375), new(second, b, 0, NodeHistoryOperation.Movement, 250, 500)]);
         Assert.That(history.Undo([first, second]), Is.True);
         Assert.That(new[] { a.Timestamp, b.Timestamp }, Is.EqualTo(new[] { 125, 250 }));
-        Assert.That(a.Volume, Is.EqualTo(37));
         Assert.That(history.Redo([first, second]), Is.True);
         Assert.That(new[] { a.Timestamp, b.Timestamp }, Is.EqualTo(new[] { 375, 500 }));
         Assert.That(first.Samples.Single(), Is.SameAs(a));

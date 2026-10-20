@@ -12,7 +12,7 @@ public sealed class WorkstationInstrumentalResnapTests
     [Test]
     public async Task CombinedResnapPreservesIdentitiesAndIndependentHistoryAndNoOpWrites()
     {
-        var instrument = new InstrumentalTrack { KeyFiles = new() { ["C4"] = "piano.wav" }, Notes = [new() { Key = "C4", Timestamp = 1100, Volume = 71 }] };
+        var instrument = new InstrumentalTrack { KeyFiles = new() { ["C4"] = "piano.wav" }, Notes = [new() { Key = "C4", Timestamp = 1100 }] };
         var sample = new Sample { FileName = "hit.wav", Timestamp = 1300 };
         var sampleTrack = new Track { SelectedSampleFileName = "hit.wav", Samples = [sample] };
         var messenger = new WeakReferenceMessenger(); var dialogs = new StubInstrumentalTrackDialogService();
@@ -53,10 +53,13 @@ public sealed class WorkstationInstrumentalResnapTests
     [TestCase(new[] { 1100, 1200, 1300 }, new[] { 1000, 1200, 1500 })]
     public async Task ClosedInstrumentPreservesResidentsAndFirstClaimWithoutLosingNotes(int[] times, int[] expected)
     {
-        var track = new InstrumentalTrack { Notes = times.Select(t => new InstrumentalNote { Key = "C4", Timestamp = t, Volume = 71 }).ToList() };
-        var other = new InstrumentalTrack { Notes = [new() { Key = "D4", Timestamp = 1100, Volume = 53 }] };
-        var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(
-            new WorkstationSource("map", "song", new ProjectData { Tracks = [track, other], Offsets = [0], BPMs = [120] })) },
+        var track = new InstrumentalTrack { Notes = times.Select(t => new InstrumentalNote { Key = "C4", Timestamp = t }).ToList() };
+        var other = new InstrumentalTrack { Notes = [new() { Key = "D4", Timestamp = 1100 }] };
+        var owner = new WorkstationPageVM(new StubWorkstationSourceService
+        {
+            Load = (_, _) => Task.FromResult(
+            new WorkstationSource("map", "song", new ProjectData { Tracks = [track, other], Offsets = [0], BPMs = [120] }))
+        },
             new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler());
         try
         {
@@ -66,7 +69,7 @@ public sealed class WorkstationInstrumentalResnapTests
             owner.ResnapAllSamplesCommand.Execute(null);
             Assert.That(track.Notes.Select(n => n.Timestamp), Is.EqualTo(expected));
             Assert.That(track.Notes.Select(n => (n.Key, n.Timestamp)).Distinct().Count(), Is.EqualTo(times.Length));
-            Assert.That(track.Notes.All(n => n.Volume == 71 && n.Key == "C4"), Is.True);
+            Assert.That(track.Notes.All(n => n.Key == "C4"), Is.True);
             Assert.That(other.Notes.Single().Timestamp, Is.EqualTo(1000));
             owner.ResnapAllSamplesCommand.Execute(null);
             Assert.That(track.Notes.Select(n => n.Timestamp), Is.EqualTo(expected));

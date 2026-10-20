@@ -215,8 +215,12 @@ public class WorkstationTrackAuditionTests
         await vm.DeactivateAsync();
     }
 
-    private static Track TrackWithSample(string name) => new() { Volume = 70, SelectedSampleFileName = name,
-        Samples = [new Sample { FileName = name, Timestamp = 125, Volume = 80 }] };
+    private static Track TrackWithSample(string name) => new()
+    {
+        Volume = 70,
+        SelectedSampleFileName = name,
+        Samples = [new Sample { FileName = name, Timestamp = 125 }]
+    };
     private static ProjectData Project(Track[] tracks) => new() { Tracks = tracks.ToList(), Offsets = [0], BPMs = [120] };
     private static WorkstationPageVM CreateVM(StubWorkstationAudioService audio, IProjectFileService saves, Track[] tracks,
         StubTrackRemovalDialogService? dialog = null) => new(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(

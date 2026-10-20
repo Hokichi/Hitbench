@@ -168,7 +168,7 @@ public class WorkstationAudioTimingTests
         var player = new StubWavePlayer();
         using var service = new WorkstationAudioService(decoder, () => player);
         service.Open(song);
-        await service.UpdateSamplesAsync(project.ProjectPath, sample is null ? [] : [new SamplePlaybackEvent(1, Path.GetFileName(sample), timestamp, 100, 100)], CancellationToken.None);
+        await service.UpdateSamplesAsync(project.ProjectPath, sample is null ? [] : [new SamplePlaybackEvent(1, Path.GetFileName(sample), timestamp, 100)], CancellationToken.None);
         Assert.That(service.GetSnapshot().Error, Is.Null);
         if (seek is { } milliseconds) service.Seek(TimeSpan.FromMilliseconds(milliseconds));
         service.Play();

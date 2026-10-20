@@ -153,11 +153,10 @@ public static class ProjectDataSerializer
         foreach (var item in list)
         {
             if (item is not JObject note) throw new InvalidDataException("Instrumental note must be an object.");
-            var key=InstrumentMember(note,"Key"); var time=InstrumentMember(note,"Timestamp"); var volume=InstrumentMember(note,"Volume");
+            var key = InstrumentMember(note, "Key"); var time = InstrumentMember(note, "Timestamp");
             if (key?.Type!=JTokenType.String || !InstrumentalKeys.TryGetIndex(key.Value<string>()!,out _) ||
-                !IsIntegerInRange(time,int.MaxValue) ||
-                volume is not null && !IsIntegerInRange(volume,100))
-                throw new InvalidDataException("Instrumental note needs a valid key, integer timestamp, and volume 0–100.");
+                !IsIntegerInRange(time, int.MaxValue))
+                throw new InvalidDataException("Instrumental note needs a valid key and integer timestamp.");
             if (!seen.Add((key.Value<string>()!,time!.Value<int>()))) throw new InvalidDataException("Duplicate instrumental note key/timestamp.");
         }
     }

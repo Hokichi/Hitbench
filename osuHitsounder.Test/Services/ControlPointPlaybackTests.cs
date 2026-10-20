@@ -31,14 +31,14 @@ public class ControlPointPlaybackTests
             return ScheduledPlaybackTests.Stream(path.EndsWith("song.wav") ? .2f : .4f);
         }, () => { var player = new StubWavePlayer(); players.Add(player); return player; });
         audio.Open("song.wav");
-        await audio.UpdateSamplesAsync(project.ProjectPath, [new(1,"hit.wav",0,100,100)],default);
+        await audio.UpdateSamplesAsync(project.ProjectPath, [new(1, "hit.wav", 0, 100)], default);
         audio.SetControlPoints([new(0,50)]); audio.Play();
         Assert.That(ScheduledPlaybackTests.Read(players[^1]), Is.All.EqualTo(.4f).Within(.0001f));
         var count = decodes; audio.SetControlPoints([new(0,25)]);
         Assert.That(decodes, Is.EqualTo(count)); Assert.That(players, Has.Count.EqualTo(1));
         Assert.That(audio.GetSnapshot().IsPlaying, Is.True);
         Assert.That(ScheduledPlaybackTests.Read(players[^1]), Is.All.EqualTo(.3f).Within(.0001f));
-        var update = audio.UpdateSamplesAsync(project.ProjectPath,[new(2,"slow.wav",0,100,100)],default);
+        var update = audio.UpdateSamplesAsync(project.ProjectPath, [new(2, "slow.wav", 0, 100)], default);
         try
         {
             await entered.Task.WaitAsync(TimeSpan.FromSeconds(5)); audio.SetControlPoints([new(0,0)]);
@@ -48,7 +48,7 @@ public class ControlPointPlaybackTests
             Assert.That(ScheduledPlaybackTests.Read(players[^1]), Is.All.EqualTo(.2f).Within(.0001f));
             audio.Stop(); audio.Play();
             Assert.That(ScheduledPlaybackTests.Read(players[^1]), Is.All.EqualTo(.2f).Within(.0001f));
-            audio.Open("song.wav"); await audio.UpdateSamplesAsync(project.ProjectPath,[new(1,"hit.wav",0,100,100)],default); audio.Play();
+            audio.Open("song.wav"); await audio.UpdateSamplesAsync(project.ProjectPath, [new(1, "hit.wav", 0, 100)], default); audio.Play();
             Assert.That(ScheduledPlaybackTests.Read(players[^1]), Is.All.EqualTo(.6f).Within(.0001f));
         }
         finally { release.Set(); await update; }

@@ -59,7 +59,7 @@ public class WorkstationNodeEditingTests
     [SetUp]
     public async Task Setup()
     {
-        a = new Sample { Timestamp = 1000, FileName = "a.wav", Volume = 37 };
+        a = new Sample { Timestamp = 1000, FileName = "a.wav" };
         b = new Sample { Timestamp = 1250, FileName = "a.wav" };
         c = new Sample { Timestamp = 1125, FileName = "b.wav" };
         first = new Track { SelectedSampleFileName = "a.wav", Samples = [a, b] };
@@ -105,18 +105,17 @@ public class WorkstationNodeEditingTests
     }
 
     [Test]
-    public async Task PastePreservesFormationFrozenVolumeAndSelectedTrack()
+    public async Task PastePreservesFormationFrozenFileAndSelectedTrack()
     {
         vm.SetNodeSelection([a, b, c]);
         Assert.That(vm.CopySelectedNodes(), Is.True);
-        a.Timestamp = 2000; a.Volume = 99; a.FileName = "b.wav";
+        a.Timestamp = 2000; a.FileName = "b.wav";
         first.Samples.Remove(b);
         await vm.SeekCommand.ExecuteAsync(TimeSpan.FromMilliseconds(3010));
         Assert.That(await vm.PasteCopiedNodesAsync(), Is.True);
         Assert.That(vm.SelectedSamples.Select(n => n.Timestamp).Order(), Is.EqualTo(new[] { 3000, 3125, 3250 }));
         var earliest = vm.SelectedSamples.Single(n => n.Timestamp == 3000);
         Assert.That(earliest.FileName, Is.EqualTo("a.wav"));
-        Assert.That(earliest.Volume, Is.EqualTo(37));
         Assert.That(first.Samples.Contains(earliest), Is.True);
         Assert.That(second.Samples.Any(n => n.Timestamp == 3125), Is.True);
         var copies = vm.SelectedSamples.ToArray();

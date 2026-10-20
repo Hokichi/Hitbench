@@ -154,8 +154,7 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
                         lock (sync)
                             if (!disposed && request == preparationGeneration) sampleCache[samplePath] = cached;
                     }
-                    var gain = Math.Clamp(item.BeatVolume, 0, 100) / 100f *
-                        (Math.Clamp(item.TrackVolume, 0, 100) / 100f);
+                    var gain = Math.Clamp(item.TrackVolume, 0, 100) / 100f;
                     prepared.Add(new PreparedSampleEvent(item.Id, cached.Samples, gain,
                         checked((long)Math.Round(item.Timestamp * 44_100m / 1000m, MidpointRounding.AwayFromZero))));
                 }

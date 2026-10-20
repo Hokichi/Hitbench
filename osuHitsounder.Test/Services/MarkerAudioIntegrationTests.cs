@@ -64,11 +64,11 @@ public class MarkerAudioIntegrationTests
             return Signal(.2f);
         }, () => player);
         audio.Open("song.wav");
-        var first = audio.UpdateSamplesAsync(project.ProjectPath, [new SamplePlaybackEvent(1, "hit.wav", 0, 0, 100)], CancellationToken.None);
+        var first = audio.UpdateSamplesAsync(project.ProjectPath, [new SamplePlaybackEvent(1, "hit.wav", 0, 100)], CancellationToken.None);
         try
         {
             await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
-            var replacement = audio.UpdateSamplesAsync(project.ProjectPath, [new SamplePlaybackEvent(2, "hit.wav", 0, 100, 100)], CancellationToken.None);
+            var replacement = audio.UpdateSamplesAsync(project.ProjectPath, [new SamplePlaybackEvent(2, "hit.wav", 0, 100)], CancellationToken.None);
             release.Set();
             await Task.WhenAll(first, replacement);
             audio.Play();
@@ -87,7 +87,7 @@ public class MarkerAudioIntegrationTests
         audio.Open("song.wav");
         await audio.UpdateSamplesAsync(project.ProjectPath, [], CancellationToken.None);
         audio.Play();
-        await audio.UpdateSamplesAsync(project.ProjectPath, [new SamplePlaybackEvent(1, "hit.wav", 0, 100, 100)], CancellationToken.None);
+        await audio.UpdateSamplesAsync(project.ProjectPath, [new SamplePlaybackEvent(1, "hit.wav", 0, 100)], CancellationToken.None);
         Assert.That(ReadFrame(player), Is.EqualTo(new[] { .6f, .6f }).Within(.0001));
         Assert.That(ReadFrame(player), Is.EqualTo(new[] { .6f, .6f }).Within(.0001));
     }

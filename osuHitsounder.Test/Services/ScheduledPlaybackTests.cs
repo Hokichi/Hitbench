@@ -65,8 +65,8 @@ public class ScheduledPlaybackTests
             return Stream(path.EndsWith("hit.wav") ? .4f : .2f);
         },()=>player);
         audio.Open("song.wav");
-        await audio.UpdateSamplesAsync(project.ProjectPath,[new SamplePlaybackEvent(1,"hit.wav",0,100,100)],CancellationToken.None);
-        var updating = audio.UpdateSamplesAsync(project.ProjectPath,[new SamplePlaybackEvent(2,"slow.wav",0,100,100)],cancellation.Token);
+        await audio.UpdateSamplesAsync(project.ProjectPath, [new SamplePlaybackEvent(1, "hit.wav", 0, 100)], CancellationToken.None);
+        var updating = audio.UpdateSamplesAsync(project.ProjectPath, [new SamplePlaybackEvent(2, "slow.wav", 0, 100)], cancellation.Token);
         try
         {
             await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
@@ -99,7 +99,7 @@ public class ScheduledPlaybackTests
         using var audio = new WorkstationAudioService(path => Stream(path.EndsWith("hit.wav") ? .4f : .2f),
             () => { var player = new StubWavePlayer(); players.Add(player); return player; });
         audio.Open("song.wav");
-        await audio.UpdateSamplesAsync(project.ProjectPath,[new SamplePlaybackEvent(1,"hit.wav",10,100,100)],CancellationToken.None);
+        await audio.UpdateSamplesAsync(project.ProjectPath, [new SamplePlaybackEvent(1, "hit.wav", 10, 100)], CancellationToken.None);
         audio.Play();
         var output = new float[4096];
         players[^1].Provider!.ToSampleProvider().Read(output,0,882);
@@ -122,8 +122,8 @@ public class ScheduledPlaybackTests
         var player = new StubWavePlayer();
         using var audio = new WorkstationAudioService(path=>Stream(path.EndsWith("hit.wav")?.4f:.2f),()=>player);
         audio.Open("song.wav");
-        await audio.UpdateSamplesAsync(project.ProjectPath,[new SamplePlaybackEvent(1,"hit.wav",0,100,100)],CancellationToken.None);
-        await audio.UpdateSamplesAsync(project.ProjectPath,[new SamplePlaybackEvent(2,"hit.wav",0,0,100),new SamplePlaybackEvent(2,"hit.wav",0,0,100)],CancellationToken.None);
+        await audio.UpdateSamplesAsync(project.ProjectPath, [new SamplePlaybackEvent(1, "hit.wav", 0, 100)], CancellationToken.None);
+        await audio.UpdateSamplesAsync(project.ProjectPath, [new SamplePlaybackEvent(2, "hit.wav", 0, 100), new SamplePlaybackEvent(2, "hit.wav", 0, 100)], CancellationToken.None);
         audio.Play();
         Assert.That(audio.GetSnapshot().Error, Does.Contain("prepare"));
         Assert.That(Read(player),Is.EqualTo(new[]{.6f,.6f}).Within(.0001));

@@ -7,7 +7,7 @@ public class InstrumentalNoteHistoryTests
     [Test]
     public void ReplayIsAtomicAndNoOpPreservesRedo()
     {
-        var note = new InstrumentalNoteSnapshot(Guid.NewGuid(), "C4", 125, 70);
+        var note = new InstrumentalNoteSnapshot(Guid.NewGuid(), "C4", 125);
         var history = new InstrumentalNoteHistoryManager();
         history.Record([], [note], [note.Id]);
         Assert.That(history.Undo([note], _ => false, out _), Is.False);
@@ -25,9 +25,9 @@ public class InstrumentalNoteHistoryTests
     [Test]
     public void ReplayRejectsUnexpectedState()
     {
-        var note = new InstrumentalNoteSnapshot(Guid.NewGuid(), "C4", 125, 70);
+        var note = new InstrumentalNoteSnapshot(Guid.NewGuid(), "C4", 125);
         var history = new InstrumentalNoteHistoryManager(); history.Record([], [note], [note.Id]);
-        Assert.That(history.Undo([note with { Volume = 60 }], _ => throw new Exception(), out _), Is.False);
+        Assert.That(history.Undo([note with { Timestamp = 250 }], _ => throw new Exception(), out _), Is.False);
         Assert.That(history.CanUndo, Is.True);
     }
 }

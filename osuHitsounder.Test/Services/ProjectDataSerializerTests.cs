@@ -5,6 +5,18 @@ namespace osuHitsounder.Test.Services;
 
 public class ProjectDataSerializerTests
 {
+    [TestCase("0")]
+    [TestCase("\"obsolete\"")]
+    public void LegacyNodeVolumesAreIgnoredAndTrackAndControlVolumesSurvive(string volume)
+    {
+        var json = "{\"Tracks\":[{\"Volume\":70,\"Samples\":[{\"FileName\":\"hit.wav\",\"Timestamp\":125,\"Volume\":" + volume + "}]},{\"Kind\":\"Instrumental\",\"Volume\":70,\"Notes\":[{\"Key\":\"C4\",\"Timestamp\":125,\"Volume\":" + volume + "}]}],\"ControlPoints\":[{\"Timestamp\":0,\"Volume\":40}]}";
+        var saved = Newtonsoft.Json.Linq.JObject.Parse(ProjectDataSerializer.Serialize(ProjectDataSerializer.Deserialize(json)));
+        Assert.That(saved.SelectTokens("Tracks[*].Samples[*].Volume"), Is.Empty);
+        Assert.That(saved.SelectTokens("Tracks[*].Notes[*].Volume"), Is.Empty);
+        Assert.That(saved.SelectTokens("Tracks[*].Volume").Select(t => (int)t), Is.All.EqualTo(70));
+        Assert.That((int)saved["ControlPoints"]![0]!["Volume"]!, Is.EqualTo(40));
+    }
+
     [TestCase(0)]
     [TestCase(1)]
     [TestCase(2)]
@@ -77,14 +89,14 @@ public class ProjectDataSerializerTests
     {
         var project = new ProjectData { Tracks = [new Track { Addition = addition,
             Name = "Kick", SelectedSampleFileName = "kick.wav", Volume = 75,
-            Samples = [new Sample { FileName = "kick.wav", Timestamp = 125, Volume = 23 }] }] };
+            Samples = [new Sample { FileName = "kick.wav", Timestamp = 125}] }]
+        };
         var track = ProjectDataSerializer.Deserialize(ProjectDataSerializer.Serialize(project)).Tracks.Single();
         Assert.That(track.Addition, Is.EqualTo(addition));
         Assert.That(track.Name, Is.EqualTo("Kick"));
         Assert.That(track.SelectedSampleFileName, Is.EqualTo("kick.wav"));
         Assert.That(track.Volume, Is.EqualTo(75));
         Assert.That(track.Samples.Single().Timestamp, Is.EqualTo(125));
-        Assert.That(track.Samples.Single().Volume, Is.EqualTo(23));
     }
 
     [TestCase("\"None\"")]
@@ -131,8 +143,13 @@ public class ProjectDataSerializerTests
     [Test]
     public void RoundTripsTracksAndSamples()
     {
-        var source = new ProjectData { BeatmapPath = "song", Offsets = [125], BPMs = [120],
-            Tracks = [new Track { Volume = 75, SelectedSampleFileName = "kick.wav", Samples = [new Sample { FileName = "kick.wav", Volume = 23, Timestamp = 125 }] }] };
+        var source = new ProjectData
+        {
+            BeatmapPath = "song",
+            Offsets = [125],
+            BPMs = [120],
+            Tracks = [new Track { Volume = 75, SelectedSampleFileName = "kick.wav", Samples = [new Sample { FileName = "kick.wav", Timestamp = 125 }] }]
+        };
         var restored = ProjectDataSerializer.Deserialize(ProjectDataSerializer.Serialize(source));
         Assert.Multiple(() =>
         {
@@ -140,7 +157,6 @@ public class ProjectDataSerializerTests
             Assert.That(restored.Offsets, Is.EqualTo(new[] { 125 }));
             Assert.That(restored.Tracks[0].Volume, Is.EqualTo(75));
             Assert.That(restored.Tracks[0].Samples[0].FileName, Is.EqualTo("kick.wav"));
-            Assert.That(restored.Tracks[0].Samples[0].Volume, Is.EqualTo(23));
             Assert.That(restored.Tracks[0].Samples[0].Timestamp, Is.EqualTo(125));
             Assert.That(restored.Tracks[0].SelectedSampleFileName, Is.EqualTo("kick.wav"));
         });
@@ -153,7 +169,6 @@ public class ProjectDataSerializerTests
         var restored = ProjectDataSerializer.Deserialize(json);
         Assert.That(restored.Tracks, Has.Count.EqualTo(1));
         Assert.That(restored.Tracks[0].Samples[0].FileName, Is.EqualTo("old/kick.wav"));
-        Assert.That(restored.Tracks[0].Samples[0].Volume, Is.EqualTo(42));
         Assert.That(restored.Tracks[0].Samples[0].Timestamp, Is.EqualTo(125));
     }
 
@@ -166,7 +181,6 @@ public class ProjectDataSerializerTests
 
         Assert.That(restored.Tracks.Single().SelectedSampleFileName, Is.EqualTo("a.wav"));
         Assert.That(restored.Tracks.Single().Samples.Select(sample => sample.Timestamp), Is.EqualTo(new[] { 125, 625 }));
-        Assert.That(restored.Tracks.Single().Samples.Select(sample => sample.Volume), Is.All.EqualTo(23));
     }
 
     [Test]

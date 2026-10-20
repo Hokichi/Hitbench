@@ -77,7 +77,7 @@ public class WorkstationHistoryTests
     [Test]
     public async Task UndoRedoUpdatesPlaybackAndSavedProject()
     {
-        var node = new Sample { FileName = "a.wav", Timestamp = 125, Volume = 37 };
+        var node = new Sample { FileName = "a.wav", Timestamp = 125 };
         first.Samples.Add(node);
         first.Volume = 42;
         await vm.LoadAsync("project.json", CancellationToken.None);
@@ -90,10 +90,8 @@ public class WorkstationHistoryTests
         Assert.That(first.Samples.Single(), Is.SameAs(node));
         var saved = ProjectDataSerializer.Deserialize(saves.LatestJson!).Tracks[0].Samples.Single();
         Assert.That(saved.Timestamp, Is.EqualTo(125));
-        Assert.That(saved.Volume, Is.EqualTo(37));
         var scheduled = audio.SampleUpdates.Last().Single();
         Assert.That(scheduled.Timestamp, Is.EqualTo(125));
-        Assert.That(scheduled.BeatVolume, Is.EqualTo(37));
         Assert.That(scheduled.TrackVolume, Is.EqualTo(42));
         Assert.That(vm.SamplesRevision, Is.EqualTo(2));
         vm.RedoCommand.Execute(null);
@@ -161,14 +159,12 @@ public class WorkstationHistoryTests
     {
         vm.PlaceSample(first, 125);
         var node = first.Samples.Single();
-        node.Volume = 37;
         vm.RemoveSample(first, node);
         vm.SelectSample(first, "b.wav");
         vm.UndoCommand.Execute(null);
         Assert.That(first.Samples.Single(), Is.SameAs(node));
         Assert.That(node.FileName, Is.EqualTo("b.wav"));
         Assert.That(node.Timestamp, Is.EqualTo(125));
-        Assert.That(node.Volume, Is.EqualTo(37));
     }
 
     [Test]

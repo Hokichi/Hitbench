@@ -9,6 +9,6 @@ public static class MarkerStressFixture
         var random = new Random(seed);
         return Enumerable.Range(0, tracks).SelectMany(track => Enumerable.Range(0, placements)
             .Select(index => new SamplePlaybackEvent(track * (long)placements + index + 1, "hit.wav",
-                index % 10 == 0 ? index * 300 : Math.Min(299999, index * 300 + random.Next(0, 40)), 100, 100))).ToArray();
+                index % 10 == 0 ? index * 300 : Math.Min(299999, index * 300 + random.Next(0, 40)), 100))).ToArray();
     }
 }

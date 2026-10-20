@@ -18,9 +18,9 @@ public class WorkstationResnapTests
     [SetUp]
     public async Task Setup()
     {
-        a = new Sample { Timestamp = 1100, FileName = "a.wav", Volume = 37 };
-        b = new Sample { Timestamp = 1200, FileName = "a.wav", Volume = 82 };
-        c = new Sample { Timestamp = 1188, FileName = "b.wav", Volume = 61 };
+        a = new Sample { Timestamp = 1100, FileName = "a.wav" };
+        b = new Sample { Timestamp = 1200, FileName = "a.wav" };
+        c = new Sample { Timestamp = 1188, FileName = "b.wav" };
         first = new Track { SelectedSampleFileName = "a.wav", Samples = [a, b] };
         second = new Track { SelectedSampleFileName = "b.wav", Samples = [c] };
         var project = new ProjectData { Offsets = [0], BPMs = [120], Tracks = [first, second] };
@@ -64,7 +64,6 @@ public class WorkstationResnapTests
         Assert.That(second.Samples.Single(), Is.SameAs(c));
         Assert.That(vm.SelectedSamples, Is.EqualTo(new[] { a }));
         Assert.That(new[] { a.FileName, b.FileName, c.FileName }, Is.EqualTo(new[] { "a.wav", "a.wav", "b.wav" }));
-        Assert.That(new[] { a.Volume, b.Volume, c.Volume }, Is.EqualTo(new[] { 37, 82, 61 }));
         Assert.That(vm.SamplesRevision, Is.EqualTo(revision + 1));
         await vm.FlushSavesAsync();
         await vm.FlushPlaybackUpdatesAsync();

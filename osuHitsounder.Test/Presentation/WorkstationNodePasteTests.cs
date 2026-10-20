@@ -13,7 +13,7 @@ public class WorkstationNodePasteTests
     [SetUp]
     public async Task Setup()
     {
-        node = new Sample { Timestamp = 1000, FileName = "a.wav", Volume = 37 };
+        node = new Sample { Timestamp = 1000, FileName = "a.wav" };
         source = new Track { SelectedSampleFileName = "a.wav", Samples = [node] };
         destination = new Track { SelectedSampleFileName = "b.wav" };
         var data = new ProjectData { Offsets = [0], BPMs = [120], Tracks = [source, destination] };
@@ -26,10 +26,10 @@ public class WorkstationNodePasteTests
     [Test]
     public async Task MarkerPastePreservesOriginalTracksAndFrozenNodeValues()
     {
-        var other = new Sample { Timestamp = 1125, FileName = "b.wav", Volume = 61 };
+        var other = new Sample { Timestamp = 1125, FileName = "b.wav" };
         destination.Samples.Add(other);
         vm.SetNodeSelection([node, other]); Assert.That(vm.CopySelectedNodes(), Is.True);
-        node.Timestamp = 2000; node.Volume = 99; node.FileName = "b.wav";
+        node.Timestamp = 2000; node.FileName = "b.wav";
         destination.Samples.Remove(other); vm.SelectedTrack = null;
         await vm.SeekCommand.ExecuteAsync(TimeSpan.FromMilliseconds(3010));
         Assert.That(vm.CanPasteNodes, Is.True);
@@ -38,7 +38,7 @@ public class WorkstationNodePasteTests
         var second = vm.SelectedSamples.Single(n => n.Timestamp == 3125);
         Assert.That(source.Samples.Contains(first), Is.True);
         Assert.That(destination.Samples.Single(), Is.SameAs(second));
-        Assert.That((first.FileName, first.Volume, second.FileName, second.Volume), Is.EqualTo(("a.wav", 37, "b.wav", 61)));
+        Assert.That((first.FileName, second.FileName), Is.EqualTo(("a.wav", "b.wav")));
         Assert.That(first, Is.Not.SameAs(node)); Assert.That(second, Is.Not.SameAs(other));
         vm.UndoCommand.Execute(null);
         Assert.That(source.Samples.Single(), Is.SameAs(node)); Assert.That(destination.Samples, Is.Empty);
@@ -72,10 +72,8 @@ public class WorkstationNodePasteTests
         vm.SelectNode(source, node, false); vm.CopySelectedNodes(); source.Samples.Remove(node);
         await vm.SeekCommand.ExecuteAsync(TimeSpan.FromMilliseconds(3000));
         Assert.That(await vm.PasteCopiedNodesAsync(), Is.True);
-        var first = vm.SelectedSamples.Single(); first.Volume = 99;
-        await vm.SeekCommand.ExecuteAsync(TimeSpan.FromMilliseconds(4000));
+        var first = vm.SelectedSamples.Single(); await vm.SeekCommand.ExecuteAsync(TimeSpan.FromMilliseconds(4000));
         Assert.That(await vm.PasteCopiedNodesAsync(), Is.True);
-        Assert.That(vm.SelectedSamples.Single().Volume, Is.EqualTo(37));
         Assert.That(vm.SelectedSamples.Single(), Is.Not.SameAs(first));
     }
     [Test]
@@ -166,8 +164,7 @@ public class WorkstationNodePasteTests
         destination.Samples.Add(new Sample { Timestamp = 1125, FileName = "b.wav" });
         vm.SelectNode(source, node, false); vm.BeginNodeDrag(source, node); vm.PreviewNodeDrag(delta, destination);
         Assert.That(await vm.CommitNodeDragAsync(), Is.EqualTo(succeeds));
-        Assert.That(node.Timestamp, Is.EqualTo(1000)); Assert.That(node.Volume, Is.EqualTo(37));
-        if (succeeds)
+        Assert.That(node.Timestamp, Is.EqualTo(1000)); if (succeeds)
         {
             Assert.That(source.Samples, Is.Empty); Assert.That(destination.Samples.Contains(node), Is.True);
             Assert.That(node.FileName, Is.EqualTo("b.wav")); vm.UndoCommand.Execute(null);

@@ -26,7 +26,7 @@ public class BufferedSampleTimingTests
             await wake.WaitAsync(token);
         });
         audio.Open("song.wav");
-        var events = new[] { new osuHitsounder.Core.Entities.SamplePlaybackEvent(1, "hit.wav", 100, 100, 100) };
+        var events = new[] { new osuHitsounder.Core.Entities.SamplePlaybackEvent(1, "hit.wav", 100, 100) };
         await coordinator.ConfigureAsync(new PlaybackMarkerClock([0], [120]), TimeSpan.FromSeconds(.5), default);
         await coordinator.UpdateSamplesAsync(project.ProjectPath, events, default);
         await coordinator.PlayAsync(default);
@@ -60,7 +60,7 @@ public class BufferedSampleTimingTests
             ? [.5f, .6f, .3f, .4f] : new float[44100]),
             () => { var player = new StubWavePlayer(); players.Add(player); return player; });
         audio.Open("song.wav");
-        await audio.UpdateSamplesAsync(project.ProjectPath, [new(1, "hit.wav", 100, 100, 100)], default);
+        await audio.UpdateSamplesAsync(project.ProjectPath, [new(1, "hit.wav", 100, 100)], default);
         audio.Play();
         var buffered = new float[12000];
         players[^1].Provider!.ToSampleProvider().Read(buffered, 0, buffered.Length);
@@ -82,7 +82,7 @@ public class BufferedSampleTimingTests
         using var audio = new WorkstationAudioService(path => Stream(path.EndsWith("hit.wav") ? hit : new float[44100]),
             () => { var player = new StubWavePlayer(); players.Add(player); return player; });
         audio.Open("song.wav");
-        await audio.UpdateSamplesAsync(project.ProjectPath, [new(1, "hit.wav", 100, 100, 100)], default);
+        await audio.UpdateSamplesAsync(project.ProjectPath, [new(1, "hit.wav", 100, 100)], default);
         audio.Play();
         var expected = new float[44100];
         hit.CopyTo(expected, 8820);
@@ -111,7 +111,7 @@ public class BufferedSampleTimingTests
         audio.Open("song.wav");
         await audio.UpdateSamplesAsync(project.ProjectPath, [], default);
         audio.Play();
-        var updating = audio.UpdateSamplesAsync(project.ProjectPath, [new(1, "slow.wav", 0, 100, 100)], default);
+        var updating = audio.UpdateSamplesAsync(project.ProjectPath, [new(1, "slow.wav", 0, 100)], default);
         try
         {
             await entered.Task.WaitAsync(TimeSpan.FromSeconds(3));
@@ -152,11 +152,11 @@ public class BufferedSampleTimingTests
             return Stream(path.EndsWith("hit.wav") ? Enumerable.Repeat(.4f, 44100).ToArray() : new float[44100]);
         }, () => player);
         audio.Open("song.wav");
-        await audio.UpdateSamplesAsync(project.ProjectPath, [new(1, "hit.wav", 0, 100, 100)], default);
+        await audio.UpdateSamplesAsync(project.ProjectPath, [new(1, "hit.wav", 0, 100)], default);
         audio.Play();
         var buffered = new float[2];
         player.Provider!.ToSampleProvider().Read(buffered, 0, 2);
-        var updating = audio.UpdateSamplesAsync(project.ProjectPath, [new(2, "slow.wav", 100, 100, 100)], default);
+        var updating = audio.UpdateSamplesAsync(project.ProjectPath, [new(2, "slow.wav", 100, 100)], default);
         try
         {
             await entered.Task.WaitAsync(TimeSpan.FromSeconds(3));
@@ -181,7 +181,7 @@ public class BufferedSampleTimingTests
         using var audio = new WorkstationAudioService(path => Stream(path.EndsWith("hit.wav") ? [.5f, .6f] : new float[44100]), () => player);
         await using var coordinator = new MarkerPlaybackCoordinator(audio, (_, token) => Task.Delay(Timeout.Infinite, token));
         audio.Open("song.wav");
-        await audio.UpdateSamplesAsync(project.ProjectPath, [new(1, "hit.wav", 100, 100, 100)], default);
+        await audio.UpdateSamplesAsync(project.ProjectPath, [new(1, "hit.wav", 100, 100)], default);
         if (startWorker)
         {
             await coordinator.ConfigureAsync(new PlaybackMarkerClock([0], [120]), TimeSpan.FromSeconds(.5), default);

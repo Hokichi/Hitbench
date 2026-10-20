@@ -11,7 +11,7 @@ public class InstrumentalProjectSerializerTests
         var project = new ProjectData
         {
             Tracks = [new Track(), new InstrumentalTrack { Name="Piano", Volume=75,
-            KeyFiles=new() { ["C#4"]="piano.wav" }, Notes=[new() { Key="C#4", Timestamp=125, Volume=70 }] }]
+            KeyFiles=new() { ["C#4"]="piano.wav" }, Notes=[new() { Key="C#4", Timestamp=125}] }]
         };
         var copy = ProjectDataSerializer.Deserialize(ProjectDataSerializer.Serialize(project));
         Assert.That(copy.Tracks[0], Is.TypeOf<Track>());
@@ -28,7 +28,6 @@ public class InstrumentalProjectSerializerTests
     [TestCase("{\"Kind\":\"Instrumental\",\"KeyFiles\":null}")]
     [TestCase("{\"Kind\":\"Instrumental\",\"Notes\":null}")]
     [TestCase("{\"Kind\":\"Instrumental\",\"Notes\":[{\"Key\":\"C4\",\"Timestamp\":9223372036854775808}]}")]
-    [TestCase("{\"Kind\":\"Instrumental\",\"Notes\":[{\"Key\":\"C4\",\"Timestamp\":0,\"Volume\":101}]}")]
     [TestCase("{\"Kind\":\"Instrumental\",\"Notes\":[{\"Key\":\"C4\",\"Timestamp\":0},{\"Key\":\"C4\",\"Timestamp\":0}]}")]
     [TestCase("{\"Kind\":\"Instrumental\",\"Notes\":[],\"notes\":[]}")]
     [TestCase("{\"Kind\":\"Instrumental\",\"Samples\":[{\"Timestamp\":0}]}")]

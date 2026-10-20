@@ -404,8 +404,8 @@ public class WorkstationTrackTests
     [Test]
     public async Task SelectionUpdatesPlacedSamplesAndPlaybackWithoutMovingNodes()
     {
-        var one = new Sample { FileName = "old.wav", Volume = 12, Timestamp = 125 };
-        var two = new Sample { FileName = "old.wav", Volume = 25, Timestamp = 375 };
+        var one = new Sample { FileName = "old.wav", Timestamp = 125 };
+        var two = new Sample { FileName = "old.wav", Timestamp = 375 };
         var track = new Track { SelectedSampleFileName = "old.wav", Samples = [one, two] };
         var source = new StubWorkstationSourceService
         {
@@ -421,7 +421,6 @@ public class WorkstationTrackTests
         Assert.That(track.Samples, Is.EqualTo(new[] { one, two }));
         Assert.That(track.SelectedSampleFileName, Is.EqualTo("new.wav"));
         Assert.That(track.Samples.Select(sample => sample.FileName), Is.All.EqualTo("new.wav"));
-        Assert.That(track.Samples.Select(sample => sample.Volume), Is.EqualTo(new[] { 12, 25 }));
         Assert.That(track.Samples.Select(sample => sample.Timestamp), Is.EqualTo(new[] { 125, 375 }));
         await vm.FlushPlaybackUpdatesAsync();
         await vm.FlushSavesAsync();
@@ -465,7 +464,7 @@ public class WorkstationTrackTests
     }
 
     [Test]
-    public async Task PlacementUsesDefaultBeatVolumeAndRoundedTimestamp()
+    public async Task PlacementUsesSelectedFileAndRoundedTimestamp()
     {
         var project = new ProjectData { Offsets = [0], BPMs = [60] };
         var source = new StubWorkstationSourceService
@@ -489,15 +488,14 @@ public class WorkstationTrackTests
         Assert.That(vm.PlaceSample(track, 125.5), Is.True);
 
         Assert.That(track.Samples.Select(sample => sample.FileName), Is.EqualTo(new[] { "b.wav" }));
-        Assert.That(track.Samples.Select(sample => sample.Volume), Is.EqualTo(new[] { 100 }));
         Assert.That(track.Samples.Select(sample => sample.Timestamp), Is.EqualTo(new[] { 126 }));
         Assert.That(vm.SamplesRevision, Is.EqualTo(2));
     }
 
     [Test]
-    public async Task PlaybackScheduleCombinesStoredBeatAndCurrentTrackVolumes()
+    public async Task PlaybackScheduleUsesCurrentTrackVolume()
     {
-        var sample = new Sample { FileName = "hit.wav", Timestamp = 250, Volume = 40 };
+        var sample = new Sample { FileName = "hit.wav", Timestamp = 250 };
         var track = new Track { Volume = 50, Samples = [sample] };
         var source = new StubWorkstationSourceService
         {
@@ -515,7 +513,6 @@ public class WorkstationTrackTests
         {
             Assert.That(scheduled.FileName, Is.EqualTo("hit.wav"));
             Assert.That(scheduled.Timestamp, Is.EqualTo(250));
-            Assert.That(scheduled.BeatVolume, Is.EqualTo(40));
             Assert.That(scheduled.TrackVolume, Is.EqualTo(50));
         });
         await vm.DeactivateAsync();
@@ -543,12 +540,6 @@ public class WorkstationTrackTests
             Assert.That(saves.Writes, Is.Zero);
         });
         await vm.DeactivateAsync();
-    }
-
-    [Test]
-    public void NewSampleDefaultsToFullVolume()
-    {
-        Assert.That(new Sample().Volume, Is.EqualTo(100));
     }
 
     [Test]

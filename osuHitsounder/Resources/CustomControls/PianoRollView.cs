@@ -295,7 +295,7 @@ public sealed class PianoRollView : Control
         if (IsAdditionMode && hover is { } cell)
         {
             var ts = dragging ? BeatGridCalculator.GetNearestTimestamp(Offsets, Bpms, Subdivision, cell.Time, Duration.TotalMilliseconds) : BeatGridCalculator.GetContainingInterval(Offsets, Bpms, Subdivision, cell.Time, Duration.TotalMilliseconds) is { } interval ? (int?)Math.Round(interval.StartMilliseconds, MidpointRounding.AwayFromZero) : null;
-            if (ts is { } t) { var rect = GetNoteBounds(new(Guid.Empty, cell.Key, t, 100)); if (!rect.IsEmpty) OHsSampleNodeDrawing.Draw(dc, marker, new Pen(cue, 2), OHsSampleNodeDrawing.Inset(rect)); }
+            if (ts is { } t) { var rect = GetNoteBounds(new(Guid.Empty, cell.Key, t)); if (!rect.IsEmpty) OHsSampleNodeDrawing.Draw(dc, marker, new Pen(cue, 2), OHsSampleNodeDrawing.Inset(rect)); }
         }
         foreach (var note in Notes.OrderBy(n => n.Id == SelectedNoteId))
         {
@@ -306,7 +306,7 @@ public sealed class PianoRollView : Control
         }
         if (IsKeyboardFocused)
         {
-            var t = (int)Math.Round(activeMs, MidpointRounding.AwayFromZero); var r = GetNoteBounds(new(Guid.Empty, InstrumentalKeys.GetName(activeKey), t, 100));
+            var t = (int)Math.Round(activeMs, MidpointRounding.AwayFromZero); var r = GetNoteBounds(new(Guid.Empty, InstrumentalKeys.GetName(activeKey), t));
             if (!r.IsEmpty) dc.DrawEllipse(text,null,new Point(r.Left+4,r.Top+4),2,2);
         }
         if (Duration > TimeSpan.Zero && ContentWidth > 0) { var x = KeyColumnWidth + Position.TotalMilliseconds / Duration.TotalMilliseconds * ContentWidth - HorizontalOffset; dc.DrawLine(new Pen(hc ? SystemColors.WindowTextBrush : BrushOr(PlaybackMarkerBrush, "Brush.Playhead"), 1.5), new(x, 0), new(x, ActualHeight)); }

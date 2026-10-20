@@ -18,8 +18,8 @@ public class WorkstationNodeFormationTests
     public async Task Setup()
     {
         tracks = Enumerable.Range(1, 6).Select(i => new Track { SelectedSampleFileName = $"t{i}.wav" }).ToArray();
-        a = new Sample { Timestamp = 1000, FileName = "t1.wav", Volume = 37 };
-        b = new Sample { Timestamp = 1500, FileName = "t4.wav", Volume = 64 };
+        a = new Sample { Timestamp = 1000, FileName = "t1.wav" };
+        b = new Sample { Timestamp = 1500, FileName = "t4.wav" };
         tracks[0].Samples.Add(a); tracks[3].Samples.Add(b);
         var data = new ProjectData { Offsets = [0], BPMs = [120], Tracks = [.. tracks] };
         audio = new StubWorkstationAudioService();
@@ -109,7 +109,6 @@ public class WorkstationNodeFormationTests
         Assert.That(tracks[5].Samples.Single(), Is.SameAs(b));
         Assert.That(new[] { a.Timestamp, b.Timestamp }, Is.EqualTo(new[] { 1250, 1750 }));
         Assert.That(new[] { a.FileName, b.FileName }, Is.EqualTo(new[] { "t3.wav", "t6.wav" }));
-        Assert.That(new[] { a.Volume, b.Volume }, Is.EqualTo(new[] { 37, 64 }));
         Assert.That(vm.SelectedSamples, Is.EquivalentTo(new[] { a, b }));
         Assert.That(vm.SelectedTrack, Is.SameAs(tracks[5]));
         Assert.That(vm.SamplesRevision, Is.EqualTo(revision + 1));

@@ -55,7 +55,7 @@ public class NodeHistoryManagerTests
     public void RemovalRestoresOriginalIndexAndValues()
     {
         var history = new NodeHistoryManager();
-        var node = new Sample { Timestamp = 125, Volume = 37, FileName = "a.wav" };
+        var node = new Sample { Timestamp = 125, FileName = "a.wav" };
         var left = new Sample();
         var right = new Sample();
         var track = new Track { Samples = [left, right] };
@@ -64,7 +64,6 @@ public class NodeHistoryManagerTests
         Assert.That(track.Samples, Is.EqualTo(new[] { left, node, right }));
         Assert.That(track.Samples[1], Is.SameAs(node));
         Assert.That(node.Timestamp, Is.EqualTo(125));
-        Assert.That(node.Volume, Is.EqualTo(37));
         Assert.That(node.FileName, Is.EqualTo("a.wav"));
         Assert.That(history.Redo([track]), Is.True);
         Assert.That(track.Samples, Is.EqualTo(new[] { left, right }));

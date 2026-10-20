@@ -121,7 +121,6 @@ public partial class WorkstationPageVM
         var sample = new Sample
         {
             FileName = fileName,
-            Volume = 100,
             Timestamp = (int)Math.Round(leftBoundaryMilliseconds, MidpointRounding.AwayFromZero)
         };
         track.Samples.Add(sample);

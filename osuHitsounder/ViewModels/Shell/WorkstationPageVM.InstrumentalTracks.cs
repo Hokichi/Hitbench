@@ -36,7 +36,7 @@ public partial class WorkstationPageVM
         activeInstrumentContext == context && Project is not null && context.ProjectSessionId == sampleSession
         ? tracks.OfType<InstrumentalTrack>().FirstOrDefault(t => InstrumentId(t) == context.TrackId) : null;
     private InstrumentalNoteSnapshot[] NoteSnapshots(InstrumentalTrack track) =>
-        track.Notes.Select(n => new InstrumentalNoteSnapshot(InstrumentNoteId(n), n.Key, n.Timestamp, n.Volume)).ToArray();
+        track.Notes.Select(n => new InstrumentalNoteSnapshot(InstrumentNoteId(n), n.Key, n.Timestamp)).ToArray();
     private InstrumentalTrackSnapshot InstrumentSnapshot(InstrumentalTrack track, InstrumentalTrackContext context) =>
         new(context, track.Name, track.Volume, track.KeyFiles, NoteSnapshots(track), sampleFiles is null ? null : availableSamples.ToArray(), instrumentRevision, track.FolderName,
             tracks.OfType<InstrumentalTrack>().Where(t => t != track && t.FolderName.Length > 0).Select(t => t.FolderName).ToArray(), InstrumentHistory(track).CanUndo, InstrumentHistory(track).CanRedo, tracks.IndexOf(track));
@@ -221,8 +221,8 @@ public partial class WorkstationPageVM
     }
     private bool TryApplyInstrumentNotes(InstrumentalTrack track, IReadOnlyList<InstrumentalNoteSnapshot> desired)
     {
-        if (Waveform is null || desired.Any(n => n.Id == Guid.Empty || n.Timestamp < 0 || n.Timestamp >= Waveform.Duration.TotalMilliseconds || n.Volume is < 0 or > 100 || !InstrumentalKeys.TryGetIndex(n.Key, out _)) || desired.Select(n => n.Id).Distinct().Count() != desired.Count) return false;
-        var replacement = desired.Select(n => new InstrumentalNote { Key = n.Key, Timestamp = n.Timestamp, Volume = n.Volume }).ToArray();
+        if (Waveform is null || desired.Any(n => n.Id == Guid.Empty || n.Timestamp < 0 || n.Timestamp >= Waveform.Duration.TotalMilliseconds || !InstrumentalKeys.TryGetIndex(n.Key, out _)) || desired.Select(n => n.Id).Distinct().Count() != desired.Count) return false;
+        var replacement = desired.Select(n => new InstrumentalNote { Key = n.Key, Timestamp = n.Timestamp }).ToArray();
         var old = track.Notes.ToArray();
         if (!track.TryReplaceNotes(replacement)) return false;
         foreach (var note in old) { var id = InstrumentNoteId(note); instrumentNoteIds.Remove(note); if (!desired.Any(n => n.Id == id)) instrumentEventIds.Remove(id); }
@@ -252,7 +252,7 @@ public partial class WorkstationPageVM
         var existing = track.Notes.FirstOrDefault(n => n.Key == m.Key && n.Timestamp == time);
         if (existing is not null) { InstrumentResult(m.Context, m.RequestId, false, InstrumentNoteId(existing)); return; }
         var id = Guid.NewGuid();
-        CommitInstrumentNotes(track, m.Context, m.RequestId, [.. NoteSnapshots(track), new(id, m.Key, time.Value, 100)], [id]);
+        CommitInstrumentNotes(track, m.Context, m.RequestId, [.. NoteSnapshots(track), new(id, m.Key, time.Value)], [id]);
     }
     private void MoveInstrumentNote(MoveInstrumentalNoteRequestedMessage m)
     {

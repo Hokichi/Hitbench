@@ -10,7 +10,7 @@ public class WorkstationInstrumentalPlaybackTests
     public async Task MixedScheduleSoloRenameDeleteAndRelinkPreserveNoteIdentity()
     {
         var sample = new Track { SelectedSampleFileName = "kick.wav", Samples = [new() { FileName = "kick.wav", Timestamp = 125 }] };
-        var instrument = new InstrumentalTrack { Volume = 75, KeyFiles = new() { ["C4"] = "piano.wav", ["E4"] = "piano.wav" }, Notes = [new() { Key = "C4", Timestamp = 125, Volume = 60 }, new() { Key = "E4", Timestamp = 125 }] };
+        var instrument = new InstrumentalTrack { Volume = 75, KeyFiles = new() { ["C4"] = "piano.wav", ["E4"] = "piano.wav" }, Notes = [new() { Key = "C4", Timestamp = 125 }, new() { Key = "E4", Timestamp = 125 }] };
         var project = new ProjectData { Tracks = [sample, instrument], Offsets = [0], BPMs = [120] };
         var messenger = new CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger(); var audio = new StubWorkstationAudioService();
         var dialogs = new StubInstrumentalTrackDialogService();
@@ -32,7 +32,7 @@ public class WorkstationInstrumentalPlaybackTests
         {
             await owner.LoadAsync("project.json", default); owner.AcknowledgePresentationReady(owner.LoadGeneration);
             var combined = audio.SampleUpdates.Last(); Assert.That(combined.Count, Is.EqualTo(3)); Assert.That(combined.Select(e => e.Id).Distinct().Count(), Is.EqualTo(3));
-            Assert.That(combined.Single(e => e.BeatVolume == 60).TrackVolume, Is.EqualTo(75));
+            Assert.That(combined.First(e => e.FileName == "piano.wav").TrackVolume, Is.EqualTo(75));
             Assert.That(owner.PlaceSample(instrument, 250), Is.False); Assert.That(instrument.Samples, Is.Empty);
             owner.SetTrackSoloed(instrument, true); await owner.FlushPlaybackUpdatesAsync(); Assert.That(audio.SampleUpdates.Last().Count, Is.EqualTo(2));
             await owner.KeysMappingCommand.ExecuteAsync(instrument);
@@ -42,7 +42,7 @@ public class WorkstationInstrumentalPlaybackTests
     [Test]
     public async Task GlobalPlaybackContainsInstrumentAndHonorsMute()
     {
-        var instrument = new InstrumentalTrack { KeyFiles = new() { ["C4"] = "piano.wav" }, Notes = [new() { Key = "C4", Timestamp = 125 }] };
+        var instrument = new InstrumentalTrack { Volume = 75, KeyFiles = new() { ["C4"] = "piano.wav" }, Notes = [new() { Key = "C4", Timestamp = 125 }] };
         var project = new ProjectData { Tracks = [instrument], Offsets = [0], BPMs = [120] }; var audio = new StubWorkstationAudioService();
         var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", project)) }, new MarkerPlaybackCoordinator(audio, Task.Delay), new ImmediateUiScheduler(), sampleFiles: new StubSampleFileService(["piano.wav"]));
         try

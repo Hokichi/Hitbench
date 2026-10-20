@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.Input;
 using osuHitsounder.Core.Entities;
 using osuHitsounder.Services;
@@ -89,7 +89,7 @@ public partial class WorkstationPageVM
         var entries = SelectedNodeEntries(NodeHistoryOperation.Placement);
         if (entries.Length == 0) return false;
         var first = entries.Min(entry => entry.Sample.Timestamp);
-        copiedNodes = entries.Select(entry => new CopiedSampleNode(entry.Track, entry.Sample.FileName, entry.Sample.Volume,
+        copiedNodes = entries.Select(entry => new CopiedSampleNode(entry.Track, entry.Sample.FileName,
             (long)entry.Sample.Timestamp - first)).ToArray();
         NotifyNodeEditingState();
         return true;
@@ -141,7 +141,7 @@ public partial class WorkstationPageVM
             if (!CanEditTrackGrid(node.Track)) return RejectPaste("The original track is unavailable.");
             if (!sampleTrackFiles.Any(file => string.Equals(file, node.FileName, StringComparison.OrdinalIgnoreCase)))
                 return RejectPaste("The copied sample file is unavailable.");
-            var sample = new Sample { FileName = node.FileName, Volume = node.Volume, Timestamp = (int)candidate };
+            var sample = new Sample { FileName = node.FileName, Timestamp = (int)candidate };
             var index = nextIndexes.GetValueOrDefault(node.Track, node.Track.Samples.Count);
             nextIndexes[node.Track] = index + 1;
             batch.Add(new(node.Track, sample, index, NodeHistoryOperation.Placement, NextFileName: node.FileName));

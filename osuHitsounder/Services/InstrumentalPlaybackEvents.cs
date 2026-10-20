@@ -13,7 +13,7 @@ public static class InstrumentalPlaybackEvents
             if (!keyFiles.TryGetValue(note.Key, out var name)) continue;
             if (availableFiles is not null)
             { var found = availableFiles.FirstOrDefault(f => string.Equals(f, name, StringComparison.OrdinalIgnoreCase)); if (found is null) continue; name = found; }
-            events.Add(new(resolveId(note.Id), name, note.Timestamp, note.Volume, trackVolume));
+            events.Add(new(resolveId(note.Id), name, note.Timestamp, trackVolume));
         }
         return events;
     }

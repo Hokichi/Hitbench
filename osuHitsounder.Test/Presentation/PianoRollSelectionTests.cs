@@ -9,7 +9,7 @@ public class PianoRollSelectionTests
     [Test]
     public void RightRemovalTargetsOnlyClickedNoteInSelectedFormation()
     {
-        var a=new InstrumentalNoteSnapshot(Guid.NewGuid(),"C4",1000,100);var b=new InstrumentalNoteSnapshot(Guid.NewGuid(),"C#4",1250,100);
+        var a = new InstrumentalNoteSnapshot(Guid.NewGuid(), "C4", 1000); var b = new InstrumentalNoteSnapshot(Guid.NewGuid(), "C#4", 1250);
         var roll=new PianoRollView{Notes=[a,b],SelectedNoteIds=[a.Id,b.Id],Offsets=[0],Bpms=[120],Duration=TimeSpan.FromSeconds(10),ContentWidth=1000,HorizontalOffset=50,VerticalOffset=70*36};UiTestPump.Layout(roll,400,150);
         InstrumentalNoteEditRequestedEventArgs? request=null;roll.NoteEditRequested+=(_,e)=>request=e;
         Assert.That(roll.RemoveNoteAt(new Point(127,54)),Is.True);Assert.That(request!.NoteIds,Is.EqualTo(new[]{a.Id}));
@@ -19,13 +19,13 @@ public class PianoRollSelectionTests
     {
         var roll=new PianoRollView{Offsets=[0],Bpms=[120],Duration=TimeSpan.FromSeconds(10),ContentWidth=1000};UiTestPump.Layout(roll,400,150);
         var count=0;roll.NoteEditRequested+=(_,_)=>count++;
-        roll.BeginPointerInteraction(new Point(122,54));roll.Notes=[new(Guid.NewGuid(),"C4",500,100)];
+        roll.BeginPointerInteraction(new Point(122, 54)); roll.Notes = [new(Guid.NewGuid(), "C4", 500)];
         Assert.That(roll.CompletePointerInteraction(),Is.False);Assert.That(count,Is.Zero);
     }
     [Test]
     public void ControlClickAndRectangleSelectionCommitIdsWithoutEdits()
     {
-        var a=new InstrumentalNoteSnapshot(Guid.NewGuid(),"C4",1000,100);var b=new InstrumentalNoteSnapshot(Guid.NewGuid(),"C#4",1250,100);
+        var a = new InstrumentalNoteSnapshot(Guid.NewGuid(), "C4", 1000); var b = new InstrumentalNoteSnapshot(Guid.NewGuid(), "C#4", 1250);
         var roll=new PianoRollView{Notes=[a,b],SelectedNoteIds=[a.Id],Offsets=[0],Bpms=[120],Duration=TimeSpan.FromSeconds(10),ContentWidth=1000,HorizontalOffset=50,VerticalOffset=70*36,IsAdditionMode=false};UiTestPump.Layout(roll,400,150);
         InstrumentalNoteSelectionRequestedEventArgs? selection=null;var edits=0;roll.NoteSelectionRequested+=(_,e)=>selection=e;roll.NoteEditRequested+=(_,_)=>edits++;
         roll.BeginPointerInteraction(new Point(152,18),ModifierKeys.Control);roll.CompletePointerInteraction();Assert.That(selection!.NoteIds,Is.EquivalentTo(new[]{a.Id,b.Id}));
