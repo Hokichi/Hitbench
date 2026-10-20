@@ -270,6 +270,15 @@
                         Margin="4,0,0,0"
                         Command="{Binding ToggleTracksCollapsedCommand, Mode=OneWay}"
                         Style="{StaticResource OHsWorkstationCollapseTracksStyle}" />
+                    <customControls:BalloonButton
+                        x:Name="ExportButton"
+                        Margin="4,0,0,0"
+                        AutomationProperties.Name="Export"
+                        ButtonIcon="{StaticResource Export}"
+                        ButtonText="Export"
+                        Command="{Binding ExportCommand, Mode=OneWay}"
+                        Style="{StaticResource OHsWorkstationToolbarButtonStyle}"
+                        ToolTip="Export" />
                 </StackPanel>
                 <Border Style="{StaticResource OHsWorkstationToolbarSeparatorStyle}" />
                 <pages:OHsWorkstationFooter x:Name="FooterControls" VerticalAlignment="Center" />

@@ -47,6 +47,13 @@ public partial class App : Application
             () => Current.MainWindow, Current.Dispatcher,
             CreateInstrumentEditorFactory(provider),
             CreateKeyMappingsFactory(provider)));
+        registrations.AddSingleton<OHsExportPublisher>();
+        registrations.AddSingleton<IOHsExportService, OHsExportService>();
+        registrations.AddSingleton<IOHsExportDirectoryLauncher, OHsExportDirectoryLauncher>();
+        registrations.AddSingleton<Func<osuHitsounder.Resources.DataModels.OHsExportRequest, OHsExportPopupVM>>(provider =>
+            request => new OHsExportPopupVM(request, provider.GetRequiredService<IOHsExportService>(), provider.GetRequiredService<IOHsExportDirectoryLauncher>(), provider.GetRequiredService<IMessenger>()));
+        registrations.AddSingleton<IOHsExportDialogService>(provider => new OHsExportDialogService(() => Current.MainWindow, Current.Dispatcher,
+            provider.GetRequiredService<Func<osuHitsounder.Resources.DataModels.OHsExportRequest, OHsExportPopupVM>>()));
         registrations.AddSingleton<INodePasteDialogService>(_ => new NodePasteDialogService(
             () => Current.MainWindow, Current.Dispatcher));
         registrations.AddSingleton<ITrackRemovalDialogService>(_ =>
@@ -58,7 +65,7 @@ public partial class App : Application
                 provider.GetRequiredService<ISampleFileService>(), provider.GetRequiredService<ISampleFileDialogService>(),
                 provider.GetRequiredService<IProjectFileService>(), provider.GetRequiredService<IMessenger>(),
                 provider.GetRequiredService<ITrackRemovalDialogService>(),
-                provider.GetRequiredService<PlaybackVolumeSettings>(), nodePasteDialog: provider.GetRequiredService<INodePasteDialogService>(), sampleManagementDialog: provider.GetRequiredService<ISampleManagementDialogService>(), sampleImports: provider.GetRequiredService<SampleImportBatch>(), instrumentDialogs: provider.GetRequiredService<IInstrumentalTrackDialogService>())));
+                provider.GetRequiredService<PlaybackVolumeSettings>(), nodePasteDialog: provider.GetRequiredService<INodePasteDialogService>(), sampleManagementDialog: provider.GetRequiredService<ISampleManagementDialogService>(), sampleImports: provider.GetRequiredService<SampleImportBatch>(), instrumentDialogs: provider.GetRequiredService<IInstrumentalTrackDialogService>(), exportDialog: provider.GetRequiredService<IOHsExportDialogService>())));
         registrations.AddSingleton<IHomeFolderService>(_ => new HomeFolderService(AppContext.BaseDirectory));
         registrations.AddSingleton<IAppSettingsService>(_ => new AppSettingsService(AppContext.BaseDirectory));
         registrations.AddSingleton<IUiScheduler>(_ => uiScheduler ?? new UiScheduler(Current.Dispatcher));

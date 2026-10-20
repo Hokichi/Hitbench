@@ -20,6 +20,27 @@ namespace osuHitsounder.Test.Presentation;
 public sealed class OHsWorkstationAudioCardTests
 {
     [Test]
+    public void ExportUsesExistingToolbarContractAndTracksCommandAvailability()
+    {
+        new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
+        var dialogs = new StubOHsExportDialogService();
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), exportDialog: dialogs);
+        try
+        {
+            var card = new OHsWorkstationAudioCard { DataContext = vm };
+            UiTestPump.Layout(card, 900, 300);
+            var button = (BalloonButton)card.FindName("ExportButton");
+            UiControlContract.AssertStyle<BalloonButton>(button, "OHsWorkstationToolbarButtonStyle");
+            Assert.That(button.ButtonIcon, Is.SameAs(card.FindResource("Export")));
+            Assert.That(AutomationProperties.GetName(button), Is.EqualTo("Export"));
+            Assert.That(button.Command, Is.SameAs(vm.ExportCommand)); Assert.That(button.IsEnabled, Is.False);
+            UiTestPump.Run(vm.LoadAsync("project.json", default)); vm.AcknowledgePresentationReady(vm.LoadGeneration);
+            UiTestPump.Layout(card, 900, 300); Assert.That(button.IsEnabled, Is.True);
+            UiTestPump.Run(vm.ExportCommand.ExecuteAsync(null)); Assert.That(dialogs.Calls, Is.EqualTo(1));
+        }
+        finally { UiTestPump.Run(vm.DeactivateAsync()); }
+    }
+    [Test]
     public void ControlPointAddIsSeparateFromTrackAddMenu()
     {
         new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();

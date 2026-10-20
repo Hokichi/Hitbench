@@ -31,7 +31,8 @@ public partial class WorkstationPageVM(
     SampleImportBatch? sampleImports = null,
     IInstrumentalTrackDialogService? instrumentDialogs = null,
     Func<TimeSpan, CancellationToken, Task>? folderRenameDelay = null,
-    TimeProvider? timeProvider = null) : ObservableObject
+    TimeProvider? timeProvider = null,
+    IOHsExportDialogService? exportDialog = null) : ObservableObject
 {
     private readonly IWorkstationAudioService audioService = playback.Audio;
     private bool subscribedToPlayback;
@@ -65,7 +66,7 @@ public partial class WorkstationPageVM(
     public bool CanAddTrack => CanEditTracks && sampleTrackFiles.Count > 0;
     public bool CanRemoveTrack => !folderRenamesActive && !managingSamples && !IsNodeEditBusy && CanEditTracks && !importBusy && !removalBusy && trackRemovalDialog is not null;
     public bool CanPlaceSamples => !folderRenamesActive && !managingSamples && !IsNodeEditBusy && CanEditTracks && Waveform is not null && !importBusy && !removalBusy;
-    public bool HasPendingSaves => playbackVolumes.HasPendingSaves || folderRenamesActive || instrumentBusy || managingSamples || IsNodeEditBusy || pendingZoom is not null || importBusy || removalBusy || !saveTail.IsCompleted || lastSaveError is not null;
+    public bool HasPendingSaves => IsExporting || playbackVolumes.HasPendingSaves || folderRenamesActive || instrumentBusy || managingSamples || IsNodeEditBusy || pendingZoom is not null || importBusy || removalBusy || !saveTail.IsCompleted || lastSaveError is not null;
     [ObservableProperty] private string? saveError;
     private CancellationTokenSource? loadCancellation;
     private Task? activeLoad;
@@ -80,7 +81,7 @@ public partial class WorkstationPageVM(
     [ObservableProperty] private ProjectLoadPhase loadPhase = ProjectLoadPhase.PreparingData;
     public int LoadGeneration => loadGeneration;
     public bool IsLoading => LoadPhase is ProjectLoadPhase.PreparingData or ProjectLoadPhase.AwaitingPresentation;
-    public bool IsInteractionReady => LoadPhase == ProjectLoadPhase.Ready && !deactivated && !IsReturning && !reloadingSamples;
+    public bool IsInteractionReady => LoadPhase == ProjectLoadPhase.Ready && !deactivated && !IsReturning && !reloadingSamples && !IsExporting;
     public bool CanGoBack => !deactivated && !IsReturning;
     public bool ShowStatusOverlay => IsLoading || IsSavingForReturn;
     public string StatusText => IsSavingForReturn ? "Saving..." : "Loading Project...";
@@ -110,6 +111,7 @@ public partial class WorkstationPageVM(
     public async Task LoadAsync(string projectPath, CancellationToken token)
     {
         if (deactivated) return;
+        await SettleExportAsync();
         if (reloadingSamples && token != reloadSamplesCancellation?.Token) reloadSamplesCancellation?.Cancel();
         await SettleControlPointsAsync();
         controlPointIds.Clear();
@@ -142,6 +144,7 @@ public partial class WorkstationPageVM(
     private async Task DeactivateCoreAsync()
     {
         if (deactivated) return;
+        await SettleExportAsync();
         reloadSamplesCancellation?.Cancel();
         await SettleControlPointsAsync();
         await SettleInstrumentalEditorAsync();
@@ -330,6 +333,7 @@ public partial class WorkstationPageVM(
         var prepared = false;
         try
         {
+            await WaitForReturnAsync(SettleExportAsync());
             pendingPlayCancellation?.Cancel();
             await WaitForReturnAsync(playback.PauseAsync(CancellationToken.None));
             RefreshPlayback();
@@ -523,6 +527,7 @@ public partial class WorkstationPageVM(
                 audioService.SetSongVolume(SongVolume);
                 audioService.SetApplicationVolume(ApplicationVolume);
                 audioService.SetSamplesVolume(SamplesVolume);
+                exportBeatmapPath = source.BeatmapPath; exportAudioPath = source.AudioPath;
                 Project = source.Project;
                 latestRequestedLastChanged = Project.LastChanged;
                 InitializeControlPoints();
@@ -545,6 +550,7 @@ public partial class WorkstationPageVM(
                     messenger.Register<LoadSampleRequestedMessage>(this, (_, _) => LoadSampleCommand.Execute(null));
                     messenger.Register<ManageSamplesRequestedMessage>(this, (_, _) => ManageSamplesCommand.Execute(null));
                     messenger.Register<ProjectSamplesChangedMessage>(this, (_, change) => ReceiveSampleChange(change));
+                    messenger.Register<OHsExportResultMessage>(this, (_, result) => ReceiveExportResult(result));
                     RegisterInstrumentMessages();
                     RegisterKeyMappingMessages();
 
@@ -592,6 +598,7 @@ public partial class WorkstationPageVM(
 
     private void NotifyCommandState()
     {
+        NotifyExportState();
         NotifyNodeEditingState();
         NotifyHistoryState();
         NotifyTrackCommands();
@@ -613,6 +620,7 @@ public partial class WorkstationPageVM(
 
     private void NotifyEditingState()
     {
+        NotifyExportState();
         NotifySampleReloadAvailability();
         OnPropertyChanged(nameof(CanOpenControlPoints)); AddControlPointCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(HasPendingSaves)); PublishControlPointsSnapshot();
