@@ -172,7 +172,7 @@ public sealed class OHsWorkstationAudioCardTests
             var editorMode = editor.IsAdditionMode;
             select.SetCurrentValue(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, true);
             Assert.That(vm.IsAdditionMode, Is.False); Assert.That(editor.IsAdditionMode, Is.EqualTo(editorMode));
-            editor.IsAdditionMode = !editorMode;
+            editor.RequestEditingMode(!editorMode);
             Assert.That(vm.IsAdditionMode, Is.False);
             draw.SetCurrentValue(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, true);
             Assert.That(vm.IsAdditionMode, Is.True); Assert.That(vm.SelectedTrack, Is.SameAs(selected));

@@ -68,7 +68,7 @@ public sealed partial class InstrumentalArrangementDrawerVM : ObservableObject
         {
             if (m.Snapshot.Context != snapshot.Context || m.Snapshot.Revision < timeline.Revision) return;
             timeline = m.Snapshot;
-            foreach (var name in new[] { nameof(Duration), nameof(Position), nameof(IsPlaying), nameof(CanEdit), nameof(Offsets), nameof(Bpms), nameof(Subdivision), nameof(SelectedSubdivisionIndex), nameof(ZoomFactor), nameof(ScrollWithMarker), nameof(PlaybackWarning), nameof(EditingHint) }) OnPropertyChanged(name);
+            foreach (var name in new[] { nameof(IsAdditionMode), nameof(IsSelectionMode), nameof(Duration), nameof(Position), nameof(IsPlaying), nameof(CanEdit), nameof(Offsets), nameof(Bpms), nameof(Subdivision), nameof(SelectedSubdivisionIndex), nameof(ZoomFactor), nameof(ScrollWithMarker), nameof(PlaybackWarning), nameof(EditingHint) }) OnPropertyChanged(name);
             NotifyNoteCommands();
         }));
         messenger.Register<InstrumentalTrackChangedMessage>(this, (_, m) => Schedule(() =>

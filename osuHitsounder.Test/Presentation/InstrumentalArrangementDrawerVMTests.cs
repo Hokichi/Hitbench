@@ -8,6 +8,28 @@ namespace osuHitsounder.Test.Presentation;
 public sealed class InstrumentalArrangementDrawerVMTests
 {
     [Test]
+    public async Task EditingModeFollowsSnapshotsAndStopsAfterDeactivation()
+    {
+        var context = new InstrumentalTrackContext("project.json", null, Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
+        var messenger = new WeakReferenceMessenger();
+        OHsInstrumentalTimelineSnapshot Timeline(long revision, bool mode) => new(context, revision, TimeSpan.FromSeconds(10), TimeSpan.Zero, false, true, true, [0], [120], 32, 3, true, null, mode);
+        var vm = new InstrumentalArrangementDrawerVM(new(new(context, "Piano", 100, new Dictionary<string, string>(), [], null, 0), Timeline(0, false)), messenger, new ImmediateUiScheduler());
+        await vm.InitializeAsync(default);
+        try
+        {
+            Assert.That(vm.IsAdditionMode, Is.False);
+            messenger.Send(new OHsInstrumentalTimelineChangedMessage(Timeline(2, true)));
+            Assert.That(vm.IsAdditionMode, Is.True);
+            messenger.Send(new OHsInstrumentalTimelineChangedMessage(Timeline(1, false)));
+            Assert.That(vm.IsAdditionMode, Is.True);
+            await vm.DeactivateAsync();
+            messenger.Send(new OHsInstrumentalTimelineChangedMessage(Timeline(3, false)));
+            Assert.That(vm.IsAdditionMode, Is.True);
+        }
+        finally { await vm.DeactivateAsync(); }
+    }
+
+    [Test]
     public async Task TrackIdentityUpdatesIgnoreStaleAndForeignSnapshots()
     {
         var context = new InstrumentalTrackContext("project.json", null, Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());

@@ -12,7 +12,8 @@ public sealed partial class InstrumentalArrangementDrawerVM
     private IReadOnlyList<Guid> selectedNoteIds = [];
     private InstrumentalNoteSnapshot[] clipboard = [];
     public IReadOnlyList<Guid> SelectedNoteIds => selectedNoteIds;
-    [ObservableProperty][NotifyPropertyChangedFor(nameof(IsSelectionMode))] private bool isAdditionMode = true;
+    public bool IsAdditionMode => timeline.IsAdditionMode;
+    public void RequestEditingMode(bool value) { if (CanEdit) messenger.Send(new OHsInstrumentalTimelineEditRequestedMessage(snapshot.Context, ++requestSequence, IsAdditionMode: value)); }
     public bool IsSelectionMode => !IsAdditionMode;
     private double laneHeight = 36;
     public double LaneHeight { get => laneHeight; set { if (double.IsFinite(value)) SetProperty(ref laneHeight, Math.Clamp(value,36,144)); } }

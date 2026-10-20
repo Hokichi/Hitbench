@@ -100,7 +100,7 @@ public partial class OHsInstrumentalArrangementDrawer : UserControl, IOHsShellDr
             : modifiers == ModifierKeys.None && key == Key.Delete ? viewModel.DeleteSelectedNotesCommand : null;
         if (command is not null) { if (!repeat && command.CanExecute(null)) { PianoRoll.CancelInteraction(); command.Execute(null); } return true; }
         if (modifiers == ModifierKeys.None && key is Key.D1 or Key.NumPad1 or Key.D2 or Key.NumPad2)
-        { if (!repeat && viewModel.CanEdit) viewModel.IsAdditionMode = key is Key.D2 or Key.NumPad2; return true; }
+        { if (!repeat && viewModel.CanEdit) viewModel.RequestEditingMode(key is Key.D2 or Key.NumPad2); return true; }
         if (modifiers == ModifierKeys.Control)
         {
             var index = key switch { Key.D1 or Key.NumPad1 => 0, Key.D2 or Key.NumPad2 => 1, Key.D3 or Key.NumPad3 => 2, Key.D4 or Key.NumPad4 => 3, Key.D5 or Key.NumPad5 => 4, Key.D6 or Key.NumPad6 => 5, Key.D8 or Key.NumPad8 => 6, _ => -1 };

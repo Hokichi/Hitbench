@@ -23,7 +23,12 @@ public sealed class InstrumentalTimelineMessageTests
             messenger: messenger, instrumentDialogs: dialogs);
         dialogs.Arrangement = (data, _) =>
         {
+            owner.IsAdditionMode = false;
             messenger.Send(new InstrumentalEditorReadyMessage(data.Track.Context));
+            Assert.That(messages.Last().IsAdditionMode, Is.False);
+            messenger.Send(new OHsInstrumentalTimelineEditRequestedMessage(data.Track.Context, 1, IsAdditionMode: true));
+            Assert.That(owner.IsAdditionMode, Is.True);
+            Assert.That(messages.Last().IsAdditionMode, Is.True);
             Assert.That(messages, Is.Not.Empty);
             Assert.That(messages.Last().Duration, Is.EqualTo(TimeSpan.FromSeconds(10)));
             messenger.Send(new OHsInstrumentalTimelineEditRequestedMessage(data.Track.Context, 2, 33, 6, false));

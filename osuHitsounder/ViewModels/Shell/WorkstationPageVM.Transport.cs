@@ -27,7 +27,7 @@ public partial class WorkstationPageVM
         new(context, ++instrumentTimelineRevision, Waveform?.Duration ?? TimeSpan.Zero, Position,
             IsPlaying, ActiveInstrument(context) is not null && markerClock.IsValid && Waveform?.Duration > TimeSpan.Zero,
             CanUseTransport(), Project?.Offsets ?? [], Project?.BPMs ?? [], ZoomFactor,
-            SelectedSubdivisionIndex, ScrollWithMarker, PlaybackWarning);
+            SelectedSubdivisionIndex, ScrollWithMarker, PlaybackWarning, IsAdditionMode);
 
     private void PublishInstrumentTimeline()
     {
@@ -47,7 +47,7 @@ public partial class WorkstationPageVM
             await previous;
             await uiScheduler.InvokeAsync(() =>
             {
-                if (deactivated || ActiveInstrument(message.Context) is null || message is { ZoomFactor: null, SelectedSubdivisionIndex: null, ScrollWithMarker: null }) return;
+                if (deactivated || ActiveInstrument(message.Context) is null || message is { ZoomFactor: null, SelectedSubdivisionIndex: null, ScrollWithMarker: null, IsAdditionMode: null }) return;
                 if (instrumentTimelineEditor != message.Context.EditorSessionId)
                 { instrumentTimelineEditor = message.Context.EditorSessionId; instrumentTimelineRequestSequence = 0; }
                 if (message.Sequence <= instrumentTimelineRequestSequence ||
@@ -57,6 +57,7 @@ public partial class WorkstationPageVM
                 if (message.ZoomFactor is { } value) SetZoom((int)Math.Clamp(value, 8, 128));
                 if (message.SelectedSubdivisionIndex is { } index) SelectedSubdivisionIndex = index;
                 if (message.ScrollWithMarker is { } follow) ScrollWithMarker = follow;
+                if (message.IsAdditionMode is { } mode) IsAdditionMode = mode;
                 PublishInstrumentTimeline();
             }, CancellationToken.None);
         }

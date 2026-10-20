@@ -3,12 +3,13 @@ namespace osuHitsounder.Resources.DataModels;
 public sealed class OHsInstrumentalTimelineSnapshot(InstrumentalTrackContext context, long revision,
     TimeSpan duration, TimeSpan position, bool isPlaying, bool canEdit, bool canUseTransport,
     IReadOnlyList<int> offsets, IReadOnlyList<int> bpms, double zoomFactor,
-    int selectedSubdivisionIndex, bool scrollWithMarker, string? playbackWarning)
+    int selectedSubdivisionIndex, bool scrollWithMarker, string? playbackWarning, bool isAdditionMode = true)
 {
     public InstrumentalTrackContext Context { get; } = context;
     public long Revision { get; } = revision;
     public TimeSpan Duration { get; } = duration;
     public TimeSpan Position { get; } = position;
+    public bool IsAdditionMode { get; } = isAdditionMode;
     public bool IsPlaying { get; } = isPlaying;
     public bool CanEdit { get; } = canEdit;
     public bool CanUseTransport { get; } = canUseTransport;

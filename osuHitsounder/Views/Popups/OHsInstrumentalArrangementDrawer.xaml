@@ -1,10 +1,9 @@
 <UserControl x:Class="osuHitsounder.Views.Popups.OHsInstrumentalArrangementDrawer" x:Name="Drawer"
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
- xmlns:sys="clr-namespace:System;assembly=System.Runtime"
  xmlns:c="clr-namespace:osuHitsounder.Resources.CustomControls" xmlns:h="clr-namespace:osuHitsounder.Resources.Helpers">
  <Border Style="{StaticResource OHsPopupSurfaceBorderStyle}" Padding="16">
  <Grid Style="{StaticResource BaseGridStyle}">
-  <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+  <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
   <Grid Style="{StaticResource BaseGridStyle}">
    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
    <TextBlock Text="{Binding PopupTitle,Mode=OneWay}" Style="{StaticResource OHsPopupTitleTextStyle}" VerticalAlignment="Center"/>
@@ -12,12 +11,8 @@
     Click="OnCloseClick" AutomationProperties.Name="Close arrangement" ToolTip="Close (Esc)" ShouldShowText="True" IsTabStop="True"
     h:KeyboardNavigationPolicy.AllowTabNavigation="True" FocusVisualStyle="{StaticResource OHsSampleManagerKeyboardFocusStyle}" ToolTipService.ShowsToolTipOnKeyboardFocus="True"/>
   </Grid>
-  <c:SegmentedToggleGroup Grid.Row="1" Margin="0,8,0,8" HorizontalAlignment="Left" IsEnabled="{Binding CanEdit,Mode=OneWay}"
-   SelectedValue="{Binding IsAdditionMode,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Piano editing mode">
-   <c:SegmentedToggleOption Content="Select" AutomationProperties.Name="Select notes" ToolTip="Select and move notes (1)"><c:SegmentedToggleOption.Value><sys:Boolean>False</sys:Boolean></c:SegmentedToggleOption.Value></c:SegmentedToggleOption>
-   <c:SegmentedToggleOption Content="Draw" AutomationProperties.Name="Draw notes" ToolTip="Place notes (2)"><c:SegmentedToggleOption.Value><sys:Boolean>True</sys:Boolean></c:SegmentedToggleOption.Value></c:SegmentedToggleOption>
-  </c:SegmentedToggleGroup>
-  <Grid Grid.Row="2" Style="{StaticResource BaseGridStyle}">
+
+  <Grid Grid.Row="1" Style="{StaticResource BaseGridStyle}">
    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
    <c:PianoRollView x:Name="PianoRoll" Style="{StaticResource BasePianoRollViewStyle}" Notes="{Binding Notes,Mode=OneWay}"
     SelectedNoteId="{Binding SelectedNoteId,Mode=OneWay}" SelectedNoteIds="{Binding SelectedNoteIds,Mode=OneWay}" IsAdditionMode="{Binding IsAdditionMode,Mode=OneWay}" LaneHeight="{Binding LaneHeight,Mode=OneWay}" NoteSelectionRequested="OnNoteSelection" Offsets="{Binding Offsets,Mode=OneWay}" Bpms="{Binding Bpms,Mode=OneWay}"
