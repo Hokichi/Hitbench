@@ -24,7 +24,8 @@ public static class OHsExportAudio
         if (sum.Length == 0 || sum.Any(v => !float.IsFinite(v) || v is < -1 or > 1)) throw new InvalidDataException("Exported sample would clip or contains invalid PCM.");
         return DecodedAudio.CopyFrom(sum);
     }
-    public static async Task WriteAsync(string projectPath, string stagingDirectory, OHsExportPlan plan, OHsExportOptions options, CancellationToken token)
+    public static async Task WriteAsync(string projectPath, string stagingDirectory, OHsExportPlan plan, OHsExportOptions options, CancellationToken token,
+        Func<string, CancellationToken, DecodedAudio>? decode = null)
     {
         var decoded = new Dictionary<string, DecodedAudio>(StringComparer.OrdinalIgnoreCase);
         var encoded = new Dictionary<(string Id, string Format), string>();
@@ -38,7 +39,7 @@ public static class OHsExportAudio
                 if (encoded.TryGetValue((asset.Id, extension), out var existing)) { File.Copy(existing, output); continue; }
                 var pcm = Render(asset, file =>
                 {
-                    if (!decoded.TryGetValue(file, out var audio)) decoded[file] = audio = AudioDecoder.Decode(SamplePaths.Resolve(projectPath, file), token);
+                    if (!decoded.TryGetValue(file, out var audio)) decoded[file] = audio = (decode ?? ((path, cancellation) => AudioDecoder.Decode(path, cancellation)))(SamplePaths.Resolve(projectPath, file), token);
                     return audio;
                 }, token);
                 var single = asset.Sources.Count == 1 ? asset.Sources[0] : default;

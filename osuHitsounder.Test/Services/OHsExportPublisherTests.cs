@@ -3,6 +3,31 @@ namespace osuHitsounder.Test.Services;
 
 public class OHsExportPublisherTests
 {
+    [Test]
+    public async Task FullLengthValidDifficultyStemCanBePublished()
+    {
+        using var folder = new TestProjectFolder();
+        var name = new string('a', 251) + ".osu";
+        var output = await Publish(new(), folder.ProjectPath, name, "difficulty");
+        Assert.That(await File.ReadAllTextAsync(Path.Combine(output, name)), Is.EqualTo("difficulty"));
+    }
+    [TestCase(false)] [TestCase(true)]
+    public void LinkedOutputOrUnrelatedFileIsRejected(bool directory)
+    {
+        using var folder = new TestProjectFolder(); using var outside = new TestProjectFolder();
+        var output = Path.Combine(Path.GetDirectoryName(folder.ProjectPath)!, "Export");
+        var target = Path.GetDirectoryName(outside.ProjectPath)!;
+        File.WriteAllText(Path.Combine(target, "keep.txt"), "outside");
+        var link = directory ? output : Path.Combine(output, "link.txt");
+        if (directory) Directory.CreateSymbolicLink(link, target);
+        else { Directory.CreateDirectory(output); File.CreateSymbolicLink(link, Path.Combine(target, "keep.txt")); }
+        try
+        {
+            Assert.ThrowsAsync<IOException>(() => Publish(new(), folder.ProjectPath, "a.wav", "new"));
+            Assert.That(File.ReadAllText(Path.Combine(target, "keep.txt")), Is.EqualTo("outside"));
+        }
+        finally { if (directory) Directory.Delete(link); else File.Delete(link); }
+    }
     private static Task<string> Publish(OHsExportPublisher publisher, string project, string name, string content) => publisher.PublishAsync(project,
         new Dictionary<string, string> { [name] = "sample" }, (stage, token) => File.WriteAllTextAsync(Path.Combine(stage, name), content, token), default);
 
@@ -50,6 +75,26 @@ public class OHsExportPublisherTests
             Assert.That(await File.ReadAllTextAsync(Path.Combine(backup, "a.wav")), Is.EqualTo("old"));
             Assert.That(error.Message, Does.Contain(backup));
         }
+    }
+    [Test]
+    public async Task BackupCleanupFailureStillReturnsSuccessfullyPublishedDirectory()
+    {
+        using var folder = new TestProjectFolder();
+        var output = await Publish(new(), folder.ProjectPath, "a.wav", "old");
+        string? backup = null; FileStream? locked = null;
+        var publisher = new OHsExportPublisher((from, to) =>
+        {
+            Directory.Move(from, to);
+            if (Path.GetFileName(to).StartsWith(".Export-backup-")) backup = to;
+            else if (to == output && backup is not null) locked = File.Open(Path.Combine(backup, "a.wav"), FileMode.Open, FileAccess.Read, FileShare.None);
+        });
+        try
+        {
+            Assert.That(await Publish(publisher, folder.ProjectPath, "a.wav", "new"), Is.EqualTo(output));
+            Assert.That(await File.ReadAllTextAsync(Path.Combine(output, "a.wav")), Is.EqualTo("new"));
+            Assert.That(Directory.Exists(backup), Is.True);
+        }
+        finally { locked?.Dispose(); }
     }
     [Test]
     public async Task CancellationAndConcurrentEditCannotPublishOverOldExport()

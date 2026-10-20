@@ -21,7 +21,10 @@ public static class OHsExportRepresentations
         var bestParticipants = int.MaxValue;
         var groups = new List<List<int>>();
         var silence = OHsExportAsset.Create([]);
-        for (var count = Math.Min(4, components.Length); count >= 1; count--)
+        var maximumGroups = (components.Any(c => c.Slot.Type == SampleType.Normal) ? 1 : 0) +
+            components.Where(c => c.Slot.Type != SampleType.Normal).GroupBy(c => c.Slot.Sampleset)
+                .Select(g => g.Select(c => c.Slot.Type).Distinct().Count()).DefaultIfEmpty(0).Max();
+        for (var count = maximumGroups; count >= 1; count--)
         {
             Partition(0, count);
             if (results.Count > 0) break;
@@ -34,6 +37,11 @@ public static class OHsExportRepresentations
         {
             token.ThrowIfCancellationRequested();
             if (groups.Count > count || groups.Count + components.Length - next < count) return;
+            if (groups.Any(g => g.Count > 1))
+            {
+                var maximumSingletons = groups.Count(g => g.Count == 1) + count - groups.Count;
+                if (components.Length - maximumSingletons > bestParticipants) return;
+            }
             if (next == components.Length)
             {
                 if (groups.Count != count) return;

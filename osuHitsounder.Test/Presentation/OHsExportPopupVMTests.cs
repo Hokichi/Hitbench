@@ -52,4 +52,18 @@ public class OHsExportPopupVMTests
         service.Run = (_, _) => Task.FromResult("Export");
         await vm.ExportCommand.ExecuteAsync(null); Assert.That(launcher.Calls, Is.EqualTo(1)); await vm.DeactivateAsync();
     }
+    [Test]
+    public async Task DirectoryLaunchFailureKeepsPublicationSuccessfulAndReportsError()
+    {
+        var messenger = new WeakReferenceMessenger(); var recipient = new object();
+        var messages = new List<osuHitsounder.Resources.Messages.OHsExportResultMessage>();
+        messenger.Register<osuHitsounder.Resources.Messages.OHsExportResultMessage>(recipient, (_, message) => messages.Add(message));
+        var launcher = new StubOHsExportDirectoryLauncher { Run = (_, _) => throw new IOException("Explorer unavailable") };
+        var vm = new OHsExportPopupVM(Request(), new StubOHsExportService(), launcher, messenger) { ShowFilesAfterExport = true };
+        bool? completion = null; vm.Completed += accepted => completion = accepted;
+        await vm.ExportCommand.ExecuteAsync(null);
+        Assert.That(completion, Is.True); Assert.That(messages.Last().IsPublished, Is.True);
+        Assert.That(messages.Last().Error, Is.EqualTo("Explorer unavailable"));
+        Assert.That(vm.IsBusy, Is.False); await vm.DeactivateAsync(); GC.KeepAlive(recipient);
+    }
 }

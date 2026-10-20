@@ -14,7 +14,7 @@ public static class OHsExportPlanner
         var pending = new Stack<(int Next, int Active, Dictionary<int, Dictionary<OHsExportSlot, OHsExportAsset>> Banks, List<OHsExportCircle> Circles, List<(decimal Time, int Bank, bool Added)> Switches, int Cost)>();
         pending.Push((0, start, new(), [], [], 0));
         var seen = new Dictionary<string, int>(StringComparer.Ordinal);
-        OHsExportPlan? best = null; var bestFiles = int.MaxValue;
+        OHsExportPlan? best = null; var bestFiles = int.MaxValue; var bestEncodings = int.MaxValue;
         while (pending.TryPop(out var state))
         {
             token.ThrowIfCancellationRequested();
@@ -30,10 +30,13 @@ public static class OHsExportPlanner
                 {
                     rows.Insert(0, new(groups[0].Time, "-100", 4, 1, start, 100, 0, OHsExportTimingKind.BankSwitch)); count++;
                 }
-                if (best is null || count < best.AdditionalPointCount || count == best.AdditionalPointCount && files < bestFiles)
+                var encodings = state.Banks.Values.SelectMany(b => b.Values)
+                    .Select(a => (a.Id, Format: a.Sources.Count > 1 ? input.Options.MixedFormat : input.Options.SingleFormat)).Distinct().Count();
+                if (best is null || count < best.AdditionalPointCount || count == best.AdditionalPointCount &&
+                    (files < bestFiles || files == bestFiles && encodings < bestEncodings))
                 {
                     best = new(state.Circles, rows, state.Banks.ToDictionary(p => p.Key, p => (IReadOnlyDictionary<OHsExportSlot, OHsExportAsset>)p.Value), count);
-                    bestFiles = files;
+                    bestFiles = files; bestEncodings = encodings;
                 }
                 continue;
             }

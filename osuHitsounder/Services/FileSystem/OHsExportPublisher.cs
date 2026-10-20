@@ -19,7 +19,9 @@ public sealed class OHsExportPublisher
     }
     private static string Relative(string name)
     {
-        if (string.IsNullOrWhiteSpace(name) || Path.IsPathRooted(name) || name.Split('/', '\\').Any(p => p is "." or ".." || SampleFileNames.GetStemError(p) is not null))
+        if (string.IsNullOrWhiteSpace(name) || Path.IsPathRooted(name) || name.Split('/', '\\').Any(p =>
+            p is "." or ".." || p.Length > 255 || p.EndsWith(' ') || p.EndsWith('.') || p.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 ||
+            SampleFileNames.GetStemError(Path.GetFileNameWithoutExtension(p)) is not null))
             throw new ArgumentException("Export inventory requires safe relative paths.");
         return name.Replace('\\', '/');
     }

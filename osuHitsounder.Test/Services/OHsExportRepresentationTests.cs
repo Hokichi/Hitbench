@@ -5,7 +5,47 @@ namespace osuHitsounder.Test.Services;
 
 public class OHsExportRepresentationTests
 {
+    [Test]
+    public void EveryPairOfTheTwelveSlotsUsesOnlyNecessaryMixesAndPreservesSingletonIdentity()
+    {
+        var slots = new[] { "Normal", "Soft", "Drum" }.SelectMany(set => Enum.GetValues<SampleType>().Select(type => (set, type))).ToArray();
+        foreach (var a in slots)
+            foreach (var b in slots)
+            {
+                var voices = new[] { Voice(a.set, a.type, "a.wav"), Voice(b.set, b.type, "b.wav") };
+                var bothNormal = a.type == SampleType.Normal && b.type == SampleType.Normal;
+                var bothAdditional = a.type != SampleType.Normal && b.type != SampleType.Normal;
+                var mixes = bothNormal || bothAdditional && (a.set != b.set || a.type == b.type) ? 1 : 0;
+                var representations = OHsExportRepresentations.Build(voices, default);
+                Assert.That(representations, Is.Not.Empty);
+                foreach (var representation in representations)
+                {
+                    Assert.That(representation.MergeCount, Is.EqualTo(mixes), $"{a}/{b}");
+                    foreach (var slot in representation.Slots.Where(p => p.Value.Sources.Count > 0))
+                        Assert.That(voices.Any(v => slot.Value.Sources.Any(s => s.FileName == v.FileName) && v.Sampleset == slot.Key.Sampleset && v.Type == slot.Key.Type), Is.True);
+                }
+            }
+    }
+    [Test]
+    public void MultipleConflictsAndOverflowKeepOtherPlayableSourcesIndependent()
+    {
+        var simultaneous = OHsExportRepresentations.Build([Voice("Normal", SampleType.Normal, "n.wav"), Voice("Drum", SampleType.Normal, "n2.wav"), Voice("Soft", SampleType.Whistle, "w.wav"), Voice("Drum", SampleType.Clap, "c.wav")], default);
+        Assert.That(simultaneous.All(r => r.MergeCount == 2), Is.True);
+        var overflow = OHsExportRepresentations.Build([Voice("Normal", SampleType.Normal, "n.wav"), Voice("Soft", SampleType.Whistle, "w.wav"), Voice("Soft", SampleType.Finish, "f.wav"), Voice("Soft", SampleType.Clap, "c.wav"), Voice("Drum", SampleType.Clap, "d.wav")], default);
+        Assert.That(overflow.All(r => r.MergeCount == 1 && r.MixedComponentCount == 2), Is.True);
+        Assert.That(OHsExportRepresentations.Build([Voice("Soft", SampleType.Clap, "zero.wav", 0)], default).All(r => r.MergeCount == 0), Is.True);
+    }
     private static OHsExportVoice Voice(string set, SampleType type, string file = "a.wav", int gain = 100) => new(100, file, gain, set, type, 0);
+    [TestCase(false)] [TestCase(true)]
+    public void PianoChordKeepsExactSolutionsWithinCancellationBudget(bool additionalType)
+    {
+        var voices = Enumerable.Range(0, 36).Select(i => Voice("Soft", additionalType && i == 35 ? SampleType.Clap : SampleType.Whistle, $"note{i}.wav")).ToArray();
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        var result = OHsExportRepresentations.Build(voices, cancellation.Token);
+        Assert.That(result, Is.Not.Empty);
+        Assert.That(result.All(r => r.MergeCount == (additionalType ? 34 : 35)), Is.True);
+        Assert.That(result.All(r => r.MixedComponentCount == (additionalType ? 35 : 36)), Is.True);
+    }
 
     [TestCase(0)] [TestCase(1)] [TestCase(2)] [TestCase(3)]
     [TestCase(4)] [TestCase(5)] [TestCase(6)] [TestCase(7)]

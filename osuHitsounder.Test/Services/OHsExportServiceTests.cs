@@ -46,5 +46,38 @@ public class OHsExportServiceTests
         var project = new ProjectData { Tracks = [new() { Samples = [new() { FileName = "missing.wav", Timestamp = 100 }] }] };
         Assert.ThrowsAsync<FileNotFoundException>(() => exporter.ExportAsync(request with { ProjectJson = ProjectDataSerializer.Serialize(project) }, default));
         Assert.That(await File.ReadAllTextAsync(Path.Combine(output, "Hitsounds.osu")), Is.EqualTo(previous));
+        await OHsExportAudio.WriteFileAsync(Path.Combine(root, "Samples", "a.wav"), DecodedAudio.CopyFrom(new float[] { .2f, .2f }), default);
+        await OHsExportAudio.WriteFileAsync(Path.Combine(root, "Samples", "b.wav"), DecodedAudio.CopyFrom(new float[] { .1f, .1f }), default);
+        project.Tracks[0].Samples = [new() { FileName = "a.wav", Timestamp = 100 }, new() { FileName = "b.wav", Timestamp = 200 }];
+        Assert.ThrowsAsync<InvalidOperationException>(() => exporter.ExportAsync(request with { ProjectJson = ProjectDataSerializer.Serialize(project) }, default));
+        Assert.That(await File.ReadAllTextAsync(Path.Combine(output, "Hitsounds.osu")), Is.EqualTo(previous));
+    }
+    [Test]
+    public async Task ChangedSourceDuringDecodingRejectsStalePublication()
+    {
+        using var folder = new TestProjectFolder(); var root = Path.GetDirectoryName(folder.ProjectPath)!;
+        var source = Path.Combine(root, "source.osu"); var song = Path.Combine(root, "song.wav");
+        await File.WriteAllTextAsync(source, "[TimingPoints]\n0,500,4,1,1,100,1,0\n");
+        await OHsExportAudio.WriteFileAsync(song, DecodedAudio.CopyFrom(new float[882]), default);
+        await OHsExportAudio.WriteFileAsync(Path.Combine(root, "Samples", "a.wav"), DecodedAudio.CopyFrom(new float[] { .2f, .2f }), default);
+        var request = new OHsExportRequest(Guid.NewGuid(), folder.ProjectPath, source, song, ProjectDataSerializer.Serialize(new ProjectData()), new("Hitsounds", 1, ".wav", ".wav", false));
+        var output = await new OHsExportService().ExportAsync(request, default);
+        var previous = await File.ReadAllTextAsync(Path.Combine(output, "Hitsounds.osu"));
+        var exporter = new OHsExportService(decode: (path, token) => { File.AppendAllText(source, "// external edit\n"); return AudioDecoder.Decode(path, token); });
+        var project = new ProjectData { Tracks = [new() { Volume = 70, Samples = [new() { FileName = "a.wav", Timestamp = 100 }] }] };
+        Assert.ThrowsAsync<IOException>(() => exporter.ExportAsync(request with { ProjectJson = ProjectDataSerializer.Serialize(project) }, default));
+        Assert.That(await File.ReadAllTextAsync(Path.Combine(output, "Hitsounds.osu")), Is.EqualTo(previous));
+    }
+    [Test]
+    public async Task CorruptIncludedZeroGainSampleStillFailsDependencyValidation()
+    {
+        using var folder = new TestProjectFolder("corrupt.wav"); var root = Path.GetDirectoryName(folder.ProjectPath)!;
+        var source = Path.Combine(root, "source.osu"); var song = Path.Combine(root, "song.wav");
+        await File.WriteAllTextAsync(source, "[TimingPoints]\n0,500,4,1,1,100,1,0\n");
+        await OHsExportAudio.WriteFileAsync(song, DecodedAudio.CopyFrom(new float[882]), default);
+        var project = new ProjectData { Tracks = [new() { Volume = 0, Samples = [new() { FileName = "corrupt.wav", Timestamp = 100 }] }] };
+        var request = new OHsExportRequest(Guid.NewGuid(), folder.ProjectPath, source, song, ProjectDataSerializer.Serialize(project), new("Hitsounds", 999, ".wav", ".wav", false));
+        Assert.CatchAsync<Exception>(() => new OHsExportService().ExportAsync(request, default));
+        Assert.That(Directory.Exists(Path.Combine(root, "Export")), Is.False);
     }
 }

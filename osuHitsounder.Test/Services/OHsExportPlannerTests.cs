@@ -40,6 +40,14 @@ public class OHsExportPlannerTests
         Assert.Throws<InvalidOperationException>(() => OHsExportPlanner.Plan(Input([Voice(100, "a.wav"), Voice(200, "b.wav")], 999), default));
     }
     [Test]
+    public void ZeroGainSourcesReuseOneSilentSlotAtTheLastAvailableIndex()
+    {
+        var plan = OHsExportPlanner.Plan(Input([Voice(100, "a.wav") with { GainPercent = 0 }, Voice(200, "b.wav") with { GainPercent = 0 }], 999), default);
+        Assert.That(plan.Banks.Keys, Is.EqualTo(new[] { 999 }));
+        Assert.That(plan.Circles.Select(c => c.Timestamp), Is.EqualTo(new[] { 100, 200 }));
+        Assert.That(plan.AdditionalPointCount, Is.Zero);
+    }
+    [Test]
     public void FutureFirstRowOnlyNeedsAnchorWhenNativeFallbackWouldChangeEarlierSamples()
     {
         var input = Input([Voice(100, "a.wav")]);
@@ -71,6 +79,42 @@ public class OHsExportPlannerTests
                 if (minimum == int.MaxValue) Assert.Throws<InvalidOperationException>(() => OHsExportPlanner.Plan(input, default));
                 else Assert.That(OHsExportPlanner.Plan(input, default).AdditionalPointCount, Is.EqualTo(minimum), $"iteration {iteration}, capacity {capacity}");
             }
+        }
+    }
+    [Test]
+    public void AlternateTwoSlotRepresentationsMatchIndependentOracle()
+    {
+        var random = new Random(12315);
+        for (var iteration = 0; iteration < 20; iteration++)
+        {
+            var voices = Enumerable.Range(0, 4).Select(i => Voice(100 + i * 100, $"{random.Next(2)}.wav", "Normal", random.Next(2) == 0 ? SampleType.Normal : SampleType.Clap)).ToArray();
+            var opportunities = Enumerable.Range(0, 3).Where(_ => random.Next(2) == 0).Select(i => 150 + 100 * i).ToArray();
+            var silence = OHsExportAsset.Create([]).Id;
+            var groups = voices.Select(v => (v.Timestamp, (IReadOnlyList<IReadOnlyDictionary<OHsExportSlot, string>>)(v.Type == SampleType.Normal
+                ? new IReadOnlyDictionary<OHsExportSlot, string>[] { new Dictionary<OHsExportSlot, string> { [new("Normal", SampleType.Normal)] = OHsExportAsset.Create([(v.FileName, 100)]).Id } }
+                : new[] { "Normal", "Soft", "Drum" }.Select(set => (IReadOnlyDictionary<OHsExportSlot, string>)new Dictionary<OHsExportSlot, string> { [new(set, SampleType.Normal)] = silence, [new("Normal", SampleType.Clap)] = OHsExportAsset.Create([(v.FileName, 100)]).Id }).ToArray()))).ToArray();
+            for (var capacity = 1; capacity <= 3; capacity++)
+            {
+                var minimum = OHsExportBruteForceOracle.MinimumAdditionalPoints(groups, opportunities.Select(t => (decimal)t).ToArray(), capacity);
+                if (minimum == int.MaxValue) Assert.Throws<InvalidOperationException>(() => OHsExportPlanner.Plan(Input(voices, 1000 - capacity, opportunities), default));
+                else Assert.That(OHsExportPlanner.Plan(Input(voices, 1000 - capacity, opportunities), default).AdditionalPointCount, Is.EqualTo(minimum));
+            }
+        }
+    }
+    [Test]
+    public void EqualPointAndFilePlansPreferReusingTheSameEncodedMixture()
+    {
+        for (var i = 0; i < 12; i++)
+        {
+            var voices = new[]
+            {
+                Voice(100, "d.wav", "Normal", SampleType.Normal), Voice(100, $"a{i}.wav", "Soft", SampleType.Whistle), Voice(100, "b.wav", "Soft", SampleType.Finish), Voice(100, "c.wav", "Drum", SampleType.Clap),
+                Voice(200, "e.wav", "Normal", SampleType.Normal), Voice(200, $"a{i}.wav", "Soft", SampleType.Whistle), Voice(200, "c.wav", "Drum", SampleType.Clap)
+            };
+            var plan = OHsExportPlanner.Plan(Input(voices, 1, 150), default);
+            Assert.That(plan.AdditionalPointCount, Is.Zero);
+            Assert.That(plan.Banks.Values.Sum(b => b.Count), Is.EqualTo(5));
+            Assert.That(plan.Banks.Values.SelectMany(b => b.Values).Select(a => a.Id).Distinct().Count(), Is.EqualTo(4));
         }
     }
 }
