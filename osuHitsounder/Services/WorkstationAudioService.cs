@@ -508,29 +508,7 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
 
     private static TimeSpan FrameToTime(long frame) => TimeSpan.FromSeconds(frame / (double)OutputSampleRate);
 
-    private DecodedAudio Decode(string path, CancellationToken token)
-    {
-        using var stream = openDecoder(path);
-        ISampleProvider provider = stream.ToSampleProvider();
-        provider = provider.WaveFormat.Channels switch
-        {
-            1 => new MonoToStereoSampleProvider(provider),
-            2 => provider,
-            _ => throw new NotSupportedException($"Unsupported channel count: {provider.WaveFormat.Channels}")
-        };
-        if (provider.WaveFormat.SampleRate != OutputSampleRate)
-            provider = new WdlResamplingSampleProvider(provider, OutputSampleRate);
-        var result = new List<float>();
-        var buffer = new float[8192];
-        int read;
-        while ((read = provider.Read(buffer, 0, buffer.Length)) > 0)
-        {
-            token.ThrowIfCancellationRequested();
-            result.AddRange(buffer.AsSpan(0, read).ToArray());
-        }
-        if (result.Count == 0) throw new InvalidDataException("Audio file is empty.");
-        return DecodedAudio.CopyFrom(System.Runtime.InteropServices.CollectionsMarshal.AsSpan(result));
-    }
+    private DecodedAudio Decode(string path, CancellationToken token) => AudioDecoder.Decode(path, token, openDecoder);
 
     private static bool TryResolveSamplePath(string projectPath, string fileName, out string path)
     {
