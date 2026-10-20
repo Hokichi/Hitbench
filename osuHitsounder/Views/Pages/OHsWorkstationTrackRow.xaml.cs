@@ -37,7 +37,7 @@ public partial class OHsWorkstationTrackRow : UserControl
     private bool IsTrackMenuOrigin(DependencyObject? origin)
     {
         for (var current = origin; current is not null && current != this; current = current is Visual ? VisualTreeHelper.GetParent(current) : LogicalTreeHelper.GetParent(current))
-            if (current is ComboBox || current is TextBox { IsReadOnly: false }) return false;
+            if (current is BeatGridView or ComboBox || current is TextBox { IsReadOnly: false }) return false;
         return FindVisualChild<BalloonComboBox>(this) is { IsMenuOwnerActive: true };
     }
     private bool TryOpenTrackMenu(DependencyObject? origin)

@@ -101,6 +101,30 @@ public sealed class OHsWorkstationTrackRowTests
         Assert.That(track.Name, Is.EqualTo("Focus loss"));
         UiTestPump.Run(vm.DeactivateAsync());
     }
+    [Test]
+    public void TimelineRightButtonPhasesBypassTrackMenu()
+    {
+        new VolumeWheelTests().SetUp();
+        var vm = (WorkstationPageVM)WorkstationTestPage.Create().DataContext;
+        var requests = 0;
+        var row = new OHsWorkstationTrackRow(_ => requests++) { Track = new Track(), ViewModel = vm };
+        using var view = new InMemoryView(new Window { Content = row, Width = 900, Height = 300 });
+        try
+        {
+            foreach (var mode in new[] { false, true })
+            {
+                vm.IsAdditionMode = mode;
+                foreach (var routedEvent in new[] { UIElement.PreviewMouseRightButtonDownEvent, UIElement.PreviewMouseRightButtonUpEvent })
+                {
+                    var input = new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, MouseButton.Right) { RoutedEvent = routedEvent };
+                    row.SampleTimeline!.RaiseEvent(input);
+                    Assert.That(input.Handled, Is.False);
+                    Assert.That(requests, Is.Zero);
+                }
+            }
+        }
+        finally { UiTestPump.Run(vm.DeactivateAsync()); }
+    }
     private static TextBox? FindNameInput(DependencyObject root)
     {
         if (root is TextBox input) return input;
