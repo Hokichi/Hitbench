@@ -8,7 +8,14 @@ public static partial class OHsExportPlanner
         token.ThrowIfCancellationRequested(); input.Options.Validate();
         var assets = new Dictionary<string, OHsExportAsset>(StringComparer.Ordinal);
         var recipes = new Dictionary<string, IReadOnlyList<OHsExportRepresentation>>(StringComparer.Ordinal);
-        var timestamps = input.Voices.GroupBy(v => v.Timestamp).OrderBy(g => g.Key).ToArray();
+        var timestamps = new List<List<OHsExportVoice>>();
+        foreach (var voice in input.Voices.OrderBy(v => v.Timestamp))
+        {
+            token.ThrowIfCancellationRequested();
+            if (timestamps.Count == 0 || (long)voice.Timestamp - timestamps[^1][0].Timestamp > 1)
+                timestamps.Add([]);
+            timestamps[^1].Add(voice);
+        }
         var prepared = 0;
         var groups = timestamps.Select(g =>
         {
@@ -16,8 +23,8 @@ public static partial class OHsExportPlanner
             var voices = g.ToArray();
             var key = string.Join('|', voices.Select(v => $"{v.Sampleset}:{v.Type}:{v.GainPercent}:{v.FileName.Length}:{v.FileName.ToUpperInvariant()}").Order(StringComparer.Ordinal));
             if (!recipes.TryGetValue(key, out var choices)) recipes[key] = choices = OHsExportRepresentations.Build(voices, token, assets);
-            progress?.Report(new(10 + 15d * ++prepared / timestamps.Length, "Preparing sample combinations"));
-            return (Time: g.Key, Choices: choices);
+            progress?.Report(new(10 + 15d * ++prepared / timestamps.Count, "Preparing sample combinations"));
+            return (Time: g[0].Timestamp, Choices: choices);
         }).ToArray();
         var required = input.RequiredPoints.OrderBy(p => p.Timestamp).ThenBy(p => p.Kind).ToArray();
         var start = input.Options.StartingIndex;

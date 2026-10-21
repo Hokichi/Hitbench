@@ -12,6 +12,40 @@ public class OHsExportPlannerTests
         return new(new("Hitsounds", start, ".ogg", ".ogg", false), map, voices,
             map.TimingPoints.Concat(points.Select(t => new OHsExportTimingPoint(t, "-100", 4, 1, start, 40, 0, OHsExportTimingKind.ProjectControl))).OrderBy(p => p.Timestamp).ToArray());
     }
+    [TestCase(100, 0), TestCase(100, 1), TestCase(100, 2), TestCase(0, 1), TestCase(int.MaxValue, 0), TestCase(int.MaxValue - 1, 1)]
+    public void NeighboringVoicesUseOneMillisecondWindow(int anchor, int gap)
+    {
+        var plan = OHsExportPlanner.Plan(Input([Voice(anchor + gap, "b.wav"), Voice(anchor, "a.wav")]), default);
+        Assert.That(plan.Circles.Select(c => c.Timestamp), Is.EqualTo(gap <= 1 ? new[] { anchor } : new[] { anchor, anchor + gap }));
+    }
+
+    [TestCase(0), TestCase(100), TestCase(int.MaxValue - 2)]
+    public void GroupingDoesNotChain(int anchor)
+    {
+        var plan = OHsExportPlanner.Plan(Input([Voice(anchor + 2, "c.wav"), Voice(anchor, "a.wav"), Voice(anchor + 1, "b.wav")]), default);
+        Assert.That(plan.Circles.Select(c => c.Timestamp), Is.EqualTo(new[] { anchor, anchor + 2 }));
+        var slot = new OHsExportSlot("Normal", SampleType.Clap);
+        Assert.That(plan.Banks[plan.Circles[0].SampleIndex][slot].Sources.Select(s => s.FileName), Is.EquivalentTo(new[] { "a.wav", "b.wav" }));
+        Assert.That(plan.Banks[plan.Circles[1].SampleIndex][slot].Sources.Select(s => s.FileName), Is.EqualTo(new[] { "c.wav" }));
+    }
+
+    [Test]
+    public void MergedNeighborsRetainRepeatedGainAndIndependentNormalSlot()
+    {
+        var input = Input([Voice(100, "normal.wav", "Normal", SampleType.Normal), Voice(100, "repeat.wav", "Soft") with { GainPercent = 70 }, Voice(101, "repeat.wav", "Soft") with { GainPercent = 40 }]);
+        var plan = OHsExportPlanner.Plan(input, default);
+        Assert.That(plan.Circles.Select(c => c.Timestamp), Is.EqualTo(new[] { 100 }));
+        var circle = plan.Circles.Single();
+        var bank = plan.Banks[circle.SampleIndex];
+        Assert.That(bank[new("Normal", SampleType.Normal)].Sources, Is.EqualTo(new[] { ("normal.wav", 100) }));
+        Assert.That(bank[new("Soft", SampleType.Clap)].Sources, Is.EqualTo(new[] { ("repeat.wav", 110) }));
+        Assert.That(circle.HitSound & 8, Is.EqualTo(8));
+        Assert.That(input.Voices.Select(v => v.Timestamp), Is.EqualTo(new[] { 100, 100, 101 }));
+        var repeated = OHsExportPlanner.Plan(input, default);
+        Assert.That(repeated.Circles, Is.EqualTo(plan.Circles));
+        Assert.That(repeated.Banks.SelectMany(b => b.Value.Select(s => (b.Key, s.Key, s.Value.Id))), Is.EqualTo(plan.Banks.SelectMany(b => b.Value.Select(s => (b.Key, s.Key, s.Value.Id)))));
+    }
+
     [Test]
     public void EarlierRequiredPointCanCarryFutureBankConflict()
     {

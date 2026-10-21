@@ -47,9 +47,9 @@ public static class OHsExportBeatmapWriter
             var addition = Array.IndexOf(ControlPoint.SamplesetOptions.ToArray(), c.AdditionSet) + 1;
             if (normal == 0 || addition == 0 || !plan.Banks.TryGetValue(c.SampleIndex, out var bank) ||
                 !bank.ContainsKey(new(c.NormalSet, Core.Enums.SampleType.Normal))) throw new InvalidDataException("Unresolved export circle.");
-            return FormattableString.Invariant($"256,192,{c.Timestamp},1,{c.HitSound},{normal}:{addition}:0:0:");
+            return FormattableString.Invariant($"256,192,{c.Timestamp},5,{c.HitSound},{normal}:{addition}:0:0:");
         });
         string Rows(IEnumerable<string> rows) => string.Concat(rows.Select(row => row + newline));
-        return ReplaceSectionBodies(template, Rows(timing), Rows(objects));
+        return ReplaceSectionBodies(template, Rows(timing) + newline, Rows(objects));
     }
 }

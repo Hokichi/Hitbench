@@ -17,6 +17,20 @@ public class OHsExportBeatmapWriterTests
     private static string OutsideBodies(string text) => Regex.Replace(text,
         @"(?m)^(\[(?:TimingPoints|HitObjects)\]\r?\n)[\s\S]*?(?=^\[|\z)", "$1");
 
+    [TestCase(false), TestCase(true)]
+    public void HitObjectSectionHasExactlyOneBlankLine(bool hasObjects)
+    {
+        var map = OHsExportBeatmap.Parse("[TimingPoints]\n0,500,4,1,1,100,1,0\n");
+        OHsExportVoice[] voices = hasObjects ? [new(100, "a.wav", 100, "Soft", SampleType.Clap, 0)] : [];
+        var input = new OHsExportInput(new("Hitsounds", 1, ".wav", ".wav", false), map, voices, map.TimingPoints);
+        var text = OHsExportBeatmapWriter.Write(input, OHsExportPlanner.Plan(input, default));
+        var lines = text.Split("\r\n");
+        var header = Array.IndexOf(lines, "[HitObjects]");
+        Assert.That(header, Is.GreaterThan(1));
+        Assert.That(lines[header - 1], Is.Empty);
+        Assert.That(lines[header - 2], Is.Not.Empty);
+    }
+
     [Test]
     public void EmbeddedTemplateMatchesApprovedUpload()
     {
@@ -38,6 +52,9 @@ public class OHsExportBeatmapWriterTests
         var text = OHsExportBeatmapWriter.Write(input, plan);
         Assert.That(OutsideBodies(text), Is.EqualTo(OutsideBodies(Template())));
         var output = OHsExportBeatmap.Parse(text);
+        var objects = output.Sections["HitObjects"].Where(l => !string.IsNullOrWhiteSpace(l)).Select(l => l.Split(',')).ToArray();
+        Assert.That(objects.Select(o => o[3]), Is.All.EqualTo("5"));
+        Assert.That(objects.Select(o => int.Parse(o[4])), Is.EqualTo(plan.Circles.Select(c => c.HitSound)));
         Assert.That(output.TimingPoints[0].BeatLength, Is.EqualTo("428.571428571429"));
         Assert.That(output.TimingPoints.Any(p => p.Timestamp == 50), Is.False);
         Assert.That(output.Sections["HitObjects"].Count(l => !string.IsNullOrWhiteSpace(l)), Is.EqualTo(1));
@@ -61,7 +78,11 @@ public class OHsExportBeatmapWriterTests
         var voices = new[] { new OHsExportVoice(1000, "a.wav", 70, "Normal", SampleType.Normal, 0), new OHsExportVoice(1002, "b.wav", 70, "Normal", SampleType.Normal, 0) };
         var input = new OHsExportInput(new("Hitsounds", 998, ".ogg", ".ogg", false), map, voices, map.TimingPoints);
         var plan = OHsExportPlanner.Plan(input, default);
-        var resolved = OHsExportPlaybackOracle.Resolve(OHsExportBeatmapWriter.Write(input, plan));
+        var text = OHsExportBeatmapWriter.Write(input, plan);
+        var objects = OHsExportBeatmap.Parse(text).Sections["HitObjects"].Where(l => !string.IsNullOrWhiteSpace(l)).Select(l => l.Split(',')).ToArray();
+        Assert.That(objects.Select(o => o[3]), Is.All.EqualTo("5"));
+        Assert.That(objects.Select(o => int.Parse(o[4])), Is.EqualTo(plan.Circles.Select(c => c.HitSound)));
+        var resolved = OHsExportPlaybackOracle.Resolve(text);
         Assert.That(resolved.Select(p => p.Index), Is.EqualTo(plan.Circles.Select(c => c.SampleIndex)));
     }
 }

@@ -240,8 +240,8 @@ public class OHsExportServiceTests
         Assert.That(Directory.Exists(Path.Combine(root, "Export")), Is.False);
     }
 
-    [Test]
-    public async Task SimultaneousOrdinaryAndInstrumentalVoicesPreserveAllAudio()
+    [TestCase(0), TestCase(1), TestCase(2)]
+    public async Task SimultaneousOrdinaryAndInstrumentalVoicesPreserveAllAudio(int neighborGap)
     {
         using var folder = new TestProjectFolder();
         var root = Path.GetDirectoryName(folder.ProjectPath)!;
@@ -256,7 +256,7 @@ public class OHsExportServiceTests
             Ordinary("repeat.wav", 50, "Soft", SampleType.Clap),
             Ordinary("normal.wav", 100, "Normal", SampleType.Normal),
             Ordinary("finish.wav", 100, "Drum", SampleType.Finish),
-            new InstrumentalTrack { Volume = 50, KeyFiles = new() { ["C4"] = "c.wav", ["E4"] = "e.wav" }, Notes = [new() { Key = "C4", Timestamp = 100 }, new() { Key = "E4", Timestamp = 100 }] },
+            new InstrumentalTrack { Volume = 50, KeyFiles = new() { ["C4"] = "c.wav", ["E4"] = "e.wav" }, Notes = [new() { Key = "C4", Timestamp = 101 }, new() { Key = "E4", Timestamp = 101 }] },
             new() { IsTrackMuted = true, Samples = [new() { FileName = "missing.wav", Timestamp = 100 }] }
         ] };
         var originals = Directory.GetFiles(root, "*", SearchOption.AllDirectories).ToDictionary(f => f, File.ReadAllBytes);
@@ -274,19 +274,20 @@ public class OHsExportServiceTests
             for (var i = 0; i < sum.Length; i++) sum[i] += pcm[i];
         }
         Assert.That(sum.All(value => Math.Abs(value - .70f) <= 8d / 32768), Is.True);
+        Assert.That(ProjectDataSerializer.Serialize(project), Is.EqualTo(request.ProjectJson));
         var published = Directory.GetFiles(output).ToDictionary(f => f, File.ReadAllBytes);
         await service.ExportAsync(request, default);
         foreach (var file in published) Assert.That(await File.ReadAllBytesAsync(file.Key), Is.EqualTo(file.Value));
         foreach (var file in originals) Assert.That(await File.ReadAllBytesAsync(file.Key), Is.EqualTo(file.Value));
 
-        project.Tracks = [new() { Addition = "Soft", SampleType = SampleType.Clap, Samples = [new() { FileName = "repeat.wav", Timestamp = 100 }, new() { FileName = "normal.wav", Timestamp = 101 }] }];
+        project.Tracks = [new() { Addition = "Soft", SampleType = SampleType.Clap, Samples = [new() { FileName = "repeat.wav", Timestamp = 100 }, new() { FileName = "normal.wav", Timestamp = 100 + neighborGap }] }];
         await service.ExportAsync(request with { ProjectJson = ProjectDataSerializer.Serialize(project) }, default);
         var neighbours = OHsExportPlaybackOracle.Resolve(await File.ReadAllTextAsync(mapPath)).Where(p => p.Type == "clap").ToArray();
-        Assert.That(neighbours.Select(p => p.Timestamp), Is.EqualTo(new[] { 100, 101 }));
+        Assert.That(neighbours.Select(p => p.Timestamp), Is.EqualTo(neighborGap <= 1 ? new[] { 100 } : new[] { 100, 102 }));
         foreach (var sound in neighbours)
         {
             var pcm = AudioDecoder.Decode(Path.Combine(output, OHsExportRepresentations.FileName(new("Soft", SampleType.Clap), sound.Index, ".wav")), default);
-            Assert.That(pcm.Samples.ToArray().All(value => Math.Abs(value - (sound.Timestamp == 100 ? .10f : .20f)) <= 2d / 32768), Is.True);
+            Assert.That(pcm.Samples.ToArray().All(value => Math.Abs(value - (neighborGap <= 1 ? .30f : sound.Timestamp == 100 ? .10f : .20f)) <= 4d / 32768), Is.True);
         }
     }
 }
