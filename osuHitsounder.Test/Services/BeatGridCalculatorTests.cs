@@ -5,6 +5,19 @@ namespace osuHitsounder.Test.Services;
 
 public class BeatGridCalculatorTests
 {
+    [Test]
+    public void PreparedTimingOwnsLastDuplicateAndQueriesDoNotAllocate()
+    {
+        var offsets = new[] { 1000, 0, 0 }; var bpms = new[] { 120, 120, 60 };
+        var prepared = BeatGridCalculator.PrepareTiming(offsets, bpms)!;
+        offsets[0] = -500; bpms[2] = 1;
+        Assert.That(BeatGridCalculator.GetNearestTimestamp(prepared.AsSpan(), 1, 500, 2000), Is.EqualTo(0));
+        Assert.That(BeatGridCalculator.GetNearestTimestamp(prepared.AsSpan(), 1, 501, 2000), Is.EqualTo(1000));
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        for (var i = 0; i < 1000; i++) _ = BeatGridCalculator.GetNearestTimestamp(prepared.AsSpan(), 1, i, 2000);
+        Assert.That(GC.GetAllocatedBytesForCurrentThread() - before, Is.Zero);
+        Assert.That(BeatGridCalculator.PrepareTiming([0], []), Is.Null);
+    }
     [TestCase(300, 250, 500)]
     [TestCase(500, 500, 750)]
     [TestCase(999.9, 750, 1000)]

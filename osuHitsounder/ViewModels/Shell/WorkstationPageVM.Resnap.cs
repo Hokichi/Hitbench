@@ -24,12 +24,14 @@ public partial class WorkstationPageVM
     public bool ResnapAllSampleNodes()
     {
         if (!CanResnapAllSamples()) return false;
+        var timing = BeatGridCalculator.PrepareTiming(Project!.Offsets, Project.BPMs);
+        if (timing is null) { ErrorMessage = "No usable grid beat for resnapping samples."; return false; }
         var entries = new List<NodeHistoryEntry>();
         foreach (var track in tracks.Where(CanEditTrackGrid))
         for (var index = 0; index < track.Samples.Count; index++)
         {
             var sample = track.Samples[index];
-            var timestamp = BeatGridCalculator.GetNearestTimestamp(Project!.Offsets, Project.BPMs, Subdivision,
+            var timestamp = BeatGridCalculator.GetNearestTimestamp(timing.AsSpan(), Subdivision,
                 sample.Timestamp, Waveform!.Duration.TotalMilliseconds);
             if (timestamp is null)
             {
@@ -43,7 +45,7 @@ public partial class WorkstationPageVM
         foreach (var track in tracks.OfType<InstrumentalTrack>())
         {
             var before = NoteSnapshots(track);
-            var after = ResnapInstrumentNotes(before);
+            var after = ResnapInstrumentNotes(before, timing);
             if (after is null) { ErrorMessage = "No usable grid beat for resnapping notes."; return false; }
             if (!before.SequenceEqual(after)) instruments.Add((track, before, after));
         }
@@ -63,14 +65,14 @@ public partial class WorkstationPageVM
         return true;
     }
 
-    private IReadOnlyList<InstrumentalNoteSnapshot>? ResnapInstrumentNotes(IReadOnlyList<InstrumentalNoteSnapshot> notes)
+    private IReadOnlyList<InstrumentalNoteSnapshot>? ResnapInstrumentNotes(IReadOnlyList<InstrumentalNoteSnapshot> notes, (int Offset, int Bpm)[] timing)
     {
         var occupied = notes.Select(note => (note.Key, note.Timestamp)).ToHashSet();
         var result = notes.ToArray();
         for (var index = 0; index < notes.Count; index++)
         {
             var note = notes[index];
-            var target = BeatGridCalculator.GetNearestTimestamp(Project!.Offsets, Project.BPMs, Subdivision,
+            var target = BeatGridCalculator.GetNearestTimestamp(timing.AsSpan(), Subdivision,
                 note.Timestamp, Waveform!.Duration.TotalMilliseconds);
             if (target is null) return null;
             if (target == note.Timestamp || occupied.Contains((note.Key, target.Value))) continue;
