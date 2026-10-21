@@ -190,6 +190,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
         messenger.Register<ProjectCreatedMessage>(this);
         messenger.Register<ProjectOpenRequestedMessage>(this);
         messenger.Register<ProjectCreationFailedMessage>(this);
+        messenger.Register<OHsAudioBusyChangedMessage>(this);
         SizeChanged += OnWindowSizeChanged;
         StateChanged += OnWindowStateChanged;
         LocationChanged += OnLayoutEnvironmentChanged;
@@ -380,6 +381,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
         focusRestore?.Abort();
         viewModel.PropertyChanged -= OnStateChanged;
         messenger.UnregisterAll(this);
+        ClearAudioBusy();
         lifetime.Cancel();
         page.Deactivate();
         if (loading is null || loading.IsCompleted)
@@ -552,7 +554,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
         return true;
     }
 
-    private bool CanDragBackground => !closed && !viewModel.IsInteractionBlocked && !viewModel.IsProcessing &&
+    private bool CanDragBackground => !closed && !IsAudioBusy && !viewModel.IsInteractionBlocked && !viewModel.IsProcessing &&
         !IsPopupOverlayVisible && !IsBlockingDrawerVisible && !ComponentDispatcher.IsThreadModal;
 
     private void BeginBackgroundDrag(Point cursorPixels, Rect currentPixels, double dpiX, double dpiY)
@@ -616,7 +618,10 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
 
     private void OnEnterThreadModal(object? sender, EventArgs e) => CancelBackgroundDrag();
 
-    private async void OnGoBackClick(object sender, RoutedEventArgs e) => await ReturnHomeAsync();
+    private async void OnGoBackClick(object sender, RoutedEventArgs e)
+    {
+        if (!IsAudioBusy) await ReturnHomeAsync();
+    }
 
     private void OnPreProcessInput(object sender, PreProcessInputEventArgs e)
     {

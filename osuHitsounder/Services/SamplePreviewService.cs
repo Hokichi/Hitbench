@@ -4,7 +4,7 @@ using NAudio.Wave.SampleProviders;
 namespace osuHitsounder.Services;
 
 public sealed class SamplePreviewService(Func<string, WaveStream> openDecoder,
-    IReadOnlyList<AudioOutputCandidate> outputCandidates) : ISamplePreviewService
+    IReadOnlyList<AudioOutputCandidate> outputCandidates, Ui.OHsAudioOperationProgress? operationProgress = null) : ISamplePreviewService
 {
     private readonly SemaphoreSlim gate = new(1, 1);
     private WaveStream? reader;
@@ -19,7 +19,7 @@ public sealed class SamplePreviewService(Func<string, WaveStream> openDecoder,
     private TimeSpan position, duration, origin;
 
     public Task PlayAsync(string path, int applicationVolume, CancellationToken token, TimeSpan startPosition = default) =>
-        RunAsync(() => Start(path, applicationVolume, startPosition, token), token);
+        PrepareAsync(() => Start(path, applicationVolume, startPosition, token), token);
 
     private bool Start(string path, int applicationVolume, TimeSpan startPosition, CancellationToken token)
     {
@@ -39,6 +39,14 @@ public sealed class SamplePreviewService(Func<string, WaveStream> openDecoder,
                 var bounded = TimeSpan.FromTicks(Math.Clamp(startPosition.Ticks, 0, duration.Ticks));
                 if (bounded > TimeSpan.Zero) reader.CurrentTime = bounded;
                 origin = position = reader.CurrentTime;
+                if (reader is OHsMp3WaveStream mp3 && bounded < duration)
+                {
+                    // Populate a forward seek on the preparation worker, before the output callback can read it.
+                    token.ThrowIfCancellationRequested();
+                    mp3.PreparePosition(token);
+                    reader.CurrentTime = bounded;
+                    token.ThrowIfCancellationRequested();
+                }
                 playingPath = path;
                 playingVolume = applicationVolume;
                 var source = new VolumeSampleProvider(reader.ToSampleProvider()) { Volume = Math.Clamp(applicationVolume, 0, 100) / 100f };
@@ -58,7 +66,7 @@ public sealed class SamplePreviewService(Func<string, WaveStream> openDecoder,
         throw new InvalidOperationException($"Unable to play sample: {string.Join("; ", failures)}");
     }
 
-    public Task SeekAsync(TimeSpan position, CancellationToken token) => RunAsync(() =>
+    public Task SeekAsync(TimeSpan position, CancellationToken token) => PrepareAsync(() =>
     {
         ObjectDisposedException.ThrowIf(disposed, this);
         return output is null || playingPath is null || Start(playingPath, playingVolume, position, token);
@@ -85,6 +93,9 @@ public sealed class SamplePreviewService(Func<string, WaveStream> openDecoder,
                 output.GetPlayedFrames() / (double)reader.WaveFormat.SampleRate)).Ticks, 0, duration.Ticks));
         return new SamplePreviewSnapshot(output?.PlaybackState == PlaybackState.Playing, error, warning, position, duration);
     }, token);
+
+    private Task<bool> PrepareAsync(Func<bool> operation, CancellationToken token) => operationProgress is null
+        ? RunAsync(operation, token) : operationProgress.RunAsync("Preparing preview...", t => RunAsync(operation, t), token);
 
     private async Task<T> RunAsync<T>(Func<T> operation, CancellationToken token)
     {

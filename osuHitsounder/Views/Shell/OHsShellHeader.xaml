@@ -6,6 +6,14 @@
     xmlns:helpers="clr-namespace:osuHitsounder.Resources.Helpers"
     xmlns:shell="clr-namespace:osuHitsounder.Views.Shell">
     <UserControl.Resources>
+        <Style x:Key="OHsShellHeaderAudioActionsStyle" TargetType="StackPanel" BasedOn="{StaticResource BaseStackPanelStyle}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsAudioBusy, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}" Value="True">
+                    <Setter Property="IsEnabled" Value="False" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
         <Style
             x:Key="OHsMainWindowGoBackStyle"
             BasedOn="{StaticResource OHsBalloonNavInfoActionStyle}"
@@ -53,7 +61,7 @@
             Style="{StaticResource MainWindowTitleStyle}"
             Text="osuHitsounder" />
         <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
-            <StackPanel x:Name="WorkstationActions" Orientation="Horizontal">
+            <StackPanel x:Name="WorkstationActions" Orientation="Horizontal" Style="{StaticResource OHsShellHeaderAudioActionsStyle}">
                 <customControls:BalloonButton
                     x:Name="GoBackButton"
                     AutomationProperties.Name="Return home"

@@ -18,3 +18,23 @@ WAV is float32; OGG uses libvorbis quality 4; MP3 uses libmp3lame quality 2.
 MP3 variants include default Xing metadata and -write_xing 0. MP3 rates stop
 at 48 kHz; WAV and OGG also cover 88.2 and 96 kHz. No encoder rate substitution
 is allowed. These are timing probes, not assumptions of lossless codec output.
+
+MP3 compatibility references (2026-10-21)
+---------------------------------------
+generate-mp3-timing-references.ps1 generates only the missing compatibility
+variants and records independent BASS 2.4.15.2 output with OLDGAPS=1. Run it
+using 32-bit Windows PowerShell with -BassDllPath and -OutputDirectory; its
+conversion stage calls 64-bit pwsh and the already-built NAudio.Core.dll.
+FFmpeg is used offline for mono CBR/Info and VBR/Xing variants. A delay288
+variant changes the synthetic encoder delay and compensates padding; the
+BASS reference confirms its interpretation. An unknown-identifier extension
+verifies that a valid gapless field layout is not limited to LAME/Lavc names.
+
+mp3-bass-timing-reference.json records source hashes, native format, lengths,
+peaks and onset diagnostics, plus hashed native and converted signal windows.
+*.bass-window.f32 stores interleaved native floating PCM; *.converted-window.f32
+stores BASS-origin PCM resampled by WDL to 44,100 Hz stereo. Only original
+synthetic signals are included. Threshold-onset differences are diagnostic:
+16-bit ACM quantization must not be confused with a change in time origin.
+Routine tests require neither BASS, FFmpeg, an osu! installation nor hardware.
+Raw full reference PCM remains in the system temporary directory, outside Git.

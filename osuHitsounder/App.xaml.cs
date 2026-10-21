@@ -24,20 +24,21 @@ public partial class App : Application
     {
         audioOutputs ??= new AudioOutputFactory();
         var registrations = new ServiceCollection();
-        registrations.AddSingleton<Func<IWorkstationAudioService>>(_ => () => new WorkstationAudioService(
-            AudioDecoder.Open, audioOutputs.CreateCandidates(asioDriverName)));
+        registrations.AddSingleton<Func<IWorkstationAudioService>>(provider => () => new WorkstationAudioService(
+            AudioDecoder.Open, audioOutputs.CreateCandidates(asioDriverName), provider.GetRequiredService<OHsAudioOperationProgress>()));
         registrations.AddSingleton<IMessenger, WeakReferenceMessenger>();
+        registrations.AddSingleton(provider => new OHsAudioOperationProgress(provider.GetRequiredService<IMessenger>(), () => provider.GetRequiredService<IUiScheduler>()));
         registrations.AddSingleton<IProjectFileService>(_ => new ProjectFileService(AppContext.BaseDirectory));
         registrations.AddSingleton<IWorkstationSourceService, WorkstationSourceService>();
         registrations.AddSingleton(provider => new PlaybackVolumeSettings(provider.GetRequiredService<IAppSettingsService>(), applicationVolume));
         registrations.AddSingleton<ISampleFileService, SampleFileService>();
         registrations.AddSingleton<SampleImportBatch>();
-        registrations.AddSingleton<Func<osuHitsounder.Resources.DataModels.SampleManagementContext, ISampleFileDialogService, ISampleRemovalDialogService, ManageSamplesPopupVM>>(provider => (context, picker, removal) => new ManageSamplesPopupVM(context, provider.GetRequiredService<ISampleFileService>(), provider.GetRequiredService<SampleImportBatch>(), picker, removal, provider.GetRequiredService<IMessenger>(), provider.GetRequiredService<IUiScheduler>(), new SamplePreviewService(AudioDecoder.Open, audioOutputs.CreateCandidates(null)), provider.GetRequiredService<PlaybackVolumeSettings>()));
+        registrations.AddSingleton<Func<osuHitsounder.Resources.DataModels.SampleManagementContext, ISampleFileDialogService, ISampleRemovalDialogService, ManageSamplesPopupVM>>(provider => (context, picker, removal) => new ManageSamplesPopupVM(context, provider.GetRequiredService<ISampleFileService>(), provider.GetRequiredService<SampleImportBatch>(), picker, removal, provider.GetRequiredService<IMessenger>(), provider.GetRequiredService<IUiScheduler>(), new SamplePreviewService(AudioDecoder.Open, audioOutputs.CreateCandidates(null), provider.GetRequiredService<OHsAudioOperationProgress>()), provider.GetRequiredService<PlaybackVolumeSettings>()));
         registrations.AddSingleton<ISampleManagementDialogService>(provider => new SampleManagementDialogService(() => Current.MainWindow, Current.Dispatcher, provider.GetRequiredService<Func<SampleLoaderPopupVM>>(), provider.GetRequiredService<Func<osuHitsounder.Resources.DataModels.SampleManagementContext, ISampleFileDialogService, ISampleRemovalDialogService, ManageSamplesPopupVM>>()));
-        registrations.AddSingleton<ISampleBrowserService, SampleBrowserService>();
+        registrations.AddSingleton<ISampleBrowserService>(provider => new SampleBrowserService(operationProgress: provider.GetRequiredService<OHsAudioOperationProgress>()));
         registrations.AddSingleton<Func<SampleLoaderPopupVM>>(provider => () => new SampleLoaderPopupVM(
             provider.GetRequiredService<ISampleBrowserService>(),
-            new SamplePreviewService(AudioDecoder.Open, audioOutputs.CreateCandidates(null)),
+            new SamplePreviewService(AudioDecoder.Open, audioOutputs.CreateCandidates(null), provider.GetRequiredService<OHsAudioOperationProgress>()),
             provider.GetRequiredService<IUiScheduler>(), provider.GetRequiredService<PlaybackVolumeSettings>()));
         registrations.AddSingleton<ISampleFileDialogService>(provider =>
             new SampleFileDialogService(() => Current.MainWindow, Current.Dispatcher,

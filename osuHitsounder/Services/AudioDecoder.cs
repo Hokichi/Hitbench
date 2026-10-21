@@ -11,7 +11,8 @@ public static class AudioDecoder
     public static WaveStream Open(string path) => Path.GetExtension(path).ToLowerInvariant() switch
     {
         ".ogg" => new VorbisWaveReader(path),
-        ".wav" or ".mp3" => new AudioFileReader(path),
+        ".wav" => new AudioFileReader(path),
+        ".mp3" => new OHsMp3WaveStream(path),
         _ => throw new NotSupportedException($"Unsupported audio format: {Path.GetExtension(path)}")
     };
     public static DecodedAudio Decode(string path, CancellationToken token, Func<string, WaveStream>? openDecoder = null)

@@ -93,6 +93,9 @@
                 <DataTrigger Binding="{Binding IsProcessing, Mode=OneWay}" Value="True">
                     <Setter Property="Effect" Value="{StaticResource MainWindowScanBlur}" />
                 </DataTrigger>
+                <DataTrigger Binding="{Binding IsAudioBusy, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}" Value="True">
+                    <Setter Property="Effect" Value="{StaticResource MainWindowScanBlur}" />
+                </DataTrigger>
             </Style.Triggers>
         </Style>
         <Style
@@ -106,6 +109,10 @@
                 <DataTrigger Binding="{Binding IsInteractionBlocked, Mode=OneWay}" Value="True">
                     <Setter Property="IsEnabled" Value="False" />
                 </DataTrigger>
+                <DataTrigger Binding="{Binding IsAudioBusy, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}" Value="True">
+                    <Setter Property="Effect" Value="{StaticResource MainWindowScanBlur}" />
+                    <Setter Property="IsEnabled" Value="False" />
+                </DataTrigger>
             </Style.Triggers>
         </Style>
         <Style
@@ -117,6 +124,9 @@
             <Setter Property="Focusable" Value="False" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsProcessing, Mode=OneWay}" Value="True">
+                    <Setter Property="Visibility" Value="Visible" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsAudioBusy, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}" Value="True">
                     <Setter Property="Visibility" Value="Visible" />
                 </DataTrigger>
             </Style.Triggers>
@@ -193,6 +203,28 @@
                 </DataTrigger>
             <DataTrigger Binding="{Binding PopupOverlayUsesBlur, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}" Value="False"><Setter Property="Background" Value="Black"/><Setter Property="Opacity" Value="{Binding PopupOverlayOpacity, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}"/></DataTrigger></Style.Triggers>
         </Style>
+        <Style x:Key="OHsMainWindowAudioBusyToastStyle" TargetType="Border" BasedOn="{StaticResource OHsPopupSurfaceBorderStyle}">
+            <Setter Property="Padding" Value="{StaticResource Inset.Card}" />
+            <Setter Property="Visibility" Value="Collapsed" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="IsHitTestVisible" Value="False" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment" Value="Bottom" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsAudioBusy, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}" Value="True">
+                    <Setter Property="Visibility" Value="Visible" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="OHsMainWindowAudioBusyTextStyle" TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlockStyle}">
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
+                    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
     </Window.Resources>
     <Window.Style>
         <StaticResource ResourceKey="MainWindowStyle" />
@@ -255,6 +287,10 @@
                 </Grid>
             </Border>
             <Border x:Name="ModalShellOverlay" Style="{StaticResource MainWindowModalOverlayStyle}" />
+            <Border x:Name="AudioBusyToast" Style="{StaticResource OHsMainWindowAudioBusyToastStyle}" AutomationProperties.LiveSetting="Polite"
+                    AutomationProperties.Name="{Binding AudioBusyText, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}">
+                <TextBlock AutomationProperties.LiveSetting="Polite" Style="{StaticResource OHsMainWindowAudioBusyTextStyle}" Text="{Binding AudioBusyText, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}" />
+            </Border>
         </Grid>
     </Border>
 </Window>

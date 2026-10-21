@@ -7,6 +7,7 @@ namespace osuHitsounder.Services;
 
 public sealed class WorkstationAudioService : IWorkstationAudioService
 {
+    private readonly Ui.OHsAudioOperationProgress? operationProgress;
     private const int OutputSampleRate = 44_100;
     private readonly Func<string, WaveStream> openDecoder;
     private readonly AudioOutputCandidate[] outputCandidates;
@@ -49,8 +50,9 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
             ? [new AudioOutputCandidate("Preferred", createPlayer)]
             : [new AudioOutputCandidate("Preferred", createPlayer), new AudioOutputCandidate("Fallback", createFallback)]) { }
 
-    public WorkstationAudioService(Func<string, WaveStream> openDecoder, IReadOnlyList<AudioOutputCandidate> outputCandidates)
+    public WorkstationAudioService(Func<string, WaveStream> openDecoder, IReadOnlyList<AudioOutputCandidate> outputCandidates, Ui.OHsAudioOperationProgress? operationProgress = null)
     {
+        this.operationProgress = operationProgress;
         ArgumentNullException.ThrowIfNull(openDecoder);
         ArgumentNullException.ThrowIfNull(outputCandidates);
         this.outputCandidates = outputCandidates.ToArray();
@@ -59,7 +61,10 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
         this.openDecoder = openDecoder;
     }
 
-    public Task<WaveformData> AnalyzeAsync(string path, CancellationToken token) => Task.Run(() =>
+    public Task<WaveformData> AnalyzeAsync(string path, CancellationToken token) => operationProgress is null
+        ? AnalyzeCoreAsync(path, token) : operationProgress.RunAsync("Loading audio...", t => AnalyzeCoreAsync(path, t), token);
+
+    private Task<WaveformData> AnalyzeCoreAsync(string path, CancellationToken token) => Task.Run(() =>
     {
         using var analysisStream = openDecoder(path);
         return new WaveformPeakReader().Read(analysisStream.ToSampleProvider(), token);
@@ -88,7 +93,11 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
         DisposeOutput(retired);
     }
 
-    public async Task UpdateSamplesAsync(string projectPath, IReadOnlyList<SamplePlaybackEvent> events,
+    public Task UpdateSamplesAsync(string projectPath, IReadOnlyList<SamplePlaybackEvent> events, CancellationToken token, bool forceReload = false) =>
+        operationProgress is null ? UpdateSamplesCoreAsync(projectPath, events, token, forceReload)
+            : operationProgress.RunAsync("Preparing audio...", t => UpdateSamplesCoreAsync(projectPath, events, t, forceReload), token);
+
+    private async Task UpdateSamplesCoreAsync(string projectPath, IReadOnlyList<SamplePlaybackEvent> events,
         CancellationToken token, bool forceReload = false)
     {
         ArgumentNullException.ThrowIfNull(projectPath);
