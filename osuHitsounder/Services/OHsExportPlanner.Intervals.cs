@@ -43,21 +43,21 @@ public static partial class OHsExportPlanner
             first.SampleSet != 1 || first.Volume != 100 || end < n && cuts[end].Time <= first.Timestamp ? 1 : 0;
         List<OHsExportSchema> Extend(List<OHsExportSchema> frontier, int to)
         {
-                var next = new Dictionary<string, OHsExportSchema>(StringComparer.Ordinal);
-                foreach (var previous in frontier)
-                    for (var choice = 0; choice < schemas[to].Length; choice++)
-                    {
-                        token.ThrowIfCancellationRequested();
-                        var map = schemas[to][choice];
-                        var compatible = true;
-                        for (var s = 0; s < 12; s++)
-                            if (map[s] != 0 && previous.Slots[s] != 0 && map[s] != previous.Slots[s]) { compatible = false; break; }
-                        if (!compatible) continue;
-                        var union = (int[])previous.Slots.Clone();
-                        for (var s = 0; s < 12; s++) if (map[s] != 0) union[s] = map[s];
-                        next.TryAdd(string.Join(',', union), new(union, previous, groups[to].Choices[choice]));
-                    }
-                return next.Values.ToList();
+            var next = new Dictionary<string, OHsExportSchema>(StringComparer.Ordinal);
+            foreach (var previous in frontier)
+                for (var choice = 0; choice < schemas[to].Length; choice++)
+                {
+                    token.ThrowIfCancellationRequested();
+                    var map = schemas[to][choice];
+                    var compatible = true;
+                    for (var s = 0; s < 12; s++)
+                        if (map[s] != 0 && previous.Slots[s] != 0 && map[s] != previous.Slots[s]) { compatible = false; break; }
+                    if (!compatible) continue;
+                    var union = (int[])previous.Slots.Clone();
+                    for (var s = 0; s < 12; s++) if (map[s] != 0) union[s] = map[s];
+                    next.TryAdd(string.Join(',', union), new(union, previous, groups[to].Choices[choice]));
+                }
+            return next.Values.ToList();
         }
         var whole = new List<OHsExportSchema> { new(new int[12], null, null) };
         for (var i = 0; i < n && whole.Count > 0; i++) whole = Extend(whole, i);
@@ -126,4 +126,3 @@ public static partial class OHsExportPlanner
         return new(circles, rows, banks.ToDictionary(p => p.Key, p => (IReadOnlyDictionary<OHsExportSlot, OHsExportAsset>)p.Value), added);
     }
 }
-

@@ -67,9 +67,9 @@ public class OHsExportPlannerTests
     public void BoundedPlansMatchIndependentCompleteAssignmentOracle()
     {
         var random = new Random(24061);
-        for (var iteration = 0; iteration < 40; iteration++)
+        for (var iteration = 0; iteration < 80; iteration++)
         {
-            var voices = Enumerable.Range(0, 4).Select(i => Voice(100 + i * 100, $"{random.Next(3)}.wav", "Normal", SampleType.Normal)).ToArray();
+            var voices = Enumerable.Range(0, 6).Select(i => Voice(100 + i * 100, $"{random.Next(3)}.wav", "Normal", SampleType.Normal)).ToArray();
             var opportunities = Enumerable.Range(0, 3).Where(_ => random.Next(2) == 0).Select(i => 150 + 100 * i).ToArray();
             for (var capacity = 1; capacity <= 3; capacity++)
             {
