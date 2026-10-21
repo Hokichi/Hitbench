@@ -102,7 +102,7 @@ public class OHsExportPlannerTests
         }
     }
     [Test]
-    public void EqualPointAndFilePlansPreferReusingTheSameEncodedMixture()
+    public void MinimumPointPlansChooseDeterministicRecipes()
     {
         for (var i = 0; i < 12; i++)
         {
@@ -114,7 +114,9 @@ public class OHsExportPlannerTests
             var plan = OHsExportPlanner.Plan(Input(voices, 1, 150), default);
             Assert.That(plan.AdditionalPointCount, Is.Zero);
             Assert.That(plan.Banks.Values.Sum(b => b.Count), Is.EqualTo(5));
-            Assert.That(plan.Banks.Values.SelectMany(b => b.Values).Select(a => a.Id).Distinct().Count(), Is.EqualTo(4));
+            var repeated = OHsExportPlanner.Plan(Input(voices, 1, 150), default);
+            Assert.That(repeated.Banks.SelectMany(b => b.Value.Select(s => (b.Key, s.Key, s.Value.Id))),
+                Is.EqualTo(plan.Banks.SelectMany(b => b.Value.Select(s => (b.Key, s.Key, s.Value.Id)))));
         }
     }
 }

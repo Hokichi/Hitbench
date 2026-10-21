@@ -7,7 +7,7 @@ namespace osuHitsounder.Services;
 public sealed class OHsExportService(OHsExportPublisher? publisher = null, Func<string, CancellationToken, DecodedAudio>? decode = null) : IOHsExportService
 {
     private readonly OHsExportPublisher publisher = publisher ?? new();
-    public Task<string> ExportAsync(OHsExportRequest request, CancellationToken token) => Task.Run(async () =>
+    public Task<string> ExportAsync(OHsExportRequest request, CancellationToken token, IProgress<OHsExportProgress>? progress = null) => Task.Run(async () =>
     {
         token.ThrowIfCancellationRequested(); request.Options.Validate();
         static string ValidateSource(string path)

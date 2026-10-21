@@ -11,7 +11,7 @@ public static class OHsExportRepresentations
         if (!Sets.Contains(slot.Sampleset) || !Enum.IsDefined(slot.Type) || index is < 1 or > 999 || extension is not (".ogg" or ".wav" or ".mp3")) throw new ArgumentException("Invalid export slot filename.");
         return $"{slot.Sampleset.ToLowerInvariant()}-hit{slot.Type.ToString().ToLowerInvariant()}{(index == 1 ? "" : index.ToString(System.Globalization.CultureInfo.InvariantCulture))}{extension}";
     }
-    public static IReadOnlyList<OHsExportRepresentation> Build(IReadOnlyList<OHsExportVoice> voices, CancellationToken token)
+    public static IReadOnlyList<OHsExportRepresentation> Build(IReadOnlyList<OHsExportVoice> voices, CancellationToken token, IDictionary<string, OHsExportAsset>? assets = null)
     {
         token.ThrowIfCancellationRequested();
         var components = voices.GroupBy(v => (v.Sampleset, v.Type))
@@ -20,7 +20,7 @@ public static class OHsExportRepresentations
         var results = new Dictionary<string, OHsExportRepresentation>(StringComparer.Ordinal);
         var bestParticipants = int.MaxValue;
         var groups = new List<List<int>>();
-        var silence = OHsExportAsset.Create([]);
+        var silence = OHsExportAsset.Create([], assets);
         var maximumGroups = (components.Any(c => c.Slot.Type == SampleType.Normal) ? 1 : 0) +
             components.Where(c => c.Slot.Type != SampleType.Normal).GroupBy(c => c.Slot.Sampleset)
                 .Select(g => g.Select(c => c.Slot.Type).Distinct().Count()).DefaultIfEmpty(0).Max();
@@ -68,7 +68,7 @@ public static class OHsExportRepresentations
                 {
                     if (slots.ContainsKey(slot) || slot.Type == SampleType.Normal && slots.Keys.Any(k => k.Type == SampleType.Normal) ||
                         slot.Type != SampleType.Normal && slots.Keys.Any(k => k.Type != SampleType.Normal && k.Sampleset != slot.Sampleset)) continue;
-                    slots.Add(slot, OHsExportAsset.Create(group.Select(i => components[i].Source)));
+                    slots.Add(slot, OHsExportAsset.Create(group.Select(i => components[i].Source), assets));
                     Assign(next + 1, slots, participants); slots.Remove(slot);
                 }
                 return;

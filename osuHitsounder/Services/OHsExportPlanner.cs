@@ -1,16 +1,29 @@
 using osuHitsounder.Resources.DataModels;
 namespace osuHitsounder.Services;
 
-public static class OHsExportPlanner
+public static partial class OHsExportPlanner
 {
-    public static OHsExportPlan Plan(OHsExportInput input, CancellationToken token)
+    public static OHsExportPlan Plan(OHsExportInput input, CancellationToken token, IProgress<OHsExportProgress>? progress = null)
     {
         token.ThrowIfCancellationRequested(); input.Options.Validate();
-        var groups = input.Voices.GroupBy(v => v.Timestamp).OrderBy(g => g.Key)
-            .Select(g => (Time: g.Key, Choices: OHsExportRepresentations.Build(g.ToArray(), token))).ToArray();
+        var assets = new Dictionary<string, OHsExportAsset>(StringComparer.Ordinal);
+        var recipes = new Dictionary<string, IReadOnlyList<OHsExportRepresentation>>(StringComparer.Ordinal);
+        var timestamps = input.Voices.GroupBy(v => v.Timestamp).OrderBy(g => g.Key).ToArray();
+        var prepared = 0;
+        var groups = timestamps.Select(g =>
+        {
+            token.ThrowIfCancellationRequested();
+            var voices = g.ToArray();
+            var key = string.Join('|', voices.Select(v => $"{v.Sampleset}:{v.Type}:{v.GainPercent}:{v.FileName.Length}:{v.FileName.ToUpperInvariant()}").Order(StringComparer.Ordinal));
+            if (!recipes.TryGetValue(key, out var choices)) recipes[key] = choices = OHsExportRepresentations.Build(voices, token, assets);
+            progress?.Report(new(10 + 15d * ++prepared / timestamps.Length, "Preparing sample combinations"));
+            return (Time: g.Key, Choices: choices);
+        }).ToArray();
         var required = input.RequiredPoints.OrderBy(p => p.Timestamp).ThenBy(p => p.Kind).ToArray();
         var start = input.Options.StartingIndex;
         if (groups.Length == 0) return new([], required.Select(p => p with { SampleIndex = start }).ToArray(), new Dictionary<int, IReadOnlyDictionary<OHsExportSlot, OHsExportAsset>>(), 0);
+        var intervalPlan = PlanIntervals(groups, required, start, token, out var lowerBounds, out var minimum);
+        if (intervalPlan is not null) return intervalPlan;
         var pending = new Stack<(int Next, int Active, Dictionary<int, Dictionary<OHsExportSlot, OHsExportAsset>> Banks, List<OHsExportCircle> Circles, List<(decimal Time, int Bank, bool Added)> Switches, int Cost)>();
         pending.Push((0, start, new(), [], [], 0));
         var seen = new Dictionary<string, int>(StringComparer.Ordinal);
@@ -19,7 +32,7 @@ public static class OHsExportPlanner
         {
             token.ThrowIfCancellationRequested();
             var files = state.Banks.Values.Sum(b => b.Count);
-            if (best is not null && (state.Cost > best.AdditionalPointCount || state.Cost == best.AdditionalPointCount && files > bestFiles)) continue;
+            if (best is not null && state.Cost + lowerBounds[state.Next] >= best.AdditionalPointCount) continue;
             if (state.Next == groups.Length)
             {
                 var rows = Schedule(state.Switches);
@@ -37,6 +50,7 @@ public static class OHsExportPlanner
                 {
                     best = new(state.Circles, rows, state.Banks.ToDictionary(p => p.Key, p => (IReadOnlyDictionary<OHsExportSlot, OHsExportAsset>)p.Value), count);
                     bestFiles = files; bestEncodings = encodings;
+                    if (count == minimum) return best;
                 }
                 continue;
             }
