@@ -36,15 +36,17 @@ public class MarkerPlaybackStressTests
         Assert.That(position, Is.EqualTo(expected.Length));
     }
 
-    [TestCase(8), TestCase(64), TestCase(128), Explicit]
-    public void MeasureMixerBaseline(int tracks)
+    [TestCase(8, 0), TestCase(8, 150), TestCase(8, 290)]
+    [TestCase(64, 0), TestCase(64, 150), TestCase(64, 290)]
+    [TestCase(128, 0), TestCase(128, 150), TestCase(128, 290), Explicit]
+    public void MeasureMixerBaseline(int tracks, int seconds)
     {
         var events = MarkerStressFixture.Create(tracks);
         var hit = DecodedAudio.CopyFrom(new float[88]);
-        var song = DecodedAudio.CopyFrom(new float[44100 * 2 * 10]);
+        var song = DecodedAudio.CopyFrom(new float[44100 * 2 * 302]);
         var schedule = new PreparedPlaybackSchedule(events.Select(e => new PreparedSampleEvent(e.Id, hit, 1,
             (long)decimal.Round(e.Timestamp * 441m / 10m, 0, MidpointRounding.AwayFromZero))).ToArray());
-        var mixer = new ScheduledSampleMixer(song, 0);
+        var mixer = new ScheduledSampleMixer(song, seconds * 44100L);
         mixer.Publish(schedule);
         var output = new float[128];
         for (var i = 0; i < 100; i++) mixer.Read(output, 0, output.Length);
@@ -58,7 +60,8 @@ public class MarkerPlaybackStressTests
         }
         allocated = GC.GetAllocatedBytesForCurrentThread() - allocated;
         Array.Sort(elapsed);
-        TestContext.Out.WriteLine($"tracks={tracks}; placements={events.Length}; p95={elapsed[950]:F4}ms; p99={elapsed[990]:F4}ms; max={elapsed[^1]:F4}ms; bytes={allocated}; runtime={Environment.Version}");
+        var range = schedule.GetOverlappingRange(seconds * 44100L, seconds * 44100L + 64);
+        TestContext.Out.WriteLine($"tracks={tracks}; seconds={seconds}; placements={events.Length}; candidates={range.End-range.Start}; p95={elapsed[950]:F4}ms; p99={elapsed[990]:F4}ms; max={elapsed[^1]:F4}ms; bytes={allocated}; runtime={Environment.Version}");
         Assert.That(allocated, Is.Zero);
     }
 

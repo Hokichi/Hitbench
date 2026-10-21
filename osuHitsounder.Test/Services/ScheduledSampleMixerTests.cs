@@ -5,6 +5,30 @@ namespace osuHitsounder.Test.Services;
 public class ScheduledSampleMixerTests
 {
     [Test]
+    public void IndexedRangesMatchExhaustiveOverlapAndRetainEarlyLongTail()
+    {
+        var random = new Random(4242);
+        var events = Enumerable.Range(1, 1000).Select(i => Event(i, i * 3,
+            new float[random.Next(1, 90) * 2])).Prepend(Event(1001, 0, new float[8000])).ToArray();
+        var schedule = new PreparedPlaybackSchedule(events);
+        for (var start = 0; start < 5000; start += 19)
+        {
+            var range = schedule.GetOverlappingRange(start, start + 23);
+            var candidates = schedule.Events[range.Start..range.End].ToArray().Where(e => e.EndFrame > start);
+            Assert.That(candidates.Select(e => e.Id), Is.EquivalentTo(events.Where(e => e.StartFrame < start + 23 && e.EndFrame > start).Select(e => e.Id)));
+        }
+        Assert.That(schedule.GetOverlappingRange(40, 40), Is.EqualTo((0, 0)));
+    }
+
+    [Test]
+    public void LateReadSkipsExpiredPrefix()
+    {
+        var hit = DecodedAudio.CopyFrom(new float[2]);
+        var schedule = new PreparedPlaybackSchedule(Enumerable.Range(1, 128000).Select(i => new PreparedSampleEvent(i, hit, 1, i)).ToArray());
+        var range = schedule.GetOverlappingRange(128001, 128100);
+        Assert.That(range.End - range.Start, Is.Zero);
+    }
+    [Test]
     public void PublicationStartsSampleAtItsTimestamp()
     {
         var mixer = new ScheduledSampleMixer(DecodedAudio.CopyFrom(new float[8]), 0);

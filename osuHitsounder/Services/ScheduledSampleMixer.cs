@@ -90,7 +90,8 @@ public sealed class ScheduledSampleMixer : ISampleProvider
         var source = song.Samples.Slice(checked((int)(start * 2)), output.Length);
         for (var i = 0; i < output.Length; i++) output[i] = Finite(source[i]) * volume.Song;
         var end = start + output.Length / 2;
-        foreach (var item in current.Events)
+        var range = current.GetOverlappingRange(start, end);
+        foreach (var item in current.Events[range.Start..range.End])
         {
             if (item.StartFrame >= end) break;
             if (item.EndFrame <= start) continue;
