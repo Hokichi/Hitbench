@@ -506,6 +506,7 @@ public partial class WorkstationPageVM(
                 playbackErrorMessage = null;
                 Waveform = null;
                 Project = null;
+                instrumentTiming = new([], []);
                 availableSamples.Clear();
                 sampleTrackFiles.Clear();
                 RefreshControlPointTimestamps();
@@ -533,6 +534,7 @@ public partial class WorkstationPageVM(
                 audioService.SetSamplesVolume(SamplesVolume);
                 exportBeatmapPath = source.BeatmapPath; exportAudioPath = source.AudioPath;
                 Project = source.Project;
+                instrumentTiming = new(Project.Offsets, Project.BPMs);
                 latestRequestedLastChanged = Project.LastChanged;
                 InitializeControlPoints();
                 PublishControlPointTimeline();

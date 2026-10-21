@@ -62,7 +62,10 @@ public sealed class InstrumentalArrangementDrawerVMTests
         var vm = new InstrumentalArrangementDrawerVM(new(new(ctx, "Piano", 100,
             new Dictionary<string, string>(), [], null, 0), Timeline(0, 0)), messenger, new ImmediateUiScheduler());
         await vm.InitializeAsync(default);
+        var changed = new List<string?>();
+        vm.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
         messenger.Send(new OHsInstrumentalTimelineChangedMessage(Timeline(2, 1500)));
+        Assert.That(changed, Is.EqualTo(new[] { nameof(vm.Position) }));
         messenger.Send(new OHsInstrumentalTimelineChangedMessage(Timeline(1, 500)));
         messenger.Send(new OHsInstrumentalTimelineChangedMessage(Timeline(3, 900, ctx with { EditorSessionId = Guid.NewGuid() })));
         Assert.That(vm.Position, Is.EqualTo(TimeSpan.FromMilliseconds(1500)));

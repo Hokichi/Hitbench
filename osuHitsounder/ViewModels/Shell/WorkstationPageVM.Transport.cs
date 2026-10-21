@@ -22,11 +22,12 @@ public partial class WorkstationPageVM
     private long instrumentTimelineRequestSequence;
     private Guid instrumentTimelineEditor;
     private Task instrumentTimelineNotifications = Task.CompletedTask;
+    private OHsTimingSnapshot instrumentTiming = new([], []);
 
     private OHsInstrumentalTimelineSnapshot InstrumentTimeline(InstrumentalTrackContext context) =>
         new(context, ++instrumentTimelineRevision, Waveform?.Duration ?? TimeSpan.Zero, Position,
             IsPlaying, ActiveInstrument(context) is not null && markerClock.IsValid && Waveform?.Duration > TimeSpan.Zero,
-            CanUseTransport(), Project?.Offsets ?? [], Project?.BPMs ?? [], ZoomFactor,
+            CanUseTransport(), instrumentTiming, ZoomFactor,
             SelectedSubdivisionIndex, ScrollWithMarker, PlaybackWarning, IsAdditionMode);
 
     private void PublishInstrumentTimeline()

@@ -32,6 +32,7 @@ public sealed class InstrumentalTimelineMessageTests
             Assert.That(messages, Is.Not.Empty);
             Assert.That(messages.Last().Duration, Is.EqualTo(TimeSpan.FromSeconds(10)));
             messenger.Send(new OHsInstrumentalTimelineEditRequestedMessage(data.Track.Context, 2, 33, 6, false));
+            Assert.That(messages.Last().Offsets, Is.SameAs(messages.First().Offsets));
             Assert.That(owner.ZoomFactor, Is.EqualTo(33));
             Assert.That(owner.Subdivision, Is.EqualTo(8));
             Assert.That(owner.ScrollWithMarker, Is.False);
@@ -48,6 +49,19 @@ public sealed class InstrumentalTimelineMessageTests
         }
         finally { await owner.DeactivateAsync(); messenger.UnregisterAll(messages); }
     }
+    [Test]
+    public void PositionSnapshotsShareOwnedTiming()
+    {
+        var offsets = new List<int> { 0 }; var bpms = new List<int> { 120 };
+        var timing = new OHsTimingSnapshot(offsets, bpms);
+        offsets[0] = 700; bpms.Clear();
+        var context = new InstrumentalTrackContext("p", null, Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
+        var first = new OHsInstrumentalTimelineSnapshot(context, 1, TimeSpan.FromSeconds(10), TimeSpan.Zero, false, true, true, timing, 32, 0, true, null);
+        var second = new OHsInstrumentalTimelineSnapshot(context, 2, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(1), false, true, true, timing, 32, 0, true, null);
+        Assert.That(second.Offsets, Is.SameAs(first.Offsets).And.EqualTo(new[] { 0 }));
+        Assert.That(second.Bpms, Is.SameAs(first.Bpms).And.EqualTo(new[] { 120 }));
+    }
+
     [Test]
     public void SnapshotsDefensivelyCopyTiming()
     {

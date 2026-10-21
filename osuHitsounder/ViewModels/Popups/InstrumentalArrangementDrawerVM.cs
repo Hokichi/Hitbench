@@ -67,9 +67,23 @@ public sealed partial class InstrumentalArrangementDrawerVM : ObservableObject
         messenger.Register<OHsInstrumentalTimelineChangedMessage>(this, (_, m) => Schedule(() =>
         {
             if (m.Snapshot.Context != snapshot.Context || m.Snapshot.Revision < timeline.Revision) return;
-            timeline = m.Snapshot;
-            foreach (var name in new[] { nameof(IsAdditionMode), nameof(IsSelectionMode), nameof(Duration), nameof(Position), nameof(IsPlaying), nameof(CanEdit), nameof(Offsets), nameof(Bpms), nameof(Subdivision), nameof(SelectedSubdivisionIndex), nameof(ZoomFactor), nameof(ScrollWithMarker), nameof(PlaybackWarning), nameof(EditingHint) }) OnPropertyChanged(name);
-            NotifyNoteCommands();
+            var old = timeline; timeline = m.Snapshot;
+            if (old.Position != timeline.Position) OnPropertyChanged(nameof(Position));
+            if (old.IsPlaying != timeline.IsPlaying) OnPropertyChanged(nameof(IsPlaying));
+            if (old.Duration != timeline.Duration) OnPropertyChanged(nameof(Duration));
+            if (!ReferenceEquals(old.Offsets, timeline.Offsets) && !old.Offsets.SequenceEqual(timeline.Offsets)) OnPropertyChanged(nameof(Offsets));
+            if (!ReferenceEquals(old.Bpms, timeline.Bpms) && !old.Bpms.SequenceEqual(timeline.Bpms)) OnPropertyChanged(nameof(Bpms));
+            if (old.Subdivision != timeline.Subdivision) OnPropertyChanged(nameof(Subdivision));
+            if (old.SelectedSubdivisionIndex != timeline.SelectedSubdivisionIndex) OnPropertyChanged(nameof(SelectedSubdivisionIndex));
+            if (old.ZoomFactor != timeline.ZoomFactor) OnPropertyChanged(nameof(ZoomFactor));
+            if (old.ScrollWithMarker != timeline.ScrollWithMarker) OnPropertyChanged(nameof(ScrollWithMarker));
+            if (old.PlaybackWarning != timeline.PlaybackWarning) OnPropertyChanged(nameof(PlaybackWarning));
+            if (old.IsAdditionMode != timeline.IsAdditionMode)
+            { OnPropertyChanged(nameof(IsAdditionMode)); OnPropertyChanged(nameof(IsSelectionMode)); }
+            if (old.CanEdit != timeline.CanEdit)
+            { OnPropertyChanged(nameof(CanEdit)); OnPropertyChanged(nameof(EditingHint)); }
+            if (old.CanEdit != timeline.CanEdit || old.CanUseTransport != timeline.CanUseTransport || old.IsAdditionMode != timeline.IsAdditionMode)
+                NotifyNoteCommands();
         }));
         messenger.Register<InstrumentalTrackChangedMessage>(this, (_, m) => Schedule(() =>
         {
