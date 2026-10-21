@@ -108,11 +108,23 @@ public static class OHsExportAudio
         }
         Flush(true);
         var channels = new[] { new float[512], new float[512] };
+        var totalFrames = samples.Length / 2;
         var state = ProcessingState.Create(info);
+        // The installed encoder starts its input at zero rather than the initial
+        // window center. Prime that codec overlap; it is not part of the sample.
+        var overlap = info.CodecSetup.BlockSizes[1] / 2;
+        for (var offset = 0; offset < overlap; offset += 512)
+            state.WriteData(channels, Math.Min(512, overlap - offset), 0);
         void Packets()
         {
             while (!stream.Finished && state.PacketOut(out var packet))
-            { token.ThrowIfCancellationRequested(); stream.PacketIn(packet); Flush(false); }
+            {
+                token.ThrowIfCancellationRequested();
+                // OggVorbisEncoder 1.2.2 reports the previous block's position at EOF.
+                // Supply the actual PCM length so decoders retain short samples and tails.
+                if (packet.EndOfStream) packet = new OggPacket(packet.PacketData, true, totalFrames, packet.PacketNumber);
+                stream.PacketIn(packet); Flush(false);
+            }
         }
         for (var offset = 0; offset < samples.Length / 2; offset += 512)
         {

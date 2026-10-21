@@ -7,6 +7,37 @@ namespace osuHitsounder.Test.Services;
 
 public class OHsExportServiceTests
 {
+    [TestCase(1), TestCase(999)]
+    public async Task LargeRepeatedArrangementPublishesOneCenteredCirclePerTimestamp(int firstIndex)
+    {
+        using var folder = new TestProjectFolder();
+        var root = Path.GetDirectoryName(folder.ProjectPath)!;
+        var source = Path.Combine(root, "source.osu"); var song = Path.Combine(root, "song.wav");
+        await File.WriteAllTextAsync(source, "[TimingPoints]\n0,500,4,1,1,100,1,0\n");
+        await OHsExportAudio.WriteFileAsync(song, DecodedAudio.CopyFrom(new float[882]), default);
+        await OHsExportAudio.WriteFileAsync(Path.Combine(root, "Samples", "a.wav"), DecodedAudio.CopyFrom(new float[] { .2f, -.2f }), default);
+        var project = new ProjectData { Tracks = [new() { Addition = "Soft", SampleType = SampleType.Clap, Volume = 70,
+            Samples = Enumerable.Range(1, 500).Select(i => new Sample { FileName = "a.wav", Timestamp = i * 20 }).ToList() },
+            new() { IsTrackMuted = true, Samples = [new() { FileName = "missing.wav", Timestamp = 1 }] }],
+            ControlPoints = [new() { Timestamp = 0, Volume = 40 }, new() { Timestamp = 5000, Volume = 60 }] };
+        var request = new OHsExportRequest(Guid.NewGuid(), folder.ProjectPath, source, song, ProjectDataSerializer.Serialize(project), new("Hitsounds", firstIndex, ".wav", ".wav", false));
+        var exporter = new OHsExportService();
+        var output = await exporter.ExportAsync(request, default);
+        var text = await File.ReadAllTextAsync(Path.Combine(output, "Hitsounds.osu"));
+        var parsed = OHsExportBeatmap.Parse(text);
+        var objects = parsed.Sections["HitObjects"].Where(l => !string.IsNullOrWhiteSpace(l)).Select(l => l.Split(',')).ToArray();
+        Assert.That(objects, Has.Length.EqualTo(500));
+        Assert.That(objects.Select(o => (o[0], o[1])), Is.All.EqualTo(("256", "192")));
+        Assert.That(objects.Select(o => o[2]).Distinct().Count(), Is.EqualTo(500));
+        Assert.That(text, Does.Contain("StackLeniency:0").And.Contain("Mode:0"));
+        var resolved = OHsExportPlaybackOracle.Resolve(text).Where(p => p.Type == "clap").ToArray();
+        Assert.That(resolved.Select(p => p.Index), Is.All.EqualTo(firstIndex));
+        Assert.That(resolved.Where(p => p.Timestamp < 4995).Select(p => p.Volume), Is.All.EqualTo(40));
+        Assert.That(resolved.Where(p => p.Timestamp >= 5000).Select(p => p.Volume), Is.All.EqualTo(60));
+        foreach (var file in Directory.GetFiles(output, "*.wav")) Assert.That(AudioDecoder.Decode(file, default).FrameCount, Is.GreaterThan(0));
+        await exporter.ExportAsync(request, default);
+        Assert.That(await File.ReadAllTextAsync(Path.Combine(output, "Hitsounds.osu")), Is.EqualTo(text));
+    }
     [Test]
     public async Task PublishesStandaloneSongDifficultyAndChosenFormatsWithTrackGain()
     {

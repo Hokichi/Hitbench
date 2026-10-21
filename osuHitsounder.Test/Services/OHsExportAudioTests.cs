@@ -5,6 +5,17 @@ namespace osuHitsounder.Test.Services;
 
 public class OHsExportAudioTests
 {
+    [TestCase(441), TestCase(1024), TestCase(44100)]
+    public async Task ShortVorbisSilenceDecodesToItsOriginalFrames(int frames)
+    {
+        var path = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".ogg");
+        try
+        {
+            await OHsExportAudio.WriteFileAsync(path, DecodedAudio.CopyFrom(new float[frames * 2]), default);
+            Assert.That(AudioDecoder.Decode(path, default).FrameCount, Is.EqualTo(frames));
+        }
+        finally { File.Delete(path); }
+    }
     [Test]
     public async Task DirectSampleCopyUsesValidatedPcmWithoutRenderingDuplicate()
     {
@@ -84,4 +95,7 @@ public class OHsExportAudioTests
         Assert.Throws<OperationCanceledException>(() => provider.Read(new byte[8], 0, 8));
     }
 }
+
+
+
 
