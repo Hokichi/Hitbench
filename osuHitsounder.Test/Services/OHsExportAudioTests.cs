@@ -5,6 +5,15 @@ namespace osuHitsounder.Test.Services;
 
 public class OHsExportAudioTests
 {
+    [TestCase(.2f, .4f)]
+    [TestCase(.75f, 1f)]
+    public void TwoHundredPercentGainRetainsExistingPeakClamp(float input, float expected)
+    {
+        var asset = OHsExportAsset.Create([("hit.wav", 200)]);
+        var result = OHsExportAudio.Render(asset, _ => DecodedAudio.CopyFrom(new[] { input, input }), default);
+        Assert.That(result.Samples.ToArray(), Is.EqualTo(new[] { expected, expected }).Within(.0001));
+    }
+
     [Test]
     public async Task VorbisRetainsAttackAndTailPositions()
     {

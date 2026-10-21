@@ -105,13 +105,14 @@ public partial class WorkstationPageVM
         CanEditControlPoints && IsActiveControlPoints(context)
             ? Project!.ControlPoints.FirstOrDefault(p => ControlPointId(p) == id) : null;
 
-    private void FinishControlPointMutation(bool volumeTimelineChanged)
+    private void FinishControlPointMutation(bool volumeTimelineChanged, bool queueSave = true)
     {
         controlPointsRevision++;
         SetProperty(ref controlPointError, null, nameof(ControlPointError));
         if (volumeTimelineChanged) PublishControlPointTimeline();
-        QueueSave();
+        if (queueSave) QueueSave();
         PublishControlPointsSnapshot();
+        ResnapAllSamplesCommand.NotifyCanExecuteChanged();
     }
 
     private bool CanPlaceControlPoint(ControlPointsContext context, long revision, Guid pointId, int timestamp)

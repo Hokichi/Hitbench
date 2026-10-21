@@ -24,6 +24,42 @@ public class ValueSliderTests
     }
 
     [Test]
+    public void TagAdornerAttachesAndDetachesWithoutNativePopup()
+    {
+        new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
+        var row = new osuHitsounder.Views.Pages.OHsWorkstationTrackRow();
+        var slider = new ValueSlider { ShowValueTag = true, DisplayText = "200%", ValueTagTemplate = (DataTemplate)row.FindResource("OHsWorkstationTrackVolumeTagTemplate"), Style = (Style)Application.Current.FindResource("BaseValueSliderStyle") };
+        var decorator = new System.Windows.Documents.AdornerDecorator { Child = slider };
+        using var view = new InMemoryView(new Window { Content = decorator, Width = 300, Height = 100 });
+        slider.UpdateValueTagState(false, true, false);
+        var layer = System.Windows.Documents.AdornerLayer.GetAdornerLayer(slider);
+        Assert.That(layer.GetAdorners(slider), Has.Length.EqualTo(1));
+        view.UpdateLayout();
+        slider.RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent));
+        Assert.That(layer.GetAdorners(slider), Is.Null);
+    }
+
+    [Test]
+    public void TagVisibilityFollowsDragFocusAndDisabledState()
+    {
+        var slider = new ValueSlider { ShowValueTag = true };
+        slider.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+        slider.UpdateValueTagState(false, true, false);
+        Assert.That(slider.IsValueTagVisible, Is.True);
+        slider.UpdateValueTagState(false, false, true);
+        Assert.That(slider.IsValueTagVisible, Is.True);
+        slider.UpdateValueTagState(false, false, false);
+        Assert.That(slider.IsValueTagVisible, Is.False);
+        slider.UpdateValueTagState(true, false, false);
+        Assert.That(slider.IsValueTagVisible, Is.True);
+        slider.RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent));
+        Assert.That(slider.IsValueTagVisible, Is.False);
+        slider.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+        slider.IsEnabled = false;
+        Assert.That(slider.IsValueTagVisible, Is.False);
+    }
+
+    [Test]
     public void DisplaysCustomTextAndRetainsNativeRangeBehavior()
     {
         var slider = new ValueSlider

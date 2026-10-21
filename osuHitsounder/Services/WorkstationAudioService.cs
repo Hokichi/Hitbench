@@ -178,7 +178,7 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
                     resolved[fileKey] = result;
                 }
                 if (result.Error is not null) { errors.Add(result.Error); continue; }
-                var gain = Math.Clamp(item.TrackVolume, 0, 100) / 100f;
+                var gain = Math.Clamp(item.TrackVolume, 0, 200) / 100f;
                 prepared.Add(new PreparedSampleEvent(item.Id, result.Audio!, gain,
                     checked((long)Math.Round(item.Timestamp * 44_100m / 1000m, MidpointRounding.AwayFromZero))));
             }

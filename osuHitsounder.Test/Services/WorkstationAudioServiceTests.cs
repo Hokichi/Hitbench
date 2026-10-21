@@ -33,8 +33,9 @@ public class WorkstationAudioServiceTests
         await service.UpdateSamplesAsync(project.ProjectPath, events, default);
         Assert.That(decodes, Is.EqualTo(2), "A subsequent update still detects the changed source");
     }
-    [Test]
-    public async Task LegacyNodeGainDoesNotAttenuateTrackGain()
+    [TestCase(70, .14f)]
+    [TestCase(200, .4f)]
+    public async Task LegacyNodeGainDoesNotAttenuateTrackGain(int gain, float expected)
     {
         using var project = new TestProjectFolder("hit.wav");
         var track = osuHitsounder.Services.ProjectFiles.ProjectDataSerializer.Deserialize("{\"Tracks\":[{\"Volume\":70,\"Samples\":[{\"FileName\":\"hit.wav\",\"Timestamp\":0,\"Volume\":0}]}]}").Tracks.Single();
@@ -42,10 +43,10 @@ public class WorkstationAudioServiceTests
         var player = new StubWavePlayer();
         using var service = new WorkstationAudioService(_ => CreateStream(Enumerable.Repeat(.2f, 128).ToArray(), 44_100, 2), () => player);
         service.Open("song.wav"); service.SetSongVolume(0);
-        await service.UpdateSamplesAsync(project.ProjectPath, [new SamplePlaybackEvent(1, sample.FileName, sample.Timestamp, track.Volume)], default);
+        await service.UpdateSamplesAsync(project.ProjectPath, [new SamplePlaybackEvent(1, sample.FileName, sample.Timestamp, gain)], default);
         service.Play();
         var output = new float[2]; player.Provider!.ToSampleProvider().Read(output, 0, 2);
-        Assert.That(output, Is.EqualTo(new[] { .14f, .14f }).Within(.0001));
+        Assert.That(output, Is.EqualTo(new[] { expected, expected }).Within(.0001));
     }
 
     [Test]

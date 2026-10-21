@@ -50,6 +50,46 @@ public class WorkstationResnapTests
     }
 
     [Test]
+    public async Task ControlPointCollisionsAndInvalidTimingPreserveEveryPoint()
+    {
+        var firstPoint = new ControlPoint { Timestamp = 1100 };
+        var secondPoint = new ControlPoint { Timestamp = 1120 };
+        vm.Project!.ControlPoints.AddRange([firstPoint, secondPoint]);
+        vm.ResnapAllSampleNodes();
+        Assert.That(new[] { firstPoint.Timestamp, secondPoint.Timestamp }, Is.EqualTo(new[] { 1125, 1120 }));
+        Assert.That(vm.Project.ControlPoints, Has.Count.EqualTo(2));
+        vm.Project.BPMs = [0];
+        firstPoint.Timestamp = 1100;
+        Assert.That(vm.ResnapAllSampleNodes(), Is.False);
+        Assert.That(firstPoint.Timestamp, Is.EqualTo(1100));
+        await vm.FlushSavesAsync();
+    }
+
+    [Test]
+    public void ResnapWorksWhenOnlyControlPointsExist()
+    {
+        first.Samples.Clear(); second.Samples.Clear();
+        var point = new ControlPoint { Timestamp = 1100 };
+        vm.Project!.ControlPoints.Add(point);
+        Assert.That(vm.ResnapAllSamplesCommand.CanExecute(null), Is.True);
+        Assert.That(vm.ResnapAllSampleNodes(), Is.True);
+        Assert.That(point.Timestamp, Is.EqualTo(1125));
+    }
+
+    [Test]
+    public async Task ResnapIncludesControlPointsAndPersistsTheirIdentity()
+    {
+        var point = new ControlPoint { Timestamp = 1100, Volume = 70, IsDisabled = true };
+        vm.Project!.ControlPoints.Add(point);
+        Assert.That(vm.ResnapAllSampleNodes(), Is.True);
+        Assert.That(point.Timestamp, Is.EqualTo(1125));
+        Assert.That(point.Volume, Is.EqualTo(70));
+        Assert.That(point.IsDisabled, Is.True);
+        await vm.FlushSavesAsync();
+        Assert.That(ProjectDataSerializer.Deserialize(saves.LatestJson!).ControlPoints.Single().Timestamp, Is.EqualTo(1125));
+    }
+
+    [Test]
     public async Task CommandResnapsAllTracksIndependentlyAndPublishesOneUndoableBatch()
     {
         vm.SetNodeSelection([a]);

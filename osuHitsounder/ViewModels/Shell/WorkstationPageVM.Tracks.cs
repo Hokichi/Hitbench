@@ -171,7 +171,7 @@ public partial class WorkstationPageVM
     public void SetTrackVolume(Track track, int volume)
     {
         if (!CanEditTracks || !tracks.Contains(track)) return;
-        var next = Math.Clamp(volume, 5, 100);
+        var next = Math.Clamp(volume, 5, 200);
         if (track.Volume == next) return;
         track.Volume = next;
         QueuePlaybackUpdate();

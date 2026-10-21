@@ -248,14 +248,14 @@
                 <StackPanel Orientation="Horizontal" Style="{StaticResource BaseStackPanelStyle}">
                     <customControls:BalloonButton
                         x:Name="ResnapAllSamplesButton"
-                        AutomationProperties.HelpText="Snap sample nodes and instrumental notes across all tracks to the current beat subdivision"
-                        AutomationProperties.Name="Resnap all nodes"
+                        AutomationProperties.HelpText="Resnap all samples and control points to the current beat subdivision, including instrumental notes"
+                        AutomationProperties.Name="Resnap all samples and control points"
                         ButtonIcon="{StaticResource ResnapGrid}"
-                        ButtonText="Resnap all nodes"
+                        ButtonText="Resnap"
                         Command="{Binding ResnapAllSamplesCommand, Mode=OneWay}"
                         IconSize="20"
                         Style="{StaticResource OHsWorkstationToolbarButtonStyle}"
-                        ToolTip="Snap sample nodes and instrumental notes across all tracks to the current beat subdivision" />
+                        ToolTip="Resnap all samples and control points to the current beat subdivision, including instrumental notes" />
                     <customControls:BalloonButton
                         x:Name="ReloadSamplesButton"
                         Margin="4,0,0,0"
@@ -279,6 +279,11 @@
                         Command="{Binding ExportCommand, Mode=OneWay}"
                         Style="{StaticResource OHsWorkstationToolbarButtonStyle}"
                         ToolTip="Export" />
+                </StackPanel>
+                <Border Style="{StaticResource OHsWorkstationToolbarSeparatorStyle}" />
+                <StackPanel Orientation="Horizontal" Style="{StaticResource BaseStackPanelStyle}">
+                    <customControls:BalloonButton x:Name="OpenBeatmapFolderButton" ButtonIcon="{StaticResource Folder}" ButtonText="Open beatmap folder" ToolTip="Open beatmap folder" AutomationProperties.Name="Open beatmap folder" Command="{Binding OpenBeatmapFolderCommand, Mode=OneWay}" Style="{StaticResource OHsWorkstationToolbarButtonStyle}" />
+                    <customControls:BalloonButton x:Name="OpenProjectFolderButton" ButtonIcon="{StaticResource Folder}" ButtonText="Open project folder" ToolTip="Open project folder" AutomationProperties.Name="Open project folder" Command="{Binding OpenProjectFolderCommand, Mode=OneWay}" Style="{StaticResource OHsWorkstationToolbarButtonStyle}" />
                 </StackPanel>
                 <Border Style="{StaticResource OHsWorkstationToolbarSeparatorStyle}" />
                 <pages:OHsWorkstationFooter x:Name="FooterControls" VerticalAlignment="Center" />

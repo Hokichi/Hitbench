@@ -10,6 +10,16 @@ public class OHsExportInputTests
     private static OHsExportOptions Options(int index = 1) => new("Hitsounds", index, ".ogg", ".ogg", false);
     private static OHsExportBeatmap Map() => OHsExportBeatmap.Parse("osu file format v14\n[TimingPoints]\n123.456,428.571428571429,4,2,4,60,1,0\n200,-50,4,2,4,60,0,1\n");
 
+    [TestCase(false)]
+    [TestCase(true)]
+    public void AcceptsTwoHundredPercentForBothTrackKinds(bool instrumental)
+    {
+        Track track = instrumental ? new InstrumentalTrack { KeyFiles = new() { ["C4"] = "hit.wav" }, Notes = [new() { Key = "C4", Timestamp = 100 }] } : new Track { Samples = [new() { FileName = "hit.wav", Timestamp = 100 }] };
+        track.Volume = 200;
+        var input = OHsExportInputFactory.Create(new ProjectData { Tracks = [track] }, Map(), Options(), default);
+        Assert.That(input.Voices.Single().GainPercent, Is.EqualTo(200));
+    }
+
     [Test]
     public void PreservesPreciseTimingAndRequiredRepeatedControlPoints()
     {
@@ -58,7 +68,7 @@ public class OHsExportInputTests
     public void InvalidIndexFails(int index) => Assert.Throws<ArgumentException>(() => Options(index).Validate());
 
     [TestCase(-1, 100, "hit.wav", "Normal", SampleType.Normal)]
-    [TestCase(0, 101, "hit.wav", "Normal", SampleType.Normal)]
+    [TestCase(0, 201, "hit.wav", "Normal", SampleType.Normal)]
     [TestCase(0, 100, "../hit.wav", "Normal", SampleType.Normal)]
     [TestCase(0, 100, "hit.wav", "Unknown", SampleType.Normal)]
     [TestCase(0, 100, "hit.wav", "Normal", (SampleType)99)]

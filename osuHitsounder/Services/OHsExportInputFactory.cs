@@ -56,7 +56,7 @@ public static class OHsExportInputFactory
         {
             token.ThrowIfCancellationRequested(); var track = project.Tracks[order];
             if (track.IsTrackMuted || solo && !track.IsTrackSoloed) continue;
-            if (track.Volume is < 0 or > 100 || !Enum.IsDefined(track.SampleType) || !Track.AdditionOptions.Contains(track.Addition))
+            if (track.Volume is < 0 or > 200 || !Enum.IsDefined(track.SampleType) || !Track.AdditionOptions.Contains(track.Addition))
                 throw new InvalidDataException("Invalid export track.");
             void Add(int time, string file)
             {

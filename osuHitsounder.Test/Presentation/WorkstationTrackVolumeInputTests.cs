@@ -41,7 +41,7 @@ public class WorkstationTrackVolumeInputTests
         {
             var mapped = nativeTrack.ValueFromPoint(new Point(nativeTrack.Thumb.ActualWidth / 2 + usableWidth * fraction,
                 nativeTrack.ActualHeight / 2));
-            Assert.That(mapped, Is.EqualTo(5 + 95 * fraction).Within(0.01));
+            Assert.That(mapped, Is.EqualTo(5 + 195 * fraction).Within(0.01));
             var snapped = Math.Round(mapped, MidpointRounding.AwayFromZero);
             slider.SetCurrentValue(RangeBase.ValueProperty, snapped);
             Assert.That(track.Volume, Is.EqualTo(snapped));

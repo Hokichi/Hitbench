@@ -36,7 +36,7 @@ public sealed class PreparedPlaybackSchedule
         foreach (var item in this.events)
         {
             if (item is null || item.Audio is null || item.Id <= 0 || !ids.Add(item.Id) ||
-                !float.IsFinite(item.Gain) || item.Gain < 0 || item.Gain > 1)
+                !float.IsFinite(item.Gain) || item.Gain < 0 || item.Gain > 2)
                 throw new ArgumentException("Invalid or duplicate sample placement.", nameof(events));
             _ = item.EndFrame;
         }

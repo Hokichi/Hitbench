@@ -18,7 +18,7 @@ namespace osuHitsounder.ViewModels.Shell;
 
 public partial class WorkstationPageVM
 {
-    private bool CanResnapAllSamples() => CanPlaceSamples && tracks.Any(track => track.Samples.Count > 0 || track is InstrumentalTrack { Notes.Count: > 0 });
+    private bool CanResnapAllSamples() => CanPlaceSamples && (Project!.ControlPoints.Count == 0 || CanEditControlPoints) && (Project.ControlPoints.Count > 0 || tracks.Any(track => track.Samples.Count > 0 || track is InstrumentalTrack { Notes.Count: > 0 }));
 
     // Legacy public name retained for callers; the workstation action includes instrumental notes.
     public bool ResnapAllSampleNodes()
@@ -49,9 +49,20 @@ public partial class WorkstationPageVM
             if (after is null) { ErrorMessage = "No usable grid beat for resnapping notes."; return false; }
             if (!before.SequenceEqual(after)) instruments.Add((track, before, after));
         }
+        var points = new List<(ControlPoint Point, int Timestamp)>();
+        var occupied = Project.ControlPoints.GroupBy(p => p.Timestamp).ToDictionary(g => g.Key, g => g.Count());
+        foreach (var point in Project.ControlPoints.OrderBy(p => p.Timestamp))
+        {
+            var target = BeatGridCalculator.GetNearestTimestamp(timing.AsSpan(), Subdivision, point.Timestamp, Waveform!.Duration.TotalMilliseconds);
+            if (target is null) { ErrorMessage = "No usable grid beat for resnapping control points."; return false; }
+            if (target == point.Timestamp || occupied.GetValueOrDefault(target.Value) > 0) continue;
+            occupied[point.Timestamp]--;
+            occupied[target.Value] = 1;
+            points.Add((point, target.Value));
+        }
         CancelNodeDrag();
         ErrorMessage = null;
-        if (entries.Count == 0 && instruments.Count == 0) return false;
+        if (entries.Count == 0 && instruments.Count == 0 && points.Count == 0) return false;
         foreach (var entry in entries) entry.Sample.Timestamp = entry.NextTimestamp;
         if (entries.Count > 0) history.RecordBatch(entries);
         foreach (var item in instruments)
@@ -61,7 +72,9 @@ public partial class WorkstationPageVM
                 item.After.Where((note, index) => note.Timestamp != item.Before[index].Timestamp).Select(note => note.Id).ToArray());
         }
         if (instruments.Count > 0) { instrumentRevision++; PublishInstrumentSnapshot(); }
-        PublishNodeChange();
+        foreach (var item in points) item.Point.Timestamp = item.Timestamp;
+        if (points.Count > 0) FinishControlPointMutation(true, entries.Count == 0 && instruments.Count == 0);
+        if (entries.Count > 0 || instruments.Count > 0) PublishNodeChange();
         return true;
     }
 

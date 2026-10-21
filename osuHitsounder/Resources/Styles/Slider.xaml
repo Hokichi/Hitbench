@@ -121,6 +121,9 @@
                 TextAlignment="Right" />
         </Grid>
         <ControlTemplate.Triggers>
+            <Trigger Property="ShowValueTag" Value="True">
+                <Setter TargetName="DisplayText" Property="Visibility" Value="Collapsed" />
+            </Trigger>
 
             <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
                 <Setter TargetName="DisplayText" Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />

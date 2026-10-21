@@ -32,7 +32,8 @@ public partial class WorkstationPageVM(
     IInstrumentalTrackDialogService? instrumentDialogs = null,
     Func<TimeSpan, CancellationToken, Task>? folderRenameDelay = null,
     TimeProvider? timeProvider = null,
-    IOHsExportDialogService? exportDialog = null) : ObservableObject
+    IOHsExportDialogService? exportDialog = null,
+    IOHsExportDirectoryLauncher? directoryLauncher = null) : ObservableObject
 {
     private readonly IWorkstationAudioService audioService = playback.Audio;
     private bool subscribedToPlayback;
@@ -111,6 +112,7 @@ public partial class WorkstationPageVM(
     public async Task LoadAsync(string projectPath, CancellationToken token)
     {
         if (deactivated) return;
+        await SettleFolderOpenAsync();
         await SettleExportAsync();
         if (reloadingSamples && token != reloadSamplesCancellation?.Token) reloadSamplesCancellation?.Cancel();
         await SettleControlPointsAsync();
@@ -145,6 +147,7 @@ public partial class WorkstationPageVM(
     private async Task DeactivateCoreAsync()
     {
         if (deactivated) return;
+        await SettleFolderOpenAsync();
         await SettleExportAsync();
         reloadSamplesCancellation?.Cancel();
         await SettleControlPointsAsync();
@@ -298,7 +301,7 @@ public partial class WorkstationPageVM(
 
     partial void OnIsReturningChanged(bool value)
     {
-        if (value) nodeEditCancellation?.Cancel();
+        if (value) { nodeEditCancellation?.Cancel(); folderOpenCancellation?.Cancel(); }
         OnPropertyChanged(nameof(CanGoBack));
         OnPropertyChanged(nameof(IsInteractionReady));
         NotifyEditingState();
@@ -605,6 +608,7 @@ public partial class WorkstationPageVM(
 
     private void NotifyCommandState()
     {
+        NotifyFolderCommands();
         NotifyExportState();
         NotifyNodeEditingState();
         NotifyHistoryState();
@@ -627,6 +631,7 @@ public partial class WorkstationPageVM(
 
     private void NotifyEditingState()
     {
+        NotifyFolderCommands();
         NotifyExportState();
         NotifySampleReloadAvailability();
         OnPropertyChanged(nameof(CanOpenControlPoints)); AddControlPointCommand.NotifyCanExecuteChanged();

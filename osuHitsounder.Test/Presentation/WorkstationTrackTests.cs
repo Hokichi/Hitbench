@@ -9,6 +9,23 @@ namespace osuHitsounder.Test.Presentation;
 
 public class WorkstationTrackTests
 {
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task TrackGainReachesTwoHundredAndPersists(bool instrumental)
+    {
+        Track track = instrumental ? new InstrumentalTrack() : new Track();
+        var source = new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav", new ProjectData { Tracks = [track] })) };
+        var saves = new DelayedProjectFileService(); saves.Release();
+        var vm = new WorkstationPageVM(source, new osuHitsounder.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), projectFiles: saves);
+        await vm.LoadAsync("project.json", default); vm.AcknowledgePresentationReady(vm.LoadGeneration);
+        vm.SetTrackVolume(track, 201);
+        Assert.That(track.Volume, Is.EqualTo(200));
+        await vm.FlushSavesAsync();
+        Assert.That(ProjectDataSerializer.Deserialize(saves.LatestJson!).Tracks.Single().Volume, Is.EqualTo(200));
+        vm.SetTrackVolume(track, 0); Assert.That(track.Volume, Is.EqualTo(5));
+        await vm.DeactivateAsync();
+    }
+
     [Test]
     public async Task MetadataEditsPersistOnlyReadyLiveTracks()
     {
