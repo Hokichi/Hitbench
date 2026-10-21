@@ -9,6 +9,7 @@ public sealed class NodeHistoryManager
 
     public bool CanUndo => undo.Count > 0;
     public bool CanRedo => redo.Count > 0;
+    internal long RewrittenEntryCount { get; private set; }
 
     public void RecordPlacement(Track track, Sample sample, int index) =>
         RecordBatch([new(track, sample, index, NodeHistoryOperation.Placement)]);
@@ -125,16 +126,21 @@ public sealed class NodeHistoryManager
     }
 
     public void RenameSample(string oldFileName, string newFileName)
+        => RewriteSampleNames(name => string.Equals(name, oldFileName, StringComparison.OrdinalIgnoreCase) ? newFileName : name);
+
+    private void RewriteSampleNames(Func<string, string> rewrite)
     {
+        var rewrittenSamples = new HashSet<Sample>();
         foreach (var stack in new[] { undo, redo })
         {
             var batches = stack.Reverse().Select(batch => batch.Select(entry =>
             {
-                if (string.Equals(entry.Sample.FileName, oldFileName, StringComparison.OrdinalIgnoreCase)) entry.Sample.FileName = newFileName;
+                RewrittenEntryCount++;
+                if (rewrittenSamples.Add(entry.Sample)) entry.Sample.FileName = rewrite(entry.Sample.FileName);
                 return entry with
                 {
-                    PreviousFileName = string.Equals(entry.PreviousFileName, oldFileName, StringComparison.OrdinalIgnoreCase) ? newFileName : entry.PreviousFileName,
-                    NextFileName = string.Equals(entry.NextFileName, oldFileName, StringComparison.OrdinalIgnoreCase) ? newFileName : entry.NextFileName
+                    PreviousFileName = entry.PreviousFileName is { } previous ? rewrite(previous) : null,
+                    NextFileName = entry.NextFileName is { } next ? rewrite(next) : null
                 };
             }).ToArray()).ToArray();
             stack.Clear(); foreach (var batch in batches) stack.Push(batch);
@@ -144,9 +150,6 @@ public sealed class NodeHistoryManager
     public void RenameSampleFolder(string oldFolderName, string newFolderName)
     {
         var prefix = oldFolderName + "/";
-        var names = undo.Concat(redo).SelectMany(batch => batch)
-            .SelectMany(entry => new[] { entry.Sample.FileName, entry.PreviousFileName, entry.NextFileName })
-            .OfType<string>().Where(name => name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
-        foreach (var name in names) RenameSample(name, newFolderName + "/" + name[prefix.Length..]);
+        RewriteSampleNames(name => name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) ? newFolderName + "/" + name[prefix.Length..] : name);
     }
 }

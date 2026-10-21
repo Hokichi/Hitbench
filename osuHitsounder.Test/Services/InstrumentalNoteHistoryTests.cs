@@ -5,6 +5,16 @@ namespace osuHitsounder.Test.Services;
 public class InstrumentalNoteHistoryTests
 {
     [Test]
+    public void LargeReplayPreservesRequestedSelectionOrder()
+    {
+        var before = Enumerable.Range(0, 4000).Select(i => new InstrumentalNoteSnapshot(Guid.NewGuid(), "C4", i)).ToArray();
+        var after = before.Select(n => n with { Timestamp = n.Timestamp + 5000 }).ToArray();
+        var ids = before.Reverse().Select(n => n.Id).Append(Guid.NewGuid()).ToArray();
+        var history = new InstrumentalNoteHistoryManager(); history.Record(before, after, ids);
+        Assert.That(history.Undo(after, _ => true, out var selected), Is.True);
+        Assert.That(selected, Is.EqualTo(ids.Take(4000)));
+    }
+    [Test]
     public void ReplayIsAtomicAndNoOpPreservesRedo()
     {
         var note = new InstrumentalNoteSnapshot(Guid.NewGuid(), "C4", 125);

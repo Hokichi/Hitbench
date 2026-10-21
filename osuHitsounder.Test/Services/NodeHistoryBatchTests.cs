@@ -5,6 +5,25 @@ namespace osuHitsounder.Test.Services;
 
 public class NodeHistoryBatchTests
 {
+    [Test]
+    public void FolderRenameRewritesEachHistoryEntryOnceAndRetainsIdentity()
+    {
+        var history = new NodeHistoryManager();
+        var samples = Enumerable.Range(0, 500).Select(i => new Sample { FileName = $"piano/nested/{i}.wav", Timestamp = i }).ToList();
+        var track = new Track { Samples = samples };
+        var identities = samples.ToArray();
+        history.RecordBatch(samples.Select((s, i) => new NodeHistoryEntry(track, s, i, NodeHistoryOperation.Placement, NextFileName: s.FileName)).ToArray());
+        var before = history.RewrittenEntryCount;
+        history.RenameSampleFolder("PIANO", "keys");
+        Assert.That(history.RewrittenEntryCount - before, Is.EqualTo(500));
+        Assert.That(history.Undo([track]), Is.True);
+        Assert.That(history.Redo([track]), Is.True);
+        for (var i = 0; i < samples.Count; i++)
+        {
+            Assert.That(track.Samples[i], Is.SameAs(identities[i]));
+            Assert.That(track.Samples[i].FileName, Is.EqualTo($"keys/nested/{i}.wav"));
+        }
+    }
     [TestCase(false, false)]
     [TestCase(false, true)]
     [TestCase(true, false)]

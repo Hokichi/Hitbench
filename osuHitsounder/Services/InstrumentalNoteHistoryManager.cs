@@ -20,7 +20,8 @@ public sealed class InstrumentalNoteHistoryManager
         var restored = reverse ? entry.Before : entry.After;
         if (!apply(restored)) return false;
         source.Pop(); destination.Push(entry);
-        selectedIds = Array.AsReadOnly(entry.AffectedNoteIds.Where(id => restored.Any(n => n.Id == id)).ToArray());
+        var restoredIds = restored.Select(n => n.Id).ToHashSet();
+        selectedIds = Array.AsReadOnly(entry.AffectedNoteIds.Where(restoredIds.Contains).ToArray());
         return true;
     }
     public void Clear() { undo.Clear(); redo.Clear(); }

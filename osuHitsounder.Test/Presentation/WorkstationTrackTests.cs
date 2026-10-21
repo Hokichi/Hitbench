@@ -65,7 +65,7 @@ public class WorkstationTrackTests
         saves.Release();
         await vm.FlushSavesAsync();
         Assert.That(saves.Snapshots.Select(json => ProjectDataSerializer.Deserialize(json).Tracks.Single().Name),
-            Is.EqualTo(new[] { "Kick", "Snare", "", "", "" }));
+            Is.EqualTo(new[] { "Kick", "" }));
         var restored = ProjectDataSerializer.Deserialize(saves.LatestJson!).Tracks.Single();
         Assert.That(restored.Name, Is.Empty);
         Assert.That(restored.SelectedSampleFileName, Is.EqualTo("snare.wav"));
@@ -643,7 +643,7 @@ public class WorkstationTrackTests
         saves.Release();
         await vm.FlushSavesAsync();
         Assert.That(ProjectDataSerializer.Deserialize(saves.LatestJson!).Tracks.Single().Volume, Is.EqualTo(70));
-        Assert.That(saves.Writes, Is.EqualTo(3));
+        Assert.That(saves.Writes, Is.EqualTo(2));
         await vm.DeactivateAsync();
     }
 

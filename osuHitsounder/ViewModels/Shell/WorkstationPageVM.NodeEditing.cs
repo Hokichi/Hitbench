@@ -29,8 +29,13 @@ public partial class WorkstationPageVM
     {
         var ignored = moving.ToHashSet();
         var used = new HashSet<(Track, int)>();
+        var occupied = new Dictionary<Track, HashSet<int>>();
         foreach (var node in proposed)
-            if (!used.Add((node.Track, node.Timestamp)) || node.Track.Samples.Any(other => !ignored.Contains(other) && other.Timestamp == node.Timestamp)) return true;
+        {
+            if (!occupied.TryGetValue(node.Track, out var timestamps))
+                occupied[node.Track] = timestamps = node.Track.Samples.Where(other => !ignored.Contains(other)).Select(other => other.Timestamp).ToHashSet();
+            if (!used.Add((node.Track, node.Timestamp)) || timestamps.Contains(node.Timestamp)) return true;
+        }
         return false;
     }
     private IReadOnlyDictionary<Sample, int> nodePreview = new ReadOnlyDictionary<Sample, int>(new Dictionary<Sample, int>());

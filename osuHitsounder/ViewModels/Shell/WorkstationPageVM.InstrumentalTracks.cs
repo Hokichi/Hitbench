@@ -224,8 +224,9 @@ public partial class WorkstationPageVM
         if (Waveform is null || desired.Any(n => n.Id == Guid.Empty || n.Timestamp < 0 || n.Timestamp >= Waveform.Duration.TotalMilliseconds || !InstrumentalKeys.TryGetIndex(n.Key, out _)) || desired.Select(n => n.Id).Distinct().Count() != desired.Count) return false;
         var replacement = desired.Select(n => new InstrumentalNote { Key = n.Key, Timestamp = n.Timestamp }).ToArray();
         var old = track.Notes.ToArray();
+        var desiredIds = desired.Select(n => n.Id).ToHashSet();
         if (!track.TryReplaceNotes(replacement)) return false;
-        foreach (var note in old) { var id = InstrumentNoteId(note); instrumentNoteIds.Remove(note); if (!desired.Any(n => n.Id == id)) instrumentEventIds.Remove(id); }
+        foreach (var note in old) { var id = InstrumentNoteId(note); instrumentNoteIds.Remove(note); if (!desiredIds.Contains(id)) instrumentEventIds.Remove(id); }
         for (var i = 0; i < replacement.Length; i++) instrumentNoteIds[replacement[i]] = desired[i].Id;
         return true;
     }
@@ -240,7 +241,8 @@ public partial class WorkstationPageVM
     private void PublishInstrumentTransaction(InstrumentalTrackContext context, Guid request, bool changed, IReadOnlyList<Guid> affected, string? error)
     {
         if (changed) { instrumentRevision++; QueueSave(); QueuePlaybackUpdate(); PublishInstrumentSnapshot(); NotifyHistoryState(); }
-        var ids = ActiveInstrument(context) is { } track ? affected.Where(id => track.Notes.Any(n => InstrumentNoteId(n) == id)).ToArray() : [];
+        var liveIds = ActiveInstrument(context) is { } track ? track.Notes.Select(InstrumentNoteId).ToHashSet() : [];
+        var ids = affected.Where(liveIds.Contains).ToArray();
         messenger?.Send(new InstrumentalEditResultMessage(context, request, changed, ids.Length > 0 ? ids[0] : null, error) { SelectedNoteIds = Array.AsReadOnly(ids) });
     }
     private void PlaceInstrumentNote(PlaceInstrumentalNoteRequestedMessage m)
