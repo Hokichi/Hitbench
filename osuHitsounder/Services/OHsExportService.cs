@@ -10,6 +10,7 @@ public sealed class OHsExportService(OHsExportPublisher? publisher = null, Func<
     public Task<string> ExportAsync(OHsExportRequest request, CancellationToken token, IProgress<OHsExportProgress>? progress = null) => Task.Run(async () =>
     {
         token.ThrowIfCancellationRequested(); request.Options.Validate();
+        progress?.Report(new(0, "Validating sources"));
         static string ValidateSource(string path)
         {
             var full = Path.GetFullPath(path);
@@ -31,7 +32,9 @@ public sealed class OHsExportService(OHsExportPublisher? publisher = null, Func<
             fingerprints[path] = OHsExportPublisher.HashFile(path);
             sourcePaths.Add(path);
         }
-        var plan = OHsExportPlanner.Plan(input, token);
+        progress?.Report(new(10, "Preparing sample combinations"));
+        var plan = OHsExportPlanner.Plan(input, token, progress);
+        progress?.Report(new(25, "Decoding samples"));
         var decoded = new Dictionary<string, DecodedAudio>(StringComparer.OrdinalIgnoreCase);
         foreach (var path in sourcePaths)
         {
@@ -40,7 +43,9 @@ public sealed class OHsExportService(OHsExportPublisher? publisher = null, Func<
             foreach (var value in audio.Samples)
                 if (!float.IsFinite(value)) throw new InvalidDataException("Source sample contains invalid PCM.");
             decoded.Add(path, audio);
+            progress?.Report(new(25 + 15d * decoded.Count / sourcePaths.Count, "Decoding samples"));
         }
+        progress?.Report(new(40, "Generating samples"));
         var extension = Path.GetExtension(songPath).ToLowerInvariant();
         if (extension is not (".ogg" or ".wav" or ".mp3")) throw new NotSupportedException("Unsupported song audio format.");
         using (var song = AudioDecoder.Open(songPath)) if (song.Length == 0) throw new InvalidDataException("Song audio is empty.");
@@ -50,10 +55,11 @@ public sealed class OHsExportService(OHsExportPublisher? publisher = null, Func<
         foreach (var bank in plan.Banks)
             foreach (var slot in bank.Value)
                 generated.Add(OHsExportRepresentations.FileName(slot.Key, bank.Key, slot.Value.Sources.Count > 1 ? request.Options.MixedFormat : request.Options.SingleFormat), "sample");
-        return await publisher.PublishAsync(request.ProjectPath, generated, async (stage, cancellation) =>
+        var directory = await publisher.PublishAsync(request.ProjectPath, generated, async (stage, cancellation) =>
         {
-            await OHsExportAudio.WriteAsync(request.ProjectPath, stage, plan, request.Options, cancellation, (path, _) => decoded[path]);
+            await OHsExportAudio.WriteAsync(request.ProjectPath, stage, plan, request.Options, cancellation, (path, _) => decoded[path], progress);
             await File.WriteAllTextAsync(Path.Combine(stage, difficultyName), OHsExportBeatmapWriter.Write(input, plan, audioName), cancellation);
+            progress?.Report(new(90, "Copying song audio"));
             await using (var source = File.OpenRead(songPath))
             await using (var output = File.Create(Path.Combine(stage, audioName)))
                 await source.CopyToAsync(output, cancellation);
@@ -62,6 +68,9 @@ public sealed class OHsExportService(OHsExportPublisher? publisher = null, Func<
                 cancellation.ThrowIfCancellationRequested(); ValidateSource(source.Key);
                 if (OHsExportPublisher.HashFile(source.Key) != source.Value) throw new IOException($"Export source changed during preparation: {source.Key}");
             }
-        }, token);
+            progress?.Report(new(95, "Validating export"));
+        }, token, progress);
+        progress?.Report(new(100, "Export complete"));
+        return directory;
     }, token);
 }

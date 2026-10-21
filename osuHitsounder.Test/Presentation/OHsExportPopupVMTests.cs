@@ -6,6 +6,41 @@ namespace osuHitsounder.Test.Presentation;
 public class OHsExportPopupVMTests
 {
     [Test]
+    public void ProgressIsMonotonicRetrySafeAndReachesHundredOnlyAfterPublication()
+    {
+        var saved = SynchronizationContext.Current;
+        var context = new QueuedSynchronizationContext();
+        SynchronizationContext.SetSynchronizationContext(context);
+        try
+        {
+            var release = new TaskCompletionSource<string>();
+            var service = new StubOHsExportService { Run = (_, _) => release.Task };
+            var vm = new OHsExportPopupVM(Request(), service, new StubOHsExportDirectoryLauncher(), new WeakReferenceMessenger());
+            var first = vm.ExportCommand.ExecuteAsync(null);
+            var old = service.LastProgress!;
+            old.Report(new(40, "Decoding")); context.Drain();
+            old.Report(new(20, "Old phase")); context.Drain();
+            Assert.That(vm.ExportProgress, Is.EqualTo(40));
+            release.SetException(new IOException("Cannot export")); context.Drain();
+            Assert.That(first.IsCompletedSuccessfully, Is.True);
+            Assert.That(vm.ExportToolTip, Is.EqualTo("Cannot export"));
+            release = new();
+            var second = vm.ExportCommand.ExecuteAsync(null);
+            Assert.That(vm.ExportProgress, Is.Zero);
+            old.Report(new(90, "Old attempt")); context.Drain();
+            Assert.That(vm.ExportProgress, Is.Zero);
+            service.LastProgress!.Report(new(100, "Premature success")); context.Drain();
+            Assert.That(vm.ExportProgress, Is.LessThan(100));
+            release.SetResult("Export"); context.Drain();
+            Assert.That(second.IsCompletedSuccessfully, Is.True);
+            Assert.That(vm.ExportProgress, Is.EqualTo(100));
+            service.LastProgress.Report(new(10, "Late")); context.Drain();
+            Assert.That(vm.ExportProgress, Is.EqualTo(100));
+        }
+        finally { SynchronizationContext.SetSynchronizationContext(saved); }
+    }
+
+    [Test]
     public void InvalidNameReportsAndClearsFieldValidationErrors()
     {
         var vm = new OHsExportPopupVM(Request(), new StubOHsExportService(), new StubOHsExportDirectoryLauncher(), new WeakReferenceMessenger());

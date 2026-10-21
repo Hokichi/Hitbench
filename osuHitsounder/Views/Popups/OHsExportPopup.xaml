@@ -36,16 +36,87 @@
             <Setter Property="TextWrapping" Value="Wrap" />
             <Style.Triggers><DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True"><Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" /></DataTrigger></Style.Triggers>
         </Style>
-        <Style x:Key="OHsExportShowFilesStyle" TargetType="c:BalloonCheckBox" BasedOn="{StaticResource {x:Type c:BalloonCheckBox}}">
+        <Style x:Key="OHsExportCheckTextStyle" TargetType="TextBlock" BasedOn="{StaticResource BodyTextStyle}">
+            <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=CheckBox}, Mode=OneWay}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
+                    <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=CheckBox}, Mode=OneWay}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <DataTemplate x:Key="OHsExportCheckContentTemplate">
+            <TextBlock Text="{Binding Mode=OneWay}" Style="{StaticResource OHsExportCheckTextStyle}" />
+        </DataTemplate>
+        <ControlTemplate x:Key="OHsExportShowFilesTemplate" TargetType="CheckBox">
+            <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}" Style="{StaticResource BaseBorderStyle}">
+                <Grid Style="{StaticResource BaseGridStyle}">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                    <Border x:Name="Square" Background="{DynamicResource Brush.Background.Elevated}" Width="20" Height="20" VerticalAlignment="Center" Style="{StaticResource BaseBorderStyle}">
+                        <Grid Style="{StaticResource BaseGridStyle}">
+                            <c:Icon x:Name="Outline" Path="{StaticResource CheckboxBlankOutline}" Color="{DynamicResource Brush.Border.Control}" Width="20" Height="20" />
+                            <c:Icon x:Name="Mark" Path="{StaticResource Check}" Color="{DynamicResource Brush.Navy.Text}" Width="12" Height="12" VerticalAlignment="Center" HorizontalAlignment="Center" Visibility="Collapsed" />
+                        </Grid>
+                    </Border>
+                    <ContentPresenter Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" RecognizesAccessKey="True" Style="{StaticResource BaseContentPresenterStyle}" />
+                </Grid>
+            </Border>
+            <ControlTemplate.Triggers>
+                <Trigger Property="IsChecked" Value="True"><Setter TargetName="Mark" Property="Visibility" Value="Visible" /></Trigger>
+                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
+                    <Setter TargetName="Square" Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
+                    <Setter TargetName="Outline" Property="Color" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+                    <Setter TargetName="Mark" Property="Color" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+                </DataTrigger>
+            </ControlTemplate.Triggers>
+        </ControlTemplate>
+        <Style x:Key="OHsExportShowFilesStyle" TargetType="CheckBox" BasedOn="{StaticResource BaseCheckBoxStyle}">
+            <Setter Property="Template" Value="{StaticResource OHsExportShowFilesTemplate}" />
+            <Setter Property="ContentTemplate" Value="{StaticResource OHsExportCheckContentTemplate}" />
             <Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" /><Setter Property="IsTabStop" Value="True" />
-            <Setter Property="ButtonSize" Value="{StaticResource Size.Control.Primary}" />
-            <Setter Property="ShouldShowText" Value="True" />
-            <Setter Property="CheckedIcon" Value="{StaticResource Check}" /><Setter Property="UncheckedIcon" Value="{StaticResource Folder}" />
+            <Setter Property="MinHeight" Value="{StaticResource Size.Control.Primary}" />
+            <Setter Property="Padding" Value="8" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+            <Style.Triggers>
+                <MultiTrigger><MultiTrigger.Conditions><Condition Property="IsMouseOver" Value="True" /><Condition Property="IsPressed" Value="False" /></MultiTrigger.Conditions><Setter Property="Background" Value="{DynamicResource Brush.Background.Hover}" /></MultiTrigger>
+                <Trigger Property="IsEnabled" Value="False"><Setter Property="Foreground" Value="{DynamicResource Brush.Text.Disabled}" /></Trigger>
+                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
+                    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+                    <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
+                </DataTrigger>
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions><Condition Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True" /><Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource Self}, Mode=OneWay}" Value="True" /></MultiDataTrigger.Conditions>
+                    <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" /><Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.HighlightTextBrushKey}}" />
+                </MultiDataTrigger>
+            </Style.Triggers>
+        </Style>
+        <ControlTemplate x:Key="OHsExportProgressTemplate" TargetType="ProgressBar">
+            <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Style="{StaticResource BaseBorderStyle}">
+                <Grid x:Name="PART_Track" Style="{StaticResource BaseGridStyle}">
+                    <Border x:Name="PART_Indicator" Background="{TemplateBinding Foreground}" HorizontalAlignment="Left" Style="{StaticResource BaseBorderStyle}" />
+                </Grid>
+            </Border>
+        </ControlTemplate>
+        <Style x:Key="OHsExportProgressStyle" TargetType="ProgressBar" BasedOn="{StaticResource BaseProgressBarStyle}">
+            <Setter Property="Template" Value="{StaticResource OHsExportProgressTemplate}" />
+            <Setter Property="Height" Value="{StaticResource Space.2}" />
+            <Setter Property="Background" Value="{DynamicResource Brush.Background.Deepened}" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Navy}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Control}" /><Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Visibility" Value="Collapsed" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsBusy, Mode=OneWay}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
+                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
+                    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+                </DataTrigger>
+            </Style.Triggers>
         </Style>
     </c:BasePopup.Resources>
     <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
         <Grid Margin="24,8,24,24">
-            <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+            <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
             <Grid IsEnabled="{Binding CanEditOptions, Mode=OneWay}">
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                 <StackPanel Margin="0,0,8,0">
@@ -70,15 +141,19 @@
                         ItemsSource="{Binding Formats, Mode=OneWay}" SelectedItem="{Binding MixedFormat, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                 </StackPanel>
             </Grid>
-            <c:BalloonCheckBox x:Name="ShowFilesAfterExportInput" Grid.Row="2" Margin="0,16,0,0" HorizontalAlignment="Left"
-                AutomationProperties.Name="Show files after export" ButtonText="Show files after export" ButtonIcon="{StaticResource Folder}"
+            <CheckBox x:Name="ShowFilesAfterExportInput" Grid.Row="2" Margin="0,16,0,0" HorizontalAlignment="Left"
+                AutomationProperties.Name="Show files after export" Content="Show files after export"
                 Style="{StaticResource OHsExportShowFilesStyle}" IsEnabled="{Binding CanEditOptions, Mode=OneWay}"
                 IsChecked="{Binding ShowFilesAfterExport, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-            <StackPanel Grid.Row="3" Margin="0,24,0,0" HorizontalAlignment="Right" Orientation="Horizontal">
+            <ProgressBar x:Name="ExportProgressBar" Grid.Row="3" Margin="0,16,0,0" Minimum="0" Maximum="100"
+                AutomationProperties.Name="Export progress" AutomationProperties.HelpText="{Binding ProgressPhase, Mode=OneWay}"
+                Style="{StaticResource OHsExportProgressStyle}" Value="{Binding ExportProgress, Mode=OneWay}" ToolTip="{Binding ProgressPhase, Mode=OneWay}" />
+            <StackPanel Grid.Row="4" Margin="0,24,0,0" HorizontalAlignment="Right" Orientation="Horizontal">
                 <c:BalloonButton x:Name="CancelButton" Margin="0,0,8,0" AutomationProperties.Name="Cancel" ButtonText="Cancel" ButtonIcon="{StaticResource Ban}"
                     ShouldShowText="True" Style="{StaticResource OHsBalloonDestructiveActionStyle}" Command="{Binding CancelCommand, Mode=OneWay}"
                     h:KeyboardNavigationPolicy.AllowTabNavigation="True" IsTabStop="True" />
                 <c:BalloonButton x:Name="ExportButton" AutomationProperties.Name="Export" ButtonText="Export" ButtonIcon="{StaticResource Export}"
+                    ToolTip="{Binding ExportToolTip, Mode=OneWay}" AutomationProperties.HelpText="{Binding ExportToolTip, Mode=OneWay}" ToolTipService.ShowsToolTipOnKeyboardFocus="True"
                     ShouldShowText="True" Style="{StaticResource OHsBalloonConfirmActionStyle}" Command="{Binding ExportCommand, Mode=OneWay}"
                     h:KeyboardNavigationPolicy.AllowTabNavigation="True" IsTabStop="True" />
             </StackPanel>

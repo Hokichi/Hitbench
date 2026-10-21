@@ -1,6 +1,7 @@
 using System.IO;
 using System.Security.Cryptography;
 using Newtonsoft.Json.Linq;
+using osuHitsounder.Resources.DataModels;
 namespace osuHitsounder.Services.FileSystem;
 
 public sealed class OHsExportPublisher
@@ -43,7 +44,7 @@ public sealed class OHsExportPublisher
         }
         return result;
     }
-    public async Task<string> PublishAsync(string projectPath, IReadOnlyDictionary<string, string> generatedFiles, Func<string, CancellationToken, Task> build, CancellationToken token)
+    public async Task<string> PublishAsync(string projectPath, IReadOnlyDictionary<string, string> generatedFiles, Func<string, CancellationToken, Task> build, CancellationToken token, IProgress<OHsExportProgress>? progress = null)
     {
         token.ThrowIfCancellationRequested();
         var project = Path.GetDirectoryName(Path.GetFullPath(projectPath))!;
@@ -105,6 +106,7 @@ public sealed class OHsExportPublisher
             var current = Tree(output, token);
             if (before.Count != current.Count || before.Any(p => !current.TryGetValue(p.Key, out var hash) || hash != p.Value)) throw new IOException("Export changed while preparing the new version.");
             token.ThrowIfCancellationRequested(); RejectLink(output); RejectLink(stage);
+            progress?.Report(new(97, "Publishing export"));
             // Cancellation is intentionally deferred through publication/recovery.
             if (Directory.Exists(output)) { moveDirectory(output, backup); backedUp = true; }
             try { moveDirectory(stage, output); published = true; }

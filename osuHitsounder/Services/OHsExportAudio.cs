@@ -25,10 +25,13 @@ public static class OHsExportAudio
         return DecodedAudio.TakeOwnership(sum);
     }
     public static async Task WriteAsync(string projectPath, string stagingDirectory, OHsExportPlan plan, OHsExportOptions options, CancellationToken token,
-        Func<string, CancellationToken, DecodedAudio>? decode = null)
+        Func<string, CancellationToken, DecodedAudio>? decode = null, IProgress<OHsExportProgress>? progress = null)
     {
         var decoded = new Dictionary<string, DecodedAudio>(StringComparer.OrdinalIgnoreCase);
         var encoded = new Dictionary<(string Id, string Format), string>();
+        var total = plan.Banks.Values.Sum(b => b.Count);
+        var finished = 0;
+        void ReportOutput() => progress?.Report(new(40 + 45d * ++finished / total, "Generating samples"));
         DecodedAudio Resolve(string file)
         {
             if (!decoded.TryGetValue(file, out var audio))
@@ -42,7 +45,7 @@ public static class OHsExportAudio
                 var asset = slot.Value;
                 var extension = asset.Sources.Count > 1 ? options.MixedFormat : options.SingleFormat;
                 var output = Path.Combine(stagingDirectory, OHsExportRepresentations.FileName(slot.Key, bank.Key, extension));
-                if (encoded.TryGetValue((asset.Id, extension), out var existing)) { File.Copy(existing, output); continue; }
+                if (encoded.TryGetValue((asset.Id, extension), out var existing)) { File.Copy(existing, output); ReportOutput(); continue; }
                 var single = asset.Sources.Count == 1 ? asset.Sources[0] : default;
                 var pcm = asset.Sources.Count == 1 && single.GainPercent == 100 ? Resolve(single.FileName) : Render(asset, Resolve, token);
                 ValidatePcm(pcm);
@@ -54,7 +57,9 @@ public static class OHsExportAudio
                 }
                 else await WriteFileAsync(output, pcm, token);
                 encoded[(asset.Id, extension)] = output;
+                ReportOutput();
             }
+        progress?.Report(new(85, "Writing difficulty"));
     }
     public static Task WriteFileAsync(string path, DecodedAudio audio, CancellationToken token, Action<IWaveProvider, string>? mp3Encoder = null) => Task.Run(() =>
     {
