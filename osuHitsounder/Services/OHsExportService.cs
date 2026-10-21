@@ -40,6 +40,11 @@ public sealed class OHsExportService(OHsExportPublisher? publisher = null, Func<
         }
         progress?.Report(new(10, "Preparing sample combinations"));
         var plan = OHsExportPlanner.Plan(input, token, progress);
+        var generated = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { [difficultyName] = "difficulty" };
+        foreach (var bank in plan.Banks)
+            foreach (var slot in bank.Value)
+                generated.Add(OHsExportRepresentations.FileName(slot.Key, bank.Key, slot.Value.Sources.Count > 1 ? request.Options.MixedFormat : request.Options.SingleFormat), "sample");
+        if (request.Options.Destination == OHsExportDestination.Beatmap) OHsExportPublisher.ValidateBeatmapDestination(request.BeatmapPath, generated, token);
         progress?.Report(new(25, "Decoding samples"));
         var decoded = new Dictionary<string, DecodedAudio>(StringComparer.OrdinalIgnoreCase);
         foreach (var path in sourcePaths)
@@ -52,11 +57,7 @@ public sealed class OHsExportService(OHsExportPublisher? publisher = null, Func<
             progress?.Report(new(25 + 15d * decoded.Count / sourcePaths.Count, "Decoding samples"));
         }
         progress?.Report(new(40, "Generating samples"));
-        var generated = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { [difficultyName] = "difficulty" };
-        foreach (var bank in plan.Banks)
-            foreach (var slot in bank.Value)
-                generated.Add(OHsExportRepresentations.FileName(slot.Key, bank.Key, slot.Value.Sources.Count > 1 ? request.Options.MixedFormat : request.Options.SingleFormat), "sample");
-        var directory = await publisher.PublishAsync(request.ProjectPath, generated, async (stage, cancellation) =>
+        async Task BuildAsync(string stage, CancellationToken cancellation)
         {
             await OHsExportAudio.WriteAsync(request.ProjectPath, stage, plan, request.Options, cancellation, (path, _) => decoded[path], progress);
             await File.WriteAllTextAsync(Path.Combine(stage, difficultyName), OHsExportBeatmapWriter.Write(input, plan), cancellation);
@@ -66,7 +67,10 @@ public sealed class OHsExportService(OHsExportPublisher? publisher = null, Func<
                 if (OHsExportPublisher.HashFile(source.Key) != source.Value) throw new IOException($"Export source changed during preparation: {source.Key}");
             }
             progress?.Report(new(95, "Validating export"));
-        }, token, progress);
+        }
+        var directory = request.Options.Destination == OHsExportDestination.Beatmap
+            ? await publisher.PublishBeatmapAsync(request.BeatmapPath, generated, BuildAsync, token, progress)
+            : await publisher.PublishAsync(request.ProjectPath, generated, BuildAsync, token, progress, request.Options.OverwriteEverything);
         progress?.Report(new(100, "Export complete"));
         return directory;
     }, token);

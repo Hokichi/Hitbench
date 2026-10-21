@@ -6,6 +6,25 @@ namespace osuHitsounder.Test.Presentation;
 public class OHsExportPopupVMTests
 {
     [Test]
+    public async Task DestinationAndOverwriteAreGatedAndSubmitted()
+    {
+        var service=new StubOHsExportService(); var launcher=new StubOHsExportDirectoryLauncher();
+        var vm=new OHsExportPopupVM(Request(),service,launcher,new WeakReferenceMessenger());
+        Assert.That(vm.Destination,Is.EqualTo(OHsExportDestination.Project));
+        Assert.That(vm.OverwriteEverything,Is.False);
+        vm.OverwriteEverything=true; vm.Destination=OHsExportDestination.Beatmap;
+        Assert.That(vm.CanOverwriteEverything,Is.False);
+        vm.Destination=OHsExportDestination.Project; Assert.That(vm.CanOverwriteEverything,Is.True);
+        vm.IsBusy=true; Assert.That(vm.CanOverwriteEverything,Is.False); vm.IsBusy=false;
+        vm.Destination=OHsExportDestination.Beatmap;
+        string? opened=null; launcher.Run=(path,_)=>{opened=path;return Task.CompletedTask;};
+        service.Run=(_,_)=>Task.FromResult("beatmap-folder");vm.ShowFilesAfterExport=true;
+        await vm.ExportCommand.ExecuteAsync(null);
+        Assert.That(service.LastRequest!.Options.Destination,Is.EqualTo(OHsExportDestination.Beatmap));
+        Assert.That(service.LastRequest.Options.OverwriteEverything,Is.False);
+        Assert.That(opened,Is.EqualTo("beatmap-folder"));
+    }
+    [Test]
     public void ProgressIsMonotonicRetrySafeAndReachesHundredOnlyAfterPublication()
     {
         var saved = SynchronizationContext.Current;

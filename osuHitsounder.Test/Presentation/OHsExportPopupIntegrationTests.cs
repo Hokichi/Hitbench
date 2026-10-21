@@ -27,6 +27,16 @@ public class OHsExportPopupIntegrationTests
             var index = (NumericUpDown)popup.FindName("StartingIndexInput");
             var single = (ComboBox)popup.FindName("SingleFormatInput"); var mixed = (ComboBox)popup.FindName("MixedFormatInput");
             var show = (CheckBox)popup.FindName("ShowFilesAfterExportInput"); var export = (BalloonButton)popup.FindName("ExportButton");
+            var destination = (SegmentedToggleGroup)popup.FindName("DestinationInput");
+            var overwrite = (CheckBox)popup.FindName("OverwriteEverythingInput");
+            UiControlContract.AssertStyle<SegmentedToggleGroup>(destination,"OHsExportDestinationGroupStyle");
+            UiControlContract.AssertStyle<CheckBox>(overwrite,"OHsExportShowFilesStyle");
+            destination.SelectedValue=OHsExportDestination.Beatmap; view.UpdateLayout();
+            Assert.That(vm.Destination,Is.EqualTo(OHsExportDestination.Beatmap));
+            Assert.That(overwrite.IsEnabled,Is.False);
+            destination.SelectedValue=OHsExportDestination.Project; view.UpdateLayout();
+            Assert.That(overwrite.IsEnabled,Is.True);
+            overwrite.IsChecked=true; Assert.That(vm.OverwriteEverything,Is.True);
             var progress = (ProgressBar)popup.FindName("ExportProgressBar");
             UiControlContract.AssertStyle<TextBox>(name, "OHsExportNameInputStyle"); UiControlContract.AssertStyle<NumericUpDown>(index, "OHsExportIndexInputStyle");
             UiControlContract.AssertStyle<ComboBox>(single, "OHsExportFormatInputStyle"); UiControlContract.AssertStyle<ComboBox>(mixed, "OHsExportFormatInputStyle");
