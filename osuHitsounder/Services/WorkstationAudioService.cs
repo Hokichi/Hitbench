@@ -130,12 +130,16 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
             var errors = new List<string>();
             var prepared = new List<PreparedSampleEvent>(events.Count);
             var referencedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var resolved = new Dictionary<string, (DecodedAudio? Audio, string? Error)>(StringComparer.OrdinalIgnoreCase);
             foreach (var item in events)
             {
                 token.ThrowIfCancellationRequested();
+                if (!resolved.TryGetValue(item.FileName, out var result))
+                {
                 if (!TryResolveSamplePath(projectPath, item.FileName, out var samplePath))
                 {
-                    errors.Add($"Unable to load sample '{item.FileName}': invalid file name.");
+                    resolved[item.FileName] = (null, $"Unable to load sample '{item.FileName}': invalid file name.");
+                    errors.Add(resolved[item.FileName].Error!);
                     continue;
                 }
                 referencedPaths.Add(samplePath);
@@ -154,15 +158,19 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
                         lock (sync)
                             if (!disposed && request == preparationGeneration) sampleCache[samplePath] = cached;
                     }
-                    var gain = Math.Clamp(item.TrackVolume, 0, 100) / 100f;
-                    prepared.Add(new PreparedSampleEvent(item.Id, cached.Samples, gain,
-                        checked((long)Math.Round(item.Timestamp * 44_100m / 1000m, MidpointRounding.AwayFromZero))));
+                    result = (cached.Samples, null);
                 }
                 catch (OperationCanceledException) { throw; }
                 catch (Exception failure)
                 {
-                    errors.Add($"Unable to load sample '{item.FileName}': {failure.Message}");
+                    result = (null, $"Unable to load sample '{item.FileName}': {failure.Message}");
                 }
+                resolved[item.FileName] = result;
+                }
+                if (result.Error is not null) { errors.Add(result.Error); continue; }
+                var gain = Math.Clamp(item.TrackVolume, 0, 100) / 100f;
+                prepared.Add(new PreparedSampleEvent(item.Id, result.Audio!, gain,
+                    checked((long)Math.Round(item.Timestamp * 44_100m / 1000m, MidpointRounding.AwayFromZero))));
             }
             var schedule = new PreparedPlaybackSchedule(prepared);
             token.ThrowIfCancellationRequested();

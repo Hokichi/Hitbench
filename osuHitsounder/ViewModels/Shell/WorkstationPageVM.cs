@@ -434,23 +434,27 @@ public partial class WorkstationPageVM(
         var alive = tracks.OfType<InstrumentalTrack>().SelectMany(t=>t.Notes).ToHashSet();
         foreach(var removed in instrumentNoteIds.Keys.Where(n=>!alive.Contains(n)).ToArray())
         { instrumentEventIds.Remove(instrumentNoteIds[removed]); instrumentNoteIds.Remove(removed); }
+        var availableLookup = sampleFiles is null ? null : availableSamples.Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(f => f, f => f, StringComparer.OrdinalIgnoreCase);
         foreach(var instrument in tracks.OfType<InstrumentalTrack>())
         {
             if(instrument.IsTrackMuted || hasSolo && !instrument.IsTrackSoloed) continue;
-            events.AddRange(InstrumentalPlaybackEvents.Build(instrument.KeyFiles,NoteSnapshots(instrument),instrument.Volume,
-                sampleFiles is null ? null : availableSamples.ToArray(),InstrumentEventId));
+            events.AddRange(InstrumentalPlaybackEvents.BuildWithLookup(instrument.KeyFiles,NoteSnapshots(instrument),instrument.Volume,
+                availableLookup,InstrumentEventId));
         }
         foreach (var track in tracks)
-        foreach (var sample in track.Samples)
         {
             if (track.IsTrackMuted || hasSolo && !track.IsTrackSoloed) continue;
             if (sampleFiles is not null && GetSampleAvailability(track) != Resources.DataModels.TrackSampleAvailability.Available) continue;
+            foreach (var sample in track.Samples)
+            {
             if (!sampleEventIds.TryGetValue(sample, out var id))
             {
                 id = nextSampleEventId++;
                 sampleEventIds.Add(sample, id);
             }
                 events.Add(new SamplePlaybackEvent(id, sample.FileName, sample.Timestamp, track.Volume));
+            }
         }
         return events;
     }

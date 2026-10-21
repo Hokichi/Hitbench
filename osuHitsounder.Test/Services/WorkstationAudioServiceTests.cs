@@ -7,6 +7,23 @@ namespace osuHitsounder.Test.Services;
 public class WorkstationAudioServiceTests
 {
     [Test]
+    public async Task RepeatedPlacementsUseOneFileSnapshotPerUpdate()
+    {
+        using var project = new TestProjectFolder("hit.wav");
+        var decodes = 0;
+        using var service = new WorkstationAudioService(path =>
+        {
+            if (path.EndsWith("hit.wav")) { decodes++; File.AppendAllText(path, "changed"); }
+            return CreateStream(new float[128], 44100, 2);
+        }, () => new StubWavePlayer());
+        service.Open("song.wav");
+        var events = Enumerable.Range(1, 10000).Select(i => new SamplePlaybackEvent(i, "hit.wav", i, i % 101)).ToArray();
+        await service.UpdateSamplesAsync(project.ProjectPath, events, default);
+        Assert.That(decodes, Is.EqualTo(1));
+        await service.UpdateSamplesAsync(project.ProjectPath, events, default);
+        Assert.That(decodes, Is.EqualTo(2), "A subsequent update still detects the changed source");
+    }
+    [Test]
     public async Task LegacyNodeGainDoesNotAttenuateTrackGain()
     {
         using var project = new TestProjectFolder("hit.wav");
