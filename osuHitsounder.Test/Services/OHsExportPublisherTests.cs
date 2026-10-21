@@ -139,4 +139,23 @@ public class OHsExportPublisherTests
         using var folder = new TestProjectFolder();
         Assert.ThrowsAsync<ArgumentException>(() => new OHsExportPublisher().PublishAsync(folder.ProjectPath, new Dictionary<string, string> { [name] = "sample" }, (_, _) => throw new AssertionException("Unsafe builder ran"), default));
     }
+
+    [Test]
+    public async Task DuplicateCircleFailurePreservesPreviousPublication()
+    {
+        using var folder = new TestProjectFolder();
+        var publisher = new OHsExportPublisher();
+        var output = await Publish(publisher, folder.ProjectPath, "old.osu", "previous");
+        var manifest = await File.ReadAllBytesAsync(Path.Combine(output, ".osuhitsounder-export.json"));
+        var map = osuHitsounder.Resources.DataModels.OHsExportBeatmap.Parse("[TimingPoints]\n0,500,4,1,1,100,1,0\n");
+        var input = new osuHitsounder.Resources.DataModels.OHsExportInput(new("Hitsounds", 1, ".wav", ".wav", false), map, [new(100, "a.wav", 100, "Soft", osuHitsounder.Core.Enums.SampleType.Clap, 0)], map.TimingPoints);
+        var plan = osuHitsounder.Services.OHsExportPlanner.Plan(input, default);
+        var invalid = new osuHitsounder.Resources.DataModels.OHsExportPlan([plan.Circles[0], plan.Circles[0]], plan.TimingPoints, plan.Banks, plan.AdditionalPointCount);
+        Assert.ThrowsAsync<InvalidDataException>(() => publisher.PublishAsync(folder.ProjectPath,
+            new Dictionary<string, string> { ["new.osu"] = "difficulty" },
+            (stage, token) => File.WriteAllTextAsync(Path.Combine(stage, "new.osu"), osuHitsounder.Services.OHsExportBeatmapWriter.Write(input, invalid), token), default));
+        Assert.That(await File.ReadAllTextAsync(Path.Combine(output, "old.osu")), Is.EqualTo("previous"));
+        Assert.That(await File.ReadAllBytesAsync(Path.Combine(output, ".osuhitsounder-export.json")), Is.EqualTo(manifest));
+        Assert.That(Directory.GetDirectories(Path.GetDirectoryName(folder.ProjectPath)!, ".Export-staging-*"), Is.Empty);
+    }
 }

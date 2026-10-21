@@ -83,14 +83,76 @@ public class OHsExportAudioTests
         Assert.That(OHsExportAudio.Render(OHsExportAsset.Create([("a.wav", 70)]), _ => DecodedAudio.CopyFrom(new float[] { .2f, .2f }), default).Samples.ToArray(), Is.EqualTo(new[] { .14f, .14f }).Within(.00001));
     }
     [Test]
-    public void SilenceAndDuplicateGainAndClippingAreExplicit()
+    public void SilenceAndDuplicateGainRemainExplicitWhenPeaksAreCapped()
     {
         Assert.That(OHsExportAudio.Render(OHsExportAsset.Create([]), _ => throw new Exception(), default).Samples.ToArray(), Is.All.Zero);
         var repeated = OHsExportAsset.Create([("a.wav", 70), ("A.wav", 40)]);
         Assert.That(OHsExportAudio.Render(repeated, _ => DecodedAudio.CopyFrom(new float[] { .2f, -.2f }), default).Samples.ToArray(), Is.EqualTo(new[] { .22f, -.22f }).Within(.00001));
-        Assert.That(Assert.Throws<InvalidDataException>(() => OHsExportAudio.Render(repeated, _ => DecodedAudio.CopyFrom(new float[] { 1, -1 }), default))!.Message, Does.Contain("a.wav"));
+        Assert.That(OHsExportAudio.Render(repeated, _ => DecodedAudio.CopyFrom(new float[] { 1, -1 }), default).Samples.ToArray(), Is.EqualTo(new[] { 1f, -1f }));
         Assert.Throws<InvalidDataException>(() => OHsExportAudio.Render(repeated, _ => DecodedAudio.CopyFrom(new float[] { float.NaN, 0 }), default));
     }
+
+    [Test]
+    public void MixedSamplesCapOnlyOutOfRangeValues()
+    {
+        var asset = OHsExportAsset.Create([("a.wav", 100), ("b.wav", 100)]);
+        var audio = OHsExportAudio.Render(asset, file => DecodedAudio.CopyFrom(file == "a.wav"
+            ? new float[] { .8f, -.8f, .1f, -.1f }
+            : new float[] { .7f, -.7f, .2f, -.2f, .4f, -.4f }), default);
+
+        Assert.That(audio.FrameCount, Is.EqualTo(3));
+        Assert.That(audio.Samples.ToArray(), Is.EqualTo(new[] { 1f, -1f, .3f, -.3f, .4f, -.4f }).Within(.00001));
+    }
+
+    [Test]
+    public void MixedSamplesCapAfterAllContributions()
+    {
+        var asset = OHsExportAsset.Create([("a.wav", 100), ("b.wav", 100), ("c.wav", 100)]);
+        var audio = OHsExportAudio.Render(asset, file => DecodedAudio.CopyFrom(file == "c.wav"
+            ? new float[] { -.8f, .8f }
+            : new float[] { .8f, -.8f }), default);
+
+        Assert.That(audio.Samples.ToArray(), Is.EqualTo(new[] { .8f, -.8f }).Within(.00001));
+    }
+
+    [TestCase(float.NaN, 100)]
+    [TestCase(float.PositiveInfinity, 100)]
+    [TestCase(float.NegativeInfinity, 100)]
+    [TestCase(float.MaxValue, 200)]
+    [TestCase(.5f, -1)]
+    public void InvalidPcmAndGainStillFail(float sample, int gain)
+    {
+        var asset = OHsExportAsset.Create([("a.wav", gain)]);
+
+        Assert.Throws<InvalidDataException>(() => OHsExportAudio.Render(asset,
+            _ => DecodedAudio.CopyFrom(new[] { sample, sample }), default));
+    }
+
+    [Test]
+    public void EmptyRenderedAudioStillFails()
+    {
+        var asset = OHsExportAsset.Create([("a.wav", 100)]);
+
+        Assert.Throws<InvalidDataException>(() => OHsExportAudio.Render(asset,
+            _ => DecodedAudio.CopyFrom([]), default));
+    }
+
+    [Test]
+    public void CancelledRenderingDoesNotResolveSources()
+    {
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+        var calls = 0;
+        var asset = OHsExportAsset.Create([("a.wav", 100)]);
+
+        Assert.Throws<OperationCanceledException>(() => OHsExportAudio.Render(asset, _ =>
+        {
+            calls++;
+            return DecodedAudio.CopyFrom(new float[] { .5f, .5f });
+        }, cancellation.Token));
+        Assert.That(calls, Is.Zero);
+    }
+
     [TestCase(".wav")]
     [TestCase(".ogg")]
     [TestCase(".mp3")]

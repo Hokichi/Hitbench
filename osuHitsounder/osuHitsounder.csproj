@@ -9,6 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Resources\OHsExportTemplate.osu" LogicalName="osuHitsounder.Resources.OHsExportTemplate.osu" />
     <Compile Remove="CustomControls\**" />
     <EmbeddedResource Remove="CustomControls\**" />
     <None Remove="CustomControls\**" />

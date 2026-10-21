@@ -124,9 +124,12 @@
                     <TextBox x:Name="DiffNameInput" AutomationProperties.Name="Diff Name" Style="{StaticResource OHsExportNameInputStyle}"
                         Text="{Binding DiffName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}" />
                 </StackPanel>
-                <c:NumericUpDown x:Name="StartingIndexInput" Grid.Column="1" VerticalAlignment="Bottom"
-                    AutomationProperties.Name="Starting custom sample index" Style="{StaticResource OHsExportIndexInputStyle}"
-                    Value="{Binding StartingIndex, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                <StackPanel Grid.Column="1">
+                    <TextBlock Text="Starting sample count" Style="{StaticResource OHsExportLabelStyle}" />
+                    <c:NumericUpDown x:Name="StartingIndexInput"
+                        AutomationProperties.Name="Starting custom sample index" Style="{StaticResource OHsExportIndexInputStyle}"
+                        Value="{Binding StartingIndex, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                </StackPanel>
             </Grid>
             <Grid Grid.Row="1" Margin="0,16,0,0" IsEnabled="{Binding CanEditOptions, Mode=OneWay}">
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>

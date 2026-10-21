@@ -19,9 +19,15 @@ public sealed class OHsExportService(OHsExportPublisher? publisher = null, Func<
             if (!File.Exists(full)) throw new FileNotFoundException("Export source file is missing.", full);
             return full;
         }
-        var mapPath = ValidateSource(request.BeatmapPath); var songPath = ValidateSource(request.AudioPath);
+        var mapPath = ValidateSource(BeatmapTimingReader.FindBeatmap(Path.GetDirectoryName(Path.GetFullPath(request.BeatmapPath))!));
+        var sourceName = Path.GetFileNameWithoutExtension(mapPath);
+        var close = sourceName.LastIndexOf(']'); var open = sourceName.LastIndexOf('[');
+        if (open < 0 || close <= open) throw new InvalidDataException("Source beatmap filename has no difficulty in brackets.");
+        var difficultyStem = sourceName[..(open + 1)] + request.Options.DiffName + sourceName[close..];
+        if (SampleFileNames.GetStemError(difficultyStem) is { } nameError) throw new InvalidDataException(nameError);
+        var difficultyName = difficultyStem + Path.GetExtension(mapPath);
         var fingerprints = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-        { [mapPath] = OHsExportPublisher.HashFile(mapPath), [songPath] = OHsExportPublisher.HashFile(songPath) };
+        { [mapPath] = OHsExportPublisher.HashFile(mapPath) };
         var map = OHsExportBeatmap.Parse(await File.ReadAllTextAsync(mapPath, token));
         var project = ProjectDataSerializer.Deserialize(request.ProjectJson);
         var input = OHsExportInputFactory.Create(project, map, request.Options, token);
@@ -46,23 +52,14 @@ public sealed class OHsExportService(OHsExportPublisher? publisher = null, Func<
             progress?.Report(new(25 + 15d * decoded.Count / sourcePaths.Count, "Decoding samples"));
         }
         progress?.Report(new(40, "Generating samples"));
-        var extension = Path.GetExtension(songPath).ToLowerInvariant();
-        if (extension is not (".ogg" or ".wav" or ".mp3")) throw new NotSupportedException("Unsupported song audio format.");
-        using (var song = AudioDecoder.Open(songPath)) if (song.Length == 0) throw new InvalidDataException("Song audio is empty.");
-        var audioName = "__ohs_export_audio" + extension;
-        var difficultyName = request.Options.DiffName + ".osu";
-        var generated = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { [audioName] = "song", [difficultyName] = "difficulty" };
+        var generated = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { [difficultyName] = "difficulty" };
         foreach (var bank in plan.Banks)
             foreach (var slot in bank.Value)
                 generated.Add(OHsExportRepresentations.FileName(slot.Key, bank.Key, slot.Value.Sources.Count > 1 ? request.Options.MixedFormat : request.Options.SingleFormat), "sample");
         var directory = await publisher.PublishAsync(request.ProjectPath, generated, async (stage, cancellation) =>
         {
             await OHsExportAudio.WriteAsync(request.ProjectPath, stage, plan, request.Options, cancellation, (path, _) => decoded[path], progress);
-            await File.WriteAllTextAsync(Path.Combine(stage, difficultyName), OHsExportBeatmapWriter.Write(input, plan, audioName), cancellation);
-            progress?.Report(new(90, "Copying song audio"));
-            await using (var source = File.OpenRead(songPath))
-            await using (var output = File.Create(Path.Combine(stage, audioName)))
-                await source.CopyToAsync(output, cancellation);
+            await File.WriteAllTextAsync(Path.Combine(stage, difficultyName), OHsExportBeatmapWriter.Write(input, plan), cancellation);
             foreach (var source in fingerprints)
             {
                 cancellation.ThrowIfCancellationRequested(); ValidateSource(source.Key);
