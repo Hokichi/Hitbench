@@ -6,6 +6,8 @@ public partial class WorkstationPageVM
     private readonly Dictionary<Track, (double Collapsed, double Expanded)> trackExtents = new(ReferenceEqualityComparer.Instance);
     private double trackHeight = 76, minimumTrackHeight = 76, expandedTrackGrowth;
     private int trackPresentationRevision;
+    private double collapsedTrackExtent = 44;
+    private bool trackExtentsDirty;
     public int TrackPresentationRevision => trackPresentationRevision;
     public bool AreTracksCollapsed => tracks.Count > 0 && tracks.All(t => t.IsCollapsed);
     public bool HasCollapsedTracks => tracks.Any(t => t.IsCollapsed);
@@ -14,7 +16,19 @@ public partial class WorkstationPageVM
     public double MinimumTrackHeight => minimumTrackHeight;
     public double MaximumTrackHeight => minimumTrackHeight + (AreTracksCollapsed ? 0 : 108);
     public double TrackHeight => AreTracksCollapsed ? minimumTrackHeight : trackHeight;
-    public double GetTrackExtent(Track track) => track.IsCollapsed ? Math.Max(44, trackExtents.Where(entry => tracks.Contains(entry.Key)).Select(entry => entry.Value.Collapsed).DefaultIfEmpty(44).Max()) : trackHeight;
+    public double GetTrackExtent(Track track)
+    {
+        if (trackExtentsDirty) RefreshTrackExtents();
+        return track.IsCollapsed ? collapsedTrackExtent : trackHeight;
+    }
+    private void OnTrackExtentCollectionChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e) => trackExtentsDirty = true;
+    private void RefreshTrackExtents()
+    {
+        var live = tracks.ToHashSet();
+        foreach (var removed in trackExtents.Keys.Where(track => !live.Contains(track)).ToArray()) trackExtents.Remove(removed);
+        collapsedTrackExtent = Math.Max(44, trackExtents.Values.Select(v => v.Collapsed).DefaultIfEmpty(44).Max());
+        trackExtentsDirty = false;
+    }
     public void SetTrackMinimumExtent(Track track, bool collapsed, double minimum)
     {
         if (deactivated || !tracks.Contains(track) || !double.IsFinite(minimum) || minimum <= 0) return;
@@ -62,7 +76,7 @@ public partial class WorkstationPageVM
     }
     private void NotifyTrackPresentation()
     {
-        foreach (var removed in trackExtents.Keys.Where(track => !tracks.Contains(track)).ToArray()) trackExtents.Remove(removed);
+        RefreshTrackExtents();
         foreach (var name in new[] { nameof(AreTracksCollapsed), nameof(HasCollapsedTracks), nameof(CanToggleTracksCollapsed), nameof(CollapseTracksActionText), nameof(TrackHeight), nameof(MinimumTrackHeight), nameof(MaximumTrackHeight) }) OnPropertyChanged(name);
         trackPresentationRevision++; OnPropertyChanged(nameof(TrackPresentationRevision)); NotifyTrackCommands();
     }
@@ -70,5 +84,8 @@ public partial class WorkstationPageVM
     {
         if (RenamingTrack is {} editing) CancelTrackRename(editing);
         trackExtents.Clear(); minimumTrackHeight = trackHeight = 76; expandedTrackGrowth = 0;
+        collapsedTrackExtent = 44;
+        tracks.CollectionChanged -= OnTrackExtentCollectionChanged;
+        tracks.CollectionChanged += OnTrackExtentCollectionChanged;
     }
 }

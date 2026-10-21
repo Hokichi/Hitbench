@@ -5,6 +5,17 @@ namespace osuHitsounder.Test.Services;
 public class FolderSnapshotTests
 {
     [Test]
+    public void SongFilterPreservesEstablishedEqualSortOrder()
+    {
+        var entries = Enumerable.Range(0, 100).Select(i => new FolderEntry("C:/Songs/same", "same", DateTimeOffset.MinValue) { Title = "keep" + i }).ToArray();
+        var snapshot = new FolderSnapshot(entries);
+        var expected = snapshot.ReadPage(0, 100);
+        Assert.That(snapshot.FilterSongs("keep").ReadPage(0, 100), Is.EqualTo(expected));
+        using var cancellation = new CancellationTokenSource(); cancellation.Cancel();
+        Assert.Throws<OperationCanceledException>(() => snapshot.FilterSongs("keep", cancellation.Token));
+        Assert.That(snapshot.ReadPage(0, 100), Is.EqualTo(expected));
+    }
+    [Test]
     public void PagesPreserveGlobalDescendingOrderAndBoundaries()
     {
         var now = DateTimeOffset.UtcNow;

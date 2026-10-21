@@ -3,6 +3,7 @@ namespace osuHitsounder.Resources.DataModels;
 public sealed class FolderSnapshot
 {
     private readonly FolderEntry[] entries;
+    private FolderSnapshot(FolderEntry[] orderedEntries) => entries = orderedEntries;
     public int Count => entries.Length;
     public static FolderSnapshot ForProjects(IEnumerable<FolderEntry> entries, bool groupPinned, CancellationToken token = default) =>
         new(entries, token, (left, right) =>
@@ -18,8 +19,9 @@ public sealed class FolderSnapshot
         return ForProjects(entries.Where(entry =>
         {
             token.ThrowIfCancellationRequested();
-            return query.Length == 0 || new[] { entry.Name, entry.Artist, entry.Title, entry.MapsetName, entry.MapsetFolderName }
-                .Any(value => value.Contains(query, StringComparison.OrdinalIgnoreCase));
+            return query.Length == 0 || entry.Name.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                entry.Artist.Contains(query, StringComparison.OrdinalIgnoreCase) || entry.Title.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                entry.MapsetName.Contains(query, StringComparison.OrdinalIgnoreCase) || entry.MapsetFolderName.Contains(query, StringComparison.OrdinalIgnoreCase);
         }), query.Length == 0, token);
     }
     public FolderSnapshot FilterSongs(string query, CancellationToken cancellationToken = default)
@@ -27,14 +29,16 @@ public sealed class FolderSnapshot
         cancellationToken.ThrowIfCancellationRequested();
         query = query.Trim();
         if (query.Length == 0) return this;
-        return new FolderSnapshot(entries.Where(entry =>
+        var filtered = entries.Where(entry =>
         {
             cancellationToken.ThrowIfCancellationRequested();
             return entry.Artist.Contains(query, StringComparison.OrdinalIgnoreCase) ||
                 entry.Title.Contains(query, StringComparison.OrdinalIgnoreCase) ||
                 entry.DisplayName.Contains(query, StringComparison.OrdinalIgnoreCase) ||
                 entry.Name.Contains(query, StringComparison.OrdinalIgnoreCase);
-        }), cancellationToken);
+        }).ToArray();
+        cancellationToken.ThrowIfCancellationRequested();
+        return new FolderSnapshot(filtered);
     }
 
     public FolderSnapshot(IEnumerable<FolderEntry> entries, CancellationToken cancellationToken = default)
