@@ -78,7 +78,7 @@ public class WorkstationControlPointStateTests
             owner.DeleteControlPointCommand.Execute(new DeleteControlPointRequestedMessage(state.Context, id));
             Assert.That(owner.ControlPointsState.Revision, Is.EqualTo(revision));
             files.Release(); await owner.FlushSavesAsync();
-            Assert.That(files.Writes, Is.EqualTo(3));
+            Assert.That(files.Writes, Is.EqualTo(2), "In-flight snapshot plus latest pending deletion");
             Assert.That(osuHitsounder.Services.ProjectFiles.ProjectDataSerializer.Deserialize(files.LatestJson!).ControlPoints, Is.Empty);
         }
         finally { files.Release(); await owner.DeactivateAsync(); }

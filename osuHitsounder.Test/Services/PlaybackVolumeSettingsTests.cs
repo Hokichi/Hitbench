@@ -15,6 +15,7 @@ public sealed class PlaybackVolumeSettingsTests
         Assert.That(volumes.ApplicationVolume, Is.EqualTo(27));
         Assert.That(saved, Is.Empty);
         volumes.ApplicationVolume = 30;
+        for (var value = 31; value < 64; value++) volumes.ApplicationVolume = value;
         volumes.ApplicationVolume = 64;
         Assert.That(volumes.HasPendingSaves, Is.True);
         release.SetResult();

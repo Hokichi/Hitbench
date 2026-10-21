@@ -8,13 +8,30 @@ public sealed class PlaybackVolumeSettings(IAppSettingsService? settings = null,
     private int applicationVolume = Math.Clamp(applicationVolume, 0, 100);
     private Task saveTail = Task.CompletedTask;
     private Exception? saveError;
+    private int? pendingVolume;
+    private bool saving;
     public bool HasPendingSaves => !saveTail.IsCompleted || saveError is not null;
 
-    private async Task SaveAsync(Task previous, int value)
+    private void QueueSave(int value)
     {
-        await previous;
-        try { await settings!.SaveVolumeAsync(value, CancellationToken.None); saveError = null; }
-        catch (Exception error) { saveError = error; }
+        pendingVolume = value;
+        if (saving) return;
+        saving = true;
+        saveTail = SavePendingAsync();
+    }
+
+    private async Task SavePendingAsync()
+    {
+        try
+        {
+            while (pendingVolume is { } value)
+            {
+                pendingVolume = null;
+                try { await settings!.SaveVolumeAsync(value, CancellationToken.None); saveError = null; }
+                catch (Exception error) { saveError = error; }
+            }
+        }
+        finally { saving = false; }
     }
 
     public async Task FlushAsync(CancellationToken cancellationToken = default)
@@ -23,7 +40,7 @@ public sealed class PlaybackVolumeSettings(IAppSettingsService? settings = null,
         do { pending = saveTail; await pending.WaitAsync(cancellationToken); }
         while (!ReferenceEquals(pending, saveTail));
         if (saveError is null) return;
-        saveTail = SaveAsync(saveTail, ApplicationVolume);
+        QueueSave(ApplicationVolume);
         do { pending = saveTail; await pending.WaitAsync(cancellationToken); }
         while (!ReferenceEquals(pending, saveTail));
         if (saveError is not null) throw new IOException("Could not save application volume.", saveError);
@@ -38,7 +55,7 @@ public sealed class PlaybackVolumeSettings(IAppSettingsService? settings = null,
             var next = Math.Clamp(value, 0, 100);
             if (next == applicationVolume) return;
             applicationVolume = next;
-            if (settings is not null) saveTail = SaveAsync(saveTail, next);
+            if (settings is not null) QueueSave(next);
         }
     }
 

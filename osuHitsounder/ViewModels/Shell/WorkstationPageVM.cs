@@ -116,6 +116,7 @@ public partial class WorkstationPageVM(
         await SettleControlPointsAsync();
         controlPointIds.Clear();
         await SettleInstrumentalEditorAsync();
+        CommitPendingZoom();
         await DrainProjectSaveQueueAsync();
         await SettleSampleManagerAsync();
         await SettleInstrumentalFoldersAsync();
@@ -286,7 +287,7 @@ public partial class WorkstationPageVM(
         if (activeImport is not null) await activeImport;
         if (activeRemoval is not null) await activeRemoval;
         if (activeNodeEdit is not null) await activeNodeEdit;
-        await saveTail;
+        await AwaitProjectSavesAsync();
         if (lastSaveError is not null) throw new IOException("Could not save project.", lastSaveError);
     }
 

@@ -22,6 +22,27 @@ public sealed class WorkstationLastChangedTests
     }
 
     [Test]
+    public async Task BurstKeepsOnlyLatestPendingSnapshotAndFlushDrainsNewWork()
+    {
+        var files = new DelayedProjectFileService();
+        var clock = new ManualTimeProvider(); clock.SetUtcNow(Instant);
+        var vm = await Ready(files, clock);
+        try
+        {
+            vm.ToggleTracksCollapsedCommand.Execute(null);
+            var flush = vm.FlushSavesAsync();
+            for (var i = 1; i <= 100; i++)
+            { clock.SetUtcNow(Instant.AddSeconds(i)); vm.ToggleTracksCollapsedCommand.Execute(null); }
+            files.Release(); await flush;
+            Assert.That(files.Writes, Is.EqualTo(2));
+            Assert.That(ProjectDataSerializer.Deserialize(files.LatestJson!).LastChanged, Is.EqualTo(Instant.AddSeconds(100)));
+            Assert.That(vm.Project!.LastChanged, Is.EqualTo(Instant.AddSeconds(100)));
+            Assert.That(vm.HasPendingSaves, Is.False);
+        }
+        finally { files.Release(); await vm.DeactivateAsync(); }
+    }
+
+    [Test]
     public async Task PartiallyCancelledImportStillPersistsSuccessfulCopies()
     {
         using var cancellation = new CancellationTokenSource();

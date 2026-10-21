@@ -196,7 +196,7 @@ public partial class WorkstationPageVM
         finally { settlingDrawers = false; }
     }
     private async Task DrainProjectSaveQueueAsync()
-    { await sampleChangeNotifications; await saveTail; if (lastSaveError is not null) throw new IOException("Could not save project.", lastSaveError); }
+    { await sampleChangeNotifications; await AwaitProjectSavesAsync(); if (lastSaveError is not null) throw new IOException("Could not save project.", lastSaveError); }
     private void NotifyInstrumentState()
     {
         OnPropertyChanged(nameof(CanAddInstrumentalTrack)); OnPropertyChanged(nameof(CanOpenInstrumentalEditor)); OnPropertyChanged(nameof(HasPendingSaves));
