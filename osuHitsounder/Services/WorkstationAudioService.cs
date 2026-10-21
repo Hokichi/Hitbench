@@ -134,38 +134,39 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
             foreach (var item in events)
             {
                 token.ThrowIfCancellationRequested();
-                if (!resolved.TryGetValue(item.FileName, out var result))
+                var fileKey = item.FileName ?? string.Empty;
+                if (!resolved.TryGetValue(fileKey, out var result))
                 {
-                if (!TryResolveSamplePath(projectPath, item.FileName, out var samplePath))
-                {
-                    resolved[item.FileName] = (null, $"Unable to load sample '{item.FileName}': invalid file name.");
-                    errors.Add(resolved[item.FileName].Error!);
-                    continue;
-                }
-                referencedPaths.Add(samplePath);
-                try
-                {
-                    if (!File.Exists(samplePath)) throw new FileNotFoundException("Sample file was not found.", samplePath);
-                    var info = new FileInfo(samplePath);
-                    (long Length, DateTime LastWrite, DecodedAudio Samples) cached;
-                    bool found;
-                    lock (sync) found = sampleCache.TryGetValue(samplePath, out cached);
-                    if (!found || cached.Length != info.Length ||
-                        cached.LastWrite != info.LastWriteTimeUtc)
+                    if (!TryResolveSamplePath(projectPath, fileKey, out var samplePath))
                     {
-                        cached = (info.Length, info.LastWriteTimeUtc,
-                            await Task.Run(() => Decode(samplePath, token), token));
-                        lock (sync)
-                            if (!disposed && request == preparationGeneration) sampleCache[samplePath] = cached;
+                        resolved[fileKey] = (null, $"Unable to load sample '{item.FileName}': invalid file name.");
+                        errors.Add(resolved[fileKey].Error!);
+                        continue;
                     }
-                    result = (cached.Samples, null);
-                }
-                catch (OperationCanceledException) { throw; }
-                catch (Exception failure)
-                {
-                    result = (null, $"Unable to load sample '{item.FileName}': {failure.Message}");
-                }
-                resolved[item.FileName] = result;
+                    referencedPaths.Add(samplePath);
+                    try
+                    {
+                        if (!File.Exists(samplePath)) throw new FileNotFoundException("Sample file was not found.", samplePath);
+                        var info = new FileInfo(samplePath);
+                        (long Length, DateTime LastWrite, DecodedAudio Samples) cached;
+                        bool found;
+                        lock (sync) found = sampleCache.TryGetValue(samplePath, out cached);
+                        if (!found || cached.Length != info.Length ||
+                            cached.LastWrite != info.LastWriteTimeUtc)
+                        {
+                            cached = (info.Length, info.LastWriteTimeUtc,
+                                await Task.Run(() => Decode(samplePath, token), token));
+                            lock (sync)
+                                if (!disposed && request == preparationGeneration) sampleCache[samplePath] = cached;
+                        }
+                        result = (cached.Samples, null);
+                    }
+                    catch (OperationCanceledException) { throw; }
+                    catch (Exception failure)
+                    {
+                        result = (null, $"Unable to load sample '{item.FileName}': {failure.Message}");
+                    }
+                    resolved[fileKey] = result;
                 }
                 if (result.Error is not null) { errors.Add(result.Error); continue; }
                 var gain = Math.Clamp(item.TrackVolume, 0, 100) / 100f;

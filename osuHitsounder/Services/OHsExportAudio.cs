@@ -21,7 +21,8 @@ public static class OHsExportAudio
                 if (!float.IsFinite(value) || input.Gain < 0) throw new InvalidDataException("Sample PCM/gain is invalid.");
                 sum[i] += value * input.Gain;
             }
-        if (sum.Length == 0 || sum.Any(v => !float.IsFinite(v) || v is < -1 or > 1)) throw new InvalidDataException("Exported sample would clip or contains invalid PCM.");
+        if (sum.Length == 0 || sum.Any(v => !float.IsFinite(v) || v is < -1 or > 1))
+            throw new InvalidDataException($"Exported sample would clip or contains invalid PCM: {string.Join(", ", asset.Sources.Select(s => $"{s.FileName} ({s.GainPercent}%)"))}.");
         return DecodedAudio.TakeOwnership(sum);
     }
     public static async Task WriteAsync(string projectPath, string stagingDirectory, OHsExportPlan plan, OHsExportOptions options, CancellationToken token,

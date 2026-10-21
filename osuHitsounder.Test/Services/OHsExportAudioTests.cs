@@ -5,7 +5,29 @@ namespace osuHitsounder.Test.Services;
 
 public class OHsExportAudioTests
 {
-    [TestCase(441), TestCase(1024), TestCase(44100)]
+    [Test]
+    public async Task VorbisRetainsAttackAndTailPositions()
+    {
+        var path = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".ogg");
+        try
+        {
+            var pcm = new float[88200];
+            foreach (var frame in new[] { 0, 22050, 44090 }) pcm[frame * 2] = pcm[frame * 2 + 1] = .5f;
+            await OHsExportAudio.WriteFileAsync(path, DecodedAudio.CopyFrom(pcm), default);
+            var decoded = AudioDecoder.Decode(path, default);
+            Assert.That(decoded.FrameCount, Is.EqualTo(44100));
+            var samples = decoded.Samples.ToArray();
+            foreach (var frame in new[] { 0, 22050, 44090 })
+            {
+                var start = Math.Max(0, frame - 20); var end = Math.Min(44100, frame + 21);
+                var peak = Enumerable.Range(start, end - start).MaxBy(i => Math.Abs(samples[i * 2]));
+                Assert.That(peak, Is.InRange(Math.Max(0, frame - 2), frame + 2));
+                Assert.That(Math.Abs(samples[peak * 2]), Is.GreaterThan(.25f));
+            }
+        }
+        finally { File.Delete(path); }
+    }
+    [TestCase(1), TestCase(441), TestCase(1024), TestCase(44100)]
     public async Task ShortVorbisSilenceDecodesToItsOriginalFrames(int frames)
     {
         var path = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".ogg");
@@ -66,7 +88,7 @@ public class OHsExportAudioTests
         Assert.That(OHsExportAudio.Render(OHsExportAsset.Create([]), _ => throw new Exception(), default).Samples.ToArray(), Is.All.Zero);
         var repeated = OHsExportAsset.Create([("a.wav", 70), ("A.wav", 40)]);
         Assert.That(OHsExportAudio.Render(repeated, _ => DecodedAudio.CopyFrom(new float[] { .2f, -.2f }), default).Samples.ToArray(), Is.EqualTo(new[] { .22f, -.22f }).Within(.00001));
-        Assert.Throws<InvalidDataException>(() => OHsExportAudio.Render(repeated, _ => DecodedAudio.CopyFrom(new float[] { 1, -1 }), default));
+        Assert.That(Assert.Throws<InvalidDataException>(() => OHsExportAudio.Render(repeated, _ => DecodedAudio.CopyFrom(new float[] { 1, -1 }), default))!.Message, Does.Contain("a.wav"));
         Assert.Throws<InvalidDataException>(() => OHsExportAudio.Render(repeated, _ => DecodedAudio.CopyFrom(new float[] { float.NaN, 0 }), default));
     }
     [TestCase(".wav")]
@@ -95,7 +117,3 @@ public class OHsExportAudioTests
         Assert.Throws<OperationCanceledException>(() => provider.Read(new byte[8], 0, 8));
     }
 }
-
-
-
-

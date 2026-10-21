@@ -7,6 +7,16 @@ namespace osuHitsounder.Test.Services;
 public class WorkstationAudioServiceTests
 {
     [Test]
+    public async Task InvalidNullFileDoesNotDiscardOtherPreparedPlacements()
+    {
+        using var project = new TestProjectFolder("hit.wav");
+        using var service = new WorkstationAudioService(_ => CreateStream(new float[128], 44100, 2), () => new StubWavePlayer());
+        service.Open("song.wav");
+        await service.UpdateSamplesAsync(project.ProjectPath, [new(1, null!, 0, 100), new(2, "hit.wav", 0, 100)], default);
+        Assert.That(service.IsPrepared, Is.True);
+        Assert.That(service.GetSnapshot().Error, Does.Contain("invalid file name"));
+    }
+    [Test]
     public async Task RepeatedPlacementsUseOneFileSnapshotPerUpdate()
     {
         using var project = new TestProjectFolder("hit.wav");
