@@ -9,7 +9,7 @@ using osuHitsounder.Resources.DataModels;
 using osuHitsounder.Services;
 namespace osuHitsounder.Resources.CustomControls;
 
-public sealed class PianoRollView : Control
+public sealed partial class PianoRollView : Control
 {
     public static readonly DependencyProperty IsAdditionModeProperty=DependencyProperty.Register(nameof(IsAdditionMode),typeof(bool),typeof(PianoRollView),new FrameworkPropertyMetadata(true,FrameworkPropertyMetadataOptions.AffectsRender,(d,_)=>((PianoRollView)d).CancelInteraction()));
     public bool IsAdditionMode {get=>(bool)GetValue(IsAdditionModeProperty);set=>SetValue(IsAdditionModeProperty,value);}
@@ -99,16 +99,16 @@ public sealed class PianoRollView : Control
 
     public PianoRollView()
     {
-        RefreshTrackPalette();
+        InitializeDrawing(); RefreshTrackPalette();
         Focusable = true; FlowDirection = FlowDirection.LeftToRight;
         Loaded += (_, _) => { SystemParameters.StaticPropertyChanged -= OnSystemChanged; SystemParameters.StaticPropertyChanged += OnSystemChanged; };
         Unloaded += (_, _) => { SystemParameters.StaticPropertyChanged -= OnSystemChanged; CancelInteraction(); };
     }
     private void OnSystemChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
-    { if (Dispatcher.CheckAccess()) InvalidateVisual(); else Dispatcher.BeginInvoke(InvalidateVisual); }
+    { if (Dispatcher.CheckAccess()) InvalidateContent(); else Dispatcher.BeginInvoke(InvalidateContent); }
     private static void OnGeometryChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    { var roll = (PianoRollView)d; if(e.Property==NotesProperty || e.Property==CanEditProperty)roll.CancelInteraction(); if (e.Property == LaneHeightProperty || e.Property == VerticalOffsetProperty) roll.OnMaximumChanged(); roll.InvalidateVisual(); }
-    protected override void OnRenderSizeChanged(SizeChangedInfo info) { base.OnRenderSizeChanged(info); OnMaximumChanged(); }
+    { var roll = (PianoRollView)d; if(e.Property==NotesProperty || e.Property==CanEditProperty)roll.CancelInteraction(); if (e.Property == LaneHeightProperty || e.Property == VerticalOffsetProperty) roll.OnMaximumChanged(); if (e.Property == PositionProperty) roll.UpdateMarker(); else roll.InvalidateContent(); }
+    protected override void OnRenderSizeChanged(SizeChangedInfo info) { base.OnRenderSizeChanged(info); OnMaximumChanged(); InvalidateContent(); }
     private void OnMaximumChanged()
     { SetValue(MaximumVerticalOffsetPropertyKey, double.IsFinite(LaneHeight) ? Math.Max(0, 108 * LaneHeight - ActualHeight) : 0d); var value = Math.Clamp(VerticalOffset, 0, MaximumVerticalOffset); if (value != VerticalOffset) SetCurrentValue(VerticalOffsetProperty, value); }
     public Rect GetNoteBounds(InstrumentalNoteSnapshot note)
@@ -120,7 +120,13 @@ public sealed class PianoRollView : Control
     public InstrumentalNoteSnapshot? FindNoteAt(Point p)
     {
         if (p.X < KeyColumnWidth || p.X >= ActualWidth || p.Y < 0 || p.Y >= ActualHeight) return null;
-        return Notes.Reverse().OrderByDescending(n => n.Id == SelectedNoteId).FirstOrDefault(n => GetNoteBounds(n).Contains(p));
+        for (var layer = 0; layer < 2; layer++)
+            for (var i = Notes.Count - 1; i >= 0; i--)
+            {
+                var note = Notes[i];
+                if ((note.Id == SelectedNoteId) == (layer == 0) && GetNoteBounds(note).Contains(p)) return note;
+            }
+        return null;
     }
     private bool CellAt(Point p, out string key, out double ms)
     {
@@ -169,7 +175,7 @@ public sealed class PianoRollView : Control
         else if (key is Key.Left or Key.Right)
         { if (BeatGridCalculator.GetAdjacentPosition(Offsets, Bpms, Subdivision, TimeSpan.FromMilliseconds(activeMs), Duration, key == Key.Right) is { } next) activeMs = next.TotalMilliseconds; }
         else return false;
-        RevealActive(); InvalidateVisual(); return true;
+        RevealActive(); InvalidateContent(); return true;
     }
     internal bool HandleEditorKey(Key key, Key systemKey, ModifierKeys modifiers, bool repeat) =>
         HandleEditorKey(key == Key.System ? systemKey : key, modifiers, repeat);
@@ -184,9 +190,9 @@ public sealed class PianoRollView : Control
         if (x < HorizontalOffset || x > HorizontalOffset + width) SetCurrentValue(HorizontalOffsetProperty, Math.Clamp(x - width / 2, 0, Math.Max(0, ContentWidth - width)));
     }
     public bool CancelInteraction()
-    { var active = pointerInteraction || IsMouseCaptured; pointerInteraction = false; pressedNote = null; dragging = false; hover = null; gestureIds=[]; if (IsMouseCaptured) ReleaseMouseCapture(); InvalidateVisual(); return active; }
+    { var active = pointerInteraction || IsMouseCaptured; pointerInteraction = false; pressedNote = null; dragging = false; hover = null; gestureIds=[]; if (IsMouseCaptured) ReleaseMouseCapture(); InvalidateContent(); return active; }
     protected override void OnGotKeyboardFocus(KeyboardFocusChangedEventArgs e)
-    { base.OnGotKeyboardFocus(e); if(!pointerInteraction)InitializeActiveCell(); InvalidateVisual(); }
+    { base.OnGotKeyboardFocus(e); if(!pointerInteraction)InitializeActiveCell(); InvalidateContent(); }
     protected override void OnLostKeyboardFocus(KeyboardFocusChangedEventArgs e) { base.OnLostKeyboardFocus(e); CancelInteraction(); }
     protected override void OnKeyDown(KeyEventArgs e) { if (HandleEditorKey(e.Key, e.SystemKey, Keyboard.Modifiers, e.IsRepeat)) { e.Handled = true; return; } base.OnKeyDown(e); }
     protected override void OnMouseLeftButtonDown(MouseButtonEventArgs e)
@@ -204,7 +210,7 @@ public sealed class PianoRollView : Control
         pointerStart = p; pressedNote = FindNoteAt(p); dragging = false; hover = (key, ms);
         if (pressedNote is not null) { gestureIds=SelectedNoteIds.Contains(pressedNote.Id)?SelectedNoteIds:new[]{pressedNote.Id};InstrumentalKeys.TryGetIndex(pressedNote.Key, out activeKey); activeMs = GridTime(pressedNote.Timestamp); grabOffset = ms - pressedNote.Timestamp; }
         else { InstrumentalKeys.TryGetIndex(key, out activeKey); activeMs = BeatGridCalculator.GetContainingInterval(Offsets, Bpms, Subdivision, ms, Duration.TotalMilliseconds)?.StartMilliseconds ?? ms; }
-        InvalidateVisual(); return true;
+        InvalidateContent(); return true;
     }
     protected override void OnMouseMove(MouseEventArgs e)
     {
@@ -220,7 +226,7 @@ public sealed class PianoRollView : Control
             hover = (key, dragging ? ms - grabOffset : ms);
         }
         else hover = null;
-        InvalidateVisual();
+        InvalidateContent();
     }
     protected override void OnMouseLeftButtonUp(MouseButtonEventArgs e)
     {
@@ -250,66 +256,9 @@ public sealed class PianoRollView : Control
         RaiseEvent(new InstrumentalNoteEditRequestedEventArgs(NoteEditRequestedEvent,InstrumentalNoteEditKind.Remove,note.Id,note.Key,note.Timestamp,[note.Id]));return true;
     }
     protected override void OnLostMouseCapture(MouseEventArgs e) { base.OnLostMouseCapture(e); CancelInteraction(); }
-    protected override void OnMouseLeave(MouseEventArgs e) { base.OnMouseLeave(e); if (!IsMouseCaptured) { hover = null; InvalidateVisual(); } }
+    protected override void OnMouseLeave(MouseEventArgs e) { base.OnMouseLeave(e); if (!IsMouseCaptured) { hover = null; InvalidateContent(); } }
     protected override void OnMouseWheel(MouseWheelEventArgs e)
     { if (Keyboard.Modifiers != ModifierKeys.None) { base.OnMouseWheel(e); return; } SetCurrentValue(VerticalOffsetProperty, Math.Clamp(VerticalOffset - Math.Sign(e.Delta) * LaneHeight * 3, 0, MaximumVerticalOffset)); e.Handled = true; }
     protected override AutomationPeer OnCreateAutomationPeer() => new PianoRollViewAutomationPeer(this);
-    private Brush BrushOr(Brush? value, string key) => value ?? TryFindResource(key) as Brush ?? SystemColors.WindowTextBrush;
-    protected override void OnRender(DrawingContext dc)
-    {
-        base.OnRender(dc); dc.DrawRectangle(SystemParameters.HighContrast ? SystemColors.WindowBrush : BrushOr(Background, "Brush.Background.Deepened"), null, new Rect(RenderSize));
-        if (ActualWidth <= KeyColumnWidth || ActualHeight <= 0 || LaneHeight <= 0 || !double.IsFinite(LaneHeight)) return;
-        var hc = SystemParameters.HighContrast; var text = hc ? SystemColors.WindowTextBrush : BrushOr(Foreground, "Brush.Text.Primary");
-        var marker = hc ? SystemColors.WindowTextBrush : BrushOr(MarkerBrush, "Brush.Track.1");
-        var selection = hc ? SystemColors.HighlightBrush : BrushOr(SelectionBrush, "Brush.Navy");
-        var cue = hc ? SystemColors.HighlightTextBrush : BrushOr(SelectionCueBrush, "Brush.Node.SelectedOutline");
-        var border = new Pen(hc ? SystemColors.WindowTextBrush : BrushOr(NodeBorderBrush, "Brush.Border.Default"), 1);
-        var first = Math.Max(0, (int)Math.Floor(VerticalOffset / LaneHeight)); var last = Math.Min(107, (int)Math.Ceiling((VerticalOffset + ActualHeight) / LaneHeight));
-        for (var row = first; row <= last; row++)
-        {
-            var name = InstrumentalKeys.GetName(107 - row); var y = row * LaneHeight - VerticalOffset;
-            dc.DrawRectangle(hc ? SystemColors.WindowBrush : BrushOr(name.Contains('#') ? SharpKeyBrush : KeyBrush, name.Contains('#') ? "Brush.Background.Deepened" : "Brush.Background.Surface"), border, new Rect(0, y, KeyColumnWidth, LaneHeight));
-            var label = new FormattedText(name, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, new Typeface(FontFamily, FontStyle, FontWeight, FontStretch), 11, text, VisualTreeHelper.GetDpi(this).PixelsPerDip);
-            dc.DrawText(label, new Point(Math.Max(4, KeyColumnWidth - label.Width - 8), y + (LaneHeight - label.Height) / 2));
-            dc.DrawLine(new Pen(hc ? SystemColors.WindowTextBrush : BrushOr(GridBrush, "Brush.Border.Subtle"), .5), new(KeyColumnWidth, y + LaneHeight), new(ActualWidth, y + LaneHeight));
-        }
-        dc.PushClip(new RectangleGeometry(new Rect(KeyColumnWidth, 0, Math.Max(0, ActualWidth - KeyColumnWidth), ActualHeight)));
-        dc.PushTransform(new TranslateTransform(KeyColumnWidth, 0)); dc.PushOpacity(.5);
-        BeatGridDrawing.Draw(dc, this, Offsets, Bpms, Subdivision, Duration.TotalMilliseconds, ContentWidth, HorizontalOffset, Math.Max(0, ActualWidth - KeyColumnWidth), ActualHeight, false);
-        dc.Pop(); dc.Pop();
-        if(pointerInteraction && dragging && !IsAdditionMode && !pointerModifiers.HasFlag(ModifierKeys.Control) && pressedNote is null)
-            dc.DrawRectangle(null,new Pen(selection,1),new Rect(pointerStart,pointerLast));
-        if(dragging && pressedNote is {} anchor && hover is {} destination && !IsAdditionMode)
-        {
-            InstrumentalKeys.TryGetIndex(anchor.Key,out var originalPitch);InstrumentalKeys.TryGetIndex(destination.Key,out var targetPitch);
-            var time=BeatGridCalculator.GetNearestTimestamp(Offsets,Bpms,Subdivision,destination.Time,Duration.TotalMilliseconds);
-            if(time is {} timestamp)foreach(var note in Notes.Where(n=>gestureIds.Contains(n.Id)))
-            {
-                InstrumentalKeys.TryGetIndex(note.Key,out var pitch);pitch+=targetPitch-originalPitch;
-                var movedTime=(long)note.Timestamp+timestamp-anchor.Timestamp;
-                if(pitch is <0 or >107 || movedTime<0 || movedTime>=Duration.TotalMilliseconds || movedTime>int.MaxValue)continue;
-                var bounds=GetNoteBounds(note with{Key=InstrumentalKeys.GetName(pitch),Timestamp=(int)movedTime});
-                if(!bounds.IsEmpty)OHsSampleNodeDrawing.Draw(dc,marker,new Pen(cue,2),OHsSampleNodeDrawing.Inset(bounds));
-            }
-        }
-        if (IsAdditionMode && hover is { } cell)
-        {
-            var ts = dragging ? BeatGridCalculator.GetNearestTimestamp(Offsets, Bpms, Subdivision, cell.Time, Duration.TotalMilliseconds) : BeatGridCalculator.GetContainingInterval(Offsets, Bpms, Subdivision, cell.Time, Duration.TotalMilliseconds) is { } interval ? (int?)Math.Round(interval.StartMilliseconds, MidpointRounding.AwayFromZero) : null;
-            if (ts is { } t) { var rect = GetNoteBounds(new(Guid.Empty, cell.Key, t)); if (!rect.IsEmpty) OHsSampleNodeDrawing.Draw(dc, marker, new Pen(cue, 2), OHsSampleNodeDrawing.Inset(rect)); }
-        }
-        foreach (var note in Notes.OrderBy(n => n.Id == SelectedNoteId))
-        {
-            var rect = GetNoteBounds(note); if (rect.IsEmpty || !rect.IntersectsWith(new Rect(KeyColumnWidth, 0, Math.Max(0, ActualWidth - KeyColumnWidth), ActualHeight)) || dragging && !IsAdditionMode && gestureIds.Contains(note.Id)) continue;
-            var chosen = SelectedNoteIds.Contains(note.Id) || note.Id == SelectedNoteId;
-            OHsSampleNodeDrawing.Draw(dc, marker, chosen ? new Pen(cue, 2) : border, OHsSampleNodeDrawing.Inset(rect));
-            if (note == pressedNote) OHsSampleNodeDrawing.Draw(dc, null, new Pen(chosen ? cue : hc ? SystemColors.HighlightTextBrush : BrushOr(PressedBrush, "Brush.Navy.Pressed"), 2), OHsSampleNodeDrawing.Inset(rect));
-        }
-        if (IsKeyboardFocused)
-        {
-            var t = (int)Math.Round(activeMs, MidpointRounding.AwayFromZero); var r = GetNoteBounds(new(Guid.Empty, InstrumentalKeys.GetName(activeKey), t));
-            if (!r.IsEmpty) dc.DrawEllipse(text,null,new Point(r.Left+4,r.Top+4),2,2);
-        }
-        if (Duration > TimeSpan.Zero && ContentWidth > 0) { var x = KeyColumnWidth + Position.TotalMilliseconds / Duration.TotalMilliseconds * ContentWidth - HorizontalOffset; dc.DrawLine(new Pen(hc ? SystemColors.WindowTextBrush : BrushOr(PlaybackMarkerBrush, "Brush.Playhead"), 1.5), new(x, 0), new(x, ActualHeight)); }
-        dc.Pop();
-    }
 }
+
