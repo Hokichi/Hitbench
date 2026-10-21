@@ -22,7 +22,7 @@ public static class OHsExportAudio
                 sum[i] += value * input.Gain;
             }
         if (sum.Length == 0 || sum.Any(v => !float.IsFinite(v) || v is < -1 or > 1)) throw new InvalidDataException("Exported sample would clip or contains invalid PCM.");
-        return DecodedAudio.CopyFrom(sum);
+        return DecodedAudio.TakeOwnership(sum);
     }
     public static async Task WriteAsync(string projectPath, string stagingDirectory, OHsExportPlan plan, OHsExportOptions options, CancellationToken token,
         Func<string, CancellationToken, DecodedAudio>? decode = null)

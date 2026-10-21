@@ -12,4 +12,11 @@ public sealed class DecodedAudio
         if (samples.Length % 2 != 0) throw new ArgumentException("Stereo PCM must contain complete frames.", nameof(samples));
         return new DecodedAudio(samples.ToArray());
     }
+
+    // Caller transfers an exclusively owned buffer and must never mutate it again.
+    internal static DecodedAudio TakeOwnership(float[] samples)
+    {
+        if (samples.Length % 2 != 0) throw new ArgumentException("Stereo PCM must contain complete frames.", nameof(samples));
+        return new DecodedAudio(samples);
+    }
 }

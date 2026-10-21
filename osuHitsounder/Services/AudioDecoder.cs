@@ -2,6 +2,7 @@ using System.IO;
 using NAudio.Vorbis;
 using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
+using System.Runtime.InteropServices;
 
 namespace osuHitsounder.Services;
 
@@ -26,16 +27,21 @@ public static class AudioDecoder
         };
         if (provider.WaveFormat.SampleRate != 44_100)
             provider = new WdlResamplingSampleProvider(provider, 44_100);
-        var result = new List<float>();
+        var estimatedSamples = stream.TotalTime.TotalSeconds * 88_200;
+        var capacity = double.IsFinite(estimatedSamples) ? (int)Math.Clamp(estimatedSamples, 0, 1_048_576) : 0;
+        var result = new List<float>(capacity);
         var buffer = new float[8192];
         int read;
         while ((read = provider.Read(buffer, 0, buffer.Length)) > 0)
         {
             token.ThrowIfCancellationRequested();
-            result.AddRange(buffer.AsSpan(0, read).ToArray());
+            var offset = result.Count;
+            result.EnsureCapacity(checked(offset + read));
+            CollectionsMarshal.SetCount(result, offset + read);
+            buffer.AsSpan(0, read).CopyTo(CollectionsMarshal.AsSpan(result)[offset..]);
         }
         if (result.Count == 0) throw new InvalidDataException("Audio file is empty.");
-        return DecodedAudio.CopyFrom(System.Runtime.InteropServices.CollectionsMarshal.AsSpan(result));
+        return DecodedAudio.TakeOwnership(result.ToArray());
     }
 
 }
