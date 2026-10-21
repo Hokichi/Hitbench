@@ -261,4 +261,3 @@ public sealed partial class PianoRollView : Control
     { if (Keyboard.Modifiers != ModifierKeys.None) { base.OnMouseWheel(e); return; } SetCurrentValue(VerticalOffsetProperty, Math.Clamp(VerticalOffset - Math.Sign(e.Delta) * LaneHeight * 3, 0, MaximumVerticalOffset)); e.Handled = true; }
     protected override AutomationPeer OnCreateAutomationPeer() => new PianoRollViewAutomationPeer(this);
 }
-
