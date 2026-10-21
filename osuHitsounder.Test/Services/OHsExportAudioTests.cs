@@ -6,6 +6,42 @@ namespace osuHitsounder.Test.Services;
 public class OHsExportAudioTests
 {
     [Test]
+    public async Task DirectSampleCopyUsesValidatedPcmWithoutRenderingDuplicate()
+    {
+        using var project = new TestProjectFolder();
+        var root = Path.GetDirectoryName(project.ProjectPath)!;
+        var stage = Directory.CreateDirectory(Path.Combine(root, "stage")).FullName;
+        var audio = DecodedAudio.CopyFrom(new float[44100 * 2 * 10]);
+        var source = Path.Combine(root, "Samples", "direct.wav");
+        await OHsExportAudio.WriteFileAsync(source, audio, default);
+        var asset = OHsExportAsset.Create([("direct.wav", 100)]);
+        var slots = new Dictionary<OHsExportSlot, OHsExportAsset> { [new("Normal", osuHitsounder.Core.Enums.SampleType.Normal)] = asset };
+        var plan = new OHsExportPlan([], [], new Dictionary<int, IReadOnlyDictionary<OHsExportSlot, OHsExportAsset>> { [1] = slots }, 0);
+        var before = GC.GetTotalAllocatedBytes(true);
+        await OHsExportAudio.WriteAsync(project.ProjectPath, stage, plan, new("Hitsounds", 1, ".wav", ".wav", false), default, (_, _) => audio);
+        var allocated = GC.GetTotalAllocatedBytes(true) - before;
+        Assert.That(allocated, Is.LessThan(audio.Samples.Length * sizeof(float)));
+        Assert.That(await File.ReadAllBytesAsync(Path.Combine(stage, "normal-hitnormal.wav")), Is.EqualTo(await File.ReadAllBytesAsync(source)));
+    }
+
+    [Test]
+    public async Task WavEncodingDoesNotDuplicateTheWholePcmBuffer()
+    {
+        var audio = DecodedAudio.CopyFrom(new float[44100 * 2 * 10]);
+        var path = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".wav");
+        try
+        {
+            await OHsExportAudio.WriteFileAsync(path, DecodedAudio.CopyFrom(new float[882]), default);
+            var before = GC.GetTotalAllocatedBytes(true);
+            await OHsExportAudio.WriteFileAsync(path, audio, default);
+            var allocated = GC.GetTotalAllocatedBytes(true) - before;
+            Assert.That(AudioDecoder.Decode(path, default).FrameCount, Is.EqualTo(audio.FrameCount));
+            Assert.That(allocated, Is.LessThan(44100 * 2 * 10 * sizeof(float)), $"Encoding allocated {allocated} bytes");
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Test]
     public void TrackGainsApplyBeforeSummingWithoutAveraging()
     {
         var recipe = OHsExportAsset.Create([("a.wav", 70), ("b.wav", 40)]);

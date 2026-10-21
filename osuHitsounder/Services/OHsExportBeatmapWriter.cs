@@ -32,13 +32,24 @@ public static class OHsExportBeatmapWriter
         Section("Metadata", Settings("Metadata", new Dictionary<string, string> { ["Version"] = input.Options.DiffName, ["BeatmapID"] = "0" }));
         Section("Difficulty", Settings("Difficulty", new Dictionary<string, string>()));
         var breaks = new List<string>();
+        var circleTimes = plan.Circles.Select(c => c.Timestamp).Order().ToArray();
+        bool HasCircle(decimal begin, decimal end)
+        {
+            var low = 0; var high = circleTimes.Length;
+            while (low < high)
+            {
+                var middle = low + (high - low) / 2;
+                if (circleTimes[middle] < begin) low = middle + 1; else high = middle;
+            }
+            return low < circleTimes.Length && circleTimes[low] <= end;
+        }
         foreach (var line in input.Beatmap.Sections.GetValueOrDefault("Events") ?? [])
         {
             var fields = line.Trim().Split(',');
             if (fields.Length >= 3 && fields[0] is "2" or "Break" &&
                 decimal.TryParse(fields[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var begin) &&
                 decimal.TryParse(fields[2], NumberStyles.Float, CultureInfo.InvariantCulture, out var end) && end > begin &&
-                !plan.Circles.Any(c => c.Timestamp >= begin && c.Timestamp <= end)) breaks.Add(line.Trim());
+                !HasCircle(begin, end)) breaks.Add(line.Trim());
         }
         Section("Events", breaks);
         Section("TimingPoints", plan.TimingPoints.OrderBy(p => p.Timestamp).ThenBy(p => p.Kind).Select(p =>

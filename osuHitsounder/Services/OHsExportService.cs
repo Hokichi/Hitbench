@@ -37,7 +37,8 @@ public sealed class OHsExportService(OHsExportPublisher? publisher = null, Func<
         {
             token.ThrowIfCancellationRequested();
             var audio = (decode ?? ((file, cancellation) => AudioDecoder.Decode(file, cancellation)))(path, token);
-            if (audio.Samples.ToArray().Any(value => !float.IsFinite(value))) throw new InvalidDataException("Source sample contains invalid PCM.");
+            foreach (var value in audio.Samples)
+                if (!float.IsFinite(value)) throw new InvalidDataException("Source sample contains invalid PCM.");
             decoded.Add(path, audio);
         }
         var extension = Path.GetExtension(songPath).ToLowerInvariant();

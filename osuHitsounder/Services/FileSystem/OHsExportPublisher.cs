@@ -25,7 +25,7 @@ public sealed class OHsExportPublisher
             throw new ArgumentException("Export inventory requires safe relative paths.");
         return name.Replace('\\', '/');
     }
-    private static Dictionary<string, string> Tree(string root, CancellationToken token)
+    private static Dictionary<string, string> Tree(string root, CancellationToken token, bool hashContents = true)
     {
         var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         RejectLink(root); if (!Directory.Exists(root)) return result;
@@ -38,7 +38,7 @@ public sealed class OHsExportPublisher
                 token.ThrowIfCancellationRequested(); RejectLink(entry);
                 var relative = Path.GetRelativePath(root, entry).Replace('\\', '/');
                 if (Directory.Exists(entry)) { result.Add(relative + "/", "directory"); directories.Push(entry); }
-                else result.Add(relative, HashFile(entry));
+                else result.Add(relative, hashContents ? HashFile(entry) : "file");
             }
         }
         return result;
@@ -82,7 +82,7 @@ public sealed class OHsExportPublisher
             if (!string.Equals(Path.GetDirectoryName(full), project, StringComparison.OrdinalIgnoreCase) ||
                 !(Path.GetFileName(full).StartsWith(".Export-staging-", StringComparison.Ordinal) || Path.GetFileName(full).StartsWith(".Export-backup-", StringComparison.Ordinal)))
                 throw new IOException("Refusing unsafe export cleanup.");
-            Tree(full, CancellationToken.None); if (Directory.Exists(full)) Directory.Delete(full, true);
+            Tree(full, CancellationToken.None, hashContents: false); if (Directory.Exists(full)) Directory.Delete(full, true);
         }
         try
         {

@@ -4,6 +4,30 @@ namespace osuHitsounder.Test.Services;
 public class OHsExportPublisherTests
 {
     [Test]
+    public async Task CleanupDoesNotReadBackupContentsAfterPublication()
+    {
+        using var project = new TestProjectFolder();
+        var root = Path.GetDirectoryName(project.ProjectPath)!;
+        var files = new Dictionary<string, string> { ["owned.wav"] = "sample" };
+        Task Build(string stage, CancellationToken token) => File.WriteAllTextAsync(Path.Combine(stage, "owned.wav"), "data", token);
+        var output = await new osuHitsounder.Services.FileSystem.OHsExportPublisher().PublishAsync(project.ProjectPath, files, Build, default);
+        FileStream? hold = null;
+        try
+        {
+            var publisher = new osuHitsounder.Services.FileSystem.OHsExportPublisher((from, to) =>
+            {
+                Directory.Move(from, to);
+                if (Path.GetFileName(to).StartsWith(".Export-backup-", StringComparison.Ordinal))
+                    hold = new FileStream(Path.Combine(to, "owned.wav"), FileMode.Open, FileAccess.Read, FileShare.Delete);
+            });
+            await publisher.PublishAsync(project.ProjectPath, files, Build, default);
+            Assert.That(Directory.GetDirectories(root, ".Export-backup-*"), Is.Empty);
+            Assert.That(File.Exists(Path.Combine(output, "owned.wav")), Is.True);
+        }
+        finally { hold?.Dispose(); }
+    }
+
+    [Test]
     public async Task FullLengthValidDifficultyStemCanBePublished()
     {
         using var folder = new TestProjectFolder();

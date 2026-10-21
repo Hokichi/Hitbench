@@ -17,8 +17,15 @@ public static class OHsExportInputFactory
                 throw new InvalidDataException("Invalid export control point.");
         (int Set, int Volume) State(decimal time)
         {
-            var p = controls.LastOrDefault(p => p.Timestamp <= time);
-            return p is null ? (1, 100) : (Array.IndexOf(ControlPoint.SamplesetOptions.ToArray(), p.Sampleset) + 1, p.Volume);
+            var low = 0; var high = controls.Length;
+            while (low < high)
+            {
+                var middle = low + (high - low) / 2;
+                if (controls[middle].Timestamp <= time) low = middle + 1; else high = middle;
+            }
+            if (low == 0) return (1, 100);
+            var p = controls[low - 1];
+            return (p.Sampleset switch { "Normal" => 1, "Soft" => 2, "Drum" => 3, _ => throw new InvalidDataException("Invalid sampleset.") }, p.Volume);
         }
         var required = new List<OHsExportTimingPoint>();
         var sv = -100m; var effects = 0;
@@ -32,14 +39,17 @@ public static class OHsExportInputFactory
             var state = State(source.Timestamp);
             required.Add(source with { SampleSet = state.Set, Volume = state.Volume, SampleIndex = options.StartingIndex });
         }
+        var sourceIndex = 0;
         foreach (var point in controls)
         {
-            var source = beatmap.TimingPoints.LastOrDefault(p => p.Timestamp <= point.Timestamp);
+            while (sourceIndex < beatmap.TimingPoints.Count && beatmap.TimingPoints[sourceIndex].Timestamp <= point.Timestamp) sourceIndex++;
+            var source = sourceIndex == 0 ? null : beatmap.TimingPoints[sourceIndex - 1];
             var length = source is null || source.Kind == OHsExportTimingKind.SourceRed ? "-100" : source.BeatLength;
-            required.RemoveAll(p => p.Timestamp == point.Timestamp && p.Kind == OHsExportTimingKind.SourceState);
             var state = State(point.Timestamp);
             required.Add(new(point.Timestamp, length, source?.Meter ?? 4, state.Set, options.StartingIndex, point.Volume, source?.Effects ?? 0, OHsExportTimingKind.ProjectControl));
         }
+        var controlTimes = controls.Select(p => (decimal)p.Timestamp).ToHashSet();
+        required.RemoveAll(p => p.Kind == OHsExportTimingKind.SourceState && controlTimes.Contains(p.Timestamp));
         var voices = new List<OHsExportVoice>();
         var solo = project.Tracks.Any(t => t.IsTrackSoloed);
         for (var order = 0; order < project.Tracks.Count; order++)
