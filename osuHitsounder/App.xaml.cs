@@ -57,6 +57,7 @@ public partial class App : Application
             provider.GetRequiredService<Func<osuHitsounder.Resources.DataModels.OHsExportRequest, OHsExportPopupVM>>()));
         registrations.AddSingleton<INodePasteDialogService>(_ => new NodePasteDialogService(
             () => Current.MainWindow, Current.Dispatcher));
+        registrations.AddSingleton<IOHsTrackAppearanceDialogService>(_ => new OHsTrackAppearanceDialogService(() => Current.MainWindow, Current.Dispatcher, (request, color) => new OHsTrackAppearancePopupVM(request, color)));
         registrations.AddSingleton<ITrackRemovalDialogService>(_ =>
             new TrackRemovalDialogService(() => Current.MainWindow, Current.Dispatcher));
         registrations.AddSingleton<IProjectRemovalDialogService>(_ =>
@@ -138,4 +139,3 @@ public partial class App : Application
         base.OnExit(e);
     }
 }
-
