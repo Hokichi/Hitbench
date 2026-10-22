@@ -18,6 +18,8 @@ public sealed class AppSettingsService(string applicationDirectory) : IAppSettin
         {
             var json = await ReadAsync(cancellationToken);
             var changed = false;
+            if (json["theme"]?.Type != JTokenType.Integer || (json["theme"]!.ToString() is not ("0" or "1")))
+            { json["theme"] = 0; changed = true; }
             var volume = json["volume"] is { Type: not JTokenType.Null } token
                 ? (int)Math.Clamp((double)token, 0, 100) : 100;
             if (json["volume"]?.Type != JTokenType.Integer || (double)json["volume"]! != volume)
@@ -57,6 +59,14 @@ public sealed class AppSettingsService(string applicationDirectory) : IAppSettin
             if (json["restoredHeight"]?.Type == JTokenType.Null) settings.RestoredHeight = 720;
             return settings;
         }
+        finally { gate.Release(); }
+    }
+
+    public async Task SaveThemeAsync(int theme, CancellationToken cancellationToken)
+    {
+        if (theme is not (0 or 1)) throw new ArgumentOutOfRangeException(nameof(theme));
+        await gate.WaitAsync(cancellationToken);
+        try { var json = await ReadAsync(cancellationToken); json["theme"] = theme; await WriteAsync(json, cancellationToken); }
         finally { gate.Release(); }
     }
 

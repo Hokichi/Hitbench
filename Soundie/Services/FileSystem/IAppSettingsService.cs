@@ -4,6 +4,7 @@ namespace Soundie.Services.FileSystem;
 
 public interface IAppSettingsService
 {
+    Task SaveThemeAsync(int theme, CancellationToken cancellationToken);
     Task SaveVolumeAsync(int volume, CancellationToken cancellationToken);
     Task<AppSettings> LoadAsync(CancellationToken cancellationToken);
     Task SaveOsuPathAsync(string osuPath, CancellationToken cancellationToken);

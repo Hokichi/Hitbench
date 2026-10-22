@@ -5,6 +5,8 @@ namespace Soundie.Test.Presentation;
 
 public sealed class StubAppSettingsService : IAppSettingsService
 {
+    public Func<int, CancellationToken, Task> SaveTheme { get; set; } = (_, _) => Task.CompletedTask;
+    public Task SaveThemeAsync(int theme, CancellationToken token) => SaveTheme(theme, token);
     public Func<int, CancellationToken, Task> SaveVolume { get; set; } = (_, _) => Task.CompletedTask;
     public Task SaveVolumeAsync(int volume, CancellationToken token) => SaveVolume(volume, token);
     public Func<CancellationToken, Task<AppSettings>> Load { get; set; } =
