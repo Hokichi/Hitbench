@@ -70,6 +70,28 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
+        <Style x:Key="OHsWorkstationSampleTrackNameStyle" TargetType="TextBlock" BasedOn="{StaticResource BodyTextStyle}">
+            <Setter Property="TextWrapping" Value="NoWrap"/><Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <DataTemplate x:Key="OHsWorkstationSampleTrackNameTemplate">
+            <TextBlock x:Name="SampleTrackName" Style="{StaticResource OHsWorkstationSampleTrackNameStyle}" Text="{Binding TrackNameDraft, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}" ToolTip="{Binding TrackNameDraft, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}"/>
+        </DataTemplate>
+        <DataTemplate x:Key="OHsWorkstationInstrumentTrackNameTemplate">                    <TextBox
+                        AutomationProperties.Name="Track name"
+                        DataContextChanged="OnTrackControlDataContextChanged"
+                        IsEnabled="{Binding ViewModel.CanEditTracks, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}"
+                        Loaded="OnTrackNameLoaded"
+                        LostKeyboardFocus="OnTrackNameLostFocus"
+                        PreviewKeyDown="OnTrackNameKeyDown"
+                        Style="{StaticResource OHsWorkstationTrackNameStyle}"
+                        Text="{Binding TrackNameDraft, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                        ToolTip="{Binding TrackNameDraft, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}" />
+        </DataTemplate>
+        <Style x:Key="OHsWorkstationNameHostStyle" TargetType="ContentPresenter" BasedOn="{StaticResource BaseContentPresenterStyle}">
+            <Setter Property="ContentTemplate" Value="{StaticResource OHsWorkstationSampleTrackNameTemplate}"/>
+            <Style.Triggers><DataTrigger Binding="{Binding IsInstrumentalTrack, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}" Value="True"><Setter Property="ContentTemplate" Value="{StaticResource OHsWorkstationInstrumentTrackNameTemplate}"/></DataTrigger></Style.Triggers>
+        </Style>
         <Style
             x:Key="OHsWorkstationTrackMetadataComboBoxStyle"
             BasedOn="{StaticResource OHsComboBoxStyle}"
@@ -259,16 +281,7 @@
                         <ColumnDefinition Width=" *" />
                         <ColumnDefinition Style="{StaticResource OHsWorkstationActionRegionStyle}" />
                     </Grid.ColumnDefinitions>
-                    <TextBox
-                        AutomationProperties.Name="Track name"
-                        DataContextChanged="OnTrackControlDataContextChanged"
-                        IsEnabled="{Binding ViewModel.CanEditTracks, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}"
-                        Loaded="OnTrackNameLoaded"
-                        LostKeyboardFocus="OnTrackNameLostFocus"
-                        PreviewKeyDown="OnTrackNameKeyDown"
-                        Style="{StaticResource OHsWorkstationTrackNameStyle}"
-                        Text="{Binding TrackNameDraft, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                        ToolTip="{Binding TrackNameDraft, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}" />
+                    <ContentPresenter Content="{Binding Mode=OneWay}" Style="{StaticResource OHsWorkstationNameHostStyle}"/>
                     <customControls:BalloonComboBox
                         Grid.Column="1"
                         HorizontalAlignment="Right"

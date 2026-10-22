@@ -33,7 +33,8 @@ public partial class WorkstationPageVM(
     Func<TimeSpan, CancellationToken, Task>? folderRenameDelay = null,
     TimeProvider? timeProvider = null,
     IOHsExportDialogService? exportDialog = null,
-    IOHsExportDirectoryLauncher? directoryLauncher = null) : ObservableObject
+    IOHsExportDirectoryLauncher? directoryLauncher = null,
+    IOHsTrackAppearanceDialogService? trackAppearanceDialog = null) : ObservableObject
 {
     private readonly IWorkstationAudioService audioService = playback.Audio;
     private bool subscribedToPlayback;
@@ -112,6 +113,7 @@ public partial class WorkstationPageVM(
     public async Task LoadAsync(string projectPath, CancellationToken token)
     {
         if (deactivated) return;
+        trackAppearanceCancellation?.Cancel();
         await SettleFolderOpenAsync();
         await SettleExportAsync();
         if (reloadingSamples && token != reloadSamplesCancellation?.Token) reloadSamplesCancellation?.Cancel();
@@ -147,6 +149,7 @@ public partial class WorkstationPageVM(
     private async Task DeactivateCoreAsync()
     {
         if (deactivated) return;
+        trackAppearanceCancellation?.Cancel();
         await SettleFolderOpenAsync();
         await SettleExportAsync();
         reloadSamplesCancellation?.Cancel();
@@ -177,6 +180,7 @@ public partial class WorkstationPageVM(
         if (activeSampleReload is not null) await activeSampleReload;
         if (activeRemoval is not null) await activeRemoval;
         if (activeNodeEdit is not null) await activeNodeEdit;
+        if (trackAppearanceTask is not null) await trackAppearanceTask;
         await playbackUpdates;
         if (messenger is not null) messenger.UnregisterAll(this);
         try { await FlushSavesAsync(); }
@@ -290,6 +294,7 @@ public partial class WorkstationPageVM(
         if (activeImport is not null) await activeImport;
         if (activeRemoval is not null) await activeRemoval;
         if (activeNodeEdit is not null) await activeNodeEdit;
+        if (trackAppearanceTask is not null) await trackAppearanceTask;
         await AwaitProjectSavesAsync();
         if (lastSaveError is not null) throw new IOException("Could not save project.", lastSaveError);
     }
@@ -301,7 +306,7 @@ public partial class WorkstationPageVM(
 
     partial void OnIsReturningChanged(bool value)
     {
-        if (value) { nodeEditCancellation?.Cancel(); folderOpenCancellation?.Cancel(); }
+        if (value) { trackAppearanceCancellation?.Cancel(); nodeEditCancellation?.Cancel(); folderOpenCancellation?.Cancel(); }
         OnPropertyChanged(nameof(CanGoBack));
         OnPropertyChanged(nameof(IsInteractionReady));
         NotifyEditingState();

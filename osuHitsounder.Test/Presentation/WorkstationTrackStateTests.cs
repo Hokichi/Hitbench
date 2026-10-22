@@ -48,16 +48,17 @@ public sealed class WorkstationTrackStateTests
     public async Task StateMovesAndDraftsPreserveLiveTracks()
     {
         var a = new Track { Name = "A", SelectedSampleFileName = "a.wav" }; var b = new Track { Name = "B" };
+        var appearance = new StubOHsTrackAppearanceDialogService();
         var saves = new DelayedProjectFileService(); saves.Release();
-        var vm = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [a,b], Offsets = [0], BPMs = [120] })) }, new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), projectFiles:saves);
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [a,b], Offsets = [0], BPMs = [120] })) }, new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), projectFiles:saves, trackAppearanceDialog:appearance);
         try {
             await vm.LoadAsync("project.json", default); vm.AcknowledgePresentationReady(vm.LoadGeneration);
             vm.SetTrackCollapsed(a, true); Assert.That(b.IsCollapsed, Is.False); Assert.That(vm.AreTracksCollapsed, Is.False);
             vm.ToggleTracksCollapsedCommand.Execute(null); Assert.That(vm.AreTracksCollapsed, Is.True);
             Assert.That(vm.MoveTrack(a, 1), Is.True); Assert.That(vm.Project!.Tracks[1], Is.SameAs(a)); Assert.That(vm.MoveTrack(a,1), Is.False);
-            vm.BeginTrackRenameCommand.Execute(a); vm.TrackNameDraft = "Draft"; Assert.That(a.Name, Is.EqualTo("A"));
-            vm.CancelTrackRename(a); await vm.CommitTrackRenameAsync(a); Assert.That(a.Name, Is.EqualTo("A"));
-            vm.BeginTrackRenameCommand.Execute(a); vm.TrackNameDraft = "Accepted"; await vm.CommitTrackRenameAsync(a); Assert.That(a.Name, Is.EqualTo("Accepted"));
+            await vm.ChangeTrackNameAndColorCommand.ExecuteAsync(a); Assert.That(a.Name, Is.EqualTo("A"));
+            appearance.Request = (_, _) => Task.FromResult<osuHitsounder.Resources.DataModels.OHsTrackAppearanceResult?>(new("Accepted", null));
+            await vm.ChangeTrackNameAndColorCommand.ExecuteAsync(a); Assert.That(a.Name, Is.EqualTo("Accepted"));
             vm.ToggleTrackMutesCommand.Execute(null); Assert.That(vm.AreTracksMuted, Is.True);
             vm.ToggleTrackMutesCommand.Execute(null); Assert.That(vm.HasMutedTracks, Is.False);
             Assert.That(a.SelectedSampleFileName, Is.EqualTo("a.wav"));

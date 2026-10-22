@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Data;
@@ -85,6 +85,7 @@ public partial class OHsWorkstationTrackRow : UserControl
         if (viewModel is null) return;
         if (Track is {} current)
         {
+            SetValue(IsInstrumentalTrackPropertyKey, current is InstrumentalTrack);
             SetCurrentValue(TrackColorIndexProperty, viewModel.Tracks.IndexOf(current));
             if (!IsTrackCollapsed && current.IsCollapsed && HasExpandedControlFocus(Keyboard.FocusedElement as DependencyObject ?? FocusManager.GetFocusedElement(FocusManager.GetFocusScope(this)) as DependencyObject)) FindVisualChild<BalloonComboBox>(this)?.Focus();
             IsTrackCollapsed = current.IsCollapsed; CurrentTrackExtent = viewModel.GetTrackExtent(current);
@@ -357,7 +358,17 @@ public partial class OHsWorkstationTrackRow : UserControl
             BindingOperations.GetBindingExpression(item, MenuItem.CommandProperty)?.UpdateTarget();
         }
         trigger.ContextMenu = menu;
+        if (Track is not InstrumentalTrack && menu.Items[2] is MenuItem appearance)
+        {
+            BindingOperations.ClearBinding(appearance, MenuItem.CommandProperty);
+            appearance.Command = ViewModel.ChangeTrackNameAndColorCommand;
+            appearance.Header = "Change Name and Color";
+            appearance.Click += (_, _) => trigger.Focus();
+        }
     }
 
-}
+    private static readonly DependencyPropertyKey IsInstrumentalTrackPropertyKey = DependencyProperty.RegisterReadOnly(nameof(IsInstrumentalTrack), typeof(bool), typeof(OHsWorkstationTrackRow), new PropertyMetadata(false));
+    public static readonly DependencyProperty IsInstrumentalTrackProperty = IsInstrumentalTrackPropertyKey.DependencyProperty;
+    public bool IsInstrumentalTrack => (bool)GetValue(IsInstrumentalTrackProperty);
 
+}

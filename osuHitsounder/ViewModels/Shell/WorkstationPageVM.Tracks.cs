@@ -205,6 +205,7 @@ public partial class WorkstationPageVM
     }
     private void NotifyTrackCommands()
     {
+        ChangeTrackNameAndColorCommand.NotifyCanExecuteChanged();
         if (!IsInteractionReady && RenamingTrack is {} editing) { RenamingTrack = null; TrackNameDraft = editing.Name; }
         MoveTrackUpCommand.NotifyCanExecuteChanged(); MoveTrackDownCommand.NotifyCanExecuteChanged();
         ToggleTrackCollapsedCommand.NotifyCanExecuteChanged(); BeginTrackRenameCommand.NotifyCanExecuteChanged();
@@ -235,7 +236,7 @@ public partial class WorkstationPageVM
     [ObservableProperty] private Track? renamingTrack;
     [ObservableProperty] private string trackNameDraft = string.Empty;
     [ObservableProperty] private bool isTrackRenamePending;
-    private bool CanBeginTrackRename(Track? track) => CanMoveTrack(track) && !IsTrackRenamePending && (RenamingTrack is null || ReferenceEquals(RenamingTrack, track));
+    private bool CanBeginTrackRename(Track? track) => track is InstrumentalTrack && CanMoveTrack(track) && !IsTrackRenamePending && (RenamingTrack is null || ReferenceEquals(RenamingTrack, track));
     [RelayCommand(CanExecute = nameof(CanBeginTrackRename))]
     private void BeginTrackRename(Track track)
     {
