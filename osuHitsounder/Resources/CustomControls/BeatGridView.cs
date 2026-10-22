@@ -413,6 +413,8 @@ public sealed class BeatGridView : FrameworkElement
                     var rect = GetDisplayedSampleBounds(sample);
                     if (rect.IsEmpty) continue;
                     rect = Inset(rect);
+                    if (!highContrast && DataContext is osuHitsounder.Core.Entities.Track { Color: not null })
+                        OHsSampleNodeDrawing.Draw(context,null,new Pen(TryFindResource("Brush.Text.Primary") as Brush,4),rect);
                     OHsSampleNodeDrawing.Draw(context,marker, selectedLayer ? selectedBorder : nodeBorder, rect);
                 }
             if (Samples is not null)

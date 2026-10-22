@@ -75,8 +75,12 @@ public partial class OHsWorkstationTrackRow : UserControl
     public static readonly DependencyProperty TrackBrushProperty = DependencyProperty.Register(
         nameof(TrackBrush), typeof(Brush), typeof(OHsWorkstationTrackRow));
     public Brush? TrackBrush => (Brush?)GetValue(TrackBrushProperty);
-    private void RefreshTrackPalette() => SetResourceReference(TrackBrushProperty,
-        osuHitsounder.Resources.Helpers.OHsTrackPalette.GetResourceKey(TrackColorIndex));
+    private void RefreshTrackPalette()
+    {
+        if (Track is not InstrumentalTrack && Track?.Color is {} color)
+            SetValue(TrackBrushProperty,osuHitsounder.Resources.Helpers.OHsTrackPalette.ResolveBrush(this,TrackColorIndex,color));
+        else SetResourceReference(TrackBrushProperty,osuHitsounder.Resources.Helpers.OHsTrackPalette.GetResourceKey(TrackColorIndex));
+    }
 
     public BeatGridView? SampleTimeline => FindVisualChild<BeatGridView>(this);
     public void PrepareDrawing() => SampleTimeline?.PrepareDrawing();
@@ -87,6 +91,7 @@ public partial class OHsWorkstationTrackRow : UserControl
         {
             SetValue(IsInstrumentalTrackPropertyKey, current is InstrumentalTrack);
             SetCurrentValue(TrackColorIndexProperty, viewModel.Tracks.IndexOf(current));
+            RefreshTrackPalette();
             if (!IsTrackCollapsed && current.IsCollapsed && HasExpandedControlFocus(Keyboard.FocusedElement as DependencyObject ?? FocusManager.GetFocusedElement(FocusManager.GetFocusScope(this)) as DependencyObject)) FindVisualChild<BalloonComboBox>(this)?.Focus();
             IsTrackCollapsed = current.IsCollapsed; CurrentTrackExtent = viewModel.GetTrackExtent(current);
             IsTrackMuted = current.IsTrackMuted; IsTrackSoloed = current.IsTrackSoloed;

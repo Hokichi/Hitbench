@@ -23,6 +23,8 @@ public sealed class OHsSampleNodeDragAdorner : Adorner
     public IReadOnlyList<Rect> NodeBounds { get => nodeBounds; set { nodeBounds = value; InvalidateVisual(); } }
     private IReadOnlyList<int> trackColorIndices = Array.Empty<int>();
     public IReadOnlyList<int> TrackColorIndices { get => trackColorIndices; set { trackColorIndices = value; InvalidateVisual(); } }
+    private IReadOnlyList<string?> trackColors=Array.Empty<string?>();
+    public IReadOnlyList<string?> TrackColors { get=>trackColors; set{trackColors=value;InvalidateVisual();} }
     protected override void OnRender(DrawingContext drawingContext)
     {
         var border = SystemParameters.HighContrast ? SystemColors.WindowBrush : TryFindResource("Brush.Border.Default") as Brush;
@@ -32,10 +34,13 @@ public sealed class OHsSampleNodeDragAdorner : Adorner
         {
             var bounds = NodeBounds[index];
             var brush = SystemParameters.HighContrast ? SystemColors.WindowTextBrush
-                : TryFindResource(osuHitsounder.Resources.Helpers.OHsTrackPalette.GetResourceKey(
-                    index < TrackColorIndices.Count ? TrackColorIndices[index] : 0)) as Brush;
+                : osuHitsounder.Resources.Helpers.OHsTrackPalette.ResolveBrush(this,
+                    index < TrackColorIndices.Count ? TrackColorIndices[index] : 0,
+                    index < TrackColors.Count ? TrackColors[index] : null);
             var translated = bounds;
             translated.Offset(CursorPosition.X, CursorPosition.Y);
+            if (!SystemParameters.HighContrast && index < TrackColors.Count && TrackColors[index] is not null)
+                OHsSampleNodeDrawing.Draw(drawingContext,null,new Pen(TryFindResource("Brush.Text.Primary") as Brush,4),translated);
             OHsSampleNodeDrawing.Draw(drawingContext,brush, pen, translated);
         }
     }

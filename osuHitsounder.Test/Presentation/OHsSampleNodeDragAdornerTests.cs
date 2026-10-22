@@ -10,6 +10,15 @@ namespace osuHitsounder.Test.Presentation;
 public class OHsSampleNodeDragAdornerTests
 {
     [Test]
+    public void CustomColorsFollowEachSourceNode()
+    {
+        var adorner=new OHsSampleNodeDragAdorner(new Border()) {NodeBounds=[new Rect(0,0,10,8),new Rect(20,0,10,8)],TrackColors=["#123456","#ABCDEF"]};
+        adorner.Resources["Brush.Text.Primary"]=Brushes.Black;adorner.Resources["Brush.Node.SelectedOutline"]=Brushes.Black;
+        UiTestPump.Layout(adorner,200,100);
+        var fills=Shapes(VisualTreeHelper.GetDrawing(adorner)!).Where(s=>s.Brush is SolidColorBrush).Select(s=>((SolidColorBrush)s.Brush!).Color).ToArray();
+        Assert.That(fills,Is.EqualTo(new[]{Color.FromRgb(0x12,0x34,0x56),Color.FromRgb(0xAB,0xCD,0xEF)}));
+    }
+    [Test]
     public void DrawsEverySuppliedRectangle()
     {
         var adorner = new OHsSampleNodeDragAdorner(new Border())

@@ -19,6 +19,12 @@ public class OHsSampleTrackNameTests
             var text=Find(row);Assert.That(text,Is.Not.Null);
             Assert.That(text!.Style,Is.SameAs(row.FindResource("OHsWorkstationSampleTrackNameStyle")));
             Assert.That(text.Text,Is.EqualTo("Display"));
+            track.Color="#123456";row.RefreshPresentation();
+            Assert.That(((SolidColorBrush)row.TrackBrush!).Color,Is.EqualTo(Color.FromRgb(0x12,0x34,0x56)));
+            track.Color=null;row.RefreshPresentation();
+            Assert.That(row.TrackBrush,Is.SameAs(row.FindResource("Brush.Track.1")));
+            row.Track=new InstrumentalTrack{Color="#ABCDEF"};row.RefreshPresentation();
+            Assert.That(row.TrackBrush,Is.SameAs(row.FindResource("Brush.Track.1")));
         }finally{UiTestPump.Run(vm.DeactivateAsync());}
     }
     private static TextBlock? Find(DependencyObject root)

@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Documents;
@@ -153,7 +153,8 @@ public partial class OHsWorkstationTrackList
             nodeDragGroup = viewModel.Tracks.SelectMany((track, index) => track.Samples
                 .Where(viewModel.SelectedSamples.Contains).Select(sample => (sample, sample.Timestamp, index))).ToArray();
             nodeAdorner = new OHsSampleNodeDragAdorner(TrackList)
-            { TrackColorIndices = nodeDragGroup.Select(node => node.TrackIndex).ToArray() };
+            { TrackColorIndices = nodeDragGroup.Select(node => node.TrackIndex).ToArray(),
+              TrackColors = nodeDragGroup.Select(node => viewModel.Tracks[node.TrackIndex] is osuHitsounder.Core.Entities.InstrumentalTrack ? null : viewModel.Tracks[node.TrackIndex].Color).ToArray() };
             nodeLayer.Add(nodeAdorner); nodeDragging = true;
             TrackList.LayoutUpdated += OnNodeDragLayoutUpdated;
             TrackList.AddHandler(ScrollViewer.ScrollChangedEvent, new ScrollChangedEventHandler(OnNodeDragScrollChanged));
