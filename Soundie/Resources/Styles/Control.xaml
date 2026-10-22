@@ -1,0 +1,38 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:converters="clr-namespace:Soundie.Resources.Converters">
+    <converters:OHsFocusRingMetricsConverter x:Key="OHsFocusRingMetricsConverter" />
+    <Style x:Key="BaseControlStyle" TargetType="Control" />
+    <ControlTemplate x:Key="OHsKeyboardFocusRingTemplate" TargetType="Control">
+        <Border x:Name="FocusRing" Style="{StaticResource BaseBorderStyle}" IsHitTestVisible="False" SnapsToDevicePixels="True"
+                BorderBrush="{DynamicResource Brush.Border.Focus}" CornerRadius="{StaticResource Radius.Control}">
+            <Border.BorderThickness>
+                <MultiBinding Converter="{StaticResource OHsFocusRingMetricsConverter}" ConverterParameter="Stroke" Mode="OneWay">
+                    <Binding Source="{StaticResource Focus.Thickness}" Mode="OneWay" />
+                    <Binding Source="{StaticResource Focus.Gap}" Mode="OneWay" />
+                </MultiBinding>
+            </Border.BorderThickness>
+            <Border.Margin>
+                <MultiBinding Converter="{StaticResource OHsFocusRingMetricsConverter}" ConverterParameter="Outset" Mode="OneWay">
+                    <Binding Source="{StaticResource Focus.Thickness}" Mode="OneWay" />
+                    <Binding Source="{StaticResource Focus.Gap}" Mode="OneWay" />
+                </MultiBinding>
+            </Border.Margin>
+        </Border>
+        <ControlTemplate.Triggers>
+            <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
+                <Setter TargetName="FocusRing" Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+            </DataTrigger>
+        </ControlTemplate.Triggers>
+    </ControlTemplate>
+    <Style
+        x:Key="DefaultFocusVisualStyle"
+        BasedOn="{StaticResource BaseControlStyle}"
+        TargetType="Control">
+        <Setter Property="Template" Value="{StaticResource OHsKeyboardFocusRingTemplate}" />
+        <Setter Property="IsHitTestVisible" Value="False" />
+        <Setter Property="Focusable" Value="False" />
+    </Style>
+
+    <Style x:Key="OHsSampleManagerKeyboardFocusStyle" TargetType="Control" BasedOn="{StaticResource DefaultFocusVisualStyle}">
+    </Style>
+</ResourceDictionary>

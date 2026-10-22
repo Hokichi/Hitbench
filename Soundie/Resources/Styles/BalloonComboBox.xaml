@@ -1,0 +1,13 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:c="clr-namespace:Soundie.Resources.CustomControls"
+                    xmlns:h="clr-namespace:Soundie.Resources.Helpers">
+    <Style x:Key="BaseBalloonComboBoxStyle" TargetType="c:BalloonComboBox"
+           BasedOn="{StaticResource OHsBalloonNavInfoActionStyle}">
+        <Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
+        <Setter Property="IsTabStop" Value="True" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
+        <Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="True" />
+    </Style>
+    <Style TargetType="c:BalloonComboBox" BasedOn="{StaticResource BaseBalloonComboBoxStyle}" />
+</ResourceDictionary>
