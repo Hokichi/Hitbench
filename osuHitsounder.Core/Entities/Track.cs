@@ -7,6 +7,7 @@ public class Track
     public osuHitsounder.Core.Enums.SampleType SampleType { get; set; }
     public string Addition { get; set; } = "None";
     public string Name { get; set; } = string.Empty;
+    public string? Color { get; set; }
     public string? SelectedSampleFileName { get; set; }
     public List<Sample> Samples { get; set; } = [];
     public int Volume { get; set; } = 100;

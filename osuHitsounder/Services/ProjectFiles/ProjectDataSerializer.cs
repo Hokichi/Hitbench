@@ -60,6 +60,14 @@ public static class ProjectDataSerializer
             foreach (var item in trackNodes)
             {
                 if (item is not JObject track) throw new InvalidDataException("Track must be an object.");
+                var color = InstrumentMember(track, nameof(Track.Color));
+                if (color is not null && color.Type != JTokenType.Null)
+                {
+                    if (color.Type != JTokenType.String || !RgbColor.TryParse(color.Value<string>(), out var rgb))
+                        throw new InvalidDataException("Track Color must be #RRGGBB or null.");
+                    foreach (var member in track.Properties().Where(p => string.Equals(p.Name, nameof(Track.Color), StringComparison.OrdinalIgnoreCase)).ToArray()) member.Remove();
+                    track[nameof(Track.Color)] = rgb.ToHex();
+                }
                 var trackCollapsed = InstrumentMember(track, nameof(Track.IsCollapsed));
                 if (trackCollapsed is not null && trackCollapsed.Type != JTokenType.Boolean)
                     throw new InvalidDataException("Track IsCollapsed must be a boolean.");
