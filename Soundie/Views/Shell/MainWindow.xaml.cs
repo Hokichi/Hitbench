@@ -578,7 +578,8 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
         restoringBackgroundDrag = true;
         try
         {
-            requestWindowState(WindowState.Normal);
+            // DragMove needs restoration completed; SystemCommands.RestoreWindow queues it for later.
+            WindowState = WindowState.Normal;
             if (maximized && !restored.IsEmpty) moveRestoredWindow(restored);
         }
         finally { restoringBackgroundDrag = false; }

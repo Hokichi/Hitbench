@@ -17,7 +17,10 @@ public class MainWindowBackgroundDragTests
     private Border root = null!;
     private readonly List<string> calls = [];
     private bool held;
-    private bool releaseDuringRestore;
+    private bool releaseDuringPositioning;
+    private bool deferStateRequest;
+    private WindowState stateAtMove;
+    private Rect movedBounds;
     private static readonly Point Origin = new(-960, 540);
     private static readonly Rect Bounds = new(-1920, 0, 1920, 1080);
 
@@ -32,10 +35,19 @@ public class MainWindowBackgroundDragTests
             new StubProjectFileService((_, _, _) => Task.FromResult("saved.json")), messenger);
         calls.Clear();
         held = true;
-        releaseDuringRestore = false;
+        releaseDuringPositioning = false;
+        deferStateRequest = false;
+        stateAtMove = WindowState.Minimized;
+        movedBounds = Rect.Empty;
         window = TestShell.Create(new HomePage(vm), messenger, WorkstationTestPage.Create, vm, settings,
-            state => { calls.Add(state.ToString()); window.WindowState = state; if (releaseDuringRestore) held = false; },
-            () => calls.Add("Drag"), _ => calls.Add("Move"), () => held);
+            state => { calls.Add(state.ToString()); if (!deferStateRequest) window.WindowState = state; },
+            () => calls.Add("Drag"), bounds =>
+            {
+                calls.Add("Move");
+                stateAtMove = window.WindowState;
+                movedBounds = bounds;
+                if (releaseDuringPositioning) held = false;
+            }, () => held);
         window.WindowState = WindowState.Maximized;
         root = (Border)window.FindName("ShellRoot");
     }
@@ -64,10 +76,24 @@ public class MainWindowBackgroundDragTests
             Is.EqualTo(new Rect(-1500, 100, 1280, 960)));
     }
 
+    [Test]
+    public void DragRestoresSynchronouslyEvenWhenWindowStateCommandsAreDeferred()
+    {
+        deferStateRequest = true;
+        window.ApplySettings(new() { RestoredWidth = 1024, RestoredHeight = 640, IsMaximized = true });
+        Assert.That(window.HandleBackgroundMouseDown(root, 1, true, new Point(-960, 30), Bounds, 1.25, 1.5), Is.True);
+
+        Assert.That(window.HandleBackgroundMouseMove(true, new Point(-860, 130), Bounds, 1.25, 1.5), Is.True);
+
+        Assert.That(stateAtMove, Is.EqualTo(WindowState.Normal), "Restore must finish before applying cursor-anchored bounds.");
+        Assert.That(movedBounds, Is.EqualTo(new Rect(-1500, 100, 1280, 960)));
+        Assert.That(calls, Is.EqualTo(new[] { "Move", "Drag" }), "Dragging must not queue another restore command.");
+    }
+
     [TestCase(false), TestCase(true)]
     public void RootDragRestoresAfterMovementAndRechecksButton(bool release)
     {
-        releaseDuringRestore = release;
+        releaseDuringPositioning = release;
         Assert.That(window.HandleBackgroundMouseDown(root.Child, 1, true, Origin, Bounds, 1, 1), Is.False);
         Assert.That(window.HandleBackgroundMouseDown(new TextBlock(), 1, true, Origin, Bounds, 1, 1), Is.False);
         vm.IsInteractionBlocked = true;
@@ -77,7 +103,7 @@ public class MainWindowBackgroundDragTests
         Assert.That(Press(), Is.True);
         Assert.That(calls, Is.Empty);
         Assert.That(Move(), Is.True);
-        Assert.That(calls, Is.EqualTo(release ? new[] { "Normal", "Move" } : new[] { "Normal", "Move", "Drag" }));
+        Assert.That(calls, Is.EqualTo(release ? new[] { "Move" } : new[] { "Move", "Drag" }));
         Assert.That(window.WindowState, Is.EqualTo(WindowState.Normal));
         calls.Clear();
         Assert.That(Move(), Is.False);
@@ -108,7 +134,7 @@ public class MainWindowBackgroundDragTests
         Assert.That(window.WindowState, Is.EqualTo(WindowState.Maximized));
         Assert.That(Move(horizontal ? -x - 1 : 0, horizontal ? 0 : -y - 1,
             dpiX: dpiX, dpiY: dpiY), Is.True);
-        Assert.That(calls, Is.EqualTo(new[] { "Normal", "Move", "Drag" }));
+        Assert.That(calls, Is.EqualTo(new[] { "Move", "Drag" }));
     }
 
     [TestCase(WindowState.Maximized, WindowState.Normal)]
@@ -128,7 +154,7 @@ public class MainWindowBackgroundDragTests
     {
         window.WindowState = WindowState.Normal;
         Assert.That(Press(), Is.True);
-        Assert.That(calls, Is.EqualTo(new[] { "Normal", "Drag" }));
+        Assert.That(calls, Is.EqualTo(new[] { "Drag" }));
     }
 
     [TestCase("release"), TestCase("capture"), TestCase("deactivate"), TestCase("close")]
