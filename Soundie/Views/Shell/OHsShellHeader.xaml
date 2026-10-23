@@ -100,7 +100,9 @@
         <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
             <TextBlock Margin="12,0" Style="{StaticResource MainWindowTitleStyle}" Text="Soundie"/>
             <Border Style="{StaticResource OHsShellHeaderHomeSeparatorStyle}"/>
+            <customControls:Icon Width="10" Height="10" Margin="0,0,8,0" VerticalAlignment="Center" IsHitTestVisible="False" Focusable="False" Path="{StaticResource Moon}" Color="{DynamicResource Brush.Text.Primary}"/>
             <ToggleButton x:Name="ThemeSwitch" AutomationProperties.Name="Light theme" ToolTip="Toggle Dark / Light theme" IsChecked="{Binding IsLightTheme, RelativeSource={RelativeSource AncestorType=shell:OHsShellHeader}, Mode=OneWay}" Click="OnThemeToggleClick" Style="{StaticResource OHsShellThemeToggleStyle}"/>
+            <customControls:Icon Width="12" Height="12" Margin="8,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False" Focusable="False" Path="{StaticResource Sun}" Color="{DynamicResource Brush.Text.Primary}"/>
         </StackPanel>
         <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
             <StackPanel x:Name="WorkstationActions" Orientation="Horizontal" Style="{StaticResource OHsShellHeaderAudioActionsStyle}">
