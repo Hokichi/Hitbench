@@ -26,6 +26,19 @@ namespace Soundie.Test.Presentation;
 public class HomePageIntegrationTests
 {
     [Test]
+    public void EmptyProjectsKeepNavigationAvailable()
+    {
+        EnsureResources();
+        var vm = CreateVM(new StubHomeFolderService { Projects = _ => Task.FromResult(new FolderSnapshot([])) });
+        var page = new HomePage(vm);
+        using var view = new InMemoryView(new Window { Content = page, Width = 720, Height = 520 });
+        UiTestPump.Run(page.LoadAsync(CancellationToken.None));
+        view.UpdateLayout();
+        Assert.That(((ItemsControl)page.FindName("ProjectsList")).Items.OfType<OHsHomeProjectListItem>().Where(item => !item.IsHeading), Is.Empty);
+        Assert.That(vm.OpenSongSearchCommand.CanExecute(null), Is.True);
+    }
+
+    [Test]
     public void PersistentSongSearchBindsFiltersAndClearsWithEscape()
     {
         EnsureResources();
@@ -625,6 +638,22 @@ public class HomePageIntegrationTests
             view.UpdateLayout();
             var projects = (ItemsControl)page.FindName("ProjectsList");
             var button = Descendants<Button>(projects).Single(value => value.Command == vm.OpenProjectCommand);
+            var card = Descendants<ContentControl>(projects).Single(value => value.ContentTemplate == page.FindResource("OHsHomePageProjectRowTemplate"));
+            var presenter = Descendants<ContentPresenter>(card).First(value => value.ContentTemplate == card.ContentTemplate);
+            var border = (Border)VisualTreeHelper.GetChild(presenter, 0);
+            UiControlContract.AssertStyle<Border>(border, "OHsHomePageProjectCardBorderStyle");
+            Assert.That(Descendants<BalloonButton>(projects).Count(value => value.Command == vm.OpenProjectCommand), Is.Zero);
+            var trigger = Descendants<BalloonComboBox>(projects).Single();
+            UiControlContract.AssertStyle<BalloonComboBox>(trigger, "OHsHomePageMenuTriggerStyle");
+            var menu = trigger.ContextMenu;
+            menu.DataContext = row;
+            var pin = (MenuItem)menu.Items[0];
+            var delete = (MenuItem)menu.Items[1];
+            Assert.That(pin.Command, Is.SameAs(vm.ToggleProjectPinCommand));
+            Assert.That(delete.Command, Is.SameAs(vm.DeleteProjectCommand));
+            Assert.That(pin.CommandParameter, Is.SameAs(row));
+            UiTestPump.Run(vm.ToggleProjectPinCommand.ExecuteAsync(row));
+            Assert.That(opened, Is.Empty);
             var name = Descendants<TextBlock>(button).Single(block =>
                 ReferenceEquals(block.Style, page.FindResource("HomePageProjectNameStyle")));
             button.Width = 280;

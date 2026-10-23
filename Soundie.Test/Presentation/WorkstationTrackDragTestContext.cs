@@ -36,6 +36,7 @@ public sealed class WorkstationTrackDragTestContext : IDisposable
             new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), projectFiles: Saves);
         UiTestPump.Run(Vm.LoadAsync("project.json", default));
         Vm.AcknowledgePresentationReady(Vm.LoadGeneration);
+        Vm.IsAdditionMode = false;
         Owner = new OHsWorkstationTrackList { DataContext = Vm, FlowDirection = direction };
         Owner.CaptureTrackPointer = () => { Captures++; return CanCapture; };
         Owner.ReleaseTrackPointer = () => Releases++;

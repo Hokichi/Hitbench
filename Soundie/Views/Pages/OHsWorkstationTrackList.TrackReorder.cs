@@ -27,6 +27,7 @@ public partial class OHsWorkstationTrackList
     private OHsTrackDragAdorner? trackDragAdorner;
     private ImageSource? trackDragImage;
     private bool refreshingTrackDrag;
+    private bool acquiringTrackPointer;
     private int trackWheelRemainder;
     private readonly HashSet<ListBoxItem> trackDragContainers = [];
     private (double Extent, string Name, bool Collapsed, bool Muted, bool Solo, int Volume, string? Sample, double Width, double Offset) trackImageState;
@@ -110,7 +111,7 @@ public partial class OHsWorkstationTrackList
         return true;
     }
 
-    private bool CanReorderTrack(Track track) => !deactivationStarted && !IsVolumeOverlayOpen && viewModel is not null &&
+    private bool CanReorderTrack(Track track) => !deactivationStarted && !IsVolumeOverlayOpen && viewModel is not null && viewModel.IsSelectionMode &&
         (viewModel.MoveTrackUpCommand.CanExecute(track) || viewModel.MoveTrackDownCommand.CanExecute(track));
 
     private bool IsTrackSessionCurrent() => DraggedTrack is { } track && ReferenceEquals(trackDragOwner, viewModel) &&
@@ -118,7 +119,7 @@ public partial class OHsWorkstationTrackList
 
     internal void UpdateTrackPointer(Point point, bool leftButtonPressed)
     {
-        if (DraggedTrack is null) return;
+        if (DraggedTrack is null || acquiringTrackPointer) return;
         if (!leftButtonPressed || !double.IsFinite(point.X) || !double.IsFinite(point.Y) || !IsTrackSessionCurrent())
         { CancelTrackPointer(); return; }
         trackPointerLast = point;
@@ -128,8 +129,10 @@ public partial class OHsWorkstationTrackList
             {
                 if (!OHsTrackDragGeometry.CrossedThreshold(trackPointerStart, point,
                     SystemParameters.MinimumHorizontalDragDistance, SystemParameters.MinimumVerticalDragDistance)) return;
-                trackPointerCaptured = CaptureTrackPointer?.Invoke() ?? CaptureMouse();
-                if (!trackPointerCaptured) { CancelTrackPointer(); return; }
+                acquiringTrackPointer = true;
+                try { trackPointerCaptured = CaptureTrackPointer?.Invoke() ?? CaptureMouse(); }
+                finally { acquiringTrackPointer = false; }
+                if (!trackPointerCaptured || !IsTrackSessionCurrent()) { CancelTrackPointer(); return; }
                 IsTrackDragActive = true;
                 trackDragLayer = AdornerLayer.GetAdornerLayer(TrackList);
                 if (trackDragLayer is null) { CancelTrackPointer(); return; }
@@ -257,6 +260,7 @@ public partial class OHsWorkstationTrackList
                 var sourceContainer = FindAncestor<ListBoxItem>(sourceRow)!;
                 OHsTrackDragPresentation.SetIsSource(sourceContainer, false);
                 trackDragImage = CaptureTrackPreview is { } substitute ? substitute(sourceRow) : CaptureTrackRowImage(sourceRow);
+                if (!IsTrackDragActive || !IsTrackSessionCurrent()) { CancelTrackPointer(); return; }
                 if (trackDragImage is null) { CancelTrackPointer(); return; }
                 // The public row extent owns collapse/expanded sizing; image pixels do not.
                 state.Item1 = sourceRow.CurrentTrackExtent;

@@ -11,14 +11,86 @@ namespace Soundie.Test.Presentation;
 [Apartment(ApartmentState.STA), NonParallelizable]
 public sealed class WorkstationTrackDragTests
 {
+    [Test]
+    public void DrawModeCannotArmTrackDrag()
+    {
+        using var context = new WorkstationTrackDragTestContext();
+        context.Vm.IsAdditionMode = true;
+        Assert.That(context.Owner.BeginTrackPointer(context.Row(0), context.PointOn(context.Row(0))), Is.False);
+        Assert.That(context.Captures, Is.Zero);
+    }
+
+    [Test]
+    public void RepeatedDropGesturesLeaveNoOrphanAdorners()
+    {
+        using var context = new WorkstationTrackDragTestContext();
+        for (var i = 0; i < 3; i++)
+        {
+            context.Start();
+            context.Owner.CompleteTrackPointer(new Point(-1, -1));
+            context.View.UpdateLayout();
+            Assert.That(context.Owner.DraggedTrack, Is.Null);
+            Assert.That(AdornerLayer.GetAdornerLayer(context.List)!.GetAdorners(context.List), Is.Null);
+        }
+        Assert.That(context.Saves.Writes, Is.Zero);
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public void SwitchingToDrawCancelsArmedOrActiveGesture(bool active)
+    {
+        using var context = new WorkstationTrackDragTestContext();
+        if (active) context.Start();
+        else context.Owner.BeginTrackPointer(context.Row(0), context.PointOn(context.Row(0)));
+        context.Vm.IsAdditionMode = true;
+        Assert.That(context.Owner.DraggedTrack, Is.Null);
+        context.Vm.IsAdditionMode = false;
+        context.View.UpdateLayout();
+        Assert.That(context.Owner.IsTrackDragActive, Is.False);
+        Assert.That(AdornerLayer.GetAdornerLayer(context.List)!.GetAdorners(context.List), Is.Null);
+        Assert.That(context.Releases, Is.EqualTo(active ? 1 : 0));
+        Assert.That(context.Saves.Writes, Is.Zero);
+    }
+
+    [Test]
+    public void ReentrantCaptureLeavesNoOrphanAdorners()
+    {
+        using var context = new WorkstationTrackDragTestContext();
+        var point = context.PointOn(context.Row(0));
+        var moved = new Point(point.X + SystemParameters.MinimumHorizontalDragDistance + 1, point.Y);
+        var calls = 0;
+        context.Owner.CaptureTrackPointer = () =>
+        {
+            if (++calls == 1) context.Owner.UpdateTrackPointer(moved, true);
+            return true;
+        };
+        context.Start();
+        context.Owner.CancelTrackPointer();
+        context.View.UpdateLayout();
+        Assert.That(AdornerLayer.GetAdornerLayer(context.List)!.GetAdorners(context.List), Is.Null);
+    }
+
+    [Test]
+    public void CancellationDuringPreviewAcquisitionLeavesNoDragPresentation()
+    {
+        using var context = new WorkstationTrackDragTestContext();
+        context.Owner.CaptureTrackPreview = _ => { context.Owner.CancelTrackPointer(); return context.Preview; };
+        context.Start();
+        context.View.UpdateLayout();
+        Assert.That(context.Owner.DraggedTrack, Is.Null);
+        Assert.That(AdornerLayer.GetAdornerLayer(context.List)!.GetAdorners(context.List), Is.Null);
+        foreach (var item in WorkstationTrackDragTestContext.Descendants<ListBoxItem>(context.List))
+            Assert.That(Soundie.Resources.Helpers.OHsTrackDragPresentation.GetIsSource(item), Is.False);
+    }
+
     [TestCase(false)]
     [TestCase(true)]
     public void RoutedReleaseRemovesAllDragPresentationEvenWhenAlreadyHandled(bool handled)
     {
         using var context = new WorkstationTrackDragTestContext();
         context.Start();
-        context.Owner.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, MouseButton.Left)
-        { RoutedEvent = UIElement.PreviewMouseLeftButtonUpEvent, Handled = handled });
+        context.Row(0).RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, MouseButton.Left)
+        { RoutedEvent = Mouse.PreviewMouseUpEvent, Handled = handled });
         context.View.UpdateLayout();
         Assert.That(context.Owner.IsTrackDragActive, Is.False);
         Assert.That(context.Owner.DraggedTrack, Is.Null);

@@ -36,6 +36,7 @@ public partial class OHsWorkstationTrackList : UserControl
     }
     private void OnPresentationChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(WorkstationPageVM.IsSelectionMode) && !viewModel.IsSelectionMode) CancelTrackPointer();
         if (e.PropertyName == nameof(WorkstationPageVM.LoadPhase) && viewModel.IsLoading) CancelNodePointer();
         if (e.PropertyName == nameof(WorkstationPageVM.IsSelectionMode) && nodeSourceGrid is not null && pointerNode is null) CancelNodePointer();
         if (!viewModel.CanPlaceSamples || nodeDragging && !viewModel.IsNodeDragActive) CancelNodePointer();

@@ -288,12 +288,6 @@
             </Style.Triggers>
         </Style>
         <Style
-            x:Key="OHsHomePageOpenActionStyle"
-            BasedOn="{StaticResource OHsBalloonNavInfoActionStyle}"
-            TargetType="customControls:BalloonButton">
-            <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
-        </Style>
-        <Style
             x:Key="OHsHomePageMenuTriggerStyle"
             BasedOn="{StaticResource BaseBalloonComboBoxStyle}"
             TargetType="customControls:BalloonComboBox">
@@ -310,6 +304,16 @@
             <Setter Property="Padding" Value="0" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
+            <Style.Triggers>
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource Self}, Mode=OneWay}" Value="True" />
+                        <Condition Binding="{Binding IsPressed, RelativeSource={RelativeSource Self}, Mode=OneWay}" Value="False" />
+                        <Condition Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="False" />
+                    </MultiDataTrigger.Conditions>
+                    <Setter Property="Background" Value="{Binding Background, RelativeSource={RelativeSource AncestorType=Border}, Mode=OneWay}" />
+                </MultiDataTrigger>
+            </Style.Triggers>
         </Style>
         <Style
             x:Key="OHsHomePagePinMenuItemStyle"
@@ -343,20 +347,40 @@
                 Style="{StaticResource OHsHomePageMetadataStyle}"
                 Text="{Binding Mode=OneWay}" />
         </DataTemplate>
+        <Style x:Key="OHsHomePageProjectCardBorderStyle" TargetType="Border" BasedOn="{StaticResource CardBorderStyle}">
+            <Style.Triggers>
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource Self}, Mode=OneWay}" Value="True" />
+                        <Condition Binding="{Binding DataContext.CanInteract, Source={StaticResource OHsHomePageSource}, Mode=OneWay}" Value="True" />
+                        <Condition Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="False" />
+                    </MultiDataTrigger.Conditions>
+                    <Setter Property="Effect" Value="{StaticResource OHsHomePageSongCardGlowEffect}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Control}" />
+                </MultiDataTrigger>
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding IsKeyboardFocusWithin, RelativeSource={RelativeSource Self}, Mode=OneWay}" Value="True" />
+                        <Condition Binding="{Binding DataContext.CanInteract, Source={StaticResource OHsHomePageSource}, Mode=OneWay}" Value="True" />
+                        <Condition Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="False" />
+                    </MultiDataTrigger.Conditions>
+                    <Setter Property="Effect" Value="{StaticResource OHsHomePageSongCardGlowEffect}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Control}" />
+                </MultiDataTrigger>
+            </Style.Triggers>
+        </Style>
         <DataTemplate x:Key="OHsHomePageProjectRowTemplate">
             <Border
                 Margin="0,0,0,8"
                 Padding="8"
-                Style="{StaticResource CardBorderStyle}">
+                Style="{StaticResource OHsHomePageProjectCardBorderStyle}">
                 <Grid>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <Button
-                        Grid.ColumnSpan="2"
+                        Grid.Column="0"
                         Margin="0,0,8,0"
                         AutomationProperties.HelpText="{Binding FullName, Mode=OneWay}"
                         AutomationProperties.Name="{Binding Name, Mode=OneWay}"
@@ -388,21 +412,8 @@
                             </StackPanel>
                         </Grid>
                     </Button>
-                    <customControls:BalloonButton
-                        Grid.Column="2"
-                        VerticalAlignment="Center"
-                        AutomationProperties.HelpText="{Binding FullName, Mode=OneWay}"
-                        AutomationProperties.Name="{Binding Name, Mode=OneWay}"
-                        ButtonIcon="{StaticResource AngleRight}"
-                        ButtonText="Open"
-                        Command="{Binding DataContext.OpenProjectCommand, Source={StaticResource OHsHomePageSource}, Mode=OneWay}"
-                        CommandParameter="{Binding Mode=OneWay}"
-                        ShouldShowText="True"
-                        Style="{StaticResource OHsHomePageOpenActionStyle}"
-                        ToolTip="Open project"
-                        ToolTipService.ShowsToolTipOnKeyboardFocus="True" />
                     <customControls:BalloonComboBox
-                        Grid.Column="3"
+                        Grid.Column="1"
                         Margin="4,0,0,0"
                         VerticalAlignment="Center"
                         AutomationProperties.Name="Project actions"
