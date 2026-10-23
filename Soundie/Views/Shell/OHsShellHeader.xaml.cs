@@ -26,6 +26,11 @@ public partial class OHsShellHeader : UserControl
     public static readonly RoutedEvent CloseRequestedEvent = EventManager.RegisterRoutedEvent(nameof(CloseRequested), RoutingStrategy.Bubble, typeof(RoutedEventHandler), typeof(OHsShellHeader));
     public event RoutedEventHandler CloseRequested { add => AddHandler(CloseRequestedEvent, value); remove => RemoveHandler(CloseRequestedEvent, value); }
     private void OnCloseClick(object sender, RoutedEventArgs e) => RaiseEvent(new RoutedEventArgs(CloseRequestedEvent, this));
+    public static readonly DependencyProperty IsLightThemeProperty = DependencyProperty.Register(nameof(IsLightTheme), typeof(bool), typeof(OHsShellHeader));
+    public bool IsLightTheme { get => (bool)GetValue(IsLightThemeProperty); set => SetValue(IsLightThemeProperty, value); }
+    public static readonly RoutedEvent ThemeToggleRequestedEvent = EventManager.RegisterRoutedEvent(nameof(ThemeToggleRequested), RoutingStrategy.Bubble, typeof(RoutedEventHandler), typeof(OHsShellHeader));
+    public event RoutedEventHandler ThemeToggleRequested { add => AddHandler(ThemeToggleRequestedEvent, value); remove => RemoveHandler(ThemeToggleRequestedEvent, value); }
+    private void OnThemeToggleClick(object sender, RoutedEventArgs e) => RaiseEvent(new RoutedEventArgs(ThemeToggleRequestedEvent, this));
     private void UpdateState()
     {
         if (!IsInitialized) return;

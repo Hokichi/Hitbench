@@ -75,4 +75,12 @@
    <Setter Property="Foreground" Value="{DynamicResource Brush.Warning}"/>
    <Style.Triggers><Trigger Property="Text" Value=""><Setter Property="Visibility" Value="Collapsed"/></Trigger></Style.Triggers>
   </Style>
+    <DropShadowEffect x:Key="OHsLoadingGlowEffect" ShadowDepth="0" BlurRadius="16" Opacity="0.3" Color="{DynamicResource Color.Navy.Text}"/>
+    <Style x:Key="OHsLoadingStatusTextStyle" TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlockStyle}">
+        <Setter Property="FontFamily" Value="{DynamicResource Bold}"/><Setter Property="FontSize" Value="{StaticResource FontSize.Heading}"/>
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}"/><Setter Property="HorizontalAlignment" Value="Center"/><Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="TextWrapping" Value="Wrap"/><Setter Property="TextAlignment" Value="Center"/><Setter Property="Effect" Value="{StaticResource OHsLoadingGlowEffect}"/>
+        <Setter Property="IsHitTestVisible" Value="False"/><Setter Property="AutomationProperties.LiveSetting" Value="Polite"/>
+        <Style.Triggers><DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True"><Setter Property="Effect" Value="{x:Null}"/><Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}"/></DataTrigger></Style.Triggers>
+    </Style>
 </ResourceDictionary>

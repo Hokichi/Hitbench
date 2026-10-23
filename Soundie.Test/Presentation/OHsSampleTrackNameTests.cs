@@ -24,6 +24,8 @@ public class OHsSampleTrackNameTests
             track.Color=null;row.RefreshPresentation();
             Assert.That(row.TrackBrush,Is.SameAs(row.FindResource("Brush.Track.1")));
             row.Track=new InstrumentalTrack{Color="#ABCDEF"};row.RefreshPresentation();
+            Assert.That(row.TrackBrush,Is.Not.SameAs(row.FindResource("Brush.Track.1")));
+            row.Track.Color=null;row.RefreshPresentation();
             Assert.That(row.TrackBrush,Is.SameAs(row.FindResource("Brush.Track.1")));
         }finally{UiTestPump.Run(vm.DeactivateAsync());}
     }

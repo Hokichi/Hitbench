@@ -301,7 +301,7 @@ public class WorkstationShortcutTests
         Assert.That(vm.IsPlaying, Is.True);
         Assert.That(page.HandlePlaybackKey(Key.Space, ModifierKeys.Shift, false, origin), Is.True);
         UiTestPump.Run(page.PlaybackInputCompletion);
-        Assert.That(vm.IsPlaying, Is.False);
+        Assert.That(vm.IsPlaying, Is.False, $"Transport error: {vm.ErrorMessage}");
         Assert.That(vm.Position, Is.EqualTo(TimeSpan.Zero));
         Assert.That(page.HandlePlaybackKey(Key.End, ModifierKeys.Control, false, origin), Is.True);
         UiTestPump.Run(page.PlaybackInputCompletion);

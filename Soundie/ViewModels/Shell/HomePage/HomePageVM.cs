@@ -46,6 +46,8 @@ public partial class HomePageVM(
     private readonly CancellationTokenSource lifetime = new();
     private CancellationTokenRegistration callerRegistration;
     private Task? loading;
+    private bool initialDataComplete;
+    [ObservableProperty] private bool isInitialLoading;
     private Task? cleanup;
     private FolderSnapshot? projectsSnapshot;
     private FolderSnapshot? songsSnapshot;
@@ -226,9 +228,11 @@ public partial class HomePageVM(
         callerToken.ThrowIfCancellationRequested();
         if (!active) throw new OperationCanceledException();
         callerRegistration = callerToken.Register(() => lifetime.Cancel());
+        IsInitialLoading = true;
         var songs = InitializeSongsAsync();
         var projects = InitializeProjectsAsync();
-        await Task.WhenAll(projects, songs);
+        try { await Task.WhenAll(projects, songs); }
+        finally { initialDataComplete = true; IsInitialLoading = active && !lifetime.IsCancellationRequested && !RequiresShutdown && IsAwaitingSongsPresentation; }
         if (callerToken.IsCancellationRequested || !active)
             throw new OperationCanceledException(callerToken.IsCancellationRequested ? callerToken : new CancellationToken(true));
     }
@@ -278,6 +282,7 @@ public partial class HomePageVM(
 
     private void EndProcessing()
     {
+        if (initialDataComplete || RequiresShutdown || lifetime.IsCancellationRequested) IsInitialLoading = false;
         IsAwaitingSongsPresentation = false;
         IsProcessing = false;
         IsInteractionBlocked = false;
@@ -507,6 +512,7 @@ public partial class HomePageVM(
 
     public void Deactivate()
     {
+        IsInitialLoading = false;
         if (!active) return;
         active = false;
         projectsGeneration++;

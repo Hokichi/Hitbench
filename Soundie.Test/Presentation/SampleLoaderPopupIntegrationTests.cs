@@ -32,7 +32,7 @@ public sealed class SampleLoaderPopupIntegrationTests
         view.UpdateLayout();
         var entryCheck = Descendants((ListBox)popup.FindName("DirectoryContents")).OfType<CheckBox>().Single(box => ReferenceEquals(box.DataContext, file));
         var autoPlay = (CheckBox)popup.FindName("AutoPlayCheckBox");
-        Assert.That(autoPlay.Template, Is.SameAs(popup.FindResource("SampleLoaderCheckTemplate")));
+        Assert.That(autoPlay.Template, Is.SameAs(popup.FindResource("RegularCheckBoxTemplate")));
         Assert.That(entryCheck.Template, Is.SameAs(autoPlay.Template));
         autoPlay.SetCurrentValue(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, true);
         Assert.That(vm.AutoPlaySamples, Is.True);
@@ -122,7 +122,7 @@ public sealed class SampleLoaderPopupIntegrationTests
         Assert.That(file.IsChecked, Is.False);
     }
     [Test]
-    public void CompactLocationItemsUseCheckedSelectionContractWithoutTabStops()
+    public void CompactLocationsDelegateTabWhileStandaloneCheckboxRemainsReachable()
     {
         var item = new MenuItem { Style = (Style)popup.FindResource("OHsSampleLoaderCompactLocationItemStyle") };
         item.ApplyTemplate();
@@ -130,7 +130,7 @@ public sealed class SampleLoaderPopupIntegrationTests
         Assert.That(item.IsCheckable, Is.True);
         Assert.That(item.IsTabStop, Is.False);
         foreach (var control in Descendants(view.Root).OfType<Control>())
-            Assert.That(control.IsTabStop, Is.False, control.GetType().Name);
+            Assert.That(control.IsTabStop, Is.EqualTo(control.Name == "AutoPlayCheckBox"), control.GetType().Name);
     }
     [Test]
     public void FolderSearchUsesExistingInputContract()
@@ -420,7 +420,7 @@ public sealed class SampleLoaderPopupIntegrationTests
         var checkbox = Descendants(view.Root).OfType<CheckBox>().Single(box => ReferenceEquals(box.DataContext, file));
         AssertPopupStyle<ItemsControl>(input, "BaseItemsControlStyle");
         AssertPopupStyle<CheckBox>(checkbox, "SampleLoaderCheckStyle");
-        Assert.That(checkbox.Template, Is.SameAs(popup.FindResource("SampleLoaderCheckTemplate")));
+        Assert.That(checkbox.Template, Is.SameAs(popup.FindResource("RegularCheckBoxTemplate")));
         Assert.That(vm.Breadcrumbs.Last().FullPath, Is.EqualTo(browser.RootPath));
         Assert.That(vm.SelectedFile, Is.SameAs(file));
     }
@@ -431,10 +431,10 @@ public sealed class SampleLoaderPopupIntegrationTests
         UiTestPump.Run(vm.SelectAsync(file));
         view.UpdateLayout();
         AssertPopupStyle<ListBox>((ListBox)popup.FindName("DirectoryContents"), "BaseListBoxStyle");
-        AssertPopupStyle<ValueSlider>((ValueSlider)popup.FindName("PlaybackTimeline"), "BaseValueSliderStyle");
+        Assert.That(popup.FindName("PreviewWaveform"), Is.TypeOf<WaveformView>());
         var footer = (CheckBox)popup.FindName("AutoPlayCheckBox");
         AssertPopupStyle<CheckBox>(footer, "SampleLoaderAutoPlayStyle");
-        Assert.That(footer.Template, Is.SameAs(popup.FindResource("SampleLoaderCheckTemplate")));
+        Assert.That(footer.Template, Is.SameAs(popup.FindResource("RegularCheckBoxTemplate")));
     }
 
     [Test]
@@ -445,25 +445,20 @@ public sealed class SampleLoaderPopupIntegrationTests
         Assert.That(checkbox.Content, Is.EqualTo("Auto-play on select"));
         checkbox.SetCurrentValue(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, true);
         Assert.That(vm.AutoPlaySamples, Is.True);
-        Assert.That(checkbox.IsTabStop, Is.False);
+        Assert.That(checkbox.IsTabStop, Is.True);
         Assert.That(System.Windows.Automation.AutomationProperties.GetName(checkbox), Is.EqualTo("Auto-play on select"));
     }
 
     [Test]
     public void TimelineBindsBoundsPositionAndDisabledState()
     {
-        var timeline = (ValueSlider)popup.FindName("PlaybackTimeline");
-        Assert.That(timeline, Is.Not.Null);
-        Assert.That(timeline.IsEnabled, Is.False);
-        UiTestPump.Run(vm.SelectAsync(file));
-        UiTestPump.Run(vm.SeekAsync(.35));
-        view.UpdateLayout();
-        Assert.That(timeline.Minimum, Is.Zero);
-        Assert.That(timeline.Maximum, Is.EqualTo(1));
-        Assert.That(timeline.Value, Is.EqualTo(.35));
-        Assert.That(timeline.IsEnabled, Is.True);
-        Assert.That(timeline.IsTabStop, Is.False);
-        Assert.That(((TextBlock)popup.FindName("PlaybackTimeTextBlock")).Text, Is.EqualTo(vm.PlaybackTimeText));
+        var waveform=(WaveformView)popup.FindName("PreviewWaveform");
+        Assert.That(waveform.IsEnabled,Is.False);
+        UiTestPump.Run(vm.SelectAsync(file)); UiTestPump.Run(vm.SeekAsync(.35)); view.UpdateLayout();
+        Assert.That(waveform.Data,Is.SameAs(vm.Waveform));
+        Assert.That(waveform.Position,Is.EqualTo(TimeSpan.FromSeconds(.35)));
+        Assert.That(waveform.IsEnabled,Is.True);
+        Assert.That(((TextBlock)popup.FindName("PlaybackTimeTextBlock")).Text,Is.EqualTo(vm.PlaybackTimeText));
     }
 
     [TestCase("Dark", FlowDirection.LeftToRight)]
@@ -477,14 +472,13 @@ public sealed class SampleLoaderPopupIntegrationTests
         vm.PreviewError = new string('e', 400);
         view.Root.InvalidateMeasure();
         view.UpdateLayout();
-        foreach (var name in new[] { "AutoPlayCheckBox", "PlaybackTimeline", "ImportButton" })
+        foreach (var name in new[] { "AutoPlayCheckBox", "ImportButton" })
         {
             var control = (FrameworkElement)popup.FindName(name);
             Assert.That(control, Is.Not.Null);
             var styleKey = name switch
             {
                 "AutoPlayCheckBox" => "SampleLoaderAutoPlayStyle",
-                "PlaybackTimeline" => "BaseValueSliderStyle",
                 _ => "OHsBalloonConfirmActionStyle"
             };
             Assert.That(control.Style, Is.SameAs(popup.FindResource(styleKey)));
@@ -494,20 +488,14 @@ public sealed class SampleLoaderPopupIntegrationTests
     [Test]
     public void KeyboardAndPointerTimelineChangesSeekWithoutImport()
     {
-        UiTestPump.Run(vm.SetCheckedAsync(file, true));
-        view.Root.InvalidateMeasure();
-        view.UpdateLayout();
-        var timeline = (ValueSlider)popup.FindName("PlaybackTimeline");
-        Slider.IncreaseSmall.Execute(null, timeline);
-        Assert.That(vm.PlaybackPositionSeconds, Is.EqualTo(.01));
-        var thumb = Descendants(timeline).OfType<Thumb>().Single();
-        thumb.RaiseEvent(new DragStartedEventArgs(0, 0));
-        timeline.SetCurrentValue(RangeBase.ValueProperty, .6);
-        thumb.RaiseEvent(new DragCompletedEventArgs(0, 0, false));
-        Assert.That(vm.PlaybackPositionSeconds, Is.EqualTo(.6));
-        using var source = new InMemoryPresentationSource();
-        timeline.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, source, 0, Key.Enter) { RoutedEvent = Keyboard.KeyDownEvent });
-        Assert.That(completion, Is.Null);
+        UiTestPump.Run(vm.SetCheckedAsync(file,true)); view.UpdateLayout();
+        UiTestPump.Run(popup.HandleWaveformKeyAsync(Key.Right));
+        Assert.That(vm.PlaybackPositionSeconds,Is.EqualTo(.01));
+        var waveform=(WaveformView)popup.FindName("PreviewWaveform");
+        Assert.That(waveform.SeekAt(waveform.ActualWidth*.6),Is.True);
+        UiTestPump.Run(vm.SeekPreviewCommand.ExecutionTask!);
+        Assert.That(vm.PlaybackPositionSeconds,Is.EqualTo(.6).Within(.0001));
+        UiTestPump.Run(popup.HandleWaveformKeyAsync(Key.Enter)); Assert.That(completion,Is.Null);
     }
 
     [Test]
@@ -523,33 +511,21 @@ public sealed class SampleLoaderPopupIntegrationTests
         };
         UiTestPump.Run(updated.Task);
         view.UpdateLayout();
-        Assert.That(((ValueSlider)popup.FindName("PlaybackTimeline")).Value, Is.EqualTo(.3));
+        Assert.That(((WaveformView)popup.FindName("PreviewWaveform")).Position, Is.EqualTo(TimeSpan.FromSeconds(.3)));
         Assert.That(preview.SeekPositions, Is.Empty);
     }
 
     [Test]
     public void ScrubPositionIsNotOverwrittenByMonitor()
     {
-        UiTestPump.Run(vm.SelectAsync(file));
-        UiTestPump.Run(vm.TogglePreviewCommand.ExecuteAsync(null));
-        view.Root.InvalidateMeasure();
-        view.UpdateLayout();
-        var timeline = (ValueSlider)popup.FindName("PlaybackTimeline");
-        var thumb = Descendants(timeline).OfType<Thumb>().Single();
-        thumb.RaiseEvent(new DragStartedEventArgs(0, 0));
-        timeline.SetCurrentValue(RangeBase.ValueProperty, .6);
-        UiTestPump.Run(vm.SeekAsync(.2));
-        Assert.That(timeline.Value, Is.EqualTo(.6));
-        var scrubbed = new TaskCompletionSource();
-        vm.PropertyChanged += (_, args) =>
-        {
-            if (args.PropertyName == nameof(vm.PlaybackPositionSeconds) && vm.PlaybackPositionSeconds == .6) scrubbed.TrySetResult();
-        };
-        thumb.RaiseEvent(new DragCompletedEventArgs(0, 0, false));
-        UiTestPump.Run(scrubbed.Task);
-        UiTestPump.Run(popup.Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle).Task);
-        Assert.That(vm.PlaybackPositionSeconds, Is.EqualTo(.6));
-        Assert.That(BindingOperations.IsDataBound(timeline, RangeBase.ValueProperty), Is.True);
+        UiTestPump.Run(vm.SelectAsync(file)); UiTestPump.Run(vm.TogglePreviewCommand.ExecuteAsync(null));view.UpdateLayout();
+        var waveform=(WaveformView)popup.FindName("PreviewWaveform");
+        popup.BeginWaveformScrub(); popup.UpdateWaveformScrub(.6);
+        UiTestPump.Run(vm.SeekAsync(.2)); view.UpdateLayout();
+        Assert.That(waveform.Position,Is.EqualTo(TimeSpan.FromSeconds(.6)));
+        UiTestPump.Run(popup.CompleteWaveformScrubAsync());
+        Assert.That(vm.PlaybackPositionSeconds,Is.EqualTo(.6));
+        Assert.That(BindingOperations.IsDataBound(waveform,WaveformView.PositionProperty),Is.True);
     }
 
     [TestCase(null, false)]

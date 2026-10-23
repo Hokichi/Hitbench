@@ -73,18 +73,7 @@
                 Style="{StaticResource BaseBorderStyle}">
                 <Grid Style="{StaticResource BaseGridStyle}">
                     <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
-                    <Border
-                        x:Name="MappedMarker"
-                        Width="4"
-                        Height="4"
-                        Margin="0,0,0,24"
-                        HorizontalAlignment="Center"
-                        VerticalAlignment="Bottom"
-                        Background="{TemplateBinding Foreground}"
-                        CornerRadius="2"
-                        IsHitTestVisible="False"
-                        Style="{StaticResource BaseBorderStyle}"
-                        Visibility="Collapsed" />
+
                     <c:Icon
                         x:Name="SelectedMarker"
                         Width="12"
@@ -101,9 +90,7 @@
                 <Trigger Property="IsSelected" Value="True">
                     <Setter TargetName="SelectedMarker" Property="Visibility" Value="Visible" />
                 </Trigger>
-                <DataTrigger Binding="{Binding IsMapped, Mode=OneWay}" Value="True">
-                    <Setter TargetName="MappedMarker" Property="Visibility" Value="Visible" />
-                </DataTrigger>
+
             </ControlTemplate.Triggers>
         </ControlTemplate>
         <Style
@@ -160,7 +147,7 @@
         <DataTemplate x:Key="OHsKeysKeyboardContentTemplate">
             <TextBlock
                 Style="{StaticResource BodyTextStyle}"
-                Text="{Binding Key, Mode=OneWay}"
+                Text="{Binding KeyboardLabel, Mode=OneWay}"
                 TextTrimming="CharacterEllipsis" />
         </DataTemplate>
     </UserControl.Resources>

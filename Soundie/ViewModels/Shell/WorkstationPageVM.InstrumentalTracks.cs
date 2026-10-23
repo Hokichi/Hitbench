@@ -39,7 +39,7 @@ public partial class WorkstationPageVM
         track.Notes.Select(n => new InstrumentalNoteSnapshot(InstrumentNoteId(n), n.Key, n.Timestamp)).ToArray();
     private InstrumentalTrackSnapshot InstrumentSnapshot(InstrumentalTrack track, InstrumentalTrackContext context) =>
         new(context, track.Name, track.Volume, track.KeyFiles, NoteSnapshots(track), sampleFiles is null ? null : availableSamples.ToArray(), instrumentRevision, track.FolderName,
-            tracks.OfType<InstrumentalTrack>().Where(t => t != track && t.FolderName.Length > 0).Select(t => t.FolderName).ToArray(), InstrumentHistory(track).CanUndo, InstrumentHistory(track).CanRedo, tracks.IndexOf(track));
+            tracks.OfType<InstrumentalTrack>().Where(t => t != track && t.FolderName.Length > 0).Select(t => t.FolderName).ToArray(), InstrumentHistory(track).CanUndo, InstrumentHistory(track).CanRedo, tracks.IndexOf(track), track.Color);
     private void PublishInstrumentSnapshot()
     {
         if (activeInstrumentContext is { } context && ActiveInstrument(context) is { } track)

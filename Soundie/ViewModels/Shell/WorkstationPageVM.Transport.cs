@@ -270,7 +270,7 @@ public partial class WorkstationPageVM
     public int Subdivision => new[] { 1, 2, 3, 4, 5, 6, 8, 12, 16 }[SelectedSubdivisionIndex];
     [ObservableProperty] private bool scrollWithMarker = true;
     [ObservableProperty] private TimeSpan position;
-    [ObservableProperty] private string elapsedText = "00:00.0";
+    [ObservableProperty] private string elapsedText = "00:00.000";
     [ObservableProperty] private bool isPlaying;
     partial void OnPositionChanged(TimeSpan value) { NotifyControlPointCommands(); OnPropertyChanged(nameof(CurrentBpmText)); }
     partial void OnIsPlayingChanged(bool value) => NotifyControlPointCommands();

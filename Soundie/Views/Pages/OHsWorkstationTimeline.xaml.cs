@@ -191,7 +191,7 @@ public partial class OHsWorkstationTimeline : UserControl
 
     public bool HandleWaveformWheel(ModifierKeys modifiers, int delta)
     {
-        if (modifiers is not ModifierKeys.Control and not ModifierKeys.Alt and not ModifierKeys.Shift and
+        if (modifiers is not ModifierKeys.Control and not (ModifierKeys.Control | ModifierKeys.Alt) and not ModifierKeys.Shift and
             not (ModifierKeys.Control | ModifierKeys.Shift) ||
             !viewModel.CanZoom || deactivationStarted)
         {
@@ -226,7 +226,7 @@ public partial class OHsWorkstationTimeline : UserControl
             var command = modifiers switch
             {
                 ModifierKeys.Control => increase ? viewModel.ZoomInCommand : viewModel.ZoomOutCommand,
-                ModifierKeys.Alt => increase ? viewModel.IncreaseSubdivisionCommand : viewModel.DecreaseSubdivisionCommand,
+                (ModifierKeys.Control | ModifierKeys.Alt) => increase ? viewModel.IncreaseSubdivisionCommand : viewModel.DecreaseSubdivisionCommand,
                 _ => increase ? viewModel.IncreaseTrackHeightCommand : viewModel.DecreaseTrackHeightCommand
             };
             if (!command.CanExecute(null)) break;

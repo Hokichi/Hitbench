@@ -182,7 +182,8 @@ public sealed class WorkstationTrackDragTests
         var run = new Run("Label"); label.Inlines.Add(run);
         Assert.That(context.Owner.BeginTrackPointer(run, point), Is.True);
         context.Owner.CancelTrackPointer();
-        var input = WorkstationTrackDragTestContext.Descendants<TextBox>(row).First();
+        var input = new TextBox();
+        WorkstationTrackDragTestContext.Descendants<StackPanel>(row).Single(panel => panel.Name == "TrackLeftControls").Children.Add(input); context.View.UpdateLayout();
         input.IsEnabled = false;
         Assert.That(context.Owner.BeginTrackPointer(input, point), Is.False);
         var grid = row.SampleTimeline!;

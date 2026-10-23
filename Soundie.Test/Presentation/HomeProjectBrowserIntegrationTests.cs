@@ -23,15 +23,11 @@ public sealed class HomeProjectBrowserIntegrationTests
         using var view = new InMemoryView(window);
         try
         {
-            System.Windows.Input.KeyEventArgs Slash() => new(System.Windows.Input.Keyboard.PrimaryDevice,
-                PresentationSource.FromVisual(page)!, 0, System.Windows.Input.Key.OemQuestion) { RoutedEvent = System.Windows.Input.Keyboard.PreviewKeyDownEvent };
-            var shortcut = Slash(); page.RaiseEvent(shortcut);
-            Assert.That(shortcut.Handled, Is.True);
-            var typed = Slash(); ((TextBox)page.FindName("ProjectSearchTextBox")).RaiseEvent(typed);
-            Assert.That(typed.Handled, Is.False);
+            Assert.That(page.HandleSearchShortcut(System.Windows.Input.Key.OemQuestion, System.Windows.Input.ModifierKeys.None, page), Is.True);
+            Assert.That(page.HandleSearchShortcut(System.Windows.Input.Key.OemQuestion, System.Windows.Input.ModifierKeys.None, (TextBox)page.FindName("ProjectSearchTextBox")), Is.False);
+            Assert.That(page.HandleSearchShortcut(System.Windows.Input.Key.OemQuestion, System.Windows.Input.ModifierKeys.Control, page), Is.False);
             vm.IsInteractionBlocked = true;
-            var blocked = Slash(); page.RaiseEvent(blocked);
-            Assert.That(blocked.Handled, Is.False);
+            Assert.That(page.HandleSearchShortcut(System.Windows.Input.Key.OemQuestion, System.Windows.Input.ModifierKeys.None, page), Is.False);
         }
         finally { page.Deactivate(); window.Close(); }
     }

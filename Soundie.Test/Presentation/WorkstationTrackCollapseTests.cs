@@ -282,7 +282,7 @@ public class WorkstationTrackCollapseTests
             Assert.That(refresh.Command, Is.SameAs(vm.ReloadSamplesCommand));
             Assert.That(resnap.Command, Is.SameAs(vm.ResnapAllSamplesCommand));
             Assert.That(AutomationProperties.GetName(refresh), Is.EqualTo("Refresh samples"));
-            Assert.That(AutomationProperties.GetName(resnap), Is.EqualTo("Resnap all nodes"));
+            Assert.That(AutomationProperties.GetName(resnap), Is.EqualTo("Resnap all samples and control points"));
             foreach (var action in new[] { refresh, resnap })
             {
                 UiControlContract.AssertStyle<BalloonButton>(action, "OHsWorkstationToolbarButtonStyle");
@@ -351,7 +351,7 @@ public class WorkstationTrackCollapseTests
         {
             Assert.That(vm.SelectNode(track, node, false), Is.True);
             vm.Position = TimeSpan.FromMilliseconds(375);
-            var name = Descendants<TextBox>(page).Single(control => AutomationProperties.GetName(control) == "Track name");
+            var name = Descendants<TextBlock>(page).Single(control => control.Name == "SampleTrackName");
             var file = Find<ComboBox>(page, "TrackSampleFileSelector");
             var grid = Descendants<BeatGridView>(page).Single();
             var secondary = new FrameworkElement[] { Find<ValueSlider>(page, "VolumeSlider"),
@@ -465,7 +465,7 @@ public class WorkstationTrackCollapseTests
             vm.ToggleTracksCollapsedCommand.Execute(null);
             view.UpdateLayout();
             Assert.That(FocusManager.GetFocusedElement(scope), Is.SameAs(toggle));
-            var name = Descendants<TextBox>(page).Single(control => AutomationProperties.GetName(control) == "Track name");
+            var name = Descendants<TextBlock>(page).Single(control => control.Name == "SampleTrackName");
             FocusManager.SetFocusedElement(scope, name);
             page.RestoreTrackFocusBeforeCollapse(name);
             Assert.That(FocusManager.GetFocusedElement(scope), Is.SameAs(name));

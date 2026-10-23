@@ -137,14 +137,14 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
     public bool IsAcrylicEnabled => (bool)GetValue(IsAcrylicEnabledProperty);
 
     public MainWindow(HomePage page, IMessenger messenger, Func<WorkstationPage> createWorkstation,
-        IAppSettingsService settings, Func<HomePage> createHome)
-        : this(page, messenger, createWorkstation, (HomePageVM)page.DataContext, settings, null, createHome: createHome) { }
+        IAppSettingsService settings, Func<HomePage> createHome, OHsThemeService? themeService = null)
+        : this(page, messenger, createWorkstation, (HomePageVM)page.DataContext, settings, null, createHome: createHome, themeService: themeService) { }
 
     internal MainWindow(HomePage page, IMessenger messenger, Func<WorkstationPage> createWorkstation,
         HomePageVM viewModel, IAppSettingsService settings, Action<string>? reportError,
         Action<WindowState>? requestWindowState = null, Func<Window, Size>? getWorkArea = null,
         Func<HomePage>? createHome = null, Action? startDrag = null,
-        Action<Rect>? moveRestoredWindow = null, Func<bool>? isLeftButtonPressed = null)
+        Action<Rect>? moveRestoredWindow = null, Func<bool>? isLeftButtonPressed = null, OHsThemeService? themeService = null)
     {
         this.reportError = reportError ?? (error => MessageBox.Show(this, error, "Soundie",
             MessageBoxButton.OK, MessageBoxImage.Error));
@@ -161,6 +161,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
         this.createHome = createHome ?? (() => throw new InvalidOperationException("A home-page factory is required to return home."));
         this.settings = settings;
         this.getWorkArea = getWorkArea ?? WindowWorkArea.GetClientSize;
+        ThemeService = themeService ?? new OHsThemeService(Application.Current?.Resources ?? new ResourceDictionary(), settings, new UiScheduler(Dispatcher));
         InitializeComponent();
         ShellHeader.SetBinding(Soundie.Views.Shell.OHsShellHeader.CanGoBackProperty,
             new System.Windows.Data.Binding("Content.DataContext.CanGoBack")
@@ -168,7 +169,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
         popupOverlayTimer = new DispatcherTimer(DispatcherPriority.Background, Dispatcher)
         { Interval = TimeSpan.FromMilliseconds(200) };
         popupOverlayTimer.Tick += OnPopupOverlayTimerTick;
-        nativeFrame = new OHsWindowFrame(this, enabled => SetValue(IsAcrylicEnabledPropertyKey, enabled));
+        nativeFrame = new OHsWindowFrame(this, enabled => SetValue(IsAcrylicEnabledPropertyKey, enabled), themeChanges: ThemeService);
         this.startDrag = startDrag ?? DragMove;
         this.moveRestoredWindow = moveRestoredWindow ?? nativeFrame.MoveRestoredWindow;
         this.isLeftButtonPressed = isLeftButtonPressed ?? (() => Mouse.LeftButton == MouseButtonState.Pressed);
@@ -311,8 +312,16 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
         }
     }
 
+    private WorkstationPage? busyPresentationPage;
     private void SetHeaderPresentationSource(WorkstationPage? workstation)
     {
+        if (busyPresentationPage is not null) { System.Windows.Data.BindingOperations.ClearBinding(busyPresentationPage, WorkstationPage.IsAudioBusyProperty); System.Windows.Data.BindingOperations.ClearBinding(busyPresentationPage, WorkstationPage.AudioBusyTextProperty); }
+        busyPresentationPage = workstation;
+        if (workstation is not null) {
+            workstation.SetBinding(WorkstationPage.IsAudioBusyProperty, new System.Windows.Data.Binding(nameof(IsAudioBusy)) { Source = this, Mode = System.Windows.Data.BindingMode.OneWay });
+            workstation.SetBinding(WorkstationPage.AudioBusyTextProperty, new System.Windows.Data.Binding(nameof(AudioBusyText)) { Source = this, Mode = System.Windows.Data.BindingMode.OneWay });
+        }
+        RefreshAudioBusyToast();
         System.Windows.Data.BindingOperations.ClearBinding(HeaderVolumeBlurHost, UIElement.EffectProperty);
         System.Windows.Data.BindingOperations.ClearBinding(HeaderWorkstationOverlay, UIElement.VisibilityProperty);
         if (workstation is not null)
@@ -693,7 +702,8 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
     internal bool HandleWindowMouseWheel(bool isActive, ModifierKeys modifiers, int delta,
         DependencyObject? origin = null)
     {
-        if (!isActive || IsPopupOverlayVisible || IsBlockingDrawerVisible || IsDrawerOrigin(origin) || PageHost.Content is not WorkstationPage workstationPage) return false;
+        if (!isActive || IsPopupOverlayVisible || IsAudioBusy || IsBlockingDrawerVisible || PageHost.Content is not WorkstationPage workstationPage) { (PageHost.Content as WorkstationPage)?.Timeline.ResetWheel(); return false; }
+        if (IsDrawerOrigin(origin) && modifiers != (ModifierKeys.Control | ModifierKeys.Alt)) { workstationPage.Timeline.ResetWheel(); return false; }
 
         return workstationPage.HandleContextWheel(modifiers, delta, origin);
     }

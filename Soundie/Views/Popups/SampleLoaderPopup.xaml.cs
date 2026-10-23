@@ -40,8 +40,7 @@ public partial class SampleLoaderPopup : BasePopup
         this.completeDialog = completeDialog ?? (accepted => DialogResult = accepted);
         this.getWorkArea = getWorkArea ?? WindowWorkArea.GetClientSize;
         DataContext = viewModel;
-        InitializePalette();
-        KeyboardNavigation.SetTabNavigation(this, KeyboardNavigationMode.None);
+        KeyboardNavigation.SetTabNavigation(this, KeyboardNavigationMode.Cycle);
         viewModel.PropertyChanged += OnBrowserStateChanged;
         Loaded += OnPopupLoaded;
     }
@@ -87,7 +86,6 @@ public partial class SampleLoaderPopup : BasePopup
     {
         if (deactivated) return;
         deactivated = true;
-        SystemParameters.StaticPropertyChanged -= OnSystemPaletteChanged;
         initialFocus?.Abort();
         Loaded -= OnPopupLoaded;
         viewModel.PropertyChanged -= OnBrowserStateChanged;
@@ -162,25 +160,51 @@ public partial class SampleLoaderPopup : BasePopup
     private void OnPopupLoaded(object sender, RoutedEventArgs e) => initialFocus = Dispatcher.BeginInvoke(
         DispatcherPriority.Input, new Action(() => { if (!deactivated) DirectoryContents.Focus(); }));
 
-    private void OnWaveformSeekMouseDown(object sender, MouseButtonEventArgs e)
+    internal Task HandleWaveformKeyAsync(Key key)
     {
-        if (!viewModel.CanSeek || e.OriginalSource is not DependencyObject source) return;
-        for (DependencyObject? current = source; current is not null && !ReferenceEquals(current, sender); current = DependencyObjectTree.GetParent(current))
-            if (current is Thumb) return;
-        if (PreviewWaveform.SeekAt(e.GetPosition(PreviewWaveform).X)) e.Handled = true;
+        if (!viewModel.CanSeek) return Task.CompletedTask;
+        var position = key switch { Key.Left => viewModel.PlaybackPositionSeconds - .01, Key.Right => viewModel.PlaybackPositionSeconds + .01, Key.Home => 0, Key.End => viewModel.PlaybackDurationSeconds, _ => double.NaN };
+        return double.IsNaN(position) ? Task.CompletedTask : viewModel.SeekAsync(position);
     }
-
-    private async void OnTimelineValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    private async void OnPreviewWaveformKeyDown(object sender, KeyEventArgs e)
     {
-        if (isScrubbing || !viewModel.CanSeek || Math.Abs(e.NewValue - viewModel.PlaybackPositionSeconds) < .000001) return;
-        await HandleInteractionAsync(() => viewModel.SeekAsync(e.NewValue));
+        if (e.Key is not (Key.Left or Key.Right or Key.Home or Key.End)) return;
+        e.Handled = true; await HandleInteractionAsync(() => HandleWaveformKeyAsync(e.Key));
     }
-
-    private void OnTimelineDragStarted(object sender, DragStartedEventArgs e)
+    internal void BeginWaveformScrub()
     {
         if (!viewModel.CanSeek) return;
-        isScrubbing = true;
-        scrubbingFile = viewModel.SelectedFile;
+        isScrubbing = true; scrubbingFile = viewModel.SelectedFile;
+        BindingOperations.ClearBinding(PreviewWaveform, WaveformView.PositionProperty);
+    }
+    internal void UpdateWaveformScrub(double seconds)
+    {
+        if (isScrubbing) PreviewWaveform.Position = TimeSpan.FromSeconds(Math.Clamp(seconds,0,viewModel.PlaybackDurationSeconds));
+    }
+    internal async Task CompleteWaveformScrubAsync()
+    {
+        if (!isScrubbing) return;
+        var position = PreviewWaveform.Position.TotalSeconds;
+        isScrubbing = false;
+        try { if (ReferenceEquals(scrubbingFile,viewModel.SelectedFile)) await viewModel.SeekAsync(position); }
+        finally { scrubbingFile = null; PreviewWaveform.SetBinding(WaveformView.PositionProperty,new Binding(nameof(SampleLoaderPopupVM.PlaybackPosition)) { Mode = BindingMode.OneWay }); }
+    }
+    private void OnWaveformSeekMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (!viewModel.CanSeek) return;
+        BeginWaveformScrub(); PreviewWaveform.Focus();
+        if (PreviewWaveform.GetPositionAt(e.GetPosition(PreviewWaveform).X) is { } position) UpdateWaveformScrub(position.TotalSeconds);
+        PreviewWaveform.CaptureMouse(); e.Handled = true;
+    }
+    private void OnPreviewWaveformMouseMove(object sender, MouseEventArgs e)
+    {
+        if (isScrubbing && e.LeftButton == MouseButtonState.Pressed && PreviewWaveform.GetPositionAt(e.GetPosition(PreviewWaveform).X) is { } position) UpdateWaveformScrub(position.TotalSeconds);
+    }
+    private async void OnPreviewWaveformMouseUp(object sender, MouseButtonEventArgs e)
+    {
+        if (!isScrubbing) return;
+        PreviewWaveform.ReleaseMouseCapture(); e.Handled = true;
+        await HandleInteractionAsync(CompleteWaveformScrubAsync);
     }
 
     private void OnBrowserStateChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)

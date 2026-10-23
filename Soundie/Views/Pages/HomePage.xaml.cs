@@ -305,7 +305,7 @@ public partial class HomePage : UserControl
                 SongSearchTextBox.Focus();
             }));
         }
-        if (!viewModel.IsProcessing) presentation.TrySetResult();
+        if (e.PropertyName == nameof(HomePageVM.IsProcessing) && !viewModel.IsProcessing) presentation.TrySetResult();
         if ((e.PropertyName == nameof(HomePageVM.IsProcessing) && viewModel.IsProcessing) ||
             (e.PropertyName == nameof(HomePageVM.IsAwaitingSongsPresentation) &&
              viewModel.IsAwaitingSongsPresentation))
@@ -326,10 +326,14 @@ public partial class HomePage : UserControl
 
     private void OnHomePageKeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Handled || e.Key != Key.OemQuestion || Keyboard.Modifiers != ModifierKeys.None ||
-            e.OriginalSource is TextBoxBase || !viewModel.CanInteract) return;
+        if (!e.Handled && HandleSearchShortcut(e.Key, Keyboard.Modifiers, e.OriginalSource as DependencyObject)) e.Handled = true;
+    }
+
+    internal bool HandleSearchShortcut(Key key, ModifierKeys modifiers, DependencyObject? origin)
+    {
+        if (key != Key.OemQuestion || modifiers != ModifierKeys.None || origin is TextBoxBase || !viewModel.CanInteract) return false;
         SongSearchTextBox.Focus();
-        e.Handled = true;
+        return true;
     }
 
     private void QueueCheck()

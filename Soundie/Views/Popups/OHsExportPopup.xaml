@@ -64,47 +64,21 @@
         <DataTemplate x:Key="OHsExportCheckContentTemplate">
             <TextBlock Text="{Binding Mode=OneWay}" Style="{StaticResource OHsExportCheckTextStyle}" />
         </DataTemplate>
-        <ControlTemplate x:Key="OHsExportShowFilesTemplate" TargetType="CheckBox">
-            <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}" Style="{StaticResource BaseBorderStyle}">
-                <Grid Style="{StaticResource BaseGridStyle}">
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                    <Border x:Name="Square" Background="{DynamicResource Brush.Background.Elevated}" Width="20" Height="20" VerticalAlignment="Center" Style="{StaticResource BaseBorderStyle}">
-                        <Grid Style="{StaticResource BaseGridStyle}">
-                            <c:Icon x:Name="Outline" Path="{StaticResource CheckboxBlankOutline}" Color="{DynamicResource Brush.Border.Control}" Width="20" Height="20" />
-                            <c:Icon x:Name="Mark" Path="{StaticResource Check}" Color="{DynamicResource Brush.Navy.Text}" Width="12" Height="12" VerticalAlignment="Center" HorizontalAlignment="Center" Visibility="Collapsed" />
-                        </Grid>
-                    </Border>
-                    <ContentPresenter Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" RecognizesAccessKey="True" Style="{StaticResource BaseContentPresenterStyle}" />
-                </Grid>
-            </Border>
-            <ControlTemplate.Triggers>
-                <Trigger Property="IsChecked" Value="True"><Setter TargetName="Mark" Property="Visibility" Value="Visible" /></Trigger>
-                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
-                    <Setter TargetName="Square" Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
-                    <Setter TargetName="Outline" Property="Color" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
-                    <Setter TargetName="Mark" Property="Color" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
-                </DataTrigger>
-            </ControlTemplate.Triggers>
-        </ControlTemplate>
-        <Style x:Key="OHsExportShowFilesStyle" TargetType="CheckBox" BasedOn="{StaticResource BaseCheckBoxStyle}">
-            <Setter Property="Template" Value="{StaticResource OHsExportShowFilesTemplate}" />
+
+        <Style x:Key="OHsExportShowFilesStyle" TargetType="CheckBox" BasedOn="{StaticResource RegularCheckBoxStyle}">
+
             <Setter Property="ContentTemplate" Value="{StaticResource OHsExportCheckContentTemplate}" />
             <Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" /><Setter Property="IsTabStop" Value="True" />
             <Setter Property="MinHeight" Value="{StaticResource Size.Control.Primary}" />
             <Setter Property="Padding" Value="8" />
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
             <Style.Triggers>
-                <MultiTrigger><MultiTrigger.Conditions><Condition Property="IsMouseOver" Value="True" /><Condition Property="IsPressed" Value="False" /></MultiTrigger.Conditions><Setter Property="Background" Value="{DynamicResource Brush.Background.Hover}" /></MultiTrigger>
+
                 <Trigger Property="IsEnabled" Value="False"><Setter Property="Foreground" Value="{DynamicResource Brush.Text.Disabled}" /></Trigger>
                 <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
                     <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
                     <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
                 </DataTrigger>
-                <MultiDataTrigger>
-                    <MultiDataTrigger.Conditions><Condition Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True" /><Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource Self}, Mode=OneWay}" Value="True" /></MultiDataTrigger.Conditions>
-                    <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" /><Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.HighlightTextBrushKey}}" />
-                </MultiDataTrigger>
+
             </Style.Triggers>
         </Style>
         <ControlTemplate x:Key="OHsExportProgressTemplate" TargetType="ProgressBar">

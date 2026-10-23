@@ -43,9 +43,9 @@ public class WorkstationTrackAppearanceTests
         }
         finally{completion.TrySetResult(null);await vm.DeactivateAsync();}
     }
-    [TestCase(false)][TestCase(true)] public async Task CommitsOnlyAcceptedLiveDraft(bool removed)
+    [TestCase(false,false)][TestCase(true,false)][TestCase(false,true)][TestCase(true,true)] public async Task CommitsOnlyAcceptedLiveDraft(bool removed, bool instrumental)
     {
-        var track=new Track{Name="Old"};
+        Track track=instrumental ? new InstrumentalTrack{Name="Old"} : new Track{Name="Old"};
         var completion=new TaskCompletionSource<OHsTrackAppearanceResult?>();
         var dialog=new StubOHsTrackAppearanceDialogService{Request=(_,_)=>completion.Task};
         var source=new StubWorkstationSourceService{Load=(_,_)=>Task.FromResult(new WorkstationSource("map","song",new ProjectData{Tracks=[track],Offsets=[0],BPMs=[120]}))};

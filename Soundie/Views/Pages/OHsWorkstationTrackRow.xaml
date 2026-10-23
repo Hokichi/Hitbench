@@ -134,12 +134,13 @@
         <DataTemplate x:Key="OHsWorkstationTrackActionHeaderTemplate">
             <StackPanel Orientation="Horizontal" Style="{StaticResource BaseStackPanelStyle}">
                 <customControls:Icon
-                    Width="16"
-                    Height="16"
-                    Margin="4"
+                    Width="12"
+                    Height="12"
+                    Margin="0,0,8,0"
+                    VerticalAlignment="Center"
                     Path="{Binding Icon, RelativeSource={RelativeSource AncestorType=MenuItem}, Mode=OneWay}"
                     Color="{Binding Foreground, RelativeSource={RelativeSource AncestorType=MenuItem}, Mode=OneWay}" />
-                <TextBlock
+                <TextBlock VerticalAlignment="Center"
                     Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=MenuItem}, Mode=OneWay}"
                     Style="{StaticResource BodyTextStyle}"
                     Text="{Binding Mode=OneWay}" />

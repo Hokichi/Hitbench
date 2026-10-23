@@ -395,7 +395,8 @@ public class WorkstationNodeInteractionTests
         editor.Vm.SelectNode(editor.Vm.Tracks[0], editor.Node, false);
         Assert.That(editor.Page.BeginNodePointer(null, new Point(), new Point(), modifiers), Is.False);
         Assert.That(editor.Vm.SelectedSamples, Is.Empty);
-        var name = Descendants<TextBox>(editor.Page).First();
+        var name = new TextBox();
+        Descendants<StackPanel>(editor.Page).First(panel => panel.Name == "TrackLeftControls").Children.Add(name); editor.View.UpdateLayout();
         editor.Vm.SelectNode(editor.Vm.Tracks[0], editor.Node, false);
         var click = new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, MouseButton.Left) { RoutedEvent = Mouse.PreviewMouseDownEvent };
         name.RaiseEvent(click);

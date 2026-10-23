@@ -8,6 +8,10 @@ namespace Soundie.Resources.CustomControls;
 
 public sealed class WaveformView : FrameworkElement
 {
+    public static readonly DependencyProperty ShowPlaybackMarkerProperty = DependencyProperty.Register(nameof(ShowPlaybackMarker), typeof(bool), typeof(WaveformView), new FrameworkPropertyMetadata(true, FrameworkPropertyMetadataOptions.AffectsRender));
+    public bool ShowPlaybackMarker { get => (bool)GetValue(ShowPlaybackMarkerProperty); set => SetValue(ShowPlaybackMarkerProperty,value); }
+    public static readonly DependencyProperty CenterWaveformProperty = DependencyProperty.Register(nameof(CenterWaveform), typeof(bool), typeof(WaveformView), new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsRender));
+    public bool CenterWaveform { get => (bool)GetValue(CenterWaveformProperty); set => SetValue(CenterWaveformProperty,value); }
     public static readonly DependencyProperty BarCountProperty = DependencyProperty.Register(nameof(BarCount), typeof(int), typeof(WaveformView), new FrameworkPropertyMetadata(0, FrameworkPropertyMetadataOptions.AffectsRender));
     public int BarCount { get => (int)GetValue(BarCountProperty); set => SetValue(BarCountProperty, value); }
     public static readonly DependencyProperty BarThicknessProperty = DependencyProperty.Register(nameof(BarThickness), typeof(double), typeof(WaveformView), new FrameworkPropertyMetadata(1d, FrameworkPropertyMetadataOptions.AffectsRender));
@@ -124,7 +128,7 @@ public sealed class WaveformView : FrameworkElement
 
     private void DrawMarker(DrawingContext context)
     {
-        if (Data is null || Data.Duration <= TimeSpan.Zero || Data.Peaks.Count == 0) return;
+        if (!ShowPlaybackMarker || Data is null || Data.Duration <= TimeSpan.Zero || Data.Peaks.Count == 0) return;
         var end = new Point(0, ActualHeight);
         if (!SystemParameters.HighContrast && BarCount == 0) context.DrawLine(new Pen(WaveformBrush, 3.5), new Point(), end);
         context.DrawLine(new Pen(SystemParameters.HighContrast ? SystemColors.WindowTextBrush : MarkerBrush, MarkerThickness), new Point(), end);
@@ -184,7 +188,7 @@ public sealed class WaveformView : FrameworkElement
         var waveformBrush = SystemParameters.HighContrast ? SystemColors.HighlightBrush : WaveformBrush;
         var textBrush = SystemParameters.HighContrast ? SystemColors.WindowTextBrush : TextBrush;
         var rulerHeight=ShowBeatRuler?24:0;
-        var baselineY = rulerHeight+Math.Max(12, (height-rulerHeight - 22) / 2);
+        var baselineY = CenterWaveform ? rulerHeight + (height-rulerHeight)/2 : rulerHeight+Math.Max(12, (height-rulerHeight - 22) / 2);
         var amplitude = Math.Max(0, baselineY-rulerHeight - 8);
         var waveformPen = new Pen(waveformBrush, 1);
         var baselinePen = new Pen(textBrush, 1) { DashStyle = DashStyles.Dot };

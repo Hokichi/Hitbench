@@ -138,7 +138,7 @@ public class WorkstationPageIntegrationTests
         var origin = originName switch
         {
             "page" => (UIElement)page,
-            "track" => FindVisualChildren<TextBox>(page).Single(input => ReferenceEquals(input.DataContext, track)),
+            "track" => FindVisualChildren<OHsWorkstationTrackRow>(page).Single(row => ReferenceEquals(row.Track, track)),
             _ => (UIElement)(originName is "SongAudioCard" or "PlayPauseButton" ? page.AudioCard.FindName(originName) : originName == "ZoomFooter" ? page.Footer.FindName(originName) : page.FindName(originName))
         };
         var click = new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left)
@@ -405,8 +405,8 @@ public class WorkstationPageIntegrationTests
     public void TrackNameFieldInitializesEditsSavesAndRebindsWithoutSpuriousWrites(double width, FlowDirection direction, string theme)
     {
         EnsureResources(theme);
-        var first = new Soundie.Core.Entities.Track { Name = "Kick " + new string('a', 256) };
-        var second = new Soundie.Core.Entities.Track { Name = "Snare" };
+        var first = new Soundie.Core.Entities.InstrumentalTrack { Name = "Kick " + new string('a', 256) };
+        var second = new Soundie.Core.Entities.InstrumentalTrack { Name = "Snare" };
         var source = new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(
             new WorkstationSource("map.osu", "audio.wav", new ProjectData { Tracks = [first, second] })) };
         var saves = new DelayedProjectFileService();
@@ -706,7 +706,7 @@ public class WorkstationPageIntegrationTests
         Assert.Multiple(() =>
         {
             Assert.That(slider.Value, Is.EqualTo(80));
-            Assert.That(slider.DisplayText, Is.EqualTo("80"));
+            Assert.That(slider.DisplayText, Is.EqualTo("80%"));
             Assert.That(first.Volume, Is.EqualTo(20));
             Assert.That(second.Volume, Is.EqualTo(80));
         });
@@ -1156,9 +1156,9 @@ public class WorkstationPageIntegrationTests
             Assert.That(vm.ZoomFactor, Is.EqualTo(35));
             Assert.That(page.HandleWaveformWheel(ModifierKeys.Control, -120), Is.True);
             Assert.That(vm.ZoomFactor, Is.EqualTo(34));
-            Assert.That(page.HandleWaveformWheel(ModifierKeys.Alt, 120), Is.True);
+            Assert.That(page.HandleWaveformWheel(ModifierKeys.Control | ModifierKeys.Alt, 120), Is.True);
             Assert.That(vm.SelectedSubdivisionIndex, Is.EqualTo(4));
-            Assert.That(page.HandleWaveformWheel(ModifierKeys.Alt, -120), Is.True);
+            Assert.That(page.HandleWaveformWheel(ModifierKeys.Control | ModifierKeys.Alt, -120), Is.True);
             Assert.That(vm.SelectedSubdivisionIndex, Is.EqualTo(3));
             Assert.That(audio.Snapshot, Is.EqualTo(before));
         });
@@ -1355,8 +1355,8 @@ public class WorkstationPageIntegrationTests
         Assert.That(vm.ZoomFactor, Is.EqualTo(33));
 
         Assert.That(page.HandleWaveformWheel(ModifierKeys.Control, 60), Is.True);
-        Assert.That(page.HandleWaveformWheel(ModifierKeys.Alt, 60), Is.True);
-        Assert.That(page.HandleWaveformWheel(ModifierKeys.Alt, 60), Is.True);
+        Assert.That(page.HandleWaveformWheel(ModifierKeys.Control | ModifierKeys.Alt, 60), Is.True);
+        Assert.That(page.HandleWaveformWheel(ModifierKeys.Control | ModifierKeys.Alt, 60), Is.True);
         Assert.Multiple(() =>
         {
             Assert.That(vm.ZoomFactor, Is.EqualTo(33));
@@ -1366,14 +1366,14 @@ public class WorkstationPageIntegrationTests
         Assert.Multiple(() =>
         {
             Assert.That(page.HandleWaveformWheel(ModifierKeys.None, 120), Is.False);
-            Assert.That(page.HandleWaveformWheel(ModifierKeys.Control | ModifierKeys.Alt, 120), Is.False);
+            Assert.That(page.HandleWaveformWheel(ModifierKeys.Control | ModifierKeys.Alt | ModifierKeys.Shift, 120), Is.False);
         });
 
         for (var index = 0; index < 140; index++) vm.ZoomInCommand.Execute(null);
         Assert.That(page.HandleWaveformWheel(ModifierKeys.Control, 120), Is.True);
         Assert.That(vm.ZoomFactor, Is.EqualTo(128));
         vm.SelectedSubdivisionIndex = 8;
-        Assert.That(page.HandleWaveformWheel(ModifierKeys.Alt, 120), Is.True);
+        Assert.That(page.HandleWaveformWheel(ModifierKeys.Control | ModifierKeys.Alt, 120), Is.True);
         Assert.That(vm.SelectedSubdivisionIndex, Is.EqualTo(8));
     }
 
@@ -1585,11 +1585,11 @@ public class WorkstationPageIntegrationTests
             UiControlContract.AssertStyle<BalloonButton>(button, "OHsWorkstationToolbarButtonStyle");
             Assert.That(button.Command, Is.SameAs(vm.ResnapAllSamplesCommand));
             Assert.That(button.IsEnabled, Is.True);
-            Assert.That(AutomationProperties.GetName(button), Is.EqualTo("Resnap all nodes"));
+            Assert.That(AutomationProperties.GetName(button), Is.EqualTo("Resnap all samples and control points"));
             Assert.That(button.Focusable, Is.True);
             Assert.That(button.IsTabStop, Is.True);
             Assert.That(button.FocusVisualStyle, Is.SameAs(page.FindResource("OHsSampleManagerKeyboardFocusStyle")));
-            Assert.That(button.ToolTip, Is.EqualTo("Snap sample nodes and instrumental notes across all tracks to the current beat subdivision"));
+            Assert.That(button.ToolTip, Is.EqualTo("Resnap all samples and control points to the current beat subdivision, including instrumental notes"));
             Assert.That(AutomationProperties.GetHelpText(button), Is.EqualTo(button.ToolTip));
             Assert.That(page.HandlePlaybackKey(Key.Enter, ModifierKeys.None, false, button), Is.False);
             using var inputSource = new InMemoryPresentationSource();

@@ -77,7 +77,7 @@ public partial class OHsWorkstationTrackRow : UserControl
     public Brush? TrackBrush => (Brush?)GetValue(TrackBrushProperty);
     private void RefreshTrackPalette()
     {
-        if (Track is not InstrumentalTrack && Track?.Color is {} color)
+        if (Track?.Color is {} color)
             SetValue(TrackBrushProperty,Soundie.Resources.Helpers.OHsTrackPalette.ResolveBrush(this,TrackColorIndex,color));
         else SetResourceReference(TrackBrushProperty,Soundie.Resources.Helpers.OHsTrackPalette.GetResourceKey(TrackColorIndex));
     }
@@ -363,7 +363,7 @@ public partial class OHsWorkstationTrackRow : UserControl
             BindingOperations.GetBindingExpression(item, MenuItem.CommandProperty)?.UpdateTarget();
         }
         trigger.ContextMenu = menu;
-        if (Track is not InstrumentalTrack && menu.Items[2] is MenuItem appearance)
+        if (menu.Items[2] is MenuItem appearance)
         {
             BindingOperations.ClearBinding(appearance, MenuItem.CommandProperty);
             appearance.Command = ViewModel.ChangeTrackNameAndColorCommand;

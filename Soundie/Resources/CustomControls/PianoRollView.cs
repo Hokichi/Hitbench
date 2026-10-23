@@ -94,8 +94,13 @@ public sealed partial class PianoRollView : Control
     public static readonly DependencyProperty TrackColorIndexProperty = DependencyProperty.Register(
         nameof(TrackColorIndex), typeof(int), typeof(PianoRollView), new PropertyMetadata(0, (d, _) => ((PianoRollView)d).RefreshTrackPalette()));
     public int TrackColorIndex { get => (int)GetValue(TrackColorIndexProperty); set => SetValue(TrackColorIndexProperty, value); }
-    private void RefreshTrackPalette() => SetResourceReference(MarkerBrushProperty,
-        Soundie.Resources.Helpers.OHsTrackPalette.GetResourceKey(TrackColorIndex));
+    public static readonly DependencyProperty TrackColorProperty = DependencyProperty.Register(nameof(TrackColor), typeof(string), typeof(PianoRollView), new PropertyMetadata(null, (d, _) => ((PianoRollView)d).RefreshTrackPalette()));
+    public string? TrackColor { get => (string?)GetValue(TrackColorProperty); set => SetValue(TrackColorProperty, value); }
+    private void RefreshTrackPalette()
+    {
+        if (TrackColor is not null) SetValue(MarkerBrushProperty, Soundie.Resources.Helpers.OHsTrackPalette.ResolveBrush(this, TrackColorIndex, TrackColor));
+        else SetResourceReference(MarkerBrushProperty, Soundie.Resources.Helpers.OHsTrackPalette.GetResourceKey(TrackColorIndex));
+    }
 
     public PianoRollView()
     {

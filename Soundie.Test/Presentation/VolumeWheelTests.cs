@@ -315,26 +315,26 @@ public class VolumeWheelTests
         using (view)
         {
             var card = (Border)((Soundie.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("SongAudioCard");
-            page.HandleContextWheel(ModifierKeys.Alt, 60, card);
+            page.HandleContextWheel(ModifierKeys.Control | ModifierKeys.Alt, 60, card);
             page.HandleContextWheel(ModifierKeys.Alt, 120, page);
-            page.HandleContextWheel(ModifierKeys.Alt, 60, card);
+            page.HandleContextWheel(ModifierKeys.Control | ModifierKeys.Alt, 60, card);
             Assert.That(vm.SelectedSubdivisionIndex, Is.EqualTo(3));
 
             page.HandleContextWheel(ModifierKeys.Alt, -60, page);
-            page.HandleContextWheel(ModifierKeys.Alt, 60, card);
+            page.HandleContextWheel(ModifierKeys.Control | ModifierKeys.Alt, 60, card);
             page.HandleContextWheel(ModifierKeys.Alt, -60, page);
             Assert.That(vm.ApplicationVolume, Is.EqualTo(100));
         }
     }
 
     [Test]
-    public void SongCardKeepsSubdivisionPriorityAndKeyboardOverlayRestoresFocusIntent()
+    public void ControlAltOnSongCardChangesSubdivisionAndKeyboardOverlayRestoresFocusIntent()
     {
         var (page, vm, view) = CreateLoadedPage();
         using (view)
         {
             var card = (Border)((Soundie.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("SongAudioCard");
-            Assert.That(page.HandleContextWheel(ModifierKeys.Alt, 120, card), Is.True);
+            Assert.That(page.HandleContextWheel(ModifierKeys.Control | ModifierKeys.Alt, 120, card), Is.True);
             Assert.That(vm.SelectedSubdivisionIndex, Is.EqualTo(4));
             Assert.That(page.IsVolumeOverlayOpen, Is.False);
 

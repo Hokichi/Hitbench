@@ -32,8 +32,12 @@ public partial class MainWindow : IRecipient<OHsAudioBusyChangedMessage>
         else audioOperations.Remove(message.OperationId);
         SetValue(IsAudioBusyPropertyKey, audioOperations.Count > 0);
         SetValue(AudioBusyTextPropertyKey, audioOperations.Values.LastOrDefault() ?? "");
+        RefreshAudioBusyToast();
         if (IsAudioBusy)
-            UIElementAutomationPeer.CreatePeerForElement((UIElement)AudioBusyToast.Child)?.RaiseAutomationEvent(AutomationEvents.LiveRegionChanged);
+        {
+            if (busyPresentationPage is not null) busyPresentationPage.AnnounceLoadingStatus();
+            else UIElementAutomationPeer.CreatePeerForElement((UIElement)AudioBusyToast.Child)?.RaiseAutomationEvent(AutomationEvents.LiveRegionChanged);
+        }
         if (!IsAudioBusy)
         {
             if (!IsPopupOverlayVisible && audioPriorFocus is FrameworkElement { IsVisible: true, IsEnabled: true } target && IsAncestorOf(target))
@@ -42,6 +46,10 @@ public partial class MainWindow : IRecipient<OHsAudioBusyChangedMessage>
         }
     }
 
+    private void RefreshAudioBusyToast()
+    {
+        if (AudioBusyToast is not null) AudioBusyToast.Visibility = IsAudioBusy && busyPresentationPage is null ? Visibility.Visible : Visibility.Collapsed;
+    }
     private void ClearAudioBusy()
     {
         audioOperations.Clear();

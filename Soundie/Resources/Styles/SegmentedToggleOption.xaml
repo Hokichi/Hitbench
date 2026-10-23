@@ -35,7 +35,7 @@
                     VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
             </Border>
             <Border x:Name="SelectedMarker" Style="{StaticResource BaseBorderStyle}" Height="3"
-                Margin="8,0,8,0" VerticalAlignment="Top" Background="{TemplateBinding Foreground}"
+                Margin="8,0,8,0" VerticalAlignment="Bottom" Background="{TemplateBinding Foreground}"
                 IsHitTestVisible="False" Visibility="Collapsed" />
         </Grid>
         <ControlTemplate.Triggers>

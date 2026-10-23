@@ -90,6 +90,7 @@
             </Style.Triggers>
         </Style>
 
+        <BlurEffect x:Key="OHsHomeLoadingBlur" Radius="8"/>
         <Style
             x:Key="HomePagePanelStyle"
             BasedOn="{StaticResource BaseBorderStyle}"
@@ -101,6 +102,8 @@
             <Setter Property="Padding" Value="16" />
             <Setter Property="Margin" Value="4,0" />
             <Style.Triggers>
+                <DataTrigger Binding="{Binding IsProcessing, Mode=OneWay}" Value="True"><Setter Property="Effect" Value="{StaticResource OHsHomeLoadingBlur}"/></DataTrigger>
+                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True"><Setter Property="Effect" Value="{x:Null}"/></DataTrigger>
                 <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
                     <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
                     <Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
@@ -167,8 +170,8 @@
 
         <DropShadowEffect
             x:Key="OHsHomePageSongCardGlowEffect"
-            BlurRadius="12"
-            Opacity="0.35"
+            BlurRadius="16"
+            Opacity="0.5"
             ShadowDepth="0"
             Color="{DynamicResource Color.Navy.Text}" />
         <Style
@@ -186,6 +189,8 @@
                         <Condition Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="False" />
                     </MultiDataTrigger.Conditions>
                     <Setter Property="Effect" Value="{StaticResource OHsHomePageSongCardGlowEffect}" />
+                    <Setter Property="Background" Value="{DynamicResource Brush.Background.Surface}"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Control}"/>
                 </MultiDataTrigger>
                 <MultiDataTrigger>
                     <MultiDataTrigger.Conditions>
@@ -194,6 +199,8 @@
                         <Condition Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="False" />
                     </MultiDataTrigger.Conditions>
                     <Setter Property="Effect" Value="{StaticResource OHsHomePageSongCardGlowEffect}" />
+                    <Setter Property="Background" Value="{DynamicResource Brush.Background.Surface}"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Control}"/>
                 </MultiDataTrigger>
                 <DataTrigger Value="True">
                     <DataTrigger.Binding>
@@ -486,6 +493,9 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
+        <Style x:Key="OHsHomeInitialLoadingStyle" TargetType="TextBlock" BasedOn="{StaticResource OHsLoadingStatusTextStyle}">
+            <Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding IsInitialLoading, Mode=OneWay}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers>
+        </Style>
     </UserControl.Resources>
     <Grid x:Name="PageLayout" Margin="12,16">
         <Grid.ColumnDefinitions>
@@ -623,5 +633,6 @@
                     Style="{StaticResource OHsVirtualizedDrawerItemsStyle}" />
             </Grid>
         </Border>
+        <TextBlock x:Name="InitialLoadingText" Grid.ColumnSpan="2" Text="Loading projects..." Style="{StaticResource OHsHomeInitialLoadingStyle}"/>
     </Grid>
 </UserControl>

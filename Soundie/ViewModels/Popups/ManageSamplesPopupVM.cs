@@ -16,7 +16,7 @@ namespace Soundie.ViewModels.Popups;
 public sealed partial class ManageSamplesPopupVM(SampleManagementContext context, ISampleFileService files,
     SampleImportBatch imports, ISampleFileDialogService picker, ISampleRemovalDialogService removal,
     IMessenger messenger, IUiScheduler scheduler, ISamplePreviewService? preview = null,
-    PlaybackVolumeSettings? playbackVolumes = null) : ObservableValidator
+    PlaybackVolumeSettings? playbackVolumes = null, ISampleBrowserService? waveformReader = null) : ObservableValidator
 {
     private CancellationTokenSource lifetime = new();
     private Task operation = Task.CompletedTask;
@@ -150,9 +150,12 @@ public sealed partial class ManageSamplesPopupVM(SampleManagementContext context
     }
     private Task PublishAsync(string? oldName = null, string? newName = null) => scheduler.InvokeAsync(() =>
         messenger.Send(new ProjectSamplesChangedMessage(Context, Entries.Select(e => e.FileName).ToArray(), oldName, newName, includesSubfolders: false)), CancellationToken.None);
-    private async Task RefreshAsync()
+    private async Task RefreshAsync(SampleManagementEntry? preserveWaveformFor = null)
     {
-        try { lifetime.Token.ThrowIfCancellationRequested(); var names = await files.ListAsync(Context.ProjectPath, lifetime.Token, includeSubfolders: false); var changed = !Entries.Select(e => e.FileName).SequenceEqual(names); Replace(names); if (changed) await PublishAsync(); }
+        var requestedWaveforms = waveformLoads.Keys.ToHashSet();
+        InvalidateWaveforms(preserveWaveformFor);
+        try { lifetime.Token.ThrowIfCancellationRequested(); var names = await files.ListAsync(Context.ProjectPath, lifetime.Token, includeSubfolders: false); var changed = !Entries.Select(e => e.FileName).SequenceEqual(names); Replace(names); foreach (var row in Entries.Where(requestedWaveforms.Contains)) { _ = LoadWaveformAsync(row); } // Tasks are owned by waveformOperations.
+            if (changed) await PublishAsync(); }
         catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
         catch (Exception error) { ErrorMessage = $"Could not refresh samples: {error.Message}"; }
     }
@@ -182,7 +185,7 @@ public sealed partial class ManageSamplesPopupVM(SampleManagementContext context
             var old = entry.FileName;
             var renamed = await files.RenameAsync(Context.ProjectPath, old, stem, lifetime.Token);
             entry.FileName = renamed; entry.IsEditing = false; ActiveEdit = null;
-            await PublishAsync(old, renamed); await RefreshAsync();
+            await PublishAsync(old, renamed); await RefreshAsync(entry);
         });
         await operation; return ActiveEdit is null;
     }
@@ -229,7 +232,7 @@ public sealed partial class ManageSamplesPopupVM(SampleManagementContext context
     public async Task DeactivateAsync()
     {
         if (deactivated) return;
-        deactivated = true; lifetime.Cancel(); NotifyEditingState(); await operation;
+        deactivated = true; lifetime.Cancel(); NotifyEditingState(); await operation; await StopWaveformsAsync();
         ActiveEdit = null; ClearErrors();
         try { await StopPreviewAsync(); if (preview is not null) await preview.DisposeAsync(); }
         finally { previewCancellation?.Dispose(); lifetime.Dispose(); await scheduler.InvokeAsync(NotifyEditingState, CancellationToken.None); }

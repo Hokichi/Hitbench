@@ -7,7 +7,7 @@ public partial class WorkstationPageVM
     private bool trackAppearancePending;
     private CancellationTokenSource? trackAppearanceCancellation;
     private Task? trackAppearanceTask;
-    private bool CanChangeTrackNameAndColor(Track? track)=>!trackAppearancePending && trackAppearanceDialog is not null && CanEditTracks && track is not null and not InstrumentalTrack && tracks.Contains(track);
+    private bool CanChangeTrackNameAndColor(Track? track)=>!trackAppearancePending && trackAppearanceDialog is not null && CanEditTracks && track is not null && tracks.Contains(track);
     [RelayCommand(CanExecute=nameof(CanChangeTrackNameAndColor))]
     private Task ChangeTrackNameAndColorAsync(Track track)
     {
@@ -30,7 +30,14 @@ public partial class WorkstationPageVM
                 color=rgb.ToHex();
             }
             if(track.Name==result.Name && track.Color==color)return;
-            track.Name=result.Name; track.Color=color; NotifyTrackPresentation(); QueueSave();
+            if (track is InstrumentalTrack)
+            {
+                if (track.Name != result.Name) { SetTrackName(track, result.Name); await SettleInstrumentalFoldersAsync(); }
+                if (cancellation.IsCancellationRequested || deactivated || generation != loadGeneration || !ReferenceEquals(project, Project) || !tracks.Contains(track) || track.Name != result.Name) return;
+                track.Color = color; instrumentRevision++; PublishInstrumentSnapshot();
+            }
+            else { track.Name = result.Name; track.Color = color; }
+            NotifyTrackPresentation(); QueueSave();
         }
         catch(OperationCanceledException) when(cancellation.IsCancellationRequested) { }
         catch(Exception error){ if(!deactivated && generation==loadGeneration)ErrorMessage=error.Message; }

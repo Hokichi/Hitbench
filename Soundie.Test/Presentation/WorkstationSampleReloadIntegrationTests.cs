@@ -47,7 +47,7 @@ public class WorkstationSampleReloadIntegrationTests
         {
             calls++;
             return Task.FromResult(new WorkstationSource("map", "song", new ProjectData
-            { Tracks = [new Track { Name = calls == 1 ? "initial" : "reloaded", SelectedSampleFileName = "hit.wav" }], Offsets = [0], BPMs = [120] }));
+            { Tracks = [new InstrumentalTrack { Name = calls == 1 ? "initial" : "reloaded", SelectedSampleFileName = "hit.wav" }], Offsets = [0], BPMs = [120] }));
         } };
         var vm = new WorkstationPageVM(source, new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay),
             new ImmediateUiScheduler(), new StubSampleFileService(["hit.wav"]), projectFiles: saves);

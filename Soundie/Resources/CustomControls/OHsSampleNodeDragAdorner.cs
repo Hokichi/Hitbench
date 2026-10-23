@@ -39,8 +39,6 @@ public sealed class OHsSampleNodeDragAdorner : Adorner
                     index < TrackColors.Count ? TrackColors[index] : null);
             var translated = bounds;
             translated.Offset(CursorPosition.X, CursorPosition.Y);
-            if (!SystemParameters.HighContrast && index < TrackColors.Count && TrackColors[index] is not null)
-                OHsSampleNodeDrawing.Draw(drawingContext,null,new Pen(TryFindResource("Brush.Text.Primary") as Brush,4),translated);
             OHsSampleNodeDrawing.Draw(drawingContext,brush, pen, translated);
         }
     }

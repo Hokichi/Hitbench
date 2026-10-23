@@ -86,7 +86,7 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
-        
+
         <BlurEffect x:Key="MainWindowScanBlur" Radius="8" />
         <Style x:Key="OHsMainWindowHeaderScanBlurStyle" TargetType="Border" BasedOn="{StaticResource BaseBorderStyle}">
             <Style.Triggers>
@@ -103,14 +103,10 @@
             BasedOn="{StaticResource BaseBorderStyle}"
             TargetType="Border">
             <Style.Triggers>
-                <DataTrigger Binding="{Binding IsProcessing, Mode=OneWay}" Value="True">
-                    <Setter Property="Effect" Value="{StaticResource MainWindowScanBlur}" />
-                </DataTrigger>
                 <DataTrigger Binding="{Binding IsInteractionBlocked, Mode=OneWay}" Value="True">
                     <Setter Property="IsEnabled" Value="False" />
                 </DataTrigger>
                 <DataTrigger Binding="{Binding IsAudioBusy, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}" Value="True">
-                    <Setter Property="Effect" Value="{StaticResource MainWindowScanBlur}" />
                     <Setter Property="IsEnabled" Value="False" />
                 </DataTrigger>
             </Style.Triggers>
@@ -225,6 +221,10 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
+        <Style x:Key="OHsWindowBackgroundOverlayStyle" TargetType="Border" BasedOn="{StaticResource BaseBorderStyle}">
+            <Setter Property="Background" Value="{DynamicResource Brush.Overlay}"/><Setter Property="IsHitTestVisible" Value="False"/><Setter Property="Focusable" Value="False"/>
+            <Style.Triggers><DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
+        </Style>
     </Window.Resources>
     <Window.Style>
         <StaticResource ResourceKey="MainWindowStyle" />
@@ -234,6 +234,7 @@
         MouseLeftButtonDown="OnBackgroundMouseLeftButtonDown"
         Style="{StaticResource MainWindowRootStyle}">
         <Grid>
+            <Border Style="{StaticResource OHsWindowBackgroundOverlayStyle}"/>
             <Border x:Name="ModalShellContent" Style="{StaticResource MainWindowModalContentStyle}">
                 <Grid Style="{StaticResource BaseGridStyle}">
                     <Border x:Name="SampleManagerAppContent" Style="{StaticResource OHsMainWindowSampleManagerContentStyle}">
@@ -245,8 +246,8 @@
                             <Grid Style="{StaticResource BaseGridStyle}">
                                 <Border x:Name="HeaderScanBlurHost" Style="{StaticResource OHsMainWindowHeaderScanBlurStyle}">
                                     <Border x:Name="HeaderVolumeBlurHost" Style="{StaticResource BaseBorderStyle}">
-                                        <shell:OHsShellHeader x:Name="ShellHeader"
-                                            GoBackRequested="OnGoBackClick" MinimizeRequested="OnMinimizeClick"
+                                        <shell:OHsShellHeader x:Name="ShellHeader" IsLightTheme="{Binding ThemeService.IsLightTheme, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}"
+                                            ThemeToggleRequested="OnThemeToggle" GoBackRequested="OnGoBackClick" MinimizeRequested="OnMinimizeClick"
                                             MaximizeRestoreRequested="OnMaximizeRestoreClick" CloseRequested="OnCloseClick" />
                                     </Border>
                                 </Border>
@@ -257,8 +258,6 @@
                             <Grid Grid.Row="1" FlowDirection="LeftToRight">
                                 <Border FlowDirection="{Binding FlowDirection, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}" Style="{StaticResource MainWindowScanContentStyle}">
                                     <ContentControl x:Name="PageHost" />
-                                </Border>
-                                <Border FlowDirection="{Binding FlowDirection, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}" Style="{StaticResource MainWindowProcessingOverlayStyle}">
                                 </Border>
                             </Grid>
                         </Grid>

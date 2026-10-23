@@ -109,12 +109,6 @@ public partial class WorkstationPage
             volumeWheelRemainder = 0;
             return HandleWaveformWheel(modifiers, delta);
         }
-        if (!IsVolumeOverlayOpen && IsSongAudioCardElement(origin))
-        {
-            volumeWheelRemainder = 0;
-            return HandleWaveformWheel(modifiers, delta);
-        }
-
         Timeline.ResetWheel();
 
         if (!IsVolumeOverlayOpen)

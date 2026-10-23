@@ -28,6 +28,13 @@ public partial class ManageSamplesDrawer : UserControl,IOHsShellDrawer
         if (viewModel.CanClose) CloseRequested?.Invoke(this, EventArgs.Empty);
     }
 
+    private async void OnWaveformRowLoaded(object sender, RoutedEventArgs e)
+    {
+        try { if (sender is FrameworkElement { DataContext: SampleManagementEntry row }) await viewModel.LoadWaveformAsync(row); }
+        catch (Exception error) { System.Diagnostics.Trace.TraceWarning("Sample waveform presentation failed: {0}", error.Message); }
+    }
+    private void OnWaveformRowChanged(object sender, DependencyPropertyChangedEventArgs e)
+    { if (sender is FrameworkElement { IsLoaded: true }) OnWaveformRowLoaded(sender, new RoutedEventArgs()); }
     private void OnEditActionClick(object sender, RoutedEventArgs e) => editAction = (BalloonButton)sender;
 
     private void OnEditorVisibilityChanged(object sender, DependencyPropertyChangedEventArgs e)

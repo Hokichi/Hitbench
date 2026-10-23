@@ -171,10 +171,10 @@
             BasedOn="{StaticResource BaseBorderStyle}"
             TargetType="Border">
             <Setter Property="Background" Value="{DynamicResource Brush.Overlay}" />
-            <Setter Property="Visibility" Value="Collapsed" />
+            <Setter Property="Visibility" Value="Visible" />
             <Style.Triggers>
-                <DataTrigger Binding="{Binding ShowStatusOverlay, Mode=OneWay}" Value="True">
-                    <Setter Property="Visibility" Value="Visible" />
+                <DataTrigger Binding="{Binding LoadingStatusText, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}" Value="">
+                    <Setter Property="Visibility" Value="Collapsed" />
                 </DataTrigger>
             </Style.Triggers>
         </Style>
@@ -295,7 +295,7 @@
                 </ScrollViewer>
             </Border>
         </Grid>
-        <Border x:Name="LoadingOverlay" Style="{StaticResource OHsWorkstationLoadingOverlayStyle}" />
+        <Border x:Name="LoadingOverlay" Style="{StaticResource OHsWorkstationLoadingOverlayStyle}"><TextBlock x:Name="LoadingStatus" Text="{Binding LoadingStatusText, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}" Style="{StaticResource OHsLoadingStatusTextStyle}"/></Border>
     </Grid>
 </UserControl>
 

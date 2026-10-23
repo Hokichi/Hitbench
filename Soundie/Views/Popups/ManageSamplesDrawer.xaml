@@ -138,6 +138,7 @@
             <Border IsEnabled="{Binding IsInteractionEnabled, Mode=OneWay}" Style="{StaticResource OHsManageSamplesRowStyle}">
                 <Grid MinHeight="48" Style="{StaticResource BaseGridStyle}">
                     <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="2*" />
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
@@ -169,21 +170,22 @@
                             Style="{StaticResource BodyTextStyle}"
                             Text="{Binding Extension, Mode=OneWay}" />
                     </Grid>
+                    <c:WaveformView Grid.Column="1" Margin="8,4" Height="32" VerticalAlignment="Center" Data="{Binding Waveform, Mode=OneWay}" ShowPlaybackMarker="False" CenterWaveform="True" WaveformBrush="{DynamicResource Brush.Waveform.Unplayed}" Loaded="OnWaveformRowLoaded" DataContextChanged="OnWaveformRowChanged" IsHitTestVisible="False"/>
                     <c:BalloonButton
-                        Grid.Column="1"
+                        Grid.Column="2"
                         Command="{Binding DataContext.PlayCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}, Mode=OneWay}"
                         CommandParameter="{Binding Mode=OneWay}"
                         Style="{StaticResource OHsManageSamplesPlayStyle}" />
                     <c:BalloonButton
                         x:Name="EditAction"
-                        Grid.Column="2"
+                        Grid.Column="3"
                         Margin="8,0,0,0"
                         Click="OnEditActionClick"
                         Command="{Binding DataContext.EditCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}, Mode=OneWay}"
                         CommandParameter="{Binding Mode=OneWay}"
                         Style="{StaticResource OHsManageSamplesEditStyle}" />
                     <c:BalloonButton
-                        Grid.Column="3"
+                        Grid.Column="4"
                         Margin="8,0,0,0"
                         h:KeyboardNavigationPolicy.AllowTabNavigation="True"
                         AutomationProperties.Name="{Binding FileName, Mode=OneWay, StringFormat=Delete {0}}"

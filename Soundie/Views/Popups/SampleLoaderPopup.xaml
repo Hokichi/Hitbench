@@ -11,21 +11,6 @@
     SizeToContent="Manual"
     Style="{DynamicResource OHsSampleLoaderPopupStyle}">
     <c:BasePopup.Resources>
-        <SolidColorBrush x:Key="Brush.Background.Popup" Color="#0F1524" />
-        <SolidColorBrush x:Key="Brush.Background.Surface" Color="#161D2E" />
-        <SolidColorBrush x:Key="Brush.Background.Elevated" Color="#25314C" />
-        <SolidColorBrush x:Key="Brush.Border.Default" Color="#283450" />
-        <SolidColorBrush x:Key="Brush.Border.Subtle" Color="#19233A" />
-        <SolidColorBrush x:Key="Brush.Border.Control" Color="#6C7690" />
-        <SolidColorBrush x:Key="Brush.Border.Strong" Color="#3C4B6E" />
-        <SolidColorBrush x:Key="Brush.Text.Primary" Color="#E8ECF5" />
-        <SolidColorBrush x:Key="Brush.Text.Secondary" Color="#9AA5BC" />
-        <SolidColorBrush x:Key="Brush.Text.Muted" Color="#8792AD" />
-        <SolidColorBrush x:Key="Brush.Navy" Color="#4A6FE0" />
-        <SolidColorBrush x:Key="Brush.Navy.Tint" Color="#0F1B33" />
-        <SolidColorBrush x:Key="Brush.Navy.Text" Color="#7C9BFF" />
-        <SolidColorBrush x:Key="Brush.Warning" Color="#FFB020" />
-        <SolidColorBrush x:Key="Brush.Warning.Dark" Color="#0F1524" />
         <ControlTemplate x:Key="OHsSampleLoaderPopupTemplate" TargetType="c:BasePopup">
             <Border
                 Background="{DynamicResource Brush.Background.Popup}"
@@ -125,76 +110,11 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
-        <ControlTemplate x:Key="SampleLoaderCheckTemplate" TargetType="CheckBox">
-            <Border
-                Padding="{TemplateBinding Padding}"
-                Background="{TemplateBinding Background}"
-                Style="{StaticResource BaseBorderStyle}">
-                <Grid Style="{StaticResource BaseGridStyle}">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <Border
-                        x:Name="CheckBorder"
-                        Width="16"
-                        Height="16"
-                        VerticalAlignment="Center"
-                        Background="Transparent"
-                        BorderBrush="{DynamicResource OHsSampleLoader.Brush.CheckboxBorder}"
-                        BorderThickness="1.5"
-                        CornerRadius="4">
-                        <c:Icon
-                            x:Name="CheckedIcon"
-                            Width="10"
-                            Height="10"
-                            Path="{StaticResource Check}"
-                            Visibility="Collapsed"
-                            Color="White" />
-                    </Border>
-                    <ContentPresenter
-                        x:Name="CheckboxLabel"
-                        Grid.Column="1"
-                        Margin="8,0,0,0"
-                        VerticalAlignment="Center"
-                        Content="{TemplateBinding Content}"
-                        ContentTemplate="{TemplateBinding ContentTemplate}"
-                        RecognizesAccessKey="True"
-                        TextElement.FontFamily="{TemplateBinding FontFamily}"
-                        TextElement.FontSize="{TemplateBinding FontSize}"
-                        TextElement.Foreground="{TemplateBinding Foreground}" />
-                </Grid>
-            </Border>
-            <ControlTemplate.Triggers>
-                <Trigger Property="Content" Value="{x:Null}">
-                    <Setter TargetName="CheckboxLabel" Property="Visibility" Value="Collapsed" />
-                </Trigger>
-                <Trigger Property="IsChecked" Value="True">
-                    <Setter TargetName="CheckBorder" Property="Background" Value="{DynamicResource OHsSampleLoader.Brush.CheckedFill}" />
-                    <Setter TargetName="CheckBorder" Property="BorderBrush" Value="{DynamicResource OHsSampleLoader.Brush.CheckedFill}" />
-                    <Setter TargetName="CheckedIcon" Property="Visibility" Value="Visible" />
-                </Trigger>
-                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
-                    <Setter TargetName="CheckBorder" Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
-                    <Setter TargetName="CheckBorder" Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
-                </DataTrigger>
-                <MultiDataTrigger>
-                    <MultiDataTrigger.Conditions>
-                        <Condition Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True" />
-                        <Condition Binding="{Binding IsChecked, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}" Value="True" />
-                    </MultiDataTrigger.Conditions>
-                    <Setter TargetName="CheckBorder" Property="Background" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
-                    <Setter TargetName="CheckedIcon" Property="Color" Value="{DynamicResource {x:Static SystemColors.HighlightTextBrushKey}}" />
-                </MultiDataTrigger>
-            </ControlTemplate.Triggers>
-        </ControlTemplate>
+
         <Style
             x:Key="OHsSampleLoaderCheckboxStyle"
-            BasedOn="{StaticResource BaseCheckBoxStyle}"
+            BasedOn="{StaticResource RegularCheckBoxStyle}"
             TargetType="CheckBox">
-            <Setter Property="Template" Value="{StaticResource SampleLoaderCheckTemplate}" />
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
             <Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="False" />
             <Setter Property="IsTabStop" Value="False" />
         </Style>
@@ -206,17 +126,8 @@
             <Setter Property="Height" Value="16" />
             <Setter Property="Width" Value="16" />
             <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource Brush.Background.Hover}" />
-                </Trigger>
-                <MultiDataTrigger>
-                    <MultiDataTrigger.Conditions>
-                        <Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource Self}, Mode=OneWay}" Value="True" />
-                        <Condition Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True" />
-                    </MultiDataTrigger.Conditions>
-                    <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
-                    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.HighlightTextBrushKey}}" />
-                </MultiDataTrigger>
+
+
                 <DataTrigger Binding="{Binding IsDirectory, Mode=OneWay}" Value="True">
                     <Setter Property="Visibility" Value="Collapsed" />
                 </DataTrigger>
@@ -226,7 +137,7 @@
             x:Key="SampleLoaderBreadcrumbButtonStyle"
             BasedOn="{StaticResource OHsBalloonNavInfoActionStyle}"
             TargetType="c:BalloonButton">
-            <Setter Property="Foreground" Value="{DynamicResource OHsSampleLoader.Brush.SupportingText}" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}" />
             <Setter Property="DefaultBackground" Value="Transparent" />
             <Setter Property="FontSize" Value="12" />
             <Setter Property="MinHeight" Value="28" />
@@ -362,8 +273,8 @@
                         <Condition Binding="{Binding IsChecked, Mode=OneWay}" Value="True" />
                         <Condition Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="False" />
                     </MultiDataTrigger.Conditions>
-                    <Setter Property="Background" Value="{DynamicResource OHsSampleLoader.Brush.SelectedFill}" />
-                    <Setter Property="BorderBrush" Value="{DynamicResource OHsSampleLoader.Brush.SelectedBorder}" />
+                    <Setter Property="Background" Value="{DynamicResource Brush.Navy.Tint}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Navy}" />
                     <Setter Property="BorderThickness" Value="1" />
                     <Setter Property="FontWeight" Value="Bold" />
                 </MultiDataTrigger>
@@ -372,7 +283,7 @@
                         <Condition Binding="{Binding IsPreviewing, Mode=OneWay}" Value="True" />
                         <Condition Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="False" />
                     </MultiDataTrigger.Conditions>
-                    <Setter Property="Background" Value="{DynamicResource OHsSampleLoader.Brush.PreviewFill}" />
+                    <Setter Property="Background" Value="{DynamicResource Brush.Background.Hover}" />
                 </MultiDataTrigger>
             </Style.Triggers>
         </Style>
@@ -415,7 +326,7 @@
             x:Key="OHsSampleLoaderPreviewBadgeStyle"
             BasedOn="{StaticResource OHsSampleLoaderBadgeStyle}"
             TargetType="TextBlock">
-            <Setter Property="Background" Value="{DynamicResource OHsSampleLoader.Brush.Popup}" />
+            <Setter Property="Background" Value="{DynamicResource Brush.Background.Popup}" />
             <Setter Property="Padding" Value="4,0" />
             <Setter Property="Height" Value="16" />
             <Setter Property="FontSize" Value="10" />
@@ -434,7 +345,7 @@
             <Setter Property="Padding" Value="4,0" />
             <Setter Property="Height" Value="16" />
             <Setter Property="FontSize" Value="10" />
-            <Setter Property="Background" Value="{DynamicResource OHsSampleLoader.Brush.Popup}" />
+            <Setter Property="Background" Value="{DynamicResource Brush.Background.Popup}" />
             <Setter Property="Foreground" Value="{DynamicResource Brush.Warning}" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsAlreadyInProject, Mode=OneWay}" Value="True">
@@ -462,7 +373,7 @@
                     <Border
                         Height="16"
                         Margin="4,0"
-                        BorderBrush="{DynamicResource OHsSampleLoader.Brush.Warning}"
+                        BorderBrush="{DynamicResource Brush.Warning}"
                         BorderThickness="1"
                         CornerRadius="4"
                         DockPanel.Dock="Right"
@@ -477,7 +388,7 @@
                     <Border
                         Height="16"
                         Margin="4,0"
-                        BorderBrush="{DynamicResource OHsSampleLoader.Brush.ChipBorder}"
+                        BorderBrush="{DynamicResource Brush.Border.Control}"
                         BorderThickness="1"
                         CornerRadius="4"
                         DockPanel.Dock="Right"
@@ -496,7 +407,7 @@
                         DockPanel.Dock="Right"
                         Path="{StaticResource MediaPlay}"
                         Visibility="{Binding IsPreviewing, Converter={StaticResource BoolToVisibilityConverter}, Mode=OneWay}"
-                        Color="{DynamicResource OHsSampleLoader.Brush.SupportingText}" />
+                        Color="{DynamicResource Brush.Text.Secondary}" />
                     <Border Margin="0,4">
                         <TextBlock
                             VerticalAlignment="Center"
@@ -521,7 +432,7 @@
                     Height="14"
                     Path="{StaticResource Folder}"
                     Visibility="Collapsed"
-                    Color="{DynamicResource OHsSampleLoader.Brush.SecondaryText}" />
+                    Color="{DynamicResource Brush.Text.Secondary}" />
             </Grid>
             <DataTemplate.Triggers>
                 <DataTrigger Binding="{Binding IsDirectory, Mode=OneWay}" Value="True">
@@ -534,7 +445,7 @@
             BasedOn="{StaticResource OHsBalloonNeutralActionStyle}"
             TargetType="c:BalloonButton">
             <Setter Property="Padding" Value="12,2" />
-            <Setter Property="Foreground" Value="{DynamicResource OHsSampleLoader.Brush.SecondaryText}" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}" />
             <Setter Property="DefaultBackground" Value="Transparent" />
             <Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="True" />
             <Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="False" />
@@ -566,40 +477,30 @@
             BasedOn="{StaticResource OHsSampleLoaderSecondaryActionStyle}"
             TargetType="c:BalloonButton">
             <Setter Property="Padding" Value="4" />
-            <Setter Property="Foreground" Value="{DynamicResource OHsSampleLoader.Brush.Text}" />
-            <Setter Property="PressedBackground" Value="{DynamicResource OHsSampleLoader.Brush.SelectedFill}" />
-            <Setter Property="HoveredBackground" Value="{DynamicResource OHsSampleLoader.Brush.PreviewFill}" />
-            <Setter Property="DefaultBackground" Value="{DynamicResource OHsSampleLoader.Brush.PrimaryFill}" />
-            <Setter Property="Background" Value="{DynamicResource OHsSampleLoader.Brush.PrimaryFill}" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+            <Setter Property="PressedBackground" Value="{DynamicResource Brush.Navy.Tint}" />
+            <Setter Property="HoveredBackground" Value="{DynamicResource Brush.Background.Hover}" />
+            <Setter Property="DefaultBackground" Value="{DynamicResource Brush.Background.Surface}" />
+            <Setter Property="Background" Value="{DynamicResource Brush.Background.Surface}" />
             <Setter Property="ButtonIcon" Value="{StaticResource MediaPlay}" />
         </Style>
         <Style
             x:Key="SampleLoaderAutoPlayStyle"
             BasedOn="{StaticResource OHsSampleLoaderCheckboxStyle}"
             TargetType="CheckBox">
+            <Setter Property="IsTabStop" Value="True"/><Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True"/>
             <Setter Property="FontSize" Value="12" />
-            <Setter Property="FontFamily" Value="{DynamicResource Regular}" />
-            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
             <Setter Property="Padding" Value="8,0" />
             <Setter Property="MinHeight" Value="40" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsFolderSelection, Mode=OneWay}" Value="True">
                     <Setter Property="Visibility" Value="Collapsed" />
                 </DataTrigger>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource Brush.Background.Hover}" />
-                </Trigger>
+
                 <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
                     <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
                 </DataTrigger>
-                <MultiDataTrigger>
-                    <MultiDataTrigger.Conditions>
-                        <Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource Self}, Mode=OneWay}" Value="True" />
-                        <Condition Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True" />
-                    </MultiDataTrigger.Conditions>
-                    <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
-                    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.HighlightTextBrushKey}}" />
-                </MultiDataTrigger>
+
             </Style.Triggers>
         </Style>
         <CollectionViewSource x:Key="OHsSampleLoaderLocationsView" Source="{Binding Locations, Mode=OneWay}">
@@ -806,8 +707,8 @@
             BasedOn="{StaticResource PlainListBoxItemStyle}"
             TargetType="ListBoxItem">
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="BorderBrush" Value="{DynamicResource OHsSampleLoader.Brush.Divider}" />
-            <Setter Property="Background" Value="{DynamicResource OHsSampleLoader.Brush.List}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Subtle}" />
+            <Setter Property="Background" Value="{DynamicResource Brush.Background.Surface}" />
             <Setter Property="Padding" Value="10,0,4,0" />
             <Setter Property="Height" Value="52" />
             <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=OneWay}" />
@@ -842,8 +743,8 @@
                         <Condition Binding="{Binding IsPreviewing, Mode=OneWay}" Value="True" />
                         <Condition Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="False" />
                     </MultiDataTrigger.Conditions>
-                    <Setter Property="Background" Value="{DynamicResource OHsSampleLoader.Brush.PreviewFill}" />
-                    <Setter Property="BorderBrush" Value="{DynamicResource OHsSampleLoader.Brush.SelectedBorder}" />
+                    <Setter Property="Background" Value="{DynamicResource Brush.Background.Hover}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Navy}" />
                 </MultiDataTrigger>
             </Style.Triggers>
         </Style>
@@ -954,7 +855,7 @@
             BasedOn="{StaticResource BaseBorderStyle}"
             TargetType="Border">
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="BorderBrush" Value="{DynamicResource OHsSampleLoader.Brush.Divider}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Subtle}" />
             <Setter Property="CornerRadius" Value="6" />
             <Setter Property="Background" Value="{DynamicResource Brush.Background.Deepened}" />
             <Style.Triggers>
@@ -971,10 +872,6 @@
             <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Subtle}" />
             <Setter Property="Padding" Value="0" />
         </Style>
-        <SolidColorBrush x:Key="Brush.BalloonButton.Background.ConfirmSave" Color="#0D2B50" />
-        <SolidColorBrush x:Key="Brush.BalloonButton.Background.ConfirmSave.Hovered" Color="#14264A" />
-        <SolidColorBrush x:Key="Brush.BalloonButton.Background.ConfirmSave.Pressed" Color="#0F1B33" />
-        <SolidColorBrush x:Key="Brush.BalloonButton.Foreground.ConfirmSave" Color="#E8ECF5" />
         <ControlTemplate x:Key="OHsSampleLoaderSeekTemplate" TargetType="c:ValueSlider">
             <Grid>
                 <Border
@@ -1005,22 +902,6 @@
                 </Border>
             </Grid>
         </ControlTemplate>
-        <SolidColorBrush x:Key="Brush.Border.Focus" Color="#E8ECF5" />
-        <SolidColorBrush x:Key="OHsSampleLoader.Brush.SecondaryText" Color="#9AA5BC" />
-        <SolidColorBrush x:Key="OHsSampleLoader.Brush.SelectedBorder" Color="#3557C4" />
-        <SolidColorBrush x:Key="OHsSampleLoader.Brush.CheckboxBorder" Color="#6C7690" />
-        <SolidColorBrush x:Key="OHsSampleLoader.Brush.SelectedFill" Color="#0F1B33" />
-        <SolidColorBrush x:Key="OHsSampleLoader.Brush.PreviewFill" Color="#14264A" />
-        <SolidColorBrush x:Key="OHsSampleLoader.Brush.PrimaryFill" Color="#0D2B50" />
-        <SolidColorBrush x:Key="OHsSampleLoader.Brush.List" Color="#161D2E" />
-        <SolidColorBrush x:Key="OHsSampleLoader.Brush.Popup" Color="#0F1524" />
-        <SolidColorBrush x:Key="OHsSampleLoader.Brush.CheckedFill" Color="#4A6FE0" />
-        <SolidColorBrush x:Key="OHsSampleLoader.Brush.SupportingText" Color="#C5CDE0" />
-        <SolidColorBrush x:Key="OHsSampleLoader.Brush.Divider" Color="#19233A" />
-        <SolidColorBrush x:Key="OHsSampleLoader.Brush.Border" Color="#283450" />
-        <SolidColorBrush x:Key="OHsSampleLoader.Brush.SelectedColumn" Color="#0B1120" />
-        <SolidColorBrush x:Key="OHsSampleLoader.Brush.ChipBorder" Color="#3C4B6E" />
-        <SolidColorBrush x:Key="OHsSampleLoader.Brush.Text" Color="#E8ECF5" />
     </c:BasePopup.Resources>
     <Grid Margin="0" Style="{StaticResource BaseGridStyle}">
         <Grid.RowDefinitions>
@@ -1043,7 +924,7 @@
                 Margin="8,12"
                 AutomationProperties.Name="Sample locations"
                 Background="Transparent"
-                BorderBrush="{DynamicResource OHsSampleLoader.Brush.Divider}"
+                BorderBrush="{DynamicResource Brush.Border.Subtle}"
                 BorderThickness="0,0,1,0"
                 IsEnabled="{Binding CanNavigate, Mode=OneWay}"
                 ItemContainerStyle="{StaticResource OHsSampleLoaderLocationItemStyle}"
@@ -1210,7 +1091,7 @@
             <Border
                 Grid.Row="1"
                 Margin="0,12,0,0"
-                BorderBrush="{DynamicResource OHsSampleLoader.Brush.Divider}"
+                BorderBrush="{DynamicResource Brush.Border.Subtle}"
                 BorderThickness="0,1,0,0">
                 <Grid Margin="0" Style="{StaticResource OHsSampleLoaderAudioRegionStyle}">
                     <Grid
@@ -1261,11 +1142,11 @@
                                 Grid.Column="1"
                                 Margin="10,0,0,0"
                                 AutomationProperties.Name="Stop preview"
-                                BorderBrush="{DynamicResource OHsSampleLoader.Brush.Border}"
+                                BorderBrush="{DynamicResource Brush.Border.Control}"
                                 BorderThickness="1"
                                 ButtonIcon="{StaticResource MediaStop}"
                                 Command="{Binding StopPreviewCommand, Mode=OneWay}"
-                                DefaultBackground="#161D2E"
+                                DefaultBackground="{DynamicResource Brush.Background.Surface}"
                                 IconSize="12"
                                 Style="{StaticResource OHsSampleLoaderIconActionStyle}"
                                 ToolTip="Stop preview" />
@@ -1279,7 +1160,7 @@
                                     PreviewMouseLeftButtonDown="OnWaveformSeekMouseDown"
                                     Style="{StaticResource BaseGridStyle}">
                                     <c:WaveformView
-                                        x:Name="PreviewWaveform"
+                                        x:Name="PreviewWaveform" Focusable="True" FocusVisualStyle="{StaticResource OHsSampleManagerKeyboardFocusStyle}" h:KeyboardNavigationPolicy.AllowTabNavigation="True" KeyDown="OnPreviewWaveformKeyDown" MouseMove="OnPreviewWaveformMouseMove" MouseLeftButtonUp="OnPreviewWaveformMouseUp"
                                         Margin="0,0,0,20"
                                         AutomationProperties.Name="Sample waveform"
                                         Data="{Binding Waveform, Mode=OneWay}"
@@ -1328,8 +1209,8 @@
             Grid.Column="2"
             Margin="0"
             Padding="16,12,16,16"
-            Background="{DynamicResource OHsSampleLoader.Brush.SelectedColumn}"
-            BorderBrush="{DynamicResource OHsSampleLoader.Brush.Divider}"
+            Background="{DynamicResource Brush.Background.Surface}"
+            BorderBrush="{DynamicResource Brush.Border.Subtle}"
             BorderThickness="1,0,0,0"
             Style="{StaticResource OHsSampleLoaderBasketPanelStyle}">
             <Grid Style="{StaticResource BaseGridStyle}">
@@ -1357,8 +1238,8 @@
                             Margin="8,0"
                             Padding="7,0"
                             VerticalAlignment="Center"
-                            Background="{DynamicResource OHsSampleLoader.Brush.SelectedFill}"
-                            BorderBrush="{DynamicResource OHsSampleLoader.Brush.SelectedBorder}"
+                            Background="{DynamicResource Brush.Navy.Tint}"
+                            BorderBrush="{DynamicResource Brush.Navy}"
                             BorderThickness="1"
                             CornerRadius="10">
                             <TextBlock
@@ -1407,15 +1288,15 @@
         <Grid Grid.Row="2" Style="{StaticResource OHsSampleLoaderImportLayoutStyle}">
             <Border
                 Padding="16,0,16,16"
-                Background="{DynamicResource OHsSampleLoader.Brush.SelectedColumn}"
-                BorderBrush="{DynamicResource OHsSampleLoader.Brush.Divider}"
+                Background="{DynamicResource Brush.Background.Surface}"
+                BorderBrush="{DynamicResource Brush.Border.Subtle}"
                 BorderThickness="1,1,0,0">
                 <StackPanel Grid.Row="2" Margin="0">
                     <Grid Style="{StaticResource OHsSampleLoaderAudioRegionStyle}">
                         <TextBlock
                             Margin="0,12,0,0"
                             FontSize="12"
-                            Foreground="{DynamicResource OHsSampleLoader.Brush.SecondaryText}"
+                            Foreground="{DynamicResource Brush.Text.Secondary}"
                             Text="{Binding SelectionSummary, Mode=OneWay}" />
                     </Grid>
                     <c:BalloonButton

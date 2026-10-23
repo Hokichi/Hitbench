@@ -33,7 +33,7 @@ public partial class App : Application
         registrations.AddSingleton(provider => new PlaybackVolumeSettings(provider.GetRequiredService<IAppSettingsService>(), applicationVolume));
         registrations.AddSingleton<ISampleFileService, SampleFileService>();
         registrations.AddSingleton<SampleImportBatch>();
-        registrations.AddSingleton<Func<Soundie.Resources.DataModels.SampleManagementContext, ISampleFileDialogService, ISampleRemovalDialogService, ManageSamplesPopupVM>>(provider => (context, picker, removal) => new ManageSamplesPopupVM(context, provider.GetRequiredService<ISampleFileService>(), provider.GetRequiredService<SampleImportBatch>(), picker, removal, provider.GetRequiredService<IMessenger>(), provider.GetRequiredService<IUiScheduler>(), new SamplePreviewService(AudioDecoder.Open, audioOutputs.CreateCandidates(null), provider.GetRequiredService<OHsAudioOperationProgress>()), provider.GetRequiredService<PlaybackVolumeSettings>()));
+        registrations.AddSingleton<Func<Soundie.Resources.DataModels.SampleManagementContext, ISampleFileDialogService, ISampleRemovalDialogService, ManageSamplesPopupVM>>(provider => (context, picker, removal) => new ManageSamplesPopupVM(context, provider.GetRequiredService<ISampleFileService>(), provider.GetRequiredService<SampleImportBatch>(), picker, removal, provider.GetRequiredService<IMessenger>(), provider.GetRequiredService<IUiScheduler>(), new SamplePreviewService(AudioDecoder.Open, audioOutputs.CreateCandidates(null), provider.GetRequiredService<OHsAudioOperationProgress>()), provider.GetRequiredService<PlaybackVolumeSettings>(), waveformReader: new SampleBrowserService()));
         registrations.AddSingleton<ISampleManagementDialogService>(provider => new SampleManagementDialogService(() => Current.MainWindow, Current.Dispatcher, provider.GetRequiredService<Func<SampleLoaderPopupVM>>(), provider.GetRequiredService<Func<Soundie.Resources.DataModels.SampleManagementContext, ISampleFileDialogService, ISampleRemovalDialogService, ManageSamplesPopupVM>>()));
         registrations.AddSingleton<ISampleBrowserService>(provider => new SampleBrowserService(operationProgress: provider.GetRequiredService<OHsAudioOperationProgress>()));
         registrations.AddSingleton<Func<SampleLoaderPopupVM>>(provider => () => new SampleLoaderPopupVM(
@@ -81,6 +81,7 @@ public partial class App : Application
         registrations.AddTransient<HomePageVM>();
         registrations.AddTransient<HomePage>();
         registrations.AddSingleton<Func<HomePage>>(provider => () => provider.GetRequiredService<HomePage>());
+        registrations.AddSingleton(provider => new OHsThemeService(Current.Resources, provider.GetRequiredService<IAppSettingsService>(), provider.GetRequiredService<IUiScheduler>()));
         registrations.AddSingleton<MainWindow>();
         return registrations.BuildServiceProvider(new ServiceProviderOptions
         {
@@ -98,6 +99,7 @@ public partial class App : Application
             using var startupSettings = new AppSettingsService(AppContext.BaseDirectory);
             var settings = await startupSettings.LoadAsync(CancellationToken.None);
             services = CreateServices(settings.AsioDriverName, null, null, settings.Volume);
+            services.GetRequiredService<OHsThemeService>().ApplyInitialTheme(settings.Theme);
             window = services.GetRequiredService<MainWindow>();
             window.ApplySettings(settings);
             MainWindow = window;

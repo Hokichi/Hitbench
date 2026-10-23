@@ -66,6 +66,7 @@ public partial class WorkstationPage : UserControl
         Timeline.ViewportChanged += OnTimelineViewportChanged;
         DataContext = viewModel;
         RefreshHeaderDimming();
+        RefreshLoadingPresentation();
         TrackListComponent.ViewportChanged += OnTrackViewportChanged;
         PreviewMouseLeftButtonDown += OnPagePointerDown;
 
@@ -94,6 +95,7 @@ public partial class WorkstationPage : UserControl
         Timeline.Reset();
         deactivationStarted = true;
         RefreshHeaderDimming();
+        RefreshLoadingPresentation();
         TrackListComponent.Deactivate();
         presentationReady.TrySetResult();
         UpdatePlaybackRefreshSubscription();
@@ -229,6 +231,7 @@ public partial class WorkstationPage : UserControl
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName is nameof(WorkstationPageVM.StatusText) or nameof(WorkstationPageVM.ShowStatusOverlay)) RefreshLoadingPresentation();
         if (e.PropertyName == nameof(WorkstationPageVM.ShowStatusOverlay)) RefreshHeaderDimming();
         if (e.PropertyName == nameof(WorkstationPageVM.LoadPhase) && viewModel.LoadPhase == Soundie.Services.ProjectLoadPhase.PreparingData)
         {
@@ -385,7 +388,7 @@ public partial class WorkstationPage : UserControl
 
     internal bool HandleWaveformWheel(ModifierKeys modifiers, int delta)
     {
-        if (IsVolumeOverlayOpen) { Timeline.ResetWheel(); return true; }
+        if (IsVolumeOverlayOpen && modifiers != (ModifierKeys.Control | ModifierKeys.Alt)) { Timeline.ResetWheel(); return true; }
         return Timeline.HandleWaveformWheel(modifiers, delta);
     }
     private void RevealPlaybackPosition() => Timeline.RevealPlaybackPosition();

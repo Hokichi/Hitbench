@@ -4,43 +4,28 @@
  <c:BasePopup.Resources>
 
 
-  <ControlTemplate x:Key="OHsMappingConflictChoiceTemplate" TargetType="CheckBox">
-   <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}" Style="{StaticResource BaseBorderStyle}">
-    <Grid Style="{StaticResource BaseGridStyle}">
-     <Grid.ColumnDefinitions><ColumnDefinition Width="24"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-     <c:Icon Path="{StaticResource CheckboxBlankOutline}" Color="{TemplateBinding Foreground}" Width="16" Height="16" VerticalAlignment="Center"/>
-     <c:Icon x:Name="ChoiceMark" Path="{StaticResource Check}" Color="{TemplateBinding Foreground}" Width="12" Height="12" VerticalAlignment="Center" Visibility="Collapsed"/>
-     <ContentPresenter Grid.Column="1" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" VerticalAlignment="Center"/>
-    </Grid>
-   </Border>
-   <ControlTemplate.Triggers><Trigger Property="IsChecked" Value="True"><Setter TargetName="ChoiceMark" Property="Visibility" Value="Visible"/></Trigger></ControlTemplate.Triggers>
-  </ControlTemplate>
+
   <DataTemplate x:Key="OHsMappingConflictChoiceContent">
    <StackPanel Style="{StaticResource BaseStackPanelStyle}">
     <TextBlock Text="{Binding FileName,Mode=OneWay}" Foreground="{Binding Foreground,RelativeSource={RelativeSource AncestorType=CheckBox},Mode=OneWay}" Style="{StaticResource BodyTextStyle}" FontFamily="{DynamicResource Bold}"/>
    </StackPanel>
   </DataTemplate>
-  <Style x:Key="OHsMappingConflictChoiceStyle" TargetType="CheckBox" BasedOn="{StaticResource BaseCheckBoxStyle}">
-   <Setter Property="Template" Value="{StaticResource OHsMappingConflictChoiceTemplate}"/>
+  <Style x:Key="OHsMappingConflictChoiceStyle" TargetType="CheckBox" BasedOn="{StaticResource RegularCheckBoxStyle}">
+
    <Setter Property="ContentTemplate" Value="{StaticResource OHsMappingConflictChoiceContent}"/>
    <Setter Property="Content" Value="{Binding Mode=OneWay}"/>
    <Setter Property="IsChecked" Value="{Binding IsChecked,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"/>
    <Setter Property="AutomationProperties.Name" Value="{Binding AutomationName,Mode=OneWay}"/>
    <Setter Property="MinHeight" Value="40"/><Setter Property="Padding" Value="8"/>
-   <Setter Property="Background" Value="Transparent"/><Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}"/>
    <Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True"/><Setter Property="IsTabStop" Value="True"/>
-   <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}"/>
    <Style.Triggers>
-    <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{DynamicResource Brush.Background.Hover}"/></Trigger>
+
     <DataTrigger Binding="{Binding IsMissing,Mode=OneWay}" Value="True"><Setter Property="Foreground" Value="{DynamicResource Brush.Warning}"/></DataTrigger>
     <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast),Mode=OneWay}" Value="True">
      <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}"/>
      <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}"/>
     </DataTrigger>
-    <MultiDataTrigger>
-     <MultiDataTrigger.Conditions><Condition Binding="{Binding IsMouseOver,RelativeSource={RelativeSource Self},Mode=OneWay}" Value="True"/><Condition Binding="{Binding Path=(SystemParameters.HighContrast),Mode=OneWay}" Value="True"/></MultiDataTrigger.Conditions>
-     <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}"/><Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.HighlightTextBrushKey}}"/>
-    </MultiDataTrigger>
+
    </Style.Triggers>
   </Style>
   <DataTemplate x:Key="OHsMappingConflictChoiceItem"><CheckBox Style="{StaticResource OHsMappingConflictChoiceStyle}"/></DataTemplate>

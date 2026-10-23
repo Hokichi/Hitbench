@@ -18,13 +18,16 @@ internal sealed class OHsWindowFrame : IDisposable
     private HwndSource? source;
     private nint handle;
     private bool disposed;
+    private readonly INotifyPropertyChanged? themeChanges;
 
     internal OHsWindowFrame(Window window, Action<bool> setAcrylicEnabled,
         Func<nint, bool>? enableBackdrop = null, Action<nint>? disableBackdrop = null,
         Func<nint, int, int, int>? setWindowAttribute = null,
-        Func<nint, int, nint, nint, nint>? defaultWindowProc = null)
+        Func<nint, int, nint, nint, nint>? defaultWindowProc = null, INotifyPropertyChanged? themeChanges = null)
     {
         this.window = window;
+        this.themeChanges = themeChanges;
+        if (themeChanges is not null) themeChanges.PropertyChanged += OnThemeChanged;
         publish = setAcrylicEnabled;
         enable = enableBackdrop ?? EnableBackdrop;
         disable = disableBackdrop ?? DisableBackdrop;
@@ -51,6 +54,7 @@ internal sealed class OHsWindowFrame : IDisposable
 
     private void Refresh() => RefreshBackdrop(handle, OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22621),
         SystemParameters.HighContrast, OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000));
+    private void OnThemeChanged(object? sender, PropertyChangedEventArgs e) { if (e.PropertyName == nameof(OHsThemeService.Theme)) Refresh(); }
     private void OnEnvironmentChanged(object? sender, EventArgs e) => Refresh();
     private void OnSystemChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -203,6 +207,7 @@ internal sealed class OHsWindowFrame : IDisposable
     {
         if (disposed) return;
         disposed = true;
+        if (themeChanges is not null) themeChanges.PropertyChanged -= OnThemeChanged;
         window.SourceInitialized -= OnSourceInitialized;
         window.Activated -= OnEnvironmentChanged;
         window.StateChanged -= OnEnvironmentChanged;
