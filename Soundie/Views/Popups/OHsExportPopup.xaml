@@ -54,6 +54,7 @@
             <Style.Triggers><DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True"><Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" /></DataTrigger></Style.Triggers>
         </Style>
         <Style x:Key="OHsExportCheckTextStyle" TargetType="TextBlock" BasedOn="{StaticResource BodyTextStyle}">
+            <Setter Property="TextWrapping" Value="Wrap" />
             <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=CheckBox}, Mode=OneWay}" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
@@ -110,7 +111,7 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
             <StackPanel IsEnabled="{Binding CanEditOptions, Mode=OneWay}">
                 <TextBlock Text="Diff Name" Style="{StaticResource OHsExportLabelStyle}" />
@@ -132,7 +133,9 @@
                 <ComboBox x:Name="MixedFormatInput" AutomationProperties.Name="Mixed sample format" Style="{StaticResource OHsExportFormatInputStyle}"
                     ItemsSource="{Binding Formats, Mode=OneWay}" SelectedItem="{Binding MixedFormat, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
             </StackPanel>
-            <c:SegmentedToggleGroup x:Name="DestinationInput" Grid.Row="4" Margin="0,16,0,0" AutomationProperties.Name="Export destination"
+            <Grid Grid.Row="4" Margin="0,16,0,0">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <c:SegmentedToggleGroup x:Name="DestinationInput" Grid.Column="0" VerticalAlignment="Center" AutomationProperties.Name="Export destination"
                 Style="{StaticResource OHsExportDestinationGroupStyle}" IsEnabled="{Binding CanEditOptions, Mode=OneWay}"
                 SelectedValue="{Binding Destination, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
                 <c:SegmentedToggleOption x:Name="ProjectDestinationInput" Content="Project" AutomationProperties.Name="Project"
@@ -140,18 +143,21 @@
                 <c:SegmentedToggleOption x:Name="BeatmapDestinationInput" Content="Beatmap" AutomationProperties.Name="Beatmap"
                     Style="{StaticResource OHsExportDestinationOptionStyle}" Value="{x:Static d:OHsExportDestination.Beatmap}" />
             </c:SegmentedToggleGroup>
-            <CheckBox x:Name="OverwriteEverythingInput" Grid.Row="5" Margin="0,16,0,0" HorizontalAlignment="Left"
+            <StackPanel Grid.Column="2">
+            <CheckBox x:Name="OverwriteEverythingInput" HorizontalAlignment="Left"
                 AutomationProperties.Name="Overwrite everything" Content="Overwrite everything"
                 Style="{StaticResource OHsExportShowFilesStyle}" IsEnabled="{Binding CanOverwriteEverything, Mode=OneWay}"
                 IsChecked="{Binding OverwriteEverything, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-            <CheckBox x:Name="ShowFilesAfterExportInput" Grid.Row="6" Margin="0,16,0,0" HorizontalAlignment="Left"
+            <CheckBox x:Name="ShowFilesAfterExportInput" HorizontalAlignment="Left"
                 AutomationProperties.Name="Show files after export" Content="Show files after export"
                 Style="{StaticResource OHsExportShowFilesStyle}" IsEnabled="{Binding CanEditOptions, Mode=OneWay}"
                 IsChecked="{Binding ShowFilesAfterExport, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-            <ProgressBar x:Name="ExportProgressBar" Grid.Row="7" Margin="0,16,0,0" Minimum="0" Maximum="100"
+            </StackPanel>
+            </Grid>
+            <ProgressBar x:Name="ExportProgressBar" Grid.Row="5" Margin="0,16,0,0" Minimum="0" Maximum="100"
                 AutomationProperties.Name="Export progress" AutomationProperties.HelpText="{Binding ProgressPhase, Mode=OneWay}"
                 Style="{StaticResource OHsExportProgressStyle}" Value="{Binding ExportProgress, Mode=OneWay}" ToolTip="{Binding ProgressPhase, Mode=OneWay}" />
-            <StackPanel Grid.Row="8" Margin="0,24,0,0" HorizontalAlignment="Right" Orientation="Horizontal">
+            <StackPanel Grid.Row="6" Margin="0,24,0,0" HorizontalAlignment="Right" Orientation="Horizontal">
                 <c:BalloonButton x:Name="CancelButton" Margin="0,0,8,0" AutomationProperties.Name="Cancel" ButtonText="Cancel" ButtonIcon="{StaticResource Ban}"
                     ShouldShowText="True" Style="{StaticResource OHsBalloonDestructiveActionStyle}" Command="{Binding CancelCommand, Mode=OneWay}"
                     h:KeyboardNavigationPolicy.AllowTabNavigation="True" IsTabStop="True" />
