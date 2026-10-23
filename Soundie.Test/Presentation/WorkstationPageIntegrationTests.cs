@@ -402,59 +402,48 @@ public class WorkstationPageIntegrationTests
 
     [TestCase(480d, FlowDirection.LeftToRight, "Dark")]
     [TestCase(1100d, FlowDirection.RightToLeft, "Light")]
-    public void TrackNameFieldInitializesEditsSavesAndRebindsWithoutSpuriousWrites(double width, FlowDirection direction, string theme)
+    public void TrackNamePopupEditsSavesAndRebindsWithoutSpuriousWrites(double width, FlowDirection direction, string theme)
     {
         EnsureResources(theme);
         var first = new Soundie.Core.Entities.InstrumentalTrack { Name = "Kick " + new string('a', 256) };
         var second = new Soundie.Core.Entities.InstrumentalTrack { Name = "Snare" };
         var source = new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(
             new WorkstationSource("map.osu", "audio.wav", new ProjectData { Tracks = [first, second] })) };
-        var saves = new DelayedProjectFileService();
-        saves.Release();
+        var saves = new DelayedProjectFileService(); saves.Release();
+        Soundie.Resources.DataModels.OHsTrackAppearanceResult? result = null;
+        var dialog = new StubOHsTrackAppearanceDialogService { Request = (_, _) => Task.FromResult(result) };
         var vm = new WorkstationPageVM(source, new Soundie.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay),
-            new ImmediateUiScheduler(), projectFiles: saves);
+            new ImmediateUiScheduler(), projectFiles: saves, trackAppearanceDialog: dialog);
         var page = new WorkstationPage(vm);
         page.SetProjectPath("project.json");
         using var view = new InMemoryView(new Window { Content = page, Width = width, Height = 720, FlowDirection = direction });
-        UiTestPump.Run(page.LoadCompletion);
-        view.UpdateLayout();
-        var input = FindVisualChildren<TextBox>(page).Single(box =>
-            AutomationProperties.GetName(box) == "Track name" && ReferenceEquals(box.DataContext, first));
-        Assert.That(input.Text, Is.EqualTo(first.Name));
-        Assert.That(input.IsEnabled, Is.True);
-        Assert.That(input.IsTabStop, Is.True);
-        Assert.That(input.Focusable, Is.True);
-        Assert.That(input.Style, Is.SameAs(input.FindResource("OHsWorkstationTrackNameStyle")));
-        Assert.That(input.Style.BasedOn, Is.SameAs(page.FindResource("RoundedTextInputStyle")));
+        UiTestPump.Run(page.LoadCompletion); view.UpdateLayout();
+        var row = FindVisualChildren<OHsWorkstationTrackRow>(page).Single(r => ReferenceEquals(r.Track, first));
+        TextBlock Name() => FindVisualChildren<TextBlock>(row).Single(t => t.Name == "SampleTrackName");
+        Assert.That(Name().Text, Is.EqualTo(first.Name));
+        Assert.That(Name().Style, Is.SameAs(row.FindResource("OHsWorkstationSampleTrackNameStyle")));
         Assert.That(saves.Writes, Is.Zero);
-
-        vm.BeginTrackRenameCommand.Execute(first);
-        input.SetCurrentValue(TextBox.TextProperty, "กลอง");
-        UiTestPump.Run(vm.CommitTrackRenameAsync(first));
-        UiTestPump.Run(vm.FlushSavesAsync());
-        Assert.That(first.Name, Is.EqualTo("กลอง"));
+        UiTestPump.Run(vm.ChangeTrackNameAndColorCommand.ExecuteAsync(first));
+        Assert.That(saves.Writes, Is.Zero); // Cancelled draft.
+        result = new("กลอง", null);
+        UiTestPump.Run(vm.ChangeTrackNameAndColorCommand.ExecuteAsync(first));
+        UiTestPump.Run(vm.FlushSavesAsync()); view.UpdateLayout();
+        Assert.That(Name().Text, Is.EqualTo("กลอง"));
         Assert.That(ProjectDataSerializer.Deserialize(saves.LatestJson!).Tracks[0].Name, Is.EqualTo("กลอง"));
         var writes = saves.Writes;
-        var recycledRow = FindVisualChildren<OHsWorkstationTrackRow>(page).Single(row => ReferenceEquals(row.Track, first));
-        recycledRow.Track = second; view.UpdateLayout();
-        input = FindVisualChildren<TextBox>(recycledRow).Single();
+        row.Track = second; view.UpdateLayout();
         UiTestPump.Run(vm.FlushSavesAsync());
-        Assert.That(input.Text, Is.EqualTo("Snare"));
+        Assert.That(Name().Text, Is.EqualTo("Snare"));
         Assert.That(first.Name, Is.EqualTo("กลอง"));
         Assert.That(second.Name, Is.EqualTo("Snare"));
         Assert.That(saves.Writes, Is.EqualTo(writes));
-        vm.BeginTrackRenameCommand.Execute(second);
-        input.SetCurrentValue(TextBox.TextProperty, "");
-        UiTestPump.Run(vm.CommitTrackRenameAsync(second));
-        UiTestPump.Run(vm.FlushSavesAsync());
-        Assert.That(second.Name, Is.Empty);
+        result = new("", null);
+        UiTestPump.Run(vm.ChangeTrackNameAndColorCommand.ExecuteAsync(second));
+        UiTestPump.Run(vm.FlushSavesAsync()); view.UpdateLayout();
+        Assert.That(Name().Text, Is.Empty);
         Assert.That(ProjectDataSerializer.Deserialize(saves.LatestJson!).Tracks[1].Name, Is.Empty);
-
         UiTestPump.Run(vm.DeactivateAsync());
-        view.UpdateLayout();
-        Assert.That(input.IsEnabled, Is.False);
-        input.Text = "Cannot edit";
-        Assert.That(second.Name, Is.Empty);
+        Assert.That(vm.ChangeTrackNameAndColorCommand.CanExecute(second), Is.False);
     }
 
     [Test]

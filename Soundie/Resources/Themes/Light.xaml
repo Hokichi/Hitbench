@@ -92,6 +92,7 @@
 
     <!-- Overlay and shadow -->
     <Color x:Key="Color.Overlay">#59000000</Color>
+    <Color x:Key="Color.BackgroundOverlay">#B2FFFFFF</Color>
     <Color x:Key="Color.Shadow">#000000</Color> <!-- NEW -->
 
     <!-- Action roles. Background rest, .Hovered, .Pressed and a fixed Foreground replace the runtime-computed label colour -->
@@ -212,6 +213,7 @@
     <SolidColorBrush x:Key="Brush.Playhead" Color="{StaticResource Color.Playhead}" />
     <SolidColorBrush x:Key="Brush.Node.SelectedOutline" Color="{StaticResource Color.Node.SelectedOutline}" />
 
+    <SolidColorBrush x:Key="Brush.BackgroundOverlay" Color="{StaticResource Color.BackgroundOverlay}" />
     <SolidColorBrush x:Key="Brush.Overlay" Color="{StaticResource Color.Overlay}" />
 
     <SolidColorBrush x:Key="Brush.BalloonButton.Background.Default" Color="{StaticResource Color.BalloonButton.Background.Default}" />

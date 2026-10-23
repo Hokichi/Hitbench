@@ -50,7 +50,9 @@ public class WorkstationSampleReloadIntegrationTests
             { Tracks = [new InstrumentalTrack { Name = calls == 1 ? "initial" : "reloaded", SelectedSampleFileName = "hit.wav" }], Offsets = [0], BPMs = [120] }));
         } };
         var vm = new WorkstationPageVM(source, new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay),
-            new ImmediateUiScheduler(), new StubSampleFileService(["hit.wav"]), projectFiles: saves);
+            new ImmediateUiScheduler(), new StubSampleFileService(["hit.wav"]), projectFiles: saves,
+            trackAppearanceDialog: new StubOHsTrackAppearanceDialogService { Request = (_, _) =>
+                Task.FromResult<Soundie.Resources.DataModels.OHsTrackAppearanceResult?>(new("name edited before refresh", null)) });
         var page = new WorkstationPage(vm); page.SetProjectPath("project.json");
         using var view = new InMemoryView(new Window { Content = page, Width = 900, Height = 600 }, processFrames: false);
         UiTestPump.Run(StubWorkstationAudioService.WaitUntilAsync(() => vm.LoadPhase == ProjectLoadPhase.AwaitingPresentation));
@@ -65,11 +67,11 @@ public class WorkstationSampleReloadIntegrationTests
         Assert.That(button.FocusVisualStyle, Is.SameAs(button.FindResource("OHsSampleManagerKeyboardFocusStyle")));
         Assert.That(button.Command, Is.SameAs(vm.ReloadSamplesCommand)); Assert.That(button.IsEnabled, Is.True);
         Assert.That(AutomationProperties.GetName(button), Is.EqualTo("Refresh samples"));
-        var name = Descendants(page).OfType<TextBox>().First(input => input.DataContext is Track);
+        var name = Descendants(page).OfType<TextBlock>().First(input => input.Name == "SampleTrackName");
         UiTestPump.Run(StubWorkstationAudioService.WaitUntilAsync(() => name.IsLoaded));
-        vm.BeginTrackRenameCommand.Execute(vm.Tracks.Single());
-        name.SetCurrentValue(TextBox.TextProperty, "name edited before refresh");
-        UiTestPump.Run(vm.CommitTrackRenameAsync(vm.Tracks.Single()));
+        UiTestPump.Run(vm.ChangeTrackNameAndColorCommand.ExecuteAsync(vm.Tracks.Single()));
+        view.UpdateLayout();
+        Assert.That(name.Text, Is.EqualTo("name edited before refresh"));
         Assert.That(vm.Tracks.Single().Name, Is.EqualTo("name edited before refresh"));
         Assert.That(page.HandlePlaybackKey(Key.F5, ModifierKeys.None, false, name), Is.True);
         UiTestPump.Run(page.PlaybackInputCompletion);

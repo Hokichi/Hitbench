@@ -40,7 +40,7 @@ public sealed class OHsWorkstationTrackRowTests
     }
 
     [Test]
-    public void ContextMenuInputUsesCurrentTrackAndPreservesNameEditing()
+    public void ContextMenuInputUsesCurrentTrackAndNameContent()
     {
         new VolumeWheelTests().SetUp();
         var vm = (WorkstationPageVM)WorkstationTestPage.Create().DataContext;
@@ -67,39 +67,51 @@ public sealed class OHsWorkstationTrackRowTests
             Assert.That(requests.Count, Is.EqualTo(2));
             Assert.That(requests.Last().ContextMenu.DataContext, Is.SameAs(vm.Tracks[1]));
             Assert.That(old.IsEnabled, Is.False);
-            vm.BeginTrackRenameCommand.Execute(vm.Tracks[1]); view.UpdateLayout();
-            var input = FindNameInput(row)!;
+            var input = FindNameText(row)!;
             input.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, source, 0, Key.Apps) { RoutedEvent = Keyboard.PreviewKeyDownEvent });
-            Assert.That(requests.Count, Is.EqualTo(2));
+            Assert.That(requests.Count, Is.EqualTo(3));
             Assert.That(requests.Last().ContextMenu.IsOpen, Is.False);
         }
         finally { UiTestPump.Run(vm.DeactivateAsync()); }
     }
     [Test]
-    public void EditorInputEventsCommitAndCancelDraft()
+    public void AppearanceMenuCommitsAndCancelsForCurrentTrack()
     {
         new VolumeWheelTests().SetUp();
-        var vm = (WorkstationPageVM)WorkstationTestPage.Create().DataContext;
+        Soundie.Resources.DataModels.OHsTrackAppearanceResult? result = null;
+        var requested = new List<string>();
+        var dialog = new StubOHsTrackAppearanceDialogService { Request = (request, _) =>
+        {
+            requested.Add(request.Name);
+            return Task.FromResult(result);
+        }};
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(),
+            new Soundie.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay),
+            new ImmediateUiScheduler(), trackAppearanceDialog: dialog);
         UiTestPump.Run(vm.LoadAsync("project.json", default)); vm.AcknowledgePresentationReady(vm.LoadGeneration);
         vm.AddPianoTrackCommand.Execute(null); var track = vm.Tracks.Single(); track.Name = "Original";
         var row = new OHsWorkstationTrackRow { Track = track, ViewModel = vm };
         using var view = new InMemoryView(new Window { Content = row, Width = 900, Height = 300 });
-        var input = FindNameInput(row)!;
-        Assert.That(input.IsReadOnly, Is.True);
-        vm.BeginTrackRenameCommand.Execute(track); view.UpdateLayout();
-        Assert.That(input.IsReadOnly, Is.False);
-        input.SetCurrentValue(TextBox.TextProperty, "Typed");
-        Assert.That(track.Name, Is.EqualTo("Original"));
-        using var source = new InMemoryPresentationSource();
-        input.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, source, 0, Key.Enter) { RoutedEvent = Keyboard.PreviewKeyDownEvent });
-        Assert.That(track.Name, Is.EqualTo("Typed"));
-        vm.BeginTrackRenameCommand.Execute(track); input.SetCurrentValue(TextBox.TextProperty, "Cancelled");
-        input.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, source, 0, Key.Escape) { RoutedEvent = Keyboard.PreviewKeyDownEvent });
-        Assert.That(track.Name, Is.EqualTo("Typed")); Assert.That(input.IsReadOnly, Is.True);
-        vm.BeginTrackRenameCommand.Execute(track); input.SetCurrentValue(TextBox.TextProperty, "Focus loss");
-        input.RaiseEvent(new KeyboardFocusChangedEventArgs(Keyboard.PrimaryDevice, 0, input, null) { RoutedEvent = Keyboard.LostKeyboardFocusEvent });
-        Assert.That(track.Name, Is.EqualTo("Focus loss"));
-        UiTestPump.Run(vm.DeactivateAsync());
+        try
+        {
+            var trigger = (Soundie.Resources.CustomControls.BalloonComboBox)row.GetRemovalFocusTarget()!;
+            var action = (MenuItem)trigger.ContextMenu!.Items[2];
+            Assert.That(action.Command, Is.SameAs(vm.ChangeTrackNameAndColorCommand));
+            Assert.That(action.CommandParameter, Is.SameAs(track));
+            var command = (CommunityToolkit.Mvvm.Input.IAsyncRelayCommand)action.Command;
+            UiTestPump.Run(command.ExecuteAsync(action.CommandParameter));
+            Assert.That(track.Name, Is.EqualTo("Original"));
+            result = new("Accepted", "#123456");
+            UiTestPump.Run(command.ExecuteAsync(action.CommandParameter)); view.UpdateLayout();
+            Assert.That(FindNameText(row)!.Text, Is.EqualTo("Accepted"));
+            Assert.That(track.Color, Is.EqualTo("#123456"));
+            result = null;
+            UiTestPump.Run(command.ExecuteAsync(action.CommandParameter));
+            Assert.That(track.Name, Is.EqualTo("Accepted"));
+            Assert.That(track.Color, Is.EqualTo("#123456"));
+            Assert.That(requested, Is.EqualTo(new[] { "Original", "Original", "Accepted" }));
+        }
+        finally { UiTestPump.Run(vm.DeactivateAsync()); }
     }
     [Test]
     public void TimelineRightButtonPhasesBypassTrackMenu()
@@ -125,11 +137,11 @@ public sealed class OHsWorkstationTrackRowTests
         }
         finally { UiTestPump.Run(vm.DeactivateAsync()); }
     }
-    private static TextBox? FindNameInput(DependencyObject root)
+    private static TextBlock? FindNameText(DependencyObject root)
     {
-        if (root is TextBox input) return input;
+        if (root is TextBlock { Name: "SampleTrackName" } input) return input;
         for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
-            if (FindNameInput(VisualTreeHelper.GetChild(root, i)) is {} match) return match;
+            if (FindNameText(VisualTreeHelper.GetChild(root, i)) is {} match) return match;
         return null;
     }
     [Test]

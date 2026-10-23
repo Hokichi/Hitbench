@@ -5,6 +5,33 @@ namespace Soundie.Test.Presentation;
 public sealed class ThemeSwitchingTests
 {
     [Test]
+    public void BackgroundAndModalBrushesFollowSwitchAndRollback()
+    {
+        _ = Application.Current ?? new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+        var resources = new ResourceDictionary();
+        var settings = new StubAppSettingsService();
+        var service = new OHsThemeService(resources, settings, new ImmediateUiScheduler());
+        service.ApplyInitialTheme(0);
+        var host = new System.Windows.Controls.StackPanel { Resources = resources };
+        var background = new System.Windows.Controls.Border();
+        var modal = new System.Windows.Controls.Border();
+        host.Children.Add(background); host.Children.Add(modal);
+        background.SetResourceReference(System.Windows.Controls.Border.BackgroundProperty, "Brush.BackgroundOverlay");
+        modal.SetResourceReference(System.Windows.Controls.Border.BackgroundProperty, "Brush.Overlay");
+        void AssertResources()
+        {
+            Assert.That(resources["Brush.BackgroundOverlay"], Is.InstanceOf<System.Windows.Media.SolidColorBrush>());
+            Assert.That(background.Background, Is.SameAs(resources["Brush.BackgroundOverlay"]));
+            Assert.That(modal.Background, Is.SameAs(resources["Brush.Overlay"]));
+            Assert.That(background.Background, Is.Not.SameAs(modal.Background));
+        }
+        AssertResources();
+        UiTestPump.Run(service.ChangeThemeAsync(1, default)); AssertResources();
+        settings.SaveTheme = (_, _) => Task.FromException(new IOException("disk failed"));
+        Assert.Throws<IOException>(() => UiTestPump.Run(service.ChangeThemeAsync(0, default)));
+        Assert.That(service.Theme, Is.EqualTo(1)); AssertResources();
+    }
+    [Test]
     public void RapidChangesAreSerializedAndLastSuccessfulChoiceWins()
     {
         var app=Application.Current ?? new Application { ShutdownMode=ShutdownMode.OnExplicitShutdown };

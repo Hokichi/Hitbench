@@ -95,17 +95,7 @@ public partial class OHsWorkstationTrackRow : UserControl
             if (!IsTrackCollapsed && current.IsCollapsed && HasExpandedControlFocus(Keyboard.FocusedElement as DependencyObject ?? FocusManager.GetFocusedElement(FocusManager.GetFocusScope(this)) as DependencyObject)) FindVisualChild<BalloonComboBox>(this)?.Focus();
             IsTrackCollapsed = current.IsCollapsed; CurrentTrackExtent = viewModel.GetTrackExtent(current);
             IsTrackMuted = current.IsTrackMuted; IsTrackSoloed = current.IsTrackSoloed;
-            var wasRenaming = IsRenaming;
             IsRenaming = ReferenceEquals(viewModel.RenamingTrack, current);
-            if (IsRenaming && !wasRenaming)
-            {
-                var owner = ViewModel; var generation = owner!.LoadGeneration;
-                Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Input, () =>
-                {
-                    if (!IsLoaded || !ReferenceEquals(Track, current) || !ReferenceEquals(ViewModel, owner) || owner.LoadGeneration != generation || !ReferenceEquals(owner.RenamingTrack, current)) return;
-                    var input = FindVisualChild<TextBox>(this); input?.Focus(); input?.SelectAll();
-                });
-            }
             SetCurrentValue(TrackNameDraftProperty, IsRenaming ? viewModel.TrackNameDraft : current.Name);
         }
         RefreshSampleSelectors(this);
@@ -160,15 +150,6 @@ public partial class OHsWorkstationTrackRow : UserControl
         if (sender is ComboBox { Name: "TrackSampleFileSelector" } selector) OnSampleSelectorLoaded(selector, new RoutedEventArgs());
         else if (sender is ComboBox metadata) OnTrackMetadataSelectorLoaded(metadata, new RoutedEventArgs());
         else if (sender is Slider slider) OnVolumeSliderLoaded(slider, new RoutedEventArgs());
-        else if (sender is TextBox input) OnTrackNameLoaded(input, new RoutedEventArgs());
-    }
-
-    private void OnTrackNameLoaded(object sender, RoutedEventArgs e)
-    {
-        if (sender is not TextBox { DataContext: Track track } input) return;
-        input.Tag = true;
-        input.SetCurrentValue(TextBox.TextProperty, ReferenceEquals(viewModel.RenamingTrack, track) ? viewModel.TrackNameDraft : track.Name);
-        input.Tag = false;
     }
 
     private void RefreshSampleSelectors(DependencyObject root)
@@ -328,18 +309,6 @@ public partial class OHsWorkstationTrackRow : UserControl
         row.DetachActionMenu();
         row.RefreshPresentation();
         row.AttachActionMenu();
-    }
-    private async void OnTrackNameLostFocus(object sender, RoutedEventArgs e)
-    {
-        if (sender is not TextBox { DataContext: Track track } || !ReferenceEquals(track, Track)) return;
-        try { await viewModel.CommitTrackRenameAsync(track); }
-        catch (Exception error) { viewModel.ErrorMessage = error.Message; }
-    }
-    private async void OnTrackNameKeyDown(object sender, KeyEventArgs e)
-    {
-        if (sender is not TextBox { DataContext: Track track } || !ReferenceEquals(track, Track)) return;
-        if (e.Key == Key.Escape) { e.Handled = true; viewModel.CancelTrackRename(track); }
-        else if (e.Key == Key.Enter) { e.Handled = true; try { await viewModel.CommitTrackRenameAsync(track); } catch (Exception error) { viewModel.ErrorMessage = error.Message; } }
     }
     private static void OnOwnerChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {

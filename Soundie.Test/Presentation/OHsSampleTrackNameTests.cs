@@ -9,9 +9,14 @@ namespace Soundie.Test.Presentation;
 [Apartment(ApartmentState.STA),NonParallelizable]
 public class OHsSampleTrackNameTests
 {
-    [Test] public void RegularTrackUsesStyledTextContent()
+    [TestCase(false, false)]
+    [TestCase(false, true)]
+    [TestCase(true, false)]
+    [TestCase(true, true)]
+    public void TrackUsesStyledTextContent(bool instrumental, bool collapsed)
     {
-        new VolumeWheelTests().SetUp(); var track=new Track{Name="Display"};
+        new VolumeWheelTests().SetUp(); Track track=instrumental ? new InstrumentalTrack() : new Track();
+        track.Name="Display"; track.IsCollapsed=collapsed;
         var vm=new WorkstationPageVM(new StubWorkstationSourceService{Load=(_,_)=>Task.FromResult(new WorkstationSource("map","song",new ProjectData{Tracks=[track],Offsets=[0],BPMs=[120]}))},new MarkerPlaybackCoordinator(new StubWorkstationAudioService(),Task.Delay),new ImmediateUiScheduler());
         try{
             UiTestPump.Run(vm.LoadAsync("project.json",default));vm.AcknowledgePresentationReady(vm.LoadGeneration);
