@@ -131,6 +131,8 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
     private readonly Func<bool> isLeftButtonPressed;
     private bool restoringBackgroundDrag;
     private Point? backgroundDragOrigin;
+    private Point backgroundGripDips;
+    private Size backgroundMaximizedDips;
     private static readonly DependencyPropertyKey IsAcrylicEnabledPropertyKey = DependencyProperty.RegisterReadOnly(
         nameof(IsAcrylicEnabled), typeof(bool), typeof(MainWindow), new PropertyMetadata(false));
     public static readonly DependencyProperty IsAcrylicEnabledProperty = IsAcrylicEnabledPropertyKey.DependencyProperty;
@@ -556,6 +558,8 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
         if (WindowState == WindowState.Maximized)
         {
             backgroundDragOrigin = cursorPixels;
+            backgroundGripDips = new Point((cursorPixels.X - currentPixels.X) / dpiX, (cursorPixels.Y - currentPixels.Y) / dpiY);
+            backgroundMaximizedDips = new Size(currentPixels.Width / dpiX, currentPixels.Height / dpiY);
             if (PresentationSource.FromVisual(ShellRoot) is not null) ShellRoot.CaptureMouse();
             return true;
         }
@@ -569,7 +573,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
     private void BeginBackgroundDrag(Point cursorPixels, Rect currentPixels, double dpiX, double dpiY)
     {
         var maximized = WindowState == WindowState.Maximized;
-        var restored = maximized ? OHsWindowFrame.GetRestoreBounds(cursorPixels, currentPixels,
+        var restored = maximized ? OHsWindowFrame.GetRestoreBounds(cursorPixels, backgroundGripDips, backgroundMaximizedDips,
             new Size(restoredWidth, restoredHeight), dpiX, dpiY) : Rect.Empty;
         restoringBackgroundDrag = true;
         try

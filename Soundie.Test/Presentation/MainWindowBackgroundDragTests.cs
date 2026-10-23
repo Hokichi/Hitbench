@@ -51,9 +51,17 @@ public class MainWindowBackgroundDragTests
     [Test]
     public void RestoreGripUsesNegativeMonitorAndFractionalDpi()
     {
-        Assert.That(OHsWindowFrame.GetRestoreBounds(new Point(-960, 540),
-            new Rect(-1920, 0, 1920, 1080), new Size(1024, 640), 1.25, 1.5),
-            Is.EqualTo(new Rect(-1600, 60, 1280, 960)));
+        Assert.That(OHsWindowFrame.GetRestoreBounds(new Point(-960, 540), new Point(768, 360),
+            new Size(1536, 720), new Size(1024, 640), 1.25, 1.5),
+            Is.EqualTo(new Rect(-1600, 0, 1280, 960)));
+    }
+
+    [Test]
+    public void RestoreRetainsOriginalHeaderGripAfterPointerMoves()
+    {
+        Assert.That(OHsWindowFrame.GetRestoreBounds(new Point(-860, 130), new Point(768, 20),
+            new Size(1536, 720), new Size(1024, 640), 1.25, 1.5),
+            Is.EqualTo(new Rect(-1500, 100, 1280, 960)));
     }
 
     [TestCase(false), TestCase(true)]

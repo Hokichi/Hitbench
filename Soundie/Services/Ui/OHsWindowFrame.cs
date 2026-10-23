@@ -192,15 +192,15 @@ internal sealed class OHsWindowFrame : IDisposable
                 (int)Math.Round(boundsPixels.Width), (int)Math.Round(boundsPixels.Height), 0x0014); // NOZORDER, NOACTIVATE
     }
 
-    internal static Rect GetRestoreBounds(Point cursorPixels, Rect maximizedPixels, Size restoredDips, double dpiX, double dpiY)
+    internal static Rect GetRestoreBounds(Point cursorPixels, Point gripDips, Size maximizedDips, Size restoredDips, double dpiX, double dpiY)
     {
-        if (maximizedPixels.IsEmpty || maximizedPixels.Width <= 0 || maximizedPixels.Height <= 0 ||
+        if (maximizedDips.IsEmpty || maximizedDips.Width <= 0 || maximizedDips.Height <= 0 ||
             restoredDips.IsEmpty || restoredDips.Width <= 0 || restoredDips.Height <= 0 || dpiX <= 0 || dpiY <= 0) return Rect.Empty;
         var width = restoredDips.Width * dpiX;
         var height = restoredDips.Height * dpiY;
-        var gripX = Math.Clamp((cursorPixels.X - maximizedPixels.Left) / maximizedPixels.Width, 0, 1);
-        var gripY = Math.Clamp((cursorPixels.Y - maximizedPixels.Top) / maximizedPixels.Height, 0, 1);
-        return new Rect(cursorPixels.X - gripX * width, cursorPixels.Y - gripY * height, width, height);
+        var gripX = Math.Clamp(gripDips.X / maximizedDips.Width, 0, 1);
+        var gripY = Math.Clamp(gripDips.Y, 0, restoredDips.Height) * dpiY;
+        return new Rect(cursorPixels.X - gripX * width, cursorPixels.Y - gripY, width, height);
     }
 
     public void Dispose()
