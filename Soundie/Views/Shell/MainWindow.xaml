@@ -93,9 +93,14 @@
                 <DataTrigger Binding="{Binding IsProcessing, Mode=OneWay}" Value="True">
                     <Setter Property="Effect" Value="{StaticResource MainWindowScanBlur}" />
                 </DataTrigger>
-                <DataTrigger Binding="{Binding IsAudioBusy, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}" Value="True">
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding IsAudioBusy, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}" Value="True" />
+                        <Condition Binding="{Binding IsWorkstationVisible, ElementName=ShellHeader, Mode=OneWay}" Value="False" />
+                    </MultiDataTrigger.Conditions>
                     <Setter Property="Effect" Value="{StaticResource MainWindowScanBlur}" />
-                </DataTrigger>
+                </MultiDataTrigger>
+                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True"><Setter Property="Effect" Value="{x:Null}" /></DataTrigger>
             </Style.Triggers>
         </Style>
         <Style

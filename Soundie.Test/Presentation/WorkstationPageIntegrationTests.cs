@@ -48,6 +48,34 @@ public class WorkstationPageIntegrationTests
         finally { UiTestPump.Run(page.DeactivateAsync()); }
     }
 
+    [Test]
+    public void LoadingPresentationSurvivesAudioAndVolumeHandoffs()
+    {
+        EnsureResources();
+        var page = WorkstationTestPage.Create();
+        var vm = (WorkstationPageVM)page.DataContext;
+        try
+        {
+            Assert.That(page.IsLoadingPresentationActive, Is.True);
+            page.IsAudioBusy = true;
+            vm.LoadPhase = Soundie.Services.ProjectLoadPhase.Ready;
+            Assert.That(page.IsLoadingPresentationActive, Is.True);
+            page.ShowVolumeOverlay(false, new Point(), false, false);
+            page.DismissVolumeOverlay();
+            Assert.That(page.IsLoadingPresentationActive, Is.True);
+            page.IsAudioBusy = false;
+            Assert.That(page.IsLoadingPresentationActive, Is.False);
+            vm.LoadPhase = Soundie.Services.ProjectLoadPhase.AwaitingPresentation;
+            Assert.That(page.IsLoadingPresentationActive, Is.True);
+            vm.LoadPhase = Soundie.Services.ProjectLoadPhase.Cancelled;
+            Assert.That(page.IsLoadingPresentationActive, Is.False);
+            UiTestPump.Run(page.DeactivateAsync());
+            page.IsAudioBusy = true;
+            Assert.That(page.IsLoadingPresentationActive, Is.False);
+        }
+        finally { UiTestPump.Run(page.DeactivateAsync()); }
+    }
+
     [TestCase(FlowDirection.LeftToRight, "Dark")]
     [TestCase(FlowDirection.RightToLeft, "Light")]
     public void AudioRightActionsKeepLabelsCommandsAndMenuOwnership(FlowDirection direction, string theme)

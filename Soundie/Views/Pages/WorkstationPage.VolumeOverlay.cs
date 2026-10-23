@@ -49,14 +49,12 @@ public partial class WorkstationPage
             VolumeOverlay.Opacity = 0;
             volumeBlur ??= ((BlurEffect)FindResource("OHsWorkstationVolumeBlurEffect")).Clone();
             volumeBlur.Radius = 0;
-            WorkstationContent.Effect = volumeBlurRadius > 0 ? volumeBlur : null;
-            SetValue(HeaderBlurEffectPropertyKey, WorkstationContent.Effect);
+            RefreshBlurPresentation();
             AnimateVolumeOverlay(true, animate);
         }
         else
         {
-            WorkstationContent.Effect = volumeBlurRadius > 0 ? volumeBlur : null;
-            SetValue(HeaderBlurEffectPropertyKey, WorkstationContent.Effect);
+            RefreshBlurPresentation();
             if (settingsChanged && !volumeFading) AnimateVolumeOverlay(true, animate);
         }
         ActivateVolumeWheel(ApplicationVolumeWheel);
@@ -77,8 +75,7 @@ public partial class WorkstationPage
         TrackListComponent.IsVolumeOverlayOpen = false;
         volumeBlur?.BeginAnimation(BlurEffect.RadiusProperty, null);
         if (volumeBlur is not null) volumeBlur.Radius = 0;
-        WorkstationContent.Effect = null;
-        SetValue(HeaderBlurEffectPropertyKey, null);
+        RefreshBlurPresentation();
         var restore = volumePriorFocus as UIElement;
         volumePriorFocus = null;
         volumeWheelRemainder = 0;

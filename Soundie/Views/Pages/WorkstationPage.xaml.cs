@@ -67,6 +67,7 @@ public partial class WorkstationPage : UserControl
         DataContext = viewModel;
         RefreshHeaderDimming();
         RefreshLoadingPresentation();
+        SystemParameters.StaticPropertyChanged += OnLoadingSystemChanged;
         TrackListComponent.ViewportChanged += OnTrackViewportChanged;
         PreviewMouseLeftButtonDown += OnPagePointerDown;
 
@@ -94,6 +95,7 @@ public partial class WorkstationPage : UserControl
         CancelNodePointer();
         Timeline.Reset();
         deactivationStarted = true;
+        SystemParameters.StaticPropertyChanged -= OnLoadingSystemChanged;
         RefreshHeaderDimming();
         RefreshLoadingPresentation();
         TrackListComponent.Deactivate();

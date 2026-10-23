@@ -23,6 +23,7 @@
 
 
 
+        <BlurEffect x:Key="OHsWorkstationLoadingBlurEffect" Radius="8" />
         <BlurEffect x:Key="OHsWorkstationVolumeBlurEffect" Radius="0" />
         <Style
             x:Key="OHsWorkstationContentStyle"
