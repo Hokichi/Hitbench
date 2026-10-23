@@ -638,6 +638,8 @@ public class HomePageIntegrationTests
             view.UpdateLayout();
             var projects = (ItemsControl)page.FindName("ProjectsList");
             var button = Descendants<Button>(projects).Single(value => value.Command == vm.OpenProjectCommand);
+            Assert.That(Soundie.Resources.Helpers.OHsFolderActionPresentation.GetIsPressOffsetEnabled(button), Is.False);
+            Assert.That(Soundie.Resources.Helpers.OHsFolderActionPresentation.GetIsPressOffsetEnabled(new Button()), Is.True);
             var card = Descendants<ContentControl>(projects).Single(value => value.ContentTemplate == page.FindResource("OHsHomePageProjectRowTemplate"));
             var presenter = Descendants<ContentPresenter>(card).First(value => value.ContentTemplate == card.ContentTemplate);
             var border = (Border)VisualTreeHelper.GetChild(presenter, 0);

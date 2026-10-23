@@ -5,6 +5,15 @@ namespace Soundie.Test.Presentation;
 
 public sealed class OHsTrackDragGeometryTests
 {
+    [Test]
+    public void RemovedSourceRetainsOriginalCollectionIndices()
+    {
+        (int, Rect)[] rows = [(0, new Rect(0, 0, 300, 40)), (2, new Rect(0, 40, 300, 100)), (3, new Rect(0, 140, 300, 60))];
+        var slot = OHsTrackDragGeometry.FindInsertionSlot(new Point(10, 50), new Rect(0, 0, 300, 200), rows, 4);
+        Assert.That(slot, Is.EqualTo(2));
+        Assert.That(OHsTrackDragGeometry.ToFinalIndex(1, slot!.Value, 4), Is.EqualTo(1));
+    }
+
     [TestCase(3, 5, false)]
     [TestCase(4, 0, true)]
     [TestCase(0, 6, true)]

@@ -29,6 +29,8 @@ public partial class OHsWorkstationTrackList
     private bool refreshingTrackDrag;
     private bool acquiringTrackPointer;
     private int trackWheelRemainder;
+    private double trackPreviewWidth;
+    private OHsWorkstationTrackRow? trackPreviewRow;
     private readonly HashSet<ListBoxItem> trackDragContainers = [];
     private (double Extent, string Name, bool Collapsed, bool Muted, bool Solo, int Volume, string? Sample, double Width, double Offset) trackImageState;
     private static readonly DependencyProperty TrackDragThemeBrushProperty = DependencyProperty.Register(
@@ -212,7 +214,7 @@ public partial class OHsWorkstationTrackList
         SystemParameters.StaticPropertyChanged -= OnTrackDragSettingsChanged;
         foreach (var container in trackDragContainers.ToArray()) DetachTrackDragContainer(container);
         if (trackDragAdorner is not null) trackDragLayer?.Remove(trackDragAdorner);
-        trackDragAdorner = null; trackDragLayer = null; trackDragImage = null;
+        trackDragAdorner = null; trackDragLayer = null; trackDragImage = null; trackPreviewRow = null;
         if (!release) return;
         if (ReleaseTrackPointer is { } substitute) substitute();
         else if (IsMouseCaptured) ReleaseMouseCapture();
@@ -254,11 +256,22 @@ public partial class OHsWorkstationTrackList
                 .Where(pair => pair.Index >= 0).OrderBy(pair => pair.Index).ToArray();
             if (forceImage || trackDragImage is null || state != trackImageState)
             {
-                var sourceRow = rows.FirstOrDefault(pair => ReferenceEquals(pair.Row.Track, source)).Row;
-                if (sourceRow is null) { CancelTrackPointer(); return; }
+                var sourceRow = RealizedRows(TrackList).FirstOrDefault(row => ReferenceEquals(row.Track, source));
+                if (sourceRow is not null && !OHsTrackDragPresentation.GetIsSource(FindAncestor<ListBoxItem>(sourceRow)!))
+                    trackPreviewWidth = sourceRow.ActualWidth;
+                if (sourceRow is null)
+                {
+                    trackPreviewRow ??= new OHsWorkstationTrackRow { ViewModel = viewModel, Track = source, DataContext = source };
+                    sourceRow = trackPreviewRow;
+                }
+                sourceRow.FlowDirection = FlowDirection;
+                sourceRow.TimelineContentWidth = TimelineContentWidth;
+                sourceRow.TimelineViewportWidth = TimelineViewportWidth;
+                sourceRow.TimelineHorizontalOffset = TimelineHorizontalOffset;
                 sourceRow.RefreshPresentation();
-                var sourceContainer = FindAncestor<ListBoxItem>(sourceRow)!;
-                OHsTrackDragPresentation.SetIsSource(sourceContainer, false);
+                sourceRow.Measure(new Size(trackPreviewWidth, sourceRow.CurrentTrackExtent));
+                sourceRow.Arrange(new Rect(0, 0, trackPreviewWidth, sourceRow.CurrentTrackExtent));
+                sourceRow.UpdateLayout();
                 trackDragImage = CaptureTrackPreview is { } substitute ? substitute(sourceRow) : CaptureTrackRowImage(sourceRow);
                 if (!IsTrackDragActive || !IsTrackSessionCurrent()) { CancelTrackPointer(); return; }
                 if (trackDragImage is null) { CancelTrackPointer(); return; }
@@ -276,11 +289,12 @@ public partial class OHsWorkstationTrackList
                 if (before > 0) oldGap = new Rect(pair.Bounds.Left, pair.Bounds.Top - before, pair.Bounds.Width, before);
                 else if (after > 0) oldGap = new Rect(pair.Bounds.Left, pair.Bounds.Bottom, pair.Bounds.Width, after);
             }
+            var targets = rows.Where(pair => !ReferenceEquals(pair.Row.Track, source) && pair.Bounds.Height > 0).ToArray();
             var pointer = TranslatePoint(trackPointerLast, TrackList);
             TrackInsertionSlot = OHsTrackDragGeometry.FindInsertionSlot(pointer, viewport,
-                rows.Select(pair => (pair.Index, pair.Bounds)).ToArray(), viewModel.Tracks.Count, TrackInsertionSlot, oldGap);
-            var beforeHost = rows.FirstOrDefault(pair => pair.Index == TrackInsertionSlot).Container;
-            var afterHost = beforeHost is null ? rows.FirstOrDefault(pair => pair.Index + 1 == TrackInsertionSlot).Container : null;
+                targets.Select(pair => (pair.Index, pair.Bounds)).ToArray(), viewModel.Tracks.Count, TrackInsertionSlot, oldGap);
+            var beforeHost = TrackInsertionSlot is { } slot ? targets.FirstOrDefault(pair => pair.Index >= slot).Container : null;
+            var afterHost = beforeHost is null && TrackInsertionSlot is not null ? targets.LastOrDefault().Container : null;
             var host = rows.FirstOrDefault(pair => ReferenceEquals(pair.Container, beforeHost ?? afterHost));
             var gap = host.Container is null ? (Rect?)null : new Rect(viewport.Left,
                 beforeHost is not null ? host.Bounds.Top - OHsTrackDragPresentation.GetGapBefore(host.Container) : host.Bounds.Bottom,

@@ -5,6 +5,7 @@
     xmlns:converters="clr-namespace:Soundie.Resources.Converters"
     xmlns:customControls="clr-namespace:Soundie.Resources.CustomControls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:helpers="clr-namespace:Soundie.Resources.Helpers"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     d:DesignHeight="720"
     d:DesignWidth="1280"
@@ -301,6 +302,7 @@
             x:Key="OHsHomePageProjectContentButtonStyle"
             BasedOn="{StaticResource FolderActionButtonStyle}"
             TargetType="Button">
+            <Setter Property="helpers:OHsFolderActionPresentation.IsPressOffsetEnabled" Value="False" />
             <Setter Property="Padding" Value="0" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
@@ -308,10 +310,28 @@
                 <MultiDataTrigger>
                     <MultiDataTrigger.Conditions>
                         <Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource Self}, Mode=OneWay}" Value="True" />
-                        <Condition Binding="{Binding IsPressed, RelativeSource={RelativeSource Self}, Mode=OneWay}" Value="False" />
                         <Condition Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="False" />
                     </MultiDataTrigger.Conditions>
                     <Setter Property="Background" Value="{Binding Background, RelativeSource={RelativeSource AncestorType=Border}, Mode=OneWay}" />
+                </MultiDataTrigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="{Binding Background, RelativeSource={RelativeSource AncestorType=Border}, Mode=OneWay}" />
+                </Trigger>
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding IsPressed, RelativeSource={RelativeSource Self}, Mode=OneWay}" Value="True" />
+                        <Condition Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True" />
+                    </MultiDataTrigger.Conditions>
+                    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+                </MultiDataTrigger>
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding IsPressed, RelativeSource={RelativeSource Self}, Mode=OneWay}" Value="True" />
+                        <Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource Self}, Mode=OneWay}" Value="True" />
+                        <Condition Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True" />
+                    </MultiDataTrigger.Conditions>
+                    <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
+                    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.HighlightTextBrushKey}}" />
                 </MultiDataTrigger>
             </Style.Triggers>
         </Style>

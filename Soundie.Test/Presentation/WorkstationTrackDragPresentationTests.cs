@@ -10,6 +10,63 @@ namespace Soundie.Test.Presentation;
 public sealed class WorkstationTrackDragPresentationTests
 {
     [Test]
+    public void SourceSpaceClosesWithExactlyOneExplicitInsertionGap()
+    {
+        using var context = new WorkstationTrackDragTestContext();
+        var source = context.Vm.Tracks[0];
+        context.Vm.SetTrackMinimumExtent(source, true, 173);
+        context.Row(0).RefreshPresentation(); context.View.UpdateLayout();
+        var neighbor = context.Row(1);
+        var original = neighbor.TranslatePoint(new Point(), context.Owner).Y;
+        context.Start();
+        context.Owner.UpdateTrackPointer(context.PointOn(context.Row(3)), true);
+        context.View.UpdateLayout();
+        Assert.That(neighbor.TranslatePoint(new Point(), context.Owner).Y, Is.EqualTo(original - 173).Within(0.01));
+        var gap = WorkstationTrackDragTestContext.Descendants<ListBoxItem>(context.List)
+            .Sum(item => OHsTrackDragPresentation.GetGapBefore(item) + OHsTrackDragPresentation.GetGapAfter(item));
+        Assert.That(gap, Is.EqualTo(173));
+        Assert.That(context.Vm.Tracks[0], Is.SameAs(source));
+        Assert.That(context.Saves.Writes, Is.Zero);
+    }
+
+    [Test]
+    public void RecycledSourceCanRefreshPreviewWithoutRestoringOriginalRow()
+    {
+        using var context = new WorkstationTrackDragTestContext(120);
+        var source = context.Vm.Tracks[0]; context.Start();
+        WorkstationTrackDragTestContext.Descendants<ScrollViewer>(context.List).First().ScrollToBottom();
+        context.View.UpdateLayout();
+        source.Name = "Updated while outside viewport";
+        context.Owner.TimelineHorizontalOffset = 25;
+        context.Owner.RefreshViewport(); context.View.UpdateLayout();
+        Assert.That(context.Owner.IsTrackDragActive, Is.True);
+        var adorner = AdornerLayer.GetAdornerLayer(context.List)!.GetAdorners(context.List)!.OfType<OHsTrackDragAdorner>().Single();
+        Assert.That(adorner.TrackName, Is.EqualTo(source.Name));
+        Assert.That(context.List.ItemContainerGenerator.ContainerFromIndex(0), Is.Null);
+    }
+
+    [Test]
+    public void ArmedGestureRetainsSource()
+    {
+        using var context = new WorkstationTrackDragTestContext();
+        var row = context.Row(0);
+        context.Owner.BeginTrackPointer(row, context.PointOn(row));
+        Assert.That(row.IsVisible, Is.True);
+    }
+
+    [TestCase(0)]
+    [TestCase(1)]
+    public void ActiveDragCollapsesSourceAndRestoresOnCancel(int index)
+    {
+        using var context = new WorkstationTrackDragTestContext();
+        var row = context.Row(index);
+        context.Start(index);
+        Assert.That(row.IsVisible, Is.False);
+        context.Owner.CancelTrackPointer(); context.View.UpdateLayout();
+        Assert.That(row.IsVisible, Is.True);
+    }
+
+    [Test]
     public void SourcePresentationRefreshWaitsForValidLayout()
     {
         using var context = new WorkstationTrackDragTestContext();

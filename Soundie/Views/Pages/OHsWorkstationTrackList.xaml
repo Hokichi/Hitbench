@@ -16,12 +16,11 @@
 <Style x:Key="OHsWorkstationTrackDragHostStyle" TargetType="Grid" BasedOn="{StaticResource BaseGridStyle}">
     <Setter Property="Background" Value="Transparent" />
 </Style>
-<Style x:Key="OHsWorkstationTrackDragContentStyle" TargetType="ContentPresenter" BasedOn="{StaticResource BaseContentPresenterStyle}">
+<Style x:Key="OHsWorkstationTrackBodyStyle" TargetType="Grid" BasedOn="{StaticResource BaseGridStyle}">
     <Style.Triggers>
         <DataTrigger Binding="{Binding Path=(helpers:OHsTrackDragPresentation.IsSource), RelativeSource={RelativeSource AncestorType=ListBoxItem}, Mode=OneWay}" Value="True">
-            <Setter Property="Opacity" Value="0.65" />
+            <Setter Property="Visibility" Value="Collapsed" />
         </DataTrigger>
-        <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True"><Setter Property="Opacity" Value="1" /></DataTrigger>
     </Style.Triggers>
 </Style>
 <Style x:Key="OHsWorkstationTrackDragTagStyle" TargetType="Border" BasedOn="{StaticResource CardBorderStyle}">
@@ -94,7 +93,7 @@
             <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
             <Border Style="{StaticResource OHsWorkstationTrackDragInsertionStyle}" Height="{Binding Path=(helpers:OHsTrackDragPresentation.GapBefore), RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}" />
             <Border Grid.Row="2" Style="{StaticResource OHsWorkstationTrackDragInsertionStyle}" Height="{Binding Path=(helpers:OHsTrackDragPresentation.GapAfter), RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}" />
-            <Grid Grid.Row="1" Style="{StaticResource BaseGridStyle}">
+            <Grid Grid.Row="1" Style="{StaticResource OHsWorkstationTrackBodyStyle}">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="{StaticResource OHsWorkstationSideColumnWidth}" />
                     <ColumnDefinition Width="{StaticResource OHsWorkstationColumnGap}" />
@@ -114,7 +113,7 @@
                     ContentStringFormat="{TemplateBinding ContentStringFormat}"
                     ContentTemplate="{TemplateBinding ContentTemplate}"
                     ContentTemplateSelector="{TemplateBinding ContentTemplateSelector}"
-                    Style="{StaticResource OHsWorkstationTrackDragContentStyle}" />
+                    Style="{StaticResource BaseContentPresenterStyle}" />
                 <Border
                     Grid.ColumnSpan="5"
                     VerticalAlignment="Bottom"
