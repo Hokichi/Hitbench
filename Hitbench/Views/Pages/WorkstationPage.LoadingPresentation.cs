@@ -25,11 +25,12 @@ public partial class WorkstationPage
     }
     private void RefreshBlurPresentation()
     {
+        SetValue(VolumeBlurEffectPropertyKey, !deactivationStarted && IsVolumeOverlayOpen && volumeBlurRadius > 0 ? volumeBlur : null);
         System.Windows.Media.Effects.Effect? effect = null;
         if (!deactivationStarted)
             effect = IsLoadingPresentationActive
                 ? SystemParameters.HighContrast ? null : (System.Windows.Media.Effects.Effect)FindResource("OHsWorkstationLoadingBlurEffect")
-                : IsVolumeOverlayOpen && volumeBlurRadius > 0 ? volumeBlur : null;
+                : volumeOverlayHost is null ? VolumeBlurEffect : null;
         WorkstationContent.Effect = effect;
         SetValue(HeaderBlurEffectPropertyKey, effect);
     }

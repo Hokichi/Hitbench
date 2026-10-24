@@ -317,6 +317,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
     private WorkstationPage? busyPresentationPage;
     private void SetHeaderPresentationSource(WorkstationPage? workstation)
     {
+        SetVolumePresentationSource(workstation);
         if (busyPresentationPage is not null) { System.Windows.Data.BindingOperations.ClearBinding(busyPresentationPage, WorkstationPage.IsAudioBusyProperty); System.Windows.Data.BindingOperations.ClearBinding(busyPresentationPage, WorkstationPage.AudioBusyTextProperty); }
         busyPresentationPage = workstation;
         if (workstation is not null) {
@@ -568,7 +569,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
     }
 
     private bool CanDragBackground => !closed && !IsAudioBusy && !viewModel.IsInteractionBlocked && !viewModel.IsProcessing &&
-        !IsPopupOverlayVisible && !IsBlockingDrawerVisible && !ComponentDispatcher.IsThreadModal;
+        !IsPopupOverlayVisible && !IsBlockingDrawerVisible && volumePresentationPage?.IsVolumeOverlayOpen != true && !ComponentDispatcher.IsThreadModal;
 
     private void BeginBackgroundDrag(Point cursorPixels, Rect currentPixels, double dpiX, double dpiY)
     {
@@ -659,7 +660,10 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
     internal bool HandleWindowKeyDown(bool isActive, Key key, ModifierKeys modifiers, bool isRepeat,
         DependencyObject? origin)
     {
-        if (!isActive || IsPopupOverlayVisible || IsBlockingDrawerVisible || PageHost.Content is not WorkstationPage workstationPage) return false;
+        if (!isActive || IsPopupOverlayVisible || IsAudioBusy || IsBlockingDrawerVisible || PageHost.Content is not WorkstationPage workstationPage) return false;
+        if (key == Key.V && modifiers == ModifierKeys.Alt && SampleManagerHost.Content is OHsInstrumentalArrangementDrawer activePiano)
+            activePiano.TryPrepareClose();
+        if (workstationPage.HandleVolumeShortcut(key, modifiers, origin) || workstationPage.IsVolumeOverlayOpen) return true;
         if (IsDrawerOrigin(origin))
         {
             if (SampleManagerHost.Content is OHsInstrumentalArrangementDrawer piano)
@@ -669,8 +673,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
             return false;
         }
 
-        return workstationPage.HandleVolumeShortcut(key, modifiers, origin) ||
-               workstationPage.HandlePlaybackKey(key, modifiers, isRepeat, origin);
+        return workstationPage.HandlePlaybackKey(key, modifiers, isRepeat, origin);
     }
 
     internal Task DrawerInputCompletion { get; private set; } = Task.CompletedTask;
@@ -708,6 +711,12 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
         DependencyObject? origin = null)
     {
         if (!isActive || IsPopupOverlayVisible || IsAudioBusy || IsBlockingDrawerVisible || PageHost.Content is not WorkstationPage workstationPage) { (PageHost.Content as WorkstationPage)?.Timeline.ResetWheel(); return false; }
+        if (modifiers == ModifierKeys.Alt || workstationPage.IsVolumeOverlayOpen)
+        {
+            if (!workstationPage.IsVolumeOverlayOpen && SampleManagerHost.Content is OHsInstrumentalArrangementDrawer activePiano)
+                activePiano.TryPrepareClose();
+            return workstationPage.HandleContextWheel(modifiers, delta, origin);
+        }
         if (IsDrawerOrigin(origin) && modifiers != (ModifierKeys.Control | ModifierKeys.Alt)) { workstationPage.Timeline.ResetWheel(); return false; }
 
         return workstationPage.HandleContextWheel(modifiers, delta, origin);

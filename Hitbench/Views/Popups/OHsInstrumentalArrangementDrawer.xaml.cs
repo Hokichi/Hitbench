@@ -36,6 +36,31 @@ public partial class OHsInstrumentalArrangementDrawer : UserControl, IOHsShellDr
     public double TimelineContentWidth { get => (double)GetValue(TimelineContentWidthProperty); set => SetValue(TimelineContentWidthProperty, value); }
     public double TimelineViewportWidth { get => (double)GetValue(TimelineViewportWidthProperty); set => SetValue(TimelineViewportWidthProperty, value); }
     public double TimelineHorizontalOffset { get => (double)GetValue(TimelineHorizontalOffsetProperty); set => SetValue(TimelineHorizontalOffsetProperty, value); }
+    private static readonly DependencyPropertyKey PianoKeyColumnWidthPropertyKey = DependencyProperty.RegisterReadOnly(
+        nameof(PianoKeyColumnWidth), typeof(double), typeof(OHsInstrumentalArrangementDrawer), new PropertyMetadata(0d));
+    public static readonly DependencyProperty PianoKeyColumnWidthProperty = PianoKeyColumnWidthPropertyKey.DependencyProperty;
+    public double PianoKeyColumnWidth => (double)GetValue(PianoKeyColumnWidthProperty);
+    private static readonly DependencyPropertyKey PianoRollWidthPropertyKey = DependencyProperty.RegisterReadOnly(
+        nameof(PianoRollWidth), typeof(double), typeof(OHsInstrumentalArrangementDrawer), new PropertyMetadata(0d));
+    public static readonly DependencyProperty PianoRollWidthProperty = PianoRollWidthPropertyKey.DependencyProperty;
+    public double PianoRollWidth => (double)GetValue(PianoRollWidthProperty);
+
+    public void AlignTimelineViewport(Rect boundsInDrawer)
+    {
+        var keys = 0d;
+        var width = 0d;
+        if (!boundsInDrawer.IsEmpty && boundsInDrawer.Width > 0 && double.IsFinite(boundsInDrawer.X) &&
+            double.IsFinite(boundsInDrawer.Y) && double.IsFinite(boundsInDrawer.Width) &&
+            double.IsFinite(boundsInDrawer.Height) && PianoArea.IsArrangeValid)
+        {
+            var local = TransformToVisual(PianoArea).TransformBounds(boundsInDrawer);
+            var available = Math.Max(0, PianoArea.ActualWidth - PitchScroll.ActualWidth);
+            keys = Math.Clamp(local.Left, 0, available);
+            width = keys + Math.Clamp(local.Width, 0, available - keys);
+        }
+        if (PianoKeyColumnWidth != keys) SetValue(PianoKeyColumnWidthPropertyKey, keys);
+        if (PianoRollWidth != width) SetValue(PianoRollWidthPropertyKey, width);
+    }
     internal void Attach()
     {
         if (attached) return; attached = true;

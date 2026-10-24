@@ -121,6 +121,7 @@ public partial class MainWindow
             drawer.SetBinding(FlowDirectionProperty, new Binding(nameof(FlowDirection)) { Source = this, Mode = BindingMode.OneWay });
         OHsInstrumentalArrangementDrawer? piano = drawer as OHsInstrumentalArrangementDrawer;
         Action<double>? scrollPiano = null;
+        EventHandler? alignPiano = null;
         if (piano is not null && PageHost.Content is WorkstationPage page)
         {
             piano.SetBinding(OHsInstrumentalArrangementDrawer.TimelineContentWidthProperty, new Binding(nameof(page.Timeline.TimelineContentWidth)) { Source = page.Timeline, Mode = BindingMode.OneWay });
@@ -128,6 +129,13 @@ public partial class MainWindow
             piano.SetBinding(OHsInstrumentalArrangementDrawer.TimelineHorizontalOffsetProperty, new Binding(nameof(page.Timeline.TimelineHorizontalOffset)) { Source = page.Timeline, Mode = BindingMode.OneWay });
             scrollPiano = offset => { if (ReferenceEquals(SampleManagerHost.Content, piano) && ReferenceEquals(PageHost.Content, page)) page.Timeline.ScrollFromUser(offset); };
             piano.HorizontalOffsetRequested += scrollPiano;
+            alignPiano = (_, _) =>
+            {
+                if (ReferenceEquals(SampleManagerHost.Content, piano) && ReferenceEquals(PageHost.Content, page))
+                    piano.AlignTimelineViewport(page.Timeline.GetTimeViewportBounds(piano));
+            };
+            piano.LayoutUpdated += alignPiano;
+            alignPiano(null, EventArgs.Empty);
             piano.Attach();
         }
         SystemParameters.StaticPropertyChanged += OnSampleManagerAnimationSettingChanged;
@@ -162,6 +170,7 @@ public partial class MainWindow
                 if (piano is not null)
                 {
                     piano.Detach();
+                    if (alignPiano is not null) piano.LayoutUpdated -= alignPiano;
                     if (scrollPiano is not null) piano.HorizontalOffsetRequested -= scrollPiano;
                     BindingOperations.ClearBinding(piano, OHsInstrumentalArrangementDrawer.TimelineContentWidthProperty);
                     BindingOperations.ClearBinding(piano, OHsInstrumentalArrangementDrawer.TimelineViewportWidthProperty);

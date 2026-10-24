@@ -53,9 +53,9 @@ public sealed partial class PianoRollView
     {
         var x = Duration > TimeSpan.Zero && ContentWidth > 0
             ? KeyColumnWidth + Position.TotalMilliseconds / Duration.TotalMilliseconds * ContentWidth - HorizontalOffset : double.NaN;
-        markerVisual.Opacity = double.IsFinite(x) && ActualWidth > KeyColumnWidth && ActualHeight > 0 ? 1 : 0;
+        markerVisual.Opacity = double.IsFinite(x) && TimeViewportWidth > 0 && ActualHeight > 0 ? 1 : 0;
         markerTransform.X = double.IsFinite(x) ? x : 0;
-        markerClip.Rect = new Rect(KeyColumnWidth - markerTransform.X, 0, Math.Max(0, ActualWidth - KeyColumnWidth), Math.Max(0, ActualHeight));
+        markerClip.Rect = new Rect(KeyColumnWidth - markerTransform.X, 0, TimeViewportWidth, Math.Max(0, ActualHeight));
     }
     private Brush BrushOr(Brush? value, string key) => value ?? TryFindResource(key) as Brush ?? SystemColors.WindowTextBrush;
     private void DrawContent(DrawingContext dc)
@@ -74,11 +74,11 @@ public sealed partial class PianoRollView
             dc.DrawRectangle(hc ? SystemColors.WindowBrush : BrushOr(name.Contains('#') ? SharpKeyBrush : KeyBrush, name.Contains('#') ? "Brush.Background.Deepened" : "Brush.Background.Surface"), border, new Rect(0, y, KeyColumnWidth, LaneHeight));
             var label = new FormattedText(name, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, new Typeface(FontFamily, FontStyle, FontWeight, FontStretch), 11, text, VisualTreeHelper.GetDpi(this).PixelsPerDip);
             dc.DrawText(label, new Point(Math.Max(4, KeyColumnWidth - label.Width - 8), y + (LaneHeight - label.Height) / 2));
-            dc.DrawLine(new Pen(hc ? SystemColors.WindowTextBrush : BrushOr(GridBrush, "Brush.Border.Subtle"), .5), new(KeyColumnWidth, y + LaneHeight), new(ActualWidth, y + LaneHeight));
+            dc.DrawLine(new Pen(hc ? SystemColors.WindowTextBrush : BrushOr(GridBrush, "Brush.Border.Subtle"), .5), new(KeyColumnWidth, y + LaneHeight), new(KeyColumnWidth + TimeViewportWidth, y + LaneHeight));
         }
-        dc.PushClip(new RectangleGeometry(new Rect(KeyColumnWidth, 0, Math.Max(0, ActualWidth - KeyColumnWidth), ActualHeight)));
+        dc.PushClip(new RectangleGeometry(new Rect(KeyColumnWidth, 0, TimeViewportWidth, ActualHeight)));
         dc.PushTransform(new TranslateTransform(KeyColumnWidth, 0)); dc.PushOpacity(.5);
-        BeatGridDrawing.Draw(dc, this, Offsets, Bpms, Subdivision, Duration.TotalMilliseconds, ContentWidth, HorizontalOffset, Math.Max(0, ActualWidth - KeyColumnWidth), ActualHeight, false);
+        BeatGridDrawing.Draw(dc, this, Offsets, Bpms, Subdivision, Duration.TotalMilliseconds, ContentWidth, HorizontalOffset, TimeViewportWidth, ActualHeight, false);
         dc.Pop(); dc.Pop();
         if(pointerInteraction && dragging && !IsAdditionMode && !pointerModifiers.HasFlag(ModifierKeys.Control) && pressedNote is null)
             dc.DrawRectangle(null,new Pen(selection,1),new Rect(pointerStart,pointerLast));
@@ -102,7 +102,7 @@ public sealed partial class PianoRollView
         }
         foreach (var note in Notes.OrderBy(n => n.Id == SelectedNoteId))
         {
-            var rect = GetNoteBounds(note); if (rect.IsEmpty || !rect.IntersectsWith(new Rect(KeyColumnWidth, 0, Math.Max(0, ActualWidth - KeyColumnWidth), ActualHeight)) || dragging && !IsAdditionMode && gestureIds.Contains(note.Id)) continue;
+            var rect = GetNoteBounds(note); if (rect.IsEmpty || !rect.IntersectsWith(new Rect(KeyColumnWidth, 0, TimeViewportWidth, ActualHeight)) || dragging && !IsAdditionMode && gestureIds.Contains(note.Id)) continue;
             var chosen = SelectedNoteIds.Contains(note.Id) || note.Id == SelectedNoteId;
             OHsSampleNodeDrawing.Draw(dc, marker, chosen ? new Pen(cue, 2) : border, OHsSampleNodeDrawing.Inset(rect));
             if (note == pressedNote) OHsSampleNodeDrawing.Draw(dc, null, new Pen(chosen ? cue : hc ? SystemColors.HighlightTextBrush : BrushOr(PressedBrush, "Brush.Navy.Pressed"), 2), OHsSampleNodeDrawing.Inset(rect));

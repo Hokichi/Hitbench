@@ -143,11 +143,11 @@ public sealed class MainWindowPopupHostTests
         try
         {
             UiTestPump.Run(page.LoadCompletion);
-            var host = (Border)window.FindName("HeaderVolumeBlurHost");
+            var host = (Border)window.FindName("VolumeBackdropHost");
             Assert.That(host, Is.Not.Null);
             page.ShowVolumeOverlay(false, new Point(), false, false);
             UiTestPump.Run(window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle).Task);
-            Assert.That(host.Effect, Is.Not.Null.And.SameAs(page.HeaderBlurEffect));
+            Assert.That(host.Effect, Is.Not.Null.And.SameAs(page.VolumeBlurEffect));
             UiTestPump.Run(window.ReturnHomeAsync());
             Assert.That(((ContentControl)window.FindName("PageHost")).Content, Is.TypeOf<HomePage>());
             Assert.That(host.Effect, Is.Null);

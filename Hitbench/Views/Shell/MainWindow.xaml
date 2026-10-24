@@ -14,6 +14,14 @@
     WindowStartupLocation="CenterScreen"
     WindowStyle="None">
     <Window.Resources>
+        <Style x:Key="OHsMainWindowVolumeBackdropStyle" TargetType="Border" BasedOn="{StaticResource BaseBorderStyle}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}, Mode=OneWay}" Value="True">
+                    <Setter Property="IsEnabled" Value="False" />
+                    <Setter Property="IsHitTestVisible" Value="False" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
         <Style
             x:Key="OHsMainWindowSampleManagerHostStyle"
             BasedOn="{StaticResource BaseContentControlStyle}"
@@ -279,6 +287,8 @@
             <Border Style="{StaticResource OHsWindowBackgroundOverlayStyle}" />
             <Border x:Name="ModalShellContent" Style="{StaticResource MainWindowModalContentStyle}">
                 <Grid Style="{StaticResource BaseGridStyle}">
+                <Border x:Name="VolumeBackdropHost" Style="{StaticResource OHsMainWindowVolumeBackdropStyle}">
+                <Grid Style="{StaticResource BaseGridStyle}">
                     <Border x:Name="SampleManagerAppContent" Style="{StaticResource OHsMainWindowSampleManagerContentStyle}">
                         <Grid x:Name="ShellLayout">
                             <Grid.RowDefinitions>
@@ -335,6 +345,9 @@
                                 Style="{StaticResource OHsMainWindowShellDrawerHostStyle}" />
                         </Grid>
                     </Grid>
+                </Grid>
+                </Border>
+                <Grid x:Name="ShellVolumeOverlayHost" Style="{StaticResource BaseGridStyle}" />
                 </Grid>
             </Border>
             <Border x:Name="ModalShellOverlay" Style="{StaticResource MainWindowModalOverlayStyle}" />

@@ -41,6 +41,17 @@ public partial class OHsWorkstationTimeline : UserControl
         DataContextChanged += (_, e) => { ControlPointLane.ResetInteraction(); viewModel = e.NewValue as WorkstationPageVM ?? null!; };
     }
     public event EventHandler? ViewportChanged;
+    public Rect GetTimeViewportBounds(Visual relativeTo)
+    {
+        ArgumentNullException.ThrowIfNull(relativeTo);
+        if (!IsArrangeValid || TimelineViewportWidth <= 0 || !double.IsFinite(TimelineViewportWidth) ||
+            FindCommonVisualAncestor(relativeTo) is null) return Rect.Empty;
+        var border = WaveformScrollViewer.BorderThickness;
+        var padding = WaveformScrollViewer.Padding;
+        var bounds = new Rect(border.Left + padding.Left, border.Top + padding.Top,
+            TimelineViewportWidth, Math.Max(0, WaveformScrollViewer.ViewportHeight));
+        return WaveformScrollViewer.TransformToVisual(relativeTo).TransformBounds(bounds);
+    }
     private static readonly DependencyPropertyKey ScrollableWidthPropertyKey = DependencyProperty.RegisterReadOnly(nameof(ScrollableWidth), typeof(double), typeof(OHsWorkstationTimeline), new PropertyMetadata(0d));
     public static readonly DependencyProperty ScrollableWidthProperty = ScrollableWidthPropertyKey.DependencyProperty;
     public double ScrollableWidth => (double)GetValue(ScrollableWidthProperty);

@@ -1,5 +1,6 @@
 <UserControl
     x:Class="Hitbench.Views.Pages.WorkstationPage"
+    x:Name="Page"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:converters="clr-namespace:Hitbench.Resources.Converters"
@@ -30,7 +31,7 @@
             BasedOn="{StaticResource BaseGridStyle}"
             TargetType="Grid">
             <Style.Triggers>
-                <DataTrigger Binding="{Binding Visibility, ElementName=VolumeOverlay, Mode=OneWay}" Value="Visible">
+                <DataTrigger Binding="{Binding IsVolumeOverlayOpen, ElementName=Page, Mode=OneWay}" Value="True">
                     <Setter Property="IsEnabled" Value="False" />
                     <Setter Property="IsHitTestVisible" Value="False" />
                 </DataTrigger>
@@ -130,9 +131,9 @@
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="CornerRadius" Value="16" />
             <Style.Triggers>
-                <DataTrigger Binding="{Binding FlowDirection, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}" Value="RightToLeft">
+                <Trigger Property="FlowDirection" Value="RightToLeft">
                     <Setter Property="HorizontalAlignment" Value="Right" />
-                </DataTrigger>
+                </Trigger>
             </Style.Triggers>
         </Style>
 
@@ -258,7 +259,6 @@
                 Width="320"
                 VerticalAlignment="Center"
                 Panel.ZIndex="10"
-                FlowDirection="LeftToRight"
                 PreviewMouseMove="OnVolumeOverlayMouseMove"
                 Style="{StaticResource OHsWorkstationVolumeOverlayStyle}"
                 Visibility="Collapsed">
@@ -266,7 +266,6 @@
                     <StackPanel
                         x:Name="VolumeWheelPanel"
                         HorizontalAlignment="Stretch"
-                        FlowDirection="{Binding FlowDirection, ElementName=WorkstationRoot, Mode=OneWay}"
                         Style="{StaticResource BaseStackPanelStyle}">
                         <customControls:VolumeWheel
                             x:Name="SongVolumeWheel"

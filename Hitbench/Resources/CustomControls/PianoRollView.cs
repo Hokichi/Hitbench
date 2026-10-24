@@ -51,6 +51,14 @@ public sealed partial class PianoRollView : Control
     public double VerticalOffset { get => (double)GetValue(VerticalOffsetProperty); set => SetValue(VerticalOffsetProperty, value); }
     public static readonly DependencyProperty KeyColumnWidthProperty = DependencyProperty.Register(nameof(KeyColumnWidth), typeof(double), typeof(PianoRollView), new FrameworkPropertyMetadata(72d, FrameworkPropertyMetadataOptions.AffectsRender, OnGeometryChanged));
     public double KeyColumnWidth { get => (double)GetValue(KeyColumnWidthProperty); set => SetValue(KeyColumnWidthProperty, value); }
+    internal double TimeViewportWidth
+    {
+        get
+        {
+            var available = double.IsFinite(KeyColumnWidth) ? Math.Max(0, ActualWidth - KeyColumnWidth) : 0;
+            return double.IsFinite(ViewportWidth) && ViewportWidth > 0 ? Math.Min(available, ViewportWidth) : available;
+        }
+    }
     public static readonly DependencyProperty LaneHeightProperty = DependencyProperty.Register(nameof(LaneHeight), typeof(double), typeof(PianoRollView), new FrameworkPropertyMetadata(36d, FrameworkPropertyMetadataOptions.AffectsRender, OnGeometryChanged));
     public double LaneHeight { get => (double)GetValue(LaneHeightProperty); set => SetValue(LaneHeightProperty, value); }
     public static readonly DependencyProperty ZoomFactorProperty = DependencyProperty.Register(nameof(ZoomFactor), typeof(double), typeof(PianoRollView), new FrameworkPropertyMetadata(32d, FrameworkPropertyMetadataOptions.AffectsRender, OnGeometryChanged));
@@ -124,7 +132,7 @@ public sealed partial class PianoRollView : Control
     }
     public InstrumentalNoteSnapshot? FindNoteAt(Point p)
     {
-        if (p.X < KeyColumnWidth || p.X >= ActualWidth || p.Y < 0 || p.Y >= ActualHeight) return null;
+        if (p.X < KeyColumnWidth || p.X >= KeyColumnWidth + TimeViewportWidth || p.Y < 0 || p.Y >= ActualHeight) return null;
         for (var layer = 0; layer < 2; layer++)
             for (var i = Notes.Count - 1; i >= 0; i--)
             {
@@ -136,7 +144,7 @@ public sealed partial class PianoRollView : Control
     private bool CellAt(Point p, out string key, out double ms)
     {
         key = ""; ms = 0;
-        if (!CanEdit || LaneHeight <= 0 || !double.IsFinite(LaneHeight) || ContentWidth <= 0 || Duration <= TimeSpan.Zero || p.X < KeyColumnWidth || p.X >= ActualWidth || p.Y < 0 || p.Y >= ActualHeight) return false;
+        if (!CanEdit || LaneHeight <= 0 || !double.IsFinite(LaneHeight) || ContentWidth <= 0 || Duration <= TimeSpan.Zero || p.X < KeyColumnWidth || p.X >= KeyColumnWidth + TimeViewportWidth || p.Y < 0 || p.Y >= ActualHeight) return false;
         var index = 107 - (int)Math.Floor((p.Y + VerticalOffset) / LaneHeight);
         if (index < 0 || index > 107) return false;
         key = InstrumentalKeys.GetName(index); ms = (p.X - KeyColumnWidth + HorizontalOffset) / ContentWidth * Duration.TotalMilliseconds;
@@ -191,7 +199,8 @@ public sealed partial class PianoRollView : Control
         else if (top + LaneHeight > VerticalOffset + ActualHeight) SetCurrentValue(VerticalOffsetProperty, Math.Clamp(top + LaneHeight - ActualHeight, 0, MaximumVerticalOffset));
         if (Duration.TotalMilliseconds <= 0 || ContentWidth <= 0) return;
         var x = activeMs / Duration.TotalMilliseconds * ContentWidth;
-        var width = Math.Max(1, ActualWidth - KeyColumnWidth);
+        var width = TimeViewportWidth;
+        if (width <= 0) return;
         if (x < HorizontalOffset || x > HorizontalOffset + width) SetCurrentValue(HorizontalOffsetProperty, Math.Clamp(x - width / 2, 0, Math.Max(0, ContentWidth - width)));
     }
     public bool CancelInteraction()
@@ -244,7 +253,7 @@ public sealed partial class PianoRollView : Control
         var note = pressedNote; var moved = dragging; var target = hover; var ids=gestureIds;var start=pointerStart;var end=pointerLast;var modifiers=pointerModifiers; CancelInteraction();
         if(modifiers.HasFlag(ModifierKeys.Control)){if(!moved && note is not null)SelectIds(SelectedNoteIds.Contains(note.Id)?SelectedNoteIds.Where(id=>id!=note.Id).ToArray():[..SelectedNoteIds,note.Id],note.Id);return true;}
         if(IsAdditionMode && moved)return true;
-        if(!IsAdditionMode && note is null && moved){var rectangle=new Rect(start,end);var chosen=Notes.Where(n=>GetNoteBounds(n).IntersectsWith(rectangle)).Select(n=>n.Id).ToArray();SelectIds(chosen,chosen.Length>0?chosen[0]:null);return true;}
+        if(!IsAdditionMode && note is null && moved){var rectangle=new Rect(start,end);rectangle.Intersect(new Rect(KeyColumnWidth,0,TimeViewportWidth,ActualHeight));var chosen=Notes.Where(n=>GetNoteBounds(n).IntersectsWith(rectangle)).Select(n=>n.Id).ToArray();SelectIds(chosen,chosen.Length>0?chosen[0]:null);return true;}
         if (CanEdit && target is { } cell)
         {
             if (note is not null && moved) {gestureIds=ids;Request(InstrumentalNoteEditKind.Move, note.Id, cell.Key, cell.Time);gestureIds=[];}

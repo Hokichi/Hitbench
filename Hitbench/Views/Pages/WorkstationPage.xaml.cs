@@ -62,6 +62,8 @@ public partial class WorkstationPage : UserControl
     {
         this.viewModel = viewModel;
         InitializeComponent();
+        VolumeOverlay.SetBinding(DataContextProperty, new Binding(nameof(DataContext)) { Source = this, Mode = BindingMode.OneWay });
+        VolumeOverlay.SetBinding(FlowDirectionProperty, new Binding(nameof(FlowDirection)) { Source = this, Mode = BindingMode.OneWay });
         SizeChanged += (_, args) => UpdateResponsiveLayout(args.NewSize);
         Timeline.AttachScrollBar(WaveformScrollBar);
         Timeline.ViewportChanged += OnTimelineViewportChanged;
