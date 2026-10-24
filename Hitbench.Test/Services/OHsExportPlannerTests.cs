@@ -109,12 +109,12 @@ public class OHsExportPlannerTests
             {
                 var input = Input(voices, 1000 - capacity, opportunities);
                 var groups = voices.Select(v => (v.Timestamp, (IReadOnlyList<IReadOnlyDictionary<OHsExportSlot, string>>)new IReadOnlyDictionary<OHsExportSlot, string>[] { new Dictionary<OHsExportSlot, string> { [new("Normal", SampleType.Normal)] = v.FileName } })).ToArray();
-                var minimum = OHsExportBruteForceOracle.MinimumCost(groups, opportunities.Select(t => (decimal)t).ToArray(), capacity);
+                var minimum = OHsExportBruteForceOracle.MinimumAudioFiles(groups.Select(g => g.Item2).ToArray(), capacity);
                 if (minimum is null) Assert.Throws<InvalidOperationException>(() => OHsExportPlanner.Plan(input, default));
                 else
                 {
                     var plan = OHsExportPlanner.Plan(input, default);
-                    Assert.That((plan.AudioFileCount, plan.AdditionalPointCount), Is.EqualTo(minimum.Value), $"iteration {iteration}, capacity {capacity}");
+                    Assert.That(plan.AudioFileCount, Is.EqualTo(minimum.Value), $"iteration {iteration}, capacity {capacity}");
                 }
             }
         }
@@ -133,12 +133,12 @@ public class OHsExportPlannerTests
                 : new[] { "Normal", "Soft", "Drum" }.Select(set => (IReadOnlyDictionary<OHsExportSlot, string>)new Dictionary<OHsExportSlot, string> { [new(set, SampleType.Normal)] = silence, [new("Normal", SampleType.Clap)] = OHsExportAsset.Create([(v.FileName, 100)]).Id }).ToArray()))).ToArray();
             for (var capacity = 1; capacity <= 3; capacity++)
             {
-                var minimum = OHsExportBruteForceOracle.MinimumCost(groups, opportunities.Select(t => (decimal)t).ToArray(), capacity);
+                var minimum = OHsExportBruteForceOracle.MinimumAudioFiles(groups.Select(g => g.Item2).ToArray(), capacity);
                 if (minimum is null) Assert.Throws<InvalidOperationException>(() => OHsExportPlanner.Plan(Input(voices, 1000 - capacity, opportunities), default));
                 else
                 {
                     var plan = OHsExportPlanner.Plan(Input(voices, 1000 - capacity, opportunities), default);
-                    Assert.That((plan.AudioFileCount, plan.AdditionalPointCount), Is.EqualTo(minimum.Value), $"iteration {iteration}, capacity {capacity}");
+                    Assert.That(plan.AudioFileCount, Is.EqualTo(minimum.Value), $"iteration {iteration}, capacity {capacity}");
                 }
             }
         }
@@ -224,9 +224,9 @@ public class OHsExportPlannerTests
                 { [new(set, SampleType.Normal)] = silence, [new("Soft", SampleType.Whistle)] = direct }).ToArray();
         var groups = new (int Timestamp, IReadOnlyList<IReadOnlyDictionary<OHsExportSlot, string>> Choices)[]
             { (100, choices), (200, singleton), (300, choices) };
-        var expected = OHsExportBruteForceOracle.MinimumCost(groups, [], capacity);
-        Assert.That(expected, Is.EqualTo((3, 0)));
+        var expected = OHsExportBruteForceOracle.MinimumAudioFiles(groups.Select(g => g.Choices).ToArray(), capacity);
+        Assert.That(expected, Is.EqualTo(3));
         var plan = OHsExportPlanner.Plan(Input(voices, 1000 - capacity), default);
-        Assert.That((plan.AudioFileCount, plan.AdditionalPointCount), Is.EqualTo(expected!.Value));
+        Assert.That(plan.AudioFileCount, Is.EqualTo(expected!.Value));
     }
 }
