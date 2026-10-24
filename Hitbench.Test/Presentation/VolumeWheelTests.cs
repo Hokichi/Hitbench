@@ -5,6 +5,7 @@ using System.Windows.Automation.Provider;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 using Hitbench.Resources.CustomControls;
 using Hitbench.ViewModels.Shell;
 using Hitbench.Views.Pages;
@@ -58,18 +59,18 @@ public class VolumeWheelTests
     }
 
     [Test]
-    public void IdleDismissalStartsAt500Milliseconds()
+    public void IdleDismissalStartsAt100Milliseconds()
     {
         var (page, _, view) = CreateLoadedPage();
         using (view)
         {
             page.ShowVolumeOverlay(false, new Point());
-            page.ProcessVolumeOverlayIdle(TimeSpan.FromMilliseconds(499), false);
+            page.ProcessVolumeOverlayIdle(TimeSpan.FromMilliseconds(99), false);
             Assert.That(page.IsVolumeOverlayOpen, Is.True);
             page.ApplicationVolumeWheel.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, MouseButton.Left) { RoutedEvent = Mouse.MouseDownEvent });
             page.ActivateVolumeWheel(page.SongVolumeWheel);
             Assert.That(page.ActiveVolumeWheel, Is.SameAs(page.SongVolumeWheel));
-            page.ProcessVolumeOverlayIdle(TimeSpan.FromMilliseconds(500), false);
+            page.ProcessVolumeOverlayIdle(TimeSpan.FromMilliseconds(100), false);
             Assert.That(page.IsVolumeOverlayOpen, Is.False);
         }
     }
@@ -81,11 +82,12 @@ public class VolumeWheelTests
         using (view)
         {
             page.ShowVolumeOverlay(false, new Point());
-            page.ProcessVolumeOverlayIdle(TimeSpan.FromMilliseconds(500), true);
+            page.ProcessVolumeOverlayIdle(TimeSpan.FromMilliseconds(100), true);
             var overlay = (Border)page.FindName("VolumeOverlay");
             page.RecordVolumeActivity();
             Assert.That(page.IsVolumeOverlayOpen, Is.True);
-            UiTestPump.Run(Task.Delay(250));
+            PumpWithVolumeActivity(page, TimeSpan.FromMilliseconds(250));
+            Assert.That(page.IsVolumeOverlayOpen, Is.True);
             page.ApplicationVolumeWheel.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, MouseButton.Left) { RoutedEvent = Mouse.MouseDownEvent });
             page.DismissVolumeOverlay();
             Assert.That(page.ActiveVolumeWheel, Is.Null);
@@ -101,10 +103,13 @@ public class VolumeWheelTests
         using (view)
         {
             page.ShowVolumeOverlay(false, new Point());
-            page.ProcessVolumeOverlayIdle(TimeSpan.FromMilliseconds(500), true);
+            page.ProcessVolumeOverlayIdle(TimeSpan.FromMilliseconds(100), true);
             var overlay = (Border)page.FindName("VolumeOverlay");
             overlay.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, 0) { RoutedEvent = Mouse.PreviewMouseMoveEvent });
-            UiTestPump.Run(Task.Delay(250));
+            page.ProcessVolumeOverlayIdle(TimeSpan.FromMilliseconds(99), false);
+            Assert.That(page.IsVolumeOverlayOpen, Is.True);
+            page.ProcessVolumeOverlayIdle(TimeSpan.FromMilliseconds(100), false);
+            Assert.That(page.IsVolumeOverlayOpen, Is.False);
         }
     }
 
@@ -117,10 +122,34 @@ public class VolumeWheelTests
         host.Children.Add(wheel);
         UiTestPump.Layout(host, 320, 168);
         wheel.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, MouseButton.Left) { RoutedEvent = Mouse.MouseDownEvent });
+        Assert.That(wheel.IsPressed, Is.True);
         wheel.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, 1) { RoutedEvent = Mouse.MouseMoveEvent });
         wheel.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, 2, MouseButton.Left) { RoutedEvent = Mouse.MouseUpEvent });
         Assert.Multiple(() =>
         {
+            Assert.That(wheel.IsPressed, Is.False);
+            Assert.That(wheel.Value, Is.EqualTo(50));
+            Assert.That(wheel.IsMouseCaptured, Is.False);
+        });
+    }
+
+    [TestCase("leave")]
+    [TestCase("disable")]
+    [TestCase("unload")]
+    public void InterruptedPointerPressClearsWithoutChangingVolume(string interruption)
+    {
+        var wheel = new VolumeWheel { Value = 50, IsActive = true };
+        wheel.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, MouseButton.Left) { RoutedEvent = Mouse.MouseDownEvent });
+        Assert.That(wheel.IsPressed, Is.True);
+        switch (interruption)
+        {
+            case "leave": wheel.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, 1) { RoutedEvent = Mouse.MouseLeaveEvent }); break;
+            case "disable": wheel.IsEnabled = false; break;
+            case "unload": wheel.RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent)); break;
+        }
+        Assert.Multiple(() =>
+        {
+            Assert.That(wheel.IsPressed, Is.False);
             Assert.That(wheel.Value, Is.EqualTo(50));
             Assert.That(wheel.IsMouseCaptured, Is.False);
         });
@@ -182,6 +211,15 @@ public class VolumeWheelTests
     }
 
     [Test]
+    public void ExplicitAutomationNameSurvivesLabelChanges()
+    {
+        var wheel = new VolumeWheel();
+        AutomationProperties.SetName(wheel, "Song volume");
+        wheel.Label = "Audio";
+        Assert.That(AutomationProperties.GetName(wheel), Is.EqualTo("Song volume"));
+    }
+
+    [Test]
     public void MasterVolumesExposeIndependentNamedControls()
     {
         var (page, _, view) = CreateLoadedPage();
@@ -192,6 +230,12 @@ public class VolumeWheelTests
             var panel = (Panel)page.FindName("VolumeWheelPanel");
             Assert.That(panel.Children.OfType<VolumeWheel>().Select(AutomationProperties.GetName),
                 Is.EquivalentTo(new[] { "Song volume", "Application volume", "Samples volume" }));
+            Assert.Multiple(() =>
+            {
+                Assert.That(page.SongVolumeWheel.Label, Is.EqualTo("Audio"));
+                Assert.That(page.ApplicationVolumeWheel.Label, Is.EqualTo("Master"));
+                Assert.That(page.SamplesVolumeWheel.Label, Is.EqualTo("Samples"));
+            });
             foreach (var wheel in panel.Children.OfType<VolumeWheel>())
                 UiControlContract.AssertStyle<VolumeWheel>(wheel, "BaseVolumeWheelStyle");
         }
@@ -380,6 +424,16 @@ public class VolumeWheelTests
             Assert.That(((StackPanel)page.FindName("VolumeWheelPanel")).FlowDirection,
                 Is.EqualTo(FlowDirection.RightToLeft));
         });
+    }
+
+    internal static void PumpWithVolumeActivity(WorkstationPage page, TimeSpan duration)
+    {
+        page.RecordVolumeActivity();
+        var activity = new DispatcherTimer(DispatcherPriority.Send, page.Dispatcher) { Interval = TimeSpan.FromMilliseconds(25) };
+        activity.Tick += (_, _) => page.RecordVolumeActivity();
+        activity.Start();
+        try { UiTestPump.Run(Task.Delay(duration)); }
+        finally { activity.Stop(); }
     }
 
     private static (WorkstationPage Page, WorkstationPageVM ViewModel, InMemoryView View) CreateLoadedPage(bool physicalCoordinates = false)

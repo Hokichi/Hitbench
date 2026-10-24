@@ -11,8 +11,14 @@ public sealed class VolumeWheel : Slider
 {
     private static readonly DependencyPropertyKey FilledGeometryPropertyKey = DependencyProperty.RegisterReadOnly(
         nameof(FilledGeometry), typeof(Geometry), typeof(VolumeWheel), new PropertyMetadata(Geometry.Empty));
+    private static readonly DependencyPropertyKey IndicatorGeometryPropertyKey = DependencyProperty.RegisterReadOnly(
+        nameof(IndicatorGeometry), typeof(Geometry), typeof(VolumeWheel), new PropertyMetadata(Geometry.Empty));
+    private static readonly DependencyPropertyKey IsPressedPropertyKey = DependencyProperty.RegisterReadOnly(
+        nameof(IsPressed), typeof(bool), typeof(VolumeWheel), new PropertyMetadata(false));
 
     public static readonly DependencyProperty FilledGeometryProperty = FilledGeometryPropertyKey.DependencyProperty;
+    public static readonly DependencyProperty IndicatorGeometryProperty = IndicatorGeometryPropertyKey.DependencyProperty;
+    public static readonly DependencyProperty IsPressedProperty = IsPressedPropertyKey.DependencyProperty;
     public static readonly DependencyProperty IsActiveProperty = DependencyProperty.Register(
         nameof(IsActive), typeof(bool), typeof(VolumeWheel), new FrameworkPropertyMetadata(false, OnVisualStateChanged));
     public static readonly DependencyProperty LabelProperty = DependencyProperty.Register(
@@ -30,16 +36,39 @@ public sealed class VolumeWheel : Slider
     }
 
     public Geometry FilledGeometry => (Geometry)GetValue(FilledGeometryProperty);
+    public Geometry IndicatorGeometry => (Geometry)GetValue(IndicatorGeometryProperty);
+    public bool IsPressed => (bool)GetValue(IsPressedProperty);
     public bool IsActive { get => (bool)GetValue(IsActiveProperty); set => SetValue(IsActiveProperty, value); }
     public string Label { get => (string)GetValue(LabelProperty); set => SetValue(LabelProperty, value); }
     public double PieOpacity { get => (double)GetValue(PieOpacityProperty); private set => SetValue(PieOpacityProperty, value); }
 
-    public VolumeWheel() => UpdateGeometry();
+    public VolumeWheel()
+    {
+        UpdateGeometry();
+        IsEnabledChanged += (_, _) => { if (!IsEnabled) SetValue(IsPressedPropertyKey, false); };
+        Unloaded += (_, _) => SetValue(IsPressedPropertyKey, false);
+    }
 
     protected override void OnMouseLeftButtonDown(MouseButtonEventArgs e)
     {
-        if (IsEnabled) Focus();
+        if (IsEnabled)
+        {
+            Focus();
+            SetValue(IsPressedPropertyKey, true);
+        }
         e.Handled = true;
+    }
+
+    protected override void OnMouseLeftButtonUp(MouseButtonEventArgs e)
+    {
+        SetValue(IsPressedPropertyKey, false);
+        e.Handled = true;
+    }
+
+    protected override void OnMouseLeave(MouseEventArgs e)
+    {
+        SetValue(IsPressedPropertyKey, false);
+        base.OnMouseLeave(e);
     }
 
     protected override AutomationPeer OnCreateAutomationPeer() => new VolumeWheelAutomationPeer(this);
@@ -56,8 +85,14 @@ public sealed class VolumeWheel : Slider
     private static void OnVisualStateChanged(DependencyObject sender, DependencyPropertyChangedEventArgs e) =>
         ((VolumeWheel)sender).PieOpacity = (bool)e.NewValue ? 1 : 0.75;
 
-    private static void OnLabelChanged(DependencyObject sender, DependencyPropertyChangedEventArgs e) =>
-        AutomationProperties.SetName((VolumeWheel)sender, $"{e.NewValue} volume");
+    private static void OnLabelChanged(DependencyObject sender, DependencyPropertyChangedEventArgs e)
+    {
+        var wheel = (VolumeWheel)sender;
+        var name = AutomationProperties.GetName(wheel);
+        if (!System.Windows.Data.BindingOperations.IsDataBound(wheel, AutomationProperties.NameProperty) &&
+            (string.IsNullOrEmpty(name) || name == $"{e.OldValue} volume"))
+            AutomationProperties.SetName(wheel, $"{e.NewValue} volume");
+    }
 
     private static void OnValueRangeChanged(DependencyObject sender, DependencyPropertyChangedEventArgs e) =>
         ((VolumeWheel)sender).UpdateGeometry();
@@ -69,28 +104,28 @@ public sealed class VolumeWheel : Slider
         if (fraction <= 0)
         {
             SetValue(FilledGeometryPropertyKey, Geometry.Empty);
+            SetValue(IndicatorGeometryPropertyKey, Geometry.Empty);
             return;
         }
+
+        var angle = fraction * Math.PI * 2 - Math.PI / 2;
+        var end = new Point(68 + Math.Cos(angle) * 52, 68 + Math.Sin(angle) * 52);
+        var indicator = new EllipseGeometry(end, 4, 4);
+        indicator.Freeze();
+        SetValue(IndicatorGeometryPropertyKey, indicator);
         if (fraction >= 1)
         {
-            var ring = new CombinedGeometry(GeometryCombineMode.Exclude,
-                new EllipseGeometry(new Point(80, 80), 60, 60),
-                new EllipseGeometry(new Point(80, 80), 50, 50));
+            var ring = new EllipseGeometry(new Point(68, 68), 52, 52);
             ring.Freeze();
             SetValue(FilledGeometryPropertyKey, ring);
             return;
         }
 
-        var angle = fraction * Math.PI * 2 - Math.PI / 2;
-        var outerEnd = new Point(80 + Math.Cos(angle) * 60, 80 + Math.Sin(angle) * 60);
-        var innerEnd = new Point(80 + Math.Cos(angle) * 50, 80 + Math.Sin(angle) * 50);
         var geometry = new StreamGeometry();
         using (var context = geometry.Open())
         {
-            context.BeginFigure(new Point(80, 20), true, true);
-            context.ArcTo(outerEnd, new Size(60, 60), 0, fraction > 0.5, SweepDirection.Clockwise, true, false);
-            context.LineTo(innerEnd, true, false);
-            context.ArcTo(new Point(80, 30), new Size(50, 50), 0, fraction > 0.5, SweepDirection.Counterclockwise, true, false);
+            context.BeginFigure(new Point(68, 16), false, false);
+            context.ArcTo(end, new Size(52, 52), 0, fraction > 0.5, SweepDirection.Clockwise, true, false);
         }
         geometry.Freeze();
         SetValue(FilledGeometryPropertyKey, geometry);

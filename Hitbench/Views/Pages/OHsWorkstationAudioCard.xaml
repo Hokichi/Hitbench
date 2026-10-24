@@ -354,16 +354,18 @@
                                 x:Name="OpenBeatmapFolderButton"
                                 AutomationProperties.Name="Open beatmap folder"
                                 ButtonIcon="{StaticResource Folder}"
-                                ButtonText="Open beatmap folder"
+                                ButtonText="Beatmap"
                                 Command="{Binding OpenBeatmapFolderCommand, Mode=OneWay}"
+                                ShouldShowText="True"
                                 Style="{StaticResource OHsWorkstationToolbarButtonStyle}"
                                 ToolTip="Open beatmap folder" />
                             <customControls:BalloonButton
                                 x:Name="OpenProjectFolderButton"
                                 AutomationProperties.Name="Open project folder"
                                 ButtonIcon="{StaticResource Folder}"
-                                ButtonText="Open project folder"
+                                ButtonText="Project"
                                 Command="{Binding OpenProjectFolderCommand, Mode=OneWay}"
+                                ShouldShowText="True"
                                 Style="{StaticResource OHsWorkstationToolbarButtonStyle}"
                                 ToolTip="Open project folder" />
                         </StackPanel>

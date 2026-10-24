@@ -139,76 +139,78 @@
         <Setter Property="Template" Value="{StaticResource OHsValueSliderTemplate}" />
     </Style>
 
-    <GeometryGroup x:Key="OHsVolumeWheelRampGeometry" FillRule="EvenOdd">
-        <EllipseGeometry
-            Center="80,80"
-            RadiusX="80"
-            RadiusY="80" />
-        <EllipseGeometry
-            Center="80,80"
-            RadiusX="30"
-            RadiusY="30" />
-    </GeometryGroup>
+    <EllipseGeometry x:Key="OHsVolumeWheelFaceGeometry" Center="68,68" RadiusX="66" RadiusY="66" />
+    <EllipseGeometry x:Key="OHsVolumeWheelTrackGeometry" Center="68,68" RadiusX="52" RadiusY="52" />
     <ControlTemplate x:Key="OHsVolumeWheelTemplate" TargetType="customControls:VolumeWheel">
-        <Grid
-            MinWidth="168"
-            MinHeight="168"
-            FlowDirection="LeftToRight">
-            <Border
-                x:Name="ActiveBorder"
-                Width="168"
-                Height="168"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Center"
-                BorderBrush="Transparent"
-                BorderThickness="0"
-                CornerRadius="84">
-                <Grid>
-                    <Grid
-                        x:Name="PieGraphic"
-                        Width="160"
-                        Height="160"
-                        HorizontalAlignment="Center"
-                        VerticalAlignment="Center"
-                        Opacity="{TemplateBinding PieOpacity}">
-                        <Path
-                            x:Name="WheelBackground"
-                            Data="{StaticResource OHsVolumeWheelRampGeometry}"
-                            Fill="{DynamicResource Brush.Background.Deepened}"
-                            Stretch="None"
-                            Stroke="{DynamicResource Brush.Border.Control}"
-                            StrokeThickness="1" />
-                        <Path
-                            x:Name="WheelFill"
-                            Data="{TemplateBinding FilledGeometry}"
-                            Fill="{DynamicResource Brush.Navy}"
-                            Stretch="None" />
-                    </Grid>
-                    <TextBlock
-                        x:Name="WheelValue"
-                        HorizontalAlignment="Center"
-                        VerticalAlignment="Center"
-                        FlowDirection="{Binding FlowDirection, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}"
-                        FontWeight="Bold" FontFamily="{DynamicResource Bold}"
-                        Foreground="{DynamicResource Brush.Text.Primary}"
-                        Style="{StaticResource BaseTextBlockStyle}"
-                        Text="{Binding Value, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay, StringFormat={}{0:0}%}" />
-                </Grid>
-            </Border>
+        <ControlTemplate.Resources>
+            <Style x:Key="OHsVolumeWheelLabelTextStyle" TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlockStyle}">
+                <Setter Property="FontSize" Value="{StaticResource FontSize.Heading}" />
+                <Setter Property="FontStyle" Value="Normal" />
+                <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+            </Style>
+        </ControlTemplate.Resources>
+        <Grid MinWidth="240" Background="Transparent">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="136" />
+                <ColumnDefinition Width="24" />
+                <ColumnDefinition Width="*" MinWidth="80" />
+            </Grid.ColumnDefinitions>
+            <Grid Width="136" Height="136" FlowDirection="LeftToRight" IsHitTestVisible="False">
+                <Path x:Name="WheelBackground"
+                      Data="{StaticResource OHsVolumeWheelFaceGeometry}" Stretch="None"
+                      Fill="{TemplateBinding Background}" Stroke="{TemplateBinding BorderBrush}" StrokeThickness="1" />
+                <Path x:Name="WheelTrack"
+                      Data="{StaticResource OHsVolumeWheelTrackGeometry}" Stretch="None"
+                      Stroke="{DynamicResource Brush.Background.Deepened}" StrokeThickness="5" />
+                <Path x:Name="WheelFill"
+                      Data="{Binding FilledGeometry, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}" Stretch="None"
+                      Stroke="{DynamicResource Brush.Navy}" StrokeThickness="5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                <Path x:Name="WheelIndicator"
+                      Data="{Binding IndicatorGeometry, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}" Stretch="None"
+                      Fill="{DynamicResource Brush.Text.Primary}" Stroke="{DynamicResource Brush.Background.Surface}" StrokeThickness="1"
+                      Visibility="Hidden" />
+                <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center"
+                           FlowDirection="{Binding FlowDirection, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}"
+                           FontFamily="{TemplateBinding FontFamily}" FontWeight="{TemplateBinding FontWeight}"
+                           FontStyle="{TemplateBinding FontStyle}" FontSize="{TemplateBinding FontSize}"
+                           Foreground="{TemplateBinding Foreground}" Style="{StaticResource BaseTextBlockStyle}"
+                           Text="{Binding Value, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay, StringFormat={}{0:0}%}" />
+            </Grid>
+            <StackPanel x:Name="LabelHost" Grid.Column="2" HorizontalAlignment="Left" VerticalAlignment="Center"
+                        Background="{DynamicResource Brush.Background.Surface}" IsHitTestVisible="False"
+                        Style="{StaticResource BaseStackPanelStyle}">
+                <TextBlock Style="{StaticResource OHsVolumeWheelLabelTextStyle}"
+                           Foreground="{TemplateBinding Foreground}" Text="{TemplateBinding Label}" />
+                <Border x:Name="ActiveUnderline" Height="3" Margin="0,6,0,0" Visibility="Hidden"
+                        Background="{DynamicResource Brush.Navy}" Style="{StaticResource BaseBorderStyle}" />
+            </StackPanel>
         </Grid>
         <ControlTemplate.Triggers>
+            <Trigger Property="IsActive" Value="True">
+                <Setter TargetName="WheelFill" Property="Stroke" Value="{DynamicResource Brush.Navy.Hover}" />
+                <Setter TargetName="WheelIndicator" Property="Visibility" Value="Visible" />
+                <Setter TargetName="ActiveUnderline" Property="Visibility" Value="Visible" />
+            </Trigger>
             <Trigger Property="IsMouseOver" Value="True">
                 <Setter TargetName="WheelBackground" Property="Fill" Value="{DynamicResource Brush.Background.Hover}" />
+                <Setter TargetName="WheelBackground" Property="Stroke" Value="{DynamicResource Brush.Text.Secondary}" />
+                <Setter TargetName="WheelFill" Property="Stroke" Value="{DynamicResource Brush.Navy.Text}" />
             </Trigger>
-
+            <Trigger Property="IsPressed" Value="True">
+                <Setter TargetName="WheelBackground" Property="Fill" Value="{DynamicResource Brush.Background.Pressed}" />
+                <Setter TargetName="WheelBackground" Property="Stroke" Value="{DynamicResource Brush.Text.Secondary}" />
+                <Setter TargetName="WheelFill" Property="Stroke" Value="{DynamicResource Brush.Navy.Text}" />
+            </Trigger>
             <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
-                <Setter TargetName="PieGraphic" Property="Opacity" Value="1" />
                 <Setter TargetName="WheelBackground" Property="Fill" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
                 <Setter TargetName="WheelBackground" Property="Stroke" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
-                <Setter TargetName="WheelFill" Property="Fill" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
-                <Setter TargetName="WheelValue" Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+                <Setter TargetName="WheelTrack" Property="Stroke" Value="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}" />
+                <Setter TargetName="WheelFill" Property="Stroke" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
+                <Setter TargetName="WheelIndicator" Property="Fill" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+                <Setter TargetName="WheelIndicator" Property="Stroke" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
+                <Setter TargetName="LabelHost" Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
+                <Setter TargetName="ActiveUnderline" Property="Background" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
             </DataTrigger>
-
         </ControlTemplate.Triggers>
     </ControlTemplate>
     <Style
@@ -216,6 +218,24 @@
         BasedOn="{StaticResource BaseSliderStyle}"
         TargetType="customControls:VolumeWheel">
         <Setter Property="Focusable" Value="True" />
+        <Setter Property="Background" Value="{DynamicResource Brush.Background.Surface}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Control}" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}" />
+        <Setter Property="FontFamily" Value="{DynamicResource Bold}" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="FontStyle" Value="Normal" />
+        <Setter Property="FontSize" Value="{StaticResource FontSize.Display}" />
         <Setter Property="Template" Value="{StaticResource OHsVolumeWheelTemplate}" />
+        <Style.Triggers>
+            <Trigger Property="IsActive" Value="True">
+                <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Disabled}" />
+            </Trigger>
+            <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
+                <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+            </DataTrigger>
+        </Style.Triggers>
     </Style>
 </ResourceDictionary>

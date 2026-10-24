@@ -270,6 +270,8 @@
                         Style="{StaticResource BaseStackPanelStyle}">
                         <customControls:VolumeWheel
                             x:Name="SongVolumeWheel"
+                            Label="Audio"
+                            Margin="0,0,0,16"
                             IsEnabled="{Binding CanPlay, Mode=OneWay}"
                             AutomationProperties.Name="Song volume"
                             MouseMove="OnVolumeWheelMouseMove"
@@ -279,6 +281,8 @@
                             Value="{Binding SongVolume, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                         <customControls:VolumeWheel
                             x:Name="ApplicationVolumeWheel"
+                            Label="Master"
+                            Margin="0,0,0,16"
                             IsEnabled="{Binding CanPlay, Mode=OneWay}"
                             AutomationProperties.Name="Application volume"
                             MouseMove="OnVolumeWheelMouseMove"
@@ -288,6 +292,7 @@
                             Value="{Binding ApplicationVolume, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                         <customControls:VolumeWheel
                             x:Name="SamplesVolumeWheel"
+                            Label="Samples"
                             IsEnabled="{Binding CanPlay, Mode=OneWay}"
                             AutomationProperties.Name="Samples volume"
                             MouseMove="OnVolumeWheelMouseMove"
