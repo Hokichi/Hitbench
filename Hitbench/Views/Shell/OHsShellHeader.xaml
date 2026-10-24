@@ -6,7 +6,29 @@
     xmlns:helpers="clr-namespace:Hitbench.Resources.Helpers"
     xmlns:shell="clr-namespace:Hitbench.Views.Shell">
     <UserControl.Resources>
-        <Style x:Key="OHsShellHeaderAudioActionsStyle" TargetType="StackPanel" BasedOn="{StaticResource BaseStackPanelStyle}">
+        <Style
+            x:Key="OHsShellHeaderLogoStyle"
+            BasedOn="{StaticResource BaseImageStyle}"
+            TargetType="Image">
+            <Setter Property="Width" Value="{StaticResource Size.Control.Min}" />
+            <Setter Property="Height" Value="{StaticResource Size.Control.Min}" />
+            <Setter Property="Stretch" Value="Uniform" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="IsHitTestVisible" Value="False" />
+            <Setter Property="Margin" Value="12,0,0,0" />
+            <Setter Property="RenderOptions.BitmapScalingMode" Value="HighQuality" />
+            <Setter Property="Source" Value="/Hitbench;component/Resources/logo.png" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsLightTheme, RelativeSource={RelativeSource AncestorType=shell:OHsShellHeader}, Mode=OneWay}" Value="True">
+                    <Setter Property="Source" Value="/Hitbench;component/Resources/logo-light.png" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style
+            x:Key="OHsShellHeaderAudioActionsStyle"
+            BasedOn="{StaticResource BaseStackPanelStyle}"
+            TargetType="StackPanel">
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsAudioBusy, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}" Value="True">
                     <Setter Property="IsEnabled" Value="False" />
@@ -56,57 +78,184 @@
             </Style.Triggers>
         </Style>
         <ControlTemplate x:Key="OHsShellThemeToggleTemplate" TargetType="ToggleButton">
-            <Grid Style="{StaticResource BaseGridStyle}" Background="Transparent">
-                <Border Style="{StaticResource BaseBorderStyle}" Width="40" Height="20" VerticalAlignment="Center" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="10">
-                    <Ellipse x:Name="Thumb" Width="8" Height="8" Margin="4" HorizontalAlignment="Left" Fill="{TemplateBinding Foreground}">
-                        <Ellipse.RenderTransform><TranslateTransform/></Ellipse.RenderTransform>
+            <Grid Background="Transparent" Style="{StaticResource BaseGridStyle}">
+                <Border
+                    Width="40"
+                    Height="20"
+                    VerticalAlignment="Center"
+                    Background="{TemplateBinding Background}"
+                    BorderBrush="{TemplateBinding BorderBrush}"
+                    BorderThickness="{TemplateBinding BorderThickness}"
+                    CornerRadius="10"
+                    Style="{StaticResource BaseBorderStyle}">
+                    <Ellipse
+                        x:Name="Thumb"
+                        Width="8"
+                        Height="8"
+                        Margin="4"
+                        HorizontalAlignment="Left"
+                        Fill="{TemplateBinding Foreground}">
+                        <Ellipse.RenderTransform>
+                            <TranslateTransform />
+                        </Ellipse.RenderTransform>
                     </Ellipse>
                 </Border>
             </Grid>
             <ControlTemplate.Triggers>
-                <Trigger Property="IsChecked" Value="True"><Setter TargetName="Thumb" Property="RenderTransform"><Setter.Value><TranslateTransform X="22"/></Setter.Value></Setter></Trigger>
-                <MultiDataTrigger><MultiDataTrigger.Conditions>
-                    <Condition Binding="{Binding IsChecked, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}" Value="True"/>
-                    <Condition Binding="{Binding Path=(SystemParameters.ClientAreaAnimation), Mode=OneWay}" Value="True"/>
-                </MultiDataTrigger.Conditions>
-                <MultiDataTrigger.EnterActions><BeginStoryboard x:Name="ThemeTrue"><Storyboard><DoubleAnimation Storyboard.TargetName="Thumb" Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)" From="0" To="22" Duration="0:0:0.14" FillBehavior="Stop"><DoubleAnimation.EasingFunction><QuadraticEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction></DoubleAnimation></Storyboard></BeginStoryboard></MultiDataTrigger.EnterActions>
-                <MultiDataTrigger.ExitActions><RemoveStoryboard BeginStoryboardName="ThemeTrue"/></MultiDataTrigger.ExitActions></MultiDataTrigger>
-                <MultiDataTrigger><MultiDataTrigger.Conditions>
-                    <Condition Binding="{Binding IsChecked, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}" Value="False"/>
-                    <Condition Binding="{Binding Path=(SystemParameters.ClientAreaAnimation), Mode=OneWay}" Value="True"/>
-                </MultiDataTrigger.Conditions>
-                <MultiDataTrigger.EnterActions><BeginStoryboard x:Name="ThemeFalse"><Storyboard><DoubleAnimation Storyboard.TargetName="Thumb" Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)" From="22" To="0" Duration="0:0:0.14" FillBehavior="Stop"><DoubleAnimation.EasingFunction><QuadraticEase EasingMode="EaseIn"/></DoubleAnimation.EasingFunction></DoubleAnimation></Storyboard></BeginStoryboard></MultiDataTrigger.EnterActions>
-                <MultiDataTrigger.ExitActions><RemoveStoryboard BeginStoryboardName="ThemeFalse"/></MultiDataTrigger.ExitActions></MultiDataTrigger>
+                <Trigger Property="IsChecked" Value="True">
+                    <Setter TargetName="Thumb" Property="RenderTransform">
+                        <Setter.Value>
+                            <TranslateTransform X="22" />
+                        </Setter.Value>
+                    </Setter>
+                </Trigger>
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding IsChecked, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}" Value="True" />
+                        <Condition Binding="{Binding Path=(SystemParameters.ClientAreaAnimation), Mode=OneWay}" Value="True" />
+                    </MultiDataTrigger.Conditions>
+                    <MultiDataTrigger.EnterActions>
+                        <BeginStoryboard x:Name="ThemeTrue">
+                            <Storyboard>
+                                <DoubleAnimation
+                                    FillBehavior="Stop"
+                                    Storyboard.TargetName="Thumb"
+                                    Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)"
+                                    From="0"
+                                    To="22"
+                                    Duration="0:0:0.14">
+                                    <DoubleAnimation.EasingFunction>
+                                        <QuadraticEase EasingMode="EaseOut" />
+                                    </DoubleAnimation.EasingFunction>
+                                </DoubleAnimation>
+                            </Storyboard>
+                        </BeginStoryboard>
+                    </MultiDataTrigger.EnterActions>
+                    <MultiDataTrigger.ExitActions>
+                        <RemoveStoryboard BeginStoryboardName="ThemeTrue" />
+                    </MultiDataTrigger.ExitActions>
+                </MultiDataTrigger>
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding IsChecked, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}" Value="False" />
+                        <Condition Binding="{Binding Path=(SystemParameters.ClientAreaAnimation), Mode=OneWay}" Value="True" />
+                    </MultiDataTrigger.Conditions>
+                    <MultiDataTrigger.EnterActions>
+                        <BeginStoryboard x:Name="ThemeFalse">
+                            <Storyboard>
+                                <DoubleAnimation
+                                    FillBehavior="Stop"
+                                    Storyboard.TargetName="Thumb"
+                                    Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)"
+                                    From="22"
+                                    To="0"
+                                    Duration="0:0:0.14">
+                                    <DoubleAnimation.EasingFunction>
+                                        <QuadraticEase EasingMode="EaseIn" />
+                                    </DoubleAnimation.EasingFunction>
+                                </DoubleAnimation>
+                            </Storyboard>
+                        </BeginStoryboard>
+                    </MultiDataTrigger.EnterActions>
+                    <MultiDataTrigger.ExitActions>
+                        <RemoveStoryboard BeginStoryboardName="ThemeFalse" />
+                    </MultiDataTrigger.ExitActions>
+                </MultiDataTrigger>
             </ControlTemplate.Triggers>
         </ControlTemplate>
-        <Style x:Key="OHsShellThemeToggleStyle" TargetType="ToggleButton" BasedOn="{StaticResource BaseToggleButtonStyle}">
-            <Setter Property="Template" Value="{StaticResource OHsShellThemeToggleTemplate}"/>
-            <Setter Property="Width" Value="40"/><Setter Property="HorizontalContentAlignment" Value="Center"/><Setter Property="VerticalContentAlignment" Value="Center"/><Setter Property="FontSize" Value="{StaticResource FontSize.Body}"/><Setter Property="MinHeight" Value="40"/>
-            <Setter Property="Background" Value="{DynamicResource Brush.Background.Deepened}"/><Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Control}"/><Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="helpers:KeyboardNavigationPolicy.AllowTabNavigation" Value="True"/><Setter Property="IsTabStop" Value="True"/>
-            <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}"/>
+        <Style
+            x:Key="OHsShellThemeToggleStyle"
+            BasedOn="{StaticResource BaseToggleButtonStyle}"
+            TargetType="ToggleButton">
+            <Setter Property="Template" Value="{StaticResource OHsShellThemeToggleTemplate}" />
+            <Setter Property="Width" Value="40" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="FontSize" Value="{StaticResource FontSize.Body}" />
+            <Setter Property="MinHeight" Value="40" />
+            <Setter Property="Background" Value="{DynamicResource Brush.Background.Deepened}" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Control}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="helpers:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
+            <Setter Property="IsTabStop" Value="True" />
+            <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
             <Style.Triggers>
-                <Trigger Property="IsChecked" Value="True"><Setter Property="Background" Value="{DynamicResource Brush.Navy}"/><Setter Property="Foreground" Value="{DynamicResource Brush.Text.OnAccent}"/></Trigger>
-                <Trigger Property="IsMouseOver" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource Brush.Text.Primary}"/></Trigger>
-                <Trigger Property="IsPressed" Value="True"><Setter Property="Background" Value="{DynamicResource Brush.Background.Pressed}"/><Setter Property="BorderBrush" Value="{DynamicResource Brush.Text.Primary}"/></Trigger>
-                <MultiTrigger><MultiTrigger.Conditions><Condition Property="IsChecked" Value="True"/><Condition Property="IsPressed" Value="True"/></MultiTrigger.Conditions><Setter Property="Background" Value="{DynamicResource Brush.Navy.Pressed}"/></MultiTrigger>
-                <DataTrigger Binding="{Binding ThemeService.IsChangingTheme, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}" Value="True"><Setter Property="IsEnabled" Value="False"/></DataTrigger>
-                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True"><Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}"/><Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}"/><Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}"/></DataTrigger>
+                <Trigger Property="IsChecked" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource Brush.Navy}" />
+                    <Setter Property="Foreground" Value="{DynamicResource Brush.Text.OnAccent}" />
+                </Trigger>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Text.Primary}" />
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource Brush.Background.Pressed}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Text.Primary}" />
+                </Trigger>
+                <MultiTrigger>
+                    <MultiTrigger.Conditions>
+                        <Condition Property="IsChecked" Value="True" />
+                        <Condition Property="IsPressed" Value="True" />
+                    </MultiTrigger.Conditions>
+                    <Setter Property="Background" Value="{DynamicResource Brush.Navy.Pressed}" />
+                </MultiTrigger>
+                <DataTrigger Binding="{Binding ThemeService.IsChangingTheme, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}" Value="True">
+                    <Setter Property="IsEnabled" Value="False" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
+                    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+                </DataTrigger>
             </Style.Triggers>
         </Style>
     </UserControl.Resources>
     <DockPanel Margin="8" LastChildFill="True">
 
         <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
-            <TextBlock Margin="12,0" Style="{StaticResource MainWindowTitleStyle}" Text="Hitbench"/>
-            <Border Style="{StaticResource OHsShellHeaderHomeSeparatorStyle}"/>
-            <customControls:Icon Width="{StaticResource Size.Icon.Default}" Height="{StaticResource Size.Icon.Default}" Margin="0,0,8,0" VerticalAlignment="Center" IsHitTestVisible="False" Focusable="False" Path="{StaticResource Moon}" Color="{DynamicResource Brush.Text.Primary}"/>
-            <ToggleButton x:Name="ThemeSwitch" AutomationProperties.Name="Light theme" ToolTip="Toggle Dark / Light theme" ToolTipService.ShowsToolTipOnKeyboardFocus="True" IsChecked="{Binding IsLightTheme, RelativeSource={RelativeSource AncestorType=shell:OHsShellHeader}, Mode=OneWay}" Click="OnThemeToggleClick" Style="{StaticResource OHsShellThemeToggleStyle}"/>
-            <customControls:Icon Width="{StaticResource Size.Icon.Default}" Height="{StaticResource Size.Icon.Default}" Margin="8,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False" Focusable="False" Path="{StaticResource Sun}" Color="{DynamicResource Brush.Text.Primary}"/>
+            <Image Style="{StaticResource OHsShellHeaderLogoStyle}" />
+            <TextBlock
+                Margin="8,0,0,0"
+                Style="{StaticResource MainWindowTitleStyle}"
+                Text="Hit" />
+            <TextBlock
+                Margin="0,0,12,0"
+                Foreground="{StaticResource Brush.Text.Secondary}"
+                Style="{StaticResource MainWindowTitleStyle}"
+                Text="bench" />
+            <Border Style="{StaticResource OHsShellHeaderHomeSeparatorStyle}" />
+            <customControls:Icon
+                Width="{StaticResource Size.Icon.Default}"
+                Height="{StaticResource Size.Icon.Default}"
+                Margin="0,0,8,0"
+                VerticalAlignment="Center"
+                Focusable="False"
+                IsHitTestVisible="False"
+                Path="{StaticResource Moon}"
+                Color="{DynamicResource Brush.Text.Primary}" />
+            <ToggleButton
+                x:Name="ThemeSwitch"
+                AutomationProperties.Name="Light theme"
+                Click="OnThemeToggleClick"
+                IsChecked="{Binding IsLightTheme, RelativeSource={RelativeSource AncestorType=shell:OHsShellHeader}, Mode=OneWay}"
+                Style="{StaticResource OHsShellThemeToggleStyle}"
+                ToolTip="Toggle Dark / Light theme"
+                ToolTipService.ShowsToolTipOnKeyboardFocus="True" />
+            <customControls:Icon
+                Width="{StaticResource Size.Icon.Default}"
+                Height="{StaticResource Size.Icon.Default}"
+                Margin="8,0,0,0"
+                VerticalAlignment="Center"
+                Focusable="False"
+                IsHitTestVisible="False"
+                Path="{StaticResource Sun}"
+                Color="{DynamicResource Brush.Text.Primary}" />
         </StackPanel>
         <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
-            <StackPanel x:Name="WorkstationActions" Orientation="Horizontal" Style="{StaticResource OHsShellHeaderAudioActionsStyle}">
+            <StackPanel
+                x:Name="WorkstationActions"
+                Orientation="Horizontal"
+                Style="{StaticResource OHsShellHeaderAudioActionsStyle}">
                 <customControls:BalloonButton
                     x:Name="GoBackButton"
                     AutomationProperties.Name="Return home"
@@ -143,6 +292,5 @@
                 Style="{StaticResource OHsBalloonDestructiveActionStyle}"
                 ToolTip="Close" />
         </StackPanel>
-
     </DockPanel>
 </UserControl>

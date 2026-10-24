@@ -6,10 +6,12 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <ApplicationIcon>Resources\logo.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
     <EmbeddedResource Include="Resources\OHsExportTemplate.osu" LogicalName="Hitbench.Resources.OHsExportTemplate.osu" />
+    <Resource Include="Resources\logo.ico;Resources\logo.png;Resources\logo-light.ico;Resources\logo-light.png" />
   </ItemGroup>
 
   <ItemGroup>
