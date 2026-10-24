@@ -1,0 +1,104 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:c="clr-namespace:Hitbench.Resources.CustomControls">
+
+    <Style x:Key="BaseBasePopupStyle" TargetType="{x:Type c:BasePopup}" BasedOn="{StaticResource BaseWindowStyle}">
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+    </Style>
+
+    <ControlTemplate x:Key="BasePopupTemplate" TargetType="{x:Type c:BasePopup}">
+        <Border Style="{StaticResource OHsPopupSurfaceBorderStyle}">
+            <Border.Clip>
+                <MultiBinding Converter="{StaticResource BorderCornerClipConverter}">
+                    <Binding
+                        Mode="OneWay"
+                        Path="CornerRadius"
+                        RelativeSource="{RelativeSource Self}" />
+                    <Binding
+                        Mode="OneWay"
+                        Path="ActualWidth"
+                        RelativeSource="{RelativeSource Self}" />
+                    <Binding
+                        Mode="OneWay"
+                        Path="ActualHeight"
+                        RelativeSource="{RelativeSource Self}" />
+                </MultiBinding>
+            </Border.Clip>
+            <Grid x:Name="PART_ContentRoot">
+                <Grid.RowDefinitions>
+                    <RowDefinition x:Name="HeaderRow" Height="61" />
+                    <RowDefinition Height="*" />
+
+                </Grid.RowDefinitions>
+
+                <Grid x:Name="HeaderHost">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="60" />
+                        <RowDefinition Height="1" />
+                    </Grid.RowDefinitions>
+
+                    <Grid Margin="24,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <Grid VerticalAlignment="Center">
+                            <TextBlock
+                                x:Name="PopupTitleText"
+                                VerticalAlignment="Center"
+                                Style="{StaticResource OHsPopupTitleTextStyle}"
+                                Text="{TemplateBinding PopupTitle}"
+                                Visibility="Collapsed" />
+                            <ContentPresenter
+                                x:Name="PopupTitleContentPresenter"
+                                VerticalAlignment="Center"
+                                Content="{TemplateBinding PopupTitleContent}" />
+                        </Grid>
+
+                        <c:BalloonButton
+                            x:Name="PART_CloseButton"
+                            Grid.Column="1"
+                            ButtonIcon="{StaticResource Close}"
+                            ButtonText="Close"
+                            Style="{StaticResource OHsPopupCloseActionStyle}"
+                            Visibility="{TemplateBinding ShowCloseButton,
+                                                         Converter={StaticResource BoolToVisibilityConverter}}" />
+                    </Grid>
+
+                    <Border
+                        x:Name="TopContentSeparator"
+                        Grid.Row="1"
+                        Background="{DynamicResource Brush.Border.Subtle}" />
+                </Grid>
+
+                <ContentPresenter Grid.Row="1" Margin="0,16" />
+
+                <Rectangle
+                    x:Name="PART_PopupOverlay"
+                    Grid.RowSpan="2"
+                    Margin="-12"
+                    Fill="{DynamicResource Brush.Overlay}"
+                    Opacity="0"
+                    Visibility="Collapsed" />
+            </Grid>
+        </Border>
+        <ControlTemplate.Triggers>
+            <Trigger Property="ShowHeader" Value="False">
+                <Setter TargetName="HeaderRow" Property="Height" Value="0" />
+                <Setter TargetName="HeaderHost" Property="Visibility" Value="Collapsed" />
+                <Setter TargetName="TopContentSeparator" Property="Visibility" Value="Collapsed" />
+            </Trigger>
+            <Trigger Property="PopupTitleContent" Value="{x:Null}">
+                <Setter TargetName="PopupTitleText" Property="Visibility" Value="Visible" />
+                <Setter TargetName="PopupTitleContentPresenter" Property="Visibility" Value="Collapsed" />
+            </Trigger>
+
+        </ControlTemplate.Triggers>
+    </ControlTemplate>
+
+    <Style BasedOn="{StaticResource BaseBasePopupStyle}" TargetType="{x:Type c:BasePopup}">
+        <Setter Property="Template" Value="{StaticResource BasePopupTemplate}" />
+    </Style>
+</ResourceDictionary>

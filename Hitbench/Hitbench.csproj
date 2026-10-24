@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\OHsExportTemplate.osu" LogicalName="Hitbench.Resources.OHsExportTemplate.osu" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.11" />
+    <PackageReference Include="NAudio" Version="2.2.1" />
+    <PackageReference Include="NAudio.Vorbis" Version="1.5.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+    <PackageReference Include="OggVorbisEncoder" Version="1.2.2" />
+    <Resource Include="Resources\Fonts\*.ttf;Resources\Fonts\*.ttc;Resources\Fonts\*.CompositeFont" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Resources\Fonts\*-OFL.txt;Resources\Fonts\*-LICENSE.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Hitbench.Core\Hitbench.Core.csproj" />
+  </ItemGroup>
+
+  <Target Name="SeedAppSettingsForBuild" AfterTargets="Build">
+    <Copy SourceFiles="$(MSBuildProjectDirectory)/appsettings.json" DestinationFiles="$(TargetDir)appsettings.json" Condition="!Exists('$(TargetDir)appsettings.json')" />
+  </Target>
+  <Target Name="SeedAppSettingsForPublish" AfterTargets="Publish">
+    <Copy SourceFiles="$(MSBuildProjectDirectory)/appsettings.json" DestinationFiles="$(PublishDir)appsettings.json" Condition="!Exists('$(PublishDir)appsettings.json')" />
+  </Target>
+</Project>
