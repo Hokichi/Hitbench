@@ -47,12 +47,13 @@ public class OHsExportPlannerTests
     }
 
     [Test]
-    public void EarlierRequiredPointCanCarryFutureBankConflict()
+    public void RequiredPointDoesNotChoosePackingForFutureBankConflict()
     {
-        var plan = OHsExportPlanner.Plan(Input([Voice(100, "a.wav"), Voice(200, "b.wav", "Soft", SampleType.Whistle), Voice(300, "c.wav")], 1, 150), default);
-        Assert.That(plan.AdditionalPointCount, Is.Zero);
-        Assert.That(plan.Circles[1].SampleIndex, Is.EqualTo(plan.Circles[2].SampleIndex));
+        var input = Input([Voice(100, "a.wav"), Voice(200, "b.wav", "Soft", SampleType.Whistle), Voice(300, "c.wav")], 1, 150);
+        var plan = OHsExportPlanner.Plan(input, default);
+        Assert.That(plan.AudioFileCount, Is.EqualTo(5));
         Assert.That(plan.Circles[0].SampleIndex, Is.Not.EqualTo(plan.Circles[2].SampleIndex));
+        AssertResolvedSources(input, plan);
     }
     [Test]
     public void DenseCirclesSwitchAfterPreviousLookupAndReuseBank()
@@ -154,7 +155,6 @@ public class OHsExportPlannerTests
                 Voice(200, "e.wav", "Normal", SampleType.Normal), Voice(200, $"a{i}.wav", "Soft", SampleType.Whistle), Voice(200, "c.wav", "Drum", SampleType.Clap)
             };
             var plan = OHsExportPlanner.Plan(Input(voices, 1, 150), default);
-            Assert.That(plan.AdditionalPointCount, Is.Zero);
             Assert.That(plan.AudioFileCount, Is.EqualTo(5));
             var repeated = OHsExportPlanner.Plan(Input(voices, 1, 150), default);
             Assert.That(repeated.Banks.SelectMany(b => b.Value.Select(s => (b.Key, s.Key, s.Value.Id))),
@@ -162,9 +162,9 @@ public class OHsExportPlannerTests
         }
     }
 
-    [TestCase(250, 1)]
-    [TestCase(150, 0)]
-    public void MinimumFilesTakePriorityOverTimingRows(int opportunity, int added)
+    [TestCase(250)]
+    [TestCase(150)]
+    public void MinimumFilesTakePriorityOverTimingRows(int opportunity)
     {
         var input = Input([
             Voice(100, "a.wav", "Normal", SampleType.Normal),
@@ -174,7 +174,7 @@ public class OHsExportPlannerTests
         ], 1, opportunity);
         var plan = OHsExportPlanner.Plan(input, default);
         Assert.That(plan.AudioFileCount, Is.EqualTo(4));
-        Assert.That(plan.AdditionalPointCount, Is.EqualTo(added));
+        AssertResolvedSources(input, plan);
     }
 
     [Test]
@@ -228,5 +228,110 @@ public class OHsExportPlannerTests
         Assert.That(expected, Is.EqualTo(3));
         var plan = OHsExportPlanner.Plan(Input(voices, 1000 - capacity), default);
         Assert.That(plan.AudioFileCount, Is.EqualTo(expected!.Value));
+    }
+
+    private static string LayoutSignature(OHsExportPlan plan) => string.Join(';', plan.Banks.Values.Select(b =>
+        string.Join('|', b.OrderBy(p => p.Key.Sampleset).ThenBy(p => p.Key.Type).Select(p => $"{p.Key}:{p.Value.Id}"))).Order(StringComparer.Ordinal));
+
+    private static void AssertResolvedSources(OHsExportInput input, OHsExportPlan plan)
+    {
+        var sounds = OHsExportPlaybackOracle.Resolve(OHsExportBeatmapWriter.Write(input, plan));
+        foreach (var circle in plan.Circles)
+        {
+            var expected = input.Voices.Where(v => v.Timestamp >= circle.Timestamp && (long)v.Timestamp - circle.Timestamp <= 1)
+                .GroupBy(v => v.FileName, StringComparer.OrdinalIgnoreCase).Select(g => (g.Key.ToUpperInvariant(), g.Sum(v => v.GainPercent)))
+                .Where(p => p.Item2 != 0).ToArray();
+            var actual = sounds.Where(s => s.Timestamp == circle.Timestamp).SelectMany(s =>
+                plan.Banks[s.Index][new(new[] { "Normal", "Soft", "Drum" }[s.Set - 1], Enum.Parse<SampleType>(s.Type, true))].Sources)
+                .GroupBy(s => s.FileName, StringComparer.OrdinalIgnoreCase).Select(g => (g.Key.ToUpperInvariant(), g.Sum(s => s.GainPercent)))
+                .Where(p => p.Item2 != 0).ToArray();
+            Assert.That(actual, Is.EquivalentTo(expected), $"Source/gain mismatch at {circle.Timestamp}");
+        }
+    }
+
+    [Test]
+    public void FileLayoutIgnoresTimingOpportunities()
+    {
+        var voices = new[] { Voice(100, "a.wav", "Normal", SampleType.Normal), Voice(200, "c.wav", "Soft"),
+            Voice(300, "b.wav", "Normal", SampleType.Normal), Voice(400, "c.wav", "Soft") };
+        var earlyInput = Input(voices, 1, 150);
+        var lateInput = Input(voices, 1, 250);
+        var early = OHsExportPlanner.Plan(earlyInput, default);
+        var late = OHsExportPlanner.Plan(lateInput, default);
+        Assert.That(early.AudioFileCount, Is.EqualTo(4));
+        Assert.That(late.AudioFileCount, Is.EqualTo(4));
+        Assert.That(LayoutSignature(early), Is.EqualTo(LayoutSignature(late)));
+        AssertResolvedSources(earlyInput, early);
+        AssertResolvedSources(lateInput, late);
+    }
+
+    [Test]
+    public void PlannerReportsOptimizationAndHonorsCallbackCancellation()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var reports = new List<OHsExportProgress>();
+        var progress = new InlineProgress<OHsExportProgress>(p =>
+        {
+            reports.Add(p);
+            if (p.Phase.StartsWith("Optimiz", StringComparison.Ordinal)) cancellation.Cancel();
+        });
+        Assert.Throws<OperationCanceledException>(() => OHsExportPlanner.Plan(Input([Voice(100, "a.wav")]), cancellation.Token, progress));
+        Assert.That(reports.All(p => double.IsFinite(p.Percent)), Is.True);
+        Assert.That(reports.Select(p => p.Percent), Is.Ordered);
+        Assert.That(reports.Any(p => p.Phase.StartsWith("Optimiz", StringComparison.Ordinal)), Is.True);
+    }
+
+    [Test]
+    public void AuthoredZeroNormalIsReusedForSupportAtLastIndex()
+    {
+        var input = Input([Voice(100, "zero.wav", "Normal", SampleType.Normal) with { GainPercent = 0 }, Voice(200, "c.wav", "Soft")], 999);
+        var plan = OHsExportPlanner.Plan(input, default);
+        Assert.That(plan.AudioFileCount, Is.EqualTo(2));
+        Assert.That(plan.Circles[1].NormalSet, Is.EqualTo("Normal"));
+        AssertResolvedSources(input, plan);
+    }
+
+    [TestCase(1)] [TestCase(2)] [TestCase(3)]
+    public void AllNormalFamiliesKeepSilenceAlternatives(int capacity)
+    {
+        var input = Input([Voice(100, "a.wav", "Normal", SampleType.Normal), Voice(200, "b.wav", "Soft", SampleType.Normal),
+            Voice(300, "c.wav", "Drum", SampleType.Normal), Voice(400, "d.wav", "Soft")], 1000 - capacity);
+        if (capacity == 1) Assert.Throws<InvalidOperationException>(() => OHsExportPlanner.Plan(input, default));
+        else
+        {
+            var plan = OHsExportPlanner.Plan(input, default);
+            Assert.That(plan.AudioFileCount, Is.EqualTo(5));
+            AssertResolvedSources(input, plan);
+        }
+    }
+
+    [TestCase("Normal", "Soft")] [TestCase("Soft", "Normal")] [TestCase("Drum", "Normal")]
+    public void SupportUsesGloballyUnusedNormalFamily(string authored, string support)
+    {
+        var input = Input([Voice(100, "a.wav", authored, SampleType.Normal), Voice(200, "c.wav", "Drum")]);
+        var plan = OHsExportPlanner.Plan(input, default);
+        Assert.That(plan.Circles[0].NormalSet, Is.EqualTo(authored));
+        Assert.That(plan.Circles[1].NormalSet, Is.EqualTo(support));
+        AssertResolvedSources(input, plan);
+    }
+
+    [Test]
+    public void RepeatedAndReorderedResolvedRecipesKeepFileLayout()
+    {
+        var originalInput = Input(MixedExportVoices.Create(14));
+        var repeatedInput = Input(MixedExportVoices.Create(140));
+        var reversed = originalInput.Voices.GroupBy(v => v.Timestamp).Reverse().SelectMany((g, i) => g.Select(v => v with { Timestamp = 5000 + i * 100 })).ToArray();
+        var reversedInput = Input(reversed);
+        var original = OHsExportPlanner.Plan(originalInput, default);
+        var repeated = OHsExportPlanner.Plan(repeatedInput, default);
+        var reordered = OHsExportPlanner.Plan(reversedInput, default);
+        Assert.That(original.AudioFileCount, Is.EqualTo(12));
+        Assert.That(repeated.AudioFileCount, Is.EqualTo(12));
+        Assert.That(reordered.AudioFileCount, Is.EqualTo(12));
+        Assert.That(LayoutSignature(repeated), Is.EqualTo(LayoutSignature(original)));
+        Assert.That(LayoutSignature(reordered), Is.EqualTo(LayoutSignature(original)));
+        Assert.That(repeated.Circles, Has.Count.EqualTo(140));
+        AssertResolvedSources(originalInput, original);
+        AssertResolvedSources(reversedInput, reordered);
     }
 }

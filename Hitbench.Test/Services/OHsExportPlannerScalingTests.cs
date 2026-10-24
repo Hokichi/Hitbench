@@ -42,4 +42,15 @@ public class OHsExportPlannerScalingTests
         Assert.That(plan.Banks.Count, Is.EqualTo(7));
         Assert.That(plan.AudioFileCount, Is.EqualTo(files));
     }
+
+    [TestCase(14)] [TestCase(1400)]
+    public void MixedRepeatedRecipesFinishAtFileMinimum(int groups)
+    {
+        var map = OHsExportBeatmap.Parse("[TimingPoints]\n0,500,4,1,1,100,1,0\n");
+        var input = new OHsExportInput(new("Hitsounds", 1, ".wav", ".wav", false), map, MixedExportVoices.Create(groups), map.TimingPoints);
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var plan = OHsExportPlanner.Plan(input, cancellation.Token);
+        Assert.That(plan.AudioFileCount, Is.EqualTo(12));
+        Assert.That(plan.Circles, Has.Count.EqualTo(groups));
+    }
 }

@@ -234,14 +234,15 @@ public class OHsExportServiceTests
         Assert.That(actualSampleNames, Has.Length.EqualTo(4));
         Assert.That(plan.AudioFileCount, Is.EqualTo(actualSampleNames.Length));
         Assert.That(actualSampleNames, Is.EquivalentTo(plannedSampleNames));
-        Assert.That(plan.AdditionalPointCount, Is.EqualTo(1));
         var text = await File.ReadAllTextAsync(Path.Combine(output, "Song [Hitsounds].osu"));
         var addedTimingRows = OHsExportBeatmap.Parse(text).TimingPoints.Where(p => p.Timestamp is not (0 or 50 or 250)).ToArray();
-        Assert.That(addedTimingRows, Has.Length.EqualTo(1));
-        var added = addedTimingRows.Single();
-        Assert.That(added.BeatLength, Is.EqualTo("-50"));
-        Assert.That(added.Effects, Is.EqualTo(1));
-        Assert.That(added.Volume, Is.EqualTo(added.Timestamp < 250 ? 100 : 40));
+        Assert.That(addedTimingRows, Has.Length.EqualTo(plan.AdditionalPointCount));
+        foreach (var added in addedTimingRows)
+        {
+            Assert.That(added.BeatLength, Is.EqualTo("-50"));
+            Assert.That(added.Effects, Is.EqualTo(1));
+            Assert.That(added.Volume, Is.EqualTo(added.Timestamp < 250 ? 100 : 40));
+        }
         var resolved = OHsExportPlaybackOracle.Resolve(text);
         Assert.That(resolved.Select(p => p.Timestamp).Distinct(), Is.EqualTo(new[] { 100, 200, 300, 400 }));
         Assert.That(resolved.Where(p => p.Timestamp < 250).Select(p => p.Volume), Is.All.EqualTo(100));
@@ -258,6 +259,29 @@ public class OHsExportServiceTests
         }
         foreach (var pair in originals) Assert.That(await File.ReadAllBytesAsync(pair.Key), Is.EqualTo(pair.Value));
         Assert.That(ProjectDataSerializer.Serialize(project), Is.EqualTo(json));
+    }
+    [Test]
+    public async Task CancellationDuringLayoutSearchPreservesPriorExport()
+    {
+        using var folder = new TestProjectFolder();
+        var root = Path.GetDirectoryName(folder.ProjectPath)!;
+        var source = Path.Combine(root, "Song [Original].osu");
+        await File.WriteAllTextAsync(source, "[TimingPoints]\n0,500,4,1,1,100,1,0\n");
+        await OHsExportAudio.WriteFileAsync(Path.Combine(root, "Samples", "a.wav"), DecodedAudio.CopyFrom(new float[] { .1f, .1f }), default);
+        var project = new ProjectData { Tracks = [new() { Addition = "Normal", SampleType = SampleType.Normal, Samples = [new() { FileName = "a.wav", Timestamp = 100 }] }] };
+        var request = new OHsExportRequest(Guid.NewGuid(), folder.ProjectPath, source, "missing.wav", ProjectDataSerializer.Serialize(project), new("Hitsounds", 1, ".wav", ".wav", false));
+        var exporter = new OHsExportService();
+        var output = await exporter.ExportAsync(request, default);
+        var published = Directory.GetFiles(output).ToDictionary(p => p, File.ReadAllBytes);
+        using var cancellation = new CancellationTokenSource();
+        var progress = new InlineProgress<OHsExportProgress>(p =>
+        {
+            if (p.Phase.StartsWith("Optimiz", StringComparison.Ordinal)) cancellation.Cancel();
+        });
+        Assert.CatchAsync<OperationCanceledException>(() => exporter.ExportAsync(request, cancellation.Token, progress));
+        Assert.That(Directory.GetFiles(output), Is.EquivalentTo(published.Keys));
+        foreach (var file in published) Assert.That(await File.ReadAllBytesAsync(file.Key), Is.EqualTo(file.Value));
+        Assert.That(Directory.GetDirectories(root, ".Export-staging-*"), Is.Empty);
     }
     [Test]
     public async Task MissingActiveSampleAndExhaustionPreservePreviousExport()
