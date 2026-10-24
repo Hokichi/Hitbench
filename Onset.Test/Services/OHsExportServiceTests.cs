@@ -176,13 +176,18 @@ public class OHsExportServiceTests
         await OHsExportAudio.WriteFileAsync(song, DecodedAudio.CopyFrom(new float[8820]), default);
         await OHsExportAudio.WriteFileAsync(Path.Combine(root, "Samples", "a.wav"), DecodedAudio.CopyFrom(Enumerable.Repeat(.2f, 8820).ToArray()), default);
         await OHsExportAudio.WriteFileAsync(Path.Combine(root, "Samples", "b.wav"), DecodedAudio.CopyFrom(Enumerable.Repeat(.1f, 8820).ToArray()), default);
-        var project = new ProjectData { Tracks = [new() { Addition = "Soft", SampleType = SampleType.Clap, Volume = 70, Samples = [new() { FileName = "a.wav", Timestamp = 100 }, new() { FileName = "a.wav", Timestamp = 200 }] }, new() { Addition = "Soft", SampleType = SampleType.Clap, Volume = 40, Samples = [new() { FileName = "b.wav", Timestamp = 200 }] }], ControlPoints = [new() { Timestamp = 0, Volume = 40 }, new() { Timestamp = 500, Volume = 40 }] };
+        var project = new ProjectData { Tracks = [new() { Addition = "Soft", SampleType = SampleType.Clap, Volume = 70, Samples = [new() { FileName = "a.wav", Timestamp = 100 }, new() { FileName = "a.wav", Timestamp = 200 }, new() { FileName = "a.wav", Timestamp = 300 }, new() { FileName = "a.wav", Timestamp = 400 }] }, new() { Addition = "Soft", SampleType = SampleType.Clap, Volume = 40, Samples = [new() { FileName = "b.wav", Timestamp = 200 }, new() { FileName = "b.wav", Timestamp = 400 }] }], ControlPoints = [new() { Timestamp = 0, Volume = 40 }, new() { Timestamp = 500, Volume = 40 }] };
         var request = new OHsExportRequest(Guid.NewGuid(), folder.ProjectPath, source, song, ProjectDataSerializer.Serialize(project), new("Hitsounds", 998, ".wav", ".ogg", false));
         var output = await new OHsExportService().ExportAsync(request, default);
         Assert.That(File.Exists(Path.Combine(output, "__ohs_export_audio.wav")), Is.False);
         var text = await File.ReadAllTextAsync(Path.Combine(output, "Artist - Song (Mapper) [Hitsounds].osu"));
         var resolved = OHsExportPlaybackOracle.Resolve(text).Where(p => p.Type == "clap").ToArray();
         Assert.That(resolved.Select(p => p.Volume), Is.All.EqualTo(40));
+        Assert.That(resolved.Select(p => p.Timestamp), Is.EqualTo(new[] { 100, 200, 300, 400 }));
+        Assert.That(resolved.Select(p => p.Index).Distinct().Count(), Is.EqualTo(2));
+        Assert.That(resolved[0].Index, Is.EqualTo(resolved[2].Index));
+        Assert.That(resolved[1].Index, Is.EqualTo(resolved[3].Index));
+        Assert.That(Directory.GetFiles(output).Count(p => Path.GetExtension(p) is ".wav" or ".ogg"), Is.EqualTo(4));
         var direct = AudioDecoder.Decode(Path.Combine(output, $"soft-hitclap{resolved[0].Index}.wav"), default);
         Assert.That(direct.Samples.ToArray(), Is.EqualTo(Enumerable.Repeat(.14f, 8820).ToArray()).Within(2d / 32768));
         var mixed = AudioDecoder.Decode(Path.Combine(output, $"soft-hitclap{resolved[1].Index}.ogg"), default);
@@ -191,6 +196,68 @@ public class OHsExportServiceTests
         Assert.That(OHsExportBeatmap.Parse(text).TimingPoints.Any(p => p.Timestamp == 500), Is.True);
         await new OHsExportService().ExportAsync(request with { Options = request.Options with { SingleFormat = ".ogg", MixedFormat = ".wav" } }, default);
         Assert.That(File.Exists(Path.Combine(output, $"soft-hitclap{resolved[0].Index}.wav")), Is.False);
+        Assert.That(File.Exists(Path.Combine(output, $"soft-hitclap{resolved[1].Index}.ogg")), Is.False);
+        Assert.That(Directory.GetFiles(output).Count(p => Path.GetExtension(p) is ".wav" or ".ogg"), Is.EqualTo(4));
+    }
+
+    [TestCase(OHsExportDestination.Project)] [TestCase(OHsExportDestination.Beatmap)]
+    public async Task MinimumFileExportPublishesExactInventoryAndPreservesState(OHsExportDestination destination)
+    {
+        using var folder = new TestProjectFolder();
+        var root = Path.GetDirectoryName(folder.ProjectPath)!;
+        var source = Path.Combine(root, "Song [Original].osu");
+        const string sourceText = "[TimingPoints]\n0,500,4,1,1,100,1,0\n50,-50,4,1,1,100,0,1\n";
+        await File.WriteAllTextAsync(source, sourceText);
+        var values = new Dictionary<string, float> { ["a.wav"] = .1f, ["b.wav"] = .2f, ["c.wav"] = .3f };
+        foreach (var pair in values)
+            await OHsExportAudio.WriteFileAsync(Path.Combine(root, "Samples", pair.Key),
+                DecodedAudio.CopyFrom(Enumerable.Repeat(pair.Value, 882).ToArray()), default);
+        var originals = Directory.GetFiles(root, "*", SearchOption.AllDirectories).ToDictionary(p => p, File.ReadAllBytes);
+        var project = new ProjectData
+        {
+            Tracks =
+            [
+                new() { Addition = "Normal", SampleType = SampleType.Normal, Volume = 100, Samples = [new() { FileName = "a.wav", Timestamp = 100 }] },
+                new() { Addition = "Soft", SampleType = SampleType.Clap, Volume = 100, Samples = [new() { FileName = "c.wav", Timestamp = 200 }, new() { FileName = "c.wav", Timestamp = 400 }] },
+                new() { Addition = "Normal", SampleType = SampleType.Normal, Volume = 100, Samples = [new() { FileName = "b.wav", Timestamp = 300 }] }
+            ],
+            ControlPoints = [new() { Timestamp = 250, Sampleset = "Normal", Volume = 40 }]
+        };
+        var options = new OHsExportOptions("Hitsounds", 1, ".wav", ".ogg", false, destination);
+        var json = ProjectDataSerializer.Serialize(project);
+        var input = OHsExportInputFactory.Create(project, OHsExportBeatmap.Parse(sourceText), options, default);
+        var plan = OHsExportPlanner.Plan(input, default);
+        var request = new OHsExportRequest(Guid.NewGuid(), folder.ProjectPath, source, "missing-song.wav", json, options);
+        var output = await new OHsExportService().ExportAsync(request, default);
+        var actualSampleNames = Directory.GetFiles(output, "*.wav").Select(Path.GetFileName).ToArray();
+        var plannedSampleNames = plan.Banks.SelectMany(b => b.Value.Select(s => OHsExportRepresentations.FileName(s.Key, b.Key, ".wav"))).ToArray();
+        Assert.That(actualSampleNames, Has.Length.EqualTo(4));
+        Assert.That(plan.AudioFileCount, Is.EqualTo(actualSampleNames.Length));
+        Assert.That(actualSampleNames, Is.EquivalentTo(plannedSampleNames));
+        Assert.That(plan.AdditionalPointCount, Is.EqualTo(1));
+        var text = await File.ReadAllTextAsync(Path.Combine(output, "Song [Hitsounds].osu"));
+        var addedTimingRows = OHsExportBeatmap.Parse(text).TimingPoints.Where(p => p.Timestamp is not (0 or 50 or 250)).ToArray();
+        Assert.That(addedTimingRows, Has.Length.EqualTo(1));
+        var added = addedTimingRows.Single();
+        Assert.That(added.BeatLength, Is.EqualTo("-50"));
+        Assert.That(added.Effects, Is.EqualTo(1));
+        Assert.That(added.Volume, Is.EqualTo(added.Timestamp < 250 ? 100 : 40));
+        var resolved = OHsExportPlaybackOracle.Resolve(text);
+        Assert.That(resolved.Select(p => p.Timestamp).Distinct(), Is.EqualTo(new[] { 100, 200, 300, 400 }));
+        Assert.That(resolved.Where(p => p.Timestamp < 250).Select(p => p.Volume), Is.All.EqualTo(100));
+        Assert.That(resolved.Where(p => p.Timestamp >= 250).Select(p => p.Volume), Is.All.EqualTo(40));
+        foreach (var sound in resolved)
+        {
+            var slot = new OHsExportSlot(new[] { "Normal", "Soft", "Drum" }[sound.Set - 1], Enum.Parse<SampleType>(sound.Type, true));
+            var file = Path.Combine(output, OHsExportRepresentations.FileName(slot, sound.Index, ".wav"));
+            Assert.That(File.Exists(file), Is.True);
+            var expected = sound.Type == "clap" ? .3f : sound.Timestamp == 100 ? .1f : sound.Timestamp == 300 ? .2f : 0f;
+            var samples = AudioDecoder.Decode(file, default).Samples.ToArray();
+            Assert.That(samples, Is.Not.Empty);
+            Assert.That(samples.All(value => Math.Abs(value - expected) <= 2d / 32768), Is.True, $"Unexpected PCM in {file}");
+        }
+        foreach (var pair in originals) Assert.That(await File.ReadAllBytesAsync(pair.Key), Is.EqualTo(pair.Value));
+        Assert.That(ProjectDataSerializer.Serialize(project), Is.EqualTo(json));
     }
     [Test]
     public async Task MissingActiveSampleAndExhaustionPreservePreviousExport()

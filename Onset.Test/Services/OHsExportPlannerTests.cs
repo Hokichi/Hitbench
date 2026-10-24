@@ -109,9 +109,13 @@ public class OHsExportPlannerTests
             {
                 var input = Input(voices, 1000 - capacity, opportunities);
                 var groups = voices.Select(v => (v.Timestamp, (IReadOnlyList<IReadOnlyDictionary<OHsExportSlot, string>>)new IReadOnlyDictionary<OHsExportSlot, string>[] { new Dictionary<OHsExportSlot, string> { [new("Normal", SampleType.Normal)] = v.FileName } })).ToArray();
-                var minimum = OHsExportBruteForceOracle.MinimumAdditionalPoints(groups, opportunities.Select(t => (decimal)t).ToArray(), capacity);
-                if (minimum == int.MaxValue) Assert.Throws<InvalidOperationException>(() => OHsExportPlanner.Plan(input, default));
-                else Assert.That(OHsExportPlanner.Plan(input, default).AdditionalPointCount, Is.EqualTo(minimum), $"iteration {iteration}, capacity {capacity}");
+                var minimum = OHsExportBruteForceOracle.MinimumCost(groups, opportunities.Select(t => (decimal)t).ToArray(), capacity);
+                if (minimum is null) Assert.Throws<InvalidOperationException>(() => OHsExportPlanner.Plan(input, default));
+                else
+                {
+                    var plan = OHsExportPlanner.Plan(input, default);
+                    Assert.That((plan.AudioFileCount, plan.AdditionalPointCount), Is.EqualTo(minimum.Value), $"iteration {iteration}, capacity {capacity}");
+                }
             }
         }
     }
@@ -129,14 +133,18 @@ public class OHsExportPlannerTests
                 : new[] { "Normal", "Soft", "Drum" }.Select(set => (IReadOnlyDictionary<OHsExportSlot, string>)new Dictionary<OHsExportSlot, string> { [new(set, SampleType.Normal)] = silence, [new("Normal", SampleType.Clap)] = OHsExportAsset.Create([(v.FileName, 100)]).Id }).ToArray()))).ToArray();
             for (var capacity = 1; capacity <= 3; capacity++)
             {
-                var minimum = OHsExportBruteForceOracle.MinimumAdditionalPoints(groups, opportunities.Select(t => (decimal)t).ToArray(), capacity);
-                if (minimum == int.MaxValue) Assert.Throws<InvalidOperationException>(() => OHsExportPlanner.Plan(Input(voices, 1000 - capacity, opportunities), default));
-                else Assert.That(OHsExportPlanner.Plan(Input(voices, 1000 - capacity, opportunities), default).AdditionalPointCount, Is.EqualTo(minimum));
+                var minimum = OHsExportBruteForceOracle.MinimumCost(groups, opportunities.Select(t => (decimal)t).ToArray(), capacity);
+                if (minimum is null) Assert.Throws<InvalidOperationException>(() => OHsExportPlanner.Plan(Input(voices, 1000 - capacity, opportunities), default));
+                else
+                {
+                    var plan = OHsExportPlanner.Plan(Input(voices, 1000 - capacity, opportunities), default);
+                    Assert.That((plan.AudioFileCount, plan.AdditionalPointCount), Is.EqualTo(minimum.Value), $"iteration {iteration}, capacity {capacity}");
+                }
             }
         }
     }
     [Test]
-    public void MinimumPointPlansChooseDeterministicRecipes()
+    public void MinimumFilePlansChooseDeterministicRecipes()
     {
         for (var i = 0; i < 12; i++)
         {
@@ -147,10 +155,78 @@ public class OHsExportPlannerTests
             };
             var plan = OHsExportPlanner.Plan(Input(voices, 1, 150), default);
             Assert.That(plan.AdditionalPointCount, Is.Zero);
-            Assert.That(plan.Banks.Values.Sum(b => b.Count), Is.EqualTo(5));
+            Assert.That(plan.AudioFileCount, Is.EqualTo(5));
             var repeated = OHsExportPlanner.Plan(Input(voices, 1, 150), default);
             Assert.That(repeated.Banks.SelectMany(b => b.Value.Select(s => (b.Key, s.Key, s.Value.Id))),
                 Is.EqualTo(plan.Banks.SelectMany(b => b.Value.Select(s => (b.Key, s.Key, s.Value.Id)))));
         }
+    }
+
+    [TestCase(250, 1)]
+    [TestCase(150, 0)]
+    public void MinimumFilesTakePriorityOverTimingRows(int opportunity, int added)
+    {
+        var input = Input([
+            Voice(100, "a.wav", "Normal", SampleType.Normal),
+            Voice(200, "c.wav", "Soft", SampleType.Clap),
+            Voice(300, "b.wav", "Normal", SampleType.Normal),
+            Voice(400, "c.wav", "Soft", SampleType.Clap)
+        ], 1, opportunity);
+        var plan = OHsExportPlanner.Plan(input, default);
+        Assert.That(plan.AudioFileCount, Is.EqualTo(4));
+        Assert.That(plan.AdditionalPointCount, Is.EqualTo(added));
+    }
+
+    [Test]
+    public void IndependentSamplesRemainUnmixedWhenMixingWouldSaveAFile()
+    {
+        var voices = new[] { 100, 200 }.SelectMany(time => new[]
+        {
+            Voice(time, "a.wav", "Normal", SampleType.Normal), Voice(time, "c.wav", "Soft", SampleType.Clap)
+        }).ToArray();
+        var plan = OHsExportPlanner.Plan(Input(voices), default);
+        Assert.That(plan.AudioFileCount, Is.EqualTo(2));
+        Assert.That(plan.Banks.Values.SelectMany(b => b.Values).Select(a => a.Sources.Count), Is.All.EqualTo(1));
+    }
+
+    [Test]
+    public void RepeatedSingleAndMixtureCountPhysicalSilenceFiles()
+    {
+        var voices = new[] { 100, 200, 300, 400 }.Select(time => Voice(time, "a.wav", "Soft"))
+            .Concat(new[] { 200, 400 }.Select(time => Voice(time, "b.wav", "Soft"))).ToArray();
+        var plan = OHsExportPlanner.Plan(Input(voices), default);
+        Assert.That(plan.AudioFileCount, Is.EqualTo(4));
+        Assert.That(plan.Banks.Values.SelectMany(b => b.Values).Select(a => a.Id).Distinct().Count(), Is.EqualTo(3));
+        Assert.That(plan.AdditionalPointCount, Is.EqualTo(3));
+        Assert.That(plan.Circles[0].SampleIndex, Is.EqualTo(plan.Circles[2].SampleIndex));
+        Assert.That(plan.Circles[1].SampleIndex, Is.EqualTo(plan.Circles[3].SampleIndex));
+    }
+
+    [TestCase(1)] [TestCase(2)] [TestCase(3)]
+    public void MixedRepresentativeChoicesMatchIndependentOracle(int capacity)
+    {
+        var voices = new[] { 100, 300 }.SelectMany(time => new[]
+        {
+            Voice(time, "a.wav", "Soft", SampleType.Whistle), Voice(time, "b.wav", "Drum", SampleType.Clap)
+        }).Append(Voice(200, "a.wav", "Soft", SampleType.Whistle)).ToArray();
+        var silence = OHsExportAsset.Create([]).Id;
+        var mixed = OHsExportAsset.Create([("a.wav", 100), ("b.wav", 100)]).Id;
+        var direct = OHsExportAsset.Create([("a.wav", 100)]).Id;
+        var choices = new[] { "Normal", "Soft", "Drum" }.SelectMany(set => new[]
+        {
+            (IReadOnlyDictionary<OHsExportSlot, string>)new Dictionary<OHsExportSlot, string>
+                { [new(set, SampleType.Normal)] = silence, [new("Soft", SampleType.Whistle)] = mixed },
+            new Dictionary<OHsExportSlot, string>
+                { [new(set, SampleType.Normal)] = silence, [new("Drum", SampleType.Clap)] = mixed }
+        }).ToArray();
+        var singleton = new[] { "Normal", "Soft", "Drum" }.Select(set =>
+            (IReadOnlyDictionary<OHsExportSlot, string>)new Dictionary<OHsExportSlot, string>
+                { [new(set, SampleType.Normal)] = silence, [new("Soft", SampleType.Whistle)] = direct }).ToArray();
+        var groups = new (int Timestamp, IReadOnlyList<IReadOnlyDictionary<OHsExportSlot, string>> Choices)[]
+            { (100, choices), (200, singleton), (300, choices) };
+        var expected = OHsExportBruteForceOracle.MinimumCost(groups, [], capacity);
+        Assert.That(expected, Is.EqualTo((3, 0)));
+        var plan = OHsExportPlanner.Plan(Input(voices, 1000 - capacity), default);
+        Assert.That((plan.AudioFileCount, plan.AdditionalPointCount), Is.EqualTo(expected!.Value));
     }
 }

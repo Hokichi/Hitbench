@@ -30,7 +30,6 @@ public static partial class OHsExportPlanner
         var start = input.Options.StartingIndex;
         if (groups.Length == 0) return new([], required.Select(p => p with { SampleIndex = start }).ToArray(), new Dictionary<int, IReadOnlyDictionary<OHsExportSlot, OHsExportAsset>>(), 0);
         var intervalPlan = PlanIntervals(groups, required, start, token, out var lowerBounds, out var minimum);
-        if (intervalPlan is not null) return intervalPlan;
-        return PlanBanks(groups, required, start, token, lowerBounds, minimum);
+        return PlanBanks(groups, required, start, token, lowerBounds, minimum, intervalPlan);
     }
 }

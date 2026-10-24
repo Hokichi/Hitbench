@@ -5,6 +5,7 @@ public sealed record OHsExportPlan
     public IReadOnlyList<OHsExportCircle> Circles { get; }
     public IReadOnlyList<OHsExportTimingPoint> TimingPoints { get; }
     public IReadOnlyDictionary<int, IReadOnlyDictionary<OHsExportSlot, OHsExportAsset>> Banks { get; }
+    public int AudioFileCount => Banks.Values.Sum(bank => bank.Count);
     public int AdditionalPointCount { get; }
     public OHsExportPlan(IReadOnlyList<OHsExportCircle> circles, IReadOnlyList<OHsExportTimingPoint> timingPoints,
         IReadOnlyDictionary<int, IReadOnlyDictionary<OHsExportSlot, OHsExportAsset>> banks, int additionalPointCount)
