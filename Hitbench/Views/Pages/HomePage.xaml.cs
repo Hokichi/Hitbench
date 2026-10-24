@@ -10,6 +10,7 @@ using System.Windows.Threading;
 using System.Windows.Data;
 using CommunityToolkit.Mvvm.Input;
 using Hitbench.Resources.CustomControls;
+using Hitbench.Resources.Helpers;
 using Hitbench.ViewModels.Shell.HomePage;
 using Hitbench.Services.Ui;
 
@@ -161,6 +162,7 @@ public partial class HomePage : UserControl
     public void CancelProjectCreation() => viewModel.CreateProjectCommand.Cancel();
     public void Deactivate()
     {
+        OuterGlow.SetIsActive(CardGlowHost, false);
         Detach();
         lifetime.Cancel();
         presentation.TrySetCanceled(lifetime.Token);
@@ -175,6 +177,7 @@ public partial class HomePage : UserControl
     {
         if (attached) return;
         attached = true;
+        OuterGlow.SetIsActive(CardGlowHost, true);
         ProjectsList.AddHandler(ScrollViewer.ScrollChangedEvent, new ScrollChangedEventHandler(OnScrollChanged));
         SongsList.AddHandler(ScrollViewer.ScrollChangedEvent, new ScrollChangedEventHandler(OnScrollChanged));
         SongsList.PreviewMouseWheel += OnSongsPreviewMouseWheel;

@@ -186,7 +186,7 @@
                         <Condition Binding="{Binding IsEnabled, RelativeSource={RelativeSource Self}, Mode=OneWay}" Value="True" />
                         <Condition Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="False" />
                     </MultiDataTrigger.Conditions>
-                    <Setter Property="Effect" Value="{StaticResource OHsHomePageSongCardGlowEffect}" />
+                    <Setter Property="helpers:OuterGlow.Effect" Value="{StaticResource OHsHomePageSongCardGlowEffect}" />
                     <Setter Property="Background" Value="{DynamicResource Brush.Background.Surface}"/>
                     <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Control}"/>
                 </MultiDataTrigger>
@@ -196,7 +196,7 @@
                         <Condition Binding="{Binding IsEnabled, RelativeSource={RelativeSource Self}, Mode=OneWay}" Value="True" />
                         <Condition Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="False" />
                     </MultiDataTrigger.Conditions>
-                    <Setter Property="Effect" Value="{StaticResource OHsHomePageSongCardGlowEffect}" />
+                    <Setter Property="helpers:OuterGlow.Effect" Value="{StaticResource OHsHomePageSongCardGlowEffect}" />
                     <Setter Property="Background" Value="{DynamicResource Brush.Background.Surface}"/>
                     <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Control}"/>
                 </MultiDataTrigger>
@@ -372,7 +372,7 @@
                         <Condition Binding="{Binding DataContext.CanInteract, Source={StaticResource OHsHomePageSource}, Mode=OneWay}" Value="True" />
                         <Condition Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="False" />
                     </MultiDataTrigger.Conditions>
-                    <Setter Property="Effect" Value="{StaticResource OHsHomePageSongCardGlowEffect}" />
+                    <Setter Property="helpers:OuterGlow.Effect" Value="{StaticResource OHsHomePageSongCardGlowEffect}" />
                     <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Control}" />
                 </MultiDataTrigger>
                 <MultiDataTrigger>
@@ -381,7 +381,7 @@
                         <Condition Binding="{Binding DataContext.CanInteract, Source={StaticResource OHsHomePageSource}, Mode=OneWay}" Value="True" />
                         <Condition Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="False" />
                     </MultiDataTrigger.Conditions>
-                    <Setter Property="Effect" Value="{StaticResource OHsHomePageSongCardGlowEffect}" />
+                    <Setter Property="helpers:OuterGlow.Effect" Value="{StaticResource OHsHomePageSongCardGlowEffect}" />
                     <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Control}" />
                 </MultiDataTrigger>
             </Style.Triggers>
@@ -552,6 +552,7 @@
             </Style.Triggers>
         </Style>
     </UserControl.Resources>
+    <AdornerDecorator x:Name="CardGlowHost" helpers:OuterGlow.IsHost="True">
     <Grid x:Name="PageLayout" Style="{StaticResource OHsHomePageLayoutStyle}">
         <Grid.RowDefinitions><RowDefinition Height="*" /><RowDefinition Height="0" /></Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
@@ -691,4 +692,5 @@
         </Border>
         <TextBlock x:Name="InitialLoadingText" Grid.ColumnSpan="2" Grid.RowSpan="2" Text="Loading projects..." Style="{StaticResource OHsHomeInitialLoadingStyle}"/>
     </Grid>
+    </AdornerDecorator>
 </UserControl>
