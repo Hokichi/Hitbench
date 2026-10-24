@@ -1,0 +1,133 @@
+<UserControl x:Class="Onset.Views.Pages.OHsControlPointLane"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:p="clr-namespace:Onset.Views.Pages"
+ xmlns:c="clr-namespace:Onset.Resources.CustomControls"
+ xmlns:popups="clr-namespace:Onset.Views.Popups"
+ xmlns:h="clr-namespace:Onset.Resources.Helpers">
+ <UserControl.Resources>
+  <ControlTemplate x:Key="OHsControlPointZoneTemplate" TargetType="p:OHsControlPointZone">
+   <Border Style="{StaticResource BaseBorderStyle}" BorderBrush="{DynamicResource Brush.Border.Subtle}" BorderThickness="1,0,0,0" Background="Transparent" ClipToBounds="True">
+    <Grid Style="{StaticResource BaseGridStyle}" Background="Transparent">
+     <Grid x:Name="ZoneGraphics" Style="{StaticResource BaseGridStyle}" IsHitTestVisible="False">
+      <Rectangle x:Name="ZoneFill" Fill="{TemplateBinding Background}" Height="{Binding FillHeight, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}" VerticalAlignment="Bottom" Opacity="0.24" />
+      <Line x:Name="VolumeLine" X1="0" X2="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}" Y1="0" Y2="0" Stroke="{TemplateBinding BorderBrush}" StrokeThickness="2" VerticalAlignment="Top">
+       <Line.RenderTransform><TranslateTransform Y="{Binding VolumeLineOffset, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}" /></Line.RenderTransform>
+      </Line>
+     </Grid>
+     <TextBlock Text="{Binding Label, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}" Foreground="{TemplateBinding Foreground}"
+       FontFamily="{TemplateBinding FontFamily}" FontSize="{TemplateBinding FontSize}" TextTrimming="CharacterEllipsis" VerticalAlignment="Top" HorizontalAlignment="Left"
+       Margin="8,4,8,0" MaxWidth="{Binding VisibleLabelWidth, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}" Style="{StaticResource BaseTextBlockStyle}" IsHitTestVisible="False">
+      <TextBlock.RenderTransform><TranslateTransform X="{Binding VisibleLabelInset, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}" /></TextBlock.RenderTransform>
+     </TextBlock>
+     <Border x:Name="EditingCue" Style="{StaticResource BaseBorderStyle}" Background="{TemplateBinding Foreground}" Height="3" VerticalAlignment="Top" Visibility="Collapsed" IsHitTestVisible="False" />
+    </Grid>
+   </Border>
+   <ControlTemplate.Triggers>
+    <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="ZoneFill" Property="Opacity" Value="0.36" /></Trigger>
+    <Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter TargetName="ZoneFill" Property="Opacity" Value="0.36" /></Trigger>
+    <Trigger Property="IsPressed" Value="True"><Setter TargetName="ZoneFill" Property="Opacity" Value="0.44" /></Trigger>
+    <Trigger Property="IsVolumeDragging" Value="True"><Setter TargetName="ZoneFill" Property="Opacity" Value="0.44" /><Setter TargetName="VolumeLine" Property="StrokeThickness" Value="3" /></Trigger>
+    <Trigger Property="IsEditing" Value="True"><Setter TargetName="EditingCue" Property="Visibility" Value="Visible" /></Trigger>
+    <DataTrigger Binding="{Binding Point.IsDisabled, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}" Value="True">
+     <Setter TargetName="ZoneGraphics" Property="Opacity" Value="0.4" /><Setter TargetName="VolumeLine" Property="StrokeDashArray" Value="4,3" />
+    </DataTrigger>
+    <Trigger Property="IsInvalid" Value="True"><Setter TargetName="VolumeLine" Property="StrokeThickness" Value="3" /><Setter TargetName="VolumeLine" Property="StrokeDashArray" Value="1,1" /></Trigger>
+    <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
+     <Setter TargetName="ZoneGraphics" Property="Opacity" Value="1" />
+    </DataTrigger>
+   </ControlTemplate.Triggers>
+  </ControlTemplate>
+  <Style x:Key="OHsControlPointZoneStyle" TargetType="p:OHsControlPointZone" BasedOn="{StaticResource BaseButtonStyle}">
+   <Setter Property="Template" Value="{StaticResource OHsControlPointZoneTemplate}" />
+   <Setter Property="FontFamily" Value="{DynamicResource Regular}" /><Setter Property="FontSize" Value="{StaticResource FontSize.Label}" />
+   <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+   <Setter Property="Background" Value="{DynamicResource Brush.OHs.ControlPoint.Normal}" /><Setter Property="BorderBrush" Value="{DynamicResource Brush.OHs.ControlPoint.Normal}" />
+   <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
+   <Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" /><Setter Property="IsTabStop" Value="True" />
+   <Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="True" />
+   <Style.Triggers>
+    <DataTrigger Binding="{Binding Point.Sampleset, RelativeSource={RelativeSource Self}, Mode=OneWay}" Value="Soft"><Setter Property="Background" Value="{DynamicResource Brush.OHs.ControlPoint.Soft}" /><Setter Property="BorderBrush" Value="{DynamicResource Brush.OHs.ControlPoint.Soft}" /></DataTrigger>
+    <DataTrigger Binding="{Binding Point.Sampleset, RelativeSource={RelativeSource Self}, Mode=OneWay}" Value="Drum"><Setter Property="Background" Value="{DynamicResource Brush.OHs.ControlPoint.Drum}" /><Setter Property="BorderBrush" Value="{DynamicResource Brush.OHs.ControlPoint.Drum}" /></DataTrigger>
+    <Trigger Property="IsInvalid" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource Brush.Danger}" /></Trigger>
+    <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
+     <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
+     <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+     <Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+     <Setter Property="Opacity" Value="1" />
+    </DataTrigger>
+   </Style.Triggers>
+  </Style>
+  <DataTemplate x:Key="OHsControlPointContentTemplate">
+   <p:OHsControlPointZone Point="{Binding Mode=OneWay}" Style="{StaticResource OHsControlPointZoneStyle}"
+    FlowDirection="{Binding FlowDirection, RelativeSource={RelativeSource AncestorType=p:OHsControlPointLane}, Mode=OneWay}"
+    IsEnabled="{Binding IsMenuOwnerActive, RelativeSource={RelativeSource AncestorType=p:OHsControlPointLane}, Mode=OneWay}"
+    IsMenuOwnerActive="{Binding IsMenuOwnerActive, RelativeSource={RelativeSource AncestorType=p:OHsControlPointLane}, Mode=OneWay}" />
+  </DataTemplate>
+  <ItemsPanelTemplate x:Key="OHsControlPointLaneItemsPanel"><p:OHsControlPointLanePanel /></ItemsPanelTemplate>
+  <Style x:Key="OHsControlPointLaneItemsStyle" TargetType="ItemsControl" BasedOn="{StaticResource BaseItemsControlStyle}">
+   <Setter Property="Height" Value="48" /><Setter Property="Background" Value="{DynamicResource Brush.Background.Deepened}" /><Setter Property="ItemsPanel" Value="{StaticResource OHsControlPointLaneItemsPanel}" />
+   <Setter Property="ItemTemplate" Value="{StaticResource OHsControlPointContentTemplate}" />
+   <Setter Property="VirtualizingPanel.IsVirtualizing" Value="True" /><Setter Property="VirtualizingPanel.VirtualizationMode" Value="Recycling" />
+  </Style>
+  <Style x:Key="OHsControlPointLaneEmptyStyle" TargetType="Grid" BasedOn="{StaticResource BaseGridStyle}">
+   <Setter Property="Visibility" Value="Collapsed" />
+   <Style.Triggers><DataTrigger Binding="{Binding HasItems, ElementName=PointItems, Mode=OneWay}" Value="False"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
+  </Style>
+  <Style x:Key="OHsControlPointLaneActionStyle" TargetType="c:BalloonButton" BasedOn="{StaticResource OHsBalloonNeutralActionStyle}">
+   <Setter Property="ShouldShowText" Value="True" /><Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
+   <Setter Property="IsTabStop" Value="True" /><Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
+   <Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="True" />
+  </Style>
+  <Style x:Key="OHsControlPointLaneRetryStyle" TargetType="c:BalloonButton" BasedOn="{StaticResource OHsControlPointLaneActionStyle}">
+   <Style.Triggers>
+    <DataTrigger Binding="{Binding State.SaveError, RelativeSource={RelativeSource AncestorType=p:OHsControlPointLane}, Mode=OneWay}" Value="{x:Null}"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+    <DataTrigger Binding="{Binding State.SaveError, RelativeSource={RelativeSource AncestorType=p:OHsControlPointLane}, Mode=OneWay}" Value=""><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+   </Style.Triggers>
+  </Style>
+  <ContextMenu x:Key="OHsControlPointBackgroundMenu" Style="{StaticResource OHsActionContextMenuStyle}" AutomationProperties.Name="Control point lane actions">
+   <MenuItem Header="Add Control Point" Style="{StaticResource OHsActionMenuItemStyle}" Click="OnAddPointClick" AutomationProperties.Name="Add Control Point at playback marker"
+    IsEnabled="{Binding PlacementTarget.State.CanAdd, RelativeSource={RelativeSource AncestorType=ContextMenu}, Mode=OneWay}" />
+  </ContextMenu>
+  <ContextMenu x:Key="OHsControlPointZoneMenu" Style="{StaticResource OHsActionContextMenuStyle}" AutomationProperties.Name="Control point actions" Closed="OnZoneMenuClosed">
+   <MenuItem Header="{Binding DisableMenuHeader, Mode=OneWay}" Style="{StaticResource OHsActionMenuItemStyle}" Command="{Binding SetPointDisabledCommand, Mode=OneWay}" CommandParameter="{Binding MenuDisableRequest, Mode=OneWay}" AutomationProperties.Name="{Binding DisableMenuHeader, Mode=OneWay}" />
+   <MenuItem Header="Split" Style="{StaticResource OHsActionMenuItemStyle}" Command="{Binding SplitPointCommand, Mode=OneWay}" CommandParameter="{Binding MenuSplitRequest, Mode=OneWay}" AutomationProperties.Name="Split control point zone at playback marker" />
+   <MenuItem Header="Delete" Style="{StaticResource OHsDestructiveActionMenuItemStyle}" Click="OnDeletePointClick" AutomationProperties.Name="Delete control point" />
+  </ContextMenu>
+  <Style x:Key="OHsControlPointPlayheadHostStyle" TargetType="Grid" BasedOn="{StaticResource BaseGridStyle}">
+   <Setter Property="Width" Value="3.5" /><Setter Property="HorizontalAlignment" Value="Left" />
+   <Setter Property="IsHitTestVisible" Value="False" /><Setter Property="Focusable" Value="False" />
+   <Setter Property="FlowDirection" Value="LeftToRight" />
+  </Style>
+  <Style x:Key="OHsControlPointPlayheadOutlineStyle" TargetType="Border" BasedOn="{StaticResource BaseBorderStyle}">
+   <Setter Property="Background" Value="{Binding PlaybackMarkerOutlineBrush, RelativeSource={RelativeSource AncestorType=p:OHsControlPointLane}, Mode=OneWay}" />
+   <Style.Triggers><DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers>
+  </Style>
+  <Style x:Key="OHsControlPointPlayheadStyle" TargetType="Border" BasedOn="{StaticResource BaseBorderStyle}">
+   <Setter Property="Width" Value="1.5" /><Setter Property="HorizontalAlignment" Value="Center" />
+   <Setter Property="Background" Value="{Binding PlaybackMarkerBrush, RelativeSource={RelativeSource AncestorType=p:OHsControlPointLane}, Mode=OneWay}" />
+   <Style.Triggers><DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True"><Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" /></DataTrigger></Style.Triggers>
+  </Style>
+ </UserControl.Resources>
+ <Grid Style="{StaticResource BaseGridStyle}" ClipToBounds="True" Background="Transparent">
+  <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+  <ItemsControl x:Name="PointItems" Style="{StaticResource OHsControlPointLaneItemsStyle}" FlowDirection="LeftToRight" />
+  <Grid Style="{StaticResource OHsControlPointLaneEmptyStyle}">
+   <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+   <c:BalloonButton Grid.Column="1" ButtonText="Add Control Point" ButtonIcon="{StaticResource ClockPlusOutline}" Click="OnAddPointClick"
+    Style="{StaticResource OHsControlPointLaneActionStyle}" IsEnabled="{Binding State.CanAdd, RelativeSource={RelativeSource AncestorType=p:OHsControlPointLane}, Mode=OneWay}" AutomationProperties.Name="Add Control Point at playback marker" />
+  </Grid>
+  <Grid x:Name="PlaybackMarker" Style="{StaticResource OHsControlPointPlayheadHostStyle}" Visibility="Collapsed">
+   <Grid.RenderTransform><TranslateTransform x:Name="PlaybackMarkerTranslation" /></Grid.RenderTransform>
+   <Border Style="{StaticResource OHsControlPointPlayheadOutlineStyle}" />
+   <Border Style="{StaticResource OHsControlPointPlayheadStyle}" />
+  </Grid>
+  <StackPanel Grid.Row="1" Style="{StaticResource BaseStackPanelStyle}">
+   <c:BalloonButton ButtonText="Retry save" ButtonIcon="{StaticResource RegularRepeat}" Click="OnRetrySaveClick" Style="{StaticResource OHsControlPointLaneRetryStyle}"
+    HorizontalAlignment="Left" IsEnabled="{Binding State.CanEdit, RelativeSource={RelativeSource AncestorType=p:OHsControlPointLane}, Mode=OneWay}" AutomationProperties.Name="Retry control point save" />
+  </StackPanel>
+  <Popup x:Name="EditorPopup" Placement="Bottom" StaysOpen="False" AllowsTransparency="True" PopupAnimation="None" Opened="OnEditorOpened" Closed="OnEditorClosed">
+   <popups:OHsControlPointEditor x:Name="ValueEditor" MinWidth="240" MaxWidth="400" PreviewKeyDown="OnEditorPreviewKeyDown" />
+  </Popup>
+ </Grid>
+</UserControl>

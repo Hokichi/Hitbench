@@ -1,5 +1,0 @@
-<Solution>
-  <Project Path="Soundie.Core/Soundie.Core.csproj" Id="67e56d85-65d0-4d60-bf3b-e08cc00ef5d4" />
-  <Project Path="Soundie.Test/Soundie.Test.csproj" Id="25abf50d-dbbe-4a80-bedc-11d3a1877f32" />
-  <Project Path="Soundie/Soundie.csproj" />
-</Solution>

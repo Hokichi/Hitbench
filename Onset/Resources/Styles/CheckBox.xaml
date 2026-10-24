@@ -1,0 +1,96 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:c="clr-namespace:Onset.Resources.CustomControls" xmlns:h="clr-namespace:Onset.Resources.Helpers">
+    <Style
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Key="BaseCheckBoxStyle"
+        TargetType="CheckBox">
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource DefaultFocusVisualStyle}" />
+        <Style.Triggers>
+
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Cursor" Value="Arrow" />
+                <Setter Property="Opacity" Value="0.4" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+        <ControlTemplate x:Key="RegularCheckBoxTemplate" TargetType="CheckBox">
+            <Border
+                Padding="{TemplateBinding Padding}"
+                Background="{TemplateBinding Background}"
+                Style="{StaticResource BaseBorderStyle}">
+                <Grid Style="{StaticResource BaseGridStyle}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Border
+                        x:Name="CheckBorder"
+                        Width="16"
+                        Height="16"
+                        VerticalAlignment="Center"
+                        Background="{DynamicResource Brush.Background.Elevated}"
+                        BorderBrush="{DynamicResource Brush.Border.Control}"
+                        BorderThickness="1.5"
+                        CornerRadius="4">
+                        <c:Icon
+                            x:Name="CheckedIcon"
+                            Width="10"
+                            Height="10"
+                            Path="{StaticResource Check}"
+                            Visibility="Collapsed"
+                            Color="{DynamicResource Brush.Text.OnAccent}" />
+                    </Border>
+                    <ContentPresenter
+                        x:Name="CheckboxLabel"
+                        Grid.Column="1"
+                        Margin="8,0,0,0"
+                        VerticalAlignment="Center"
+                        Content="{TemplateBinding Content}"
+                        ContentTemplate="{TemplateBinding ContentTemplate}"
+                        RecognizesAccessKey="True"
+                        TextElement.FontFamily="{TemplateBinding FontFamily}"
+                        TextElement.FontSize="{TemplateBinding FontSize}"
+                        TextElement.Foreground="{TemplateBinding Foreground}" />
+                </Grid>
+            </Border>
+            <ControlTemplate.Triggers>
+
+                <Trigger Property="IsPressed" Value="True"><Setter TargetName="CheckBorder" Property="Background" Value="{DynamicResource Brush.Background.Pressed}"/></Trigger>
+                <Trigger Property="IsChecked" Value="{x:Null}"><Setter TargetName="CheckedIcon" Property="Visibility" Value="Visible"/><Setter TargetName="CheckedIcon" Property="Path" Value="{StaticResource Minus}"/><Setter TargetName="CheckedIcon" Property="Color" Value="{DynamicResource Brush.Text.Primary}"/></Trigger>
+
+                <Trigger Property="Content" Value="{x:Null}">
+                    <Setter TargetName="CheckboxLabel" Property="Visibility" Value="Collapsed" />
+                </Trigger>
+                <Trigger Property="IsChecked" Value="True">
+                    <Setter TargetName="CheckBorder" Property="Background" Value="{DynamicResource Brush.Navy}" />
+                    <Setter TargetName="CheckBorder" Property="BorderBrush" Value="{DynamicResource Brush.Navy.Text}" />
+                    <Setter TargetName="CheckedIcon" Property="Visibility" Value="Visible" />
+                </Trigger>
+                <MultiTrigger><MultiTrigger.Conditions><Condition Property="IsMouseOver" Value="True"/><Condition Property="IsEnabled" Value="True"/></MultiTrigger.Conditions><Setter TargetName="CheckBorder" Property="BorderBrush" Value="{DynamicResource Brush.Text.Primary}"/></MultiTrigger>
+                <MultiTrigger><MultiTrigger.Conditions><Condition Property="IsPressed" Value="True"/><Condition Property="IsChecked" Value="True"/></MultiTrigger.Conditions><Setter TargetName="CheckBorder" Property="Background" Value="{DynamicResource Brush.Navy.Pressed}"/></MultiTrigger>
+                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
+                    <Setter TargetName="CheckedIcon" Property="Color" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+                    <Setter TargetName="CheckBorder" Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+                    <Setter TargetName="CheckBorder" Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
+                </DataTrigger>
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True" />
+                        <Condition Binding="{Binding IsChecked, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}" Value="True" />
+                    </MultiDataTrigger.Conditions>
+                    <Setter TargetName="CheckBorder" Property="Background" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
+                    <Setter TargetName="CheckedIcon" Property="Color" Value="{DynamicResource {x:Static SystemColors.HighlightTextBrushKey}}" />
+                </MultiDataTrigger>
+            </ControlTemplate.Triggers>
+        </ControlTemplate>
+
+    <Style x:Key="RegularCheckBoxStyle" TargetType="CheckBox" BasedOn="{StaticResource BaseCheckBoxStyle}">
+        <Setter Property="Template" Value="{StaticResource RegularCheckBoxTemplate}"/><Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}"/><Setter Property="FontFamily" Value="{DynamicResource Regular}"/><Setter Property="FontSize" Value="{StaticResource FontSize.Body}"/>
+        <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}"/><Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True"/>
+        <Style.Triggers><Trigger Property="IsEnabled" Value="False"><Setter Property="Foreground" Value="{DynamicResource Brush.Text.Disabled}"/></Trigger><DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True"><Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}"/></DataTrigger></Style.Triggers>
+    </Style>
+    <Style TargetType="CheckBox" BasedOn="{StaticResource RegularCheckBoxStyle}"/>
+</ResourceDictionary>

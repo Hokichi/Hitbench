@@ -1,0 +1,42 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:customControls="clr-namespace:Onset.Resources.CustomControls">
+    <Style
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Key="BaseToolTipStyle"
+        TargetType="ToolTip">
+        <Setter Property="FontFamily" Value="{DynamicResource Regular}" />
+        <Setter Property="FontSize" Value="{StaticResource FontSize.Body}" />
+    </Style>
+
+    <ControlTemplate
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Key="DefaultToolTipTemplate"
+        TargetType="ToolTip">
+        <Border
+            Padding="{TemplateBinding Padding}"
+            Background="{TemplateBinding Background}"
+            BorderBrush="{TemplateBinding BorderBrush}"
+            BorderThickness="{TemplateBinding BorderThickness}"
+            CornerRadius="{StaticResource Radius.Control}">
+            <ContentPresenter />
+        </Border>
+    </ControlTemplate>
+    <Style
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        BasedOn="{StaticResource BaseToolTipStyle}"
+        TargetType="ToolTip">
+        <Setter Property="Background" Value="{DynamicResource Brush.Background.Popup}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Default}" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+        <Setter Property="FontFamily" Value="{DynamicResource Regular}" />
+        <Setter Property="FontSize" Value="{StaticResource FontSize.Caption}" />
+        <Setter Property="Template" Value="{StaticResource DefaultToolTipTemplate}" />
+        <Setter Property="Effect" Value="{DynamicResource Effect.Shadow.Tooltip}" />
+        <Setter Property="Padding" Value="8" />
+    </Style>
+
+</ResourceDictionary>
