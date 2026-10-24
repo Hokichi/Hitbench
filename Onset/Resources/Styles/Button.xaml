@@ -73,6 +73,7 @@
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
         <Setter Property="FontFamily" Value="{DynamicResource Regular}" />
+        <Setter Property="FontWeight" Value="Normal" />
         <Setter Property="FontSize" Value="{StaticResource FontSize.Body}" />
         <Setter Property="Background" Value="{DynamicResource Brush.Background.Surface}" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
@@ -242,7 +243,9 @@
                         <TextBlock
                             x:Name="PART_ButtonText"
                             VerticalAlignment="Center"
-                            FontFamily="{DynamicResource Bold}"
+                            FontFamily="{TemplateBinding FontFamily}"
+                            FontWeight="{TemplateBinding FontWeight}"
+                            FontStyle="{TemplateBinding FontStyle}"
                             FontSize="{TemplateBinding FontSize}"
                             Text="{TemplateBinding ButtonText}"
                             TextTrimming="CharacterEllipsis"
@@ -289,6 +292,7 @@
         <Setter Property="PressedBackground" Value="{DynamicResource Brush.BalloonButton.Background.Neutral.Pressed}" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.BalloonButton.Foreground.Neutral}" />
         <Setter Property="FontFamily" Value="{DynamicResource Regular}" />
+        <Setter Property="FontWeight" Value="Normal" />
         <Setter Property="FontSize" Value="{StaticResource FontSize.Body}" />
         <Setter Property="Background" Value="{Binding DefaultBackground, RelativeSource={RelativeSource Self}, Mode=OneWay}" />
         <Setter Property="Height" Value="{Binding RelativeSource={RelativeSource Self}, Path=ButtonSize, Mode=OneWay}" />
@@ -327,6 +331,7 @@
         <Setter Property="IconSize" Value="12" />
         <Setter Property="Padding" Value="12" />
         <Setter Property="FontFamily" Value="{DynamicResource Bold}" />
+        <Setter Property="FontWeight" Value="Bold" />
         <Setter Property="FontSize" Value="{StaticResource FontSize.Label}" />
         <Style.Triggers>
             <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
@@ -651,6 +656,7 @@
         <Setter Property="Width" Value="40" />
         <Setter Property="Height" Value="{StaticResource Size.Control.Primary}" />
         <Setter Property="FontFamily" Value="{DynamicResource Regular}" />
+        <Setter Property="FontWeight" Value="Normal" />
         <Setter Property="FontSize" Value="{StaticResource FontSize.Body}" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
         <Setter Property="Background" Value="{DynamicResource Brush.Background.Elevated}" />
@@ -663,6 +669,7 @@
             <Trigger Property="IsChecked" Value="True">
                 <Setter Property="Background" Value="{DynamicResource Brush.Background.Pressed}" />
                 <Setter Property="FontFamily" Value="{DynamicResource Bold}" />
+                <Setter Property="FontWeight" Value="Bold" />
             </Trigger>
             <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
                 <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />

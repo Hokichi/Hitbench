@@ -20,6 +20,45 @@ namespace Onset.Test.Presentation;
 public sealed class OHsWorkstationAudioCardTests
 {
     [Test]
+    public void CompactProjectMenuKeepsAuthoritativeCommandsAndDeactivatesWhenRoomy()
+    {
+        new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
+        var page = WorkstationTestPage.Create();
+        var vm = (WorkstationPageVM)page.DataContext;
+        var card = new OHsWorkstationAudioCard { DataContext = vm, IsCompactLayout = true };
+        try
+        {
+            UiTestPump.Layout(card, 640, 300);
+            var trigger = card.FindName("ProjectActionsButton") as BalloonComboBox;
+            Assert.That(trigger, Is.Not.Null);
+            var menu = trigger!.ContextMenu;
+            trigger.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+            UiTestPump.Layout(menu, 320, 300);
+            var commands = menu.Items.Cast<MenuItem>().Select(item => item.Command).ToArray();
+            Assert.That(commands, Is.EquivalentTo(new System.Windows.Input.ICommand[]
+            {
+                vm.ResnapAllSamplesCommand, vm.ReloadSamplesCommand, vm.ToggleTracksCollapsedCommand,
+                vm.OpenBeatmapFolderCommand, vm.OpenProjectFolderCommand
+            }));
+            Assert.That(((BalloonButton)card.FindName("ExportButton")).Command, Is.SameAs(vm.ExportCommand));
+            Assert.That(menu.Items.Cast<MenuItem>().All(item => !item.IsEnabled), Is.True);
+            // Borrow the real resource through the existing native-presentation substitute.
+            trigger.ContextMenu = null;
+            var owner = new StubBalloonComboBox { DataContext = vm, ContextMenu = menu };
+            owner.SetBinding(UIElement.IsEnabledProperty, new Binding(nameof(card.IsCompactLayout)) { Source = card, Mode = BindingMode.OneWay });
+            owner.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+            owner.Activate();
+            Assert.That(owner.IsDropDownOpen, Is.True);
+            card.IsCompactLayout = false;
+            Assert.That(owner.IsDropDownOpen, Is.False);
+            Assert.That(owner.IsMenuOwnerActive, Is.False);
+            Assert.That(owner.PresentationRequests.Last().Open, Is.False);
+            owner.RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent));
+        }
+        finally { UiTestPump.Run(page.DeactivateAsync()); }
+    }
+
+    [Test]
     public void ExportUsesExistingToolbarContractAndTracksCommandAvailability()
     {
         new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();

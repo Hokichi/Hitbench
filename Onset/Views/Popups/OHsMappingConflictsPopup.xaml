@@ -7,7 +7,7 @@
 
   <DataTemplate x:Key="OHsMappingConflictChoiceContent">
    <StackPanel Style="{StaticResource BaseStackPanelStyle}">
-    <TextBlock Text="{Binding FileName,Mode=OneWay}" Foreground="{Binding Foreground,RelativeSource={RelativeSource AncestorType=CheckBox},Mode=OneWay}" Style="{StaticResource BodyTextStyle}" FontFamily="{DynamicResource Bold}"/>
+    <TextBlock Text="{Binding FileName,Mode=OneWay}" Foreground="{Binding Foreground,RelativeSource={RelativeSource AncestorType=CheckBox},Mode=OneWay}" Style="{StaticResource BodyTextStyle}" FontWeight="Bold" FontFamily="{DynamicResource Bold}"/>
    </StackPanel>
   </DataTemplate>
   <Style x:Key="OHsMappingConflictChoiceStyle" TargetType="CheckBox" BasedOn="{StaticResource RegularCheckBoxStyle}">
@@ -32,7 +32,7 @@
   <DataTemplate x:Key="OHsMappingConflictRowTemplate">
    <Grid Margin="0,0,0,16" Style="{StaticResource BaseGridStyle}">
     <Grid.ColumnDefinitions><ColumnDefinition Width="48"/><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-    <TextBlock Text="{Binding Key,Mode=OneWay}" Style="{StaticResource BodyTextStyle}" VerticalAlignment="Top" Margin="0,8,8,0" FontFamily="{DynamicResource Bold}"/>
+    <TextBlock Text="{Binding Key,Mode=OneWay}" Style="{StaticResource BodyTextStyle}" VerticalAlignment="Top" Margin="0,8,8,0" FontWeight="Bold" FontFamily="{DynamicResource Bold}"/>
     <StackPanel Grid.Column="1" Style="{StaticResource BaseStackPanelStyle}">
      <ItemsControl ItemsSource="{Binding ExistingChoices,Mode=OneWay}" ItemTemplate="{StaticResource OHsMappingConflictChoiceItem}" Style="{StaticResource BaseItemsControlStyle}"/>
     </StackPanel>
@@ -46,9 +46,9 @@
  <Grid Margin="24,0,24,8" Style="{StaticResource BaseGridStyle}">
   <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
   <ItemsControl x:Name="ConflictRows" Grid.Row="1" ItemsSource="{Binding Rows,Mode=OneWay}" ItemTemplate="{StaticResource OHsMappingConflictRowTemplate}" Style="{StaticResource BaseItemsControlStyle}" Template="{StaticResource OHsVirtualizedDrawerItemsTemplate}" ItemsPanel="{StaticResource OHsVirtualizedDrawerItemsPanel}" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"/>
-  <StackPanel Grid.Row="2" Margin="0,16,0,0" HorizontalAlignment="Right" Orientation="Horizontal" Style="{StaticResource BaseStackPanelStyle}">
+  <WrapPanel Grid.Row="2" Margin="0,16,0,0" HorizontalAlignment="Right" Orientation="Horizontal">
    <c:BalloonButton ButtonText="Cancel" AutomationProperties.Name="Cancel folder import" ToolTip="Cancel folder import (Esc)" Click="OnCancel" Style="{StaticResource OHsBalloonDestructiveActionStyle}" Margin="0,0,8,0" ButtonIcon="{StaticResource Close}" ShouldShowText="True" h:KeyboardNavigationPolicy.AllowTabNavigation="True" IsTabStop="True" FocusVisualStyle="{StaticResource OHsSampleManagerKeyboardFocusStyle}"/>
    <c:BalloonButton x:Name="ConfirmButton" ButtonText="OK" AutomationProperties.Name="Accept mapping choices" ToolTip="Accept mapping choices (Enter)" Click="OnConfirm" IsEnabled="{Binding CanConfirm,Mode=OneWay}" Style="{StaticResource OHsBalloonConfirmActionStyle}" ButtonIcon="{StaticResource Check}" ShouldShowText="True" h:KeyboardNavigationPolicy.AllowTabNavigation="True" IsTabStop="True" FocusVisualStyle="{StaticResource OHsSampleManagerKeyboardFocusStyle}"/>
-  </StackPanel>
+  </WrapPanel>
  </Grid>
 </c:BasePopup>

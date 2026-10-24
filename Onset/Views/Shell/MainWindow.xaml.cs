@@ -471,8 +471,8 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
             var grid = ShellLayout;
             var header = grid.RowDefinitions[0].ActualHeight;
             page.UpdateSongsLayout(new Size(size.Width, Math.Max(0, size.Height - header)));
-            var width = page.MinWidth + root.BorderThickness.Left + root.BorderThickness.Right;
-            var height = page.MinHeight + header + root.BorderThickness.Top + root.BorderThickness.Bottom;
+            var width = Math.Max(defaultMinWidth, page.MinWidth + root.BorderThickness.Left + root.BorderThickness.Right);
+            var height = Math.Max(defaultMinHeight, page.MinHeight + header + root.BorderThickness.Top + root.BorderThickness.Bottom);
             if (Math.Abs(MinWidth - width) > .01) MinWidth = width;
             if (Math.Abs(MinHeight - height) > .01) MinHeight = height;
             lastShellLayout = GetShellLayout();

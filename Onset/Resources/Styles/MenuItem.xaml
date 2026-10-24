@@ -4,6 +4,7 @@
     <Style x:Key="BaseMenuItemStyle" TargetType="MenuItem">
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="FontFamily" Value="{DynamicResource Regular}" />
+        <Setter Property="FontWeight" Value="Normal" />
         <Setter Property="FontSize" Value="{StaticResource FontSize.Body}" />
         <Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
         <Setter Property="IsTabStop" Value="True" />

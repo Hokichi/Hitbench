@@ -70,9 +70,9 @@
     Value="{Binding Hue, ElementName=ColorInput, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
    <Border Height="24" Background="{Binding Color, Mode=OneWay}" BorderBrush="{DynamicResource Brush.Border.Control}" BorderThickness="1" Style="{StaticResource BaseBorderStyle}" IsHitTestVisible="False"/>
   </StackPanel>
-  <StackPanel Grid.Row="6" Orientation="Horizontal" HorizontalAlignment="Right" Style="{StaticResource BaseStackPanelStyle}">
+  <WrapPanel Grid.Row="6" Orientation="Horizontal" HorizontalAlignment="Right">
    <c:BalloonButton ButtonText="Cancel" ButtonIcon="{StaticResource Ban}" AutomationProperties.Name="Cancel" ShouldShowText="True" Style="{StaticResource OHsBalloonDestructiveActionStyle}" Click="OnCancel" Margin="0,0,8,0"/>
    <c:BalloonButton ButtonText="Save" ButtonIcon="{StaticResource Check}" AutomationProperties.Name="Save" ShouldShowText="True" Style="{StaticResource OHsBalloonConfirmActionStyle}" Click="OnSave" IsEnabled="{Binding CanSave, Mode=OneWay}"/>
-  </StackPanel>
+  </WrapPanel>
  </Grid>
 </c:BasePopup>

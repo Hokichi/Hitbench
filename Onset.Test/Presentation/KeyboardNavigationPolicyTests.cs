@@ -82,7 +82,7 @@ public class KeyboardNavigationPolicyTests
         UiTestPump.EnsureFontResources(app);
         foreach (var resource in new[] { "Themes/Dark.xaml", "Themes/Tokens.xaml", "Converters/Converters.xaml", "Icons.xaml",
                      "Styles/TextBlock.xaml", "Styles/ContentPresenter.xaml", "Styles/Border.xaml", "Styles/Button.xaml",
-                     "Styles/TextBox.xaml", "Styles/ScrollViewer.xaml", "Styles/Popup.xaml" })
+                     "Styles/TextBox.xaml", "Styles/ScrollViewer.xaml", "Styles/Window.xaml", "Styles/Popup.xaml" })
             app.Resources.MergedDictionaries.Add(new ResourceDictionary
             {
                 Source = new Uri($"/Onset;component/Resources/{resource}", UriKind.Relative)

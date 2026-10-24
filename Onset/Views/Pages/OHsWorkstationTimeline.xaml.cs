@@ -16,6 +16,15 @@ namespace Onset.Views.Pages;
 
 public partial class OHsWorkstationTimeline : UserControl
 {
+    private static readonly DependencyPropertyKey WaveformHeightPropertyKey = DependencyProperty.RegisterReadOnly(
+        nameof(WaveformHeight), typeof(double), typeof(OHsWorkstationTimeline), new PropertyMetadata(80d));
+    public static readonly DependencyProperty WaveformHeightProperty = WaveformHeightPropertyKey.DependencyProperty;
+    public double WaveformHeight => (double)GetValue(WaveformHeightProperty);
+    public static readonly DependencyProperty IsShortLayoutProperty = DependencyProperty.Register(
+        nameof(IsShortLayout), typeof(bool), typeof(OHsWorkstationTimeline), new PropertyMetadata(false,
+            (owner, args) => owner.SetValue(WaveformHeightPropertyKey, (bool)args.NewValue ? 48d : 80d)));
+    public bool IsShortLayout { get => (bool)GetValue(IsShortLayoutProperty); set => SetValue(IsShortLayoutProperty, value); }
+
     private WorkstationPageVM viewModel = null!;
     private bool deactivationStarted => viewModel is null || !viewModel.IsInteractionReady;
     private ScrollBar? scrollBar;

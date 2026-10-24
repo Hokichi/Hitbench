@@ -8,6 +8,7 @@
         x:Key="BaseToolTipStyle"
         TargetType="ToolTip">
         <Setter Property="FontFamily" Value="{DynamicResource Regular}" />
+        <Setter Property="FontWeight" Value="Normal" />
         <Setter Property="FontSize" Value="{StaticResource FontSize.Body}" />
     </Style>
 

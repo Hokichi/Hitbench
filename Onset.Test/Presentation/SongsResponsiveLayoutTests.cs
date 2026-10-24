@@ -17,6 +17,48 @@ namespace Onset.Test.Presentation;
 [NonParallelizable]
 public class SongsResponsiveLayoutTests
 {
+    [TestCase(FlowDirection.LeftToRight, "Dark")]
+    [TestCase(FlowDirection.RightToLeft, "Light")]
+    public void CompactTransitionsPreserveDraftSearchAndVirtualizedLastSongAccess(FlowDirection direction, string theme)
+    {
+        Application.Current.Resources.MergedDictionaries[0] = new ResourceDictionary
+            { Source = new Uri($"/Onset;component/Resources/Themes/{theme}.xaml", UriKind.Relative) };
+        var vm = CreateVM();
+        for (var i = 0; i < 2000; i++)
+            vm.Songs.Add(new FolderEntry($@"C:\Songs\{i}", $"音楽 العربية ภาษาไทย {i}", DateTimeOffset.MinValue));
+        var selectedMapset = vm.Songs[37];
+        vm.SelectedMapset = selectedMapset;
+        var openProject = vm.OpenProjectCommand;
+        vm.ProjectSearchText = "音楽 العربية ภาษาไทย";
+        var page = new HomePage(vm) { FlowDirection = direction };
+        var projectBrowser = page.FindName("ProjectsList");
+        var window = new Window { Content = page, Width = 1280, Height = 720 };
+        using var view = new InMemoryView(window);
+        foreach (var width in new[] { 1280d, 959d, 960d, 640d, 1280d, 640d })
+        {
+            window.Width = width;
+            window.Height = width == 640 ? 360 : 720;
+            view.UpdateLayout();
+            page.UpdateSongsLayout(new Size(1920, 1040));
+            view.UpdateLayout();
+            Assert.That(page.IsCompactLayout, Is.EqualTo(width < 960));
+            Assert.That(vm.SelectedMapset, Is.SameAs(selectedMapset));
+            Assert.That(vm.OpenProjectCommand, Is.SameAs(openProject));
+            Assert.That(page.FindName("ProjectsList"), Is.SameAs(projectBrowser));
+            Assert.That(((TextBox)page.FindName("ProjectSearchTextBox")).Text, Is.EqualTo("音楽 العربية ภาษาไทย"));
+            Assert.That(((TextBox)page.FindName("SongSearchTextBox")).IsEnabled, Is.True);
+            Assert.That(vm.Songs, Has.Count.EqualTo(2000));
+            var panel = Descendants<SpacedUniformGrid>(page).Single();
+            Assert.That(panel.Children.Count, Is.GreaterThan(0).And.LessThan(2000));
+            Assert.That(panel.VerticalOffset, Is.InRange(0, Math.Max(0, panel.ExtentHeight - panel.ViewportHeight)));
+        }
+        var songs = Descendants<SpacedUniformGrid>(page).Single();
+        songs.SetVerticalOffset(double.MaxValue);
+        view.UpdateLayout();
+        Assert.That(Descendants<Button>(songs).Last().DataContext, Is.SameAs(vm.Songs.Last()));
+        window.Close();
+    }
+
     [Test]
     public void ScrollFramesDoNotRefreshSongSizingButGeometryChangesDo()
     {

@@ -95,11 +95,11 @@
             <Border Grid.Row="2" Style="{StaticResource OHsWorkstationTrackDragInsertionStyle}" Height="{Binding Path=(helpers:OHsTrackDragPresentation.GapAfter), RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}" />
             <Grid Grid.Row="1" Style="{StaticResource OHsWorkstationTrackBodyStyle}">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="{StaticResource OHsWorkstationSideColumnWidth}" />
+                    <ColumnDefinition Width="{Binding TrackSideColumnWidth, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationTrackList}, Mode=OneWay}" />
                     <ColumnDefinition Width="{StaticResource OHsWorkstationColumnGap}" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="{StaticResource OHsWorkstationColumnGap}" />
-                    <ColumnDefinition Width="{StaticResource OHsWorkstationRightColumnWidth}" />
+                    <ColumnDefinition Width="{Binding TrackSideColumnWidth, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationTrackList}, Mode=OneWay}" />
                 </Grid.ColumnDefinitions>
                 <Border
                     Grid.Column="2"
@@ -164,7 +164,7 @@
             </Grid>
         </ControlTemplate>
 <DataTemplate x:Key="OHsWorkstationTrackRowTemplate">
-    <pages:OHsWorkstationTrackRow Track="{Binding Mode=OneWay}"
+    <pages:OHsWorkstationTrackRow TrackSideColumnWidth="{Binding TrackSideColumnWidth, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationTrackList}, Mode=OneWay}" Track="{Binding Mode=OneWay}"
         ViewModel="{Binding DataContext, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationTrackList}, Mode=OneWay}"
         TimelineContentWidth="{Binding TimelineContentWidth, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationTrackList}, Mode=OneWay}"
         TimelineViewportWidth="{Binding TimelineViewportWidth, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationTrackList}, Mode=OneWay}"

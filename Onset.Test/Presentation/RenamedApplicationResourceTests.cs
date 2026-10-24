@@ -16,13 +16,21 @@ public sealed class RenamedApplicationResourceTests
 
     [TestCase("Resources/Themes/Dark.xaml")]
     [TestCase("Resources/Themes/Light.xaml")]
-    [TestCase("Resources/Fonts/AllerDisplay_Std_Rg.ttf")]
-    [TestCase("Resources/Fonts/Aller_Std_Rg.ttf")]
-    [TestCase("Resources/Fonts/Aller_Std_It.ttf")]
-    [TestCase("Resources/Fonts/Aller_Std_Bd.ttf")]
-    [TestCase("Resources/Fonts/Aller_Std_BdIt.ttf")]
-    [TestCase("Resources/Fonts/Aller_Std_Lt.ttf")]
-    [TestCase("Resources/Fonts/Aller_Std_LtIt.ttf")]
+    [TestCase("Resources/Fonts/NotoSans-Regular.ttf")]
+    [TestCase("Resources/Fonts/NotoSans-Italic.ttf")]
+    [TestCase("Resources/Fonts/NotoSans-Bold.ttf")]
+    [TestCase("Resources/Fonts/NotoSans-BoldItalic.ttf")]
+    [TestCase("Resources/Fonts/NotoSans-Light.ttf")]
+    [TestCase("Resources/Fonts/NotoSans-LightItalic.ttf")]
+    [TestCase("Resources/Fonts/NotoSansCJK-Regular.ttc")]
+    [TestCase("Resources/Fonts/NotoSansCJK-Bold.ttc")]
+    [TestCase("Resources/Fonts/NotoSansThai-Regular.ttf")]
+    [TestCase("Resources/Fonts/NotoSansThai-Bold.ttf")]
+    [TestCase("Resources/Fonts/NotoSansArabic-Regular.ttf")]
+    [TestCase("Resources/Fonts/NotoSansArabic-Bold.ttf")]
+    [TestCase("Resources/Fonts/NotoSansHebrew-Regular.ttf")]
+    [TestCase("Resources/Fonts/NotoSansHebrew-Bold.ttf")]
+    [TestCase("Resources/Fonts/OHsNotoSans.CompositeFont")]
     public void PackResourcesResolveFromOnsetAssembly(string resourcePath)
     {
         _ = Application.Current ?? new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };

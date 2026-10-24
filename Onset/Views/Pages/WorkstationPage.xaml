@@ -198,7 +198,10 @@
                     <RowDefinition Height="*" />
 
                 </Grid.RowDefinitions>
-                <pages:OHsWorkstationAudioCard x:Name="AudioCard" TrackScrollBarGutter="{Binding TrackScrollBarGutter, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}" />
+                <pages:OHsWorkstationAudioCard x:Name="AudioCard"
+                    IsCompactLayout="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
+                    IsShortLayout="{Binding IsShortLayout, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
+                    TrackSideColumnWidth="{Binding TrackSideColumnWidth, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}" TrackScrollBarGutter="{Binding TrackScrollBarGutter, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}" />
                 <StackPanel Grid.Row="2" Orientation="Horizontal">
                     <customControls:BalloonButton
                         AutomationProperties.Name="Retry project save"
@@ -213,11 +216,11 @@
                     Margin="17,0,17,8"
                     Style="{StaticResource BaseGridStyle}">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="{StaticResource OHsWorkstationSideColumnWidth}" />
+                        <ColumnDefinition Width="{Binding TrackSideColumnWidth, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}" />
                         <ColumnDefinition Width="{StaticResource OHsWorkstationColumnGap}" />
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="{StaticResource OHsWorkstationColumnGap}" />
-                        <ColumnDefinition Width="{StaticResource OHsWorkstationRightColumnWidth}" />
+                        <ColumnDefinition Width="{Binding TrackSideColumnWidth, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}" />
                         <ColumnDefinition Width="{Binding TrackScrollBarGutter, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}" />
                     </Grid.ColumnDefinitions>
                     <ScrollBar
@@ -241,7 +244,7 @@
                             <RowDefinition Height="*" />
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
-                        <pages:OHsWorkstationTrackList x:Name="TrackListComponent" Grid.Row="0"
+                        <pages:OHsWorkstationTrackList TrackSideColumnWidth="{Binding TrackSideColumnWidth, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}" x:Name="TrackListComponent" Grid.Row="0"
  Timeline="{Binding Timeline, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
  TimelineContentWidth="{Binding TimelineContentWidth, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
  TimelineViewportWidth="{Binding TimelineViewportWidth, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"

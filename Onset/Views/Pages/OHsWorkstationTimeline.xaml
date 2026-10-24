@@ -63,7 +63,7 @@
  <Grid Style="{StaticResource BaseGridStyle}" FlowDirection="LeftToRight">
   <Grid.RowDefinitions><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                             <ScrollViewer
-                                x:Name="WaveformScrollViewer" Height="80"
+                                x:Name="WaveformScrollViewer" Height="{Binding WaveformHeight, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationTimeline}, Mode=OneWay}"
 
                                 AutomationProperties.HelpText="Click to seek. Left and Right move between subdivision lines. Control plus Left or Right moves between whole beats. Use Shift plus wheel to scroll, Control plus wheel to zoom, or Control plus Alt plus wheel anywhere in the active Workstation to change subdivision."
                                 AutomationProperties.Name="Audio waveform"

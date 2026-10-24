@@ -246,8 +246,8 @@
                         <TextBlock
                             Margin="0,0,12,0"
                             VerticalAlignment="Center"
-                            FontFamily="{StaticResource Bold}"
-                            FontSize="24"
+                            FontWeight="Bold" FontFamily="{StaticResource Bold}"
+                            FontSize="{StaticResource FontSize.Display}"
                             Style="{StaticResource BodyTextStyle}"
                             Text="{Binding SelectedEntry.Key, Mode=OneWay}" />
                         <StackPanel
@@ -267,6 +267,7 @@
                                 Margin="8,0,0,0"
                                 h:KeyboardNavigationPolicy.AllowTabNavigation="True"
                                 AutomationProperties.Name="Audition selected key sample"
+                                ToolTip="Audition selected key sample" ToolTipService.ShowsToolTipOnKeyboardFocus="True"
                                 ButtonIcon="{StaticResource MediaPlay}"
                                 ButtonText="Play"
                                 Command="{Binding PlaySelectedCommand, Mode=OneWay}"
@@ -279,6 +280,7 @@
                                 Margin="8,0,0,0"
                                 h:KeyboardNavigationPolicy.AllowTabNavigation="True"
                                 AutomationProperties.Name="Unmap selected key"
+                                ToolTip="Unmap selected key" ToolTipService.ShowsToolTipOnKeyboardFocus="True"
                                 ButtonIcon="{StaticResource Delete}"
                                 ButtonText="Delete"
                                 Command="{Binding DeleteSelectedCommand, Mode=OneWay}"

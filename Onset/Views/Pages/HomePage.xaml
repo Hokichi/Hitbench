@@ -7,6 +7,8 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:helpers="clr-namespace:Onset.Resources.Helpers"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:pages="clr-namespace:Onset.Views.Pages"
+    MinWidth="638" MinHeight="260"
     d:DesignHeight="720"
     d:DesignWidth="1280"
     PreviewKeyDown="OnHomePageKeyDown"
@@ -94,21 +96,15 @@
         <BlurEffect x:Key="OHsHomeLoadingBlur" Radius="8"/>
         <Style
             x:Key="HomePagePanelStyle"
-            BasedOn="{StaticResource BaseBorderStyle}"
+            BasedOn="{StaticResource CardBorderStyle}"
             TargetType="Border">
-            <Setter Property="Background" Value="{DynamicResource Brush.Background.Surface}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Default}" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="8" />
-            <Setter Property="Padding" Value="16" />
             <Setter Property="Margin" Value="4,0" />
             <Style.Triggers>
+                <DataTrigger Binding="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=pages:HomePage}, Mode=OneWay}" Value="True">
+                    <Setter Property="Padding" Value="8" />
+                </DataTrigger>
                 <DataTrigger Binding="{Binding IsProcessing, Mode=OneWay}" Value="True"><Setter Property="Effect" Value="{StaticResource OHsHomeLoadingBlur}"/></DataTrigger>
                 <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True"><Setter Property="Effect" Value="{x:Null}"/></DataTrigger>
-                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
-                    <Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
-                </DataTrigger>
             </Style.Triggers>
         </Style>
 
@@ -117,6 +113,7 @@
             BasedOn="{StaticResource HomePageBodyStyle}"
             TargetType="TextBlock">
             <Setter Property="FontFamily" Value="{DynamicResource Bold}" />
+            <Setter Property="FontWeight" Value="Bold" />
             <Setter Property="TextWrapping" Value="Wrap" />
         </Style>
         <Style
@@ -248,7 +245,7 @@
                         <StackPanel HorizontalAlignment="Stretch" IsHitTestVisible="False">
                             <TextBlock
                                 Margin="0,0,0,4"
-                                FontFamily="{DynamicResource Bold}"
+                                FontWeight="Bold" FontFamily="{DynamicResource Bold}"
                                 FontSize="{StaticResource FontSize.Title}"
                                 Style="{StaticResource HomePageSongArtistStyle}"
                                 Text="{Binding Title, Mode=OneWay}" />
@@ -363,7 +360,7 @@
         <DataTemplate x:Key="OHsHomePageProjectHeadingTemplate">
             <TextBlock
                 Margin="0,12,0,8"
-                FontFamily="{DynamicResource Bold}"
+                FontWeight="Bold" FontFamily="{DynamicResource Bold}"
                 Style="{StaticResource OHsHomePageMetadataStyle}"
                 Text="{Binding Mode=OneWay}" />
         </DataTemplate>
@@ -527,8 +524,36 @@
         <Style x:Key="OHsHomeInitialLoadingStyle" TargetType="TextBlock" BasedOn="{StaticResource OHsLoadingStatusTextStyle}">
             <Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding IsInitialLoading, Mode=OneWay}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers>
         </Style>
+
+        <Style x:Key="OHsHomePageLayoutStyle" TargetType="Grid" BasedOn="{StaticResource BaseGridStyle}">
+            <Setter Property="Margin" Value="12,16" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=pages:HomePage}, Mode=OneWay}" Value="True">
+                    <Setter Property="Margin" Value="12,8" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="OHsHomeProjectsPanelStyle" TargetType="Border" BasedOn="{StaticResource HomePagePanelStyle}">
+            <Setter Property="Grid.Column" Value="1" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=pages:HomePage}, Mode=OneWay}" Value="True">
+                    <Setter Property="Grid.Column" Value="0" />
+                    <Setter Property="Grid.Row" Value="1" />
+                    <Setter Property="Margin" Value="4,8,4,0" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="OHsHomeHeaderGroupStyle" TargetType="Grid" BasedOn="{StaticResource BaseGridStyle}">
+            <Setter Property="Margin" Value="0,0,0,12" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=pages:HomePage}, Mode=OneWay}" Value="True">
+                    <Setter Property="Margin" Value="0,0,0,8" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
     </UserControl.Resources>
-    <Grid x:Name="PageLayout" Margin="12,16">
+    <Grid x:Name="PageLayout" Style="{StaticResource OHsHomePageLayoutStyle}">
+        <Grid.RowDefinitions><RowDefinition Height="*" /><RowDefinition Height="0" /></Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="7*" />
             <ColumnDefinition Width="3*" MinWidth="320" />
@@ -544,13 +569,13 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
-                <Grid Margin="0,0,0,12">
+                <Grid Style="{StaticResource OHsHomeHeaderGroupStyle}">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
                     <TextBlock
-                        FontFamily="{DynamicResource Bold}"
+                        FontWeight="Bold" FontFamily="{DynamicResource Bold}"
                         FontSize="{StaticResource FontSize.Title}"
                         Style="{StaticResource HomePageBodyStyle}"
                         Text="Mapsets" />
@@ -561,7 +586,7 @@
                         Style="{StaticResource OHsHomePageMetadataStyle}"
                         Text="{Binding MapsetInventoryText, Mode=OneWay}" />
                 </Grid>
-                <Grid Grid.Row="1" Margin="0,0,0,12">
+                <Grid Grid.Row="1" Style="{StaticResource OHsHomeHeaderGroupStyle}">
                     <TextBox
                         x:Name="SongSearchTextBox"
                         AutomationProperties.Name="Search mapsets"
@@ -612,7 +637,7 @@
                     VirtualizingPanel.VirtualizationMode="Recycling" />
             </Grid>
         </Border>
-        <Border Grid.Column="1" Style="{StaticResource HomePagePanelStyle}">
+        <Border Style="{StaticResource OHsHomeProjectsPanelStyle}">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -623,7 +648,7 @@
                 <StackPanel Style="{StaticResource OHsHomePageSelectedMapsetStyle}">
                     <TextBlock Style="{StaticResource OHsHomePageMetadataStyle}" Text="Selected mapset" />
                     <TextBlock
-                        FontFamily="{DynamicResource Bold}"
+                        FontWeight="Bold" FontFamily="{DynamicResource Bold}"
                         Style="{StaticResource HomePageBodyStyle}"
                         Text="{Binding SelectedMapset.Title, Mode=OneWay}"
                         TextTrimming="CharacterEllipsis" />
@@ -664,6 +689,6 @@
                     Style="{StaticResource OHsVirtualizedDrawerItemsStyle}" />
             </Grid>
         </Border>
-        <TextBlock x:Name="InitialLoadingText" Grid.ColumnSpan="2" Text="Loading projects..." Style="{StaticResource OHsHomeInitialLoadingStyle}"/>
+        <TextBlock x:Name="InitialLoadingText" Grid.ColumnSpan="2" Grid.RowSpan="2" Text="Loading projects..." Style="{StaticResource OHsHomeInitialLoadingStyle}"/>
     </Grid>
 </UserControl>

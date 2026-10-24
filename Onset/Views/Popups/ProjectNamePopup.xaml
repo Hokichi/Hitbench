@@ -55,7 +55,7 @@
                 Style="{StaticResource ProjectNamePopupInputStyle}"
                 Text="{Binding ProjectName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
         </Grid>
-        <StackPanel
+        <WrapPanel
             Grid.Row="4"
             HorizontalAlignment="Right"
             Orientation="Horizontal">
@@ -76,6 +76,6 @@
                 IsEnabled="{Binding CanCreate, Mode=OneWay}"
                 ShouldShowText="True"
                 Style="{StaticResource OHsBalloonConfirmActionStyle}" />
-        </StackPanel>
+        </WrapPanel>
     </Grid>
 </customControls:BasePopup>

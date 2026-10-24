@@ -54,6 +54,8 @@
                     VerticalAlignment="Center"
                     RecognizesAccessKey="True"
                     TextElement.FontFamily="{TemplateBinding FontFamily}"
+                    TextElement.FontWeight="{TemplateBinding FontWeight}"
+                    TextElement.FontStyle="{TemplateBinding FontStyle}"
                     TextElement.FontSize="{TemplateBinding FontSize}"
                     TextElement.Foreground="{TemplateBinding Foreground}" />
                 <Path
@@ -115,6 +117,7 @@
         <Setter Property="Height" Value="36" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
         <Setter Property="FontFamily" Value="{DynamicResource Regular}" />
+        <Setter Property="FontWeight" Value="Normal" />
         <Setter Property="FontSize" Value="{StaticResource FontSize.Body}" />
         <Setter Property="Padding" Value="12,8" />
         <Setter Property="Background" Value="Transparent" />
@@ -151,6 +154,8 @@
                     RecognizesAccessKey="True"
                     SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"
                     TextElement.FontFamily="{Binding FontFamily, RelativeSource={RelativeSource AncestorType=ComboBox}, Mode=OneWay}"
+                    TextElement.FontWeight="{Binding FontWeight, RelativeSource={RelativeSource AncestorType=ComboBox}, Mode=OneWay}"
+                    TextElement.FontStyle="{Binding FontStyle, RelativeSource={RelativeSource AncestorType=ComboBox}, Mode=OneWay}"
                     TextElement.FontSize="{Binding FontSize, RelativeSource={RelativeSource AncestorType=ComboBox}, Mode=OneWay}"
                     TextElement.Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ComboBox}, Mode=OneWay}" />
                 <Path
@@ -279,6 +284,7 @@
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
         <Setter Property="FontFamily" Value="{DynamicResource Regular}" />
+        <Setter Property="FontWeight" Value="Normal" />
         <Setter Property="FontSize" Value="{StaticResource FontSize.Body}" />
         <Setter Property="Padding" Value="0" />
         <Setter Property="HorizontalContentAlignment" Value="Left" />

@@ -448,16 +448,18 @@ public class WorkstationTrackCollapseTests
         }
     }
 
-    [TestCase("VolumeSlider")]
-    [TestCase("TrackAdditionSelector")]
-    public void CollapseRestoresLogicalFocusOnlyFromHiddenControls(string controlName)
+    [TestCase("VolumeSlider", 640)]
+    [TestCase("TrackAdditionSelector", 640)]
+    [TestCase("VolumeSlider", 1280)]
+    [TestCase("TrackAdditionSelector", 1280)]
+    public void CollapseRestoresLogicalFocusOnlyFromHiddenControls(string controlName, int width)
     {
         var track = new Track { SelectedSampleFileName = "kick.wav" };
-        var (page, vm, view) = Create(project: new ProjectData { Offsets = [0], BPMs = [120], Tracks = [track] });
+        var (page, vm, view) = Create(project: new ProjectData { Offsets = [0], BPMs = [120], Tracks = [track] }, width: width);
         using (view)
         {
             var hidden = Find<FrameworkElement>(page, controlName);
-            var toggle = (BalloonButton)((Onset.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("ToggleTracksCollapsedButton");
+            var toggle = (BalloonButton)((Onset.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName(width < 960 ? "ProjectActionsButton" : "ToggleTracksCollapsedButton");
             var scope = FocusManager.GetFocusScope(toggle);
             page.RestoreTrackFocusBeforeCollapse(hidden);
             Assert.That(FocusManager.GetFocusedElement(scope), Is.SameAs(toggle));

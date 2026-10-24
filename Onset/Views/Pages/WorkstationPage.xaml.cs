@@ -62,6 +62,7 @@ public partial class WorkstationPage : UserControl
     {
         this.viewModel = viewModel;
         InitializeComponent();
+        SizeChanged += (_, args) => UpdateResponsiveLayout(args.NewSize);
         Timeline.AttachScrollBar(WaveformScrollBar);
         Timeline.ViewportChanged += OnTimelineViewportChanged;
         DataContext = viewModel;

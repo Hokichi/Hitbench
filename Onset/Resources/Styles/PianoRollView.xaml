@@ -3,6 +3,7 @@
   <Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True"/>
   <Setter Property="Focusable" Value="True"/><Setter Property="Cursor" Value="Hand"/>
   <Setter Property="FontFamily" Value="{DynamicResource Regular}"/>
+  <Setter Property="FontWeight" Value="Normal" />
   <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}"/>
   <Style.Triggers><Trigger Property="IsEnabled" Value="False"><Setter Property="Cursor" Value="Arrow"/><Setter Property="Opacity" Value="0.4"/></Trigger></Style.Triggers>
  </Style>

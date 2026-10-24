@@ -134,7 +134,7 @@
                     ItemsSource="{Binding Formats, Mode=OneWay}" SelectedItem="{Binding MixedFormat, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
             </StackPanel>
             <Grid Grid.Row="4" Margin="0,16,0,0">
-                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
             <c:SegmentedToggleGroup x:Name="DestinationInput" Grid.Column="0" VerticalAlignment="Center" AutomationProperties.Name="Export destination"
                 Style="{StaticResource OHsExportDestinationGroupStyle}" IsEnabled="{Binding CanEditOptions, Mode=OneWay}"
                 SelectedValue="{Binding Destination, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
@@ -143,7 +143,7 @@
                 <c:SegmentedToggleOption x:Name="BeatmapDestinationInput" Content="Beatmap" AutomationProperties.Name="Beatmap"
                     Style="{StaticResource OHsExportDestinationOptionStyle}" Value="{x:Static d:OHsExportDestination.Beatmap}" />
             </c:SegmentedToggleGroup>
-            <StackPanel Grid.Column="2">
+            <StackPanel Grid.Row="1" Margin="0,8,0,0" Style="{StaticResource BaseStackPanelStyle}">
             <CheckBox x:Name="OverwriteEverythingInput" HorizontalAlignment="Left"
                 AutomationProperties.Name="Overwrite everything" Content="Overwrite everything"
                 Style="{StaticResource OHsExportShowFilesStyle}" IsEnabled="{Binding CanOverwriteEverything, Mode=OneWay}"
@@ -157,7 +157,7 @@
             <ProgressBar x:Name="ExportProgressBar" Grid.Row="5" Margin="0,16,0,0" Minimum="0" Maximum="100"
                 AutomationProperties.Name="Export progress" AutomationProperties.HelpText="{Binding ProgressPhase, Mode=OneWay}"
                 Style="{StaticResource OHsExportProgressStyle}" Value="{Binding ExportProgress, Mode=OneWay}" ToolTip="{Binding ProgressPhase, Mode=OneWay}" />
-            <StackPanel Grid.Row="6" Margin="0,24,0,0" HorizontalAlignment="Right" Orientation="Horizontal">
+            <WrapPanel Grid.Row="6" Margin="0,24,0,0" HorizontalAlignment="Right" Orientation="Horizontal">
                 <c:BalloonButton x:Name="CancelButton" Margin="0,0,8,0" AutomationProperties.Name="Cancel" ButtonText="Cancel" ButtonIcon="{StaticResource Ban}"
                     ShouldShowText="True" Style="{StaticResource OHsBalloonDestructiveActionStyle}" Command="{Binding CancelCommand, Mode=OneWay}"
                     h:KeyboardNavigationPolicy.AllowTabNavigation="True" IsTabStop="True" />
@@ -165,7 +165,7 @@
                     ToolTip="{Binding ExportToolTip, Mode=OneWay}" AutomationProperties.HelpText="{Binding ExportToolTip, Mode=OneWay}" ToolTipService.ShowsToolTipOnKeyboardFocus="True"
                     ShouldShowText="True" Style="{StaticResource OHsBalloonConfirmActionStyle}" Command="{Binding ExportCommand, Mode=OneWay}"
                     h:KeyboardNavigationPolicy.AllowTabNavigation="True" IsTabStop="True" />
-            </StackPanel>
+            </WrapPanel>
         </Grid>
     </ScrollViewer>
 </c:BasePopup>

@@ -249,7 +249,7 @@ public partial class SampleLoaderPopup : BasePopup
         var width = (EarlierFolders.Parent as FrameworkElement)?.ActualWidth ?? 0;
         if (width <= 0) width = 400;
         var dpi = VisualTreeHelper.GetDpi(this).PixelsPerDip;
-        var widths = all.Select(item => new FormattedText(item.Name, System.Globalization.CultureInfo.CurrentUICulture, FlowDirection,
+        var widths = all.Select(item => new FormattedText(item.Name, Language.GetSpecificCulture(), FlowDirection,
             new Typeface((FontFamily)FindResource(item.IsCurrent ? "Bold" : "Regular"), FontStyles.Normal,
                 item.IsCurrent ? FontWeights.Bold : FontWeights.Normal, FontStretches.Normal), 12, Brushes.White, dpi).Width + 24).ToArray();
         var start = GetFirstVisibleBreadcrumb(widths, width, 36, 16);

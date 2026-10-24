@@ -76,6 +76,7 @@
         <Setter Property="CaretBrush" Value="{DynamicResource Brush.Text.Primary}" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
         <Setter Property="FontFamily" Value="{DynamicResource Regular}" />
+        <Setter Property="FontWeight" Value="Normal" />
         <Setter Property="FontSize" Value="{StaticResource FontSize.Body}" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
         <Setter Property="Template" Value="{StaticResource RoundedTextInputTemplate}" />
@@ -161,6 +162,8 @@
                     BorderThickness="0"
                     CaretBrush="{DynamicResource Brush.Text.Primary}"
                     FontFamily="{TemplateBinding FontFamily}"
+                    FontWeight="{TemplateBinding FontWeight}"
+                    FontStyle="{TemplateBinding FontStyle}"
                     FontSize="{TemplateBinding FontSize}"
                     Foreground="{TemplateBinding Foreground}"
                     Style="{StaticResource NumericUpDownEditorStyle}" />
@@ -248,6 +251,7 @@
         <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Control}" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
         <Setter Property="FontFamily" Value="{DynamicResource Regular}" />
+        <Setter Property="FontWeight" Value="Normal" />
         <Setter Property="Template" Value="{StaticResource NumericUpDownTemplate}" />
         <Style.Triggers>
             <MultiTrigger>

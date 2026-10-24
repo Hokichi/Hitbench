@@ -15,6 +15,10 @@ using Track = Onset.Core.Entities.Track;
 namespace Onset.Views.Pages;
 public partial class OHsWorkstationTrackList : UserControl
 {
+    public static readonly DependencyProperty TrackSideColumnWidthProperty = DependencyProperty.Register(
+        nameof(TrackSideColumnWidth), typeof(GridLength), typeof(OHsWorkstationTrackList), new PropertyMetadata(new GridLength(180)));
+    public GridLength TrackSideColumnWidth { get => (GridLength)GetValue(TrackSideColumnWidthProperty); set => SetValue(TrackSideColumnWidthProperty, value); }
+
     private WorkstationPageVM viewModel = null!;
     private bool deactivationStarted;
     public bool IsVolumeOverlayOpen { get; set; }

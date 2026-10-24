@@ -92,6 +92,8 @@ public partial class App : Application
 
     protected override async void OnStartup(StartupEventArgs e)
     {
+        Resources["OHsTextLanguage"] = System.Windows.Markup.XmlLanguage.GetLanguage(
+            System.Globalization.CultureInfo.CurrentUICulture.IetfLanguageTag);
         base.OnStartup(e);
         MainWindow? window = null;
         try

@@ -139,10 +139,11 @@
             TargetType="c:BalloonButton">
             <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}" />
             <Setter Property="DefaultBackground" Value="Transparent" />
-            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontSize" Value="{StaticResource FontSize.Label}" />
             <Setter Property="MinHeight" Value="28" />
             <Setter Property="Height" Value="28" />
             <Setter Property="FontFamily" Value="{DynamicResource Regular}" />
+            <Setter Property="FontWeight" Value="Normal" />
             <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
             <Setter Property="ButtonIcon" Value="{x:Null}" />
             <Setter Property="Padding" Value="12,2" />
@@ -228,13 +229,14 @@
             x:Key="SampleLoaderContentItemStyle"
             BasedOn="{StaticResource PlainListBoxItemStyle}"
             TargetType="ListBoxItem">
-            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontSize" Value="{StaticResource FontSize.Body}" />
             <Setter Property="Padding" Value="12,0" />
             <Setter Property="MinHeight" Value="40" />
             <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
             <Setter Property="AutomationProperties.Name" Value="{Binding Name, Mode=OneWay}" />
             <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
             <Setter Property="FontFamily" Value="{DynamicResource Regular}" />
+            <Setter Property="FontWeight" Value="Normal" />
             <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
             <Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="False" />
@@ -412,6 +414,8 @@
                         <TextBlock
                             VerticalAlignment="Center"
                             FontFamily="{Binding FontFamily, RelativeSource={RelativeSource AncestorType=ListBoxItem}, Mode=OneWay}"
+                            FontWeight="{Binding FontWeight, RelativeSource={RelativeSource AncestorType=ListBoxItem}, Mode=OneWay}"
+                            FontStyle="{Binding FontStyle, RelativeSource={RelativeSource AncestorType=ListBoxItem}, Mode=OneWay}"
                             Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}, Mode=OneWay}"
                             Style="{StaticResource BodyTextStyle}"
                             Text="{Binding Name, Mode=OneWay}"
@@ -489,7 +493,7 @@
             BasedOn="{StaticResource OHsSampleLoaderCheckboxStyle}"
             TargetType="CheckBox">
             <Setter Property="IsTabStop" Value="True"/><Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True"/>
-            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontSize" Value="{StaticResource FontSize.Label}" />
             <Setter Property="Padding" Value="8,0" />
             <Setter Property="MinHeight" Value="40" />
             <Style.Triggers>
@@ -541,12 +545,13 @@
             x:Key="OHsSampleLoaderLocationItemStyle"
             BasedOn="{StaticResource PlainListBoxItemStyle}"
             TargetType="ListBoxItem">
-            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontSize" Value="{StaticResource FontSize.Label}" />
             <Setter Property="Margin" Value="0,0,0,2" />
             <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
             <Setter Property="IsTabStop" Value="False" />
             <Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="False" />
             <Setter Property="FontFamily" Value="{DynamicResource Regular}" />
+            <Setter Property="FontWeight" Value="Normal" />
             <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
             <Setter Property="AutomationProperties.Name" Value="{Binding Name, Mode=OneWay}" />
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
@@ -561,6 +566,7 @@
                 </Trigger>
                 <Trigger Property="IsSelected" Value="True">
                     <Setter Property="FontFamily" Value="{DynamicResource Bold}" />
+                    <Setter Property="FontWeight" Value="Bold" />
                     <Setter Property="Background" Value="{DynamicResource Brush.Navy.Tint}" />
                     <Setter Property="FontWeight" Value="Bold" />
                 </Trigger>
@@ -593,6 +599,8 @@
                     Margin="8,0"
                     VerticalAlignment="Center"
                     FontFamily="{Binding FontFamily, RelativeSource={RelativeSource AncestorType=ListBoxItem}, Mode=OneWay}"
+                    FontWeight="{Binding FontWeight, RelativeSource={RelativeSource AncestorType=ListBoxItem}, Mode=OneWay}"
+                    FontStyle="{Binding FontStyle, RelativeSource={RelativeSource AncestorType=ListBoxItem}, Mode=OneWay}"
                     Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}, Mode=OneWay}"
                     Style="{StaticResource BodyTextStyle}"
                     Text="{Binding Name, Mode=OneWay}"
@@ -610,7 +618,7 @@
             x:Key="OHsSampleLoaderSearchStyle"
             BasedOn="{StaticResource RoundedTextInputStyle}"
             TargetType="TextBox">
-            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontSize" Value="{StaticResource FontSize.Label}" />
             <Setter Property="Padding" Value="28,0,8,0" />
             <Setter Property="Height" Value="36" />
             <Setter Property="Width" Value="200" />
@@ -1053,7 +1061,7 @@
                             <TextBlock
                                 Margin="8,0,0,0"
                                 VerticalAlignment="Center"
-                                FontSize="11"
+                                FontSize="{StaticResource FontSize.Caption}"
                                 FontWeight="Bold"
                                 Style="{StaticResource CardLabelTextStyle}"
                                 Text="Name" />
@@ -1062,7 +1070,7 @@
                                 Grid.Column="1"
                                 Margin="0,0,8,0"
                                 VerticalAlignment="Center"
-                                FontSize="11"
+                                FontSize="{StaticResource FontSize.Caption}"
                                 FontWeight="Bold"
                                 Style="{StaticResource CardLabelTextStyle}"
                                 Text="Size"
@@ -1177,7 +1185,7 @@
                                 Grid.Column="3"
                                 Width="96"
                                 VerticalAlignment="Center"
-                                FontSize="12"
+                                FontSize="{StaticResource FontSize.Label}"
                                 Style="{StaticResource OHsSampleLoaderPreviewMetadataStyle}"
                                 Text="{Binding PlaybackTimeText, Mode=OneWay}"
                                 TextAlignment="Right" />
@@ -1228,7 +1236,7 @@
                         <TextBlock
                             VerticalAlignment="Center"
                             FontFamily="{DynamicResource Bold}"
-                            FontSize="14"
+                            FontSize="{StaticResource FontSize.Title}"
                             FontWeight="Bold"
                             Style="{StaticResource BodyTextStyle}"
                             Text="Selected samples" />
@@ -1247,7 +1255,7 @@
                                 VerticalAlignment="Center"
                                 AutomationProperties.LiveSetting="Polite"
                                 AutomationProperties.Name="{Binding SelectionAnnouncement, Mode=OneWay}"
-                                FontSize="11"
+                                FontSize="{StaticResource FontSize.Caption}"
                                 FontWeight="Bold"
                                 Style="{StaticResource BodyTextStyle}"
                                 Text="{Binding CheckedCount, Mode=OneWay}" />
@@ -1261,7 +1269,7 @@
                         ButtonIcon="{StaticResource Minus}"
                         ButtonText="Clear all"
                         Command="{Binding ClearSelectedCommand, Mode=OneWay}"
-                        FontSize="12"
+                        FontSize="{StaticResource FontSize.Label}"
                         HasIcon="False"
                         ShouldShowText="True"
                         Style="{StaticResource OHsSampleLoaderSecondaryActionStyle}" />
@@ -1295,7 +1303,7 @@
                     <Grid Style="{StaticResource OHsSampleLoaderAudioRegionStyle}">
                         <TextBlock
                             Margin="0,12,0,0"
-                            FontSize="12"
+                            FontSize="{StaticResource FontSize.Label}"
                             Foreground="{DynamicResource Brush.Text.Secondary}"
                             Text="{Binding SelectionSummary, Mode=OneWay}" />
                     </Grid>
@@ -1309,7 +1317,7 @@
                         ButtonText="{Binding ConfirmActionText, Mode=OneWay}"
                         Click="OnImportClick"
                         FocusVisualStyle="{StaticResource OHsSampleManagerKeyboardFocusStyle}"
-                        FontSize="13"
+                        FontSize="{StaticResource FontSize.Body}"
                         FontWeight="Bold"
                         IconSize="14"
                         IsEnabled="{Binding CanConfirm, Mode=OneWay}"

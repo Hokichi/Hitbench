@@ -31,7 +31,7 @@ public partial class HomePage : UserControl
     private (Size Page, Size Songs, Size Maximum, double Header, double Lane, double NativeLane,
         Thickness Padding, FlowDirection Direction, object Panel, object? ViewerTemplate,
         Thickness PanelPadding, Thickness Border, Thickness PanelMargin, Thickness PageMargin,
-        double ProjectsWidth, double HorizontalGap, double VerticalGap)? lastSongsLayout;
+        double ProjectsWidth, bool Compact, double HorizontalGap, double VerticalGap)? lastSongsLayout;
     private readonly SongScrollMotion scrollMotion = new();
     private SpacedUniformGrid? songsPanel;
     private ScrollViewer? songsViewer;
@@ -202,6 +202,7 @@ public partial class HomePage : UserControl
     }
     private void OnSizeChanged(object sender, SizeChangedEventArgs e)
     {
+        UpdateResponsiveLayout(e.NewSize);
         songsScrollInput = false;
         CancelSongsScrollMotion();
         QueueCheck();
@@ -212,72 +213,6 @@ public partial class HomePage : UserControl
         if (maximizedPageSize.Width > 0) UpdateSongsLayout(maximizedPageSize);
     }
 
-    public void UpdateSongsLayout(Size maximizedSize)
-    {
-        if (updatingLayout || !double.IsFinite(maximizedSize.Width) || !double.IsFinite(maximizedSize.Height) ||
-            maximizedSize.Width <= 0 || maximizedSize.Height <= 0 || SongsList.ActualWidth <= 0 ||
-            !GetSongsParts()) return;
-        var panel = songsPanel!;
-        var viewer = songsViewer!;
-        var scrollbar = viewer.Template?.FindName("PART_VerticalScrollBar", viewer) as ScrollBar;
-        var lane = scrollbar?.ActualWidth ?? SystemParameters.VerticalScrollBarWidth;
-        if (lane <= 0) lane = SystemParameters.VerticalScrollBarWidth;
-        var nativeLane = Math.Max(0, SongsList.ActualWidth - panel.ViewportWidth -
-            SongsList.Padding.Left - SongsList.Padding.Right);
-        lane = Math.Max(lane, nativeLane);
-        var headerHeight = SongsContent.RowDefinitions[0].ActualHeight + SongsContent.RowDefinitions[1].ActualHeight +
-            SongsContent.RowDefinitions[2].ActualHeight;
-        var inputs = (RenderSize, SongsList.RenderSize, maximizedSize, headerHeight, lane, nativeLane,
-            SongsList.Padding, FlowDirection, (object)panel, (object?)viewer.Template,
-            SongsPanel.Padding, SongsPanel.BorderThickness, SongsPanel.Margin, PageLayout.Margin,
-            PageLayout.ColumnDefinitions[1].ActualWidth, panel.HorizontalGap, panel.VerticalGap);
-        if (lastSongsLayout == inputs) return;
-        lastSongsLayout = inputs;
-        CancelSongsScrollMotion();
-        updatingLayout = true;
-        SongsLayoutCalculationCount++;
-        try
-        {
-            // Native viewers reserve their own lane; the shared overlay viewer needs padding instead.
-            var reservedPadding = Math.Max(0, lane - nativeLane);
-            var padding = FlowDirection == FlowDirection.RightToLeft
-                ? new Thickness(reservedPadding, 0, 0, 0) : new Thickness(0, 0, reservedPadding, 0);
-            if (SongsList.Padding != padding) SongsList.Padding = padding;
-
-            var horizontalChrome = SongsPanel.Padding.Left + SongsPanel.Padding.Right +
-                SongsPanel.BorderThickness.Left + SongsPanel.BorderThickness.Right;
-            var verticalChrome = SongsPanel.Padding.Top + SongsPanel.Padding.Bottom +
-                SongsPanel.BorderThickness.Top + SongsPanel.BorderThickness.Bottom;
-            var outsideWidth = PageLayout.Margin.Left + PageLayout.Margin.Right +
-                PageLayout.ColumnDefinitions[1].ActualWidth + SongsPanel.Margin.Left + SongsPanel.Margin.Right;
-            var outsideHeight = PageLayout.Margin.Top + PageLayout.Margin.Bottom +
-                SongsPanel.Margin.Top + SongsPanel.Margin.Bottom;
-            if (tileLayout is null || maximizedPageSize != maximizedSize ||
-                (Math.Abs(ActualWidth - maximizedSize.Width) < .1 && Math.Abs(baselineHeaderHeight - headerHeight) > .01))
-            {
-                var width = maximizedSize.Width - outsideWidth - horizontalChrome - lane;
-                var height = maximizedSize.Height - outsideHeight - verticalChrome - headerHeight;
-                if (width <= 3 * panel.HorizontalGap || height <= 3 * panel.VerticalGap) return;
-                tileLayout = new SongTileLayout(width, height, panel.HorizontalGap, panel.VerticalGap);
-                baselineHeaderHeight = headerHeight;
-                maximizedPageSize = maximizedSize;
-            }
-            var viewportWidth = Math.Max(tileLayout.MinimumViewportWidth, SongsList.ActualWidth - lane);
-            SetLayoutValue(panel, SpacedUniformGrid.ColumnsProperty, tileLayout.GetColumns(viewportWidth));
-            SetLayoutValue(panel, SpacedUniformGrid.ItemWidthProperty, tileLayout.GetTileWidth(viewportWidth));
-            SetLayoutValue(panel, SpacedUniformGrid.ItemHeightProperty, tileLayout.TileHeight);
-            SetLayoutValue(SongsPanel, MinWidthProperty, tileLayout.MinimumViewportWidth + horizontalChrome + lane);
-            SetLayoutValue(SongsPanel, MinHeightProperty, tileLayout.MinimumViewportHeight + verticalChrome + headerHeight);
-            SetLayoutValue(this, MinWidthProperty, outsideWidth + SongsPanel.MinWidth);
-            SetLayoutValue(this, MinHeightProperty, outsideHeight + SongsPanel.MinHeight);
-        }
-        finally { updatingLayout = false; }
-    }
-
-    private static void SetLayoutValue(DependencyObject target, DependencyProperty property, object value)
-    {
-        if (!Equals(target.GetValue(property), value)) target.SetCurrentValue(property, value);
-    }
     private void OnVisibilityChanged(object sender, DependencyPropertyChangedEventArgs e) => QueueCheck();
     private void OnStateChanged(object? sender, PropertyChangedEventArgs e)
     {

@@ -3,7 +3,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:c="clr-namespace:Onset.Resources.CustomControls">
 
-    <Style x:Key="BaseBasePopupStyle" TargetType="{x:Type c:BasePopup}">
+    <Style x:Key="BaseBasePopupStyle" TargetType="{x:Type c:BasePopup}" BasedOn="{StaticResource BaseWindowStyle}">
         <Setter Property="OverridesDefaultStyle" Value="True" />
     </Style>
 

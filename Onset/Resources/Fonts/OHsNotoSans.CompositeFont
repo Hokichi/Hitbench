@@ -1,0 +1,21 @@
+<FontFamily xmlns="http://schemas.microsoft.com/winfx/2006/xaml/composite-font"
+            xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+            xmlns:sys="clr-namespace:System;assembly=mscorlib">
+    <FontFamily.FamilyNames>
+        <sys:String x:Key="en-US">Onset Noto Sans</sys:String>
+    </FontFamily.FamilyNames>
+    <FontFamily.FamilyMaps>
+        <FontFamilyMap Unicode="1100-11FF,3130-318F,A960-A97F,AC00-D7FF" Target="./#Noto Sans CJK KR" />
+        <FontFamilyMap Unicode="2E80-33FF,3400-9FFF,F900-FAFF,FE10-FE1F,FE30-FE4F,FF00-FFEF,1AFF0-1B2FF,20000-3FFFF" Language="zh-HK" Target="./#Noto Sans CJK HK" />
+        <FontFamilyMap Unicode="2E80-33FF,3400-9FFF,F900-FAFF,FE10-FE1F,FE30-FE4F,FF00-FFEF,1AFF0-1B2FF,20000-3FFFF" Language="zh-MO" Target="./#Noto Sans CJK HK" />
+        <FontFamilyMap Unicode="2E80-33FF,3400-9FFF,F900-FAFF,FE10-FE1F,FE30-FE4F,FF00-FFEF,1AFF0-1B2FF,20000-3FFFF" Language="zh-Hant" Target="./#Noto Sans CJK TC" />
+        <FontFamilyMap Unicode="2E80-33FF,3400-9FFF,F900-FAFF,FE10-FE1F,FE30-FE4F,FF00-FFEF,1AFF0-1B2FF,20000-3FFFF" Language="zh-TW" Target="./#Noto Sans CJK TC" />
+        <FontFamilyMap Unicode="2E80-33FF,3400-9FFF,F900-FAFF,FE10-FE1F,FE30-FE4F,FF00-FFEF,1AFF0-1B2FF,20000-3FFFF" Language="zh" Target="./#Noto Sans CJK SC" />
+        <FontFamilyMap Unicode="2E80-33FF,3400-9FFF,F900-FAFF,FE10-FE1F,FE30-FE4F,FF00-FFEF,1AFF0-1B2FF,20000-3FFFF" Language="ko" Target="./#Noto Sans CJK KR" />
+        <FontFamilyMap Unicode="2E80-33FF,3400-9FFF,F900-FAFF,FE10-FE1F,FE30-FE4F,FF00-FFEF,1AFF0-1B2FF,20000-3FFFF" Target="./#Noto Sans CJK JP" />
+        <FontFamilyMap Unicode="0E00-0E7F" Target="./#Noto Sans Thai" />
+        <FontFamilyMap Unicode="0590-05FF,FB1D-FB4F" Target="./#Noto Sans Hebrew" />
+        <FontFamilyMap Unicode="0600-06FF,0750-077F,0870-089F,08A0-08FF,FB50-FDFF,FE70-FEFF,10E60-10E7F,1EE00-1EEFF" Target="./#Noto Sans Arabic" />
+        <FontFamilyMap Unicode="0000-10FFFF" Target="./#Noto Sans, Global User Interface" />
+    </FontFamily.FamilyMaps>
+</FontFamily>

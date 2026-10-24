@@ -39,7 +39,7 @@
     <sys:Double x:Key="Focus.Thickness">2</sys:Double>
     <sys:Double x:Key="Focus.Gap">2</sys:Double>
 
-    <!-- Type scale (Aller) -->
+    <!-- Type scale (Noto Sans) -->
     <sys:Double x:Key="FontSize.Caption">11</sys:Double>
     <sys:Double x:Key="FontSize.Label">12</sys:Double>
     <sys:Double x:Key="FontSize.Body">13</sys:Double>

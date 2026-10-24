@@ -3,6 +3,8 @@
         <ResourceDictionary Source="ContentControl.xaml" />
     </ResourceDictionary.MergedDictionaries>
     <Style x:Key="BaseWindowStyle" TargetType="Window">
+        <Setter Property="Language" Value="{DynamicResource OHsTextLanguage}" />
         <Setter Property="FontFamily" Value="{DynamicResource Regular}" />
+        <Setter Property="FontWeight" Value="Normal" />
     </Style>
 </ResourceDictionary>

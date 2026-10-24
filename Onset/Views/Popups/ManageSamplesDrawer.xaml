@@ -207,8 +207,19 @@
             </DataTemplate.Triggers>
         </DataTemplate>
 
+
+        <Style x:Key="OHsManageSamplesSurfaceStyle" TargetType="Border" BasedOn="{StaticResource OHsPopupSurfaceBorderStyle}">
+            <Setter Property="Padding" Value="{StaticResource Inset.Card}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Default}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
+                    <Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
     </UserControl.Resources>
-    <Border Style="{StaticResource CardBorderStyle}">
+    <Border Style="{StaticResource OHsManageSamplesSurfaceStyle}">
         <Grid Style="{StaticResource BaseGridStyle}">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />

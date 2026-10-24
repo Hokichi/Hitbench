@@ -15,6 +15,10 @@ namespace Onset.Views.Pages;
 
 public partial class OHsWorkstationTrackRow : UserControl
 {
+    public static readonly DependencyProperty TrackSideColumnWidthProperty = DependencyProperty.Register(
+        nameof(TrackSideColumnWidth), typeof(GridLength), typeof(OHsWorkstationTrackRow), new PropertyMetadata(new GridLength(180)));
+    public GridLength TrackSideColumnWidth { get => (GridLength)GetValue(TrackSideColumnWidthProperty); set => SetValue(TrackSideColumnWidthProperty, value); }
+
     private WorkstationPageVM viewModel => ViewModel!;
     private WorkstationPageVM? subscribedViewModel;
     private readonly Action<BalloonComboBox> presentMenu;

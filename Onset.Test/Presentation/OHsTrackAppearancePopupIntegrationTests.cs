@@ -65,7 +65,8 @@ public class OHsTrackAppearancePopupIntegrationTests
         using var view=new InMemoryView(popup,scheduleLayout:false);
         popup.HandleKey(Key.Escape);Assert.That(accepted,Is.False);
         accepted=null;vm.Color="#ABCDEF";
-        var cancel=((System.Windows.Controls.Panel)view.Root).Children.OfType<System.Windows.Controls.StackPanel>().Last().Children.OfType<BalloonButton>().First();
+        var cancel = Descendants(view.Root).OfType<BalloonButton>().Single(button =>
+            System.Windows.Automation.AutomationProperties.GetName(button) == "Cancel");
         cancel.RaiseEvent(new System.Windows.RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
         Assert.That(accepted,Is.False);
     }
@@ -85,5 +86,14 @@ public class OHsTrackAppearancePopupIntegrationTests
         Assert.That(popup.HandleKey(Key.Escape),Is.True); Assert.That(accepted,Is.Null);
         popup.HandleKey(Key.Enter); Assert.That(accepted,Is.True);
         Assert.That(vm.CreateResult().Color,Is.Null);
+    }
+
+    private static IEnumerable<System.Windows.DependencyObject> Descendants(System.Windows.DependencyObject owner)
+    {
+        foreach (var child in Onset.Resources.Helpers.DependencyObjectTree.GetChildren(owner))
+        {
+            yield return child;
+            foreach (var descendant in Descendants(child)) yield return descendant;
+        }
     }
 }

@@ -19,7 +19,11 @@
     <PackageReference Include="NAudio.Vorbis" Version="1.5.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageReference Include="OggVorbisEncoder" Version="1.2.2" />
-    <Resource Include="Resources\Fonts\*.ttf" />
+    <Resource Include="Resources\Fonts\*.ttf;Resources\Fonts\*.ttc;Resources\Fonts\*.CompositeFont" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Resources\Fonts\*-OFL.txt;Resources\Fonts\*-LICENSE.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

@@ -207,7 +207,7 @@ public partial class OHsMessageBoxPopup : BasePopup
             }
 
             var boldText = message.Substring(markerStart + 2, markerEnd - (markerStart + 2));
-            MessageTextBlock.Inlines.Add(new Run(boldText) { FontFamily = boldFont });
+            MessageTextBlock.Inlines.Add(new Run(boldText) { FontFamily = boldFont, FontWeight = FontWeights.Bold });
             startIndex = markerEnd + 2;
         }
     }

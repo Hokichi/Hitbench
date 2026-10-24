@@ -33,13 +33,8 @@ public sealed class SharedActionControlResourceTests
         var resources = Application.Current.Resources;
         void Fonts()
         {
-            foreach (var (key, file, face) in new[]
-            {
-                ("Display", "AllerDisplay_Std_Rg", "Aller Display"), ("Regular", "Aller_Std_Rg", "Aller"),
-                ("Italic", "Aller_Std_It", "Aller"), ("Bold", "Aller_Std_Bd", "Aller"),
-                ("BoldItalic", "Aller_Std_BdIt", "Aller"), ("Light", "Aller_Std_Lt", "Aller Light"),
-                ("LightItalic", "Aller_Std_LtIt", "Aller Light")
-            }) resources[key] = new FontFamily($"pack://application:,,,/Onset;component/Resources/Fonts/{file}.ttf#{face}");
+            foreach (var key in new[] { "Display", "Regular", "Italic", "Bold", "BoldItalic", "Light", "LightItalic" })
+                resources[key] = new FontFamily(new Uri("pack://application:,,,/Onset;component/Resources/Fonts/"), "./#Onset Noto Sans");
         }
         if (!deferFonts) Fonts();
         foreach (var path in new[] { $"Themes/{theme}.xaml", "Themes/Tokens.xaml", "Converters/Converters.xaml", "Icons.xaml",

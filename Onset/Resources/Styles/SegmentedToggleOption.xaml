@@ -52,6 +52,7 @@
         <Setter Property="BorderBrush" Value="Transparent" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Muted}" />
         <Setter Property="FontFamily" Value="{DynamicResource Bold}" />
+        <Setter Property="FontWeight" Value="Bold" />
         <Setter Property="FontSize" Value="{StaticResource FontSize.Caption}" />
         <Setter Property="MinHeight" Value="{StaticResource Size.Control.Primary}" />
         <Setter Property="HorizontalContentAlignment" Value="Center" />

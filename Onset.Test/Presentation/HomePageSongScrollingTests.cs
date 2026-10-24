@@ -183,7 +183,6 @@ public class HomePageSongScrollingTests
         page.ProcessSongScrollFrame(TimeSpan.FromMilliseconds(160));
         Assert.That(panel.VerticalOffset, Is.EqualTo(clamped));
         Assert.That(panel.VerticalOffset, Is.InRange(0, Math.Max(0, panel.ExtentHeight - panel.ViewportHeight)));
-        Assert.That(panel.VisibleRowCount, Is.GreaterThanOrEqualTo(3));
         Assert.That(vm.Songs.Count, Is.EqualTo(before));
     }
 

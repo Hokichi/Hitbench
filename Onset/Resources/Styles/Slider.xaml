@@ -189,7 +189,7 @@
                         HorizontalAlignment="Center"
                         VerticalAlignment="Center"
                         FlowDirection="{Binding FlowDirection, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}"
-                        FontFamily="{DynamicResource Bold}"
+                        FontWeight="Bold" FontFamily="{DynamicResource Bold}"
                         Foreground="{DynamicResource Brush.Text.Primary}"
                         Style="{StaticResource BaseTextBlockStyle}"
                         Text="{Binding Value, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay, StringFormat={}{0:0}%}" />

@@ -16,7 +16,7 @@
       </Line>
      </Grid>
      <TextBlock Text="{Binding Label, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}" Foreground="{TemplateBinding Foreground}"
-       FontFamily="{TemplateBinding FontFamily}" FontSize="{TemplateBinding FontSize}" TextTrimming="CharacterEllipsis" VerticalAlignment="Top" HorizontalAlignment="Left"
+       FontFamily="{TemplateBinding FontFamily}" FontWeight="{TemplateBinding FontWeight}" FontStyle="{TemplateBinding FontStyle}" FontSize="{TemplateBinding FontSize}" TextTrimming="CharacterEllipsis" VerticalAlignment="Top" HorizontalAlignment="Left"
        Margin="8,4,8,0" MaxWidth="{Binding VisibleLabelWidth, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}" Style="{StaticResource BaseTextBlockStyle}" IsHitTestVisible="False">
       <TextBlock.RenderTransform><TranslateTransform X="{Binding VisibleLabelInset, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}" /></TextBlock.RenderTransform>
      </TextBlock>
@@ -40,7 +40,8 @@
   </ControlTemplate>
   <Style x:Key="OHsControlPointZoneStyle" TargetType="p:OHsControlPointZone" BasedOn="{StaticResource BaseButtonStyle}">
    <Setter Property="Template" Value="{StaticResource OHsControlPointZoneTemplate}" />
-   <Setter Property="FontFamily" Value="{DynamicResource Regular}" /><Setter Property="FontSize" Value="{StaticResource FontSize.Label}" />
+   <Setter Property="FontFamily" Value="{DynamicResource Regular}" />
+   <Setter Property="FontWeight" Value="Normal" /><Setter Property="FontSize" Value="{StaticResource FontSize.Label}" />
    <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
    <Setter Property="Background" Value="{DynamicResource Brush.OHs.ControlPoint.Normal}" /><Setter Property="BorderBrush" Value="{DynamicResource Brush.OHs.ControlPoint.Normal}" />
    <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
