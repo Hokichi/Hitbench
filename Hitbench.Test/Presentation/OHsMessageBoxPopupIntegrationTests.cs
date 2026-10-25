@@ -14,6 +14,40 @@ namespace Hitbench.Test.Presentation;
 [NonParallelizable]
 public sealed class OHsMessageBoxPopupIntegrationTests
 {
+    [Test]
+    public void MessageContentUsesSharedScrollingContract()
+    {
+        EnsureResources();
+        var popup = new OHsMessageBoxPopup("A message", "Title");
+        try
+        {
+            var scroll = (ScrollViewer)popup.FindName("MessageScroll");
+            UiControlContract.AssertStyle<ScrollViewer>(scroll, typeof(ScrollViewer));
+            UiTestPump.Layout(scroll, 240, 100);
+            UiControlContract.AssertTemplate(scroll, "DefaultScrollViewerTemplate");
+            Assert.That(scroll.IsTabStop, Is.True);
+            Assert.That(scroll.FocusVisualStyle, Is.SameAs(scroll.FindResource("DefaultFocusVisualStyle")));
+        }
+        finally { popup.Close(); }
+    }
+
+    [Test]
+    public void ChoiceActionsOptIntoKeyboardNavigation()
+    {
+        EnsureResources();
+        var popup = new OHsMessageBoxPopup("Choose an action", "Question", MessageBoxButton.YesNoCancel);
+        try
+        {
+            foreach (var name in new[] { "PrimaryButton", "SecondaryButton", "TertiaryButton" })
+            {
+                var action = (BalloonButton)popup.FindName(name);
+                Assert.That(action.IsTabStop, Is.True, name);
+                Assert.That(Hitbench.Resources.Helpers.KeyboardNavigationPolicy.GetAllowTabNavigation(action), Is.True, name);
+            }
+        }
+        finally { popup.Close(); }
+    }
+
     [TestCase("enter", MessageBoxResult.Cancel)][TestCase("escape", MessageBoxResult.Cancel)]
     [TestCase("skip", MessageBoxResult.Cancel)][TestCase("replace", MessageBoxResult.OK)]
     public void ControlPointReplacementHasExplicitSafeActions(string action, MessageBoxResult expected)
@@ -198,7 +232,7 @@ public sealed class OHsMessageBoxPopupIntegrationTests
                  {
                      "Themes/Dark.xaml", "Themes/Tokens.xaml", "Converters/Converters.xaml", "Icons.xaml",
                      "Styles/TextBlock.xaml", "Styles/Border.xaml", "Styles/Button.xaml",
-                     "Styles/ContentPresenter.xaml", "Styles/Window.xaml", "Styles/Popup.xaml"
+                     "Styles/ContentPresenter.xaml", "Styles/Window.xaml", "Styles/Popup.xaml", "Styles/ScrollViewer.xaml"
                  })
             app.Resources.MergedDictionaries.Add(new ResourceDictionary
             {

@@ -33,7 +33,9 @@ public class ProjectNamePopupIntegrationTests
             Assert.Multiple(() =>
             {
                 Assert.That(input.Focusable, Is.True);
-                Assert.That(input.IsTabStop, Is.False);
+                Assert.That(input.IsTabStop, Is.True);
+                Assert.That(cancel.IsTabStop, Is.True);
+                Assert.That(create.IsTabStop, Is.True);
                 Assert.That(input.Text, Is.Empty);
                 Assert.That(vm.EffectiveName, Is.EqualTo("Artist - Title"));
                 Assert.That(cancel.ButtonText, Is.EqualTo("Cancel"));

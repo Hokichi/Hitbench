@@ -73,7 +73,7 @@
   </Style>
  </c:BasePopup.Resources>
  <ScrollViewer x:Name="AppearanceScroll" Style="{StaticResource OHsTrackAppearanceScrollStyle}">
- <Grid Margin="24" Style="{StaticResource BaseGridStyle}">
+ <Grid Margin="24,8,24,24" Style="{StaticResource BaseGridStyle}">
   <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="16"/><RowDefinition Height="180"/><RowDefinition Height="16"/><RowDefinition Height="Auto"/><RowDefinition Height="24"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
   <TextBox x:Name="NameInput" Style="{StaticResource RoundedTextInputStyle}" AutomationProperties.Name="Track name"
    h:KeyboardNavigationPolicy.AllowTabNavigation="True" IsTabStop="True" Text="{Binding Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>

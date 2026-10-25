@@ -3,6 +3,7 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:customControls="clr-namespace:Hitbench.Resources.CustomControls"
+    xmlns:h="clr-namespace:Hitbench.Resources.Helpers"
     Width="420"
     MinWidth="420"
     MaxWidth="420"
@@ -10,25 +11,21 @@
     ShowInTaskbar="False">
     <customControls:BasePopup.Resources>
 
-        <Style x:Key="OHsMessageBoxBodyTextStyle" TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlockStyle}">
-            <Setter Property="FontSize" Value="{StaticResource FontSize.Label}" />
-            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}" />
+        <Style x:Key="OHsMessageBoxBodyTextStyle" TargetType="TextBlock" BasedOn="{StaticResource BodyTextStyle}">
             <Setter Property="LineHeight" Value="20" />
-            <Setter Property="TextWrapping" Value="Wrap" />
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
-                    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
-                </DataTrigger>
-            </Style.Triggers>
         </Style>
     </customControls:BasePopup.Resources>
     <Grid Margin="24,8,24,24">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
             <RowDefinition Height="24" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
+        <ScrollViewer x:Name="MessageScroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
+            AutomationProperties.Name="Message" Focusable="True"
+            h:KeyboardNavigationPolicy.AllowTabNavigation="True" IsTabStop="True"
+            FocusVisualStyle="{StaticResource DefaultFocusVisualStyle}" Style="{StaticResource {x:Type ScrollViewer}}">
         <Grid>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
@@ -45,23 +42,18 @@
                 <customControls:Icon x:Name="MessageIcon" Margin="12" />
             </Border>
 
-            <StackPanel Grid.Column="2">
-                <TextBlock
-                    Style="{StaticResource OHsPopupTitleTextStyle}"
-                    Text="{Binding PopupTitle, RelativeSource={RelativeSource AncestorType=customControls:BasePopup}, Mode=OneWay}"  FontSize="{StaticResource FontSize.Title}" TextWrapping="Wrap" TextTrimming="None"/>
-                <TextBlock
-                    x:Name="MessageTextBlock"
-                    Margin="0,10,0,0"
-                    Style="{StaticResource OHsMessageBoxBodyTextStyle}" />
-            </StackPanel>
+            <TextBlock x:Name="MessageTextBlock" Grid.Column="2"
+                Style="{StaticResource OHsMessageBoxBodyTextStyle}" />
         </Grid>
+        </ScrollViewer>
 
-        <StackPanel
+        <WrapPanel
             Grid.Row="2"
             HorizontalAlignment="Right"
             Orientation="Horizontal">
             <customControls:BalloonButton
                 x:Name="TertiaryButton"
+                h:KeyboardNavigationPolicy.AllowTabNavigation="True" IsTabStop="True"
                 Margin="0,0,8,0"
                 AutomationProperties.Name="Cancel"
                 ButtonIcon="{StaticResource Ban}"
@@ -72,6 +64,7 @@
                 Visibility="Collapsed" />
             <customControls:BalloonButton
                 x:Name="SecondaryButton"
+                h:KeyboardNavigationPolicy.AllowTabNavigation="True" IsTabStop="True"
                 Margin="0,0,8,0"
                 AutomationProperties.Name="Cancel"
                 ButtonIcon="{StaticResource Ban}"
@@ -82,13 +75,14 @@
                 Visibility="Collapsed" />
             <customControls:BalloonButton
                 x:Name="PrimaryButton"
+                h:KeyboardNavigationPolicy.AllowTabNavigation="True" IsTabStop="True"
                 AutomationProperties.Name="OK"
                 ButtonIcon="{StaticResource Check}"
                 ButtonText="OK"
                 Click="OnPrimaryButtonClick"
                 ShouldShowText="True"
                 Style="{StaticResource OHsBalloonConfirmActionStyle}" />
-        </StackPanel>
+        </WrapPanel>
     </Grid>
 </customControls:BasePopup>
 
