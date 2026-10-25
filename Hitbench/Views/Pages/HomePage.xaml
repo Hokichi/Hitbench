@@ -20,6 +20,9 @@
             Modifiers="Control" />
     </UserControl.InputBindings>
     <UserControl.Resources>
+        <Style x:Key="OHsHomeSectionTitleStyle" TargetType="TextBlock" BasedOn="{StaticResource OHsPopupTitleTextStyle}">
+            <Setter Property="FontSize" Value="{StaticResource FontSize.Title}" />
+        </Style>
         <converters:OHsSameFolderConverter x:Key="OHsHomePageSameFolderConverter" />
         <ObjectDataProvider x:Key="OHsHomePageSource" />
         <Style
@@ -98,7 +101,6 @@
             x:Key="HomePagePanelStyle"
             BasedOn="{StaticResource CardBorderStyle}"
             TargetType="Border">
-            <Setter Property="Margin" Value="4,0" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=pages:HomePage}, Mode=OneWay}" Value="True">
                     <Setter Property="Padding" Value="8" />
@@ -158,7 +160,7 @@
 
             <Setter Property="FontSize" Value="{StaticResource FontSize.Caption}" />
             <Setter Property="TextTrimming" Value="CharacterEllipsis" />
-            <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}, Mode=OneWay}" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
                     <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}, Mode=OneWay}" />
@@ -526,20 +528,21 @@
         </Style>
 
         <Style x:Key="OHsHomePageLayoutStyle" TargetType="Grid" BasedOn="{StaticResource BaseGridStyle}">
-            <Setter Property="Margin" Value="12,16" />
+            <Setter Property="Margin" Value="16" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=pages:HomePage}, Mode=OneWay}" Value="True">
-                    <Setter Property="Margin" Value="12,8" />
+                    <Setter Property="Margin" Value="16,8" />
                 </DataTrigger>
             </Style.Triggers>
         </Style>
         <Style x:Key="OHsHomeProjectsPanelStyle" TargetType="Border" BasedOn="{StaticResource HomePagePanelStyle}">
             <Setter Property="Grid.Column" Value="1" />
+            <Setter Property="Margin" Value="16,0,0,0" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=pages:HomePage}, Mode=OneWay}" Value="True">
                     <Setter Property="Grid.Column" Value="0" />
                     <Setter Property="Grid.Row" Value="1" />
-                    <Setter Property="Margin" Value="4,8,4,0" />
+                    <Setter Property="Margin" Value="0,12,0,0" />
                 </DataTrigger>
             </Style.Triggers>
         </Style>
@@ -575,11 +578,7 @@
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
-                    <TextBlock
-                        FontWeight="Bold" FontFamily="{DynamicResource Bold}"
-                        FontSize="{StaticResource FontSize.Title}"
-                        Style="{StaticResource HomePageBodyStyle}"
-                        Text="Mapsets" />
+                    <TextBlock Style="{StaticResource OHsHomeSectionTitleStyle}" Text="Mapsets" />
                     <TextBlock
                         Grid.Column="1"
                         Margin="8,0,0,0"
@@ -646,15 +645,10 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
-                <StackPanel Style="{StaticResource OHsHomePageSelectedMapsetStyle}">
-                    <TextBlock Style="{StaticResource OHsHomePageMetadataStyle}" Text="Selected mapset" />
-                    <TextBlock
-                        FontWeight="Bold" FontFamily="{DynamicResource Bold}"
-                        Style="{StaticResource HomePageBodyStyle}"
-                        Text="{Binding SelectedMapset.Title, Mode=OneWay}"
-                        TextTrimming="CharacterEllipsis" />
-                </StackPanel>
-                <Grid Grid.Row="1" Margin="0,0,0,8">
+                <Grid Style="{StaticResource OHsHomeHeaderGroupStyle}">
+                    <TextBlock Style="{StaticResource OHsHomeSectionTitleStyle}" Text="Projects" />
+                </Grid>
+                <Grid Grid.Row="1" Style="{StaticResource OHsHomeHeaderGroupStyle}">
                     <TextBox
                         x:Name="ProjectSearchTextBox"
                         AutomationProperties.Name="Search all projects"
@@ -671,15 +665,18 @@
                         Color="{DynamicResource Brush.Text.Muted}" />
                     <TextBlock Style="{StaticResource OHsHomePageProjectPlaceholderStyle}" />
                 </Grid>
-                <customControls:BalloonButton
-                    x:Name="ProjectsRetryButton"
-                    Grid.Row="2"
-                    AutomationProperties.Name="Retry Projects"
-                    ButtonIcon="{StaticResource UpdateOutline}"
-                    ButtonText="Retry Projects"
-                    Command="{Binding RetryProjectsCommand, Mode=OneWay}"
-                    ShouldShowText="True"
-                    Style="{StaticResource HomePageProjectsRetryStyle}" />
+                <StackPanel Grid.Row="2" Style="{StaticResource BaseStackPanelStyle}">
+                    <StackPanel Style="{StaticResource OHsHomePageSelectedMapsetStyle}">
+                        <TextBlock Style="{StaticResource OHsHomePageMetadataStyle}" Text="Selected mapset" />
+                        <TextBlock FontWeight="Bold" FontFamily="{DynamicResource Bold}"
+                            Style="{StaticResource HomePageBodyStyle}"
+                            Text="{Binding SelectedMapset.Title, Mode=OneWay}" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                    <customControls:BalloonButton x:Name="ProjectsRetryButton"
+                        AutomationProperties.Name="Retry Projects" ButtonIcon="{StaticResource UpdateOutline}"
+                        ButtonText="Retry Projects" Command="{Binding RetryProjectsCommand, Mode=OneWay}"
+                        ShouldShowText="True" Style="{StaticResource HomePageProjectsRetryStyle}" />
+                </StackPanel>
                 <ItemsControl
                     x:Name="ProjectsList"
                     Grid.Row="3"
