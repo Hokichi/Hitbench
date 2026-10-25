@@ -908,7 +908,7 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="200" />
+                        <ColumnDefinition Width="*" MaxWidth="200" />
                     </Grid.ColumnDefinitions>
                     <c:BalloonComboBox
                         x:Name="CompactLocationSelector"
@@ -929,7 +929,6 @@
                     </c:BalloonComboBox>
                     <Grid
                         Grid.Column="2"
-                        Width="200"
                         Margin="0">
                         <TextBox
                             x:Name="FolderSearch"
@@ -1134,7 +1133,7 @@
         <Grid
             Grid.Row="2"
             Grid.Column="1"
-            Margin="16,16,16,16"
+            Margin="16"
             VerticalAlignment="Top"
             Style="{StaticResource OHsSampleLoaderAudioRegionStyle}">
             <Grid.ColumnDefinitions>
@@ -1153,7 +1152,7 @@
             Grid.Row="1"
             Grid.Column="2"
             Margin="0"
-            Padding="16,16,16,16"
+            Padding="16"
             Background="{DynamicResource Brush.Background.Surface}"
             BorderBrush="{DynamicResource Brush.Border.Subtle}"
             BorderThickness="1,0,0,0"
@@ -1201,13 +1200,16 @@
                     <c:BalloonButton
                         x:Name="ClearSelectedButton"
                         Grid.Column="1"
+                        h:KeyboardNavigationPolicy.AllowTabNavigation="True"
+                        IsTabStop="True"
+                        ToolTip="Clear all selected samples"
+                        ToolTipService.ShowsToolTipOnKeyboardFocus="True"
                         VerticalAlignment="Center"
                         AutomationProperties.Name="Clear all selected samples"
-                        ButtonIcon="{StaticResource Minus}"
+                        ButtonIcon="{StaticResource Delete}"
                         ButtonText="Clear all"
                         Command="{Binding ClearSelectedCommand, Mode=OneWay}"
                         FontSize="{StaticResource FontSize.Label}"
-                        HasIcon="False"
                         ShouldShowText="True"
                         Style="{StaticResource OHsSampleLoaderSecondaryActionStyle}" />
                 </Grid>
@@ -1241,7 +1243,7 @@
                         x:Name="ImportButton"
                         Height="40"
                         Margin="0"
-                        h:KeyboardNavigationPolicy.AllowTabNavigation="False"
+                        h:KeyboardNavigationPolicy.AllowTabNavigation="True"
                         AutomationProperties.Name="{Binding ConfirmAutomationName, Mode=OneWay}"
                         ButtonIcon="{StaticResource PlusSolid}"
                         ButtonText="{Binding ConfirmActionText, Mode=OneWay}"
@@ -1251,7 +1253,7 @@
                         FontWeight="Bold"
                         IconSize="14"
                         IsEnabled="{Binding CanConfirm, Mode=OneWay}"
-                        IsTabStop="False"
+                        IsTabStop="True"
                         ShouldShowText="True"
                         Style="{StaticResource OHsBalloonConfirmActionStyle}" />
                 </StackPanel>

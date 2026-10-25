@@ -35,6 +35,9 @@ public sealed class SampleLoaderPopupIntegrationTests
             using var memory = new InMemoryView(dialog, scheduleLayout: false);
             UiTestPump.Run(model.SetCheckedAsync(entry, true)); memory.UpdateLayout();
             Assert.That(((BalloonButton)dialog.FindName("ImportButton")).IsEnabled, Is.True);
+            var import = (BalloonButton)dialog.FindName("ImportButton");
+            Assert.That(import.IsTabStop, Is.True);
+            Assert.That(Hitbench.Resources.Helpers.KeyboardNavigationPolicy.GetAllowTabNavigation(import), Is.True);
             Assert.That(((ListBox)dialog.FindName("SelectedSamplesList")).Items.Cast<SampleBrowserEntry>(), Does.Contain(entry));
             var selector = (BalloonComboBox)dialog.FindName("CompactLocationSelector");
             Assert.That(selector.Visibility, Is.EqualTo(compact ? Visibility.Visible : Visibility.Collapsed));
@@ -171,7 +174,7 @@ public sealed class SampleLoaderPopupIntegrationTests
         Assert.That(item.IsCheckable, Is.True);
         Assert.That(item.IsTabStop, Is.False);
         foreach (var control in Descendants(view.Root).OfType<Control>())
-            Assert.That(control.IsTabStop, Is.EqualTo(control.Name == "AutoPlayCheckBox"), control.GetType().Name);
+            Assert.That(control.IsTabStop, Is.EqualTo(control.Name is "AutoPlayCheckBox" or "ImportButton" or "ClearSelectedButton"), control.GetType().Name);
     }
     [Test]
     public void FolderSearchUsesExistingInputContract()
@@ -459,10 +462,10 @@ public sealed class SampleLoaderPopupIntegrationTests
     }
 
     [Test]
-    public void PopupAndOtherScreensKeepTabStopsDisabled()
+    public void ConfirmationOptsIntoKeyboardNavigationWithoutChangingOtherDefaults()
     {
         Assert.That(Descendants(view.Root).OfType<BalloonButton>().First(button => button.DataContext is SampleBrowserBreadcrumb).IsTabStop, Is.False);
-        Assert.That(((BalloonButton)popup.FindName("ImportButton")).IsTabStop, Is.False);
+        Assert.That(((BalloonButton)popup.FindName("ImportButton")).IsTabStop, Is.True);
         var checkbox = Descendants(view.Root).OfType<CheckBox>().Single(box => ReferenceEquals(box.DataContext, file));
         Assert.That(checkbox.IsTabStop, Is.False);
         var shellAction = new BalloonButton { Style = (Style)popup.FindResource("OHsBalloonNeutralActionStyle") };

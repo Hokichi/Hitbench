@@ -27,7 +27,7 @@ public sealed class SampleFolderSelectionIntegrationTests
             var confirm = (BalloonButton)popup.FindName("ImportButton");
             Assert.That(confirm.Style, Is.SameAs(popup.FindResource("OHsBalloonConfirmActionStyle")));
             Assert.That(confirm.ButtonText, Is.EqualTo("Select folder"));
-            Assert.That(confirm.IsEnabled, Is.True); Assert.That(confirm.IsTabStop, Is.False);
+            Assert.That(confirm.IsEnabled, Is.True); Assert.That(confirm.IsTabStop, Is.True);
             vm.DirectoryError = "Folder unavailable"; view.UpdateLayout();
             Assert.That(confirm.IsEnabled, Is.False);
             vm.DirectoryError = null; view.UpdateLayout();

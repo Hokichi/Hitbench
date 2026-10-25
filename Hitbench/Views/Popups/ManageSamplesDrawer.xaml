@@ -162,8 +162,8 @@
             <Border IsEnabled="{Binding IsInteractionEnabled, Mode=OneWay}" Style="{StaticResource OHsManageSamplesRowStyle}">
                 <Grid MinHeight="40" Style="{StaticResource BaseGridStyle}">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="2*" />
                         <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="128" />
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
@@ -178,7 +178,7 @@
                             Text="{Binding DataContext.DraftStem, RelativeSource={RelativeSource AncestorType=ItemsControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}" />
                         <TextBlock Grid.Column="1" Margin="8,0" VerticalAlignment="Center" Style="{StaticResource BodyTextStyle}" Text="{Binding Extension, Mode=OneWay}" />
                     </Grid>
-                    <c:WaveformView Grid.Column="1" Margin="16,4" Height="32" VerticalAlignment="Center" Data="{Binding Waveform, Mode=OneWay}"
+                    <c:WaveformView Grid.Column="1" Margin="8,4" Height="32" VerticalAlignment="Center" Data="{Binding Waveform, Mode=OneWay}"
                         ShowPlaybackMarker="False" CenterWaveform="True" WaveformBrush="{DynamicResource Brush.Waveform.Unplayed}"
                         Loaded="OnWaveformRowLoaded" DataContextChanged="OnWaveformRowChanged" IsHitTestVisible="False" />
                     <c:BalloonButton Grid.Column="2" Command="{Binding DataContext.PlayCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}, Mode=OneWay}"
@@ -211,7 +211,7 @@
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
-            <Grid Margin="0,0,0,12" Style="{StaticResource BaseGridStyle}">
+            <Grid Margin="0,0,0,16" Style="{StaticResource BaseGridStyle}">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
@@ -248,7 +248,7 @@
             </Grid>
             <Grid
                 Grid.Row="3"
-                Margin="0,12,0,0"
+                Margin="0,16,0,0"
                 Style="{StaticResource BaseGridStyle}">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
