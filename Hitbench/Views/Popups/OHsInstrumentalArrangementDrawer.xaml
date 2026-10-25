@@ -4,7 +4,7 @@
  <Border Style="{StaticResource BaseBorderStyle}" Padding="16">
  <Grid Style="{StaticResource BaseGridStyle}">
   <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-  <Grid Style="{StaticResource BaseGridStyle}">
+  <Grid Margin="0,0,0,12" Style="{StaticResource BaseGridStyle}">
    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
    <TextBlock Text="{Binding PopupTitle,Mode=OneWay}" Style="{StaticResource OHsPopupTitleTextStyle}" VerticalAlignment="Center"/>
    <c:BalloonButton Grid.Column="1" ButtonText="Close" ButtonIcon="{StaticResource Close}" Style="{StaticResource OHsBalloonDestructiveActionStyle}"

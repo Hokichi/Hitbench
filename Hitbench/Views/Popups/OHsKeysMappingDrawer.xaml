@@ -166,7 +166,17 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
-                <WrapPanel>
+                <StackPanel
+                    Grid.Row="0"
+                    Margin="0,0,0,12"
+                    Style="{StaticResource BaseStackPanelStyle}">
+                    <TextBlock Style="{StaticResource OHsPopupTitleTextStyle}" Text="Keys Mapping" />
+                    <TextBlock
+                        Style="{StaticResource BodyTextStyle}"
+                        Text="{Binding TrackName, Mode=OneWay}"
+                        TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+                <WrapPanel Grid.Row="1" Margin="0,0,0,12">
                     <c:BalloonButton
                         x:Name="LoadAction"
                         h:KeyboardNavigationPolicy.AllowTabNavigation="True"
@@ -206,16 +216,6 @@
                         ToolTip="Close (Esc)"
                         ToolTipService.ShowsToolTipOnKeyboardFocus="True" />
                 </WrapPanel>
-                <StackPanel
-                    Grid.Row="1"
-                    Margin="0,16,0,12"
-                    Style="{StaticResource BaseStackPanelStyle}">
-                    <TextBlock Style="{StaticResource OHsPopupTitleTextStyle}" Text="Keys Mapping" />
-                    <TextBlock
-                        Style="{StaticResource BodyTextStyle}"
-                        Text="{Binding TrackName, Mode=OneWay}"
-                        TextTrimming="CharacterEllipsis" />
-                </StackPanel>
                 <Grid Grid.Row="2" Style="{StaticResource BaseGridStyle}">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
