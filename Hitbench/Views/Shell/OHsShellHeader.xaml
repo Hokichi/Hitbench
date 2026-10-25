@@ -216,49 +216,53 @@
             <ColumnDefinition Width="Auto" />
         </Grid.ColumnDefinitions>
         <WrapPanel VerticalAlignment="Center">
-        <StackPanel Orientation="Horizontal">
-            <Image Style="{StaticResource OHsShellHeaderLogoStyle}" />
-            <TextBlock
-                Margin="8,0,0,0"
-                Style="{StaticResource MainWindowTitleStyle}"
-                Text="Hit" />
-            <TextBlock
-                Margin="0,0,12,0"
-                Foreground="{DynamicResource Brush.Text.Secondary}"
-                Style="{StaticResource MainWindowTitleStyle}"
-                Text="bench" />
-        </StackPanel>
-        <StackPanel Margin="8,0,0,0" Orientation="Horizontal">
-            <customControls:Icon
-                Width="{StaticResource Size.Icon.Default}"
-                Height="{StaticResource Size.Icon.Default}"
-                Margin="0,0,8,0"
-                VerticalAlignment="Center"
-                Focusable="False"
-                IsHitTestVisible="False"
-                Path="{StaticResource Moon}"
-                Color="{DynamicResource Brush.Text.Primary}" />
-            <ToggleButton
-                x:Name="ThemeSwitch"
-                Margin="8,0"
-                AutomationProperties.Name="Light theme"
-                Click="OnThemeToggleClick"
-                IsChecked="{Binding IsLightTheme, RelativeSource={RelativeSource AncestorType=shell:OHsShellHeader}, Mode=OneWay}"
-                Style="{StaticResource OHsShellThemeToggleStyle}"
-                ToolTip="Toggle Dark / Light theme"
-                ToolTipService.ShowsToolTipOnKeyboardFocus="True" />
-            <customControls:Icon
-                Width="{StaticResource Size.Icon.Default}"
-                Height="{StaticResource Size.Icon.Default}"
-                Margin="8,0,0,0"
-                VerticalAlignment="Center"
-                Focusable="False"
-                IsHitTestVisible="False"
-                Path="{StaticResource Sun}"
-                Color="{DynamicResource Brush.Text.Primary}" />
-        </StackPanel>
+            <StackPanel Orientation="Horizontal">
+                <Image Style="{StaticResource OHsShellHeaderLogoStyle}" />
+                <TextBlock
+                    Margin="8,0,0,0"
+                    Style="{StaticResource MainWindowTitleStyle}"
+                    Text="Hit" />
+                <TextBlock
+                    Margin="0,0,12,0"
+                    Foreground="{DynamicResource Brush.Text.Secondary}"
+                    Style="{StaticResource MainWindowTitleStyle}"
+                    Text="bench" />
+            </StackPanel>
+            <StackPanel Margin="8,0,0,0" Orientation="Horizontal">
+                <customControls:Icon
+                    Width="{StaticResource Size.Icon.Default}"
+                    Height="{StaticResource Size.Icon.Default}"
+                    Margin="0,0,8,0"
+                    VerticalAlignment="Center"
+                    Focusable="False"
+                    IsHitTestVisible="False"
+                    Path="{StaticResource Moon}"
+                    Color="{DynamicResource Brush.Text.Primary}" />
+                <ToggleButton
+                    x:Name="ThemeSwitch"
+                    Margin="8,0"
+                    AutomationProperties.Name="Light theme"
+                    Click="OnThemeToggleClick"
+                    IsChecked="{Binding IsLightTheme, RelativeSource={RelativeSource AncestorType=shell:OHsShellHeader}, Mode=OneWay}"
+                    Style="{StaticResource OHsShellThemeToggleStyle}"
+                    ToolTip="Toggle Dark / Light theme"
+                    ToolTipService.ShowsToolTipOnKeyboardFocus="True" />
+                <customControls:Icon
+                    Width="{StaticResource Size.Icon.Default}"
+                    Height="{StaticResource Size.Icon.Default}"
+                    Margin="8,0,0,0"
+                    VerticalAlignment="Center"
+                    Focusable="False"
+                    IsHitTestVisible="False"
+                    Path="{StaticResource Sun}"
+                    Color="{DynamicResource Brush.Text.Primary}" />
+            </StackPanel>
         </WrapPanel>
-        <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Top" Orientation="Horizontal">
+        <StackPanel
+            Grid.Column="1"
+            Margin="16,0,0,0"
+            VerticalAlignment="Top"
+            Orientation="Horizontal">
             <StackPanel
                 x:Name="WorkstationActions"
                 Orientation="Horizontal"

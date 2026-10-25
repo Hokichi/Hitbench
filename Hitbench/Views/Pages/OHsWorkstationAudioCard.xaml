@@ -21,7 +21,7 @@
             <Setter Property="Margin" Value="0,0,0,8" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsShortLayout, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationAudioCard}, Mode=OneWay}" Value="True">
-                    <Setter Property="Padding" Value="16,8" />
+                    <Setter Property="Padding" Value="16,4" />
                 </DataTrigger>
             </Style.Triggers>
         </Style>
@@ -32,7 +32,7 @@
             <Setter Property="Margin" Value="0,0,0,12" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsShortLayout, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationAudioCard}, Mode=OneWay}" Value="True">
-                    <Setter Property="Padding" Value="16,8" />
+                    <Setter Property="Padding" Value="16,4" />
                 </DataTrigger>
                 <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
                     <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
@@ -242,6 +242,11 @@
         </ContextMenu>
         <Style x:Key="OHsWorkstationEditingToolbarStyle" TargetType="Grid" BasedOn="{StaticResource BaseGridStyle}">
             <Setter Property="Margin" Value="16,0,16,8" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsShortLayout, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationAudioCard}, Mode=OneWay}" Value="True">
+                    <Setter Property="Margin" Value="16,0,16,4" />
+                </DataTrigger>
+            </Style.Triggers>
         </Style>
     </UserControl.Resources>
     <Grid Style="{StaticResource BaseGridStyle}">

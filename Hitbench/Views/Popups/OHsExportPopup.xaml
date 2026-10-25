@@ -158,149 +158,164 @@
             </Style.Triggers>
         </Style>
     </c:BasePopup.Resources>
-    <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-        <Grid Margin="24,8,24,24">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-            </Grid.RowDefinitions>
-            <StackPanel IsEnabled="{Binding CanEditOptions, Mode=OneWay}">
-                <TextBlock Style="{StaticResource OHsExportLabelStyle}" Text="Diff Name" />
-                <TextBox
-                    x:Name="DiffNameInput"
-                    AutomationProperties.Name="Diff Name"
-                    Style="{StaticResource OHsExportNameInputStyle}"
-                    Text="{Binding DiffName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}" />
-            </StackPanel>
-            <StackPanel
-                Grid.Row="1"
-                Margin="0,16,0,0"
-                IsEnabled="{Binding CanEditOptions, Mode=OneWay}">
-                <TextBlock Style="{StaticResource OHsExportLabelStyle}" Text="Starting sample count" />
-                <c:NumericUpDown
-                    x:Name="StartingIndexInput"
-                    AutomationProperties.Name="Starting custom sample index"
-                    Style="{StaticResource OHsExportIndexInputStyle}"
-                    Value="{Binding StartingIndex, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-            </StackPanel>
-            <StackPanel
-                Grid.Row="2"
-                Margin="0,16,0,0"
-                IsEnabled="{Binding CanEditOptions, Mode=OneWay}">
-                <TextBlock Style="{StaticResource OHsExportLabelStyle}" Text="Single sample format" />
-                <ComboBox
-                    x:Name="SingleFormatInput"
-                    AutomationProperties.Name="Single sample format"
-                    ItemsSource="{Binding Formats, Mode=OneWay}"
-                    SelectedItem="{Binding SingleFormat, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                    Style="{StaticResource OHsExportFormatInputStyle}" />
-            </StackPanel>
-            <StackPanel
-                Grid.Row="3"
-                Margin="0,16,0,0"
-                IsEnabled="{Binding CanEditOptions, Mode=OneWay}">
-                <TextBlock Style="{StaticResource OHsExportLabelStyle}" Text="Mixed sample format" />
-                <ComboBox
-                    x:Name="MixedFormatInput"
-                    AutomationProperties.Name="Mixed sample format"
-                    ItemsSource="{Binding Formats, Mode=OneWay}"
-                    SelectedItem="{Binding MixedFormat, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                    Style="{StaticResource OHsExportFormatInputStyle}" />
-            </StackPanel>
-            <Grid Grid.Row="4" Margin="0,16,0,0">
+    <Grid
+        Width="600"
+        Margin="24,8,24,24"
+        Style="{StaticResource BaseGridStyle}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <ScrollViewer
+            HorizontalScrollBarVisibility="Disabled"
+            Style="{StaticResource {x:Type ScrollViewer}}"
+            VerticalScrollBarVisibility="Auto">
+            <Grid Style="{StaticResource BaseGridStyle}">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
-                <c:SegmentedToggleGroup
-                    x:Name="DestinationInput"
-                    Grid.Column="0"
-                    VerticalAlignment="Center"
-                    AutomationProperties.Name="Export destination"
-                    IsEnabled="{Binding CanEditOptions, Mode=OneWay}"
-                    SelectedValue="{Binding Destination, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                    Style="{StaticResource OHsExportDestinationGroupStyle}">
-                    <c:SegmentedToggleOption
-                        x:Name="ProjectDestinationInput"
-                        AutomationProperties.Name="Project"
-                        Content="Project"
-                        Style="{StaticResource OHsExportDestinationOptionStyle}"
-                        Value="{x:Static d:OHsExportDestination.Project}" />
-                    <c:SegmentedToggleOption
-                        x:Name="BeatmapDestinationInput"
-                        AutomationProperties.Name="Beatmap"
-                        Content="Beatmap"
-                        Style="{StaticResource OHsExportDestinationOptionStyle}"
-                        Value="{x:Static d:OHsExportDestination.Beatmap}" />
-                </c:SegmentedToggleGroup>
+                <StackPanel IsEnabled="{Binding CanEditOptions, Mode=OneWay}">
+                    <TextBlock Style="{StaticResource OHsExportLabelStyle}" Text="Diff Name" />
+                    <TextBox
+                        x:Name="DiffNameInput"
+                        AutomationProperties.Name="Diff Name"
+                        Style="{StaticResource OHsExportNameInputStyle}"
+                        Text="{Binding DiffName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}" />
+                </StackPanel>
                 <StackPanel
                     Grid.Row="1"
-                    Margin="0,8,0,0"
-                    Style="{StaticResource BaseStackPanelStyle}">
-                    <CheckBox
-                        x:Name="OverwriteEverythingInput"
-                        HorizontalAlignment="Left"
-                        AutomationProperties.Name="Overwrite everything"
-                        Content="Overwrite everything"
-                        IsChecked="{Binding OverwriteEverything, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                        IsEnabled="{Binding CanOverwriteEverything, Mode=OneWay}"
-                        Style="{StaticResource OHsExportShowFilesStyle}" />
-                    <CheckBox
-                        x:Name="ShowFilesAfterExportInput"
-                        HorizontalAlignment="Left"
-                        AutomationProperties.Name="Show files after export"
-                        Content="Show files after export"
-                        IsChecked="{Binding ShowFilesAfterExport, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                        IsEnabled="{Binding CanEditOptions, Mode=OneWay}"
-                        Style="{StaticResource OHsExportShowFilesStyle}" />
+                    Margin="0,16,0,0"
+                    IsEnabled="{Binding CanEditOptions, Mode=OneWay}">
+                    <TextBlock Style="{StaticResource OHsExportLabelStyle}" Text="Starting sample count" />
+                    <c:NumericUpDown
+                        x:Name="StartingIndexInput"
+                        AutomationProperties.Name="Starting custom sample index"
+                        Style="{StaticResource OHsExportIndexInputStyle}"
+                        Value="{Binding StartingIndex, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                 </StackPanel>
+                <Grid
+                    Grid.Row="2"
+                    Margin="0,16,0,0"
+                    Style="{StaticResource BaseGridStyle}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="16" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" IsEnabled="{Binding CanEditOptions, Mode=OneWay}">
+                        <TextBlock Style="{StaticResource OHsExportLabelStyle}" Text="Single sample format" />
+                        <ComboBox
+                            x:Name="SingleFormatInput"
+                            AutomationProperties.Name="Single sample format"
+                            ItemsSource="{Binding Formats, Mode=OneWay}"
+                            SelectedItem="{Binding SingleFormat, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                            Style="{StaticResource OHsExportFormatInputStyle}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" IsEnabled="{Binding CanEditOptions, Mode=OneWay}">
+                        <TextBlock Style="{StaticResource OHsExportLabelStyle}" Text="Mixed sample format" />
+                        <ComboBox
+                            x:Name="MixedFormatInput"
+                            AutomationProperties.Name="Mixed sample format"
+                            ItemsSource="{Binding Formats, Mode=OneWay}"
+                            SelectedItem="{Binding MixedFormat, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                            Style="{StaticResource OHsExportFormatInputStyle}" />
+                    </StackPanel>
+                </Grid>
+                <Grid Grid.Row="3" Margin="0,16,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <c:SegmentedToggleGroup
+                        x:Name="DestinationInput"
+                        Grid.Column="0"
+                        VerticalAlignment="Center"
+                        AutomationProperties.Name="Export destination"
+                        IsEnabled="{Binding CanEditOptions, Mode=OneWay}"
+                        SelectedValue="{Binding Destination, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                        Style="{StaticResource OHsExportDestinationGroupStyle}">
+                        <c:SegmentedToggleOption
+                            x:Name="ProjectDestinationInput"
+                            AutomationProperties.Name="Project"
+                            Content="Project"
+                            Style="{StaticResource OHsExportDestinationOptionStyle}"
+                            Value="{x:Static d:OHsExportDestination.Project}" />
+                        <c:SegmentedToggleOption
+                            x:Name="BeatmapDestinationInput"
+                            AutomationProperties.Name="Beatmap"
+                            Content="Beatmap"
+                            Style="{StaticResource OHsExportDestinationOptionStyle}"
+                            Value="{x:Static d:OHsExportDestination.Beatmap}" />
+                    </c:SegmentedToggleGroup>
+                    <StackPanel
+                        Grid.Row="1"
+                        Margin="0,8,0,0"
+                        Style="{StaticResource BaseStackPanelStyle}">
+                        <CheckBox
+                            x:Name="OverwriteEverythingInput"
+                            HorizontalAlignment="Left"
+                            AutomationProperties.Name="Overwrite everything"
+                            Content="Overwrite everything"
+                            IsChecked="{Binding OverwriteEverything, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                            IsEnabled="{Binding CanOverwriteEverything, Mode=OneWay}"
+                            Style="{StaticResource OHsExportShowFilesStyle}" />
+                        <CheckBox
+                            x:Name="ShowFilesAfterExportInput"
+                            HorizontalAlignment="Left"
+                            AutomationProperties.Name="Show files after export"
+                            Content="Show files after export"
+                            IsChecked="{Binding ShowFilesAfterExport, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                            IsEnabled="{Binding CanEditOptions, Mode=OneWay}"
+                            Style="{StaticResource OHsExportShowFilesStyle}" />
+                    </StackPanel>
+                </Grid>
+
             </Grid>
-            <ProgressBar
-                x:Name="ExportProgressBar"
-                Grid.Row="5"
-                Margin="0,16,0,0"
-                AutomationProperties.HelpText="{Binding ProgressPhase, Mode=OneWay}"
-                AutomationProperties.Name="Export progress"
-                Maximum="100"
-                Minimum="0"
-                Style="{StaticResource OHsExportProgressStyle}"
-                ToolTip="{Binding ProgressPhase, Mode=OneWay}"
-                Value="{Binding ExportProgress, Mode=OneWay}" />
-            <WrapPanel
-                Grid.Row="6"
-                Margin="0,24,0,0"
-                HorizontalAlignment="Right"
-                Orientation="Horizontal">
-                <c:BalloonButton
-                    x:Name="CancelButton"
-                    Margin="0,0,8,0"
-                    h:KeyboardNavigationPolicy.AllowTabNavigation="True"
-                    AutomationProperties.Name="Cancel"
-                    ButtonIcon="{StaticResource Ban}"
-                    ButtonText="Cancel"
-                    Command="{Binding CancelCommand, Mode=OneWay}"
-                    IsTabStop="True"
-                    ShouldShowText="True"
-                    Style="{StaticResource OHsBalloonDestructiveActionStyle}" />
-                <c:BalloonButton
-                    x:Name="ExportButton"
-                    h:KeyboardNavigationPolicy.AllowTabNavigation="True"
-                    AutomationProperties.HelpText="{Binding ExportToolTip, Mode=OneWay}"
-                    AutomationProperties.Name="Export"
-                    ButtonIcon="{StaticResource Export}"
-                    ButtonText="Export"
-                    Command="{Binding ExportCommand, Mode=OneWay}"
-                    IsTabStop="True"
-                    ShouldShowText="True"
-                    Style="{StaticResource OHsBalloonConfirmActionStyle}"
-                    ToolTip="{Binding ExportToolTip, Mode=OneWay}"
-                    ToolTipService.ShowsToolTipOnKeyboardFocus="True" />
-            </WrapPanel>
-        </Grid>
-    </ScrollViewer>
+        </ScrollViewer>
+        <ProgressBar
+            x:Name="ExportProgressBar"
+            Grid.Row="1"
+            Margin="0,16,0,0"
+            AutomationProperties.HelpText="{Binding ProgressPhase, Mode=OneWay}"
+            AutomationProperties.Name="Export progress"
+            Maximum="100"
+            Minimum="0"
+            Style="{StaticResource OHsExportProgressStyle}"
+            ToolTip="{Binding ProgressPhase, Mode=OneWay}"
+            Value="{Binding ExportProgress, Mode=OneWay}" />
+        <WrapPanel
+            Grid.Row="2"
+            Margin="0,24,0,0"
+            HorizontalAlignment="Right"
+            Orientation="Horizontal">
+            <c:BalloonButton
+                x:Name="CancelButton"
+                Margin="0,0,8,0"
+                h:KeyboardNavigationPolicy.AllowTabNavigation="True"
+                AutomationProperties.Name="Cancel"
+                ButtonIcon="{StaticResource Ban}"
+                ButtonText="Cancel"
+                Command="{Binding CancelCommand, Mode=OneWay}"
+                IsTabStop="True"
+                ShouldShowText="True"
+                Style="{StaticResource OHsBalloonDestructiveActionStyle}" />
+            <c:BalloonButton
+                x:Name="ExportButton"
+                h:KeyboardNavigationPolicy.AllowTabNavigation="True"
+                AutomationProperties.HelpText="{Binding ExportToolTip, Mode=OneWay}"
+                AutomationProperties.Name="Export"
+                ButtonIcon="{StaticResource Export}"
+                ButtonText="Export"
+                Command="{Binding ExportCommand, Mode=OneWay}"
+                IsTabStop="True"
+                ShouldShowText="True"
+                Style="{StaticResource OHsBalloonConfirmActionStyle}"
+                ToolTip="{Binding ExportToolTip, Mode=OneWay}"
+                ToolTipService.ShowsToolTipOnKeyboardFocus="True" />
+        </WrapPanel>
+    </Grid>
 </c:BasePopup>

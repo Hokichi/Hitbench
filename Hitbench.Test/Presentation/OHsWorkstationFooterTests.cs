@@ -25,12 +25,19 @@ public sealed class OHsWorkstationFooterTests
                 slider.Value = 2;
                 Assert.That(vm.SelectedSubdivisionIndex, Is.EqualTo(2));
                 Assert.That(audio.ContainsInputOrigin(slider), Is.False);
-                var zoom = (System.Windows.Controls.StackPanel)footer.FindName("ZoomControls");
-                Assert.That(zoom.Children.OfType<Hitbench.Resources.CustomControls.BalloonButton>().Select(button => button.Command),
+                Assert.That(Descendants(footer).OfType<Hitbench.Resources.CustomControls.BalloonButton>().Select(button => button.Command),
                     Is.EquivalentTo(new System.Windows.Input.ICommand[] { vm.ZoomOutCommand, vm.ZoomInCommand }));
             }
         }
         finally { UiTestPump.Run(page.DeactivateAsync()); }
+    }
+
+    private static IEnumerable<System.Windows.DependencyObject> Descendants(System.Windows.DependencyObject owner)
+    {
+        yield return owner;
+        for (var index = 0; index < System.Windows.Media.VisualTreeHelper.GetChildrenCount(owner); index++)
+            foreach (var child in Descendants(System.Windows.Media.VisualTreeHelper.GetChild(owner, index)))
+                yield return child;
     }
 
     [Test]
