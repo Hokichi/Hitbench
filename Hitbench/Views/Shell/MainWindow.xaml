@@ -30,7 +30,7 @@
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
             <Setter Property="VerticalContentAlignment" Value="Stretch" />
             <Setter Property="Width" Value="720" />
-            <Setter Property="MaxWidth" Value="{Binding ActualWidth, ElementName=SampleManagerLayer, Mode=OneWay}" />
+            <Setter Property="MaxWidth" Value="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=Grid}, Mode=OneWay}" />
             <Setter Property="Focusable" Value="False" />
             <Style.Triggers>
                 <Trigger Property="Content" Value="{x:Null}">
@@ -44,9 +44,7 @@
             TargetType="ContentControl">
             <Setter Property="Grid.RowSpan" Value="2" />
             <Style.Triggers>
-                <DataTrigger Binding="{Binding IsBottomDrawer, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}" Value="True">
-                    <Setter Property="Grid.Row" Value="1" />
-                    <Setter Property="Grid.RowSpan" Value="1" />
+                <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}, Mode=OneWay}" Value="True">
                     <Setter Property="HorizontalAlignment" Value="Stretch" />
                     <Setter Property="Width" Value="Auto" />
                 </DataTrigger>
@@ -60,7 +58,6 @@
             <Setter Property="HorizontalAlignment" Value="Stretch" />
             <Setter Property="VerticalAlignment" Value="Bottom" />
             <Setter Property="Width" Value="Auto" />
-            <Setter Property="MaxHeight" Value="{Binding ActualHeight, ElementName=SampleManagerMotionHost, Mode=OneWay}" />
         </Style>
         <SolidColorBrush x:Key="OHsMainWindowAcrylicBackground" Color="Transparent" />
 
@@ -334,6 +331,7 @@
                         <Grid
                             x:Name="SampleManagerMotionHost"
                             Grid.Row="1"
+                            FlowDirection="LeftToRight"
                             Style="{StaticResource BaseGridStyle}">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="*" />

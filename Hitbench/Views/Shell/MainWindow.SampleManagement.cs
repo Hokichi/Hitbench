@@ -15,6 +15,8 @@ public partial class MainWindow
     private CancellationTokenSource? sampleManagerCancellation;
     private Func<Task>? closeSampleManager;
     private Action? clearSampleFocusRestore;
+    private WorkstationPage? bottomDrawerPage;
+    private Task sampleManagerPresentation = Task.CompletedTask;
     private static readonly DependencyPropertyKey IsSampleManagerVisiblePropertyKey = DependencyProperty.RegisterReadOnly(
         nameof(IsSampleManagerVisible), typeof(bool), typeof(MainWindow), new PropertyMetadata(false));
     public static readonly DependencyProperty IsSampleManagerVisibleProperty = IsSampleManagerVisiblePropertyKey.DependencyProperty;
@@ -56,11 +58,19 @@ public partial class MainWindow
 
     internal Task PresentSampleManagerAsync(ManageSamplesDrawer drawer, CancellationToken token,
         Func<bool,CancellationToken,Task>? transition=null) => PresentDrawerAsync(drawer,token,transition);
-    internal async Task PresentDrawerAsync<T>(T drawer, CancellationToken token,
+    internal Task PresentDrawerAsync<T>(T drawer, CancellationToken token,
         Func<bool, CancellationToken, Task>? transition = null, bool bottomNonModal = false)
         where T:UserControl,IOHsShellDrawer
     {
-        if (sampleManagerCompletion is not null) throw new InvalidOperationException("The sample manager is already open.");
+        if (sampleManagerCompletion is not null)
+            return Task.FromException(new InvalidOperationException("The sample manager is already open."));
+        return sampleManagerPresentation = PresentDrawerCoreAsync(drawer, token, transition, bottomNonModal);
+    }
+
+    private async Task PresentDrawerCoreAsync<T>(T drawer, CancellationToken token,
+        Func<bool, CancellationToken, Task>? transition, bool bottomNonModal)
+        where T:UserControl,IOHsShellDrawer
+    {
         if (token.IsCancellationRequested || closed) return;
         clearSampleFocusRestore?.Invoke();
         var invoker = Keyboard.FocusedElement as FrameworkElement ??
@@ -106,49 +116,64 @@ public partial class MainWindow
         {
             if (SampleManagerPhase != OHsSampleDrawerPhase.Closing) drawer.FocusInitialAction();
         }
-        drawer.CloseRequested += OnCloseRequested;
-        drawer.Loaded += OnLoaded;
-        CancelBackgroundDrag();
-        SetValue(IsBottomDrawerPropertyKey, bottomNonModal);
-        SetSampleManagerPhase(OHsSampleDrawerPhase.Opening);
-        drawer.IsEnabled = true;
+        var workstation = bottomNonModal ? PageHost.Content as WorkstationPage : null;
+        Panel? motionParent = null;
+        var motionRow = Grid.GetRow(SampleManagerMotionHost);
         var instrumentDrawer = drawer is OHsInstrumentalArrangementDrawer or OHsKeysMappingDrawer;
-        SampleManagerHost.SetResourceReference(StyleProperty, drawer is OHsKeysMappingDrawer
-            ? "OHsMainWindowKeysMappingDrawerHostStyle" : "OHsMainWindowShellDrawerHostStyle");
-        SampleManagerHost.Content = drawer;
-        // Content attachment sets local flow direction; bind after attachment so shell changes remain live.
-        if (instrumentDrawer)
-            drawer.SetBinding(FlowDirectionProperty, new Binding(nameof(FlowDirection)) { Source = this, Mode = BindingMode.OneWay });
         OHsInstrumentalArrangementDrawer? piano = drawer as OHsInstrumentalArrangementDrawer;
         Action<double>? scrollPiano = null;
         EventHandler? alignPiano = null;
-        if (piano is not null && PageHost.Content is WorkstationPage page)
-        {
-            piano.SetBinding(OHsInstrumentalArrangementDrawer.TimelineContentWidthProperty, new Binding(nameof(page.Timeline.TimelineContentWidth)) { Source = page.Timeline, Mode = BindingMode.OneWay });
-            piano.SetBinding(OHsInstrumentalArrangementDrawer.TimelineViewportWidthProperty, new Binding(nameof(page.Timeline.TimelineViewportWidth)) { Source = page.Timeline, Mode = BindingMode.OneWay });
-            piano.SetBinding(OHsInstrumentalArrangementDrawer.TimelineHorizontalOffsetProperty, new Binding(nameof(page.Timeline.TimelineHorizontalOffset)) { Source = page.Timeline, Mode = BindingMode.OneWay });
-            scrollPiano = offset => { if (ReferenceEquals(SampleManagerHost.Content, piano) && ReferenceEquals(PageHost.Content, page)) page.Timeline.ScrollFromUser(offset); };
-            piano.HorizontalOffsetRequested += scrollPiano;
-            alignPiano = (_, _) =>
-            {
-                if (ReferenceEquals(SampleManagerHost.Content, piano) && ReferenceEquals(PageHost.Content, page))
-                    piano.AlignTimelineViewport(page.Timeline.GetTimeViewportBounds(piano));
-            };
-            piano.LayoutUpdated += alignPiano;
-            alignPiano(null, EventArgs.Empty);
-            piano.Attach();
-        }
-        SystemParameters.StaticPropertyChanged += OnSampleManagerAnimationSettingChanged;
         using var cancellation = presentation.Token.Register(() => completion.TrySetResult());
         try
         {
+            drawer.CloseRequested += OnCloseRequested;
+            drawer.Loaded += OnLoaded;
+            CancelBackgroundDrag();
+            SetValue(IsBottomDrawerPropertyKey, bottomNonModal);
+            SetSampleManagerPhase(OHsSampleDrawerPhase.Opening);
+            drawer.IsEnabled = true;
+            SampleManagerHost.SetBinding(TagProperty, new Binding(nameof(IsBottomDrawer)) { Source = this, Mode = BindingMode.OneWay });
+            SampleManagerHost.Style = (Style)FindResource(drawer is OHsKeysMappingDrawer
+                ? "OHsMainWindowKeysMappingDrawerHostStyle" : "OHsMainWindowShellDrawerHostStyle");
+            SampleManagerHost.Content = drawer;
+            if (workstation is not null)
+            {
+                bottomDrawerPage = workstation;
+                motionParent = (Panel)SampleManagerMotionHost.Parent;
+                motionParent.Children.Remove(SampleManagerMotionHost);
+                Grid.SetRow(SampleManagerMotionHost, 0);
+                workstation.AttachBottomDrawerHost(SampleManagerMotionHost, drawer is OHsKeysMappingDrawer);
+            }
+            // Content attachment sets local flow direction; bind after attachment so shell changes remain live.
+            if (instrumentDrawer)
+                drawer.SetBinding(FlowDirectionProperty, new Binding(nameof(FlowDirection)) { Source = this, Mode = BindingMode.OneWay });
+            if (piano is not null && PageHost.Content is WorkstationPage page)
+            {
+                piano.SetBinding(OHsInstrumentalArrangementDrawer.TimelineContentWidthProperty, new Binding(nameof(page.Timeline.TimelineContentWidth)) { Source = page.Timeline, Mode = BindingMode.OneWay });
+                piano.SetBinding(OHsInstrumentalArrangementDrawer.TimelineViewportWidthProperty, new Binding(nameof(page.Timeline.TimelineViewportWidth)) { Source = page.Timeline, Mode = BindingMode.OneWay });
+                piano.SetBinding(OHsInstrumentalArrangementDrawer.TimelineHorizontalOffsetProperty, new Binding(nameof(page.Timeline.TimelineHorizontalOffset)) { Source = page.Timeline, Mode = BindingMode.OneWay });
+                scrollPiano = offset => { if (ReferenceEquals(SampleManagerHost.Content, piano) && ReferenceEquals(PageHost.Content, page)) page.Timeline.ScrollFromUser(offset); };
+                piano.HorizontalOffsetRequested += scrollPiano;
+                alignPiano = (_, _) =>
+                {
+                    if (ReferenceEquals(SampleManagerHost.Content, piano) && ReferenceEquals(PageHost.Content, page))
+                        piano.AlignTimelineViewport(page.Timeline.GetTimeViewportBounds(piano));
+                };
+                piano.LayoutUpdated += alignPiano;
+                alignPiano(null, EventArgs.Empty);
+                piano.Attach();
+            }
+            SystemParameters.StaticPropertyChanged += OnSampleManagerAnimationSettingChanged;
             entrance = AwaitSampleManagerTransitionAsync(animate, true, entranceCancellation.Token);
             try { await entrance; }
             catch (OperationCanceledException) when (entranceCancellation.IsCancellationRequested) { }
             await Dispatcher.InvokeAsync(() =>
             {
                 if (!presentation.IsCancellationRequested && SampleManagerPhase == OHsSampleDrawerPhase.Opening)
+                {
+                    bottomDrawerPage?.SettleBottomDrawerHostAnimation(true);
                     SetSampleManagerPhase(OHsSampleDrawerPhase.Open);
+                }
             });
             await completion.Task;
         }
@@ -180,10 +205,17 @@ public partial class MainWindow
                 if (ReferenceEquals(SampleManagerHost.Content, drawer))
                 {
                     SampleManagerHost.Content = null;
-                    SampleManagerHost.SetResourceReference(StyleProperty, "OHsMainWindowShellDrawerHostStyle");
+                    SampleManagerHost.Style = (Style)FindResource("OHsMainWindowShellDrawerHostStyle");
                 }
                 if (ReferenceEquals(sampleManagerCompletion, completion))
                 {
+                    workstation?.DetachBottomDrawerHost(SampleManagerMotionHost);
+                    if (motionParent is not null)
+                    {
+                        Grid.SetRow(SampleManagerMotionHost, motionRow);
+                        if (SampleManagerMotionHost.Parent is null) motionParent.Children.Add(SampleManagerMotionHost);
+                    }
+                    bottomDrawerPage = null;
                     sampleManagerCompletion = null;
                     sampleManagerCancellation = null;
                     closeSampleManager = null;

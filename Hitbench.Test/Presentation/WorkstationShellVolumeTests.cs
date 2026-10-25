@@ -32,6 +32,73 @@ public class WorkstationShellVolumeTests
         Assert.That(page.IsVolumeOverlayOpen, Is.True);
     });
 
+    [TestCase(false)]
+    [TestCase(true)]
+    public void BottomDrawerRootUsesCardSurface(bool mapping) => WithDrawer(mapping, (_, _, drawer, _) =>
+        UiControlContract.AssertStyle<Border>((Border)drawer.Content, "BaseBorderStyle"));
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public void BottomDrawerPointerPreservesTrackSelection(bool mapping) => WithDrawer(mapping, (_, page, drawer, view) =>
+    {
+        var vm = (WorkstationPageVM)page.DataContext;
+        var node = new Hitbench.Core.Entities.Sample { Timestamp = 1000, FileName = "a.wav" };
+        var track = new Hitbench.Core.Entities.Track { Samples = [node] };
+        vm.Tracks.Add(track);
+        vm.SelectNode(track, node, false);
+        view.UpdateLayout();
+        var click = new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left)
+            { RoutedEvent = Mouse.PreviewMouseDownEvent };
+        ((UIElement)drawer.Content).RaiseEvent(click);
+        Assert.That(vm.SelectedTrack, Is.SameAs(track));
+        Assert.That(vm.SelectedSamples, Does.Contain(node));
+        Assert.That(page.IsRegionSelectionActive, Is.False);
+        Assert.That(click.Handled, Is.False);
+    });
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public void BottomDrawerNavigationReleasesPresentation(bool mapping) => WithDrawer(mapping, (shell, page, _, view) =>
+    {
+        var presenter = (ContentControl)shell.FindName("SampleManagerHost");
+        UiTestPump.Run(shell.ReturnHomeAsync());
+        view.UpdateLayout();
+        Assert.That(shell.IsSampleManagerVisible, Is.False);
+        Assert.That(shell.IsBottomDrawer, Is.False);
+        Assert.That(presenter.Content, Is.Null);
+        Assert.That(page.LoadCompletion.IsCompletedSuccessfully, Is.True);
+        Assert.That(page.HasAnimatedProperties, Is.False);
+    });
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public void BottomDrawerAnimationSettlesWithPresentation(bool mapping) => WithDrawer(mapping, (shell, page, _, _) =>
+    {
+        var entrance = shell.RunSampleManagerAnimationAsync(true, true, default);
+        Assert.That(entrance.IsCompleted, Is.False);
+        Assert.That(page.HasAnimatedProperties, Is.True);
+        shell.SettleSampleManagerAnimation();
+        UiTestPump.Run(entrance);
+        Assert.That(page.HasAnimatedProperties, Is.False);
+
+        using var cancellation = new CancellationTokenSource();
+        var interrupted = shell.RunSampleManagerAnimationAsync(true, true, cancellation.Token);
+        cancellation.Cancel();
+        Assert.That(() => UiTestPump.Run(interrupted), Throws.InstanceOf<OperationCanceledException>());
+        Assert.That(page.HasAnimatedProperties, Is.False);
+        var exit = shell.RunSampleManagerAnimationAsync(false, true, default);
+        Assert.That(page.HasAnimatedProperties, Is.True);
+        shell.SettleSampleManagerAnimation();
+        UiTestPump.Run(exit);
+        Assert.That(page.HasAnimatedProperties, Is.False);
+        foreach (var opening in new[] { true, false })
+        {
+            var immediate = shell.RunSampleManagerAnimationAsync(opening, false, default);
+            Assert.That(immediate.IsCompletedSuccessfully, Is.True);
+            Assert.That(page.HasAnimatedProperties, Is.False);
+        }
+    });
+
     [TestCase("SongVolumeWheel")]
     [TestCase("ApplicationVolumeWheel")]
     [TestCase("SamplesVolumeWheel")]

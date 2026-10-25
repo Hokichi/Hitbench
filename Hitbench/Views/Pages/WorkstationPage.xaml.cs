@@ -40,6 +40,7 @@ public partial class WorkstationPage : UserControl
     private void OnPagePointerDown(object sender, MouseButtonEventArgs e)
     {
         var origin = e.OriginalSource as DependencyObject;
+        if (IsBottomDrawerOrigin(origin)) return;
         if (AudioCard.IsCollapseActionOrigin(origin)) return;
         if (!deactivationStarted && !IsWithin(origin, TracksCard)) viewModel.SelectedTrack = null;
         if (!IsWithin(origin, TrackListComponent)) TrackListComponent.BeginNodePointer(null, default, default);

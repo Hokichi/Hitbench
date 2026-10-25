@@ -141,13 +141,52 @@ public class ControlPointsBottomHostTests
     [TestCase(true)][TestCase(false)]
     public void CancellationBoundsIgnoredEntranceAndLateCompletionCannotResetNewMode(bool bottom)
     {
+        var presenter = (ContentControl)shell.FindName("SampleManagerHost");
         var late = new TaskCompletionSource(); Show(bottom, (_, _) => late.Task);
         cancellation.Cancel(); UiTestPump.Run(showing);
         Assert.That(shell.IsSampleManagerVisible, Is.False);
         cancellation.Dispose(); cancellation = new();
         Show(!bottom); late.SetResult(); Drain();
+        Assert.That(shell.FindName("SampleManagerHost"), Is.SameAs(presenter));
+        Assert.That(presenter.Content, Is.SameAs(drawer));
         Assert.That(shell.IsBottomDrawer, Is.EqualTo(!bottom)); Assert.That(showing.IsCompleted, Is.False);
         Assert.That(shell.RunSampleManagerAnimationAsync(true, false, default).IsCompletedSuccessfully, Is.True);
         Assert.That(shell.RunSampleManagerAnimationAsync(false, false, default).IsCompletedSuccessfully, Is.True);
+    }
+
+    [Test]
+    public void FailedBottomEntranceRestoresPresenterForNextSideDrawer()
+    {
+        var presenter = (ContentControl)shell.FindName("SampleManagerHost");
+        Show(true, (_, _) => Task.FromException(new InvalidOperationException("entrance failed")));
+        Assert.That(() => UiTestPump.Run(showing), Throws.TypeOf<InvalidOperationException>().With.Message.EqualTo("entrance failed"));
+        Assert.That(shell.SampleManagerPhase, Is.EqualTo(OHsSampleDrawerPhase.Closed));
+        Assert.That(presenter.Content, Is.Null);
+        Show(false);
+        Assert.That(shell.FindName("SampleManagerHost"), Is.SameAs(presenter));
+        Assert.That(presenter.Content, Is.SameAs(drawer));
+        UiTestPump.Run(shell.RequestSampleManagerCloseAsync(drawer));
+        UiTestPump.Run(showing);
+    }
+
+    [Test]
+    public void BottomSideBottomReusesPresenterAndBindings()
+    {
+        var presenter = (ContentControl)shell.FindName("SampleManagerHost");
+        var context = new object();
+        drawer.DataContext = context;
+        foreach (var bottom in new[] { true, false, true })
+        {
+            Show(bottom);
+            Assert.That(shell.FindName("SampleManagerHost"), Is.SameAs(presenter));
+            Assert.That(presenter.Content, Is.SameAs(drawer));
+            Assert.That(drawer.DataContext, Is.SameAs(context));
+            Assert.That(shell.IsBottomDrawer, Is.EqualTo(bottom));
+            Assert.That(shell.IsBlockingDrawerVisible, Is.EqualTo(!bottom));
+            UiControlContract.AssertStyle<ContentControl>(presenter, "OHsMainWindowShellDrawerHostStyle");
+            UiTestPump.Run(shell.RequestSampleManagerCloseAsync(drawer));
+            UiTestPump.Run(showing);
+            Assert.That(presenter.Content, Is.Null);
+        }
     }
 }

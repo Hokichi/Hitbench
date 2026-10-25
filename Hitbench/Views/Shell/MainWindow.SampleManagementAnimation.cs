@@ -42,6 +42,7 @@ public partial class MainWindow
         var movement = new DoubleAnimation(IsBottomDrawer ? sampleManagerTranslation.Y : sampleManagerTranslation.X, opening ? 0 : 24, duration) { EasingFunction = easing };
         var fade = new DoubleAnimation(SampleManagerHost.Opacity, opening ? 1 : 0, duration) { EasingFunction = easing };
         var backdropFade = new DoubleAnimation(SampleManagerBackdrop.Opacity, opening ? 1 : 0, duration) { EasingFunction = easing };
+        bottomDrawerPage?.BeginBottomDrawerHostAnimation(opening, movement.Duration, easing);
         void OnCompleted(object? sender, EventArgs args)
         {
             if (ReferenceEquals(sampleManagerAnimationCompletion, completion)) SettleSampleManagerAnimation();
@@ -80,6 +81,7 @@ public partial class MainWindow
 
     private void ClearSampleManagerAnimationClocks()
     {
+        bottomDrawerPage?.ClearBottomDrawerHostAnimation();
         var shift = sampleManagerTranslation.X;
         var verticalShift = sampleManagerTranslation.Y;
         var opacity = SampleManagerHost.Opacity;
@@ -96,6 +98,7 @@ public partial class MainWindow
 
     private void ApplySampleManagerAnimationEnd(bool opening)
     {
+        bottomDrawerPage?.SettleBottomDrawerHostAnimation(opening);
         sampleManagerTranslation.X = IsBottomDrawer ? 0 : opening ? 0 : 24;
         sampleManagerTranslation.Y = IsBottomDrawer && !opening ? 24 : 0;
         SampleManagerHost.Opacity = opening ? 1 : 0;

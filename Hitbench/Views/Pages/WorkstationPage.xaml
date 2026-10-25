@@ -240,7 +240,7 @@
                     Grid.Row="3"
                     Margin="0,0,0,12"
                     Style="{StaticResource CardBorderStyle}">
-                    <Grid Style="{StaticResource BaseGridStyle}">
+                    <Grid x:Name="TracksLayout" Style="{StaticResource BaseGridStyle}" SizeChanged="OnTracksLayoutSizeChanged">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="*" />
                             <RowDefinition Height="Auto" />
@@ -250,6 +250,8 @@
  TimelineContentWidth="{Binding TimelineContentWidth, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
  TimelineViewportWidth="{Binding TimelineViewportWidth, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
  TimelineHorizontalOffset="{Binding TimelineHorizontalOffset, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}" />
+                        <Grid x:Name="BottomDrawerSlot" Grid.Row="1" ClipToBounds="True"
+                              Visibility="Collapsed" Style="{StaticResource BaseGridStyle}" />
                     </Grid>
                 </Border>
 

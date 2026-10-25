@@ -151,7 +151,7 @@
                 TextTrimming="CharacterEllipsis" />
         </DataTemplate>
     </UserControl.Resources>
-    <Border Padding="16" Style="{StaticResource OHsPopupSurfaceBorderStyle}">
+    <Border Padding="16" Style="{StaticResource BaseBorderStyle}">
         <Grid Style="{StaticResource BaseGridStyle}">
         <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
         <ScrollViewer
