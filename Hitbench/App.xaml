@@ -37,14 +37,11 @@
                 <ResourceDictionary Source="Resources/Styles/ToolTip.xaml" />
                 <ResourceDictionary Source="Resources/Styles/Window.xaml" />
                 <ResourceDictionary Source="Resources/Styles/ListBox.xaml" />
-                <ResourceDictionary Source="Resources/Styles/ListView.xaml" />
-                <ResourceDictionary Source="Resources/Styles/TreeView.xaml" />
                 <ResourceDictionary Source="Resources/Styles/ComboBox.xaml" />
                 <ResourceDictionary Source="Resources/Styles/TextBox.xaml" />
                 <ResourceDictionary Source="Resources/Styles/ProgressBar.xaml" />
                 <ResourceDictionary Source="Resources/Styles/ScrollViewer.xaml" />
                 <ResourceDictionary Source="Resources/Styles/Slider.xaml" />
-                <ResourceDictionary Source="Resources/Styles/StepNavigator.xaml" />
                 <ResourceDictionary Source="Resources/Styles/Popup.xaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>

@@ -158,21 +158,6 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
-        <Style
-            x:Key="OHsSampleLoaderBreadcrumbSeparatorStyle"
-            BasedOn="{StaticResource BodyTextStyle}"
-            TargetType="TextBlock">
-            <Setter Property="Text" Value="&gt;" />
-            <Setter Property="Width" Value="16" />
-            <Setter Property="VerticalAlignment" Value="Center" />
-            <Setter Property="TextAlignment" Value="Center" />
-            <Setter Property="IsHitTestVisible" Value="False" />
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding Path=(ItemsControl.AlternationIndex), RelativeSource={RelativeSource AncestorType=ContentPresenter}, Mode=OneWay}" Value="0">
-                    <Setter Property="Visibility" Value="Collapsed" />
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
         <DataTemplate x:Key="SampleLoaderBreadcrumbTemplate">
             <DockPanel LastChildFill="True">
                 <c:Icon
@@ -303,16 +288,6 @@
             <Style.Triggers>
                 <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
                     <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}, Mode=OneWay}" />
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
-        <Style
-            x:Key="OHsSampleLoaderFileColumnsStyle"
-            BasedOn="{StaticResource BaseGridStyle}"
-            TargetType="Grid">
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding DataContext.IsFolderSelection, RelativeSource={RelativeSource AncestorType=ListBox}, Mode=OneWay}" Value="True">
-                    <Setter Property="Visibility" Value="Collapsed" />
                 </DataTrigger>
             </Style.Triggers>
         </Style>
@@ -463,12 +438,6 @@
             <Setter Property="ButtonIcon" Value="{x:Null}" />
             <Setter Property="IsTabStop" Value="False" />
             <Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="False" />
-        </Style>
-        <Style
-            x:Key="OHsSampleLoaderCloseStyle"
-            BasedOn="{StaticResource OHsBalloonNeutralActionStyle}"
-            TargetType="c:BalloonButton">
-            <Setter Property="Padding" Value="12,2" />
         </Style>
         <Style
             x:Key="OHsSampleLoaderIconActionStyle"
@@ -880,36 +849,6 @@
             <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Subtle}" />
             <Setter Property="Padding" Value="0" />
         </Style>
-        <ControlTemplate x:Key="OHsSampleLoaderSeekTemplate" TargetType="c:ValueSlider">
-            <Grid>
-                <Border
-                    x:Name="FocusBorder"
-                    Margin="1"
-                    Padding="3"
-                    BorderBrush="Transparent"
-                    BorderThickness="1"
-                    CornerRadius="10">
-                    <Track
-                        x:Name="PART_Track"
-                        IsDirectionReversed="{TemplateBinding IsDirectionReversed}"
-                        Maximum="{TemplateBinding Maximum}"
-                        Minimum="{TemplateBinding Minimum}"
-                        Opacity="0"
-                        Orientation="Horizontal"
-                        Value="{TemplateBinding Value}">
-                        <Track.DecreaseRepeatButton>
-                            <RepeatButton Command="Slider.DecreaseLarge" Style="{StaticResource OHsValueSliderDecreaseStyle}" />
-                        </Track.DecreaseRepeatButton>
-                        <Track.IncreaseRepeatButton>
-                            <RepeatButton Command="Slider.IncreaseLarge" Style="{StaticResource OHsValueSliderIncreaseStyle}" />
-                        </Track.IncreaseRepeatButton>
-                        <Track.Thumb>
-                            <Thumb Style="{StaticResource OHsValueSliderThumbStyle}" />
-                        </Track.Thumb>
-                    </Track>
-                </Border>
-            </Grid>
-        </ControlTemplate>
     </c:BasePopup.Resources>
     <Grid Margin="0" Style="{StaticResource BaseGridStyle}">
         <Grid.RowDefinitions>

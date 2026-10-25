@@ -4,6 +4,77 @@ namespace Hitbench.Test.Services;
 
 public class HomeFolderServiceTests
 {
+    [TestCase(null)]
+    [TestCase("   ")]
+    public async Task OrdinaryMetadataFillsAbsentOrEmptyUnicode(string? unicode)
+    {
+        var extra = unicode is null ? "" : $"ArtistUnicode:{unicode}\nTitleUnicode:{unicode}\n";
+        CreateMetadataSong($"Artist:Composer\nTitle:Song\n{extra}");
+        var snapshot = await new HomeFolderService(appRoot).LoadSongsAsync(root, default);
+        var entry = snapshot!.ReadPage(0, 1).Single();
+        Assert.That((entry.Artist, entry.Title, entry.DisplayName), Is.EqualTo(("Composer", "Song", "Composer - Song")));
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task UnicodePreferenceIsIndependentOfFieldOrder(bool unicodeFirst)
+    {
+        const string ordinary = "Artist:Composer\nTitle:Song\n";
+        const string unicode = "ArtistUnicode:作曲者\nTitleUnicode:曲\n";
+        CreateMetadataSong(unicodeFirst ? unicode + ordinary : ordinary + unicode);
+        var entry = (await new HomeFolderService(appRoot).LoadSongsAsync(root, default))!.ReadPage(0, 1).Single();
+        Assert.That((entry.Artist, entry.Title), Is.EqualTo(("作曲者", "曲")));
+    }
+
+    [TestCase("作曲者", "", "作曲者", "Song")]
+    [TestCase("", "曲", "Composer", "曲")]
+    public async Task MixedUnicodeAvailabilityFallsBackPerField(string artist, string title, string expectedArtist, string expectedTitle)
+    {
+        CreateMetadataSong($"Artist:Composer\nTitle:Song\nArtistUnicode:{artist}\nTitleUnicode:{title}\n");
+        var entry = (await new HomeFolderService(appRoot).LoadSongsAsync(root, default))!.ReadPage(0, 1).Single();
+        Assert.That((entry.Artist, entry.Title), Is.EqualTo((expectedArtist, expectedTitle)));
+    }
+
+    [Test]
+    public async Task FallbackMetadataIsSearchableAndVisibleInProjectInventory()
+    {
+        var song = CreateMetadataSong("Artist:Composer\nTitle:Song\n");
+        var directory = Directory.CreateDirectory(Path.Combine(appRoot, "projects", "Project"));
+        await File.WriteAllTextAsync(Path.Combine(directory.FullName, "project.json"),
+            Hitbench.Services.ProjectFiles.ProjectDataSerializer.Serialize(new Hitbench.Core.Entities.ProjectData { BeatmapPath = song }));
+        var service = new HomeFolderService(appRoot);
+        var songs = await service.LoadSongsAsync(root, default);
+        Assert.That(songs!.FilterSongs("Composer").Count, Is.EqualTo(1));
+        Assert.That(songs.FilterSongs("Song").Count, Is.EqualTo(1));
+        var projects = await service.LoadProjectsAsync(default);
+        var entry = projects.ReadPage(0, 1).Single();
+        Assert.That((entry.Artist, entry.Title), Is.EqualTo(("Composer", "Song")));
+        Assert.That(projects.FilterProjects("Composer").Count, Is.EqualTo(1));
+    }
+
+    [Test]
+    public async Task VersionOneWarmCacheIsRebuiltOnOrdinaryLoad()
+    {
+        var song = CreateMetadataSong("Artist:Composer\nTitle:Song\n");
+        Directory.CreateDirectory(appRoot);
+        var cachePath = Path.Combine(appRoot, "data.json");
+        var cache = new Hitbench.Resources.DataModels.SongCache(1, Path.Combine(root, "Songs"), ["Metadata"],
+            [new Hitbench.Core.Entities.Song(song, "Metadata", default, "", "Metadata", "Metadata", "")]);
+        await File.WriteAllTextAsync(cachePath, System.Text.Json.JsonSerializer.Serialize(cache));
+        var snapshot = await new HomeFolderService(appRoot).LoadSongsAsync(root, default);
+        var entry = snapshot!.ReadPage(0, 1).Single();
+        Assert.That((entry.Artist, entry.Title), Is.EqualTo(("Composer", "Song")));
+        using var saved = System.Text.Json.JsonDocument.Parse(await File.ReadAllTextAsync(cachePath));
+        Assert.That(saved.RootElement.GetProperty("Version").GetInt32(), Is.EqualTo(2));
+    }
+
+    private string CreateMetadataSong(string metadata)
+    {
+        var song = Directory.CreateDirectory(Path.Combine(root, "Songs", "Metadata")).FullName;
+        File.WriteAllText(Path.Combine(song, "map.osu"), "[Metadata]\n" + metadata);
+        return song;
+    }
+
     [Test]
     public async Task BootCreatesSavedSamplesForValidProjectsAndPreservesFailures()
     {
@@ -112,7 +183,7 @@ public class HomeFolderServiceTests
         var cachePath = Path.Combine(appRoot, "data.json");
         File.WriteAllText(cachePath, System.Text.Json.JsonSerializer.Serialize(new
         {
-            Version = 1, SongsRoot = Path.Combine(root, "Songs"), Folders = new[] { "A" }, Songs = Array.Empty<object>()
+            Version = 2, SongsRoot = Path.Combine(root, "Songs"), Folders = new[] { "A" }, Songs = Array.Empty<object>()
         }));
         var result = await new HomeFolderService(appRoot).LoadSongsAsync(root, CancellationToken.None);
         Assert.That(result!.ReadPage(0, 10).Single().Title, Is.EqualTo("Recovered"));

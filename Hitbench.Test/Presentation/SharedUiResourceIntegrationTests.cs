@@ -89,9 +89,9 @@ public sealed class SharedUiResourceIntegrationTests
                          "Styles/ColumnDefinition.xaml", "Styles/Grid.xaml", "Styles/StackPanel.xaml",
                          "Styles/TextBlock.xaml", "Styles/ItemsControl.xaml", "Styles/Image.xaml", "Styles/Border.xaml",
                          "Styles/ContentPresenter.xaml", "Styles/Button.xaml", "Styles/MenuItem.xaml", "Styles/ContextMenu.xaml", "Styles/BalloonComboBox.xaml", "Styles/SegmentedToggleGroup.xaml", "Styles/SegmentedToggleOption.xaml", "Styles/PianoRollView.xaml", "Styles/BeatGridView.xaml", "Styles/ToolTip.xaml",
-                         "Styles/Window.xaml", "Styles/ListBox.xaml", "Styles/ListView.xaml", "Styles/TreeView.xaml",
+                         "Styles/Window.xaml", "Styles/ListBox.xaml",
                          "Styles/ComboBox.xaml", "Styles/ScrollViewer.xaml", "Styles/Slider.xaml", "Styles/TextBox.xaml", "Styles/ProgressBar.xaml",
-                         "Styles/StepNavigator.xaml", "Styles/Popup.xaml"
+                         "Styles/Popup.xaml"
                      })
                 app.Resources.MergedDictionaries.Add(new ResourceDictionary
                 {
@@ -127,9 +127,9 @@ public sealed class SharedUiResourceIntegrationTests
                      "Styles/ColumnDefinition.xaml", "Styles/Grid.xaml", "Styles/StackPanel.xaml",
                      "Styles/TextBlock.xaml", "Styles/ItemsControl.xaml", "Styles/Image.xaml", "Styles/Border.xaml",
                      "Styles/ContentPresenter.xaml", "Styles/Button.xaml", "Styles/MenuItem.xaml", "Styles/ContextMenu.xaml", "Styles/BalloonComboBox.xaml", "Styles/SegmentedToggleGroup.xaml", "Styles/SegmentedToggleOption.xaml", "Styles/PianoRollView.xaml", "Styles/BeatGridView.xaml", "Styles/ToolTip.xaml",
-                     "Styles/Window.xaml", "Styles/ListBox.xaml", "Styles/ListView.xaml", "Styles/TreeView.xaml",
+                     "Styles/Window.xaml", "Styles/ListBox.xaml",
                      "Styles/ComboBox.xaml", "Styles/ScrollViewer.xaml", "Styles/Slider.xaml", "Styles/TextBox.xaml", "Styles/ProgressBar.xaml",
-                     "Styles/StepNavigator.xaml", "Styles/Popup.xaml"
+                     "Styles/Popup.xaml"
                  })
             app.Resources.MergedDictionaries.Add(new ResourceDictionary
             {
@@ -138,7 +138,8 @@ public sealed class SharedUiResourceIntegrationTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(app.TryFindResource("BackgroundToForegroundConverter"), Is.Not.Null);
+            Assert.That(app.TryFindResource("DateTimeToRelativeDateConverter"),
+                Is.TypeOf<Hitbench.Resources.Converters.DateTimeToRelativeDateConverter>());
             Assert.That(app.TryFindResource("OHsComboBoxStyle"), Is.TypeOf<Style>());
             Assert.That(app.TryFindResource(typeof(BalloonButton)), Is.TypeOf<Style>());
             Assert.That(app.TryFindResource(typeof(BasePopup)), Is.TypeOf<Style>());

@@ -12,19 +12,6 @@
     <Style
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        x:Key="CenteredEmptyStateTextStyle"
-        BasedOn="{StaticResource BaseTextBlockStyle}"
-        TargetType="TextBlock">
-        <Setter Property="HorizontalAlignment" Value="Center" />
-        <Setter Property="VerticalAlignment" Value="Center" />
-        <Setter Property="FontFamily" Value="{DynamicResource Bold}" />
-        <Setter Property="FontWeight" Value="Bold" />
-
-        <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Muted}" />
-    </Style>
-    <Style
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Key="CardLabelTextStyle"
         BasedOn="{StaticResource BaseTextBlockStyle}"
         TargetType="TextBlock">
@@ -72,14 +59,6 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
-<Style x:Key="ErrorTextStyle" TargetType="TextBlock" BasedOn="{StaticResource BodyTextStyle}">
-   <Setter Property="Foreground" Value="{DynamicResource Brush.Danger}"/><Setter Property="AutomationProperties.LiveSetting" Value="Polite"/>
-   <Style.Triggers><Trigger Property="Text" Value="{x:Null}"><Setter Property="Visibility" Value="Collapsed"/></Trigger><Trigger Property="Text" Value=""><Setter Property="Visibility" Value="Collapsed"/></Trigger></Style.Triggers>
-  </Style>
-<Style x:Key="WarningTextStyle" TargetType="TextBlock" BasedOn="{StaticResource BodyTextStyle}">
-   <Setter Property="Foreground" Value="{DynamicResource Brush.Warning}"/>
-   <Style.Triggers><Trigger Property="Text" Value=""><Setter Property="Visibility" Value="Collapsed"/></Trigger></Style.Triggers>
-  </Style>
     <DropShadowEffect x:Key="OHsLoadingGlowEffect" ShadowDepth="0" BlurRadius="16" Opacity="0.3" Color="{DynamicResource Color.Navy.Text}"/>
     <Style x:Key="OHsLoadingStatusTextStyle" TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlockStyle}">
         <Setter Property="FontFamily" Value="{DynamicResource Bold}"/>

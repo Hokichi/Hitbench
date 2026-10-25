@@ -125,6 +125,19 @@ public class ProjectCreationCommandTests
         Assert.That(dialog.CallCount, Is.Zero);
     }
 
+    [Test]
+    public async Task DeactivatedHomeDoesNotNavigateAfterCommittedCreation()
+    {
+        var completion = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var vm = CreateVM((_, _, _) => completion.Task, new StubProjectCreationDialogService { Result = "Manual" });
+        var operation = vm.CreateProjectCommand.ExecuteAsync(song);
+        vm.Deactivate();
+        completion.SetResult("committed.json");
+        await operation;
+        Assert.That(created, Is.Empty);
+        Assert.That(failures, Is.Empty);
+    }
+
     private HomePageVM CreateVM(
         Func<DirectoryInfo, string, CancellationToken, Task<string>> create,
         StubProjectCreationDialogService dialog,

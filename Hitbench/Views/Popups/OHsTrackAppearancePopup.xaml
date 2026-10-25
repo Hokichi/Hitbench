@@ -3,6 +3,19 @@
  xmlns:c="clr-namespace:Hitbench.Resources.CustomControls" xmlns:h="clr-namespace:Hitbench.Resources.Helpers"
  PopupTitle="Change Name and Color" ShowCloseButton="False" Width="420" MinWidth="320">
  <c:BasePopup.Resources>
+  <Style x:Key="OHsTrackAppearanceScrollStyle" TargetType="ScrollViewer" BasedOn="{StaticResource {x:Type ScrollViewer}}">
+   <Setter Property="HorizontalScrollBarVisibility" Value="Disabled"/>
+   <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
+   <Setter Property="Focusable" Value="False"/>
+  </Style>
+  <Style x:Key="OHsTrackAppearanceCancelActionStyle" TargetType="c:BalloonButton" BasedOn="{StaticResource OHsBalloonDestructiveActionStyle}">
+   <Setter Property="IsTabStop" Value="True"/>
+   <Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True"/>
+  </Style>
+  <Style x:Key="OHsTrackAppearanceSaveActionStyle" TargetType="c:BalloonButton" BasedOn="{StaticResource OHsBalloonConfirmActionStyle}">
+   <Setter Property="IsTabStop" Value="True"/>
+   <Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True"/>
+  </Style>
   <Style x:Key="OHsTrackAppearanceColorPickerStyle" TargetType="c:OHsColorPicker" BasedOn="{StaticResource BaseControlStyle}">
    <Setter Property="FocusVisualStyle" Value="{StaticResource DefaultFocusVisualStyle}"/>
    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Control}"/>
@@ -59,6 +72,7 @@
    <Setter Property="IsTabStop" Value="True"/><Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True"/>
   </Style>
  </c:BasePopup.Resources>
+ <ScrollViewer x:Name="AppearanceScroll" Style="{StaticResource OHsTrackAppearanceScrollStyle}">
  <Grid Margin="24" Style="{StaticResource BaseGridStyle}">
   <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="16"/><RowDefinition Height="180"/><RowDefinition Height="16"/><RowDefinition Height="Auto"/><RowDefinition Height="24"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
   <TextBox x:Name="NameInput" Style="{StaticResource RoundedTextInputStyle}" AutomationProperties.Name="Track name"
@@ -71,8 +85,9 @@
    <Border Height="24" Background="{Binding Color, Mode=OneWay}" BorderBrush="{DynamicResource Brush.Border.Control}" BorderThickness="1" Style="{StaticResource BaseBorderStyle}" IsHitTestVisible="False"/>
   </StackPanel>
   <WrapPanel Grid.Row="6" Orientation="Horizontal" HorizontalAlignment="Right">
-   <c:BalloonButton ButtonText="Cancel" ButtonIcon="{StaticResource Ban}" AutomationProperties.Name="Cancel" ShouldShowText="True" Style="{StaticResource OHsBalloonDestructiveActionStyle}" Click="OnCancel" Margin="0,0,8,0"/>
-   <c:BalloonButton ButtonText="Save" ButtonIcon="{StaticResource Check}" AutomationProperties.Name="Save" ShouldShowText="True" Style="{StaticResource OHsBalloonConfirmActionStyle}" Click="OnSave" IsEnabled="{Binding CanSave, Mode=OneWay}"/>
+   <c:BalloonButton x:Name="CancelAction" ButtonText="Cancel" ButtonIcon="{StaticResource Ban}" AutomationProperties.Name="Cancel" ShouldShowText="True" Style="{StaticResource OHsTrackAppearanceCancelActionStyle}" Click="OnCancel" Margin="0,0,8,0"/>
+   <c:BalloonButton x:Name="SaveAction" ButtonText="Save" ButtonIcon="{StaticResource Check}" AutomationProperties.Name="Save" ShouldShowText="True" Style="{StaticResource OHsTrackAppearanceSaveActionStyle}" Click="OnSave" IsEnabled="{Binding CanSave, Mode=OneWay}"/>
   </WrapPanel>
  </Grid>
+ </ScrollViewer>
 </c:BasePopup>

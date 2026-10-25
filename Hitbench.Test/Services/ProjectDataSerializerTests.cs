@@ -5,6 +5,62 @@ namespace Hitbench.Test.Services;
 
 public class ProjectDataSerializerTests
 {
+    [Test]
+    public void VariantCasingPreservesSamplesAndAddition()
+    {
+        var value = ProjectDataSerializer.Deserialize("""
+            {"tracks":[{"addition":"Drum","name":"Kick","selectedsamplefilename":"Hit.WAV",
+            "samples":[{"filename":"Hit.WAV","timestamp":125}]}]}
+            """);
+        var track = ProjectDataSerializer.Deserialize(ProjectDataSerializer.Serialize(value)).Tracks.Single();
+        Assert.That((track.Name, track.Addition, track.SelectedSampleFileName), Is.EqualTo(("Kick", "Drum", "Hit.WAV")));
+        Assert.That((track.Samples.Single().FileName, track.Samples.Single().Timestamp), Is.EqualTo(("Hit.WAV", 125)));
+    }
+
+    [TestCase("""{"samples":[{"path":"Old/Hit.WAV","timestamps":[125,625]}]}""")]
+    [TestCase("""{"tracks":[{"samples":[{"filename":"Old/Hit.WAV","timestamps":[125,625]}]}]}""")]
+    public void VariantLegacyFieldsExpandWithoutLoss(string json)
+    {
+        var track = ProjectDataSerializer.Deserialize(json).Tracks.Single();
+        Assert.That(track.SelectedSampleFileName, Is.EqualTo("Old/Hit.WAV"));
+        Assert.That(track.Samples.Select(s => (s.FileName, s.Timestamp)),
+            Is.EqualTo(new[] { ("Old/Hit.WAV", 125), ("Old/Hit.WAV", 625) }));
+    }
+
+    [TestCase("""{"Tracks":[],"tracks":[]}""")]
+    [TestCase("""{"Tracks":[{"Samples":[],"samples":[]}]}""")]
+    [TestCase("""{"Tracks":[{"Addition":"Drum","addition":"Drum"}]}""")]
+    [TestCase("""{"Tracks":[{"Samples":[{"Timestamp":125,"timestamp":125}]}]}""")]
+    [TestCase("""{"Samples":[{"Path":"a.wav","path":"a.wav","Timestamps":[0]}]}""")]
+    [TestCase("""{"Tracks":[{"Volume":70,"volume":70}]}""")]
+    [TestCase("""{"BPMs":[120],"bpms":[120]}""")]
+    public void AmbiguousMemberVariantsAreRejected(string json) =>
+        Assert.Throws<InvalidDataException>(() => ProjectDataSerializer.Deserialize(json));
+
+    [Test]
+    public void InstrumentalDictionaryKeysAndAuthoredValuesArePreserved()
+    {
+        var project = ProjectDataSerializer.Deserialize("""
+            {"tracks":[{"kind":"Instrumental","name":"Piano","keyfiles":{"C4":"Piano/Note.WAV"},
+            "notes":[{"key":"C4","timestamp":125}]}]}
+            """);
+        var track = ProjectDataSerializer.Deserialize(ProjectDataSerializer.Serialize(project)).Tracks.Single();
+        Assert.That(track, Is.TypeOf<InstrumentalTrack>());
+        var instrument = (InstrumentalTrack)track;
+        Assert.That(instrument.KeyFiles.Single(), Is.EqualTo(new KeyValuePair<string, string>("C4", "Piano/Note.WAV")));
+        Assert.That((instrument.Notes.Single().Key, instrument.Notes.Single().Timestamp), Is.EqualTo(("C4", 125)));
+    }
+
+    [Test]
+    public void TracksTakePrecedenceOverLegacySamples()
+    {
+        var track = ProjectDataSerializer.Deserialize("""
+            {"tracks":[{"samples":[{"filename":"current.wav","timestamp":125}]}],
+             "samples":[{"path":"old.wav","timestamps":[625]}]}
+            """).Tracks.Single();
+        Assert.That((track.Samples.Single().FileName, track.Samples.Single().Timestamp), Is.EqualTo(("current.wav", 125)));
+    }
+
     [TestCase("0")]
     [TestCase("\"obsolete\"")]
     public void LegacyNodeVolumesAreIgnoredAndTrackAndControlVolumesSurvive(string volume)

@@ -11,6 +11,7 @@ namespace Hitbench.Services.FileSystem;
 public sealed class HomeFolderService(string applicationDirectory, Func<CancellationToken, Action, IEnumerable<string>>? installationDirectories = null)
     : IHomeFolderService
 {
+    private const int CacheVersion = 2;
     private static readonly HashSet<string> ImageExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
         ".bmp", ".gif", ".jpg", ".jpeg", ".png", ".tif", ".tiff"
@@ -102,7 +103,7 @@ public sealed class HomeFolderService(string applicationDirectory, Func<Cancella
         var songs = snapshot.ReadPage(0, snapshot.Count).Select(song => new Song(song.FullName,
             song.Name, song.LastWriteTimeUtc, song.Artist, song.Title, song.DisplayName, song.BackgroundPath)).ToArray();
         token.ThrowIfCancellationRequested();
-        SaveCache(cachePath, new SongCache(1, path, current.ToArray(), songs), token);
+        SaveCache(cachePath, new SongCache(CacheVersion, path, current.ToArray(), songs), token);
         return snapshot;
     }
 
@@ -112,7 +113,7 @@ public sealed class HomeFolderService(string applicationDirectory, Func<Cancella
         {
             using var stream = File.OpenRead(cachePath);
             var cache = JsonSerializer.Deserialize<SongCache>(stream);
-            if (cache is not { Version: 1, Folders: not null, Songs: not null } ||
+            if (cache is not { Version: CacheVersion, Folders: not null, Songs: not null } ||
                 !StringComparer.OrdinalIgnoreCase.Equals(cache.SongsRoot, songsRoot)) return null;
             var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var name in cache.Folders)
@@ -206,6 +207,8 @@ public sealed class HomeFolderService(string applicationDirectory, Func<Cancella
         var backgroundEvents = false;
         var artist = "";
         var title = "";
+        var unicodeArtist = "";
+        var unicodeTitle = "";
         string? backgroundPath = null;
         try
         {
@@ -234,8 +237,10 @@ public sealed class HomeFolderService(string applicationDirectory, Func<Cancella
                     var separator = line.IndexOf(':');
                     if (separator < 0) continue;
                     var key = line[..separator].Trim();
-                    if (key == "ArtistUnicode") artist = line[(separator + 1)..].Trim();
-                    if (key == "TitleUnicode") title = line[(separator + 1)..].Trim();
+                    if (key == "Artist") artist = line[(separator + 1)..].Trim();
+                    if (key == "Title") title = line[(separator + 1)..].Trim();
+                    if (key == "ArtistUnicode") unicodeArtist = line[(separator + 1)..].Trim();
+                    if (key == "TitleUnicode") unicodeTitle = line[(separator + 1)..].Trim();
                 }
             }
         }
@@ -254,6 +259,8 @@ public sealed class HomeFolderService(string applicationDirectory, Func<Cancella
             { Trace.TraceWarning("Song artwork could not be found: {0}", error.Message); }
         }
         token.ThrowIfCancellationRequested();
+        if (!string.IsNullOrWhiteSpace(unicodeArtist)) artist = unicodeArtist;
+        if (!string.IsNullOrWhiteSpace(unicodeTitle)) title = unicodeTitle;
         if (string.IsNullOrWhiteSpace(title)) title = entry.Name;
         return entry with
         {

@@ -8,6 +8,103 @@ namespace Hitbench.Test.Presentation;
 public class OHsTrackAppearancePopupIntegrationTests
 {
     [Test]
+    public void AppearanceActionsOptIntoTabNavigation()
+    {
+        new VolumeWheelTests().SetUp();
+        var popup = new OHsTrackAppearancePopup(new(new("Old", null, 0), "#123456"), _ => { });
+        using var view = new InMemoryView(popup, scheduleLayout: false);
+        view.Root.Resources.MergedDictionaries.Add(popup.Resources);
+        foreach (var name in new[] { "Cancel", "Save" })
+        {
+            var action = Action(view.Root, name);
+            Assert.That(action.IsTabStop, Is.True, name);
+            Assert.That(popup.FindName($"{name}Action"), Is.SameAs(action));
+            UiControlContract.AssertStyle<BalloonButton>(action, $"OHsTrackAppearance{name}ActionStyle");
+            Assert.That(action.FocusVisualStyle, Is.SameAs(action.FindResource("DefaultFocusVisualStyle")));
+        }
+    }
+
+    [Test]
+    public void EnterOnCancelDiscardsDirtyDraft()
+    {
+        new VolumeWheelTests().SetUp();
+        bool? accepted = null;
+        var vm = new OHsTrackAppearancePopupVM(new("Old", null, 0), "#123456") { Name = "New" };
+        var popup = new OHsTrackAppearancePopup(vm, value => accepted = value);
+        using var view = new InMemoryView(popup, scheduleLayout: false);
+        popup.HandleKey(Key.Enter, Action(view.Root, "Cancel"));
+        Assert.That(accepted, Is.False);
+        Assert.That(vm.IsDirty, Is.True);
+    }
+
+    [Test]
+    public void SpaceOnCancelDiscardsDirtyDraft()
+    {
+        new VolumeWheelTests().SetUp();
+        bool? accepted = null;
+        var vm = new OHsTrackAppearancePopupVM(new("Old", null, 0), "#123456") { Name = "New" };
+        var popup = new OHsTrackAppearancePopup(vm, value => accepted = value);
+        using var view = new InMemoryView(popup, scheduleLayout: false);
+        using var source = new InMemoryPresentationSource();
+        var action = Action(view.Root, "Cancel");
+        action.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, source, 0, Key.Space) { RoutedEvent = Keyboard.KeyDownEvent });
+        action.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, source, 0, Key.Space) { RoutedEvent = Keyboard.KeyUpEvent });
+        Assert.That(accepted, Is.False);
+    }
+
+    [Test]
+    public void InvalidSaveCannotCommit()
+    {
+        new VolumeWheelTests().SetUp();
+        bool? accepted = null;
+        var vm = new OHsTrackAppearancePopupVM(new("Old", null, 0), "#123456") { Color = "invalid" };
+        var popup = new OHsTrackAppearancePopup(vm, value => accepted = value);
+        using var view = new InMemoryView(popup, scheduleLayout: false);
+        var save = Action(view.Root, "Save");
+        Assert.That(save.IsEnabled, Is.False);
+        popup.HandleKey(Key.Enter, save);
+        Assert.That(accepted, Is.Null);
+    }
+
+    private static BalloonButton Action(System.Windows.DependencyObject root, string name) =>
+        Descendants(root).OfType<BalloonButton>().Single(button =>
+            System.Windows.Automation.AutomationProperties.GetName(button) == name);
+
+    [TestCase(1920, 1080, System.Windows.FlowDirection.LeftToRight)]
+    [TestCase(640, 480, System.Windows.FlowDirection.LeftToRight)]
+    [TestCase(480, 320, System.Windows.FlowDirection.LeftToRight)]
+    [TestCase(1920, 1080, System.Windows.FlowDirection.RightToLeft)]
+    [TestCase(640, 480, System.Windows.FlowDirection.RightToLeft)]
+    [TestCase(480, 320, System.Windows.FlowDirection.RightToLeft)]
+    public void ShortWorkAreaKeepsContentNavigable(double width, double height, System.Windows.FlowDirection direction)
+    {
+        new VolumeWheelTests().SetUp();
+        bool? accepted = null;
+        var vm = new OHsTrackAppearancePopupVM(new("Old", null, 0), "#123456") { Name = "Draft" };
+        var popup = new OHsTrackAppearancePopup(vm, value => accepted = value) { FlowDirection = direction };
+        const double suppliedChrome = 96;
+        var content = (System.Windows.FrameworkElement)popup.Content;
+        content.Measure(new System.Windows.Size(Math.Min(popup.Width, width), double.PositiveInfinity));
+        var naturalHeight = content.DesiredSize.Height;
+        TestContext.Out.WriteLine($"Natural content extent {naturalHeight}; supplied work area {width} x {height}, chrome {suppliedChrome}.");
+        popup.ApplyWorkArea(new System.Windows.Size(width, height), suppliedChrome);
+        content.Measure(new System.Windows.Size(Math.Min(popup.Width, width), double.PositiveInfinity));
+        Assert.That(content.DesiredSize.Height, Is.LessThanOrEqualTo(height - suppliedChrome));
+        if (naturalHeight > height - suppliedChrome)
+        {
+            var scroll = popup.FindName("AppearanceScroll") as ScrollViewer;
+            Assert.That(scroll, Is.Not.Null, "Overflowing content requires a reachable scrolling viewport.");
+            UiTestPump.Layout(scroll!, Math.Min(popup.Width, width), scroll!.MaxHeight);
+            scroll.ScrollToBottom();
+            scroll.UpdateLayout();
+            Assert.That(scroll.VerticalOffset, Is.EqualTo(scroll.ScrollableHeight));
+            Assert.That(vm.Name, Is.EqualTo("Draft"));
+        }
+        popup.HandleKey(Key.Enter, popup.FindName("CancelAction") as System.Windows.DependencyObject);
+        Assert.That(accepted, Is.False);
+    }
+
+    [Test]
     public void HueMarkerUsesNativeInputAndUpdatesDraft()
     {
         new VolumeWheelTests().SetUp();

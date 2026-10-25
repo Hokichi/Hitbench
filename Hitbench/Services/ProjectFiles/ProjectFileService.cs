@@ -8,6 +8,17 @@ namespace Hitbench.Services.ProjectFiles;
 
 public sealed class ProjectFileService(string applicationDirectory) : IProjectFileService
 {
+    private readonly Func<string, string, CancellationToken, Task> writeProjectAsync = File.WriteAllTextAsync;
+    private readonly Action<string, string> publishDirectory = Directory.Move;
+
+    internal ProjectFileService(string applicationDirectory,
+        Func<string, string, CancellationToken, Task> writeProjectAsync, Action<string, string> publishDirectory)
+        : this(applicationDirectory)
+    {
+        this.writeProjectAsync = writeProjectAsync;
+        this.publishDirectory = publishDirectory;
+    }
+
     public async Task SetPinnedAsync(string projectPath, bool isPinned, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -105,30 +116,60 @@ public sealed class ProjectFileService(string applicationDirectory) : IProjectFi
             BeatmapTimingReader.Populate(project, beatmapPath, cancellationToken);
         }, cancellationToken);
         var json = ProjectDataSerializer.Serialize(project);
-        var directory = Path.GetFullPath(Path.Combine(applicationDirectory, "projects", projectName));
+        var applicationRoot = Path.GetFullPath(applicationDirectory);
+        for (var parent = new DirectoryInfo(applicationRoot); parent is not null; parent = parent.Parent)
+            RejectLink(parent.FullName);
+        var projects = Path.Combine(applicationRoot, "projects");
+        RejectLink(projects);
+        var directory = Path.Combine(projects, projectName);
         var target = Path.Combine(directory, "project.json");
         if (Directory.Exists(directory) || File.Exists(directory))
             throw new IOException($"A project already exists: {directory}");
-        Directory.CreateDirectory(directory);
 
-        var temporary = Path.Combine(directory, $".{Guid.NewGuid():N}.tmp");
+        var staging = Path.Combine(applicationRoot, $".project-staging-{Guid.NewGuid():N}");
         try
         {
-            await File.WriteAllTextAsync(temporary, json, cancellationToken);
+            Directory.CreateDirectory(projects);
+            Directory.CreateDirectory(staging);
+            var stagedProject = Path.Combine(staging, "project.json");
+            await writeProjectAsync(stagedProject, json, cancellationToken);
+            await Task.Run(() => SamplePaths.TryEnsureSavedRoot(stagedProject, cancellationToken), cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
-            File.Move(temporary, target, overwrite: false);
-            await Task.Run(() => SamplePaths.TryEnsureSavedRoot(target, cancellationToken), cancellationToken);
+            RejectLink(projects);
+            RejectLink(staging);
+            publishDirectory(staging, directory);
             return target;
         }
         catch (Exception error)
         {
-            try { File.Delete(temporary); }
-            catch (Exception cleanupError) when (cleanupError is IOException or UnauthorizedAccessException)
+            try { DeleteStaging(applicationRoot, staging); }
+            catch (Exception cleanupError) when (cleanupError is IOException or UnauthorizedAccessException or ArgumentException)
             {
-                throw new AggregateException($"Project creation failed and temporary file could not be removed: {temporary}",
+                throw new AggregateException($"Project creation failed; staging retained at {staging}",
                     error, cleanupError);
             }
             throw;
         }
+    }
+
+    private static void DeleteStaging(string applicationRoot, string staging)
+    {
+        var full = Path.GetFullPath(staging);
+        if (!string.Equals(Path.GetDirectoryName(full), applicationRoot, StringComparison.OrdinalIgnoreCase) ||
+            !Path.GetFileName(full).StartsWith(".project-staging-", StringComparison.Ordinal))
+            throw new IOException("Refusing unsafe project staging cleanup.");
+        for (var parent = new DirectoryInfo(applicationRoot); parent is not null; parent = parent.Parent)
+            RejectLink(parent.FullName);
+        RejectLink(full);
+        if (!Directory.Exists(full)) return;
+        var pending = new Stack<string>();
+        pending.Push(full);
+        while (pending.TryPop(out var directory))
+            foreach (var entry in Directory.EnumerateFileSystemEntries(directory))
+            {
+                RejectLink(entry);
+                if (Directory.Exists(entry)) pending.Push(entry);
+            }
+        Directory.Delete(full, recursive: true);
     }
 }

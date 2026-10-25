@@ -15,10 +15,14 @@ public static class ProjectDataSerializer
         try { root = JObject.Parse(json, new JsonLoadSettings { DuplicatePropertyNameHandling = DuplicatePropertyNameHandling.Error }); }
         catch (JsonException error) { throw new InvalidDataException("Project JSON is invalid.", error); }
 
-        var pinned = InstrumentMember(root, nameof(ProjectData.IsPinned));
+        NormalizeMembers(root, nameof(ProjectData.IsPinned), nameof(ProjectData.LastChanged),
+            nameof(ProjectData.WorkstationZoom), nameof(ProjectData.BeatmapPath), nameof(ProjectData.Tracks),
+            nameof(ProjectData.ControlPoints), nameof(ProjectData.Offsets), nameof(ProjectData.BPMs),
+            "Samples", "IsCollapsed");
+        var pinned = Member(root, nameof(ProjectData.IsPinned));
         if (pinned is not null && pinned.Type != JTokenType.Boolean)
             throw new InvalidDataException("Project IsPinned must be a boolean.");
-        var changed = InstrumentMember(root, nameof(ProjectData.LastChanged));
+        var changed = Member(root, nameof(ProjectData.LastChanged));
         if (changed is not null)
         {
             DateTimeOffset instant;
@@ -41,6 +45,7 @@ public static class ProjectDataSerializer
             foreach (var item in legacy)
             {
                 if (item is not JObject sample) throw new InvalidDataException("Legacy Sample must be an object.");
+                NormalizeMembers(sample, "FileName", "Path", "Timestamp", "Timestamps");
                 if (sample["FileName"] is null && sample["Path"] is not null)
                     sample["FileName"] = sample["Path"]!.DeepClone();
                 sample.Remove("Path");
@@ -49,7 +54,7 @@ public static class ProjectDataSerializer
             root["Tracks"] = tracks;
         }
         root.Remove("Samples");
-        var collapsed = InstrumentMember(root, "IsCollapsed");
+        var collapsed = Member(root, "IsCollapsed");
         if (collapsed is not null && collapsed.Type != JTokenType.Boolean)
             throw new InvalidDataException("Project IsCollapsed must be a boolean.");
         root.Remove("IsCollapsed");
@@ -60,7 +65,11 @@ public static class ProjectDataSerializer
             foreach (var item in trackNodes)
             {
                 if (item is not JObject track) throw new InvalidDataException("Track must be an object.");
-                var color = InstrumentMember(track, nameof(Track.Color));
+                NormalizeMembers(track, nameof(Track.SampleType), nameof(Track.Addition), nameof(Track.Name),
+                    nameof(Track.Color), nameof(Track.SelectedSampleFileName), nameof(Track.Samples),
+                    nameof(Track.Volume), nameof(Track.IsCollapsed), nameof(Track.IsTrackMuted),
+                    nameof(Track.IsTrackSoloed), "Kind");
+                var color = Member(track, nameof(Track.Color));
                 if (color is not null && color.Type != JTokenType.Null)
                 {
                     if (color.Type != JTokenType.String || !RgbColor.TryParse(color.Value<string>(), out var rgb))
@@ -68,11 +77,11 @@ public static class ProjectDataSerializer
                     foreach (var member in track.Properties().Where(p => string.Equals(p.Name, nameof(Track.Color), StringComparison.OrdinalIgnoreCase)).ToArray()) member.Remove();
                     track[nameof(Track.Color)] = rgb.ToHex();
                 }
-                var trackCollapsed = InstrumentMember(track, nameof(Track.IsCollapsed));
+                var trackCollapsed = Member(track, nameof(Track.IsCollapsed));
                 if (trackCollapsed is not null && trackCollapsed.Type != JTokenType.Boolean)
                     throw new InvalidDataException("Track IsCollapsed must be a boolean.");
                 if (trackCollapsed is null) track[nameof(Track.IsCollapsed)] = collapsed?.Value<bool>() ?? false;
-                var kind = InstrumentMember(track, "Kind");
+                var kind = Member(track, "Kind");
                 if (kind is not null && (kind.Type != JTokenType.String || kind.Value<string>() is not ("Instrumental" or "Sample")))
                     throw new InvalidDataException("Track Kind must be Sample or Instrumental.");
                 if (kind?.Value<string>() == "Instrumental") NormalizeInstrument(track);
@@ -125,10 +134,15 @@ public static class ProjectDataSerializer
         return root.ToString(Formatting.Indented);
     }
 
-    private static JToken? InstrumentMember(JObject node,string name)
+    private static void NormalizeMembers(JObject node, params string[] names)
+    {
+        foreach (var name in names) Member(node, name);
+    }
+
+    private static JToken? Member(JObject node,string name)
     {
         var members=node.Properties().Where(p=>string.Equals(p.Name,name,StringComparison.OrdinalIgnoreCase)).ToArray();
-        if (members.Length>1) throw new InvalidDataException($"Duplicate instrumental field: {name}.");
+        if (members.Length>1) throw new InvalidDataException($"Duplicate project field: {name}.");
         if (members.Length==0) return null;
         var value=members[0].Value;
         if (members[0].Name!=name) { members[0].Remove(); node[name]=value; }
@@ -136,15 +150,15 @@ public static class ProjectDataSerializer
     }
     private static void NormalizeInstrument(JObject track)
     {
-        var folder = InstrumentMember(track, "FolderName");
+        var folder = Member(track, "FolderName");
         if (folder is null) track["FolderName"] = "";
         else if (folder.Type != JTokenType.String || folder.Value<string>() is { Length: > 0 } folderName && SamplePaths.GetFolderNameError(folderName) is not null)
             throw new InvalidDataException("Instrumental FolderName must be a safe single directory name.");
-        foreach (var name in new[] { "Addition","SampleType","SelectedSampleFileName","Samples" }) InstrumentMember(track,name);
+        foreach (var name in new[] { "Addition","SampleType","SelectedSampleFileName","Samples" }) Member(track,name);
         track["Addition"]="Soft"; track["SampleType"]=3; track["SelectedSampleFileName"]=null;
         if (track["Samples"] is JArray inherited && inherited.Count==0 || track["Samples"] is null) track["Samples"]=new JArray();
         else throw new InvalidDataException("Instrumental tracks cannot contain sample-grid nodes.");
-        var keys=InstrumentMember(track,"KeyFiles");
+        var keys=Member(track,"KeyFiles");
         if (keys is null) track["KeyFiles"]=keys=new JObject();
         if (keys is not JObject mappings) throw new InvalidDataException("Instrumental KeyFiles must be an object.");
         foreach (var pair in mappings.Properties())
@@ -154,14 +168,14 @@ public static class ProjectDataSerializer
                 throw new InvalidDataException($"Invalid instrumental key mapping: {pair.Name}.");
             pair.Value = pair.Value.Value<string>()!.Replace('\\', '/');
         }
-        var notes=InstrumentMember(track,"Notes");
+        var notes=Member(track,"Notes");
         if (notes is null) track["Notes"]=notes=new JArray();
         if (notes is not JArray list) throw new InvalidDataException("Instrumental Notes must be an array.");
         var seen=new HashSet<(string,int)>();
         foreach (var item in list)
         {
             if (item is not JObject note) throw new InvalidDataException("Instrumental note must be an object.");
-            var key = InstrumentMember(note, "Key"); var time = InstrumentMember(note, "Timestamp");
+            var key = Member(note, "Key"); var time = Member(note, "Timestamp");
             if (key?.Type!=JTokenType.String || !InstrumentalKeys.TryGetIndex(key.Value<string>()!,out _) ||
                 !IsIntegerInRange(time, int.MaxValue))
                 throw new InvalidDataException("Instrumental note needs a valid key and integer timestamp.");
@@ -176,17 +190,17 @@ public static class ProjectDataSerializer
 
     private static void NormalizeControlPoints(JObject root)
     {
-        var value = InstrumentMember(root, nameof(ProjectData.ControlPoints));
+        var value = Member(root, nameof(ProjectData.ControlPoints));
         if (value is null or { Type: JTokenType.Null })
         { root[nameof(ProjectData.ControlPoints)] = new JArray(); return; }
         if (value is not JArray points) throw new InvalidDataException("ControlPoints must be an array of objects.");
         foreach (var item in points)
         {
             if (item is not JObject point) throw new InvalidDataException("Control point must be an object.");
-            var time = InstrumentMember(point, nameof(ControlPoint.Timestamp));
-            var volume = InstrumentMember(point, nameof(ControlPoint.Volume));
-            var sampleset = InstrumentMember(point, nameof(ControlPoint.Sampleset));
-            var disabled = InstrumentMember(point, nameof(ControlPoint.IsDisabled));
+            var time = Member(point, nameof(ControlPoint.Timestamp));
+            var volume = Member(point, nameof(ControlPoint.Volume));
+            var sampleset = Member(point, nameof(ControlPoint.Sampleset));
+            var disabled = Member(point, nameof(ControlPoint.IsDisabled));
             if (disabled is not null && disabled.Type != JTokenType.Boolean)
                 throw new InvalidDataException("Control point IsDisabled must be a boolean.");
             if (!IsIntegerInRange(time, int.MaxValue)) throw new InvalidDataException("Control point Timestamp must be a nonnegative integer.");
@@ -210,6 +224,7 @@ public static class ProjectDataSerializer
         var normalized = new JArray();
         foreach (var token in samples.Cast<JObject>())
         {
+            NormalizeMembers(token, "FileName", "Path", "Timestamp", "Timestamps");
             if (track["SelectedSampleFileName"] is null && token["FileName"] is { Type: JTokenType.String } fileName)
                 track["SelectedSampleFileName"] = fileName.DeepClone();
             if (token["Timestamp"] is not null)

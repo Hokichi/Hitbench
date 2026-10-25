@@ -32,6 +32,10 @@ public class WorkstationReturnIntegrationTests
         new WorkstationPageIntegrationTests().SetUp();
         Application.Current.Resources.MergedDictionaries.Add(new ResourceDictionary
         {
+            Source = new Uri("/Hitbench;component/Resources/Styles/Image.xaml", UriKind.Relative)
+        });
+        Application.Current.Resources.MergedDictionaries.Add(new ResourceDictionary
+        {
             Source = new Uri("/Hitbench;component/Resources/Styles/Window.xaml", UriKind.Relative)
         });
         messenger = new WeakReferenceMessenger();

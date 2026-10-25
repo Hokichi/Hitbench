@@ -129,26 +129,6 @@
     <Color x:Key="Color.BalloonButton.Background.Neutral.Pressed">#D8DDE8</Color>
     <Color x:Key="Color.BalloonButton.Foreground.Neutral">#151922</Color>
 
-    <!-- LEGACY (deprecated). Finance-era keys with no hitsound meaning. Values are the v1 values.
-         Delete after a repository search shows no consumers; Light.xaml must drop the same keys. -->
-    <Color x:Key="Color.Text.Recurring">#7A4A00</Color>
-    <Color x:Key="Color.Background.Recurring">#FFEBD2</Color>
-    <Color x:Key="Color.Category.Needs">#2E3440</Color>
-    <Color x:Key="Color.Category.Wants">#2E86AB</Color>
-    <Color x:Key="Color.Category.Investments">#2C4BC7</Color>
-    <Color x:Key="Color.Category.Needs.Dark">#EDEFF2</Color>
-    <Color x:Key="Color.Category.Wants.Dark">#E4F1FA</Color>
-    <Color x:Key="Color.Category.Investments.Dark">#DCE3F7</Color>
-    <Color x:Key="Color.Account.Checking">#2C7FE0</Color>
-    <Color x:Key="Color.Account.Cash">#64707E</Color>
-    <Color x:Key="Color.Account.Credit">#7259C9</Color>
-    <Color x:Key="Color.Account.Saving">#C1841F</Color>
-    <Color x:Key="Color.Account.Checking.Inverted">#E1EFFD</Color>
-    <Color x:Key="Color.Account.Cash.Inverted">#EDEFF1</Color>
-    <Color x:Key="Color.Account.Credit.Inverted">#F0EAFB</Color>
-    <Color x:Key="Color.Account.Saving.Inverted">#FBF0DC</Color>
-    <Color x:Key="Color.Reserved">#5A6172</Color>
-
     <!-- ===================== BRUSHES ===================== -->
 
     <SolidColorBrush x:Key="Brush.Background.Main" Color="{StaticResource Color.Background.Main}" />
@@ -249,25 +229,6 @@
     <SolidColorBrush x:Key="Brush.BalloonButton.Background.Neutral.Hovered" Color="{StaticResource Color.BalloonButton.Background.Neutral.Hovered}" />
     <SolidColorBrush x:Key="Brush.BalloonButton.Background.Neutral.Pressed" Color="{StaticResource Color.BalloonButton.Background.Neutral.Pressed}" />
     <SolidColorBrush x:Key="Brush.BalloonButton.Foreground.Neutral" Color="{StaticResource Color.BalloonButton.Foreground.Neutral}" />
-
-    <!-- LEGACY brushes (deprecated, see the colour block above) -->
-    <SolidColorBrush x:Key="Brush.Text.Recurring" Color="{StaticResource Color.Text.Recurring}" />
-    <SolidColorBrush x:Key="Brush.Background.Recurring" Color="{StaticResource Color.Background.Recurring}" />
-    <SolidColorBrush x:Key="Brush.Category.Needs" Color="{StaticResource Color.Category.Needs}" />
-    <SolidColorBrush x:Key="Brush.Category.Wants" Color="{StaticResource Color.Category.Wants}" />
-    <SolidColorBrush x:Key="Brush.Category.Investments" Color="{StaticResource Color.Category.Investments}" />
-    <SolidColorBrush x:Key="Brush.Category.Needs.Dark" Color="{StaticResource Color.Category.Needs.Dark}" />
-    <SolidColorBrush x:Key="Brush.Category.Wants.Dark" Color="{StaticResource Color.Category.Wants.Dark}" />
-    <SolidColorBrush x:Key="Brush.Category.Investments.Dark" Color="{StaticResource Color.Category.Investments.Dark}" />
-    <SolidColorBrush x:Key="Brush.Account.Checking" Color="{StaticResource Color.Account.Checking}" />
-    <SolidColorBrush x:Key="Brush.Account.Cash" Color="{StaticResource Color.Account.Cash}" />
-    <SolidColorBrush x:Key="Brush.Account.Credit" Color="{StaticResource Color.Account.Credit}" />
-    <SolidColorBrush x:Key="Brush.Account.Saving" Color="{StaticResource Color.Account.Saving}" />
-    <SolidColorBrush x:Key="Brush.Account.Checking.Inverted" Color="{StaticResource Color.Account.Checking.Inverted}" />
-    <SolidColorBrush x:Key="Brush.Account.Cash.Inverted" Color="{StaticResource Color.Account.Cash.Inverted}" />
-    <SolidColorBrush x:Key="Brush.Account.Credit.Inverted" Color="{StaticResource Color.Account.Credit.Inverted}" />
-    <SolidColorBrush x:Key="Brush.Account.Saving.Inverted" Color="{StaticResource Color.Account.Saving.Inverted}" />
-    <SolidColorBrush x:Key="Brush.Reserved" Color="{StaticResource Color.Reserved}" />
 
     <!-- ===================== ELEVATION (NEW) ===================== -->
     <!-- Shadows lift modal chrome, menus and tooltips. Cards and inputs rely on surface contrast and borders. -->
