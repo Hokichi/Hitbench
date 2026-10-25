@@ -32,6 +32,43 @@ public class WorkstationShellVolumeTests
         Assert.That(page.IsVolumeOverlayOpen, Is.True);
     });
 
+    [TestCase("SongVolumeWheel")]
+    [TestCase("ApplicationVolumeWheel")]
+    [TestCase("SamplesVolumeWheel")]
+    public void MappingTransportLockDoesNotDisableVolumeControls(string wheelName)
+    {
+        var previousContext = SynchronizationContext.Current;
+        SynchronizationContext.SetSynchronizationContext(new System.Windows.Threading.DispatcherSynchronizationContext());
+        OHsKeysMappingTestContext? mapping = null;
+        try
+        {
+            var opening = OHsKeysMappingTestContext.CreateAsync();
+            UiTestPump.Run(opening);
+            mapping = opening.GetAwaiter().GetResult();
+            var page = new WorkstationPage(mapping.Owner);
+            using var view = new InMemoryView(new Window { Content = page, Width = 1000, Height = 700 });
+            Assert.That(mapping.Owner.IsInstrumentalTransportBlocked, Is.True);
+            Assert.That(mapping.Owner.IsInteractionReady, Is.True);
+            Assert.That(mapping.Owner.CanPlay, Is.False);
+            page.ShowVolumeOverlay(false, default, false, false);
+            var wheel = (Hitbench.Resources.CustomControls.VolumeWheel)page.FindName(wheelName);
+            Assert.That(wheel.IsEnabled, Is.True);
+            page.ActivateVolumeWheel(wheel);
+            Assert.That(page.HandleVolumeOverlayKey(Key.Down, ModifierKeys.None), Is.True);
+            Assert.That(mapping.Owner.SongVolume, Is.EqualTo(wheelName == "SongVolumeWheel" ? 95 : 100));
+            Assert.That(mapping.Owner.ApplicationVolume, Is.EqualTo(wheelName == "ApplicationVolumeWheel" ? 95 : 100));
+            Assert.That(mapping.Owner.SamplesVolume, Is.EqualTo(wheelName == "SamplesVolumeWheel" ? 95 : 100));
+            Assert.That(mapping.Owner.PlayPauseCommand.CanExecute(null), Is.False);
+            UiTestPump.Run(page.DeactivateAsync());
+            Assert.That(wheel.IsEnabled, Is.False);
+        }
+        finally
+        {
+            try { if (mapping is not null) UiTestPump.Run(mapping.DisposeAsync().AsTask()); }
+            finally { SynchronizationContext.SetSynchronizationContext(previousContext); }
+        }
+    }
+
     [TestCase(false)]
     [TestCase(true)]
     public void AltWheelFromEitherDrawerControlsMaster(bool mapping) => WithDrawer(mapping, (shell, page, drawer, _) =>
