@@ -10,8 +10,8 @@ public sealed class SamplePathsTests
         var root = Directory.CreateTempSubdirectory();
         try
         {
-            var project = Path.Combine(root.FullName, "project.json");
-            var saved = Path.Combine(root.FullName, "Saved Samples");
+            var project = root.FullName;
+            var saved = Path.Combine(root.FullName, "saved");
             Assert.That(SamplePaths.SavedRoot(project), Is.EqualTo(saved));
             Assert.That(SamplePaths.TryEnsureSavedRoot(project, default), Is.True);
             File.WriteAllText(Path.Combine(saved, "keep.wav"), "saved");
@@ -33,8 +33,8 @@ public sealed class SamplePathsTests
         var outside = Directory.CreateTempSubdirectory();
         try
         {
-            var project = Path.Combine(root.FullName, "project.json");
-            var saved = Path.Combine(root.FullName, "Saved Samples");
+            var project = root.FullName;
+            var saved = Path.Combine(root.FullName, "saved");
             File.WriteAllText(saved, "keep");
             Assert.That(SamplePaths.TryEnsureSavedRoot(project, default), Is.False);
             Assert.That(File.ReadAllText(saved), Is.EqualTo("keep"));

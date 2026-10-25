@@ -4,10 +4,15 @@ using Hitbench.Services.ProjectFiles;
 
 namespace Hitbench.Services.FileSystem;
 
-public sealed class WorkstationSourceService : IWorkstationSourceService
+public sealed class WorkstationSourceService(ISampleFileService? sampleFiles = null) : IWorkstationSourceService
 {
-    public Task<WorkstationSource> LoadAsync(string projectPath, CancellationToken token) =>
-        Task.Run(() => Load(projectPath, token), token);
+    private readonly ISampleFileService sampleFiles = sampleFiles ?? new SampleFileService();
+    public async Task<WorkstationSource> LoadAsync(string projectPath, CancellationToken token)
+    {
+        var source = await Task.Run(() => Load(projectPath, token), token);
+        await sampleFiles.TryMigrateSavedSamplesAsync(projectPath, token);
+        return source;
+    }
 
     private static WorkstationSource Load(string projectPath, CancellationToken token)
     {
@@ -65,7 +70,6 @@ public sealed class WorkstationSourceService : IWorkstationSourceService
         RejectReparsePoints(songFolder, audioPath);
         BeatmapTimingReader.Populate(project, beatmapPath, token);
         Directory.CreateDirectory(Path.Combine(Path.GetDirectoryName(Path.GetFullPath(projectPath))!, "Samples"));
-        SamplePaths.TryEnsureSavedRoot(projectPath, token);
         return new WorkstationSource(beatmapPath, audioPath, project);
     }
 

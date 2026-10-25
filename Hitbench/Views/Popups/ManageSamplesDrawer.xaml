@@ -6,6 +6,12 @@
     xmlns:h="clr-namespace:Hitbench.Resources.Helpers"
     Style="{StaticResource BaseControlStyle}">
     <UserControl.Resources>
+        <ObjectDataProvider x:Key="OHsManageSamplesOwner" />
+        <Style x:Key="OHsManageSamplesPrimaryActionStyle" TargetType="c:BalloonButton" BasedOn="{StaticResource OHsBalloonDefaultActionStyle}">
+            <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
+            <Setter Property="IsTabStop" Value="True" />
+            <Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
+        </Style>
 
         <Style
             x:Key="OHsManageSamplesNameStyle"
@@ -54,6 +60,7 @@
             x:Key="OHsManageSamplesActionStyle"
             BasedOn="{StaticResource OHsBalloonNeutralActionStyle}"
             TargetType="c:BalloonButton">
+            <Setter Property="Foreground" Value="{DynamicResource Brush.BalloonButton.Foreground.Neutral}" />
             <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
             <Setter Property="IsTabStop" Value="True" />
             <Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
@@ -86,7 +93,7 @@
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="CornerRadius" Value="8" />
             <Setter Property="Padding" Value="8,4" />
-            <Setter Property="Margin" Value="0,4" />
+            <Setter Property="Margin" Value="0,2" />
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
                     <Setter Property="Background" Value="{DynamicResource Brush.Background.Hover}" />
@@ -112,101 +119,78 @@
             </Style.Triggers>
         </Style>
 
-        <Style
-            x:Key="OHsManageSamplesSaveStyle"
-            BasedOn="{StaticResource OHsBalloonConfirmActionStyle}"
-            TargetType="c:BalloonButton">
-            <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
-            <Setter Property="IsTabStop" Value="True" />
-            <Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
-            <Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="True" />
-            <Setter Property="ButtonText" Value="Save" />
+        <Style x:Key="OHsManageSamplesMenuStyle" TargetType="c:BalloonComboBox" BasedOn="{StaticResource BaseBalloonComboBoxStyle}">
+            <Setter Property="ButtonIcon" Value="{StaticResource BarsSolid}" />
+            <Setter Property="ButtonText" Value="Actions" />
+            <Setter Property="DefaultBackground" Value="{DynamicResource Brush.BalloonButton.Background.Neutral}" />
+            <Setter Property="HoveredBackground" Value="{DynamicResource Brush.BalloonButton.Background.Neutral.Hovered}" />
+            <Setter Property="PressedBackground" Value="{DynamicResource Brush.BalloonButton.Background.Neutral.Pressed}" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.BalloonButton.Foreground.Neutral}" />
+            <Setter Property="StrokeThickness" Value="0" />
+            <Setter Property="ToolTip" Value="{Binding FileName, Mode=OneWay, StringFormat=Actions for {0}}" />
+            <Setter Property="AutomationProperties.Name" Value="{Binding FileName, Mode=OneWay, StringFormat=Actions for {0}}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsEditing, Mode=OneWay}" Value="True">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="OHsManageSamplesConfirmRenameStyle" TargetType="c:BalloonButton" BasedOn="{StaticResource OHsManageSamplesActionStyle}">
             <Setter Property="ButtonIcon" Value="{StaticResource Check}" />
-            <Setter Property="ToolTip" Value="{Binding FileName, Mode=OneWay, StringFormat=Save {0}}" />
-            <Setter Property="AutomationProperties.Name" Value="{Binding FileName, Mode=OneWay, StringFormat=Save {0}}" />
+            <Setter Property="ButtonText" Value="Confirm" />
+            <Setter Property="ToolTip" Value="{Binding FileName, Mode=OneWay, StringFormat=Confirm rename {0}}" />
+            <Setter Property="AutomationProperties.Name" Value="{Binding FileName, Mode=OneWay, StringFormat=Confirm rename {0}}" />
+            <Setter Property="Visibility" Value="Collapsed" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsEditing, Mode=OneWay}" Value="True">
+                    <Setter Property="Visibility" Value="Visible" />
+                </DataTrigger>
+            </Style.Triggers>
         </Style>
-        <Style
-            x:Key="OHsManageSamplesEditStyle"
-            BasedOn="{StaticResource OHsManageSamplesActionStyle}"
-            TargetType="c:BalloonButton">
-            <Setter Property="ButtonText" Value="Edit" />
-            <Setter Property="ButtonIcon" Value="{StaticResource Pen}" />
-            <Setter Property="ToolTip" Value="{Binding FileName, Mode=OneWay, StringFormat=Edit {0}}" />
-            <Setter Property="AutomationProperties.Name" Value="{Binding FileName, Mode=OneWay, StringFormat=Edit {0}}" />
-        </Style>
+        <ContextMenu x:Key="OHsManageSamplesRowMenu" x:Shared="False" Style="{StaticResource OHsActionContextMenuStyle}">
+            <MenuItem Header="Edit" Style="{StaticResource OHsActionMenuItemStyle}" Click="OnEditActionClick"
+                Command="{Binding DataContext.EditCommand, Source={StaticResource OHsManageSamplesOwner}, Mode=OneWay}"
+                CommandParameter="{Binding Mode=OneWay}" AutomationProperties.Name="{Binding FileName, Mode=OneWay, StringFormat=Edit {0}}" />
+            <MenuItem Header="Delete" Style="{StaticResource OHsDestructiveActionMenuItemStyle}"
+                Command="{Binding DataContext.DeleteCommand, Source={StaticResource OHsManageSamplesOwner}, Mode=OneWay}"
+                CommandParameter="{Binding Mode=OneWay}" AutomationProperties.Name="{Binding FileName, Mode=OneWay, StringFormat=Delete {0}}" />
+            <MenuItem Header="Save" Style="{StaticResource OHsActionMenuItemStyle}"
+                Command="{Binding DataContext.SaveCommand, Source={StaticResource OHsManageSamplesOwner}, Mode=OneWay}"
+                CommandParameter="{Binding Mode=OneWay}" AutomationProperties.Name="{Binding FileName, Mode=OneWay, StringFormat=Save {0}}" />
+        </ContextMenu>
         <DataTemplate x:Key="OHsManageSamplesRowTemplate">
             <Border IsEnabled="{Binding IsInteractionEnabled, Mode=OneWay}" Style="{StaticResource OHsManageSamplesRowStyle}">
-                <Grid MinHeight="48" Style="{StaticResource BaseGridStyle}">
+                <Grid MinHeight="40" Style="{StaticResource BaseGridStyle}">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="2*" />
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <TextBlock
-                        VerticalAlignment="Center"
-                        Style="{StaticResource OHsManageSamplesNameStyle}"
-                        Text="{Binding FileName, Mode=OneWay}"
-                        ToolTip="{Binding FileName, Mode=OneWay}" />
+                    <TextBlock VerticalAlignment="Center" Style="{StaticResource OHsManageSamplesNameStyle}"
+                        Text="{Binding FileName, Mode=OneWay}" ToolTip="{Binding FileName, Mode=OneWay}" />
                     <Grid Margin="0,0,8,0" Style="{StaticResource OHsManageSamplesEditorHostStyle}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <TextBox
-                            Grid.Column="1"
-                            AutomationProperties.Name="Sample filename stem"
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                        <TextBox AutomationProperties.Name="Sample filename stem"
                             IsEnabled="{Binding DataContext.CanEditDraft, RelativeSource={RelativeSource AncestorType=ItemsControl}, Mode=OneWay}"
-                            IsVisibleChanged="OnEditorVisibilityChanged"
-                            PreviewKeyDown="OnEditorKeyDown"
+                            IsVisibleChanged="OnEditorVisibilityChanged" PreviewKeyDown="OnEditorKeyDown"
                             Style="{StaticResource OHsManageSamplesEditorStyle}"
                             Text="{Binding DataContext.DraftStem, RelativeSource={RelativeSource AncestorType=ItemsControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}" />
-                        <TextBlock
-                            Grid.Column="2"
-                            Margin="8,0,0,0"
-                            VerticalAlignment="Center"
-                            Style="{StaticResource BodyTextStyle}"
-                            Text="{Binding Extension, Mode=OneWay}" />
+                        <TextBlock Grid.Column="1" Margin="8,0" VerticalAlignment="Center" Style="{StaticResource BodyTextStyle}" Text="{Binding Extension, Mode=OneWay}" />
                     </Grid>
-                    <c:WaveformView Grid.Column="1" Margin="8,4" Height="32" VerticalAlignment="Center" Data="{Binding Waveform, Mode=OneWay}" ShowPlaybackMarker="False" CenterWaveform="True" WaveformBrush="{DynamicResource Brush.Waveform.Unplayed}" Loaded="OnWaveformRowLoaded" DataContextChanged="OnWaveformRowChanged" IsHitTestVisible="False"/>
-                    <c:BalloonButton
-                        Grid.Column="2"
-                        Command="{Binding DataContext.PlayCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}, Mode=OneWay}"
-                        CommandParameter="{Binding Mode=OneWay}"
-                        Style="{StaticResource OHsManageSamplesPlayStyle}" />
-                    <c:BalloonButton
-                        x:Name="EditAction"
-                        Grid.Column="3"
-                        Margin="8,0,0,0"
-                        Click="OnEditActionClick"
-                        Command="{Binding DataContext.EditCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}, Mode=OneWay}"
-                        CommandParameter="{Binding Mode=OneWay}"
-                        Style="{StaticResource OHsManageSamplesEditStyle}" />
-                    <c:BalloonButton
-                        Grid.Column="4"
-                        Margin="8,0,0,0"
-                        h:KeyboardNavigationPolicy.AllowTabNavigation="True"
-                        AutomationProperties.Name="{Binding FileName, Mode=OneWay, StringFormat=Delete {0}}"
-                        ButtonIcon="{StaticResource Delete}"
-                        ButtonText="Delete"
-                        Command="{Binding DataContext.DeleteCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}, Mode=OneWay}"
-                        CommandParameter="{Binding Mode=OneWay}"
-                        FocusVisualStyle="{StaticResource OHsSampleManagerKeyboardFocusStyle}"
-                        IsTabStop="True"
-                        Style="{StaticResource OHsBalloonDestructiveActionStyle}"
-                        ToolTip="{Binding FileName, Mode=OneWay, StringFormat=Delete {0}}"
-                        ToolTipService.ShowsToolTipOnKeyboardFocus="True" />
+                    <c:WaveformView Grid.Column="1" Margin="16,4" Height="32" VerticalAlignment="Center" Data="{Binding Waveform, Mode=OneWay}"
+                        ShowPlaybackMarker="False" CenterWaveform="True" WaveformBrush="{DynamicResource Brush.Waveform.Unplayed}"
+                        Loaded="OnWaveformRowLoaded" DataContextChanged="OnWaveformRowChanged" IsHitTestVisible="False" />
+                    <c:BalloonButton Grid.Column="2" Command="{Binding DataContext.PlayCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}, Mode=OneWay}"
+                        CommandParameter="{Binding Mode=OneWay}" Style="{StaticResource OHsManageSamplesPlayStyle}" />
+                    <Grid Grid.Column="3" Margin="4,0,0,0" Style="{StaticResource BaseGridStyle}">
+                        <c:BalloonComboBox ContextMenu="{StaticResource OHsManageSamplesRowMenu}" Style="{StaticResource OHsManageSamplesMenuStyle}" />
+                        <c:BalloonButton Command="{Binding DataContext.CommitRenameCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}, Mode=OneWay}"
+                            Style="{StaticResource OHsManageSamplesConfirmRenameStyle}" />
+                    </Grid>
                 </Grid>
             </Border>
-            <DataTemplate.Triggers>
-                <DataTrigger Binding="{Binding IsEditing, Mode=OneWay}" Value="True">
-                    <Setter TargetName="EditAction" Property="Style" Value="{StaticResource OHsManageSamplesSaveStyle}" />
-                </DataTrigger>
-            </DataTemplate.Triggers>
         </DataTemplate>
-
 
         <Style x:Key="OHsManageSamplesSurfaceStyle" TargetType="Border" BasedOn="{StaticResource OHsPopupSurfaceBorderStyle}">
             <Setter Property="Padding" Value="{StaticResource Inset.Card}" />
@@ -264,7 +248,7 @@
             </Grid>
             <Grid
                 Grid.Row="3"
-                Margin="0,16,0,0"
+                Margin="0,12,0,0"
                 Style="{StaticResource BaseGridStyle}">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
@@ -279,7 +263,7 @@
                     ButtonText="Add New Sample"
                     Command="{Binding AddNewSampleCommand, Mode=OneWay}"
                     ShouldShowText="True"
-                    Style="{StaticResource OHsManageSamplesActionStyle}" />
+                    Style="{StaticResource OHsManageSamplesPrimaryActionStyle}" />
             </Grid>
         </Grid>
     </Border>

@@ -29,6 +29,7 @@ public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, I
     private bool isSeeking;
     public ObservableCollection<SampleBrowserEntry> Entries { get; } = [];
     public ObservableCollection<SampleBrowserLocation> Locations { get; } = [];
+    private SampleBrowserLocation? savedLocation;
     [ObservableProperty] private SampleBrowserLocation? activeLocation;
     public SamplePickerContext? Context { get; private set; }
 
@@ -42,6 +43,29 @@ public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, I
     [RelayCommand(CanExecute = nameof(CanNavigate))]
     private Task NavigateLocationAsync(SampleBrowserLocation location) => OwnAsync(async () =>
     {
+        var generation = navigationGeneration;
+        if (ReferenceEquals(location, savedLocation))
+        {
+            try
+            {
+                var path = await browser.GetSavedDirectoryAsync(lifetime.Token);
+                if (generation != navigationGeneration || deactivated) return;
+                if (!SamePath(location.FullPath, path)) await UpdateAsync(() =>
+                {
+                    var index = Locations.IndexOf(location);
+                    savedLocation = location with { FullPath = path };
+                    if (index >= 0) Locations[index] = savedLocation;
+                    location = savedLocation;
+                });
+                if (generation != navigationGeneration || deactivated) return;
+            }
+            catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { return; }
+            catch (Exception error)
+            {
+                if (generation == navigationGeneration) await ReportAsync(() => DirectoryError = error.Message);
+                return;
+            }
+        }
         if (!location.IsAvailable || location.FullPath is null) return;
         await NavigateToAsync(location.FullPath);
         if (SamePath(CurrentDirectory, location.FullPath) && DirectoryError is null)
@@ -103,14 +127,16 @@ public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, I
     public Task InitializeAsync(string? initialDirectory, CancellationToken token) => OwnAsync(async () =>
     {
         externalCancellation = token.Register(lifetime.Cancel);
+        string? saved = null;
+        try { saved = await browser.GetSavedDirectoryAsync(lifetime.Token); }
+        catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { return; }
+        catch (Exception error) { System.Diagnostics.Trace.TraceWarning("Saved sample library unavailable: {0}", error.Message); }
         await UpdateAsync(() =>
         {
             Locations.Clear();
-            Locations.Add(new("Song folder", Context?.SongDirectory, "This project", !string.IsNullOrWhiteSpace(Context?.SongDirectory)));
-            string? saved = null;
-            try { if (Context?.ProjectPath is { } project) saved = SamplePaths.SavedRoot(project); }
-            catch (ArgumentException) { }
-            Locations.Add(new("Saved Samples", saved, "This project", saved is not null));
+            Locations.Add(new("Song folder", Context?.SongDirectory, "", !string.IsNullOrWhiteSpace(Context?.SongDirectory)));
+            savedLocation = new("Saved Samples", saved, "", true);
+            Locations.Add(savedLocation);
         });
         try
         {

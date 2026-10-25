@@ -76,7 +76,7 @@ public class HomeFolderServiceTests
     }
 
     [Test]
-    public async Task BootCreatesSavedSamplesForValidProjectsAndPreservesFailures()
+    public async Task BootMigratesSavedSamplesForValidProjectsAndPreservesFailures()
     {
         foreach (var name in new[] { "One", "Two", "Blocked", "Invalid" })
         {
@@ -85,17 +85,24 @@ public class HomeFolderServiceTests
         }
         var blocked = Path.Combine(appRoot, "projects", "Blocked", "Saved Samples");
         File.WriteAllText(blocked, "keep");
+        var legacy = Directory.CreateDirectory(Path.Combine(appRoot, "projects", "One", "Saved Samples")).FullName;
+        File.WriteAllText(Path.Combine(legacy, "keep.wav"), "audio");
         var service = new HomeFolderService(appRoot);
         var snapshot = await service.LoadProjectsAsync(default);
         Assert.That(snapshot.Count, Is.EqualTo(4));
         foreach (var name in new[] { "One", "Two" })
-            Assert.That(Directory.Exists(Path.Combine(appRoot, "projects", name, "Saved Samples")), Is.True);
+            Assert.That(Directory.Exists(Path.Combine(appRoot, "projects", name, "Saved Samples")), Is.False);
         Assert.That(Directory.Exists(Path.Combine(appRoot, "projects", "Invalid", "Saved Samples")), Is.False);
         Assert.That(File.ReadAllText(blocked), Is.EqualTo("keep"));
-        var sentinel = Path.Combine(appRoot, "projects", "One", "Saved Samples", "keep.wav");
-        File.WriteAllText(sentinel, "audio");
+        var sentinel = Path.Combine(appRoot, "saved", "keep.wav");
         await service.LoadProjectsAsync(default);
         Assert.That(File.ReadAllText(sentinel), Is.EqualTo("audio"));
+    }
+    [Test]
+    public async Task BootCreatesSharedSavedDirectoryWithoutProjects()
+    {
+        Assert.That((await new HomeFolderService(appRoot).LoadProjectsAsync(default)).Count, Is.Zero);
+        Assert.That(Directory.Exists(Path.Combine(appRoot, "saved")), Is.True);
     }
     private string root = null!;
     private string appRoot = null!;

@@ -2,6 +2,8 @@ namespace Hitbench.Services.FileSystem;
 
 public interface ISampleFileService
 {
+    Task<string> SaveAsync(string projectPath, string fileName, CancellationToken token);
+    Task<bool> TryMigrateSavedSamplesAsync(string projectPath, CancellationToken token);
     Task<IReadOnlyList<string>> ListAsync(string projectPath, CancellationToken token, bool includeSubfolders = true);
     Task<string> ImportAsync(string projectPath, string sourcePath, CancellationToken token, string? folderName = null);
     Task<string> RenameAsync(string projectPath, string fileName, string newStem, CancellationToken token);

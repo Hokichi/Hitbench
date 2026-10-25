@@ -4,8 +4,17 @@ using Hitbench.Resources.DataModels;
 
 namespace Hitbench.Services.FileSystem;
 
-public sealed class SampleBrowserService(Func<string, WaveStream>? openDecoder = null, Ui.OHsAudioOperationProgress? operationProgress = null) : ISampleBrowserService
+public sealed class SampleBrowserService(Func<string, WaveStream>? openDecoder = null, Ui.OHsAudioOperationProgress? operationProgress = null,
+    string? applicationDirectory = null) : ISampleBrowserService
 {
+    public Task<string> GetSavedDirectoryAsync(CancellationToken token) => Task.Run(() =>
+    {
+        token.ThrowIfCancellationRequested();
+        var saved = SamplePaths.SavedRoot(applicationDirectory ?? AppContext.BaseDirectory);
+        Directory.CreateDirectory(saved);
+        token.ThrowIfCancellationRequested();
+        return saved;
+    }, token);
     private readonly Func<string, WaveStream> openDecoder = openDecoder ?? AudioDecoder.Open;
     private static bool IsSupported(string path) => Path.GetExtension(path).ToLowerInvariant() is ".wav" or ".ogg" or ".mp3";
     public Task<Hitbench.Core.Entities.WaveformData> ReadWaveformAsync(string path, CancellationToken token) => operationProgress is null

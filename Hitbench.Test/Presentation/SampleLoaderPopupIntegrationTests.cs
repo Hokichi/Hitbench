@@ -16,6 +16,47 @@ namespace Hitbench.Test.Presentation;
 [NonParallelizable]
 public sealed class SampleLoaderPopupIntegrationTests
 {
+    [TestCase(1200d, 800d, false)]
+    [TestCase(900d, 600d, true)]
+    [TestCase(720d, 480d, true)]
+    public void CompactModePreservesNavigationAndSelectionActions(double width, double height, bool compact)
+    {
+        var source = new StubSampleBrowserService(); source.DefaultDirectory = source.RootPath;
+        var entry = new SampleBrowserEntry(Path.Combine(source.RootPath, "sample.wav"), "sample.wav", false);
+        source.Entries[source.RootPath] = [entry];
+        var model = new SampleLoaderPopupVM(source, new StubSamplePreviewService(), CreateScheduler(), new PlaybackVolumeSettings()) { AutoPlaySamples = false };
+        var dialog = new SampleLoaderPopup(model, _ => { }, _ => new Size(width, height));
+        try
+        {
+            UiTestPump.Run(dialog.InitializeAsync(default(CancellationToken)));
+            Assert.That(dialog.Width, Is.LessThanOrEqualTo(width));
+            Assert.That(dialog.Height, Is.LessThanOrEqualTo(height));
+            Assert.That(dialog.IsCompactLayout, Is.EqualTo(compact));
+            using var memory = new InMemoryView(dialog, scheduleLayout: false);
+            UiTestPump.Run(model.SetCheckedAsync(entry, true)); memory.UpdateLayout();
+            Assert.That(((BalloonButton)dialog.FindName("ImportButton")).IsEnabled, Is.True);
+            Assert.That(((ListBox)dialog.FindName("SelectedSamplesList")).Items.Cast<SampleBrowserEntry>(), Does.Contain(entry));
+            var selector = (BalloonComboBox)dialog.FindName("CompactLocationSelector");
+            Assert.That(selector.Visibility, Is.EqualTo(compact ? Visibility.Visible : Visibility.Collapsed));
+            Assert.That(model.NavigateLocationCommand.CanExecute(model.Locations.Single(location => location.Name == "Saved Samples")), Is.True);
+        }
+        finally { UiTestPump.Run(dialog.DeactivateAsync()); dialog.Close(); }
+    }
+
+    [Test]
+    public void LongNamesAndRightToLeftKeepSelectionAndImport()
+    {
+        var folder = Path.Combine(browser.RootPath, "Long names");
+        var name = new string('a', 180) + ".wav";
+        var entry = new SampleBrowserEntry(Path.Combine(folder, name), name, false);
+        browser.Entries[folder] = [entry];
+        popup.FlowDirection = FlowDirection.RightToLeft;
+        UiTestPump.Run(vm.NavigateCommand.ExecuteAsync(folder));
+        UiTestPump.Run(vm.SetCheckedAsync(entry, true)); view.UpdateLayout();
+        Assert.That(((BalloonButton)popup.FindName("ImportButton")).IsEnabled, Is.True);
+        Assert.That(((ListBox)popup.FindName("SelectedSamplesList")).Items.Cast<SampleBrowserEntry>(), Does.Contain(entry));
+        Assert.That(Descendants(view.Root).OfType<TextBlock>().Any(block => Equals(block.ToolTip, entry.FullPath)), Is.True);
+    }
     [TestCase(200d, 0)]
     [TestCase(180d, 1)]
     [TestCase(150d, 2)]
@@ -143,6 +184,16 @@ public sealed class SampleLoaderPopupIntegrationTests
         input.SetCurrentValue(TextBox.TextProperty, "clap");
         Assert.That(vm.SearchText, Is.EqualTo("clap"));
     }
+    private static ImmediateUiScheduler CreateScheduler()
+    {
+        var dispatcher = System.Windows.Threading.Dispatcher.CurrentDispatcher;
+        return new ImmediateUiScheduler { Invocation = (action, token) =>
+        {
+            if (!dispatcher.CheckAccess()) return dispatcher.InvokeAsync(action, System.Windows.Threading.DispatcherPriority.DataBind, token).Task;
+            token.ThrowIfCancellationRequested(); action(); return Task.CompletedTask;
+        } };
+    }
+
     private SampleLoaderPopup popup = null!;
     private SampleLoaderPopupVM vm = null!;
     private StubSampleBrowserService browser = null!;
@@ -150,10 +201,13 @@ public sealed class SampleLoaderPopupIntegrationTests
     private bool? completion;
     private InMemoryView view = null!;
     private StubSamplePreviewService preview = null!;
+    private SynchronizationContext? previousContext;
 
     [SetUp]
     public void Setup()
     {
+        previousContext = SynchronizationContext.Current;
+        SynchronizationContext.SetSynchronizationContext(new System.Windows.Threading.DispatcherSynchronizationContext(System.Windows.Threading.Dispatcher.CurrentDispatcher));
         completion = null;
         new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
         browser = new StubSampleBrowserService();
@@ -163,7 +217,7 @@ public sealed class SampleLoaderPopupIntegrationTests
         browser.Entries[browser.RootPath] = [file, new(empty, "empty", true)];
         browser.Entries[empty] = [];
         preview = new();
-        vm = new(browser, preview, new ImmediateUiScheduler(), new PlaybackVolumeSettings()) { AutoPlaySamples = false };
+        vm = new(browser, preview, CreateScheduler(), new PlaybackVolumeSettings()) { AutoPlaySamples = false };
         popup = new(vm, value => completion = value, _ => new Size(640, 360));
         UiTestPump.Run(popup.InitializeAsync(CancellationToken.None));
         view = new InMemoryView(popup, scheduleLayout: false);
@@ -172,9 +226,13 @@ public sealed class SampleLoaderPopupIntegrationTests
     [TearDown]
     public void Cleanup()
     {
-        UiTestPump.Run(popup.DeactivateAsync());
-        view.Dispose();
-        popup.Close();
+        try { if (popup is not null) UiTestPump.Run(popup.DeactivateAsync()); }
+        finally
+        {
+            view?.Dispose();
+            popup?.Close();
+            SynchronizationContext.SetSynchronizationContext(previousContext);
+        }
     }
 
     [Test]
@@ -316,6 +374,8 @@ public sealed class SampleLoaderPopupIntegrationTests
         input.SelectedItem = vm.Entries.Single(entry => entry.IsDirectory);
         using var source = new InMemoryPresentationSource();
         input.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, source, 0, Key.Enter) { RoutedEvent = Keyboard.PreviewKeyDownEvent });
+        Assert.That(vm.NavigateCommand.ExecutionTask, Is.Not.Null);
+        UiTestPump.Run(vm.NavigateCommand.ExecutionTask!);
         Assert.That(vm.CurrentDirectory, Is.EqualTo(Path.Combine(browser.RootPath, "empty")));
         Assert.That(completion, Is.Null);
     }
@@ -558,7 +618,7 @@ public sealed class SampleLoaderPopupIntegrationTests
         UiTestPump.Run(popup.DeactivateAsync());
         view.Dispose();
         popup.Close();
-        vm = new(browser, new StubSamplePreviewService(), new ImmediateUiScheduler(), new PlaybackVolumeSettings());
+        vm = new(browser, new StubSamplePreviewService(), CreateScheduler(), new PlaybackVolumeSettings());
         popup = new(vm, _ => { }, _ => new Size(640, 360));
         UiTestPump.Run(popup.InitializeAsync(Path.Combine(browser.RootPath, "missing"), default));
         view = new InMemoryView(popup, scheduleLayout: false);

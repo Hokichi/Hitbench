@@ -11,12 +11,13 @@ public class WorkstationSourceServiceTests
     {
         File.WriteAllText(Path.Combine(songFolder, "a.osu"), "[General]\nAudioFilename: song.wav\n[TimingPoints]\n0,500,4,1,0,100,1,0\n");
         File.WriteAllText(Path.Combine(songFolder, "song.wav"), "audio");
-        await new WorkstationSourceService().LoadAsync(projectPath, default);
         var saved = Path.Combine(Path.GetDirectoryName(projectPath)!, "Saved Samples");
-        Assert.That(Directory.Exists(saved), Is.True);
+        Directory.CreateDirectory(saved);
         File.WriteAllText(Path.Combine(saved, "keep.wav"), "keep");
-        await new WorkstationSourceService().LoadAsync(projectPath, default);
-        Assert.That(File.ReadAllText(Path.Combine(saved, "keep.wav")), Is.EqualTo("keep"));
+        var app = Path.Combine(root, "app");
+        await new WorkstationSourceService(new SampleFileService(app)).LoadAsync(projectPath, default);
+        Assert.That(Directory.Exists(saved), Is.False);
+        Assert.That(File.ReadAllText(Path.Combine(app, "saved", "keep.wav")), Is.EqualTo("keep"));
         Assert.That(Directory.Exists(Path.Combine(Path.GetDirectoryName(projectPath)!, "Samples")), Is.True);
     }
     [Test]

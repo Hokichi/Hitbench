@@ -2,6 +2,8 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Data;
+using System.ComponentModel;
 using Hitbench.Resources.CustomControls;
 using Hitbench.Resources.DataModels;
 using Hitbench.ViewModels.Popups;
@@ -12,10 +14,14 @@ public partial class ManageSamplesDrawer : UserControl,IOHsShellDrawer
 {
     private readonly ManageSamplesPopupVM viewModel;
     private BalloonButton? editAction;
+    private SampleManagementEntry? editingRow;
 
     public ManageSamplesDrawer(ManageSamplesPopupVM viewModel)
     {
         InitializeComponent(); this.viewModel = viewModel; DataContext = viewModel;
+        ((ObjectDataProvider)Resources["OHsManageSamplesOwner"]).ObjectInstance = this;
+        Loaded += OnDrawerLoaded;
+        Unloaded += OnDrawerUnloaded;
         KeyboardNavigation.SetTabNavigation(this, KeyboardNavigationMode.Cycle);
     }
 
@@ -35,7 +41,34 @@ public partial class ManageSamplesDrawer : UserControl,IOHsShellDrawer
     }
     private void OnWaveformRowChanged(object sender, DependencyPropertyChangedEventArgs e)
     { if (sender is FrameworkElement { IsLoaded: true }) OnWaveformRowLoaded(sender, new RoutedEventArgs()); }
-    private void OnEditActionClick(object sender, RoutedEventArgs e) => editAction = (BalloonButton)sender;
+    private void OnEditActionClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem item && ItemsControl.ItemsControlFromItemContainer(item) is ContextMenu menu)
+            editAction = menu.PlacementTarget as BalloonButton;
+    }
+
+    private void OnDrawerLoaded(object sender, RoutedEventArgs e)
+    {
+        viewModel.PropertyChanged -= OnEditingChanged;
+        viewModel.PropertyChanged += OnEditingChanged;
+        editingRow = viewModel.ActiveEdit;
+    }
+    private void OnDrawerUnloaded(object sender, RoutedEventArgs e) => viewModel.PropertyChanged -= OnEditingChanged;
+    private void OnEditingChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(ManageSamplesPopupVM.ActiveEdit)) return;
+        var previous = editingRow;
+        editingRow = viewModel.ActiveEdit;
+        if (editingRow is null && previous is not null)
+            Dispatcher.BeginInvoke(new Action(() => RestoreRowAction(previous)));
+    }
+    private void RestoreRowAction(SampleManagementEntry row)
+    {
+        if (!IsLoaded || !viewModel.CanClose) return;
+        var action = editAction is { IsEnabled: true } && ReferenceEquals(editAction.DataContext, row)
+            ? editAction : Descendants(SampleRows).OfType<BalloonComboBox>().FirstOrDefault(button => ReferenceEquals(button.DataContext, row));
+        action?.Focus();
+    }
 
     private void OnEditorVisibilityChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
@@ -49,9 +82,7 @@ public partial class ManageSamplesDrawer : UserControl,IOHsShellDrawer
         if (viewModel.ActiveEdit is { } row)
         {
             viewModel.CancelEditCommand.Execute(null);
-            var action = editAction is { IsEnabled: true } && ReferenceEquals(editAction.CommandParameter, row)
-                ? editAction : Descendants(SampleRows).OfType<BalloonButton>().FirstOrDefault(b => b.Name == "EditAction" && ReferenceEquals(b.CommandParameter, row));
-            action?.Focus();
+            RestoreRowAction(row);
         }
         else if (viewModel.CanClose) CloseRequested?.Invoke(this, EventArgs.Empty);
         return true;

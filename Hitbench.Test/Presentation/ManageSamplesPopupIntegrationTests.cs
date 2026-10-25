@@ -11,35 +11,63 @@ public sealed class ManageSamplesPopupIntegrationTests
     private static System.Windows.Window CreateHost(ManageSamplesDrawer drawer) => new() { Content = drawer, Width = 720, Height = 480 };
 
     [Test]
-    public void EditActionBecomesSaveAndLocksOtherRows()
+    public void RowActionsUseIndependentMenusAndCorrectCommands()
     {
         new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
-        var files = new StubSampleFileService(["hit.wav", "kick.wav"]);
+        var vm = CreateManager(new StubSampleFileService(["hit.wav", "kick.wav"]));
+        var drawer = new ManageSamplesDrawer(vm); var host = CreateHost(drawer);
+        try
+        {
+            UiTestPump.Run(vm.InitializeAsync(default)); using var view = new InMemoryView(host, scheduleLayout: false);
+            var triggers = Descendants(view.Root).OfType<BalloonComboBox>().ToArray();
+            Assert.That(triggers.Length, Is.EqualTo(2));
+            Assert.That(triggers[0].Style, Is.SameAs(drawer.FindResource("OHsManageSamplesMenuStyle")));
+            Assert.That(triggers[0].ContextMenu, Is.Not.SameAs(triggers[1].ContextMenu));
+            foreach (var trigger in triggers)
+            {
+                Assert.That(trigger.ContextMenu.Style, Is.SameAs(drawer.FindResource("OHsActionContextMenuStyle")));
+                UiTestPump.Layout(trigger.ContextMenu, 320, 200);
+                var items = trigger.ContextMenu.Items.Cast<System.Windows.Controls.MenuItem>().ToArray();
+                Assert.That(items.Select(item => item.Header), Is.EqualTo(new[] { "Edit", "Delete", "Save" }));
+                Assert.That(items.Select(item => item.Command), Is.EqualTo(new System.Windows.Input.ICommand[] { vm.EditCommand, vm.DeleteCommand, vm.SaveCommand }));
+                Assert.That(items.All(item => ReferenceEquals(item.CommandParameter, trigger.DataContext)), Is.True, $"row={trigger.DataContext}, target={trigger.ContextMenu.PlacementTarget}, context={trigger.ContextMenu.DataContext}, params={string.Join(",", items.Select(item => item.CommandParameter?.ToString() ?? "null"))}");
+                Assert.That(items[1].Style, Is.SameAs(drawer.FindResource("OHsDestructiveActionMenuItemStyle")));
+                Assert.That(items[2].Style, Is.SameAs(drawer.FindResource("OHsActionMenuItemStyle")));
+            }
+            triggers[0].DataContext = vm.Entries[1]; view.UpdateLayout(); UiTestPump.Layout(triggers[0].ContextMenu, 320, 200);
+            Assert.That(triggers[0].ContextMenu.Items.Cast<System.Windows.Controls.MenuItem>().All(item => ReferenceEquals(item.CommandParameter, vm.Entries[1])), Is.True);
+        }
+        finally { UiTestPump.Run(vm.DeactivateAsync()); host.Close(); }
+    }
+
+    [Test]
+    public void RenameConfirmationIsDistinctFromLibrarySave()
+    {
+        new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
+        var files = new StubSampleFileService(["hit.wav", "kick.wav"]) { Save = (_, _, _) => throw new AssertionException("Rename must not save to library") };
         var vm = CreateManager(files); var drawer = new ManageSamplesDrawer(vm); var host = CreateHost(drawer);
         try
         {
             UiTestPump.Run(vm.InitializeAsync(default)); using var view = new InMemoryView(host, scheduleLayout: false);
             var row = vm.Entries[0]; var other = vm.Entries[1];
-            var edit = Descendants(view.Root).OfType<BalloonButton>().Single(b => b.ButtonText == "Edit" && ReferenceEquals(b.CommandParameter, row));
-            Assert.That(edit.ButtonIcon, Is.SameAs(drawer.FindResource("Pen")));
-            Assert.That(edit.Style, Is.SameAs(drawer.FindResource("OHsManageSamplesEditStyle")));
             UiTestPump.Run(vm.EditCommand.ExecuteAsync(row)); view.UpdateLayout();
-            Assert.That(edit.ButtonIcon, Is.SameAs(drawer.FindResource("Check"))); Assert.That(edit.ButtonText, Is.EqualTo("Save"));
-            Assert.That(System.Windows.Automation.AutomationProperties.GetName(edit), Does.StartWith("Save "));
-            Assert.That(edit.IsEnabled, Is.True); Assert.That(edit.IsTabStop, Is.True);
-            Assert.That(Descendants(view.Root).OfType<BalloonButton>().Where(b => ReferenceEquals(b.CommandParameter, other)).All(b => !b.IsEnabled), Is.True);
-            Assert.That(Descendants(view.Root).OfType<BalloonButton>().Where(b => ReferenceEquals(b.CommandParameter, row) && b.ButtonText != "Save").All(b => !b.IsEnabled), Is.True);
+            var confirm = Descendants(view.Root).OfType<BalloonButton>().Single(button => ReferenceEquals(button.Command, vm.CommitRenameCommand) && ReferenceEquals(button.DataContext, row));
+            Assert.That(confirm.Command, Is.SameAs(vm.CommitRenameCommand));
+            Assert.That(confirm.Style, Is.SameAs(drawer.FindResource("OHsManageSamplesConfirmRenameStyle")));
+            Assert.That(System.Windows.Automation.AutomationProperties.GetName(confirm), Does.StartWith("Confirm rename"));
+            Assert.That(confirm.IsEnabled, Is.True);
+            Assert.That(vm.SaveCommand.CanExecute(row), Is.False);
+            Assert.That(other.IsInteractionEnabled, Is.False);
             Assert.That(((BalloonButton)drawer.FindName("AddNewSampleButton")).IsEnabled, Is.False);
-            Assert.That(((BalloonButton)drawer.FindName("CloseDrawerButton")).IsEnabled, Is.False);
             vm.CancelEditCommand.Execute(null); view.UpdateLayout();
-            Assert.That(edit.ButtonIcon, Is.SameAs(drawer.FindResource("Pen"))); Assert.That(edit.ButtonText, Is.EqualTo("Edit"));
+            Assert.That(confirm.Visibility, Is.EqualTo(System.Windows.Visibility.Collapsed));
             Assert.That(other.IsInteractionEnabled, Is.True);
         }
         finally { UiTestPump.Run(vm.DeactivateAsync()); host.Close(); }
     }
 
     [Test]
-    public void InvalidInputDisablesRealSaveButtonAndEnterRespectsValidation()
+    public void InvalidInputDisablesRenameConfirmationAndEnterRespectsValidation()
     {
         new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
         var renameCalls = 0;
@@ -50,7 +78,7 @@ public sealed class ManageSamplesPopupIntegrationTests
             UiTestPump.Run(vm.InitializeAsync(default)); using var view = new InMemoryView(host, scheduleLayout: false);
             UiTestPump.Run(vm.EditCommand.ExecuteAsync(vm.Entries.Single())); view.UpdateLayout();
             var input = Descendants(view.Root).OfType<System.Windows.Controls.TextBox>().Single();
-            var save = Descendants(view.Root).OfType<BalloonButton>().Single(b => b.ButtonText == "Save");
+            var save = Descendants(view.Root).OfType<BalloonButton>().Single(b => ReferenceEquals(b.Command, vm.CommitRenameCommand));
             input.Text = "CON";
             Assert.That(save.IsEnabled, Is.False); Assert.That(System.Windows.Controls.Validation.GetHasError(input), Is.True);
             UiTestPump.Run(drawer.HandleEnterAsync()); Assert.That(renameCalls, Is.Zero); Assert.That(vm.ActiveEdit, Is.Not.Null);
@@ -117,8 +145,9 @@ public sealed class ManageSamplesPopupIntegrationTests
             UiTestPump.Run(vm.PlayCommand.ExecuteAsync(play.CommandParameter)); Assert.That(preview.Playing,Is.True);
             Assert.That(play.ButtonIcon,Is.SameAs(drawer.FindResource("MediaPause")));
             Assert.That(play.ButtonText,Is.EqualTo("Pause"));
-            Assert.That(Descendants(view.Root).OfType<BalloonButton>().Single(b=>b.ButtonText=="Edit").IsEnabled,Is.True);
-            Assert.That(Descendants(view.Root).OfType<BalloonButton>().Single(b=>b.ButtonText=="Delete").IsEnabled,Is.True);
+            var menu = Descendants(view.Root).OfType<BalloonComboBox>().Single().ContextMenu;
+            UiTestPump.Layout(menu, 320, 200);
+            Assert.That(menu.Items.Cast<System.Windows.Controls.MenuItem>().All(item => item.IsEnabled), Is.True);
             var row=Descendants(view.Root).OfType<System.Windows.Controls.Border>().Single(b=>ReferenceEquals(b.DataContext,vm.Entries.Single()) && b.Style==drawer.FindResource("OHsManageSamplesRowStyle"));
             Assert.That(row.Style.BasedOn,Is.SameAs(drawer.FindResource("BaseBorderStyle")));
         }
@@ -150,7 +179,7 @@ public sealed class ManageSamplesPopupIntegrationTests
         try
         {
             UiTestPump.Run(vm.InitializeAsync(default)); using var view = new InMemoryView(popup, scheduleLayout:false);
-            var edit = Descendants(view.Root).OfType<BalloonButton>().Single(b => b.ButtonText == "Edit");
+            var edit = (System.Windows.Controls.MenuItem)Descendants(view.Root).OfType<BalloonComboBox>().Single().ContextMenu.Items[0];
             Assert.That(edit.Command, Is.SameAs(vm.EditCommand));
             UiTestPump.Run(vm.EditCommand.ExecuteAsync(edit.CommandParameter)); view.UpdateLayout();
             var input = Descendants(view.Root).OfType<System.Windows.Controls.TextBox>().Single();

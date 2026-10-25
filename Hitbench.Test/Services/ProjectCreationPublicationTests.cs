@@ -132,7 +132,7 @@ public sealed class ProjectCreationPublicationTests
         var path = await service.CreateAsync(song, "Retry", cancellation.Token);
         Assert.That(cancellation.IsCancellationRequested, Is.True);
         Assert.That(File.Exists(path), Is.True);
-        Assert.That(Directory.Exists(Path.Combine(Target, "Saved Samples")), Is.True);
+        Assert.That(Directory.Exists(Path.Combine(Target, "Saved Samples")), Is.False);
     }
 
     [Test]

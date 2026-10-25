@@ -4,6 +4,10 @@ namespace Hitbench.Test.Presentation;
 
 public sealed class StubSampleFileService(IReadOnlyList<string> files) : ISampleFileService
 {
+    public Func<string, string, CancellationToken, Task<string>>? Save { get; set; }
+    public Task<string> SaveAsync(string projectPath, string fileName, CancellationToken token) =>
+        Save?.Invoke(projectPath, fileName, token) ?? Task.FromResult(fileName);
+    public Task<bool> TryMigrateSavedSamplesAsync(string projectPath, CancellationToken token) => Task.FromResult(true);
     public Func<string, string, string, CancellationToken, Task<string>>? Rename { get; set; }
     public Func<string, string, CancellationToken, Task>? Delete { get; set; }
     public Task<string> RenameAsync(string projectPath, string fileName, string newStem, CancellationToken token) =>

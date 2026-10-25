@@ -4,8 +4,17 @@ using Hitbench.Core.Constants;
 
 namespace Hitbench.Services.FileSystem;
 
-public sealed class SampleFileService : ISampleFileService
+public sealed partial class SampleFileService : ISampleFileService
 {
+    private readonly string applicationDirectory;
+    private readonly Func<Stream, Stream, CancellationToken, Task> copyBytes;
+    public SampleFileService(string? applicationDirectory = null)
+        : this(applicationDirectory ?? AppContext.BaseDirectory, (input, output, token) => input.CopyToAsync(output, token)) { }
+    internal SampleFileService(string applicationDirectory, Func<Stream, Stream, CancellationToken, Task> copyBytes)
+    {
+        this.applicationDirectory = Path.GetFullPath(applicationDirectory);
+        this.copyBytes = copyBytes;
+    }
     private static readonly HashSet<string> Extensions = new(StringComparer.OrdinalIgnoreCase) { ".wav", ".ogg", ".mp3" };
     private readonly SemaphoreSlim mutations = new(1, 1);
 
@@ -47,21 +56,10 @@ public sealed class SampleFileService : ISampleFileService
         await mutations.WaitAsync(token);
         try
         {
-            var source = Path.GetFullPath(sourcePath); var baseName = Path.GetFileName(source);
-            var stem = Path.GetFileNameWithoutExtension(source); var extension = Path.GetExtension(source);
-            for (var suffix = 1; ; suffix++)
-            {
-                token.ThrowIfCancellationRequested();
-                var name = suffix == 1 ? baseName : $"{stem} ({suffix}){extension}";
-                var destination = Path.Combine(folder, name);
-                if (string.Equals(source, destination, StringComparison.OrdinalIgnoreCase) && File.Exists(source)) return SamplePaths.Relative(projectPath, source);
-                if (Directory.EnumerateFileSystemEntries(folder).Any(path => string.Equals(path, destination, StringComparison.OrdinalIgnoreCase))) continue;
-                await using var input = new FileStream(source, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, true);
-                await using var output = new FileStream(destination, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, true);
-                try { await input.CopyToAsync(output, token); }
-                catch { await output.DisposeAsync(); File.Delete(destination); throw; }
-                return SamplePaths.Relative(projectPath, destination);
-            }
+            var source = Path.GetFullPath(sourcePath);
+            if (string.Equals(Path.GetDirectoryName(source), folder, StringComparison.OrdinalIgnoreCase) && File.Exists(source))
+                return SamplePaths.Relative(projectPath, source);
+            return SamplePaths.Relative(projectPath, await CopyUniqueAsync(source, folder, token));
         }
         finally { mutations.Release(); }
     }

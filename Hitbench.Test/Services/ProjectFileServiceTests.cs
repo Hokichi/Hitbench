@@ -6,10 +6,10 @@ namespace Hitbench.Test.Services;
 public class ProjectFileServiceTests
 {
     [Test]
-    public async Task CreationEnsuresSavedSamples()
+    public async Task CreationDoesNotCreateProjectSavedSamples()
     {
         var path = await new ProjectFileService(applicationDirectory).CreateAsync(song, "Saved", default);
-        Assert.That(Directory.Exists(Path.Combine(Path.GetDirectoryName(path)!, "Saved Samples")), Is.True);
+        Assert.That(Directory.Exists(Path.Combine(Path.GetDirectoryName(path)!, "Saved Samples")), Is.False);
     }
     [Test]
     public void MetadataMutationsRejectProjectRootAndNestedPaths()

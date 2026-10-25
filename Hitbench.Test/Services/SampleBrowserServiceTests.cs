@@ -5,6 +5,21 @@ namespace Hitbench.Test.Services;
 
 public sealed class SampleBrowserServiceTests
 {
+    [Test]
+    public async Task SavedDirectoryCanBeRecreatedWithoutProjectContext()
+    {
+        var root = Directory.CreateTempSubdirectory();
+        try
+        {
+            var browser = new SampleBrowserService(applicationDirectory: root.FullName);
+            var saved = await browser.GetSavedDirectoryAsync(default);
+            Assert.That(saved, Is.EqualTo(Path.Combine(root.FullName, "saved")));
+            Directory.Delete(saved);
+            Assert.That(await browser.GetSavedDirectoryAsync(default), Is.EqualTo(saved));
+            Assert.That(Directory.Exists(saved), Is.True);
+        }
+        finally { root.Delete(true); }
+    }
     [TestCase("wav")]
     [TestCase("ogg")]
     [TestCase("mp3")]

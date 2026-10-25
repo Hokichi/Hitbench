@@ -10,6 +10,14 @@ public sealed class StubSampleBrowserService : ISampleBrowserService
     public Func<string, CancellationToken, Task<IReadOnlyList<SampleBrowserEntry>>>? Listing { get; set; }
     public Func<string, CancellationToken, Task<SampleFileMetadata>>? Metadata { get; set; }
     public string DefaultDirectory { get; set; } = "";
+    public string SavedDirectory => Path.Combine(RootPath, "saved");
+    public Func<CancellationToken, Task<string>>? SavedDirectoryLoader { get; set; }
+    public Task<string> GetSavedDirectoryAsync(CancellationToken token)
+    {
+        token.ThrowIfCancellationRequested();
+        Entries.TryAdd(SavedDirectory, []);
+        return SavedDirectoryLoader?.Invoke(token) ?? Task.FromResult(SavedDirectory);
+    }
     public IReadOnlyList<SampleBrowserEntry>? RootEntries { get; set; }
     public Func<CancellationToken, Task<IReadOnlyList<SampleBrowserEntry>>>? RootListing { get; set; }
     public List<string> RequestedDirectories { get; } = [];

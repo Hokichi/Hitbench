@@ -9,6 +9,64 @@ namespace Hitbench.Test.Presentation;
 public sealed class ManageSamplesPopupVMTests
 {
     [Test]
+    public async Task SaveUsesCurrentRowWithoutPublishingProjectChanges()
+    {
+        var files = new StubSampleFileService(["hit.wav"]);
+        var messenger = new WeakReferenceMessenger(); var received = new List<ProjectSamplesChangedMessage>();
+        var recipient = new object(); messenger.Register<ProjectSamplesChangedMessage>(recipient, (_, message) => received.Add(message));
+        var vm = new ManageSamplesPopupVM(new("project.json", null, Guid.NewGuid()), files, new(files),
+            new StubSampleFileDialogService([]), new StubSampleRemovalDialogService(), messenger, new ImmediateUiScheduler());
+        try
+        {
+            await vm.InitializeAsync(default); received.Clear(); var row = vm.Entries.Single();
+            files.Save = (path, name, _) => path == "project.json" && name == row.FileName
+                ? Task.FromResult("saved/hit.wav") : throw new AssertionException("Wrong row");
+            await vm.SaveCommand.ExecuteAsync(row);
+            Assert.That(vm.Entries.Single(), Is.SameAs(row)); Assert.That(row.FileName, Is.EqualTo("hit.wav"));
+            Assert.That(received, Is.Empty); Assert.That(vm.ErrorMessage, Is.Null);
+        }
+        finally { await vm.DeactivateAsync(); }
+    }
+    [Test]
+    public async Task SaveGatesConflictingCommandsAndRestoresState()
+    {
+        var pending = new TaskCompletionSource<string>();
+        var files = new StubSampleFileService(["hit.wav"]) { Save = (_, _, _) => pending.Task };
+        var vm = CreateManager(files);
+        try
+        {
+            await vm.InitializeAsync(default); var row = vm.Entries.Single();
+            await vm.EditCommand.ExecuteAsync(row); Assert.That(vm.SaveCommand.CanExecute(row), Is.False); vm.CancelEditCommand.Execute(null);
+            var saving = vm.SaveCommand.ExecuteAsync(row);
+            Assert.That(vm.IsBusy, Is.True); Assert.That(vm.CanClose, Is.False);
+            Assert.That(vm.EditCommand.CanExecute(row), Is.False); Assert.That(vm.SaveCommand.CanExecute(row), Is.False);
+            pending.SetResult("saved/hit.wav"); await saving;
+            Assert.That(vm.CanClose, Is.True); Assert.That(vm.SaveCommand.CanExecute(row), Is.True);
+        }
+        finally { pending.TrySetResult("saved/hit.wav"); await vm.DeactivateAsync(); }
+    }
+    [Test]
+    public async Task SaveFailurePreservesRows()
+    {
+        var files = new StubSampleFileService(["hit.wav"]) { Save = (_, _, _) => Task.FromException<string>(new IOException("Denied")) };
+        var vm = CreateManager(files);
+        try
+        {
+            await vm.InitializeAsync(default); var row = vm.Entries.Single(); await vm.SaveCommand.ExecuteAsync(row);
+            Assert.That(vm.Entries.Single(), Is.SameAs(row)); Assert.That(vm.ErrorMessage, Is.EqualTo("Denied"));
+            Assert.That(vm.IsBusy, Is.False); Assert.That(vm.SaveCommand.CanExecute(row), Is.True);
+        }
+        finally { await vm.DeactivateAsync(); }
+    }
+    [Test]
+    public async Task DeactivateCancelsAndAwaitsSave()
+    {
+        var files = new StubSampleFileService(["hit.wav"]) { Save = async (_, _, token) => { await Task.Delay(Timeout.Infinite, token); return "unused"; } };
+        var vm = CreateManager(files); await vm.InitializeAsync(default); var row = vm.Entries.Single();
+        var saving = vm.SaveCommand.ExecuteAsync(row); await vm.DeactivateAsync(); await saving;
+        Assert.That(vm.SaveCommand.CanExecute(row), Is.False); Assert.That(vm.IsBusy, Is.False);
+    }
+    [Test]
     public async Task ManagerListsOnlyDirectSamples()
     {
         var vm = CreateManager(new StubSampleFileService(["kick.wav", "Piano/C3.wav"]));

@@ -4,32 +4,29 @@ namespace Hitbench.Services.FileSystem;
 
 public static class SamplePaths
 {
-    public static string SavedRoot(string projectPath)
+    public static string SavedRoot(string applicationDirectory)
     {
-        var folder = Path.GetDirectoryName(Path.GetFullPath(projectPath))!;
-        for (var current = new DirectoryInfo(folder); current is not null; current = current.Parent)
-            RejectLink(current.FullName);
-        var saved = Path.Combine(folder, "Saved Samples");
-        RejectLink(saved);
+        var saved = Path.Combine(Path.GetFullPath(applicationDirectory), "saved");
+        RejectLinkedPath(saved);
         return saved;
     }
 
-    public static bool TryEnsureSavedRoot(string projectPath, CancellationToken token) =>
-        TryEnsureSavedRoot(projectPath, token, path => Directory.CreateDirectory(path));
+    public static bool TryEnsureSavedRoot(string applicationDirectory, CancellationToken token) =>
+        TryEnsureSavedRoot(applicationDirectory, token, path => Directory.CreateDirectory(path));
 
-    internal static bool TryEnsureSavedRoot(string projectPath, CancellationToken token, Action<string> createDirectory)
+    internal static bool TryEnsureSavedRoot(string applicationDirectory, CancellationToken token, Action<string> createDirectory)
     {
         token.ThrowIfCancellationRequested();
         try
         {
-            var path = SavedRoot(projectPath);
+            var path = SavedRoot(applicationDirectory);
             token.ThrowIfCancellationRequested();
             createDirectory(path);
             return true;
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
         {
-            System.Diagnostics.Trace.TraceWarning("Saved Samples folder could not be initialized for {0}: {1}", projectPath, error.Message);
+            System.Diagnostics.Trace.TraceWarning("Saved sample library could not be initialized for {0}: {1}", applicationDirectory, error.Message);
             return false;
         }
     }
@@ -52,7 +49,7 @@ public static class SamplePaths
     public static string Root(string projectPath)
     {
         var root = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(projectPath))!, "Samples");
-        RejectLink(root); return root;
+        RejectLinkedPath(root); return root;
     }
     public static string Resolve(string projectPath, string relativePath)
     {
@@ -75,6 +72,18 @@ public static class SamplePaths
     }
     private static void RejectLink(string path)
     {
-        if ((File.Exists(path) || Directory.Exists(path)) && (File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0) throw new ArgumentException("Linked sample folders and files are not supported.");
+        try
+        {
+            if ((File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0)
+                throw new ArgumentException("Linked sample folders and files are not supported.");
+        }
+        catch (FileNotFoundException) { }
+        catch (DirectoryNotFoundException) { }
+    }
+    internal static void RejectLinkedPath(string path)
+    {
+        RejectLink(path);
+        for (var current = Directory.GetParent(Path.GetFullPath(path)); current is not null; current = current.Parent)
+            RejectLink(current.FullName);
     }
 }

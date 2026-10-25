@@ -31,11 +31,11 @@ public partial class App : Application
         registrations.AddSingleton<IProjectFileService>(_ => new ProjectFileService(AppContext.BaseDirectory));
         registrations.AddSingleton<IWorkstationSourceService, WorkstationSourceService>();
         registrations.AddSingleton(provider => new PlaybackVolumeSettings(provider.GetRequiredService<IAppSettingsService>(), applicationVolume));
-        registrations.AddSingleton<ISampleFileService, SampleFileService>();
+        registrations.AddSingleton<ISampleFileService>(_ => new SampleFileService(AppContext.BaseDirectory));
         registrations.AddSingleton<SampleImportBatch>();
         registrations.AddSingleton<Func<Hitbench.Resources.DataModels.SampleManagementContext, ISampleFileDialogService, ISampleRemovalDialogService, ManageSamplesPopupVM>>(provider => (context, picker, removal) => new ManageSamplesPopupVM(context, provider.GetRequiredService<ISampleFileService>(), provider.GetRequiredService<SampleImportBatch>(), picker, removal, provider.GetRequiredService<IMessenger>(), provider.GetRequiredService<IUiScheduler>(), new SamplePreviewService(AudioDecoder.Open, audioOutputs.CreateCandidates(null), provider.GetRequiredService<OHsAudioOperationProgress>()), provider.GetRequiredService<PlaybackVolumeSettings>(), waveformReader: new SampleBrowserService()));
         registrations.AddSingleton<ISampleManagementDialogService>(provider => new SampleManagementDialogService(() => Current.MainWindow, Current.Dispatcher, provider.GetRequiredService<Func<SampleLoaderPopupVM>>(), provider.GetRequiredService<Func<Hitbench.Resources.DataModels.SampleManagementContext, ISampleFileDialogService, ISampleRemovalDialogService, ManageSamplesPopupVM>>()));
-        registrations.AddSingleton<ISampleBrowserService>(provider => new SampleBrowserService(operationProgress: provider.GetRequiredService<OHsAudioOperationProgress>()));
+        registrations.AddSingleton<ISampleBrowserService>(provider => new SampleBrowserService(operationProgress: provider.GetRequiredService<OHsAudioOperationProgress>(), applicationDirectory: AppContext.BaseDirectory));
         registrations.AddSingleton<Func<SampleLoaderPopupVM>>(provider => () => new SampleLoaderPopupVM(
             provider.GetRequiredService<ISampleBrowserService>(),
             new SamplePreviewService(AudioDecoder.Open, audioOutputs.CreateCandidates(null), provider.GetRequiredService<OHsAudioOperationProgress>()),
@@ -68,7 +68,7 @@ public partial class App : Application
                 provider.GetRequiredService<IProjectFileService>(), provider.GetRequiredService<IMessenger>(),
                 provider.GetRequiredService<ITrackRemovalDialogService>(),
                 provider.GetRequiredService<PlaybackVolumeSettings>(), nodePasteDialog: provider.GetRequiredService<INodePasteDialogService>(), sampleManagementDialog: provider.GetRequiredService<ISampleManagementDialogService>(), sampleImports: provider.GetRequiredService<SampleImportBatch>(), instrumentDialogs: provider.GetRequiredService<IInstrumentalTrackDialogService>(), directoryLauncher: provider.GetRequiredService<IOHsExportDirectoryLauncher>(), exportDialog: provider.GetRequiredService<IOHsExportDialogService>(), trackAppearanceDialog: provider.GetRequiredService<IOHsTrackAppearanceDialogService>())));
-        registrations.AddSingleton<IHomeFolderService>(_ => new HomeFolderService(AppContext.BaseDirectory));
+        registrations.AddSingleton<IHomeFolderService>(provider => new HomeFolderService(AppContext.BaseDirectory, sampleFiles: provider.GetRequiredService<ISampleFileService>()));
         registrations.AddSingleton<IAppSettingsService>(_ => new AppSettingsService(AppContext.BaseDirectory));
         registrations.AddSingleton<IUiScheduler>(_ => uiScheduler ?? new UiScheduler(Current.Dispatcher));
         registrations.AddSingleton<IInstallationDialogService>(_ =>

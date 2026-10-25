@@ -67,7 +67,7 @@ public sealed partial class ManageSamplesPopupVM(SampleManagementContext context
             row.IsInteractionEnabled = CanInteract() && (ActiveEdit is null || row.IsEditing);
         }
         OnPropertyChanged(nameof(CanClose)); OnPropertyChanged(nameof(CanEditDraft)); OnPropertyChanged(nameof(CanCommitRename));
-        PlayCommand.NotifyCanExecuteChanged(); EditCommand.NotifyCanExecuteChanged(); DeleteCommand.NotifyCanExecuteChanged();
+        PlayCommand.NotifyCanExecuteChanged(); EditCommand.NotifyCanExecuteChanged(); DeleteCommand.NotifyCanExecuteChanged(); SaveCommand.NotifyCanExecuteChanged();
         AddNewSampleCommand.NotifyCanExecuteChanged(); CancelEditCommand.NotifyCanExecuteChanged(); CommitRenameCommand.NotifyCanExecuteChanged();
     }
     [RelayCommand(CanExecute = nameof(CanPlay), AllowConcurrentExecutions = true)]
@@ -196,6 +196,13 @@ public sealed partial class ManageSamplesPopupVM(SampleManagementContext context
         catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
         catch (Exception error) { ErrorMessage = error.Message; }
         finally { IsBusy = false; }
+    }
+    [RelayCommand(CanExecute = nameof(CanDelete))]
+    private async Task SaveAsync(SampleManagementEntry entry)
+    {
+        if (!CanDelete(entry)) return;
+        operation = MutateAsync(async () => { await files.SaveAsync(Context.ProjectPath, entry.FileName, lifetime.Token); });
+        await operation;
     }
     [RelayCommand(CanExecute = nameof(CanDelete))]
     private async Task DeleteAsync(SampleManagementEntry entry)

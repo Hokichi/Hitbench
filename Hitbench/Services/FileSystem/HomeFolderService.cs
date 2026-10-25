@@ -8,9 +8,11 @@ using Hitbench.Services.ProjectFiles;
 
 namespace Hitbench.Services.FileSystem;
 
-public sealed class HomeFolderService(string applicationDirectory, Func<CancellationToken, Action, IEnumerable<string>>? installationDirectories = null)
+public sealed class HomeFolderService(string applicationDirectory, Func<CancellationToken, Action, IEnumerable<string>>? installationDirectories = null,
+    ISampleFileService? sampleFiles = null)
     : IHomeFolderService
 {
+    private readonly ISampleFileService sampleFiles = sampleFiles ?? new SampleFileService(applicationDirectory);
     private const int CacheVersion = 2;
     private static readonly HashSet<string> ImageExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -18,14 +20,17 @@ public sealed class HomeFolderService(string applicationDirectory, Func<Cancella
     };
 
     public Task<FolderSnapshot> LoadProjectsAsync(CancellationToken cancellationToken) =>
-        Task.Run(() =>
+        Task.Run(async () =>
         {
             cancellationToken.ThrowIfCancellationRequested();
+            SamplePaths.TryEnsureSavedRoot(applicationDirectory, cancellationToken);
             var path = Directory.CreateDirectory(Path.Combine(applicationDirectory, "projects")).FullName;
             var entries = ReadSnapshot(path, cancellationToken);
             var mapsets = new Dictionary<string, FolderEntry?>(StringComparer.OrdinalIgnoreCase);
-            return FolderSnapshot.ForProjects(entries.ReadPage(0, entries.Count).Select(entry =>
-                ReadProjectEntry(entry, mapsets, cancellationToken)), true, cancellationToken);
+            var projects = entries.ReadPage(0, entries.Count).Select(entry => ReadProjectEntry(entry, mapsets, cancellationToken)).ToArray();
+            foreach (var project in projects.Where(project => project.HasProjectMetadata))
+                await sampleFiles.TryMigrateSavedSamplesAsync(Path.Combine(project.FullName, "project.json"), cancellationToken);
+            return FolderSnapshot.ForProjects(projects, true, cancellationToken);
         }, cancellationToken);
 
     private static FolderEntry ReadProjectEntry(FolderEntry entry, Dictionary<string, FolderEntry?> mapsets, CancellationToken token)
@@ -35,7 +40,6 @@ public sealed class HomeFolderService(string applicationDirectory, Func<Cancella
         {
             if ((entry.Directory.Attributes & FileAttributes.ReparsePoint) != 0) return entry;
             var project = ProjectDataSerializer.Deserialize(File.ReadAllText(Path.Combine(entry.FullName, "project.json")));
-            SamplePaths.TryEnsureSavedRoot(Path.Combine(entry.FullName, "project.json"), token);
             var result = entry with { IsPinned = project.IsPinned, LastChanged = project.LastChanged,
                 BeatmapPath = project.BeatmapPath ?? "", HasProjectMetadata = true };
             if (!string.IsNullOrWhiteSpace(project.BeatmapPath))

@@ -148,9 +148,22 @@ public partial class SampleLoaderPopup : BasePopup
 
     private void UpdateSize()
     {
-        Width = 1200;
-        Height = 640;
-        SetValue(IsCompactLayoutPropertyKey, false);
+        var available = getWorkArea(sizingOwner ?? this);
+        var ownerWidth = sizingOwner?.ActualWidth ?? 0;
+        var ownerHeight = sizingOwner?.ActualHeight ?? 0;
+        Width = ConstrainSize(1200, available.Width, ownerWidth);
+        Height = ConstrainSize(640, available.Height, ownerHeight);
+        var compact = Width < 1040;
+        SetValue(IsCompactLayoutPropertyKey, compact);
+        LocationColumn.Width = new GridLength(compact ? 0 : 184);
+    }
+
+    private static double ConstrainSize(double preferred, double workArea, double owner)
+    {
+        var result = preferred;
+        if (double.IsFinite(workArea) && workArea > 0) result = Math.Min(result, workArea);
+        if (double.IsFinite(owner) && owner > 0) result = Math.Min(result, owner);
+        return result;
     }
 
     private void OnOwnerSizeChanged(object sender, SizeChangedEventArgs e) => UpdateSize();

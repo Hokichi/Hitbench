@@ -227,7 +227,7 @@
             <customControls:Icon
                 Width="{StaticResource Size.Icon.Default}"
                 Height="{StaticResource Size.Icon.Default}"
-                Margin="0,0,8,0"
+                Margin="16,0,8,0"
                 VerticalAlignment="Center"
                 Focusable="False"
                 IsHitTestVisible="False"
@@ -235,6 +235,7 @@
                 Color="{DynamicResource Brush.Text.Primary}" />
             <ToggleButton
                 x:Name="ThemeSwitch"
+                Margin="8,0"
                 AutomationProperties.Name="Light theme"
                 Click="OnThemeToggleClick"
                 IsChecked="{Binding IsLightTheme, RelativeSource={RelativeSource AncestorType=shell:OHsShellHeader}, Mode=OneWay}"

@@ -7,10 +7,10 @@ namespace Hitbench.Test.Presentation;
 public sealed class SampleLoaderPopupVMTests
 {
     [Test]
-    public async Task SavedShortcutUsesProjectDirectoryAndMissingContextDisablesShortcuts()
+    public async Task SavedShortcutIsSharedAcrossProjectsAndAvailableWithoutContext()
     {
         var projectPath = Path.Combine(browser.RootPath, "Project", "project.json");
-        var savedPath = Path.Combine(browser.RootPath, "Project", "Saved Samples");
+        var savedPath = Path.Combine(browser.RootPath, "saved");
         browser.Entries[savedPath] = [];
         var model = new SampleLoaderPopupVM(browser, new StubSamplePreviewService(), new ImmediateUiScheduler(), new PlaybackVolumeSettings());
         try
@@ -22,9 +22,43 @@ public sealed class SampleLoaderPopupVMTests
             await model.NavigateLocationCommand.ExecuteAsync(saved);
             Assert.That(model.CurrentDirectory, Is.EqualTo(savedPath));
             Assert.That(model.ActiveLocation, Is.SameAs(saved));
-            Assert.That(vm.Locations.Where(x => x.Section == "This project").All(x => !x.IsAvailable), Is.True);
+            var shared = vm.Locations.Single(x => x.Name == "Saved Samples");
+            Assert.That(shared.IsAvailable, Is.True);
+            Assert.That(shared.FullPath, Is.EqualTo(saved.FullPath));
+            Assert.That(vm.Locations.Single(x => x.Name == "Song folder").IsAvailable, Is.False);
+            Assert.That(saved.Section, Is.Empty);
         }
         finally { await model.DeactivateAsync(); }
+    }
+    [Test]
+    public async Task SavedDirectoryFailureKeepsSongAndDriveNavigationAndCanRetry()
+    {
+        browser.SavedDirectoryLoader = _ => Task.FromException<string>(new IOException("Denied"));
+        var model = new SampleLoaderPopupVM(browser, new StubSamplePreviewService(), new ImmediateUiScheduler(), new PlaybackVolumeSettings());
+        try
+        {
+            await model.InitializeAsync(new SamplePickerContext("project.json", a.FullPath), default);
+            Assert.That(model.CurrentDirectory, Is.EqualTo(a.FullPath));
+            Assert.That(model.Locations.Any(location => location.Section == "Drives"), Is.True);
+            var saved = model.Locations.Single(location => location.Name == "Saved Samples");
+            browser.SavedDirectoryLoader = null;
+            await model.NavigateLocationCommand.ExecuteAsync(saved);
+            Assert.That(model.CurrentDirectory, Is.EqualTo(browser.SavedDirectory));
+            Assert.That(model.DirectoryError, Is.Null);
+            Assert.That(model.ActiveLocation!.FullPath, Is.EqualTo(browser.SavedDirectory));
+        }
+        finally { await model.DeactivateAsync(); }
+    }
+    [Test]
+    public async Task SavedDirectoryCancellationIsObserved()
+    {
+        var entered = new TaskCompletionSource();
+        browser.SavedDirectoryLoader = async token => { entered.SetResult(); await Task.Delay(Timeout.Infinite, token); return browser.SavedDirectory; };
+        var model = new SampleLoaderPopupVM(browser, new StubSamplePreviewService(), new ImmediateUiScheduler(), new PlaybackVolumeSettings());
+        var loading = model.InitializeAsync(default(CancellationToken));
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await model.DeactivateAsync(); await loading;
+        Assert.That(model.CanNavigate, Is.False);
     }
     private StubSampleBrowserService browser = null!;
     private StubSamplePreviewService preview = null!;

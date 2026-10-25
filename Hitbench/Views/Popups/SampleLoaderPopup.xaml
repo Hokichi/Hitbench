@@ -16,7 +16,7 @@
                 Background="{DynamicResource Brush.Background.Popup}"
                 BorderBrush="{DynamicResource Brush.Border.Default}"
                 BorderThickness="1"
-                CornerRadius="8">
+                CornerRadius="{StaticResource Radius.Popup}">
                 <Border.Clip>
                     <MultiBinding Converter="{StaticResource BorderCornerClipConverter}">
                         <Binding
@@ -389,8 +389,8 @@
                         <TextBlock
                             VerticalAlignment="Center"
                             FontFamily="{Binding FontFamily, RelativeSource={RelativeSource AncestorType=ListBoxItem}, Mode=OneWay}"
-                            FontWeight="{Binding FontWeight, RelativeSource={RelativeSource AncestorType=ListBoxItem}, Mode=OneWay}"
                             FontStyle="{Binding FontStyle, RelativeSource={RelativeSource AncestorType=ListBoxItem}, Mode=OneWay}"
+                            FontWeight="{Binding FontWeight, RelativeSource={RelativeSource AncestorType=ListBoxItem}, Mode=OneWay}"
                             Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}, Mode=OneWay}"
                             Style="{StaticResource BodyTextStyle}"
                             Text="{Binding Name, Mode=OneWay}"
@@ -445,23 +445,19 @@
             TargetType="c:BalloonButton">
             <Setter Property="Padding" Value="4" />
         </Style>
-        <Style
-            x:Key="SampleLoaderPreviewStyle"
-            BasedOn="{StaticResource OHsSampleLoaderSecondaryActionStyle}"
-            TargetType="c:BalloonButton">
+        <Style x:Key="SampleLoaderPreviewStyle" BasedOn="{StaticResource OHsBalloonSurfaceActionStyle}" TargetType="c:BalloonButton">
             <Setter Property="Padding" Value="4" />
-            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
-            <Setter Property="PressedBackground" Value="{DynamicResource Brush.Navy.Tint}" />
-            <Setter Property="HoveredBackground" Value="{DynamicResource Brush.Background.Hover}" />
-            <Setter Property="DefaultBackground" Value="{DynamicResource Brush.Background.Surface}" />
-            <Setter Property="Background" Value="{DynamicResource Brush.Background.Surface}" />
+            <Setter Property="IsTabStop" Value="False" />
+            <Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="False" />
+            <Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="True" />
             <Setter Property="ButtonIcon" Value="{StaticResource MediaPlay}" />
         </Style>
         <Style
             x:Key="SampleLoaderAutoPlayStyle"
             BasedOn="{StaticResource OHsSampleLoaderCheckboxStyle}"
             TargetType="CheckBox">
-            <Setter Property="IsTabStop" Value="True"/><Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True"/>
+            <Setter Property="IsTabStop" Value="True" />
+            <Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
             <Setter Property="FontSize" Value="{StaticResource FontSize.Label}" />
             <Setter Property="Padding" Value="8,0" />
             <Setter Property="MinHeight" Value="40" />
@@ -481,13 +477,17 @@
                 <PropertyGroupDescription PropertyName="Section" />
             </CollectionViewSource.GroupDescriptions>
         </CollectionViewSource>
+        <Style x:Key="OHsSampleLoaderLocationGroupHeaderStyle" TargetType="TextBlock" BasedOn="{StaticResource CardLabelTextStyle}">
+            <Setter Property="Margin" Value="8,12,8,4" />
+            <Setter Property="FontSize" Value="{StaticResource FontSize.Caption}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Name, Mode=OneWay}" Value="">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
         <DataTemplate x:Key="OHsSampleLoaderLocationGroupHeaderTemplate">
-            <TextBlock
-                Margin="8,12,8,4"
-                FontSize="10"
-                FontWeight="Bold"
-                Style="{StaticResource CardLabelTextStyle}"
-                Text="{Binding Name, Mode=OneWay}" />
+            <TextBlock Style="{StaticResource OHsSampleLoaderLocationGroupHeaderStyle}" Text="{Binding Name, Mode=OneWay}" />
         </DataTemplate>
         <GroupStyle x:Key="OHsSampleLoaderLocationGroupStyle" HeaderTemplate="{StaticResource OHsSampleLoaderLocationGroupHeaderTemplate}" />
         <ControlTemplate x:Key="OHsSampleLoaderLocationContainerTemplate" TargetType="ListBoxItem">
@@ -515,7 +515,7 @@
             BasedOn="{StaticResource PlainListBoxItemStyle}"
             TargetType="ListBoxItem">
             <Setter Property="FontSize" Value="{StaticResource FontSize.Label}" />
-            <Setter Property="Margin" Value="0,0,0,2" />
+            <Setter Property="Margin" Value="0,0,16,2" />
             <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
             <Setter Property="IsTabStop" Value="False" />
             <Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="False" />
@@ -568,8 +568,8 @@
                     Margin="8,0"
                     VerticalAlignment="Center"
                     FontFamily="{Binding FontFamily, RelativeSource={RelativeSource AncestorType=ListBoxItem}, Mode=OneWay}"
-                    FontWeight="{Binding FontWeight, RelativeSource={RelativeSource AncestorType=ListBoxItem}, Mode=OneWay}"
                     FontStyle="{Binding FontStyle, RelativeSource={RelativeSource AncestorType=ListBoxItem}, Mode=OneWay}"
+                    FontWeight="{Binding FontWeight, RelativeSource={RelativeSource AncestorType=ListBoxItem}, Mode=OneWay}"
                     Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}, Mode=OneWay}"
                     Style="{StaticResource BodyTextStyle}"
                     Text="{Binding Name, Mode=OneWay}"
@@ -589,7 +589,7 @@
             TargetType="TextBox">
             <Setter Property="FontSize" Value="{StaticResource FontSize.Label}" />
             <Setter Property="Padding" Value="28,0,8,0" />
-            <Setter Property="Height" Value="36" />
+            <Setter Property="Height" Value="{StaticResource Size.Control.Primary}" />
             <Setter Property="Width" Value="200" />
         </Style>
         <Style
@@ -684,15 +684,15 @@
             BasedOn="{StaticResource PlainListBoxItemStyle}"
             TargetType="ListBoxItem">
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Subtle}" />
-            <Setter Property="Background" Value="{DynamicResource Brush.Background.Surface}" />
-            <Setter Property="Padding" Value="10,0,4,0" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Padding" Value="8,0,4,0" />
             <Setter Property="Height" Value="52" />
             <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=OneWay}" />
             <Setter Property="AutomationProperties.Name" Value="{Binding Name, Mode=OneWay}" />
             <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-            <Setter Property="Margin" Value="0,0,0,6" />
+            <Setter Property="Margin" Value="0,0,0,4" />
             <Setter Property="MinHeight" Value="52" />
             <Setter Property="Template" Value="{StaticResource SampleLoaderContentItemTemplate}" />
             <Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="True" />
@@ -845,8 +845,8 @@
             x:Key="OHsSampleLoaderBrowserCardStyle"
             BasedOn="{StaticResource CardBorderStyle}"
             TargetType="Border">
-            <Setter Property="CornerRadius" Value="8" />
-            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Subtle}" />
+            <Setter Property="CornerRadius" Value="{StaticResource Radius.Card}" />
+            <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Padding" Value="0" />
         </Style>
     </c:BasePopup.Resources>
@@ -857,18 +857,18 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="196" />
+            <ColumnDefinition x:Name="LocationColumn" Width="184" />
             <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="296" />
+            <ColumnDefinition Width="280" />
         </Grid.ColumnDefinitions>
         <Grid
             Grid.Row="1"
-            MaxWidth="196"
+            MaxWidth="184"
             Margin="0"
             Style="{StaticResource OHsSampleLoaderSidebarStyle}">
             <ListBox
                 x:Name="LocationList"
-                Margin="8,12"
+                Margin="16,16,0,16"
                 AutomationProperties.Name="Sample locations"
                 Background="Transparent"
                 BorderBrush="{DynamicResource Brush.Border.Subtle}"
@@ -892,7 +892,7 @@
         <Grid
             Grid.Row="1"
             Grid.Column="1"
-            Margin="16,12,16,0"
+            Margin="16,16,16,0"
             Style="{StaticResource OHsSampleLoaderBrowserLayoutStyle}">
             <Grid.RowDefinitions>
                 <RowDefinition Height="*" />
@@ -901,7 +901,7 @@
             </Grid.RowDefinitions>
             <Grid>
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="36" />
+                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
                 <Grid Style="{StaticResource BaseGridStyle}">
@@ -1050,11 +1050,6 @@
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
                         <Grid Style="{StaticResource BaseGridStyle}">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="2*" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
                             <TextBlock
                                 AutomationProperties.Name="{Binding SelectedFile.Name, Mode=OneWay}"
                                 FontFamily="{DynamicResource Bold}"
@@ -1087,32 +1082,35 @@
                             <c:BalloonButton
                                 x:Name="StopPreviewButton"
                                 Grid.Column="1"
-                                Margin="10,0,0,0"
+                                Margin="8,0,0,0"
                                 AutomationProperties.Name="Stop preview"
-                                BorderBrush="{DynamicResource Brush.Border.Control}"
-                                BorderThickness="1"
                                 ButtonIcon="{StaticResource MediaStop}"
                                 Command="{Binding StopPreviewCommand, Mode=OneWay}"
-                                DefaultBackground="{DynamicResource Brush.Background.Surface}"
                                 IconSize="12"
-                                Style="{StaticResource OHsSampleLoaderIconActionStyle}"
+                                Style="{StaticResource SampleLoaderPreviewStyle}"
                                 ToolTip="Stop preview" />
                             <Border
                                 Grid.Column="2"
-                                Margin="10,0,0,0"
+                                Margin="8,0,0,0"
                                 Style="{StaticResource OHsSampleLoaderWaveformTrackStyle}">
                                 <Grid
-                                    Height="44"
-                                    Margin="0,0,0,-20"
+                                    Height="40"
+                                    Margin="0"
                                     PreviewMouseLeftButtonDown="OnWaveformSeekMouseDown"
                                     Style="{StaticResource BaseGridStyle}">
                                     <c:WaveformView
-                                        x:Name="PreviewWaveform" Focusable="True" FocusVisualStyle="{StaticResource OHsSampleManagerKeyboardFocusStyle}" h:KeyboardNavigationPolicy.AllowTabNavigation="True" KeyDown="OnPreviewWaveformKeyDown" MouseMove="OnPreviewWaveformMouseMove" MouseLeftButtonUp="OnPreviewWaveformMouseUp"
-                                        Margin="0,0,0,20"
+                                        x:Name="PreviewWaveform"
+                                        Margin="0"
+                                        h:KeyboardNavigationPolicy.AllowTabNavigation="True"
                                         AutomationProperties.Name="Sample waveform"
                                         Data="{Binding Waveform, Mode=OneWay}"
+                                        FocusVisualStyle="{StaticResource OHsSampleManagerKeyboardFocusStyle}"
+                                        Focusable="True"
                                         IsEnabled="{Binding CanSeek, Mode=OneWay}"
+                                        KeyDown="OnPreviewWaveformKeyDown"
                                         MarkerBrush="{DynamicResource Brush.Playhead}"
+                                        MouseLeftButtonUp="OnPreviewWaveformMouseUp"
+                                        MouseMove="OnPreviewWaveformMouseMove"
                                         PlayedWaveformBrush="{DynamicResource Brush.Waveform.Played}"
                                         Position="{Binding PlaybackPosition, Mode=OneWay}"
                                         SeekCommand="{Binding SeekPreviewCommand, Mode=OneWay}"
@@ -1136,7 +1134,7 @@
         <Grid
             Grid.Row="2"
             Grid.Column="1"
-            Margin="16,12,16,12"
+            Margin="16,16,16,16"
             VerticalAlignment="Top"
             Style="{StaticResource OHsSampleLoaderAudioRegionStyle}">
             <Grid.ColumnDefinitions>
@@ -1155,7 +1153,7 @@
             Grid.Row="1"
             Grid.Column="2"
             Margin="0"
-            Padding="16,12,16,16"
+            Padding="16,16,16,16"
             Background="{DynamicResource Brush.Background.Surface}"
             BorderBrush="{DynamicResource Brush.Border.Subtle}"
             BorderThickness="1,0,0,0"
@@ -1166,7 +1164,7 @@
                     <RowDefinition Height="*" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
-                <Grid Height="36" Style="{StaticResource BaseGridStyle}">
+                <Grid MinHeight="40" Style="{StaticResource BaseGridStyle}">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
@@ -1234,22 +1232,15 @@
         </Border>
         <Grid Grid.Row="2" Style="{StaticResource OHsSampleLoaderImportLayoutStyle}">
             <Border
-                Padding="16,0,16,16"
+                Padding="16"
                 Background="{DynamicResource Brush.Background.Surface}"
                 BorderBrush="{DynamicResource Brush.Border.Subtle}"
                 BorderThickness="1,1,0,0">
                 <StackPanel Grid.Row="2" Margin="0">
-                    <Grid Style="{StaticResource OHsSampleLoaderAudioRegionStyle}">
-                        <TextBlock
-                            Margin="0,12,0,0"
-                            FontSize="{StaticResource FontSize.Label}"
-                            Foreground="{DynamicResource Brush.Text.Secondary}"
-                            Text="{Binding SelectionSummary, Mode=OneWay}" />
-                    </Grid>
                     <c:BalloonButton
                         x:Name="ImportButton"
                         Height="40"
-                        Margin="0,12,0,0"
+                        Margin="0"
                         h:KeyboardNavigationPolicy.AllowTabNavigation="False"
                         AutomationProperties.Name="{Binding ConfirmAutomationName, Mode=OneWay}"
                         ButtonIcon="{StaticResource PlusSolid}"

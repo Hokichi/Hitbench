@@ -133,7 +133,6 @@ public sealed class ProjectFileService(string applicationDirectory) : IProjectFi
             Directory.CreateDirectory(staging);
             var stagedProject = Path.Combine(staging, "project.json");
             await writeProjectAsync(stagedProject, json, cancellationToken);
-            await Task.Run(() => SamplePaths.TryEnsureSavedRoot(stagedProject, cancellationToken), cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
             RejectLink(projects);
             RejectLink(staging);
