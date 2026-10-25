@@ -210,9 +210,13 @@
             </Style.Triggers>
         </Style>
     </UserControl.Resources>
-    <DockPanel Margin="8" LastChildFill="True">
-
-        <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
+    <Grid Margin="16,8" Style="{StaticResource BaseGridStyle}">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+        <WrapPanel VerticalAlignment="Center">
+        <StackPanel Orientation="Horizontal">
             <Image Style="{StaticResource OHsShellHeaderLogoStyle}" />
             <TextBlock
                 Margin="8,0,0,0"
@@ -220,14 +224,15 @@
                 Text="Hit" />
             <TextBlock
                 Margin="0,0,12,0"
-                Foreground="{StaticResource Brush.Text.Secondary}"
+                Foreground="{DynamicResource Brush.Text.Secondary}"
                 Style="{StaticResource MainWindowTitleStyle}"
                 Text="bench" />
-            <Border Style="{StaticResource OHsShellHeaderHomeSeparatorStyle}" />
+        </StackPanel>
+        <StackPanel Margin="8,0,0,0" Orientation="Horizontal">
             <customControls:Icon
                 Width="{StaticResource Size.Icon.Default}"
                 Height="{StaticResource Size.Icon.Default}"
-                Margin="16,0,8,0"
+                Margin="0,0,8,0"
                 VerticalAlignment="Center"
                 Focusable="False"
                 IsHitTestVisible="False"
@@ -252,7 +257,8 @@
                 Path="{StaticResource Sun}"
                 Color="{DynamicResource Brush.Text.Primary}" />
         </StackPanel>
-        <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
+        </WrapPanel>
+        <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Top" Orientation="Horizontal">
             <StackPanel
                 x:Name="WorkstationActions"
                 Orientation="Horizontal"
@@ -293,5 +299,5 @@
                 Style="{StaticResource OHsBalloonDestructiveActionStyle}"
                 ToolTip="Close" />
         </StackPanel>
-    </DockPanel>
+    </Grid>
 </UserControl>
