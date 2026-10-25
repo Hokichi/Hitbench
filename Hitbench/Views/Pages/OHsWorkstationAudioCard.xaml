@@ -21,7 +21,7 @@
             <Setter Property="Margin" Value="0,0,0,8" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsShortLayout, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationAudioCard}, Mode=OneWay}" Value="True">
-                    <Setter Property="Padding" Value="16,4" />
+                    <Setter Property="Padding" Value="16,8" />
                 </DataTrigger>
             </Style.Triggers>
         </Style>
@@ -32,7 +32,7 @@
             <Setter Property="Margin" Value="0,0,0,12" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsShortLayout, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationAudioCard}, Mode=OneWay}" Value="True">
-                    <Setter Property="Padding" Value="16,4" />
+                    <Setter Property="Padding" Value="16,8" />
                 </DataTrigger>
                 <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
                     <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
@@ -107,11 +107,8 @@
         </Style>
         <Style
             x:Key="OHsWorkstationPlayPauseStyle"
-            BasedOn="{StaticResource OHsBalloonDefaultActionStyle}"
+            BasedOn="{StaticResource OHsWorkstationTransportButtonStyle}"
             TargetType="customControls:BalloonButton">
-            <Setter Property="IsTabStop" Value="True" />
-            <Setter Property="helpers:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
-            <Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="True" />
             <Setter Property="AutomationProperties.Name" Value="Play audio" />
             <Setter Property="ButtonIcon" Value="{StaticResource MediaPlay}" />
             <Setter Property="ButtonText" Value="Play" />
@@ -133,7 +130,7 @@
         </Style>
         <Style
             x:Key="OHsWorkstationSamplesActionStyle"
-            BasedOn="{StaticResource OHsBalloonNavInfoActionStyle}"
+            BasedOn="{StaticResource OHsBalloonDefaultActionStyle}"
             TargetType="customControls:BalloonButton">
             <Setter Property="ShouldShowText" Value="True" />
             <Setter Property="IsTabStop" Value="True" />
@@ -185,7 +182,7 @@
             BasedOn="{StaticResource BaseStackPanelStyle}"
             TargetType="StackPanel">
             <Style.Triggers>
-                <DataTrigger Binding="{Binding UsesProjectActionsMenu, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationAudioCard}, Mode=OneWay}" Value="True">
+                <DataTrigger Binding="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationAudioCard}, Mode=OneWay}" Value="True">
                     <Setter Property="Visibility" Value="Collapsed" />
                 </DataTrigger>
             </Style.Triggers>
@@ -197,7 +194,7 @@
             <Setter Property="ShouldShowText" Value="False" />
             <Setter Property="Visibility" Value="Collapsed" />
             <Style.Triggers>
-                <DataTrigger Binding="{Binding UsesProjectActionsMenu, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationAudioCard}, Mode=OneWay}" Value="True">
+                <DataTrigger Binding="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationAudioCard}, Mode=OneWay}" Value="True">
                     <Setter Property="Visibility" Value="Visible" />
                 </DataTrigger>
             </Style.Triggers>
@@ -240,36 +237,23 @@
                 Header="Open project folder"
                 Style="{StaticResource OHsActionMenuItemStyle}" />
         </ContextMenu>
-        <Style x:Key="OHsWorkstationEditingToolbarStyle" TargetType="Grid" BasedOn="{StaticResource BaseGridStyle}">
-            <Setter Property="Margin" Value="16,0,16,8" />
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding IsShortLayout, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationAudioCard}, Mode=OneWay}" Value="True">
-                    <Setter Property="Margin" Value="16,0,16,4" />
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
     </UserControl.Resources>
     <Grid Style="{StaticResource BaseGridStyle}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
         <Border Style="{StaticResource OHsWorkstationHeaderCardStyle}">
-            <Grid Style="{StaticResource BaseGridStyle}">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <customControls:BalloonButton
+            <Grid>
+                <WrapPanel VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal">
+                        <customControls:BalloonButton
                             x:Name="PlayPauseButton"
                             Margin="0"
                             Command="{Binding PlayPauseCommand, Mode=OneWay}"
                             IsEnabled="{Binding CanPlay, Mode=OneWay}"
                             Style="{StaticResource OHsWorkstationPlayPauseStyle}" />
-                    <customControls:BalloonButton
+                        <customControls:BalloonButton
                             Margin="4,0,0,0"
                             AutomationProperties.Name="Stop audio"
                             ButtonIcon="{StaticResource MediaStop}"
@@ -278,87 +262,34 @@
                             IsEnabled="{Binding CanPlay, Mode=OneWay}"
                             Style="{StaticResource OHsWorkstationTransportButtonStyle}"
                             ToolTip="Stop audio and return to the beginning" />
-                    <StackPanel Margin="16,0,0,0" VerticalAlignment="Center">
-                        <TextBlock x:Name="ElapsedTimeText" AutomationProperties.Name="Elapsed audio time"
-                            Style="{StaticResource OHsWorkstationElapsedStyle}" Text="{Binding ElapsedText, Mode=OneWay}" />
-                        <TextBlock AutomationProperties.Name="Current BPM" Style="{StaticResource BodyTextStyle}"
+                    </StackPanel>
+                    <Border Style="{StaticResource OHsWorkstationToolbarSeparatorStyle}" />
+                    <customControls:BalloonCheckBox
+                        x:Name="ScrollWithMarkerCheckBox"
+                        Margin="4,0,0,0"
+                        AutomationProperties.HelpText="Follow the current playback marker. Selecting a node turns this off."
+                        AutomationProperties.Name="Scroll with marker"
+                        ButtonIcon="{StaticResource AlignArrowRightFill}"
+                        ButtonText="Scroll with marker"
+                        CheckedIcon="{StaticResource AlignArrowRightFill}"
+                        IsChecked="{Binding ScrollWithMarker, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                        IsEnabled="{Binding CanPlay, Mode=OneWay}"
+                        Style="{StaticResource OHsWorkstationScrollWithMarkerStyle}"
+                        ToolTip="Follow the current playback marker (F3). Selecting a node turns this off." />
+                    <Border Style="{StaticResource OHsWorkstationToolbarSeparatorStyle}" />
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock
+                            x:Name="ElapsedTimeText"
+                            AutomationProperties.Name="Elapsed audio time"
+                            Style="{StaticResource OHsWorkstationElapsedStyle}"
+                            Text="{Binding ElapsedText, Mode=OneWay}" />
+                        <TextBlock
+                            AutomationProperties.Name="Current BPM"
+                            Style="{StaticResource BodyTextStyle}"
                             Text="{Binding CurrentBpmText, Mode=OneWay}" />
                     </StackPanel>
-                </StackPanel>
-                <StackPanel Grid.Column="2" Margin="16,0,0,0" Orientation="Horizontal" VerticalAlignment="Center">
-                    <StackPanel Orientation="Horizontal" Style="{StaticResource OHsWorkstationWideProjectActionsStyle}">
-                        <customControls:BalloonButton
-                                x:Name="ResnapAllSamplesButton"
-                                AutomationProperties.HelpText="Resnap all samples and control points to the current beat subdivision, including instrumental notes"
-                                AutomationProperties.Name="Resnap all samples and control points"
-                                ButtonIcon="{StaticResource ResnapGrid}"
-                                ButtonText="Resnap"
-                                Command="{Binding ResnapAllSamplesCommand, Mode=OneWay}"
-                                IconSize="20"
-                                Style="{StaticResource OHsWorkstationToolbarButtonStyle}"
-                                ToolTip="Resnap all samples and control points to the current beat subdivision, including instrumental notes" />
-                        <customControls:BalloonButton
-                                x:Name="ReloadSamplesButton"
-                                Margin="4,0,0,0"
-                                AutomationProperties.Name="Refresh samples"
-                                ButtonIcon="{StaticResource ArrowsRotateSolid}"
-                                ButtonText="Refresh samples"
-                                Command="{Binding ReloadSamplesCommand, Mode=OneWay}"
-                                Style="{StaticResource OHsWorkstationToolbarButtonStyle}"
-                                ToolTip="Refresh project samples (F5)" />
-                        <customControls:BalloonButton
-                                x:Name="ToggleTracksCollapsedButton"
-                                Margin="4,0,0,0"
-                                Command="{Binding ToggleTracksCollapsedCommand, Mode=OneWay}"
-                                Style="{StaticResource OHsWorkstationCollapseTracksStyle}" />
-                        <customControls:BalloonButton
-                                x:Name="OpenBeatmapFolderButton"
-                                AutomationProperties.Name="Open beatmap folder"
-                                ButtonIcon="{StaticResource Folder}"
-                                ButtonText="Beatmap"
-                                Command="{Binding OpenBeatmapFolderCommand, Mode=OneWay}"
-                                ShouldShowText="True"
-                                Style="{StaticResource OHsWorkstationToolbarButtonStyle}"
-                                ToolTip="Open beatmap folder" />
-                        <customControls:BalloonButton
-                                x:Name="OpenProjectFolderButton"
-                                AutomationProperties.Name="Open project folder"
-                                ButtonIcon="{StaticResource Folder}"
-                                ButtonText="Project"
-                                Command="{Binding OpenProjectFolderCommand, Mode=OneWay}"
-                                ShouldShowText="True"
-                                Style="{StaticResource OHsWorkstationToolbarButtonStyle}"
-                                ToolTip="Open project folder" />
-                    </StackPanel>
-                    <customControls:BalloonComboBox
-                        x:Name="ProjectActionsButton"
-                        AutomationProperties.Name="Project actions"
-                        ButtonIcon="{StaticResource BarsSolid}"
-                        ButtonText="Project actions"
-                        ContextMenu="{StaticResource OHsWorkstationProjectActionsMenu}"
-                        IsEnabled="{Binding UsesProjectActionsMenu, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationAudioCard}, Mode=OneWay}"
-                        Style="{StaticResource OHsWorkstationProjectActionsStyle}"
-                        ToolTip="Project actions" />
-                    <customControls:BalloonButton
-                        x:Name="ExportButton"
-                        Margin="4,0,0,0"
-                        AutomationProperties.Name="Export"
-                        ButtonIcon="{StaticResource Export}"
-                        ButtonText="Export"
-                        ShouldShowText="True"
-                        Command="{Binding ExportCommand, Mode=OneWay}"
-                        Style="{StaticResource OHsWorkstationToolbarButtonStyle}"
-                        ToolTip="Export" />
-                </StackPanel>
-            </Grid>
-        </Border>
-        <Grid Grid.Row="1" Style="{StaticResource OHsWorkstationEditingToolbarStyle}">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                <customControls:SegmentedToggleGroup
+                    <Border Style="{StaticResource OHsWorkstationToolbarSeparatorStyle}" />
+                    <customControls:SegmentedToggleGroup
                         x:Name="EditingModeGroup"
                         Width="160"
                         Margin="0"
@@ -384,24 +315,87 @@
                             </customControls:SegmentedToggleOption.Value>
                         </customControls:SegmentedToggleOption>
                     </customControls:SegmentedToggleGroup>
-                <customControls:BalloonCheckBox
-                        x:Name="ScrollWithMarkerCheckBox"
+                </WrapPanel>
+                <WrapPanel
+                    Margin="0,8,0,0"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Style="{StaticResource OHsWorkstationWideProjectActionsStyle}">
+                        <StackPanel Orientation="Horizontal" Style="{StaticResource BaseStackPanelStyle}">
+                            <customControls:BalloonButton
+                                x:Name="ResnapAllSamplesButton"
+                                AutomationProperties.HelpText="Resnap all samples and control points to the current beat subdivision, including instrumental notes"
+                                AutomationProperties.Name="Resnap all samples and control points"
+                                ButtonIcon="{StaticResource ResnapGrid}"
+                                ButtonText="Resnap"
+                                Command="{Binding ResnapAllSamplesCommand, Mode=OneWay}"
+                                IconSize="20"
+                                Style="{StaticResource OHsWorkstationToolbarButtonStyle}"
+                                ToolTip="Resnap all samples and control points to the current beat subdivision, including instrumental notes" />
+                            <customControls:BalloonButton
+                                x:Name="ReloadSamplesButton"
+                                Margin="4,0,0,0"
+                                AutomationProperties.Name="Refresh samples"
+                                ButtonIcon="{StaticResource ArrowsRotateSolid}"
+                                ButtonText="Refresh samples"
+                                Command="{Binding ReloadSamplesCommand, Mode=OneWay}"
+                                Style="{StaticResource OHsWorkstationToolbarButtonStyle}"
+                                ToolTip="Refresh project samples (F5)" />
+                            <customControls:BalloonButton
+                                x:Name="ToggleTracksCollapsedButton"
+                                Margin="4,0,0,0"
+                                Command="{Binding ToggleTracksCollapsedCommand, Mode=OneWay}"
+                                Style="{StaticResource OHsWorkstationCollapseTracksStyle}" />
+
+                        </StackPanel>
+                        <Border Style="{StaticResource OHsWorkstationToolbarSeparatorStyle}" />
+                        <StackPanel Orientation="Horizontal" Style="{StaticResource BaseStackPanelStyle}">
+                            <customControls:BalloonButton
+                                x:Name="OpenBeatmapFolderButton"
+                                AutomationProperties.Name="Open beatmap folder"
+                                ButtonIcon="{StaticResource Folder}"
+                                ButtonText="Beatmap"
+                                Command="{Binding OpenBeatmapFolderCommand, Mode=OneWay}"
+                                ShouldShowText="True"
+                                Style="{StaticResource OHsWorkstationToolbarButtonStyle}"
+                                ToolTip="Open beatmap folder" />
+                            <customControls:BalloonButton
+                                x:Name="OpenProjectFolderButton"
+                                AutomationProperties.Name="Open project folder"
+                                ButtonIcon="{StaticResource Folder}"
+                                ButtonText="Project"
+                                Command="{Binding OpenProjectFolderCommand, Mode=OneWay}"
+                                ShouldShowText="True"
+                                Style="{StaticResource OHsWorkstationToolbarButtonStyle}"
+                                ToolTip="Open project folder" />
+                        </StackPanel>
+                    </StackPanel>
+                    <customControls:BalloonComboBox
+                        x:Name="ProjectActionsButton"
+                        AutomationProperties.Name="Project actions"
+                        ButtonIcon="{StaticResource BarsSolid}"
+                        ButtonText="Project actions"
+                        ContextMenu="{StaticResource OHsWorkstationProjectActionsMenu}"
+                        IsEnabled="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationAudioCard}, Mode=OneWay}"
+                        Style="{StaticResource OHsWorkstationProjectActionsStyle}"
+                        ToolTip="Project actions" />
+                    <customControls:BalloonButton
+                        x:Name="ExportButton"
                         Margin="4,0,0,0"
-                        AutomationProperties.HelpText="Follow the current playback marker. Selecting a node turns this off."
-                        AutomationProperties.Name="Scroll with marker"
-                        ButtonIcon="{StaticResource AlignArrowRightFill}"
-                        ButtonText="Scroll with marker"
-                        CheckedIcon="{StaticResource AlignArrowRightFill}"
-                        IsChecked="{Binding ScrollWithMarker, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                        IsEnabled="{Binding CanPlay, Mode=OneWay}"
-                        Style="{StaticResource OHsWorkstationScrollWithMarkerStyle}"
-                        ToolTip="Follow the current playback marker (F3). Selecting a node turns this off." />
-            </StackPanel>
-            <pages:OHsWorkstationFooter x:Name="FooterControls" Grid.Column="1" VerticalAlignment="Center" />
-        </Grid>
+                        AutomationProperties.Name="Export"
+                        ButtonIcon="{StaticResource Export}"
+                        ButtonText="Export"
+                        Command="{Binding ExportCommand, Mode=OneWay}"
+                        Style="{StaticResource OHsWorkstationToolbarButtonStyle}"
+                        ToolTip="Export" />
+                    <Border Style="{StaticResource OHsWorkstationToolbarSeparatorStyle}" />
+                    <pages:OHsWorkstationFooter x:Name="FooterControls" VerticalAlignment="Center" />
+                </WrapPanel>
+            </Grid>
+        </Border>
         <Border
             x:Name="SongAudioCard"
-            Grid.Row="2"
+            Grid.Row="1"
             Margin="0,0,0,8"
             Style="{StaticResource OHsWorkstationPanelStyle}">
             <Grid Style="{StaticResource BaseGridStyle}">

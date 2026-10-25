@@ -20,7 +20,7 @@ namespace Hitbench.Test.Presentation;
 public sealed class OHsWorkstationAudioCardTests
 {
     [TestCase(true, false)]
-    [TestCase(false, true)]
+    [TestCase(true, true)]
     public void CompactProjectMenuKeepsAuthoritativeCommandsAndDeactivatesWhenRoomy(bool compact, bool shortLayout)
     {
         new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
@@ -63,9 +63,9 @@ public sealed class OHsWorkstationAudioCardTests
 
     [TestCase(false, false, false)]
     [TestCase(true, false, true)]
-    [TestCase(false, true, true)]
+    [TestCase(false, true, false)]
     [TestCase(true, true, true)]
-    public void ProjectOverflowFollowsWidthAndHeightModes(bool compact, bool shortLayout, bool expected)
+    public void ProjectOverflowFollowsWidthMode(bool compact, bool shortLayout, bool expected)
     {
         new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
         var card = new OHsWorkstationAudioCard { IsCompactLayout = compact, IsShortLayout = shortLayout };

@@ -14,22 +14,6 @@
     d:DesignWidth="1100"
     mc:Ignorable="d">
     <UserControl.Resources>
-        <Style x:Key="OHsWorkstationContentInsetStyle" TargetType="Grid" BasedOn="{StaticResource BaseGridStyle}">
-            <Setter Property="Margin" Value="16,8,16,8" />
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding IsShortLayout, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}" Value="True">
-                    <Setter Property="Margin" Value="16,4,16,4" />
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
-        <Style x:Key="OHsWorkstationTracksCardStyle" TargetType="Border" BasedOn="{StaticResource CardBorderStyle}">
-            <Setter Property="Margin" Value="0,0,0,8" />
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding IsShortLayout, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}" Value="True">
-                    <Setter Property="Padding" Value="16,4" />
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
 
 
 
@@ -204,7 +188,7 @@
     <Grid Background="Transparent" Style="{StaticResource BaseGridStyle}">
         <Grid
             x:Name="WorkstationRoot"
-            Style="{StaticResource OHsWorkstationContentInsetStyle}"
+            Margin="16,8,16,8"
             IsEnabled="{Binding IsWorkstationContentEnabled, Mode=OneWay}"
             SizeChanged="OnVolumeOverlayHostSizeChanged">
             <Grid x:Name="WorkstationContent" Style="{StaticResource OHsWorkstationContentStyle}">
@@ -254,7 +238,8 @@
                 <Border
                     x:Name="TracksCard"
                     Grid.Row="3"
-                    Style="{StaticResource OHsWorkstationTracksCardStyle}">
+                    Margin="0,0,0,8"
+                    Style="{StaticResource CardBorderStyle}">
                     <Grid x:Name="TracksLayout" Style="{StaticResource BaseGridStyle}" SizeChanged="OnTracksLayoutSizeChanged">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="*" />

@@ -4,6 +4,7 @@
             <StackPanel x:Name="SubdivisionPanel" Margin="0,0,12,0" VerticalAlignment="Center" Orientation="Horizontal">
                 <customControls:ValueSlider x:Name="SubdivisionSelector" AutomationProperties.Name="Beat subdivision" DisplayText="{Binding Subdivision, Mode=OneWay, StringFormat=1/{0}}" IsSnapToTickEnabled="True" LargeChange="1" Maximum="8" Minimum="0" SmallChange="1" Style="{StaticResource BaseValueSliderStyle}" TickFrequency="1" Value="{Binding SelectedSubdivisionIndex, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="160"/>
             </StackPanel>
+            <Border Style="{StaticResource OHsWorkstationToolbarSeparatorStyle}"/>
             <StackPanel x:Name="ZoomControls" VerticalAlignment="Center" FlowDirection="{Binding RelativeSource={RelativeSource AncestorType=UserControl}, Path=FlowDirection, Mode=OneWay}" Orientation="Horizontal">
                 <customControls:BalloonButton AutomationProperties.Name="Zoom waveform out" ButtonIcon="{StaticResource Minus}" Command="{Binding ZoomOutCommand, Mode=OneWay}" Style="{StaticResource OHsBalloonNeutralActionStyle}" ToolTip="Zoom waveform out" Margin="4,0,0,0" ShouldShowText="False"/>
                 <customControls:BalloonButton AutomationProperties.Name="Zoom waveform in" ButtonIcon="{StaticResource PlusSolid}" Command="{Binding ZoomInCommand, Mode=OneWay}" Style="{StaticResource OHsBalloonNeutralActionStyle}" ToolTip="Zoom waveform in" Margin="4,0,0,0" ShouldShowText="False"/>
