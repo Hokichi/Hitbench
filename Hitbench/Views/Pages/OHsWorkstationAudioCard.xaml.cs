@@ -12,11 +12,22 @@ public partial class OHsWorkstationAudioCard : UserControl
     public GridLength TrackSideColumnWidth { get => (GridLength)GetValue(TrackSideColumnWidthProperty); set => SetValue(TrackSideColumnWidthProperty, value); }
 
     public static readonly DependencyProperty IsCompactLayoutProperty = DependencyProperty.Register(
-        nameof(IsCompactLayout), typeof(bool), typeof(OHsWorkstationAudioCard), new PropertyMetadata(false));
+        nameof(IsCompactLayout), typeof(bool), typeof(OHsWorkstationAudioCard), new PropertyMetadata(false, OnLayoutModeChanged));
     public bool IsCompactLayout { get => (bool)GetValue(IsCompactLayoutProperty); set => SetValue(IsCompactLayoutProperty, value); }
     public static readonly DependencyProperty IsShortLayoutProperty = DependencyProperty.Register(
-        nameof(IsShortLayout), typeof(bool), typeof(OHsWorkstationAudioCard), new PropertyMetadata(false));
+        nameof(IsShortLayout), typeof(bool), typeof(OHsWorkstationAudioCard), new PropertyMetadata(false, OnLayoutModeChanged));
     public bool IsShortLayout { get => (bool)GetValue(IsShortLayoutProperty); set => SetValue(IsShortLayoutProperty, value); }
+
+    private static readonly DependencyPropertyKey UsesProjectActionsMenuPropertyKey = DependencyProperty.RegisterReadOnly(
+        nameof(UsesProjectActionsMenu), typeof(bool), typeof(OHsWorkstationAudioCard), new PropertyMetadata(false));
+    public static readonly DependencyProperty UsesProjectActionsMenuProperty = UsesProjectActionsMenuPropertyKey.DependencyProperty;
+    public bool UsesProjectActionsMenu => (bool)GetValue(UsesProjectActionsMenuProperty);
+
+    private static void OnLayoutModeChanged(DependencyObject owner, DependencyPropertyChangedEventArgs args)
+    {
+        var card = (OHsWorkstationAudioCard)owner;
+        card.SetValue(UsesProjectActionsMenuPropertyKey, card.IsCompactLayout || card.IsShortLayout);
+    }
 
     public OHsWorkstationAudioCard() { InitializeComponent(); }
     public OHsWorkstationTimeline Timeline => TimelineControl;
@@ -34,7 +45,7 @@ public partial class OHsWorkstationAudioCard : UserControl
     }
     public bool FocusCollapseAction()
     {
-        var target = IsCompactLayout ? (UIElement)ProjectActionsButton : ToggleTracksCollapsedButton;
+        var target = UsesProjectActionsMenu ? (UIElement)ProjectActionsButton : ToggleTracksCollapsedButton;
         FocusManager.SetFocusedElement(FocusManager.GetFocusScope(target), target);
         return target.Focus();
     }

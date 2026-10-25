@@ -19,18 +19,20 @@ namespace Hitbench.Test.Presentation;
 [Apartment(ApartmentState.STA), NonParallelizable]
 public sealed class OHsWorkstationAudioCardTests
 {
-    [Test]
-    public void CompactProjectMenuKeepsAuthoritativeCommandsAndDeactivatesWhenRoomy()
+    [TestCase(true, false)]
+    [TestCase(false, true)]
+    public void CompactProjectMenuKeepsAuthoritativeCommandsAndDeactivatesWhenRoomy(bool compact, bool shortLayout)
     {
         new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
         var page = WorkstationTestPage.Create();
         var vm = (WorkstationPageVM)page.DataContext;
-        var card = new OHsWorkstationAudioCard { DataContext = vm, IsCompactLayout = true };
+        var card = new OHsWorkstationAudioCard { DataContext = vm, IsCompactLayout = compact, IsShortLayout = shortLayout };
         try
         {
             UiTestPump.Layout(card, 640, 300);
             var trigger = card.FindName("ProjectActionsButton") as BalloonComboBox;
             Assert.That(trigger, Is.Not.Null);
+            Assert.That(trigger!.Visibility, Is.EqualTo(Visibility.Visible));
             var menu = trigger!.ContextMenu;
             trigger.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
             UiTestPump.Layout(menu, 320, 300);
@@ -45,17 +47,35 @@ public sealed class OHsWorkstationAudioCardTests
             // Borrow the real resource through the existing native-presentation substitute.
             trigger.ContextMenu = null;
             var owner = new StubBalloonComboBox { DataContext = vm, ContextMenu = menu };
-            owner.SetBinding(UIElement.IsEnabledProperty, new Binding(nameof(card.IsCompactLayout)) { Source = card, Mode = BindingMode.OneWay });
+            owner.SetBinding(UIElement.IsEnabledProperty, new Binding(nameof(trigger.IsEnabled)) { Source = trigger, Mode = BindingMode.OneWay });
             owner.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
             owner.Activate();
             Assert.That(owner.IsDropDownOpen, Is.True);
             card.IsCompactLayout = false;
+            card.IsShortLayout = false;
             Assert.That(owner.IsDropDownOpen, Is.False);
             Assert.That(owner.IsMenuOwnerActive, Is.False);
             Assert.That(owner.PresentationRequests.Last().Open, Is.False);
             owner.RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent));
         }
         finally { UiTestPump.Run(page.DeactivateAsync()); }
+    }
+
+    [TestCase(false, false, false)]
+    [TestCase(true, false, true)]
+    [TestCase(false, true, true)]
+    [TestCase(true, true, true)]
+    public void ProjectOverflowFollowsWidthAndHeightModes(bool compact, bool shortLayout, bool expected)
+    {
+        new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
+        var card = new OHsWorkstationAudioCard { IsCompactLayout = compact, IsShortLayout = shortLayout };
+        UiTestPump.Layout(card, 900, 300);
+        var trigger = (BalloonComboBox)card.FindName("ProjectActionsButton");
+        Assert.That(trigger.IsEnabled, Is.EqualTo(expected));
+        Assert.That(trigger.Visibility, Is.EqualTo(expected ? Visibility.Visible : Visibility.Collapsed));
+        card.IsCompactLayout = false;
+        card.IsShortLayout = false;
+        Assert.That(trigger.IsEnabled, Is.False);
     }
 
     [Test]
