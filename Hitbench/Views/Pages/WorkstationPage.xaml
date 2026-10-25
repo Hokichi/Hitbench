@@ -188,7 +188,7 @@
     <Grid Background="Transparent" Style="{StaticResource BaseGridStyle}">
         <Grid
             x:Name="WorkstationRoot"
-            Margin="16,16,16,0"
+            Margin="16,8,16,8"
             IsEnabled="{Binding IsWorkstationContentEnabled, Mode=OneWay}"
             SizeChanged="OnVolumeOverlayHostSizeChanged">
             <Grid x:Name="WorkstationContent" Style="{StaticResource OHsWorkstationContentStyle}">
@@ -238,7 +238,7 @@
                 <Border
                     x:Name="TracksCard"
                     Grid.Row="3"
-                    Margin="0,0,0,12"
+                    Margin="0,0,0,8"
                     Style="{StaticResource CardBorderStyle}">
                     <Grid x:Name="TracksLayout" Style="{StaticResource BaseGridStyle}" SizeChanged="OnTracksLayoutSizeChanged">
                         <Grid.RowDefinitions>

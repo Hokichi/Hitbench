@@ -30,9 +30,13 @@
                     ContentTemplateSelector="{TemplateBinding ContentTemplateSelector}" />
             </Border>
             <ControlTemplate.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter TargetName="WaveformBoundary" Property="BorderBrush" Value="{DynamicResource Brush.Border.Strong}" />
-                </Trigger>
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}" Value="True" />
+                        <Condition Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="False" />
+                    </MultiDataTrigger.Conditions>
+                    <Setter TargetName="WaveformBoundary" Property="BorderBrush" Value="{DynamicResource Brush.Text.Secondary}" />
+                </MultiDataTrigger>
             </ControlTemplate.Triggers>
         </ControlTemplate>
         <Style
@@ -40,7 +44,7 @@
             BasedOn="{StaticResource BaseScrollViewerStyle}"
             TargetType="ScrollViewer">
             <Setter Property="Background" Value="{DynamicResource Brush.Background.Deepened}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Subtle}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Control}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="FocusVisualStyle" Value="{StaticResource DefaultFocusVisualStyle}" />
