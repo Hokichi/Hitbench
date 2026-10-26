@@ -188,6 +188,44 @@ public class KeysMappingDrawerIntegrationTests
         }
         finally { UiTestPump.Run(vm.DeactivateAsync()); host.Close(); }
     }
+    [TestCase(false)]
+    [TestCase(true)]
+    public void LoadSampleActionUsesSelectedCommandWithoutCommittingFocusedDraft(bool chooseSample)
+    {
+        new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
+        var files = new StubSampleFileService(["Piano/C5.wav", "Piano/C5.ogg"])
+        { Import = (_, _, _) => throw new InvalidOperationException("Must not commit focused draft") };
+        var picker = new StubSampleFileDialogService(chooseSample ? "kick.ogg" : null);
+        var creation = OHsKeysMappingTestContext.CreateAsync(files: files, picker: picker); UiTestPump.Run(creation);
+        var c = creation.GetAwaiter().GetResult();
+        var drawer = new OHsKeysMappingDrawer(c.VM);
+        var host = new Window { Content = drawer, DataContext = c.VM, Width = 800, Height = 500 };
+        using var view = new InMemoryView(host);
+        try
+        {
+            var action = drawer.FindName("LoadSelectedSampleAction") as Hitbench.Resources.CustomControls.BalloonButton;
+            Assert.That(action, Is.Not.Null);
+            UiControlContract.AssertStyle<Hitbench.Resources.CustomControls.BalloonButton>(action!, "OHsBalloonNeutralActionStyle");
+            Assert.That(action!.Command, Is.SameAs(c.VM.LoadSelectedCommand));
+            Assert.That(action.IsEnabled, Is.False);
+            Assert.That(System.Windows.Automation.AutomationProperties.GetName(action), Is.EqualTo("Load sample for selected key"));
+            UiTestPump.Run(c.VM.SelectKeyAsync("C5")); view.UpdateLayout();
+            UiTestPump.Run(drawer.Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.DataBind).Task);
+            Assert.That(action.IsEnabled, Is.True);
+            c.VM.SelectedEntry!.DraftFileName = "../invalid.wav";
+            var editor = Descendants(drawer).OfType<TextBox>().Single();
+            editor.GetBindingExpression(TextBox.TextProperty)!.UpdateTarget();
+            action.ApplyTemplate();
+            var target = (IInputElement?)action.Template.FindName("PART_Icon", action) ?? action;
+            editor.RaiseEvent(new KeyboardFocusChangedEventArgs(Keyboard.PrimaryDevice, 0, editor, target)
+                { RoutedEvent = Keyboard.LostKeyboardFocusEvent });
+            Assert.That(c.VM.SelectedEntry.Error, Is.Null);
+            UiTestPump.Run(((CommunityToolkit.Mvvm.Input.IAsyncRelayCommand)action.Command).ExecuteAsync(null));
+            Assert.That(c.Track.KeyFiles["C5"], Is.EqualTo(chooseSample ? "Piano/C5.ogg" : "Piano/C5.wav"));
+            Assert.That(c.VM.SelectedEntry.DraftFileName, Is.EqualTo(chooseSample ? "Piano/C5.ogg" : "../invalid.wav"));
+        }
+        finally { UiTestPump.Run(c.DisposeAsync().AsTask()); host.Close(); }
+    }
     private static IEnumerable<DependencyObject> Descendants(DependencyObject root)
     { yield return root; for (var i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(root); i++) foreach (var child in Descendants(System.Windows.Media.VisualTreeHelper.GetChild(root, i))) yield return child; }
     [Test]

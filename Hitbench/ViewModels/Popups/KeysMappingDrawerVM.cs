@@ -123,13 +123,19 @@ public sealed partial class KeysMappingDrawerVM : ObservableObject
         }
     }
     [RelayCommand(CanExecute = nameof(CanOpenKey))]
-    public Task OpenKeyAsync(string key, CancellationToken token) => CanOpenKey ? OwnAsync(() => ImportKeyAsync(key, token)) : Task.CompletedTask;
+    public Task OpenKeyAsync(string key, CancellationToken token) => CanOpenKey && InstrumentalKeys.TryGetIndex(key, out _)
+        ? OwnAsync(() => ImportKeyAsync(key, token)) : Task.CompletedTask;
     private async Task ImportKeyAsync(string key, CancellationToken token)
     {
         using var cancel = CancellationTokenSource.CreateLinkedTokenSource(token, lifetime.Token);
+        var context = snapshot.Context;
+        var acquired = false;
         var created = ""; IsBusy = true; ErrorMessage = null;
         try
         {
+            await edits.WaitAsync(cancel.Token); acquired = true;
+            cancel.Token.ThrowIfCancellationRequested();
+            await StopPreviewAsync();
             pickerActive = true; OnPropertyChanged(nameof(CanClose));
             IReadOnlyList<string> selected;
             try { selected = await picker.SelectAsync(new SamplePickerContext(snapshot.Context.ProjectPath, snapshot.Context.InitialDirectory, SampleSelectionMode.Single), cancel.Token); }
@@ -138,16 +144,25 @@ public sealed partial class KeysMappingDrawerVM : ObservableObject
             if (selected.Count != 1) throw new InvalidOperationException("Select one file for this key.");
             var folder = await files.EnsureFolderAsync(snapshot.Context.ProjectPath, snapshot.Name, snapshot.FolderName, snapshot.ReservedFolderNames, cancel.Token);
             if (snapshot.FolderName.Length == 0) created = folder;
-            var name = await files.ImportAsync(snapshot.Context.ProjectPath, selected[0], cancel.Token, folder);
-            cancel.Token.ThrowIfCancellationRequested();
-            await RefreshFilesAsync([name], cancel.Token);
-            await scheduler.InvokeAsync(() => { if (!closed && !closing && !cancel.IsCancellationRequested) ApplyMapping(key, name, folder); }, cancel.Token);
+            var name = await files.ImportKeyAsync(context.ProjectPath, selected[0], folder, key, cancel.Token);
+            // A returned result is committed. Drain publication even if close requested cancellation.
+            await RefreshFilesAsync([name], CancellationToken.None);
+            await scheduler.InvokeAsync(() =>
+            {
+                if (closed || snapshot.Context != context) return;
+                if (ApplyMapping(key, name, folder))
+                {
+                    var row = Rows.First(r => r.Key == key);
+                    row.DraftFileName = name; row.Error = null;
+                }
+            }, CancellationToken.None);
         }
         catch (OperationCanceledException) when (cancel.IsCancellationRequested) { }
         catch (Exception error) { ErrorMessage = error.Message; }
         finally
         {
             if (created.Length > 0 && snapshot.FolderName.Length == 0) await CleanupFolderAsync(created);
+            if (acquired) edits.Release();
             IsBusy = false; OnPropertyChanged(nameof(CanClose));
         }
     }

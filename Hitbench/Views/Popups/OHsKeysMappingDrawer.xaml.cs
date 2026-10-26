@@ -136,7 +136,7 @@ public partial class OHsKeysMappingDrawer : UserControl, IOHsShellDrawer
     private async void OnMappingLostFocus(object sender, KeyboardFocusChangedEventArgs e)
     {
         for (var target = e.NewFocus as DependencyObject; target is not null; target = target is FrameworkContentElement content ? content.Parent : target is Visual ? VisualTreeHelper.GetParent(target) : null)
-            if (ReferenceEquals(target,ClearAllMappingsAction) || ReferenceEquals(target,DeleteSelectedMappingAction)) return;
+            if (ReferenceEquals(target,ClearAllMappingsAction) || ReferenceEquals(target,DeleteSelectedMappingAction) || ReferenceEquals(target,LoadSelectedSampleAction)) return;
         if (sender is TextBox { DataContext: KeyMappingEntry row } input) await CommitInputAsync(row.Key,input.Text);
     }
     private async void OnMappingKeyDown(object sender, KeyEventArgs e)

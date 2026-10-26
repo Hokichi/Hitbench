@@ -15,6 +15,9 @@ public sealed class StubSampleFileService(IReadOnlyList<string> files) : ISample
     public Task DeleteAsync(string projectPath, string fileName, CancellationToken token) =>
         Delete?.Invoke(projectPath, fileName, token) ?? Task.CompletedTask;
     public Func<string, string, CancellationToken, Task<string>>? Import { get; set; }
+    public Func<string, string, string, string, CancellationToken, Task<string>>? ImportKey { get; set; }
+    public Task<string> ImportKeyAsync(string projectPath, string sourcePath, string folderName, string key, CancellationToken token) =>
+        ImportKey?.Invoke(projectPath, sourcePath, folderName, key, token) ?? Task.FromResult(folderName + "/" + key + Path.GetExtension(sourcePath));
     public Func<string, CancellationToken, Task<IReadOnlyList<string>>>? List { get; set; }
     public async Task<IReadOnlyList<string>> ListAsync(string projectPath, CancellationToken token, bool includeSubfolders = true)
     {

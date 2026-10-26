@@ -8,12 +8,14 @@ public sealed partial class SampleFileService : ISampleFileService
 {
     private readonly string applicationDirectory;
     private readonly Func<Stream, Stream, CancellationToken, Task> copyBytes;
+    private readonly Action<string, string> finalizeReplacement;
     public SampleFileService(string? applicationDirectory = null)
         : this(applicationDirectory ?? AppContext.BaseDirectory, (input, output, token) => input.CopyToAsync(output, token)) { }
-    internal SampleFileService(string applicationDirectory, Func<Stream, Stream, CancellationToken, Task> copyBytes)
+    internal SampleFileService(string applicationDirectory, Func<Stream, Stream, CancellationToken, Task> copyBytes, Action<string, string>? finalizeReplacement = null)
     {
         this.applicationDirectory = Path.GetFullPath(applicationDirectory);
         this.copyBytes = copyBytes;
+        this.finalizeReplacement = finalizeReplacement ?? File.Move;
     }
     private static readonly HashSet<string> Extensions = new(StringComparer.OrdinalIgnoreCase) { ".wav", ".ogg", ".mp3" };
     private readonly SemaphoreSlim mutations = new(1, 1);

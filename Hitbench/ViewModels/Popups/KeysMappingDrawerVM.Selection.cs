@@ -41,9 +41,13 @@ public sealed partial class KeysMappingDrawerVM
         OnPropertyChanged(nameof(CanEditSelectedMapping)); OnPropertyChanged(nameof(SelectionStatus));
         OnPropertyChanged(nameof(CanEditMapping));
         OpenKeyCommand.NotifyCanExecuteChanged(); OpenFolderCommand.NotifyCanExecuteChanged();
+        LoadSelectedCommand.NotifyCanExecuteChanged();
         PlaySelectedCommand.NotifyCanExecuteChanged(); DeleteSelectedCommand.NotifyCanExecuteChanged(); ClearAllMappingsCommand.NotifyCanExecuteChanged();
     }
     partial void OnIsBusyChanged(bool value) => NotifySelection();
+    [RelayCommand(CanExecute = nameof(CanEditSelectedMapping))]
+    public Task LoadSelectedAsync(CancellationToken token) => CanEditSelectedMapping && SelectedEntry is { } entry
+        ? OpenKeyAsync(entry.Key, token) : Task.CompletedTask;
     private readonly Func<string, CancellationToken, Task<bool>>? confirmClearMappings;
     [RelayCommand(CanExecute = nameof(CanDeleteSelected))]
     public Task DeleteSelectedAsync(CancellationToken token) => OwnAsync(async () =>

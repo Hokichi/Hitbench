@@ -55,14 +55,14 @@ public class KeysMappingDrawerVMTests
          sampleFiles: files, messenger: messenger, instrumentDialogs: dialogs);
         dialogs.Mapping = async (snapshot, token) =>
         {
-            files.List = (_, _) => folderScanFails ? Task.FromException<IReadOnlyList<string>>(new IOException("scan failed")) : Task.FromResult<IReadOnlyList<string>>(["old.wav", "Instrumental/new.wav"]);
+            files.List = (_, _) => folderScanFails ? Task.FromException<IReadOnlyList<string>>(new IOException("scan failed")) : Task.FromResult<IReadOnlyList<string>>(["old.wav", "Instrumental/C1.wav"]);
             var vm = new KeysMappingDrawerVM(snapshot, messenger, new ImmediateUiScheduler(), files, new StubSampleFileDialogService("new.wav"));
             try
             {
                 Assert.That(vm.Rows.Count, Is.EqualTo(108));
                 Assert.That(await vm.CommitMappingAsync("C1", "../bad.wav"), Is.False);
                 Assert.That(track.KeyFiles["C1"], Is.EqualTo("old.wav"));
-                await vm.OpenKeyAsync("C1", token); Assert.That(track.KeyFiles["C1"], Is.EqualTo("Instrumental/new.wav"));
+                await vm.OpenKeyAsync("C1", token); Assert.That(track.KeyFiles["C1"], Is.EqualTo("Instrumental/C1.wav"));
                 Assert.That(owner.SampleFiles, Is.EqualTo(new[] { "old.wav" }));
                 Assert.That(vm.Rows[0].IsMissing, Is.False);
                 if (folderScanFails) Assert.That(vm.ErrorMessage, Does.Contain("could not refresh"));

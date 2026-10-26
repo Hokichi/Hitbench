@@ -5,6 +5,7 @@ using Hitbench.Resources.Messages;
 using Hitbench.Services;
 using Hitbench.Services.FileSystem;
 using Hitbench.Services.ProjectFiles;
+using Hitbench.Services.Dialogs;
 using Hitbench.ViewModels.Popups;
 using Hitbench.ViewModels.Shell;
 
@@ -25,7 +26,7 @@ public sealed class OHsKeysMappingTestContext : IAsyncDisposable
     private Task workflow = Task.CompletedTask;
     private readonly TaskCompletionSource opened = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-    private OHsKeysMappingTestContext(Func<string, CancellationToken, Task<bool>>? confirm, StubSamplePreviewService? preview, ISampleFileService? files, IProjectFileService? projectFiles)
+    private OHsKeysMappingTestContext(Func<string, CancellationToken, Task<bool>>? confirm, StubSamplePreviewService? preview, ISampleFileService? files, IProjectFileService? projectFiles, ISampleFileDialogService? picker)
     {
         Preview = preview ?? new();
         files ??= new StubSampleFileService(["Piano/C5.wav", "Piano/new.wav", "other.wav"]);
@@ -37,16 +38,16 @@ public sealed class OHsKeysMappingTestContext : IAsyncDisposable
         {
             Presentations++;
             Snapshot = snapshot;
-            VM = new(snapshot, Messenger, new ImmediateUiScheduler(), files, new StubSampleFileDialogService((string?)null), preview: Presentations == 1 ? Preview : new StubSamplePreviewService(), playbackVolumes: Volumes, confirmClearMappings: confirm ?? ((_, _) => Task.FromResult(true)));
+            VM = new(snapshot, Messenger, new ImmediateUiScheduler(), files, picker ?? new StubSampleFileDialogService((string?)null), preview: Presentations == 1 ? Preview : new StubSamplePreviewService(), playbackVolumes: Volumes, confirmClearMappings: confirm ?? ((_, _) => Task.FromResult(true)));
             opened.TrySetResult();
             try { await Task.Delay(Timeout.Infinite, token); }
             finally { await VM.DeactivateAsync(); }
         };
     }
 
-    public static async Task<OHsKeysMappingTestContext> CreateAsync(Func<string, CancellationToken, Task<bool>>? confirm = null, StubSamplePreviewService? preview = null, ISampleFileService? files = null, IProjectFileService? projectFiles = null, string projectPath = "project.json")
+    public static async Task<OHsKeysMappingTestContext> CreateAsync(Func<string, CancellationToken, Task<bool>>? confirm = null, StubSamplePreviewService? preview = null, ISampleFileService? files = null, IProjectFileService? projectFiles = null, string projectPath = "project.json", ISampleFileDialogService? picker = null)
     {
-        var result = new OHsKeysMappingTestContext(confirm, preview, files, projectFiles);
+        var result = new OHsKeysMappingTestContext(confirm, preview, files, projectFiles, picker);
         await result.Owner.LoadAsync(projectPath, default);
         result.Owner.AcknowledgePresentationReady(result.Owner.LoadGeneration);
         result.workflow = result.Owner.KeysMappingCommand.ExecuteAsync(result.Track);
