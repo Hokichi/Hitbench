@@ -10,6 +10,61 @@ namespace Hitbench.Test.Presentation;
 [Apartment(ApartmentState.STA), NonParallelizable]
 public sealed class BalloonControlBehaviorTests
 {
+    [TestCase(FlowDirection.LeftToRight)]
+    [TestCase(FlowDirection.RightToLeft)]
+    public void MissingResolvedIconCollapsesIconContent(FlowDirection direction)
+    {
+        new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
+        var button = new BalloonButton { ButtonText = "Action", ShouldShowText = true, FlowDirection = direction };
+        button.Style = (Style)Application.Current.FindResource(typeof(BalloonButton));
+        UiTestPump.Layout(button, 240, 80);
+        var slot = (FrameworkElement)button.Template.FindName("PART_IconSlot", button);
+        Assert.That(slot.Visibility, Is.EqualTo(Visibility.Collapsed));
+        button.ButtonIcon = Application.Current.FindResource("Check");
+        Assert.That(slot.Visibility, Is.EqualTo(Visibility.Visible));
+        button.ButtonIcon = null;
+        Assert.That(slot.Visibility, Is.EqualTo(Visibility.Collapsed));
+    }
+
+    [TestCase(FlowDirection.LeftToRight)]
+    [TestCase(FlowDirection.RightToLeft)]
+    public void EmptyOrHiddenTextCollapsesTextContent(FlowDirection direction)
+    {
+        new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
+        var button = new BalloonCheckBox { ButtonIcon = Application.Current.FindResource("Check"), ShouldShowText = true,
+            ButtonText = "Action", CheckedText = "", FlowDirection = direction };
+        button.Style = (Style)Application.Current.FindResource(typeof(BalloonCheckBox));
+        UiTestPump.Layout(button, 240, 80);
+        var content = (FrameworkElement)button.Template.FindName("PART_TextContent", button);
+        button.IsChecked = true;
+        Assert.That(content.Visibility, Is.EqualTo(Visibility.Collapsed));
+        button.IsChecked = false;
+        Assert.That(content.Visibility, Is.EqualTo(Visibility.Visible));
+        button.ShouldShowText = false;
+        Assert.That(content.Visibility, Is.EqualTo(Visibility.Collapsed));
+        button.ButtonText = null;
+        button.ShouldShowText = true;
+        Assert.That(content.Visibility, Is.EqualTo(Visibility.Collapsed));
+    }
+
+    [Test]
+    public void ActiveTogglePresentationUsesResolvedContent()
+    {
+        new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
+        var state = new BalloonToggleState { ButtonText = "", ButtonIcon = Application.Current.FindResource("Check") };
+        var toggle = new BalloonToggle { ButtonText = "Action", ShouldShowText = true,
+            Style = (Style)Application.Current.FindResource(typeof(BalloonToggle)) };
+        toggle.States.Add(state);
+        UiTestPump.Layout(toggle, 240, 80);
+        var icon = (FrameworkElement)toggle.Template.FindName("PART_IconSlot", toggle);
+        var text = (FrameworkElement)toggle.Template.FindName("PART_TextContent", toggle);
+        Assert.That(icon.Visibility, Is.EqualTo(Visibility.Collapsed));
+        Assert.That(text.Visibility, Is.EqualTo(Visibility.Visible));
+        toggle.SelectState(state);
+        Assert.That(icon.Visibility, Is.EqualTo(Visibility.Visible));
+        Assert.That(text.Visibility, Is.EqualTo(Visibility.Collapsed));
+    }
+
     [TestCase(false)]
     [TestCase(true)]
     public void HasIconDefaultsTrueAndCanChangeAtRuntime(bool showText)

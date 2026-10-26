@@ -11,6 +11,76 @@ namespace Hitbench.Test.Presentation;
 [Apartment(ApartmentState.STA), NonParallelizable]
 public class KeysMappingDrawerIntegrationTests
 {
+    [TestCase(FlowDirection.LeftToRight)]
+    [TestCase(FlowDirection.RightToLeft)]
+    public void PianoClicksAuditionAndReplayWithoutSelectionSideEffects(FlowDirection flow)
+    {
+        new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
+        var creation = OHsKeysMappingTestContext.CreateAsync(); UiTestPump.Run(creation);
+        var c = creation.GetAwaiter().GetResult();
+        var drawer = new OHsKeysMappingDrawer(c.VM);
+        var host = new Window { Content = drawer, Width = 800, Height = 500, FlowDirection = flow };
+        using var view = new InMemoryView(host);
+        try
+        {
+            var selector = (ListBox)drawer.FindName("KeySelector");
+            selector.ScrollIntoView(c.VM.Rows.Single(row => row.Key == "C5")); view.UpdateLayout();
+            var key = (ListBoxItem)selector.ItemContainerGenerator.ContainerFromItem(c.VM.Rows.Single(row => row.Key == "C5"));
+            void Click(UIElement target) => target.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, MouseButton.Left)
+                { RoutedEvent = Mouse.PreviewMouseDownEvent });
+            Click(key);
+            UiTestPump.Run(StubWorkstationAudioService.WaitUntilAsync(() => c.Preview.PlayedPaths.Count == 1));
+            Click(key);
+            UiTestPump.Run(StubWorkstationAudioService.WaitUntilAsync(() => c.Preview.PlayedPaths.Count == 2));
+            Assert.That(c.Preview.PlayedPaths, Has.Count.EqualTo(2));
+            Assert.That(c.VM.SelectedEntry!.Key, Is.EqualTo("C5"));
+            selector.SelectedItem = c.VM.Rows.Single(row => row.Key == "D5");
+            UiTestPump.Run(StubWorkstationAudioService.WaitUntilAsync(() => c.VM.SelectedEntry?.Key == "D5" && c.VM.CanEditMapping));
+            Assert.That(c.Preview.PlayedPaths, Has.Count.EqualTo(2));
+            Click(selector);
+            Assert.That(c.Preview.PlayedPaths, Has.Count.EqualTo(2));
+            c.Messenger.Send(new Hitbench.Resources.Messages.SetInstrumentalKeyMappingRequestedMessage(c.Snapshot.Context, Guid.NewGuid(), "D5", "Piano/new.wav"));
+            selector.ScrollIntoView(c.VM.SelectedEntry); view.UpdateLayout();
+            var next = (ListBoxItem)selector.ItemContainerGenerator.ContainerFromItem(c.VM.SelectedEntry);
+            Click(next);
+            UiTestPump.Run(StubWorkstationAudioService.WaitUntilAsync(() => c.Preview.PlayedPaths.Count == 3));
+            Assert.That(c.Preview.PlayedPaths.Last(), Is.EqualTo(Hitbench.Services.FileSystem.SamplePaths.Resolve("project.json", "Piano/new.wav")));
+            c.VM.SelectedEntry!.DraftFileName = "../outside.wav";
+            Click(key);
+            Assert.That(c.VM.SelectedEntry.Key, Is.EqualTo("D5"));
+            Assert.That(selector.SelectedItem, Is.SameAs(c.VM.SelectedEntry));
+            Assert.That(c.Preview.PlayedPaths, Has.Count.EqualTo(3));
+        }
+        finally { UiTestPump.Run(c.DisposeAsync().AsTask()); host.Close(); }
+    }
+
+    [TestCase(Key.Enter)]
+    [TestCase(Key.Space)]
+    public void PianoKeyboardActivationAuditionsWithoutAddingArrowActions(Key activationKey)
+    {
+        new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
+        var creation = OHsKeysMappingTestContext.CreateAsync(); UiTestPump.Run(creation);
+        var c = creation.GetAwaiter().GetResult();
+        var drawer = new OHsKeysMappingDrawer(c.VM);
+        var host = new Window { Content = drawer, Width = 800, Height = 500 };
+        using var view = new InMemoryView(host);
+        try
+        {
+            var selector = (ListBox)drawer.FindName("KeySelector");
+            selector.ScrollIntoView(c.VM.Rows.Single(row => row.Key == "C5")); view.UpdateLayout();
+            var key = (ListBoxItem)selector.ItemContainerGenerator.ContainerFromItem(c.VM.Rows.Single(row => row.Key == "C5"));
+            var input = new KeyEventArgs(Keyboard.PrimaryDevice, PresentationSource.FromVisual(key), 0, activationKey)
+                { RoutedEvent = Keyboard.PreviewKeyDownEvent };
+            key.RaiseEvent(input);
+            Assert.That(input.Handled, Is.True);
+            Assert.That(c.VM.SelectedEntry!.Key, Is.EqualTo("C5"));
+            Assert.That(c.Preview.PlayedPaths, Has.Count.EqualTo(1));
+            selector.RaiseEvent(new MouseWheelEventArgs(Mouse.PrimaryDevice, 0, 120) { RoutedEvent = Mouse.PreviewMouseWheelEvent });
+            Assert.That(c.Preview.PlayedPaths, Has.Count.EqualTo(1));
+        }
+        finally { UiTestPump.Run(c.DisposeAsync().AsTask()); host.Close(); }
+    }
+
     [Test]
     public void MouseWheelCanReachBothEndsWithoutSelectingAKey()
     {

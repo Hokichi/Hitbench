@@ -217,6 +217,7 @@
                 <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition x:Name="PART_ContentGap" Width="0" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
                     <Grid
@@ -238,7 +239,7 @@
                     </Grid>
                     <Border
                         x:Name="PART_TextContent"
-                        Grid.Column="1"
+                        Grid.Column="2"
                         ClipToBounds="True">
                         <TextBlock
                             x:Name="PART_ButtonText"

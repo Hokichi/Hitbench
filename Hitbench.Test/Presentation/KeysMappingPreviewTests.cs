@@ -5,6 +5,104 @@ namespace Hitbench.Test.Presentation;
 public class KeysMappingPreviewTests
 {
     [Test]
+    public async Task ActivationCommitsFirstMappingBeforeCheckingPreviewAvailability()
+    {
+        await using var c = await OHsKeysMappingTestContext.CreateAsync();
+        await c.VM.SelectKeyAsync("D5");
+        c.VM.SelectedEntry!.DraftFileName = "Piano/new.wav";
+        await c.VM.ActivateKeyAsync("D5");
+        Assert.That(c.Track.KeyFiles.TryGetValue("D5", out var mapped), Is.True);
+        Assert.That(mapped, Is.EqualTo("Piano/new.wav"));
+        Assert.That(c.Preview.PlayedPaths, Is.EqualTo(new[] { SamplePaths.Resolve("project.json", "Piano/new.wav") }));
+    }
+
+    [Test]
+    public async Task ActivationAuditionsAndReplaysWhileSelectionStaysSilent()
+    {
+        await using var c = await OHsKeysMappingTestContext.CreateAsync();
+        await c.VM.SelectKeyAsync("C5");
+        Assert.That(c.Preview.PlayedPaths, Is.Empty);
+        c.Volumes.ApplicationVolume = 25;
+        await c.VM.ActivateKeyAsync("C5");
+        await c.VM.ActivateKeyAsync("C5");
+        Assert.That(c.VM.SelectedEntry!.Key, Is.EqualTo("C5"));
+        Assert.That(c.Preview.PlayedPaths, Is.EqualTo(new[] {
+            SamplePaths.Resolve("project.json", "Piano/C5.wav"), SamplePaths.Resolve("project.json", "Piano/C5.wav") }));
+        Assert.That(c.Preview.PlayedVolumes, Is.EqualTo(new[] { 25, 25 }));
+    }
+
+    [Test]
+    public async Task InvalidDraftPreventsActivationOfAnotherKey()
+    {
+        await using var c = await OHsKeysMappingTestContext.CreateAsync();
+        await c.VM.SelectKeyAsync("C5");
+        c.VM.SelectedEntry!.DraftFileName = "../outside.wav";
+        await c.VM.ActivateKeyAsync("D5");
+        Assert.That(c.VM.SelectedEntry.Key, Is.EqualTo("C5"));
+        Assert.That(c.VM.SelectedEntry.HasError, Is.True);
+        Assert.That(c.Preview.PlayedPaths, Is.Empty);
+    }
+
+    [Test]
+    public async Task UnavailableOrCancelledActivationStaysSilent()
+    {
+        await using var c = await OHsKeysMappingTestContext.CreateAsync();
+        using var cancel = new CancellationTokenSource();
+        cancel.Cancel();
+        await c.VM.ActivateKeyAsync("C5", cancel.Token);
+        Assert.That(c.VM.SelectedEntry, Is.Null);
+        await c.VM.ActivateKeyAsync("D5");
+        await c.VM.SelectKeyAsync("C5");
+        c.VM.SelectedEntry!.IsMissing = true;
+        await c.VM.ActivateKeyAsync("C5");
+        c.VM.PrepareClose();
+        await c.VM.ActivateKeyAsync("C5");
+        Assert.That(c.Preview.PlayedPaths, Is.Empty);
+    }
+
+    [Test]
+    public async Task RapidActivationKeepsNewestSampleAndCloseDrainsIt()
+    {
+        var entered = new TaskCompletionSource();
+        var release = new TaskCompletionSource();
+        var calls = 0;
+        var preview = new StubSamplePreviewService { IgnorePlayCancellation = true,
+            Play = _ => ++calls == 1 ? SignalAndWait() : Task.CompletedTask };
+        Task SignalAndWait() { entered.TrySetResult(); return release.Task; }
+        await using var c = await OHsKeysMappingTestContext.CreateAsync(preview: preview);
+        c.Messenger.Send(new Hitbench.Resources.Messages.SetInstrumentalKeyMappingRequestedMessage(c.Snapshot.Context, Guid.NewGuid(), "D5", "Piano/new.wav"));
+        var first = c.VM.ActivateKeyAsync("C5");
+        await entered.Task;
+        var second = c.VM.ActivateKeyAsync("D5");
+        release.SetResult();
+        await Task.WhenAll(first, second).WaitAsync(TimeSpan.FromSeconds(3));
+        Assert.That(c.VM.SelectedEntry!.Key, Is.EqualTo("D5"));
+        Assert.That(preview.PlayedPaths.Last(), Is.EqualTo(SamplePaths.Resolve("project.json", "Piano/new.wav")));
+        Assert.That(c.VM.ErrorMessage, Is.Null);
+        await c.VM.DeactivateAsync();
+        Assert.That(preview.Disposed, Is.True);
+        Assert.That(preview.Playing, Is.False);
+    }
+
+    [Test]
+    public async Task CloseDuringActivationCannotLeaveLateAudioPlaying()
+    {
+        var entered = new TaskCompletionSource();
+        var release = new TaskCompletionSource();
+        var preview = new StubSamplePreviewService { IgnorePlayCancellation = true,
+            Play = _ => { entered.TrySetResult(); return release.Task; } };
+        await using var c = await OHsKeysMappingTestContext.CreateAsync(preview: preview);
+        var activation = c.VM.ActivateKeyAsync("C5");
+        await entered.Task;
+        var closing = c.VM.DeactivateAsync();
+        Assert.That(closing.IsCompleted, Is.False);
+        release.SetResult();
+        await Task.WhenAll(activation, closing).WaitAsync(TimeSpan.FromSeconds(3));
+        Assert.That(preview.Playing, Is.False);
+        Assert.That(preview.DisposeCalls, Is.EqualTo(1));
+    }
+
+    [Test]
     public async Task AuditionIsOwnedAndReleasedByDrawer()
     {
         await using var c=await OHsKeysMappingTestContext.CreateAsync();

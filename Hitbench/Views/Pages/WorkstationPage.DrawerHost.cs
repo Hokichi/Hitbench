@@ -44,16 +44,21 @@ public partial class WorkstationPage
     private void OnTracksLayoutSizeChanged(object sender, SizeChangedEventArgs e) => UpdateBottomDrawerHostSize();
     private void OnBottomDrawerLayoutUpdated(object? sender, EventArgs e) => UpdateBottomDrawerHostSize();
 
+    internal static double CalculateBottomDrawerHeight(double availableHeight, double desiredHeight, bool sizeToContent) =>
+        sizeToContent ? Math.Min(availableHeight, desiredHeight) : availableHeight / 2;
+
     private void UpdateBottomDrawerHostSize()
     {
         if (bottomDrawerHost is not { } host || TracksLayout.ActualWidth <= 0) return;
-        var height = Math.Max(0, TracksLayout.ActualHeight / 2);
+        var availableHeight = Math.Max(0, TracksLayout.ActualHeight);
+        var desiredHeight = 0d;
         if (bottomDrawerSizesToContent)
         {
             var presenter = host.Children[0];
-            presenter.Measure(new Size(TracksLayout.ActualWidth, height));
-            height = Math.Min(height, presenter.DesiredSize.Height);
+            presenter.Measure(new Size(TracksLayout.ActualWidth, double.PositiveInfinity));
+            desiredHeight = presenter.DesiredSize.Height;
         }
+        var height = CalculateBottomDrawerHeight(availableHeight, desiredHeight, bottomDrawerSizesToContent);
         if (host.Height != height) host.Height = height;
         if (bottomDrawerTargetHeight == height) return;
         bottomDrawerTargetHeight = height;

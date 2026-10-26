@@ -10,6 +10,7 @@ namespace Hitbench.Resources.CustomControls;
 [TemplatePart(Name = PartOverlay, Type = typeof(Path))]
 [TemplatePart(Name = PartIconSlot, Type = typeof(FrameworkElement))]
 [TemplatePart(Name = PartIcon, Type = typeof(Path))]
+[TemplatePart(Name = PartContentGap, Type = typeof(ColumnDefinition))]
 [TemplatePart(Name = PartTextContent, Type = typeof(Border))]
 [TemplatePart(Name = PartButtonText, Type = typeof(TextBlock))]
 [TemplatePart(Name = PartSubText, Type = typeof(TextBlock))]
@@ -19,6 +20,7 @@ public class BalloonControl : ButtonBase
     private const string PartOverlay = "PART_Overlay";
     private const string PartIconSlot = "PART_IconSlot";
     private const string PartIcon = "PART_Icon";
+    private const string PartContentGap = "PART_ContentGap";
     private const string PartTextContent = "PART_TextContent";
     private const string PartButtonText = "PART_ButtonText";
     private const string PartSubText = "PART_SubText";
@@ -101,6 +103,7 @@ public class BalloonControl : ButtonBase
 
     private Path? _icon;
     private FrameworkElement? _iconSlot;
+    private ColumnDefinition? _contentGap;
     private Path? _overlay;
 
     private Path? _shape;
@@ -225,6 +228,7 @@ public class BalloonControl : ButtonBase
         _overlay = GetTemplateChild(PartOverlay) as Path;
         _iconSlot = GetTemplateChild(PartIconSlot) as FrameworkElement;
         _icon = GetTemplateChild(PartIcon) as Path;
+        _contentGap = GetTemplateChild(PartContentGap) as ColumnDefinition;
         _textContent = GetTemplateChild(PartTextContent) as Border;
         _buttonText = GetTemplateChild(PartButtonText) as TextBlock;
         _buttonHotkeys = GetTemplateChild(PartSubText) as TextBlock;
@@ -304,11 +308,13 @@ public class BalloonControl : ButtonBase
         ApplyIcon();
         ApplyText();
         ApplyForeground();
-        if (_iconSlot is not null) _iconSlot.Visibility = HasIcon ? Visibility.Visible : Visibility.Collapsed;
+        var hasIcon = HasIcon && _icon?.Data is not null;
+        var hasText = ShouldShowText && !string.IsNullOrEmpty(ResolveButtonText());
+        if (_iconSlot is not null) _iconSlot.Visibility = hasIcon ? Visibility.Visible : Visibility.Collapsed;
+        if (_contentGap is not null) _contentGap.Width = new GridLength(hasIcon && hasText ? 16 : 0);
         if (_textContent is not null)
         {
-            _textContent.Visibility = ShouldShowText ? Visibility.Visible : Visibility.Collapsed;
-            _textContent.Margin = HasIcon ? new Thickness(4, 0, 0, 0) : new Thickness(0);
+            _textContent.Visibility = hasText ? Visibility.Visible : Visibility.Collapsed;
         }
         InvalidateMeasure();
     }

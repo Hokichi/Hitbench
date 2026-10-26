@@ -12,6 +12,12 @@ public sealed partial class KeysMappingDrawerVM
     public bool CanClearAllMappings => CanEditMapping && confirmClearMappings is not null && Rows.Any(r => r.FileName is not null);
     public string SelectionStatus => HasSelection ? "" : "Select a piano key to edit its sample mapping.";
     private bool selecting;
+    public Task ActivateKeyAsync(string key, CancellationToken token = default) => OwnAsync(async () =>
+    {
+        if (token.IsCancellationRequested || !await SelectKeyAsync(key, token)) return;
+        if (SelectedEntry is not { } entry || entry.Key != key || !await CommitMappingAsync(entry.Key, entry.DraftFileName, token)) return;
+        await PlaySelectedAsync(token);
+    });
     public Task<bool> SelectKeyAsync(string key, CancellationToken token = default) => OwnAsync(async () =>
     {
         if (!CanEditMapping || selecting) return false;

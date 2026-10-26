@@ -32,6 +32,44 @@ public partial class OHsKeysMappingDrawer : UserControl, IOHsShellDrawer
     }
     private bool centered, reconciling;
     private int keyboardWheelRemainder;
+    private async void OnPianoKeyMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (!KeySelector.IsEnabled || e.OriginalSource is not DependencyObject source ||
+            ItemsControl.ContainerFromElement(KeySelector, source) is not ListBoxItem { DataContext: KeyMappingEntry entry } key) return;
+        e.Handled = true;
+        await ActivatePianoKeyAsync(entry);
+        if (Mouse.LeftButton == MouseButtonState.Pressed && key.IsEnabled && ReferenceEquals(key.DataContext, viewModel.SelectedEntry))
+            key.CaptureMouse();
+    }
+    private void OnPianoKeyMouseUp(object sender, MouseButtonEventArgs e)
+    {
+        if (Mouse.Captured is ListBoxItem key && ItemsControl.ItemsControlFromItemContainer(key) == KeySelector)
+            key.ReleaseMouseCapture();
+    }
+    private async void OnPianoKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key is not (Key.Enter or Key.Space) || Keyboard.Modifiers != ModifierKeys.None || !KeySelector.IsEnabled ||
+            e.OriginalSource is not DependencyObject source ||
+            ItemsControl.ContainerFromElement(KeySelector, source) is not ListBoxItem { DataContext: KeyMappingEntry entry }) return;
+        e.Handled = true;
+        await ActivatePianoKeyAsync(entry);
+    }
+    private async Task ActivatePianoKeyAsync(KeyMappingEntry entry)
+    {
+        try { await viewModel.ActivateKeyAsync(entry.Key); }
+        catch (Exception error) { viewModel.ErrorMessage = error.Message; }
+        finally
+        {
+            reconciling = true;
+            try
+            {
+                KeySelector.SelectedItem = viewModel.SelectedEntry;
+                if (viewModel.CanEditMapping && ReferenceEquals(viewModel.SelectedEntry, entry))
+                    (KeySelector.ItemContainerGenerator.ContainerFromItem(entry) as UIElement)?.Focus();
+            }
+            finally { reconciling = false; }
+        }
+    }
     internal static double GetInitialKeyboardOffset(double start, double end, double viewport, double extent) =>
         !double.IsFinite(start + end + viewport + extent) || viewport <= 0 || extent <= 0 ? 0 : Math.Clamp((start + end - viewport) / 2,0,Math.Max(0,extent-viewport));
     private async void OnKeySelectionChanged(object sender, SelectionChangedEventArgs e)

@@ -16,6 +16,35 @@ namespace Hitbench.Test.Presentation;
 [Apartment(ApartmentState.STA), NonParallelizable]
 public class WorkstationShellVolumeTests
 {
+    [TestCase(600, 420, true, 420)]
+    [TestCase(300, 420, true, 300)]
+    [TestCase(600, 200, true, 200)]
+    [TestCase(600, 420, false, 300)]
+    [TestCase(0, 420, true, 0)]
+    [TestCase(0, 420, false, 0)]
+    public void DrawerSizingUsesExplicitContentAndAvailableSpace(double available, double desired, bool contentSized, double expected)
+    {
+        Assert.That(WorkstationPage.CalculateBottomDrawerHeight(available, desired, contentSized), Is.EqualTo(expected));
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public void BottomDrawerCanDetachAndReattachAfterResize(bool mapping) => WithDrawer(mapping, (_, page, _, view) =>
+    {
+        var slot = (Grid)page.FindName("BottomDrawerSlot");
+        var motion = (Grid)slot.Children[0];
+        page.DetachBottomDrawerHost(motion);
+        Assert.That(slot.Children, Is.Empty);
+        page.AttachBottomDrawerHost(motion, mapping);
+        page.SettleBottomDrawerHostAnimation(true);
+        view.Root.Measure(new Size(900, 600));
+        view.Root.Arrange(new Rect(0, 0, 900, 600));
+        view.Root.UpdateLayout();
+        Assert.That(slot.Children, Has.Count.EqualTo(1));
+        Assert.That(slot.Children[0], Is.SameAs(motion));
+        Assert.That(motion.IsEnabled, Is.True);
+    });
+
     [SetUp]
     public void Setup()
     {

@@ -6,6 +6,9 @@
     xmlns:h="clr-namespace:Hitbench.Resources.Helpers"
     xmlns:popups="clr-namespace:Hitbench.Views.Popups">
     <UserControl.Resources>
+        <Style x:Key="OHsKeysSelectedKeyTextStyle" BasedOn="{StaticResource OHsPopupTitleTextStyle}" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="{StaticResource FontSize.Display}" />
+        </Style>
 
         <Style
             x:Key="OHsKeysInputStyle"
@@ -52,6 +55,7 @@
             BasedOn="{StaticResource BaseListBoxStyle}"
             TargetType="ListBox">
             <Setter Property="ClipToBounds" Value="True" />
+            <Setter Property="Background" Value="Transparent" />
             <Setter Property="Template" Value="{StaticResource OHsKeysKeyboardTemplate}" />
             <Setter Property="ItemsPanel" Value="{StaticResource OHsKeysKeyboardItemsPanel}" />
             <Setter Property="ScrollViewer.CanContentScroll" Value="True" />
@@ -127,7 +131,7 @@
                         <Condition Property="IsMouseCaptureWithin" Value="True" />
                         <Condition Property="IsMouseOver" Value="True" />
                     </MultiTrigger.Conditions>
-                    <Setter Property="Background" Value="{DynamicResource Brush.Navy.Tint}" />
+                    <Setter Property="Background" Value="{DynamicResource Brush.Background.Pressed}" />
                 </MultiTrigger>
                 <Trigger Property="IsSelected" Value="True">
                     <Setter Property="BorderBrush" Value="{DynamicResource Brush.Navy}" />
@@ -152,8 +156,6 @@
         </DataTemplate>
     </UserControl.Resources>
     <Border Padding="16" Style="{StaticResource BaseBorderStyle}">
-        <Grid Style="{StaticResource BaseGridStyle}">
-        <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
         <ScrollViewer
             AutomationProperties.Name="Key mapping controls"
             HorizontalScrollBarVisibility="Disabled"
@@ -166,19 +168,14 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
-                <StackPanel
-                    Grid.Row="0"
-                    Margin="0,0,0,12"
-                    Style="{StaticResource BaseStackPanelStyle}">
-                    <TextBlock Style="{StaticResource OHsPopupTitleTextStyle}" Text="Keys Mapping" />
-                    <TextBlock
-                        Style="{StaticResource BodyTextStyle}"
-                        Text="{Binding TrackName, Mode=OneWay}"
-                        TextTrimming="CharacterEllipsis" />
-                </StackPanel>
-                <WrapPanel Grid.Row="1" Margin="0,0,0,12">
+                <WrapPanel Margin="0,0,0,4">
+                    <StackPanel Margin="0,0,24,8" VerticalAlignment="Center" Style="{StaticResource BaseStackPanelStyle}">
+                        <TextBlock Style="{StaticResource OHsPopupTitleTextStyle}" Text="Keys Mapping" />
+                        <TextBlock Style="{StaticResource BodyTextStyle}" Text="{Binding TrackName, Mode=OneWay}" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
                     <c:BalloonButton
                         x:Name="LoadAction"
+                        Margin="0,0,8,8"
                         h:KeyboardNavigationPolicy.AllowTabNavigation="True"
                         AutomationProperties.HelpText="Choose a folder of note-named audio files. Conflicts can be reviewed before importing."
                         AutomationProperties.Name="Import key mappings from folder"
@@ -193,6 +190,7 @@
                         ToolTipService.ShowsToolTipOnKeyboardFocus="True" />
                     <c:BalloonButton
                         x:Name="ClearAllMappingsAction"
+                        Margin="0,0,8,8"
                         h:KeyboardNavigationPolicy.AllowTabNavigation="True"
                         AutomationProperties.Name="Clear all key mappings"
                         ButtonIcon="{StaticResource Delete}"
@@ -203,6 +201,7 @@
                         ShouldShowText="True"
                         Style="{StaticResource OHsBalloonDestructiveActionStyle}" />
                     <c:BalloonButton
+                        Margin="0,0,0,8"
                         h:KeyboardNavigationPolicy.AllowTabNavigation="True"
                         AutomationProperties.Name="Close Keys Mapping"
                         ButtonIcon="{StaticResource Close}"
@@ -216,28 +215,7 @@
                         ToolTip="Close (Esc)"
                         ToolTipService.ShowsToolTipOnKeyboardFocus="True" />
                 </WrapPanel>
-                <Grid Grid.Row="2" Style="{StaticResource BaseGridStyle}">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-                    <ListBox
-                        x:Name="KeySelector"
-                        AutomationProperties.Name="Piano key mapping selector"
-                        IsEnabled="{Binding CanEditMapping, Mode=OneWay}"
-                        IsSynchronizedWithCurrentItem="False"
-                        ItemContainerStyle="{StaticResource OHsKeysKeyboardItemStyle}"
-                        ItemTemplate="{StaticResource OHsKeysKeyboardContentTemplate}"
-                        ItemsSource="{Binding Rows, Mode=OneWay}"
-                        SelectedValue="{Binding SelectedEntry.Key, Mode=OneWay, UpdateSourceTrigger=PropertyChanged}"
-                        SelectedValuePath="Key"
-                        SelectionChanged="OnKeySelectionChanged"
-                        Style="{StaticResource OHsKeysKeyboardStyle}" />
-                    <Grid
-                        Grid.Row="2"
-                        Margin="0,8,0,0"
-                        Style="{StaticResource BaseGridStyle}">
+                    <Grid Grid.Row="1" Margin="0,0,0,12" Style="{StaticResource BaseGridStyle}">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
@@ -246,38 +224,21 @@
                         <TextBlock
                             Margin="0,0,12,0"
                             VerticalAlignment="Center"
-                            FontWeight="Bold" FontFamily="{StaticResource Bold}"
-                            FontSize="{StaticResource FontSize.Display}"
-                            Style="{StaticResource BodyTextStyle}"
+                            Style="{StaticResource OHsKeysSelectedKeyTextStyle}"
                             Text="{Binding SelectedEntry.Key, Mode=OneWay}" />
-                        <StackPanel
-                            Grid.Column="1"
-                            DataContext="{Binding SelectedEntry, Mode=OneWay}"
-                            Style="{StaticResource BaseStackPanelStyle}">
                             <TextBox
+                                Grid.Column="1"
+                                DataContext="{Binding SelectedEntry, Mode=OneWay}"
                                 AutomationProperties.Name="Selected key sample path"
                                 IsEnabled="{Binding DataContext.CanEditSelectedMapping, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=OneWay}"
                                 LostKeyboardFocus="OnMappingLostFocus"
                                 PreviewKeyDown="OnMappingKeyDown"
                                 Style="{StaticResource OHsKeysInputStyle}"
                                 Text="{Binding DraftFileName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                        </StackPanel>
-                        <WrapPanel Grid.Column="2" MaxWidth="160">
-                            <c:BalloonButton
-                                Margin="8,0,0,0"
-                                h:KeyboardNavigationPolicy.AllowTabNavigation="True"
-                                AutomationProperties.Name="Audition selected key sample"
-                                ToolTip="Audition selected key sample" ToolTipService.ShowsToolTipOnKeyboardFocus="True"
-                                ButtonIcon="{StaticResource MediaPlay}"
-                                ButtonText="Play"
-                                Command="{Binding PlaySelectedCommand, Mode=OneWay}"
-                                FocusVisualStyle="{StaticResource OHsSampleManagerKeyboardFocusStyle}"
-                                IsTabStop="True"
-                                ShouldShowText="false"
-                                Style="{StaticResource OHsBalloonNeutralActionStyle}" />
                             <c:BalloonButton
                                 x:Name="DeleteSelectedMappingAction"
-                                Margin="8,0,0,0"
+                                Grid.Column="2"
+                                Margin="12,0,0,0"
                                 h:KeyboardNavigationPolicy.AllowTabNavigation="True"
                                 AutomationProperties.Name="Unmap selected key"
                                 ToolTip="Unmap selected key" ToolTipService.ShowsToolTipOnKeyboardFocus="True"
@@ -288,13 +249,26 @@
                                 IsTabStop="True"
                                 ShouldShowText="false"
                                 Style="{StaticResource OHsBalloonDestructiveActionStyle}" />
-                        </WrapPanel>
                     </Grid>
-                </Grid>
+                <ListBox
+                    x:Name="KeySelector"
+                    Grid.Row="2"
+                    AutomationProperties.Name="Piano key mapping selector"
+                    IsEnabled="{Binding CanEditMapping, Mode=OneWay}"
+                    IsSynchronizedWithCurrentItem="False"
+                    ItemContainerStyle="{StaticResource OHsKeysKeyboardItemStyle}"
+                    ItemTemplate="{StaticResource OHsKeysKeyboardContentTemplate}"
+                    ItemsSource="{Binding Rows, Mode=OneWay}"
+                    SelectedValue="{Binding SelectedEntry.Key, Mode=OneWay, UpdateSourceTrigger=PropertyChanged}"
+                    SelectedValuePath="Key"
+                    SelectionChanged="OnKeySelectionChanged"
+                    PreviewMouseLeftButtonDown="OnPianoKeyMouseDown"
+                    PreviewMouseLeftButtonUp="OnPianoKeyMouseUp"
+                    PreviewKeyDown="OnPianoKeyDown"
+                    Style="{StaticResource OHsKeysKeyboardStyle}" />
+                <ScrollBar x:Name="PianoScrollBar" Grid.Row="3" Margin="0,8,0,0" Orientation="Horizontal"
+                    IsEnabled="{Binding CanEditMapping, Mode=OneWay}" AutomationProperties.Name="Piano key position" Scroll="OnPianoScroll" />
             </Grid>
         </ScrollViewer>
-        <ScrollBar x:Name="PianoScrollBar" Grid.Row="1" Orientation="Horizontal"
-            IsEnabled="{Binding CanEditMapping, Mode=OneWay}" AutomationProperties.Name="Piano key position" Scroll="OnPianoScroll"/>
-        </Grid>
     </Border>
 </UserControl>
