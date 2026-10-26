@@ -10,6 +10,103 @@ namespace Hitbench.Test.Presentation;
 [NonParallelizable]
 public class BeatGridNodeEditingTests
 {
+    [TestCase(120, 4, 25d, 8d, 0d, false)]
+    [TestCase(120, 16, 400d, 32d, 5d, true)]
+    [TestCase(123, 12, 100d, 8d, 3d, true)]
+    public void CrowdedEmptyBeatPreviewPlacesInsteadOfSelectingNeighbor(int bpm, int subdivision,
+        double contentWidth, double zoom, double offset, bool pointerRequest)
+    {
+        var grid = CreateGrid();
+        var step = 60000d / bpm / subdivision;
+        grid.Bpms = [bpm]; grid.Subdivision = subdivision;
+        grid.ContentWidth = contentWidth; grid.ZoomFactor = zoom; grid.HorizontalOffset = offset;
+        grid.Samples = [new Sample { Timestamp = 0 }, new Sample { Timestamp = (int)Math.Round(2 * step, MidpointRounding.AwayFromZero) }];
+        var x = 1.25 * step / grid.Duration.TotalMilliseconds * contentWidth - offset;
+        Assert.That(grid.FindSampleAt(new Point(x, grid.ActualHeight / 2)), Is.Not.Null, "The neighboring node overlaps the empty beat.");
+        grid.UpdatePointerPosition(x);
+        Assert.That(grid.HasPlacementPreview, Is.True);
+        double? placed = null;
+        Sample? selected = null;
+        grid.SamplePlacementRequested += (_, args) => placed = args.LeftBoundaryMilliseconds;
+        grid.SampleSelectionRequested += (_, args) => selected = args.Sample;
+
+        Assert.That(pointerRequest ? grid.RequestPointerSamplePlacement() : grid.RequestSamplePlacement(), Is.True);
+        Assert.Multiple(() =>
+        {
+            Assert.That(placed, Is.EqualTo(step).Within(1e-9));
+            Assert.That(selected, Is.Null);
+            Assert.That(grid.Samples, Has.Count.EqualTo(2));
+        });
+    }
+
+    [TestCase(123, 4)]
+    [TestCase(137, 12)]
+    public void OccupiedRoundedBoundaryHasNoPlacementPreview(int bpm, int subdivision)
+    {
+        var grid = CreateGrid();
+        var step = 60000d / bpm / subdivision;
+        var existing = new Sample { Timestamp = (int)Math.Round(step, MidpointRounding.AwayFromZero) };
+        grid.Bpms = [bpm]; grid.Subdivision = subdivision; grid.Samples = [existing];
+        grid.SetActivePosition(1.25 * step);
+        Assert.That(grid.HasPlacementPreview, Is.False);
+        var placements = 0;
+        Sample? selected = null;
+        grid.SamplePlacementRequested += (_, _) => placements++;
+        grid.SampleSelectionRequested += (_, args) => selected = args.Sample;
+
+        Assert.That(grid.RequestSamplePlacement(), Is.True);
+        Assert.Multiple(() =>
+        {
+            Assert.That(placements, Is.Zero);
+            Assert.That(selected, Is.SameAs(existing));
+        });
+    }
+
+    [TestCase("selection")]
+    [TestCase("gate")]
+    [TestCase("disabled")]
+    [TestCase("suppressed")]
+    [TestCase("drag")]
+    [TestCase("geometry")]
+    [TestCase("exit")]
+    [TestCase("recycle")]
+    [TestCase("unload")]
+    public void PreviewEligibilityTracksModeGateAndLifecycle(string change)
+    {
+        var grid = CreateGrid();
+        grid.Samples = [];
+        grid.UpdatePointerPosition(20);
+        Assert.That(grid.HasPlacementPreview, Is.True);
+        switch (change)
+        {
+            case "selection": grid.AllowNodeCreation = false; break;
+            case "gate": grid.CanPlaceSamples = false; break;
+            case "disabled": grid.IsEnabled = false; break;
+            case "suppressed": grid.SuppressPlacementFeedback = true; break;
+            case "drag": grid.IsNodeDragActive = true; break;
+            case "geometry": grid.ContentWidth = double.NaN; break;
+            case "exit": grid.UpdatePointerPosition(null); break;
+            case "recycle": grid.DataContext = new Track(); break;
+            case "unload": grid.RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent)); break;
+        }
+        Assert.That(grid.HasPlacementPreview, Is.False);
+    }
+
+    [TestCase("offset", double.NaN)]
+    [TestCase("offset", double.PositiveInfinity)]
+    [TestCase("viewport", double.NaN)]
+    [TestCase("viewport", double.PositiveInfinity)]
+    public void KeyboardPreviewRejectsInvalidGeometry(string property, double value)
+    {
+        var grid = CreateGrid();
+        grid.Samples = [];
+        grid.SetActivePosition(TimeSpan.FromMilliseconds(500));
+        Assert.That(grid.HasPlacementPreview, Is.True);
+        if (property == "offset") grid.HorizontalOffset = value;
+        else grid.ViewportWidth = value;
+        Assert.That(grid.HasPlacementPreview, Is.False);
+    }
+
     [TestCase("recycle")]
     [TestCase("disable")]
     [TestCase("unload")]
@@ -172,35 +269,31 @@ public class BeatGridNodeEditingTests
     }
 
     [Test]
-    public void ModeChangeInvalidatesStationaryPointerPlacementFeedback()
+    public void ModeChangeUpdatesStationaryPointerPlacementEligibility()
     {
         var grid = CreateGrid();
         grid.Samples = [new Sample { Timestamp = 400 }];
-        grid.PrepareDrawing();
-        var idleCommands = CountDrawingCommands(grid.ContentDrawing!);
         grid.UpdatePointerPosition(50);
+        Assert.That(grid.HasPlacementPreview, Is.False, "An occupied beat cannot promise placement.");
+        grid.UpdatePointerPosition(130);
         for (var repeat = 0; repeat < 3; repeat++)
         {
             grid.AllowNodeCreation = true;
-            grid.PrepareDrawing();
-            Assert.That(CountDrawingCommands(grid.ContentDrawing!), Is.GreaterThan(idleCommands));
-            var additionDrawing = grid.ContentDrawing;
+            Assert.That(grid.HasPlacementPreview, Is.True);
             grid.AllowNodeCreation = false;
-            grid.PrepareDrawing();
-            Assert.That(grid.ContentDrawing, Is.Not.SameAs(additionDrawing));
-            Assert.That(CountDrawingCommands(grid.ContentDrawing!), Is.EqualTo(idleCommands));
+            Assert.That(grid.HasPlacementPreview, Is.False);
         }
         grid.HorizontalOffset = 80;
         grid.ZoomFactor = 16;
-        grid.UpdatePointerPosition(null); grid.PrepareDrawing();
-        idleCommands = CountDrawingCommands(grid.ContentDrawing!);
-        grid.UpdatePointerPosition(60); grid.PrepareDrawing();
-        Assert.That(CountDrawingCommands(grid.ContentDrawing!), Is.EqualTo(idleCommands));
-        grid.DataContext = new Track(); grid.PrepareDrawing();
+        grid.UpdatePointerPosition(null);
+        Assert.That(grid.HasPlacementPreview, Is.False);
+        grid.UpdatePointerPosition(60);
+        Assert.That(grid.HasPlacementPreview, Is.False);
+        grid.DataContext = new Track();
         Assert.That(grid.ActiveInterval, Is.Null);
-        Assert.That(CountDrawingCommands(grid.ContentDrawing!), Is.EqualTo(idleCommands));
-        grid.UpdatePointerPosition(60); grid.PrepareDrawing();
-        Assert.That(CountDrawingCommands(grid.ContentDrawing!), Is.EqualTo(idleCommands));
+        Assert.That(grid.HasPlacementPreview, Is.False);
+        grid.UpdatePointerPosition(60);
+        Assert.That(grid.HasPlacementPreview, Is.False);
     }
 
     private static int CountDrawingCommands(Drawing drawing) => drawing is DrawingGroup group

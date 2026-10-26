@@ -277,18 +277,6 @@
                         Style="{StaticResource OHsWorkstationScrollWithMarkerStyle}"
                         ToolTip="Follow the current playback marker (F). Selecting a node turns this off." />
                     <Border Style="{StaticResource OHsWorkstationToolbarSeparatorStyle}" />
-                    <StackPanel VerticalAlignment="Center">
-                        <TextBlock
-                            x:Name="ElapsedTimeText"
-                            AutomationProperties.Name="Elapsed audio time"
-                            Style="{StaticResource OHsWorkstationElapsedStyle}"
-                            Text="{Binding ElapsedText, Mode=OneWay}" />
-                        <TextBlock
-                            AutomationProperties.Name="Current BPM"
-                            Style="{StaticResource BodyTextStyle}"
-                            Text="{Binding CurrentBpmText, Mode=OneWay}" />
-                    </StackPanel>
-                    <Border Style="{StaticResource OHsWorkstationToolbarSeparatorStyle}" />
                     <customControls:SegmentedToggleGroup
                         x:Name="EditingModeGroup"
                         Width="160"
@@ -417,6 +405,22 @@
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
+                    <StackPanel
+                        Margin="0,0,8,0"
+                        VerticalAlignment="Center"
+                        Style="{StaticResource BaseStackPanelStyle}">
+                        <TextBlock
+                            x:Name="ElapsedTimeText"
+                            AutomationProperties.Name="Elapsed audio time"
+                            Style="{StaticResource OHsWorkstationElapsedStyle}"
+                            Text="{Binding ElapsedText, Mode=OneWay}" />
+                        <TextBlock
+                            AutomationProperties.Name="Current BPM"
+                            Style="{StaticResource BodyTextStyle}"
+                            Text="{Binding CurrentBpmText, Mode=OneWay}"
+                            TextTrimming="CharacterEllipsis"
+                            TextWrapping="NoWrap" />
+                    </StackPanel>
                     <ToggleButton
                         x:Name="ClearTrackMutesToggle"
                         Grid.Column="1"

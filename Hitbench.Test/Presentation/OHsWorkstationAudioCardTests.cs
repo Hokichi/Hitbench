@@ -113,24 +113,35 @@ public sealed class OHsWorkstationAudioCardTests
         Assert.That(card.ContainsInputOrigin((DependencyObject)card.FindName("PlayPauseButton")), Is.False);
         UiTestPump.Run(vm.DeactivateAsync());
     }
-    [Test]
-    public void ElapsedTimeFollowsExistingAuthority()
+    [TestCase(false, false)]
+    [TestCase(false, true)]
+    [TestCase(true, false)]
+    [TestCase(true, true)]
+    public void ElapsedTimeFollowsExistingAuthority(bool compact, bool shortLayout)
     {
         new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
         var audio = new StubWorkstationAudioService
         {
             Analyze = (_, _) => Task.FromResult(new WaveformData(TimeSpan.FromMinutes(70), [.5f]))
         };
-        var vm = new WorkstationPageVM(new StubWorkstationSourceService(),
+        var source = new StubWorkstationSourceService
+        {
+            Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav",
+                new ProjectData { Offsets = [0, 60000], BPMs = [120, 180] }))
+        };
+        var vm = new WorkstationPageVM(source,
             new MarkerPlaybackCoordinator(audio, Task.Delay), new ImmediateUiScheduler());
         try
         {
             UiTestPump.Run(vm.LoadAsync("project.json", default));
             vm.AcknowledgePresentationReady(vm.LoadGeneration);
-            var card = new OHsWorkstationAudioCard { DataContext = vm };
+            var card = new OHsWorkstationAudioCard { DataContext = vm, IsCompactLayout = compact, IsShortLayout = shortLayout };
             var footer = new OHsWorkstationFooter { DataContext = vm };
             UiTestPump.Layout(card, 900, 300);
             UiTestPump.Layout(footer, 900, 100);
+            var bpm = Descendants(card).OfType<TextBlock>().Single(text =>
+                BindingOperations.GetBinding(text, TextBlock.TextProperty)?.Path.Path == nameof(vm.CurrentBpmText));
+            var initialBpm = bpm.Text;
             UiTestPump.Run(vm.SeekCommand.ExecuteAsync(TimeSpan.FromMinutes(65.25)));
             var elapsed = card.FindName("ElapsedTimeText") as TextBlock;
             Assert.That(elapsed, Is.Not.Null);
@@ -140,6 +151,14 @@ public sealed class OHsWorkstationAudioCardTests
                 .Count(text => BindingOperations.GetBinding(text, TextBlock.TextProperty)?.Path.Path == nameof(vm.ElapsedText));
             Assert.That(bindings, Is.EqualTo(1));
             UiControlContract.AssertStyle<TextBlock>(elapsed, "OHsWorkstationElapsedStyle");
+            UiControlContract.AssertStyle<TextBlock>(bpm, "BodyTextStyle");
+            Assert.Multiple(() =>
+            {
+                Assert.That(card.ContainsInputOrigin(elapsed), Is.True);
+                Assert.That(card.ContainsInputOrigin(bpm), Is.True);
+                Assert.That(bpm.Text, Is.EqualTo(vm.CurrentBpmText).And.Not.EqualTo(initialBpm));
+                Assert.That(BindingOperations.GetBinding(bpm, TextBlock.TextProperty)!.Mode, Is.EqualTo(BindingMode.OneWay));
+            });
         }
         finally { UiTestPump.Run(vm.DeactivateAsync()); }
     }

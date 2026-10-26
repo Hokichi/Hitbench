@@ -26,6 +26,7 @@ public partial class OHsWorkstationTrackList
     private ModifierKeys pointerModifiers;
     private ModifierKeys nodeModifiers;
     private BeatInterval? pointerInterval;
+    private bool pointerPlacement;
     private bool pointerMoved;
     private Point pointerLast;
     private OHsSelectionRegionAdorner? regionAdorner;
@@ -76,10 +77,12 @@ public partial class OHsWorkstationTrackList
         if (!double.IsFinite(pagePoint.X) || !double.IsFinite(pagePoint.Y) || deactivationStarted) return false;
         if (grid is null) { viewModel.ClearNodeSelection(); return false; }
         if (!double.IsFinite(gridPoint.X) || !double.IsFinite(gridPoint.Y)) return false;
-        var sample = grid.FindSampleAt(gridPoint);
-        if (IsVolumeOverlayOpen || !viewModel.CanPlaceSamples || !grid.CanPlaceSamples || grid.DataContext is not Track track ||
+        if (IsVolumeOverlayOpen || !viewModel.CanPlaceSamples || !grid.IsEnabled || !grid.CanPlaceSamples || grid.DataContext is not Track track ||
             !viewModel.CanEditTrackGrid(track) || gridPoint.X < 0 || gridPoint.X >= Math.Min(grid.ActualWidth, grid.ViewportWidth) ||
             gridPoint.Y < 0 || gridPoint.Y >= grid.ActualHeight) return false;
+        grid.UpdatePointerPosition(gridPoint.X);
+        pointerPlacement = grid.HasPlacementPreview;
+        var sample = pointerPlacement ? null : grid.FindSampleAt(gridPoint);
         if (sample is not null && !modifiers.HasFlag(ModifierKeys.Control))
         {
             if (!viewModel.SelectedSamples.Contains(sample))
@@ -88,7 +91,6 @@ public partial class OHsWorkstationTrackList
             }
             else { viewModel.SelectedTrack = track; viewModel.SetNodeSelection(viewModel.SelectedSamples); }
         }
-        grid.UpdatePointerPosition(gridPoint.X);
         pointerInterval = grid.ActiveInterval;
         nodeSourceGrid = grid; nodeSourceTrack = track; pointerNode = sample; pointerStart = pointerLast = pagePoint;
         pointerModifiers = nodeModifiers = modifiers; pointerMoved = false;
@@ -142,6 +144,7 @@ public partial class OHsWorkstationTrackList
             Math.Abs(pagePoint.Y - pointerStart.Y) >= SystemParameters.MinimumVerticalDragDistance;
         if (pointerNode is null)
         {
+            if (pointerPlacement) { if (pastThreshold) CancelNodePointer(); return; }
             if (!pointerModifiers.HasFlag(ModifierKeys.Control) && modifiers.HasFlag(ModifierKeys.Control)) { CancelNodePointer(); return; }
             if (pointerModifiers.HasFlag(ModifierKeys.Control)) { pointerMoved |= pastThreshold; return; }
             if (!pointerMoved && !pastThreshold) return;
@@ -372,16 +375,18 @@ public partial class OHsWorkstationTrackList
         var commit = nodeDragging && nodeTargetValid;
         var click = nodeSourceGrid is not null && !pointerMoved;
         var grid = nodeSourceGrid; var sample = pointerNode; var interval = pointerInterval;
+        var placement = pointerPlacement;
         var toggle = pointerModifiers.HasFlag(ModifierKeys.Control);
         DetachNodePointer();
         if (commit) return await viewModel.CommitNodeDragAsync();
         viewModel.CancelNodeDrag();
-        if (!click || !viewModel.CanPlaceSamples || IsVolumeOverlayOpen || grid?.DataContext is not Track track || !viewModel.CanEditTrackGrid(track)) return false;
-        if (toggle) return sample is not null && viewModel.SelectNode(track, sample, true);
+        if (!click || !viewModel.CanPlaceSamples || IsVolumeOverlayOpen || grid is not { IsEnabled: true, CanPlaceSamples: true, DataContext: Track track } || !viewModel.CanEditTrackGrid(track)) return false;
+        if (toggle && !placement) return sample is not null && viewModel.SelectNode(track, sample, true);
         if (sample is not null) return false;
+        if (interval is not null) grid.SetActivePosition(interval.Value.StartMilliseconds);
+        if (placement && (interval is null || grid.ActiveInterval != interval || !grid.HasPlacementPreview)) return false;
         viewModel.ClearNodeSelection();
         if (interval is null) return false;
-        grid.SetActivePosition(interval.Value.StartMilliseconds);
         return grid.FindActiveSample() is null && grid.RequestSamplePlacement();
     }
     private void DetachNodePointer()
@@ -393,7 +398,7 @@ public partial class OHsWorkstationTrackList
         DetachNodeSourceGrid();
         if (nodeAdorner is not null) nodeLayer?.Remove(nodeAdorner);
         if (regionAdorner is not null) nodeLayer?.Remove(regionAdorner);
-        regionAdorner = null; pointerInterval = null; pointerModifiers = nodeModifiers = ModifierKeys.None; pointerMoved = false;
+        regionAdorner = null; pointerInterval = null; pointerModifiers = nodeModifiers = ModifierKeys.None; pointerMoved = false; pointerPlacement = false;
         pointerNode = null; nodeSourceTrack = null; nodeAdorner = null; nodeLayer = null; nodeDragGroup = []; nodeDragging = false; nodeTargetValid = false;
         nodeDragScrollPending = false; nodeWheelRemainder = 0;
         if (IsMouseCaptured) ReleaseMouseCapture();

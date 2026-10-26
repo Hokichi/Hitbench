@@ -77,6 +77,13 @@ public sealed class BeatGridView : FrameworkElement
     public Sample? PressedSample { get => (Sample?)GetValue(PressedSampleProperty); set => SetValue(PressedSampleProperty, value); }
     public bool SuppressPlacementFeedback { get => (bool)GetValue(SuppressPlacementFeedbackProperty); set => SetValue(SuppressPlacementFeedbackProperty, value); }
     public BeatInterval? ActiveInterval { get; private set; }
+    internal bool HasPlacementPreview => IsEnabled && CanPlaceSamples && AllowNodeCreation &&
+        !IsNodeDragActive && !SuppressPlacementFeedback && Duration > TimeSpan.Zero &&
+        double.IsFinite(ContentWidth) && ContentWidth > 0 && ActualWidth > 0 && ActualHeight > 0 &&
+        double.IsFinite(HorizontalOffset) && double.IsFinite(ViewportWidth) && ViewportWidth > 0 &&
+        ActiveInterval is { } interval &&
+        Math.Round(interval.StartMilliseconds, MidpointRounding.AwayFromZero) < Duration.TotalMilliseconds &&
+        FindSampleInInterval(interval) is null;
 
     private bool IsSampleSelected(Sample sample) => SelectedSamples?.Contains(sample) == true;
     private bool IsSampleHidden(Sample sample) => IsNodeDragActive && !IsNodeDragCopy && IsSampleSelected(sample);
@@ -122,10 +129,18 @@ public sealed class BeatGridView : FrameworkElement
     {
         if (pointerX is { } x && FindSampleAt(new Point(x, ActualHeight / 2)) is { } hit) return hit;
         if (!CanPlaceSamples || Samples is null || ActiveInterval is not { } interval) return null;
+        return FindSampleInInterval(interval);
+    }
+
+    private Sample? FindSampleInInterval(BeatInterval interval)
+    {
+        var target = Math.Round(interval.StartMilliseconds, MidpointRounding.AwayFromZero);
+        var nextTarget = interval.EndMilliseconds < Duration.TotalMilliseconds
+            ? Math.Round(interval.EndMilliseconds, MidpointRounding.AwayFromZero) : double.NaN;
         foreach (var sample in SamplesInHitOrder())
         {
             var timestamp = sample.Timestamp;
-            if (timestamp >= interval.StartMilliseconds && timestamp < interval.EndMilliseconds) return sample;
+            if (timestamp == target || timestamp >= interval.StartMilliseconds && timestamp < interval.EndMilliseconds && timestamp != nextTarget) return sample;
         }
         return null;
     }
@@ -153,6 +168,7 @@ public sealed class BeatGridView : FrameworkElement
         Cursor = Cursors.Arrow;
         DataContextChanged += (_, _) => ClearInteraction();
         Unloaded += (_, _) => ClearInteraction();
+        IsEnabledChanged += (_, _) => { if (!IsEnabled) ClearInteraction(); };
     }
 
     public void UpdatePointerPosition(double? viewportX)
@@ -164,8 +180,8 @@ public sealed class BeatGridView : FrameworkElement
 
     public bool RequestSamplePlacement()
     {
-        if (!CanPlaceSamples || ActiveInterval is not { } interval) return false;
-        if (FindActiveSample() is { } sample) RaiseEvent(new SampleSelectionRequestedEventArgs(SampleSelectionRequestedEvent, sample));
+        if (!IsEnabled || !CanPlaceSamples || IsNodeDragActive || ActiveInterval is not { } interval) return false;
+        if (!HasPlacementPreview && FindActiveSample() is { } sample) RaiseEvent(new SampleSelectionRequestedEventArgs(SampleSelectionRequestedEvent, sample));
         else if (!AllowNodeCreation) return false;
         else RaiseEvent(new SamplePlacementRequestedEventArgs(SamplePlacementRequestedEvent, interval.StartMilliseconds));
         return true;
@@ -387,7 +403,6 @@ public sealed class BeatGridView : FrameworkElement
         context.PushClip(new RectangleGeometry(new Rect(RenderSize)));
         context.DrawRectangle(Brushes.Transparent, null, new Rect(RenderSize));
         var highContrast = SystemParameters.HighContrast;
-        var hover = highContrast ? SystemColors.HighlightBrush : HoverBrush;
         var pressed = highContrast ? SystemColors.HighlightTextBrush : PressedBrush;
         var marker = highContrast ? SystemColors.WindowTextBrush : MarkerBrush;
         var selectionCue = highContrast ? SystemColors.HighlightBrush : SelectionCueBrush ?? TryFindResource("Brush.Node.SelectedOutline") as Brush ?? SystemColors.WindowTextBrush;
@@ -398,13 +413,6 @@ public sealed class BeatGridView : FrameworkElement
         BeatGridDrawing.Draw(context, this, Offsets, Bpms, Subdivision, Duration.TotalMilliseconds,
             ContentWidth, HorizontalOffset, ViewportWidth, ActualHeight, false);
         context.Pop();
-        if (!IsNodeDragActive && !SuppressPlacementFeedback && AllowNodeCreation && ActiveInterval is { } active)
-        {
-            var rect = Inset(GetSampleBounds((int)Math.Round(active.StartMilliseconds, MidpointRounding.AwayFromZero)));
-            OHsSampleNodeDrawing.Draw(context,hover, null, rect);
-            if (pressedInterval is not null && pressed is not null)
-                OHsSampleNodeDrawing.Draw(context,null, new Pen(pressed, 1), rect);
-        }
         for (var layer = 0; layer < 2; layer++)
         {
             var selectedLayer = layer == 1;
@@ -429,6 +437,22 @@ public sealed class BeatGridView : FrameworkElement
                     if (selectedLayer && selectionCue is not null)
                         OHsSampleNodeDrawing.Draw(context,null, selectedBorder, rect);
                 }
+        }
+        if (HasPlacementPreview && ActiveInterval is { } active)
+        {
+            var rect = Inset(GetSampleBounds((int)Math.Round(active.StartMilliseconds, MidpointRounding.AwayFromZero)));
+            context.PushOpacity(highContrast ? 1 : 0.4);
+            OHsSampleNodeDrawing.Draw(context, marker, null, rect);
+            context.Pop();
+            // Back the outline so overlapping nodes and custom colors cannot erase the preview cue.
+            var previewBacking = highContrast ? SystemColors.WindowBrush :
+                TryFindResource("Brush.Background.Surface") as Brush ?? SystemColors.WindowBrush;
+            var previewBorder = new Pen(highContrast ? SystemColors.WindowTextBrush :
+                TryFindResource("Brush.Text.Primary") as Brush ?? SystemColors.WindowTextBrush, 1) { DashStyle = DashStyles.Dash };
+            OHsSampleNodeDrawing.Draw(context, null, new Pen(previewBacking, 3), rect);
+            OHsSampleNodeDrawing.Draw(context, null, previewBorder, rect);
+            if (pressedInterval is not null && pressed is not null)
+                OHsSampleNodeDrawing.Draw(context, null, new Pen(pressed, 1), rect);
         }
         if (DragPreviewTimestamps is { } previews)
             foreach (var preview in previews)

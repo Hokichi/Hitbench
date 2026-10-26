@@ -15,6 +15,113 @@ namespace Hitbench.Test.Presentation;
 [NonParallelizable]
 public class WorkstationNodeInteractionTests
 {
+    [TestCase(120, 4, 250d, 8d, 0d, false, false)]
+    [TestCase(120, 4, 250d, 8d, 1d, true, true)]
+    [TestCase(120, 16, 1000d, 32d, 0d, false, true)]
+    [TestCase(120, 16, 1000d, 32d, 1d, true, false)]
+    [TestCase(123, 12, 600d, 8d, 1d, false, false)]
+    [TestCase(137, 12, 600d, 8d, 1d, true, true)]
+    public void VisiblePreviewWinsOverCrowdedNeighbors(int bpm, int subdivision, double contentWidth,
+        double zoom, double offset, bool control, bool selectedNeighbors)
+    {
+        var editor = CreateEditor(bpm: bpm); using var view = editor.View;
+        try
+        {
+            var vm = editor.Vm;
+            vm.SelectedSubdivisionIndex = Array.IndexOf(new[] { 1, 2, 3, 4, 5, 6, 8, 12, 16 }, subdivision);
+            var track = vm.Tracks[1];
+            var step = 60000d / bpm / subdivision;
+            var first = new Sample { Timestamp = 0, FileName = "b.wav" };
+            var third = new Sample { Timestamp = (int)Math.Round(2 * step, MidpointRounding.AwayFromZero), FileName = "b.wav" };
+            track.Samples.AddRange([first, third]);
+            if (selectedNeighbors) vm.SetNodeSelection([first, third]);
+            var initialSelection = vm.SelectedSamples.ToArray();
+            var grid = Descendants<BeatGridView>(editor.Page).Single(g => ReferenceEquals(g.DataContext, track));
+            grid.ContentWidth = contentWidth; grid.ViewportWidth = 500; grid.HorizontalOffset = offset; grid.ZoomFactor = zoom;
+            var point = new Point(1.1 * step / grid.Duration.TotalMilliseconds * contentWidth - offset, grid.ActualHeight / 2);
+            Assert.That(grid.GetSampleBounds(first.Timestamp).Contains(point), Is.True);
+            Assert.That(grid.GetSampleBounds(third.Timestamp).Contains(point), Is.True);
+            grid.UpdatePointerPosition(point.X);
+            Assert.That(grid.HasPlacementPreview, Is.True);
+            var captured = grid.ActiveInterval!.Value;
+            Assert.That(editor.Page.BeginNodePointer(grid, point, new Point(), control ? ModifierKeys.Control : ModifierKeys.None), Is.True);
+            Assert.That(vm.SelectedSamples, Is.EquivalentTo(initialSelection), "Placement must not select an overlapping neighbor on press.");
+            if (!control)
+            {
+                editor.Page.UpdateNodePointer(new Point(), grid, point, ModifierKeys.Control);
+                editor.Page.UpdateNodePointer(new Point(), grid, point);
+            }
+
+            var completion = editor.Page.CompleteNodePointerAsync(); UiTestPump.Run(completion);
+            Assert.That(completion.Result, Is.True);
+            var placed = vm.SelectedSamples.Single();
+            Assert.That(placed.Timestamp, Is.EqualTo((int)Math.Round(captured.StartMilliseconds, MidpointRounding.AwayFromZero)));
+            Assert.That(track.Samples, Is.EquivalentTo(new[] { first, third, placed }));
+            Assert.That(new[] { first.Timestamp, third.Timestamp }, Is.EqualTo(new[] { 0, (int)Math.Round(2 * step, MidpointRounding.AwayFromZero) }));
+            Assert.That(vm.IsNodeDragActive, Is.False);
+            Assert.That(vm.CanUndo, Is.True);
+            vm.UndoCommand.Execute(null);
+            Assert.That(track.Samples, Is.EquivalentTo(new[] { first, third }));
+            Assert.That(vm.CanUndo, Is.False);
+            vm.RedoCommand.Execute(null);
+            Assert.That(track.Samples, Is.EquivalentTo(new[] { first, third, placed }));
+        }
+        finally { UiTestPump.Run(editor.Page.DeactivateAsync()); }
+    }
+
+    [TestCase("cancel")]
+    [TestCase("escape")]
+    [TestCase("recycle")]
+    [TestCase("unload")]
+    [TestCase("gate")]
+    [TestCase("disabled")]
+    [TestCase("mode")]
+    [TestCase("move")]
+    [TestCase("occupied")]
+    [TestCase("geometry")]
+    [TestCase("subdivision")]
+    public void CapturedPreviewCancelsWithoutEditing(string change)
+    {
+        var editor = CreateEditor(); using var view = editor.View;
+        try
+        {
+            var vm = editor.Vm;
+            var track = vm.Tracks[1];
+            track.Samples.AddRange([new Sample { Timestamp = 0, FileName = "b.wav" }, new Sample { Timestamp = 250, FileName = "b.wav" }]);
+            var grid = Descendants<BeatGridView>(editor.Page).Single(g => ReferenceEquals(g.DataContext, track));
+            grid.ContentWidth = 250; grid.ViewportWidth = 500; grid.HorizontalOffset = 0; grid.ZoomFactor = 8;
+            var point = new Point(137.5 / grid.Duration.TotalMilliseconds * grid.ContentWidth, grid.ActualHeight / 2);
+            grid.UpdatePointerPosition(point.X);
+            Assert.That(grid.HasPlacementPreview, Is.True);
+            Assert.That(editor.Page.BeginNodePointer(grid, point, new Point()), Is.True);
+            switch (change)
+            {
+                case "cancel": editor.Page.CancelNodePointer(); break;
+                case "escape": editor.Page.HandlePlaybackKey(Key.Escape, ModifierKeys.None, false, grid); break;
+                case "recycle": grid.DataContext = new Track(); break;
+                case "unload": grid.RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent, grid)); break;
+                case "gate": grid.CanPlaceSamples = false; break;
+                case "disabled": grid.IsEnabled = false; break;
+                case "mode": vm.IsAdditionMode = false; break;
+                case "move": editor.Page.UpdateNodePointer(new Point(SystemParameters.MinimumHorizontalDragDistance + 1, 0), grid, point); break;
+                case "occupied": track.Samples.Add(new Sample { Timestamp = 125, FileName = "b.wav" }); break;
+                case "geometry": grid.ContentWidth = double.NaN; break;
+                case "subdivision": grid.Subdivision = 16; break;
+            }
+            var beforeRelease = track.Samples.ToArray();
+            var completion = editor.Page.CompleteNodePointerAsync(); UiTestPump.Run(completion);
+            Assert.Multiple(() =>
+            {
+                Assert.That(completion.Result, Is.False);
+                Assert.That(track.Samples, Is.EqualTo(beforeRelease));
+                Assert.That(vm.SelectedSamples, Is.Empty);
+                Assert.That(vm.IsNodeDragActive, Is.False);
+                Assert.That(vm.CanUndo, Is.False);
+            });
+        }
+        finally { UiTestPump.Run(editor.Page.DeactivateAsync()); }
+    }
+
     [TestCase(false, false)]
     [TestCase(false, true)]
     [TestCase(true, false)]

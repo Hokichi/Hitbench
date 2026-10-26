@@ -15,10 +15,23 @@
 
     <ControlTemplate x:Key="OHsValueSliderTrackButtonTemplate" TargetType="RepeatButton">
         <Border
+            x:Name="TrackFill"
             Height="6"
             VerticalAlignment="Center"
             Background="{TemplateBinding Background}"
             CornerRadius="3" />
+        <ControlTemplate.Triggers>
+            <Trigger Property="Command" Value="{x:Static Slider.DecreaseLarge}">
+                <Setter TargetName="TrackFill" Property="Margin" Value="0,0,-8,0" />
+            </Trigger>
+            <MultiDataTrigger>
+                <MultiDataTrigger.Conditions>
+                    <Condition Binding="{Binding Command, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}" Value="{x:Static Slider.DecreaseLarge}" />
+                    <Condition Binding="{Binding IsDirectionReversed, RelativeSource={RelativeSource AncestorType=Track}, Mode=OneWay}" Value="True" />
+                </MultiDataTrigger.Conditions>
+                <Setter TargetName="TrackFill" Property="Margin" Value="-8,0,0,0" />
+            </MultiDataTrigger>
+        </ControlTemplate.Triggers>
     </ControlTemplate>
 
     <ControlTemplate x:Key="OHsValueSliderThumbTemplate" TargetType="Thumb">
