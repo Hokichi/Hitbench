@@ -17,6 +17,7 @@ using Hitbench.Resources.CustomControls;
 using Hitbench.Views.Popups;
 using Hitbench.ViewModels.Shell;
 using CommunityToolkit.Mvvm.Input;
+using Hitbench.Resources.Helpers;
 
 namespace Hitbench;
 
@@ -323,6 +324,8 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
     private WorkstationPage? busyPresentationPage;
     private void SetHeaderPresentationSource(WorkstationPage? workstation)
     {
+        KeyboardNavigationPolicy.SetSuppressTabNavigation(this, workstation is not null);
+        KeyboardNavigationPolicy.SetSuppressTabNavigation(ShellRoot, workstation is not null);
         SetVolumePresentationSource(workstation);
         if (busyPresentationPage is not null) { System.Windows.Data.BindingOperations.ClearBinding(busyPresentationPage, WorkstationPage.IsAudioBusyProperty); System.Windows.Data.BindingOperations.ClearBinding(busyPresentationPage, WorkstationPage.AudioBusyTextProperty); }
         busyPresentationPage = workstation;

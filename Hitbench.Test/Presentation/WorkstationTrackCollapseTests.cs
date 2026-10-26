@@ -291,7 +291,8 @@ public class WorkstationTrackCollapseTests
             {
                 UiControlContract.AssertStyle<BalloonButton>(action, "OHsWorkstationToolbarButtonStyle");
                 Assert.That(action.IsEnabled, Is.EqualTo(action.Command!.CanExecute(null)));
-                Assert.That(action.IsTabStop && action.Focusable, Is.True);
+                Assert.That(action.IsTabStop, Is.False);
+                Assert.That(action.Focusable, Is.True);
             }
             Assert.That(sample, Is.Not.Null, "Audio card needs sample creation action");
             UiControlContract.AssertStyle<MenuItem>(sample, "OHsActionMenuItemStyle");
@@ -308,7 +309,7 @@ public class WorkstationTrackCollapseTests
             });
             foreach (var action in new Control[] { sample, instrument, toggle })
             {
-                Assert.That(KeyboardNavigation.GetIsTabStop(action), Is.True);
+                Assert.That(KeyboardNavigation.GetIsTabStop(action), Is.False);
                 Assert.That(action.Focusable, Is.True);
                 Assert.That(action.FocusVisualStyle, Is.SameAs(page.FindResource("OHsSampleManagerKeyboardFocusStyle")));
                 Assert.That(ToolTipService.GetShowsToolTipOnKeyboardFocus(action), Is.True);

@@ -34,7 +34,7 @@ public sealed class ManageSampleHeaderTests
         Assert.That(button.Command, Is.SameAs(vm.ManageSamplesCommand));
         UiControlContract.AssertStyle<BalloonButton>(button, "OHsWorkstationSamplesActionStyle");
         Assert.That(button.Style.BasedOn, Is.SameAs(button.FindResource("OHsBalloonDefaultActionStyle")));
-        Assert.That(button.IsTabStop, Is.True);
+        Assert.That(button.IsTabStop, Is.False);
         var trigger = (BalloonComboBox)page.AudioCard.FindName("AddMenuButton");
         // This unloaded DI page is disabled; supply the native placement boundary without opening its menu.
         trigger.ContextMenu.PlacementTarget = trigger;

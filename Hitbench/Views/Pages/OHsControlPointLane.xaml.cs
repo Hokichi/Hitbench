@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using Hitbench.Resources.DataModels;
+using Hitbench.Resources.Helpers;
 
 namespace Hitbench.Views.Pages;
 
@@ -122,7 +123,7 @@ public partial class OHsControlPointLane : UserControl
 
     internal OHsControlPointZone? MovePointFocus(Guid currentId, bool forward)
     {
-        if (State is null) return null;
+        if (State is null || KeyboardNavigationPolicy.GetSuppressTabNavigation(this)) return null;
         var index = State.Points.ToList().FindIndex(p => p.Id == currentId);
         var next = index + (forward ? 1 : -1);
         return index >= 0 && next >= 0 && next < State.Points.Count ? BringPointIntoView(State.Points[next].Id) : null;

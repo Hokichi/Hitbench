@@ -61,7 +61,7 @@ public class WorkstationSampleReloadIntegrationTests
         var action = ((Hitbench.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("ReloadSamplesButton");
         Assert.That(action, Is.TypeOf<BalloonButton>());
         var button = (BalloonButton)action;
-        Assert.That(button.IsTabStop, Is.True);
+        Assert.That(button.IsTabStop, Is.False);
         UiControlContract.AssertStyle<BalloonButton>(button, "OHsWorkstationToolbarButtonStyle");
         Assert.That(button.Style, Is.SameAs(button.FindResource("OHsWorkstationToolbarButtonStyle")));
         Assert.That(button.FocusVisualStyle, Is.SameAs(button.FindResource("OHsSampleManagerKeyboardFocusStyle")));

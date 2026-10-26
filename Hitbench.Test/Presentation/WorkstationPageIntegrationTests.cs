@@ -320,7 +320,7 @@ public class WorkstationPageIntegrationTests
         var mute = FindVisualChildren<ToggleButton>(page).Single(control => control.Name == "TrackMuteToggle" && ReferenceEquals(control.DataContext, a));
         var solo = FindVisualChildren<ToggleButton>(page).Single(control => control.Name == "TrackSoloToggle" && ReferenceEquals(control.DataContext, a));
         Assert.That(mute.GetType(), Is.EqualTo(typeof(ToggleButton)));
-        Assert.That(mute.IsTabStop, Is.True);
+        Assert.That(mute.IsTabStop, Is.False);
         Assert.That(mute.Style, Is.SameAs(mute.FindResource("OHsWorkstationTrackToggleStyle")));
         Assert.That(mute.Style.BasedOn, Is.SameAs(page.FindResource("BaseToggleButtonStyle")));
         Assert.That(mute.Template, Is.SameAs(page.FindResource("OHsWorkstationTrackToggleTemplate")));
@@ -1604,7 +1604,7 @@ public class WorkstationPageIntegrationTests
             Assert.That(button.IsEnabled, Is.True);
             Assert.That(AutomationProperties.GetName(button), Is.EqualTo("Resnap all samples and control points"));
             Assert.That(button.Focusable, Is.True);
-            Assert.That(button.IsTabStop, Is.True);
+            Assert.That(button.IsTabStop, Is.False);
             Assert.That(button.FocusVisualStyle, Is.SameAs(page.FindResource("OHsSampleManagerKeyboardFocusStyle")));
             Assert.That(button.ToolTip, Is.EqualTo("Resnap all samples and control points to the current beat subdivision, including instrumental notes"));
             Assert.That(AutomationProperties.GetHelpText(button), Is.EqualTo(button.ToolTip));

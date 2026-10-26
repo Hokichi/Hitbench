@@ -27,7 +27,7 @@ public class WorkstationPlaybackRefreshTests
         var checkBox = ((Hitbench.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("ScrollWithMarkerCheckBox") as BalloonCheckBox;
         Assert.That(checkBox, Is.Not.Null); Assert.That(checkBox!.IsChecked, Is.True);
         Assert.That(checkBox.Style, Is.SameAs(checkBox.FindResource("OHsWorkstationScrollWithMarkerStyle")));
-        Assert.That(checkBox.IsTabStop, Is.True);
+        Assert.That(checkBox.IsTabStop, Is.False);
         Assert.That(checkBox.FocusVisualStyle, Is.SameAs(checkBox.FindResource("OHsSampleManagerKeyboardFocusStyle")));
         checkBox.IsChecked = false; Assert.That(vm.ScrollWithMarker, Is.False);
         UiTestPump.Run(vm.PlayPauseCommand.ExecuteAsync(null));

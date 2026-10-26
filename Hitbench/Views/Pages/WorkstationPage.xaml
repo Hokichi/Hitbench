@@ -10,6 +10,7 @@
     xmlns:helpers="clr-namespace:Hitbench.Resources.Helpers"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:pages="clr-namespace:Hitbench.Views.Pages"
+    helpers:KeyboardNavigationPolicy.SuppressTabNavigation="True"
     d:DesignHeight="600"
     d:DesignWidth="1100"
     mc:Ignorable="d">

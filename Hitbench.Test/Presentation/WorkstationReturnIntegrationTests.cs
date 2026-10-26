@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Automation;
+using Hitbench.Resources.Helpers;
 using CommunityToolkit.Mvvm.Messaging;
 using Hitbench.Core.Entities;
 using Hitbench.Resources.CustomControls;
@@ -85,6 +86,29 @@ public class WorkstationReturnIntegrationTests
     }
 
     [Test]
+    public void WorkstationScopeSuppressesShellAndRestoresAfterReturn()
+    {
+        var immediate = new DelayedProjectFileService();
+        immediate.Release();
+        Open(immediate);
+        var header = (Hitbench.Views.Shell.OHsShellHeader)window.FindName("ShellHeader");
+        var close = (BalloonButton)header.FindName("CloseButton");
+        var probe = new TextBox { IsTabStop = true };
+        KeyboardNavigationPolicy.SetAllowTabNavigation(probe, true);
+        Assert.That(probe.IsTabStop, Is.True, "Independent scope retains its opt-in.");
+        Assert.That(close.IsTabStop, Is.False);
+        Assert.That(KeyboardNavigationPolicy.GetSuppressTabNavigation(window), Is.True);
+        UiTestPump.Run(window.ReturnHomeAsync());
+        view.UpdateLayout();
+        Assert.That(KeyboardNavigationPolicy.GetSuppressTabNavigation(window), Is.False);
+        Assert.That(KeyboardNavigationPolicy.GetSuppressTabNavigation(header), Is.False);
+        Assert.That(probe.IsTabStop, Is.True);
+        KeyboardNavigationPolicy.SetAllowTabNavigation(close, true);
+        close.IsTabStop = true;
+        Assert.That(close.IsTabStop, Is.True);
+    }
+
+    [Test]
     public void ReturnWaitBlocksEditingAndLeavesOnlyAfterSaved()
     {
         var delayed = new DelayedProjectFileService();
@@ -116,6 +140,7 @@ public class WorkstationReturnIntegrationTests
         Assert.That(((Border)workstation.FindName("LoadingOverlay")).Visibility, Is.EqualTo(Visibility.Collapsed));
         Assert.That(vm.SaveError, Does.Contain("Disk full"));
         Assert.That(vm.CanEditTracks, Is.True);
+        Assert.That(KeyboardNavigationPolicy.GetSuppressTabNavigation(window), Is.True);
         var back = (BalloonButton)((Hitbench.Views.Shell.OHsShellHeader)window.FindName("ShellHeader")).FindName("GoBackButton");
         Assert.That(back, Is.Not.Null);
         Assert.That(back.IsEnabled, Is.True);

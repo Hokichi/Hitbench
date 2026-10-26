@@ -6,6 +6,7 @@ using System.Windows.Media.Animation;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media.Effects;
 using System.Windows.Threading;
+using Hitbench.Resources.Helpers;
 
 namespace Hitbench.Resources.CustomControls;
 
@@ -153,13 +154,21 @@ public class BasePopup : Window, IPopupHost
 
     // Overlay & blur on owner
 
+    internal void ApplyTabNavigationOwnerScope(DependencyObject? owner) =>
+        KeyboardNavigationPolicy.BindSuppressionScope(this, owner);
+
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
+        ApplyTabNavigationOwnerScope(Owner);
         _popupHost = Owner as IPopupHost;
         _popupHost?.ShowPopupOverlay(RequestedOverlayOpacity, RequestedOverlayBlur);
         BecomeApplicationMainWindow();
-        Dispatcher.BeginInvoke(DispatcherPriority.Input,
-            () => MoveFocus(new TraversalRequest(FocusNavigationDirection.First)));
+        Dispatcher.BeginInvoke(DispatcherPriority.Input, () =>
+        {
+            if (!KeyboardNavigationPolicy.GetSuppressTabNavigation(this))
+                MoveFocus(new TraversalRequest(FocusNavigationDirection.First));
+            else if (!IsKeyboardFocusWithin) Focus();
+        });
 
         if (!SystemParameters.ClientAreaAnimation)
         {

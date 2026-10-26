@@ -125,6 +125,16 @@ public class OHsControlPointLaneTests
     }
 
     [Test]
+    public void WorkstationSuppressionPreventsCustomPointTabTraversal()
+    {
+        var points = new[] { new ControlPointSnapshot(Guid.NewGuid(), 0, 50, "Normal"), new(Guid.NewGuid(), 8000, 4, "Drum") };
+        var lane = Create(points);
+        Hitbench.Resources.Helpers.KeyboardNavigationPolicy.SetSuppressTabNavigation(lane, true);
+        Assert.That(lane.MovePointFocus(points[0].Id, true), Is.Null);
+        Assert.That(lane.MovePointFocus(points[1].Id, false), Is.Null);
+    }
+
+    [Test]
     public void LogicalTabTraversalReachesOffscreenAndOverlappingIdentities()
     {
         var points = new[] { new ControlPointSnapshot(Guid.NewGuid(), 0, 50, "Normal"), new(Guid.NewGuid(), 8000, 4, "Drum"), new(Guid.NewGuid(), 8000, 75, "Soft") };
