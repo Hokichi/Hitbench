@@ -13,6 +13,85 @@ namespace Hitbench.Test.Presentation;
 public class KeyboardNavigationPolicyTests
 {
     [Test]
+    public void SuppressionOverridesNativeAndCustomControlOptInsWithoutChangingFocusability()
+    {
+        var root = new StackPanel();
+        Control[] controls = [new Button(), new TextBox(), new PasswordBox(), new ComboBox(),
+            new ComboBoxItem(), new Slider(), new Thumb(), new RepeatButton(), new ScrollViewer(),
+            new ListBoxItem(), new ListViewItem(), new BalloonButton(), new BalloonCheckBox(),
+            new BalloonRadioButton(), new NumericUpDown(), new VolumeWheel()];
+        foreach (var control in controls)
+        {
+            KeyboardNavigationPolicy.SetAllowTabNavigation(control, true);
+            control.IsTabStop = true;
+            root.Children.Add(control);
+        }
+        var focusable = controls.Select(control => control.Focusable).ToArray();
+        KeyboardNavigationPolicy.SetSuppressTabNavigation(root, true);
+        for (var index = 0; index < controls.Length; index++)
+        {
+            Assert.That(controls[index].IsTabStop, Is.False, controls[index].GetType().Name);
+            Assert.That(controls[index].Focusable, Is.EqualTo(focusable[index]));
+        }
+        root.ClearValue(KeyboardNavigationPolicy.SuppressTabNavigationProperty);
+        Assert.That(controls.All(control => control.IsTabStop), Is.True);
+    }
+
+    [Test]
+    public void SuppressionFollowsNewChildrenAndReparentingWithoutAffectingUnrelatedRoots()
+    {
+        var suppressed = new Grid();
+        var normal = new Grid();
+        KeyboardNavigationPolicy.SetSuppressTabNavigation(suppressed, true);
+        var nested = new StackPanel();
+        suppressed.Children.Add(nested);
+        var input = new TextBox { Text = "Kick", IsTabStop = true };
+        KeyboardNavigationPolicy.SetAllowTabNavigation(input, true);
+        nested.Children.Add(input);
+        Assert.That(input.IsTabStop, Is.False);
+        input.SelectAll();
+        input.SelectedText = "Snare";
+        Assert.That(input.Text, Is.EqualTo("Snare"));
+        Assert.That(input.Focusable, Is.True);
+        nested.Children.Remove(input);
+        normal.Children.Add(input);
+        Assert.That(input.IsTabStop, Is.True);
+        normal.Children.Remove(input);
+        nested.Children.Add(input);
+        Assert.That(input.IsTabStop, Is.False);
+    }
+
+    [Test]
+    public void SuppressionOverridesStyleOptInsAndNonControlElements()
+    {
+        var root = new Grid();
+        var button = new Button
+        {
+            Style = new Style(typeof(Button))
+            {
+                Setters =
+                {
+                    new Setter(KeyboardNavigationPolicy.AllowTabNavigationProperty, true),
+                    new Setter(Control.IsTabStopProperty, true)
+                }
+            }
+        };
+        var beat = new BeatGridView();
+        KeyboardNavigationPolicy.SetAllowTabNavigation(beat, true);
+        KeyboardNavigation.SetIsTabStop(beat, true);
+        root.Children.Add(button);
+        root.Children.Add(beat);
+        Assert.That(button.IsTabStop, Is.True);
+        Assert.That(KeyboardNavigation.GetIsTabStop(beat), Is.True);
+        KeyboardNavigationPolicy.SetSuppressTabNavigation(root, true);
+        Assert.That(button.IsTabStop, Is.False);
+        Assert.That(KeyboardNavigation.GetIsTabStop(beat), Is.False);
+        KeyboardNavigationPolicy.SetSuppressTabNavigation(root, false);
+        Assert.That(button.IsTabStop, Is.True);
+        Assert.That(KeyboardNavigation.GetIsTabStop(beat), Is.True);
+    }
+
+    [Test]
     public void ExplicitOptInHonorsRequestedTabStopAndCanBeRemoved()
     {
         var input = new TextBox();
