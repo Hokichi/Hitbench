@@ -8,6 +8,28 @@ namespace Hitbench.Test.Presentation;
 public sealed class InstrumentalArrangementDrawerVMTests
 {
     [Test]
+    public async Task MappingCommandPublishesContextThenRequestsCloseAndStopsAfterDeactivation()
+    {
+        var context = new InstrumentalTrackContext("project.json", null, Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
+        var messenger = new WeakReferenceMessenger();
+        var vm = new InstrumentalArrangementDrawerVM(InstrumentalArrangementTestContext.Create(
+            new(context, "Piano", 100, new Dictionary<string, string>(), [], null, 0), [0], [120], TimeSpan.Zero, 4, 32), messenger, new ImmediateUiScheduler());
+        var requests = new List<InstrumentalTrackContext>();
+        messenger.Register<OHsInstrumentalKeysMappingRequestedMessage>(requests, (_, m) =>
+        {
+            Assert.That(vm.IsKeysMappingRequested, Is.False);
+            requests.Add(m.Context);
+        });
+        vm.RequestKeysMappingCommand.Execute(null); Assert.That(requests, Is.Empty);
+        await vm.InitializeAsync(default);
+        vm.RequestKeysMappingCommand.Execute(null);
+        Assert.That(requests, Is.EqualTo(new[] { context }));
+        Assert.That(vm.IsKeysMappingRequested, Is.True);
+        await vm.DeactivateAsync(); vm.RequestKeysMappingCommand.Execute(null);
+        Assert.That(requests, Has.Count.EqualTo(1));
+    }
+
+    [Test]
     public async Task EditingModeFollowsSnapshotsAndStopsAfterDeactivation()
     {
         var context = new InstrumentalTrackContext("project.json", null, Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());

@@ -90,6 +90,12 @@ public partial class OHsInstrumentalArrangementDrawer : UserControl, IOHsShellDr
     }
     private void OnStateChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(viewModel.IsKeysMappingRequested) && viewModel.IsKeysMappingRequested)
+        {
+            PianoRoll.CancelInteraction();
+            CloseRequested?.Invoke(this, EventArgs.Empty);
+            return;
+        }
         if (e.PropertyName != nameof(viewModel.LaneHeight)) return;
         ApplyLaneHeightChange(previousLaneHeight, viewModel.LaneHeight); previousLaneHeight = viewModel.LaneHeight;
     }

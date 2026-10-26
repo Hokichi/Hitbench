@@ -334,6 +334,7 @@ public partial class OHsWorkstationTrackRow : UserControl
     {
         if (Track is null || ViewModel is null || FindVisualChild<BalloonComboBox>(this) is not {} trigger || trigger.ContextMenu is not null) return;
         var menu = (ContextMenu)FindResource("OHsWorkstationTrackActionMenu");
+        menu.Resources = Resources;
         menu.DataContext = Track;
         foreach (var item in menu.Items.OfType<MenuItem>())
         {

@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using Hitbench.Resources.DataModels;
 using Hitbench.Resources.Messages;
@@ -14,6 +15,17 @@ public sealed partial class InstrumentalArrangementDrawerVM : ObservableObject
     private readonly IUiScheduler scheduler;
     private Task notifications = Task.CompletedTask;
     private bool closed, registered;
+    public bool IsKeysMappingRequested { get; private set; }
+    private bool CanRequestKeysMapping() => registered && !closed && !IsKeysMappingRequested;
+    [RelayCommand(CanExecute = nameof(CanRequestKeysMapping))]
+    private void RequestKeysMapping()
+    {
+        if (!CanRequestKeysMapping()) return;
+        messenger.Send(new OHsInstrumentalKeysMappingRequestedMessage(snapshot.Context));
+        IsKeysMappingRequested = true;
+        RequestKeysMappingCommand.NotifyCanExecuteChanged();
+        OnPropertyChanged(nameof(IsKeysMappingRequested));
+    }
     private long saveVersion = -1, requestSequence;
     private Guid pendingRequest;
     public string? TrackColor => snapshot.TrackColor;
@@ -65,6 +77,7 @@ public sealed partial class InstrumentalArrangementDrawerVM : ObservableObject
     {
         if (registered || closed || token.IsCancellationRequested) return Task.CompletedTask;
         registered = true;
+        RequestKeysMappingCommand.NotifyCanExecuteChanged();
         messenger.Register<OHsInstrumentalTimelineChangedMessage>(this, (_, m) => Schedule(() =>
         {
             if (m.Snapshot.Context != snapshot.Context || m.Snapshot.Revision < timeline.Revision) return;
@@ -117,7 +130,7 @@ public sealed partial class InstrumentalArrangementDrawerVM : ObservableObject
 
     public async Task DeactivateAsync()
     {
-        if (!closed) { closed = true; messenger.UnregisterAll(this); OnPropertyChanged(nameof(CanEdit)); NotifyNoteCommands(); }
+        if (!closed) { closed = true; messenger.UnregisterAll(this); OnPropertyChanged(nameof(CanEdit)); NotifyNoteCommands(); RequestKeysMappingCommand.NotifyCanExecuteChanged(); }
         await notifications;
     }
 }

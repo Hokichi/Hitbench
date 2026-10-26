@@ -8,6 +8,109 @@ namespace Hitbench.Test.Presentation;
 
 public sealed class InstrumentalDrawerSwitchingTests
 {
+    [TestCase("normal")]
+    [TestCase("menu")]
+    [TestCase("clear")]
+    [TestCase("cancel")]
+    [TestCase("project")]
+    [TestCase("remove")]
+    [TestCase("failure")]
+    [TestCase("save")]
+    [TestCase("supersede")]
+    public async Task ArrangementMappingReturnsOnlyAfterNormalCloseWithValidOrigin(string completion)
+    {
+        var track = new InstrumentalTrack { KeyFiles = new() { ["C4"] = "piano.wav" } };
+        var other = new InstrumentalTrack { KeyFiles = new() { ["D4"] = "other.wav" } };
+        var messenger = new WeakReferenceMessenger();
+        var first = new TaskCompletionSource<InstrumentalEditorContext>();
+        var closeFirst = new TaskCompletionSource();
+        var mapped = new TaskCompletionSource<InstrumentalTrackSnapshot>();
+        var closeMapping = new TaskCompletionSource();
+        var returned = new TaskCompletionSource<InstrumentalEditorContext>();
+        var arrangementCalls = 0;
+        var dialogs = new StubInstrumentalTrackDialogService
+        {
+            Arrangement = async (data, token) =>
+            {
+                if (++arrangementCalls == 1) { first.SetResult(data); await closeFirst.Task.WaitAsync(token); }
+                else { returned.TrySetResult(data); await Task.Delay(Timeout.Infinite, token); }
+            },
+            Mapping = async (data, token) =>
+            {
+                mapped.TrySetResult(data); await closeMapping.Task.WaitAsync(token);
+                if (completion == "failure") throw new IOException("mapping failed");
+            }
+        };
+        var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(
+            new WorkstationSource("map", "song", new ProjectData { Tracks = [track, other], Offsets = [0], BPMs = [120] })) },
+            new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), messenger: messenger,
+            projectFiles: completion == "save" ? new FailOnceProjectFileService() : null,
+            instrumentDialogs: dialogs, trackRemovalDialog: new StubTrackRemovalDialogService { Confirm = _ => Task.FromResult(true) });
+        try
+        {
+            await owner.LoadAsync("project.json", default); owner.AcknowledgePresentationReady(owner.LoadGeneration);
+            var editor = owner.ViewArrangementCommand.ExecuteAsync(track);
+            var original = await first.Task.WaitAsync(TimeSpan.FromSeconds(3));
+            messenger.Send(new Hitbench.Resources.Messages.OHsInstrumentalKeysMappingRequestedMessage(original.Track.Context));
+            closeFirst.SetResult();
+            var mapping = await mapped.Task.WaitAsync(TimeSpan.FromSeconds(3));
+            Assert.That(owner.CanPlay, Is.False);
+            switch (completion)
+            {
+                case "menu": await owner.KeysMappingCommand.ExecuteAsync(track); break;
+                case "clear": track.KeyFiles.Clear(); break;
+                case "cancel": await owner.SettleInstrumentalEditorAsync(); break;
+                case "project": await owner.LoadAsync("replacement.json", default); break;
+                case "remove": await owner.RemoveTrackCommand.ExecuteAsync(track); break;
+                case "save": owner.SetTrackVolume(track, 80); break;
+                case "supersede":
+                    var replacement = owner.ViewArrangementCommand.ExecuteAsync(other);
+                    var next = await returned.Task.WaitAsync(TimeSpan.FromSeconds(3));
+                    Assert.That(next.Track.Context.TrackId, Is.Not.EqualTo(original.Track.Context.TrackId));
+                    await owner.SettleInstrumentalEditorAsync(); await replacement;
+                    break;
+            }
+            closeMapping.TrySetResult();
+            if (completion == "normal")
+            {
+                var reopened = await returned.Task.WaitAsync(TimeSpan.FromSeconds(3));
+                Assert.That(reopened.Track.Context.TrackId, Is.EqualTo(original.Track.Context.TrackId));
+                Assert.That(owner.CanPlay, Is.True);
+                await owner.SettleInstrumentalEditorAsync();
+            }
+            await editor.WaitAsync(TimeSpan.FromSeconds(3));
+            var expectedCalls = completion is "normal" or "supersede" ? 2 : 1;
+            Assert.That(arrangementCalls, Is.EqualTo(expectedCalls));
+            messenger.Send(new Hitbench.Resources.Messages.OHsInstrumentalKeysMappingRequestedMessage(original.Track.Context));
+            Assert.That(arrangementCalls, Is.EqualTo(expectedCalls));
+            if (completion == "failure") Assert.That(owner.ErrorMessage, Is.EqualTo("mapping failed"));
+        }
+        finally
+        {
+            closeFirst.TrySetResult(); closeMapping.TrySetResult();
+            if (owner.SaveError is not null) { owner.RetrySaveCommand.Execute(null); await owner.FlushSavesAsync(); }
+            await owner.DeactivateAsync();
+        }
+    }
+
+    [Test]
+    public async Task MenuMappingDoesNotOpenArrangementOnClose()
+    {
+        var track = new InstrumentalTrack { KeyFiles = new() { ["C4"] = "piano.wav" } };
+        var calls = 0;
+        var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(
+            new WorkstationSource("map", "song", new ProjectData { Tracks = [track], Offsets = [0], BPMs = [120] })) },
+            new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), messenger: new WeakReferenceMessenger(),
+            instrumentDialogs: new StubInstrumentalTrackDialogService { Arrangement = (_, _) => { calls++; return Task.CompletedTask; } });
+        try
+        {
+            await owner.LoadAsync("project.json", default); owner.AcknowledgePresentationReady(owner.LoadGeneration);
+            await owner.KeysMappingCommand.ExecuteAsync(track);
+            Assert.That(calls, Is.Zero);
+        }
+        finally { await owner.DeactivateAsync(); }
+    }
+
     [Test]
     public async Task RemovingPresentedInstrumentSettlesEditorBeforeRemovingTrack()
     {

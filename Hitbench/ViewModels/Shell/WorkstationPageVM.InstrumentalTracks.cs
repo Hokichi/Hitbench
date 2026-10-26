@@ -54,6 +54,11 @@ public partial class WorkstationPageVM
     private void RegisterInstrumentMessages()
     {
         if (messenger is null) return;
+        messenger.Register<OHsInstrumentalKeysMappingRequestedMessage>(this, (_, m) =>
+        {
+            if (requestedDrawerKind == OHsWorkstationDrawerKind.Arrangement && CanOpenInstrumentalEditor && ActiveInstrument(m.Context) is not null)
+                mappingReturnContext = m.Context;
+        });
         messenger.Register<OHsInstrumentalTimelineEditRequestedMessage>(this, (_, m) => ReceiveInstrumentTimelineEdit(m));
         messenger.Register<ReplaceInstrumentalNotesRequestedMessage>(this, (_, m) =>
         {
@@ -80,13 +85,16 @@ public partial class WorkstationPageVM
     [RelayCommand(CanExecute = nameof(CanViewArrangement), AllowConcurrentExecutions = true)]
     private Task ViewArrangementAsync(InstrumentalTrack track) =>
         CanViewArrangement(track) ? OpenInstrumentAsync(track, true) : Task.CompletedTask;
-    [RelayCommand(CanExecute = nameof(CanOpenInstrumentalEditor), AllowConcurrentExecutions = true)]
-    private Task KeysMappingAsync(InstrumentalTrack track) => OpenInstrumentAsync(track, false);
+    private bool CanMapInstrument(Track? track) => track is InstrumentalTrack && tracks.Contains(track) && CanOpenInstrumentalEditor;
+    [RelayCommand(CanExecute = nameof(CanMapInstrument), AllowConcurrentExecutions = true)]
+    private Task KeysMappingAsync(Track? track) => CanMapInstrument(track) && track is InstrumentalTrack instrument
+        ? OpenInstrumentAsync(instrument, false) : Task.CompletedTask;
     private OHsWorkstationDrawerKind? requestedDrawerKind;
     private InstrumentalTrack? requestedDrawerTrack;
     private long drawerRequestGeneration;
     private Task drawerTransitions = Task.CompletedTask;
     private InstrumentalTrackContext? mappingTransportOwner;
+    private InstrumentalTrackContext? mappingReturnContext;
     private bool settlingDrawers;
     public bool IsInstrumentalTransportBlocked => mappingTransportOwner is not null;
     private bool CanRequestDrawer => !settlingDrawers && CanEditTracks && !folderRenamesActive && !IsNodeEditBusy && !importBusy && !removalBusy;
@@ -97,6 +105,8 @@ public partial class WorkstationPageVM
     private Task RequestWorkstationDrawerAsync(OHsWorkstationDrawerKind kind, InstrumentalTrack? track = null)
     {
         if (!CanRequestDrawer || projectPath is null || kind != OHsWorkstationDrawerKind.Samples && (track is null || !tracks.Contains(track))) return Task.CompletedTask;
+        // An explicit menu/drawer request replaces any pending arrangement round trip, including a same-drawer request.
+        mappingReturnContext = null;
         if (requestedDrawerKind == kind && ReferenceEquals(requestedDrawerTrack, track)) return Task.CompletedTask;
         var request = ++drawerRequestGeneration;
         var session = sampleSession;
@@ -149,10 +159,18 @@ public partial class WorkstationPageVM
     {
         try
         {
-            if (arrangement)
-                await instrumentDialogs!.ShowArrangementAsync(new(InstrumentSnapshot(track, context), InstrumentTimeline(context)), token);
-            else
+            while (!token.IsCancellationRequested && request == drawerRequestGeneration && ActiveInstrument(context) == track)
             {
+                if (arrangement)
+                {
+                    requestedDrawerKind = OHsWorkstationDrawerKind.Arrangement;
+                    await instrumentDialogs!.ShowArrangementAsync(new(InstrumentSnapshot(track, context), InstrumentTimeline(context)), token);
+                    if (mappingReturnContext != context || !CanRequestDrawer) return;
+                    await DrainProjectSaveQueueAsync();
+                    arrangement = false;
+                    continue;
+                }
+                requestedDrawerKind = OHsWorkstationDrawerKind.KeysMapping;
                 mappingTransportOwner = context; NotifyInstrumentState(); PublishInstrumentTimeline();
                 pendingPlayCancellation?.Cancel();
                 // Coordinator serializes an already-entered Play ahead of Pause. Cancellation prevents a queued Play from entering later.
@@ -160,12 +178,19 @@ public partial class WorkstationPageVM
                 token.ThrowIfCancellationRequested();
                 if (request != drawerRequestGeneration) return;
                 await instrumentDialogs!.ShowKeysMappingAsync(InstrumentSnapshot(track, context), token);
+                await DrainProjectSaveQueueAsync();
+                if (mappingTransportOwner == context) mappingTransportOwner = null;
+                NotifyInstrumentState(); PublishInstrumentTimeline();
+                if (mappingReturnContext != context || token.IsCancellationRequested || request != drawerRequestGeneration || !CanViewArrangement(track)) return;
+                mappingReturnContext = null;
+                arrangement = true;
             }
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { }
         catch (Exception error) { ErrorMessage = error.Message; }
         finally
         {
+            if (mappingReturnContext == context) mappingReturnContext = null;
             try { await DrainProjectSaveQueueAsync(); } catch (Exception error) { SaveError = error.Message; }
             if (mappingTransportOwner == context) mappingTransportOwner = null;
             if (activeInstrumentContext == context)
@@ -190,6 +215,7 @@ public partial class WorkstationPageVM
     public async Task SettleInstrumentalEditorAsync()
     {
         settlingDrawers = true;
+        mappingReturnContext = null;
         ++drawerRequestGeneration; requestedDrawerKind = null; requestedDrawerTrack = null;
         instrumentCancellation?.Cancel(); managerCancellation?.Cancel();
         try { await drawerTransitions; await SettlePresentedDrawerAsync(); }

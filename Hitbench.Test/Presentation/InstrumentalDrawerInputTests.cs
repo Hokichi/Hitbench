@@ -17,6 +17,26 @@ namespace Hitbench.Test.Presentation;
 public sealed class InstrumentalDrawerInputTests
 {
     [Test]
+    public void MappingHeaderUsesSecondaryActionAndClosesThroughMessageHandoff()
+    {
+        new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
+        var context = new InstrumentalTrackContext("project.json", null, Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
+        var messenger = new WeakReferenceMessenger();
+        var vm = new InstrumentalArrangementDrawerVM(InstrumentalArrangementTestContext.Create(
+            new(context, "Piano", 100, new Dictionary<string, string>(), [], null, 0), [0], [120], TimeSpan.Zero, 4, 32), messenger, new ImmediateUiScheduler());
+        UiTestPump.Run(vm.InitializeAsync(default));
+        var drawer = new OHsInstrumentalArrangementDrawer(vm);
+        using var view = new InMemoryView(new Window { Content = drawer });
+        var closed = 0; drawer.CloseRequested += (_, _) => closed++;
+        var button = (Hitbench.Resources.CustomControls.BalloonButton)drawer.FindName("KeysMappingButton");
+        UiControlContract.AssertStyle<Hitbench.Resources.CustomControls.BalloonButton>(button, "OHsArrangementMappingActionStyle");
+        Assert.That(button.Command, Is.SameAs(vm.RequestKeysMappingCommand));
+        button.Command.Execute(null);
+        Assert.That(closed, Is.EqualTo(1));
+        drawer.Detach(); UiTestPump.Run(vm.DeactivateAsync());
+    }
+
+    [Test]
     public void PublicViewportBindingAndControlRevealDoNotFeedBack()
     {
         new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();

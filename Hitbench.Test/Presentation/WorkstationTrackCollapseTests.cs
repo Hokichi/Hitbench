@@ -245,9 +245,9 @@ public class WorkstationTrackCollapseTests
             {
                 var actions = Descendants<BalloonButton>(row).ToArray();
                 var arrangement = actions.Single(x => AutomationProperties.GetName(x) == "View Arrangement");
-                var mapping = actions.Single(x => AutomationProperties.GetName(x) == "Keys Mapping");
+                var mapping = Descendants<BalloonComboBox>(row).Single().ContextMenu.Items.OfType<MenuItem>().Single(item => Equals(item.Header, "Keys Mapping"));
                 UiControlContract.AssertStyle<BalloonButton>(arrangement, "OHsWorkstationInstrumentMutedActionStyle");
-                UiControlContract.AssertStyle<BalloonButton>(mapping, "OHsWorkstationInstrumentActionStyle");
+                UiControlContract.AssertStyle<MenuItem>(mapping, "OHsWorkstationKeysMappingMenuItemStyle");
                 Assert.That(arrangement.Command, Is.SameAs(vm.ViewArrangementCommand));
                 Assert.That(mapping.Command, Is.SameAs(vm.KeysMappingCommand));
                 continue;
