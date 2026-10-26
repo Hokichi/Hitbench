@@ -377,6 +377,30 @@
                         Style="{StaticResource OHsWorkstationToolbarButtonStyle}"
                         ToolTip="Export" />
                     <Border Style="{StaticResource OHsWorkstationToolbarSeparatorStyle}" />
+                <StackPanel
+                    Orientation="Horizontal" VerticalAlignment="Center" Style="{StaticResource BaseStackPanelStyle}">
+                    <customControls:BalloonComboBox
+                        x:Name="AddMenuButton"
+                        Margin="0,0,8,0"
+                        HorizontalAlignment="Left"
+                        AutomationProperties.Name="Add"
+                        ButtonIcon="{StaticResource PlusSolid}"
+                        ButtonText="Add"
+                        ContextMenu="{StaticResource OHsWorkstationAddMenu}"
+                        Style="{StaticResource OHsWorkstationAddActionStyle}"
+                        ToolTip="Add a track" />
+                    <customControls:BalloonButton
+                        x:Name="ManageSamplesButton"
+                        Margin="0"
+                        HorizontalAlignment="Left"
+                        AutomationProperties.Name="Samples"
+                        ButtonIcon="{StaticResource BarsSolid}"
+                        ButtonText="Samples"
+                        Command="{Binding ManageSamplesCommand, Mode=OneWay}"
+                        Style="{StaticResource OHsWorkstationSamplesActionStyle}"
+                        ToolTip="Manage project samples (F2)" />
+                </StackPanel>
+                    <Border Style="{StaticResource OHsWorkstationToolbarSeparatorStyle}" />
                     <pages:OHsWorkstationFooter x:Name="FooterControls" VerticalAlignment="Center" />
                 </WrapPanel>
             </Grid>
@@ -391,8 +415,6 @@
                     <ColumnDefinition Width="{Binding TrackSideColumnWidth, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationAudioCard}, Mode=OneWay}" />
                     <ColumnDefinition Width="{StaticResource OHsWorkstationColumnGap}" />
                     <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="{StaticResource OHsWorkstationColumnGap}" />
-                    <ColumnDefinition Width="{Binding TrackSideColumnWidth, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationAudioCard}, Mode=OneWay}" />
                     <ColumnDefinition Width="{Binding TrackScrollBarGutter, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationAudioCard}, Mode=OneWay}" />
                 </Grid.ColumnDefinitions>
                 <Grid Style="{StaticResource BaseGridStyle}">
@@ -478,31 +500,7 @@
                     x:Name="TimelineControl"
                     Grid.Column="2"
                     IsShortLayout="{Binding IsShortLayout, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationAudioCard}, Mode=OneWay}" />
-                <StackPanel
-                    x:Name="TrackActionsHost"
-                    Grid.Column="4"
-                    VerticalAlignment="Center">
-                    <customControls:BalloonComboBox
-                        x:Name="AddMenuButton"
-                        Margin="0,0,0,4"
-                        HorizontalAlignment="Stretch"
-                        AutomationProperties.Name="Add"
-                        ButtonIcon="{StaticResource PlusSolid}"
-                        ButtonText="Add"
-                        ContextMenu="{StaticResource OHsWorkstationAddMenu}"
-                        Style="{StaticResource OHsWorkstationAddActionStyle}"
-                        ToolTip="Add a track" />
-                    <customControls:BalloonButton
-                        x:Name="ManageSamplesButton"
-                        Margin="0"
-                        HorizontalAlignment="Stretch"
-                        AutomationProperties.Name="Samples"
-                        ButtonIcon="{StaticResource BarsSolid}"
-                        ButtonText="Samples"
-                        Command="{Binding ManageSamplesCommand, Mode=OneWay}"
-                        Style="{StaticResource OHsWorkstationSamplesActionStyle}"
-                        ToolTip="Manage project samples (F2)" />
-                </StackPanel>
+
             </Grid>
         </Border>
     </Grid>

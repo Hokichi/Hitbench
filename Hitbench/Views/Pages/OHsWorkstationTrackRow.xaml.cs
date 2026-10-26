@@ -115,7 +115,7 @@ public partial class OHsWorkstationTrackRow : UserControl
         for (var current = origin; current is not null; current = current is Visual or System.Windows.Media.Media3D.Visual3D ? VisualTreeHelper.GetParent(current) : LogicalTreeHelper.GetParent(current))
         {
             if (ReferenceEquals(current, this)) return expanded;
-            if (current is FrameworkElement { Name: "TrackLeftExpandedControls" or "TrackRightExpandedControls" }) expanded = true;
+            if (current is FrameworkElement { Name: "TrackLeftExpandedControls" }) expanded = true;
         }
         return false;
     }
@@ -266,13 +266,11 @@ public partial class OHsWorkstationTrackRow : UserControl
         var row=FindAncestor<Grid>(stack);
         if(row is null)return;
         var left = FindVisualChild<StackPanel>(row, "TrackLeftControls");
-        var right = FindVisualChild<StackPanel>(row, "TrackRightControls");
         if (left is null) return;
         // Measure controls independently of the timeline's current extent, including touch target growth.
         left.Measure(new Size(left.ActualWidth, double.PositiveInfinity));
-        right?.Measure(new Size(right.ActualWidth, double.PositiveInfinity));
         if (Track is { } track) viewModel.SetTrackMinimumExtent(track, track.IsCollapsed,
-            Math.Max(left.DesiredSize.Height, right?.DesiredSize.Height ?? 0));
+            left.DesiredSize.Height);
     }
 
     private void OnTrackGridHostLoaded(object sender, RoutedEventArgs e) => RefreshTrackSamplePresentation();

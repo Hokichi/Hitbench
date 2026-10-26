@@ -220,8 +220,6 @@
                         <ColumnDefinition Width="{Binding TrackSideColumnWidth, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}" />
                         <ColumnDefinition Width="{StaticResource OHsWorkstationColumnGap}" />
                         <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="{StaticResource OHsWorkstationColumnGap}" />
-                        <ColumnDefinition Width="{Binding TrackSideColumnWidth, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}" />
                         <ColumnDefinition Width="{Binding TrackScrollBarGutter, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}" />
                     </Grid.ColumnDefinitions>
                     <ScrollBar

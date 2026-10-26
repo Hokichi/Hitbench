@@ -57,6 +57,8 @@ public class PianoRollViewportTests
 
     [TestCase(200d, 300d, FlowDirection.LeftToRight)]
     [TestCase(144d, 240d, FlowDirection.LeftToRight)]
+    [TestCase(144d, 600d, FlowDirection.LeftToRight)]
+    [TestCase(144d, 600d, FlowDirection.RightToLeft)]
     [TestCase(200d, 300d, FlowDirection.RightToLeft)]
     public void AlignmentTracksExplicitViewportChanges(double keys, double viewport, FlowDirection direction)
     {

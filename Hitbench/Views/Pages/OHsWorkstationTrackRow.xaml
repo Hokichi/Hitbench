@@ -370,8 +370,6 @@
                     <ColumnDefinition Width="{Binding TrackSideColumnWidth, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationTrackRow}, Mode=OneWay}" />
                     <ColumnDefinition Width="{StaticResource OHsWorkstationColumnGap}" />
                     <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="{StaticResource OHsWorkstationColumnGap}" />
-                    <ColumnDefinition Width="{Binding TrackSideColumnWidth, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationTrackRow}, Mode=OneWay}" />
                 </Grid.ColumnDefinitions>
                 <ContentPresenter
                     Content="{Binding Mode=OneWay}"
@@ -433,8 +431,6 @@
                     <ColumnDefinition Width="{Binding TrackSideColumnWidth, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationTrackRow}, Mode=OneWay}" />
                     <ColumnDefinition Width="{StaticResource OHsWorkstationColumnGap}" />
                     <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="{StaticResource OHsWorkstationColumnGap}" />
-                    <ColumnDefinition Width="{Binding TrackSideColumnWidth, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationTrackRow}, Mode=OneWay}" />
                 </Grid.ColumnDefinitions>
                 <ContentPresenter
                     Content="{Binding Mode=OneWay}"

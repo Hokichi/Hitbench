@@ -98,15 +98,13 @@
                     <ColumnDefinition Width="{Binding TrackSideColumnWidth, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationTrackList}, Mode=OneWay}" />
                     <ColumnDefinition Width="{StaticResource OHsWorkstationColumnGap}" />
                     <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="{StaticResource OHsWorkstationColumnGap}" />
-                    <ColumnDefinition Width="{Binding TrackSideColumnWidth, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationTrackList}, Mode=OneWay}" />
                 </Grid.ColumnDefinitions>
                 <Border
                     Grid.Column="2"
                     Background="{TemplateBinding Background}"
                     Style="{StaticResource BaseBorderStyle}" />
                 <ContentPresenter
-                    Grid.ColumnSpan="5"
+                    Grid.ColumnSpan="3"
                     HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                     VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
                     Content="{TemplateBinding Content}"
@@ -115,7 +113,7 @@
                     ContentTemplateSelector="{TemplateBinding ContentTemplateSelector}"
                     Style="{StaticResource BaseContentPresenterStyle}" />
                 <Border
-                    Grid.ColumnSpan="5"
+                    Grid.ColumnSpan="3"
                     VerticalAlignment="Bottom"
                     Style="{StaticResource OHsWorkstationTrackSeparatorStyle}" />
             </Grid>

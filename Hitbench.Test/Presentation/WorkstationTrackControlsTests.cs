@@ -16,6 +16,38 @@ public class WorkstationTrackControlsTests
 {
     [SetUp] public void Setup() => new VolumeWheelTests().SetUp();
 
+    [TestCase("Dark", System.Windows.FlowDirection.LeftToRight)]
+    [TestCase("Light", System.Windows.FlowDirection.RightToLeft)]
+    public void ToolbarTrackActionsPreserveCommandsAndResourceContracts(string theme, System.Windows.FlowDirection direction)
+    {
+        Application.Current.Resources.MergedDictionaries[0] = new ResourceDictionary
+            { Source = new Uri($"/Hitbench;component/Resources/Themes/{theme}.xaml", UriKind.Relative) };
+        var presentations = 0;
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay),
+            new ImmediateUiScheduler(), sampleFiles: new StubSampleFileService(["a.wav"]), sampleDialog: new StubSampleFileDialogService([]),
+            sampleManagementDialog: new StubSampleManagementDialogService { Present = (_, _) => { presentations++; return Task.CompletedTask; } });
+        try
+        {
+            UiTestPump.Run(vm.LoadAsync("project.json", default)); vm.AcknowledgePresentationReady(vm.LoadGeneration);
+            var card = new OHsWorkstationAudioCard { DataContext = vm, FlowDirection = direction };
+            using var view = new InMemoryView(new Window { Content = card, Width = 700, Height = 400 });
+            var add = (Hitbench.Resources.CustomControls.BalloonComboBox)card.FindName("AddMenuButton");
+            var samples = (Hitbench.Resources.CustomControls.BalloonButton)card.FindName("ManageSamplesButton");
+            UiControlContract.AssertStyle<Hitbench.Resources.CustomControls.BalloonComboBox>(add, "OHsWorkstationAddActionStyle");
+            UiControlContract.AssertStyle<Hitbench.Resources.CustomControls.BalloonButton>(samples, "OHsWorkstationSamplesActionStyle");
+            Assert.That(System.Windows.Automation.AutomationProperties.GetName(add), Is.EqualTo("Add"));
+            Assert.That(samples.Command, Is.SameAs(vm.ManageSamplesCommand));
+            UiTestPump.Layout(add.ContextMenu, 320, 200);
+            var sampleTrack = (System.Windows.Controls.MenuItem)add.ContextMenu.Items[0];
+            Assert.That(sampleTrack.Command, Is.SameAs(vm.AddSampleTrackCommand));
+            sampleTrack.Command.Execute(null);
+            Assert.That(vm.Tracks, Has.Count.EqualTo(1));
+            UiTestPump.Run(((CommunityToolkit.Mvvm.Input.IAsyncRelayCommand)samples.Command).ExecuteAsync(null));
+            Assert.That(presentations, Is.EqualTo(1));
+        }
+        finally { UiTestPump.Run(vm.DeactivateAsync()); }
+    }
+
     [TestCase(true)]
     [TestCase(false)]
     public void MixedAndEmptyTrackStatesUseAggregateCommands(bool empty)
