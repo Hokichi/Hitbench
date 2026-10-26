@@ -57,7 +57,10 @@ public partial class WorkstationPageVM
         messenger.Register<OHsInstrumentalKeysMappingRequestedMessage>(this, (_, m) =>
         {
             if (requestedDrawerKind == OHsWorkstationDrawerKind.Arrangement && CanOpenInstrumentalEditor && ActiveInstrument(m.Context) is not null)
+            {
                 mappingReturnContext = m.Context;
+                messenger.Send(new OHsInstrumentalKeysMappingAcceptedMessage(m.Context));
+            }
         });
         messenger.Register<OHsInstrumentalTimelineEditRequestedMessage>(this, (_, m) => ReceiveInstrumentTimelineEdit(m));
         messenger.Register<ReplaceInstrumentalNotesRequestedMessage>(this, (_, m) =>

@@ -26,6 +26,8 @@ public sealed class InstrumentalDrawerInputTests
             new(context, "Piano", 100, new Dictionary<string, string>(), [], null, 0), [0], [120], TimeSpan.Zero, 4, 32), messenger, new ImmediateUiScheduler());
         UiTestPump.Run(vm.InitializeAsync(default));
         var drawer = new OHsInstrumentalArrangementDrawer(vm);
+        messenger.Register<Hitbench.Resources.Messages.OHsInstrumentalKeysMappingRequestedMessage>(drawer,
+            (_, request) => messenger.Send(new Hitbench.Resources.Messages.OHsInstrumentalKeysMappingAcceptedMessage(request.Context)));
         using var view = new InMemoryView(new Window { Content = drawer });
         var closed = 0; drawer.CloseRequested += (_, _) => closed++;
         var button = (Hitbench.Resources.CustomControls.BalloonButton)drawer.FindName("KeysMappingButton");

@@ -8,6 +8,23 @@ namespace Hitbench.Test.Presentation;
 public sealed class InstrumentalArrangementDrawerVMTests
 {
     [Test]
+    public async Task RejectedMappingRequestKeepsArrangementOpen()
+    {
+        var context = new InstrumentalTrackContext("project.json", null, Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
+        var vm = new InstrumentalArrangementDrawerVM(InstrumentalArrangementTestContext.Create(
+            new(context, "Piano", 100, new Dictionary<string, string>(), [], null, 0), [0], [120], TimeSpan.Zero, 4, 32),
+            new WeakReferenceMessenger(), new ImmediateUiScheduler());
+        try
+        {
+            await vm.InitializeAsync(default);
+            vm.RequestKeysMappingCommand.Execute(null);
+            Assert.That(vm.IsKeysMappingRequested, Is.False);
+            Assert.That(vm.RequestKeysMappingCommand.CanExecute(null), Is.True);
+        }
+        finally { await vm.DeactivateAsync(); }
+    }
+
+    [Test]
     public async Task MappingCommandPublishesContextThenRequestsCloseAndStopsAfterDeactivation()
     {
         var context = new InstrumentalTrackContext("project.json", null, Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
@@ -19,6 +36,7 @@ public sealed class InstrumentalArrangementDrawerVMTests
         {
             Assert.That(vm.IsKeysMappingRequested, Is.False);
             requests.Add(m.Context);
+            messenger.Send(new OHsInstrumentalKeysMappingAcceptedMessage(m.Context));
         });
         vm.RequestKeysMappingCommand.Execute(null); Assert.That(requests, Is.Empty);
         await vm.InitializeAsync(default);
