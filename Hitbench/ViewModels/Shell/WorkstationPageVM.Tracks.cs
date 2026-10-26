@@ -69,6 +69,7 @@ public partial class WorkstationPageVM
             var removedIndex = tracks.IndexOf(track);
             var wasSelected = ReferenceEquals(SelectedTrack, track);
             CancelTrackRename(track); trackExtents.Remove(track);
+            if (ReferenceEquals(configuringSampleTrack, track)) ResetSampleConfiguration();
             project.Tracks.Remove(track);
             tracks.Remove(track);
             NotifyTrackPresentation(); NotifyTrackAuditionState();
@@ -115,7 +116,7 @@ public partial class WorkstationPageVM
         var timestamp = (int)Math.Round(leftBoundaryMilliseconds, MidpointRounding.AwayFromZero);
         var existing = track.Samples.LastOrDefault(node => node.Timestamp == timestamp);
         if (existing is not null) return SelectNode(track, existing, false);
-        if (!IsAdditionMode) return false;
+        if (!CanCreateSampleNodes) return false;
         var fileName = sampleTrackFiles.FirstOrDefault(name =>
             string.Equals(name, track.SelectedSampleFileName, StringComparison.OrdinalIgnoreCase));
         if (fileName is null) return false;

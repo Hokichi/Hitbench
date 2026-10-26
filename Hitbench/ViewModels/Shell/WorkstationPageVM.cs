@@ -113,6 +113,7 @@ public partial class WorkstationPageVM(
     public async Task LoadAsync(string projectPath, CancellationToken token)
     {
         if (deactivated) return;
+        ResetSampleConfiguration();
         trackAppearanceCancellation?.Cancel();
         await SettleFolderOpenAsync();
         await SettleExportAsync();
@@ -149,6 +150,7 @@ public partial class WorkstationPageVM(
     private async Task DeactivateCoreAsync()
     {
         if (deactivated) return;
+        ResetSampleConfiguration();
         trackAppearanceCancellation?.Cancel();
         await SettleFolderOpenAsync();
         await SettleExportAsync();

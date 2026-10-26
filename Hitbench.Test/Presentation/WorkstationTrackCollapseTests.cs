@@ -139,7 +139,11 @@ public class WorkstationTrackCollapseTests
             var others = JsonConvert.SerializeObject(vm.Tracks.Where(t => !ReferenceEquals(t, edited)));
             ScrollTo(page, view, edited);
             var editedRow = (ListBoxItem)list.ItemContainerGenerator.ContainerFromItem(edited);
+            var editingRow = Descendants<OHsWorkstationTrackRow>(editedRow).Single();
+            editingRow.PresentSampleConfiguration = (_, _) => { };
+            editingRow.OpenSampleConfiguration();
             Find<ComboBox>(editedRow, "TrackSampleFileSelector").SelectedItem = "snare.wav";
+            editingRow.CloseSampleConfiguration();
             Assert.That(edited.SelectedSampleFileName, Is.EqualTo("snare.wav"));
             Assert.That(edited.Samples[0].FileName, Is.EqualTo("snare.wav"));
             Assert.That(JsonConvert.SerializeObject(vm.Tracks.Where(t => !ReferenceEquals(t, edited))), Is.EqualTo(others));
@@ -249,7 +253,7 @@ public class WorkstationTrackCollapseTests
                 continue;
             }
             var selector = Find<ComboBox>(row, "TrackSampleFileSelector");
-            UiControlContract.AssertStyle<ComboBox>(selector, "OHsWorkstationSampleFileSelectorStyle");
+            UiControlContract.AssertStyle<ComboBox>(selector, "OHsWorkstationTrackMetadataComboBoxStyle");
             Assert.That(selector.Items.Cast<string>(), Is.EqualTo(vm.SampleFiles), track.Name);
             var expected = vm.SampleFiles.FirstOrDefault(file => string.Equals(file, track.SelectedSampleFileName, StringComparison.OrdinalIgnoreCase));
             Assert.That(selector.SelectedItem, Is.EqualTo(expected), track.Name);
@@ -355,9 +359,7 @@ public class WorkstationTrackCollapseTests
             var file = Find<ComboBox>(page, "TrackSampleFileSelector");
             var grid = Descendants<BeatGridView>(page).Single();
             var secondary = new FrameworkElement[] { Find<ValueSlider>(page, "VolumeSlider"),
-                Find<ToggleButton>(page, "TrackMuteToggle"), Find<ToggleButton>(page, "TrackSoloToggle"),
-                Find<ComboBox>(page, "TrackAdditionSelector"),
-                Find<ComboBox>(page, "TrackSampleTypeSelector") };
+                Find<ToggleButton>(page, "TrackMuteToggle"), Find<ToggleButton>(page, "TrackSoloToggle") };
             UiControlContract.AssertStyle<ValueSlider>(secondary[0], "OHsWorkstationCompactVolumeStyle");
             Assert.That(secondary[0].Style.BasedOn, Is.SameAs(secondary[0].FindResource("BaseValueSliderStyle")));
             for (var cycle = 0; cycle < 2; cycle++)
@@ -365,7 +367,11 @@ public class WorkstationTrackCollapseTests
                 vm.ToggleTracksCollapsedCommand.Execute(null);
                 view.UpdateLayout();
                 Assert.That(name.IsVisible, Is.True);
-                Assert.That(file.IsVisible, Is.True);
+                var configRow = Descendants<OHsWorkstationTrackRow>(page).Single();
+                configRow.PresentSampleConfiguration = (_, _) => { };
+                Assert.That(configRow.OpenSampleConfiguration(), Is.True);
+                Assert.That(file.IsEnabled, Is.True);
+                configRow.CloseSampleConfiguration();
                 Assert.That(secondary.All(control => !control.IsVisible), Is.True);
                 Assert.That(grid.IsVisible, Is.True);
                 Assert.That(vm.TrackHeight, Is.EqualTo(vm.MinimumTrackHeight));
@@ -436,22 +442,22 @@ public class WorkstationTrackCollapseTests
             Assert.That(realized.Length, Is.LessThan(81));
             Assert.That(realized.All(control => control.IsVisible == !((Track)control.DataContext).IsCollapsed), Is.True);
             Assert.That(vm.Tracks.Last().IsCollapsed, Is.False);
-            Assert.That(Descendants<ComboBox>(list).Any(control => ReferenceEquals(control.DataContext, vm.Tracks.Last())), Is.True);
+            Assert.That(Descendants<OHsWorkstationTrackRow>(list).Any(row => ReferenceEquals(row.Track, vm.Tracks.Last())), Is.True);
             vm.ToggleTracksCollapsedCommand.Execute(null);
             vm.ToggleTracksCollapsedCommand.Execute(null);
             list.ScrollIntoView(vm.Tracks[0]);
             view.UpdateLayout();
             Assert.That(Descendants<ValueSlider>(list).Where(control => control.Name == "VolumeSlider")
                 .All(control => control.IsVisible), Is.True);
-            Assert.That(Descendants<ComboBox>(list).Any(control => ReferenceEquals(control.DataContext, vm.Tracks[0])), Is.True);
+            Assert.That(Descendants<OHsWorkstationTrackRow>(list).Any(row => ReferenceEquals(row.Track, vm.Tracks[0])), Is.True);
             UiTestPump.Run(page.DeactivateAsync());
         }
     }
 
     [TestCase("VolumeSlider", 640)]
-    [TestCase("TrackAdditionSelector", 640)]
+    [TestCase("TrackMuteToggle", 640)]
     [TestCase("VolumeSlider", 1280)]
-    [TestCase("TrackAdditionSelector", 1280)]
+    [TestCase("TrackMuteToggle", 1280)]
     public void CollapseRestoresLogicalFocusOnlyFromHiddenControls(string controlName, int width)
     {
         var track = new Track { SelectedSampleFileName = "kick.wav" };
@@ -490,8 +496,11 @@ public class WorkstationTrackCollapseTests
             { RoutedEvent = Keyboard.KeyDownEvent });
     }
 
-    private static T Find<T>(DependencyObject root, string name) where T : FrameworkElement =>
-        Descendants<T>(root).Single(control => control.Name == name);
+    private static T Find<T>(DependencyObject root, string name) where T : FrameworkElement
+    {
+        var control = Descendants<T>(root).SingleOrDefault(control => control.Name == name);
+        return control ?? Descendants<OHsWorkstationTrackRow>(root).Select(row => row.FindName(name)).OfType<T>().First();
+    }
 
     private static IEnumerable<T> Descendants<T>(DependencyObject root) where T : DependencyObject
     {

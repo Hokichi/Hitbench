@@ -21,6 +21,10 @@ public partial class WorkstationPageVM
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsSelectionMode))]
     private bool isAdditionMode = true;
-    partial void OnIsAdditionModeChanged(bool value) => PublishInstrumentTimeline();
+    partial void OnIsAdditionModeChanged(bool value)
+    {
+        OnPropertyChanged(nameof(CanCreateSampleNodes));
+        PublishInstrumentTimeline();
+    }
     public bool IsSelectionMode => !IsAdditionMode;
 }

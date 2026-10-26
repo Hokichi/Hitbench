@@ -33,7 +33,7 @@ public partial class OHsWorkstationTrackRow : UserControl
         PreviewKeyDown += (_, e) => { if ((e.Key == Key.Apps || e.Key == Key.F10 && Keyboard.Modifiers == ModifierKeys.Shift) && TryOpenTrackMenu(e.OriginalSource as DependencyObject)) e.Handled = true; };
         ((ObjectDataProvider)Resources["OHsWorkstationTrackRowSource"]).ObjectInstance = this;
         Loaded += (_, _) => { UseTouchTargets = Tablet.TabletDevices.Cast<TabletDevice>().Any(device => device.Type == TabletDeviceType.Touch); Subscribe(); RefreshPresentation(); if (FindVisualChild<StackPanel>(this, "TrackLeftControls") is { } controls) UpdateTrackHeightMinimum(controls); };
-        Unloaded += (_, _) => { if (Track is {} track) ViewModel?.CancelTrackRename(track); DetachActionMenu(); Unsubscribe(); };
+        Unloaded += (_, _) => { InvalidateSampleConfiguration(); if (Track is {} track) ViewModel?.CancelTrackRename(track); DetachActionMenu(); Unsubscribe(); };
     }
     public static readonly DependencyProperty UseTouchTargetsProperty = DependencyProperty.Register(nameof(UseTouchTargets), typeof(bool), typeof(OHsWorkstationTrackRow), new PropertyMetadata(false));
     public bool UseTouchTargets { get => (bool)GetValue(UseTouchTargetsProperty); set => SetValue(UseTouchTargetsProperty, value); }
@@ -68,6 +68,7 @@ public partial class OHsWorkstationTrackRow : UserControl
     }
     private void OnPresentationChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (configurationToken is { } token && configurationOwner?.OwnsSampleConfiguration(token) != true) InvalidateSampleConfiguration();
         if (e.PropertyName is nameof(WorkstationPageVM.SampleFiles) or nameof(WorkstationPageVM.SamplesRevision)
             or nameof(WorkstationPageVM.TrackAuditionRevision) or nameof(WorkstationPageVM.TrackPresentationRevision)
             or nameof(WorkstationPageVM.RenamingTrack) or nameof(WorkstationPageVM.TrackNameDraft)
@@ -103,6 +104,7 @@ public partial class OHsWorkstationTrackRow : UserControl
             SetCurrentValue(TrackNameDraftProperty, IsRenaming ? viewModel.TrackNameDraft : current.Name);
         }
         RefreshSampleSelectors(this);
+        RefreshSampleConfigurationSelectors();
         RefreshTrackAuditionControls(this);
         RefreshTrackSamplePresentation();
     }
@@ -150,6 +152,7 @@ public partial class OHsWorkstationTrackRow : UserControl
 
     private void OnTrackControlDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
+        if (ViewModel is null) return;
         if (sender is ToggleButton toggle) { OnTrackAuditionLoaded(toggle, new RoutedEventArgs()); return; }
         if (sender is ComboBox { Name: "TrackSampleFileSelector" } selector) OnSampleSelectorLoaded(selector, new RoutedEventArgs());
         else if (sender is ComboBox metadata) OnTrackMetadataSelectorLoaded(metadata, new RoutedEventArgs());
@@ -169,7 +172,7 @@ public partial class OHsWorkstationTrackRow : UserControl
 
     private void OnSampleSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (sender is ComboBox selector && selector.IsLoaded && selector.Tag is not true && selector.DataContext is Track track)
+        if (sender is ComboBox selector && (selector.IsLoaded || IsSampleConfigurationOpen) && selector.Tag is not true && selector.DataContext is Track track)
         {
             if (selector.SelectedItem is string fileName &&
                 !string.Equals(track.SelectedSampleFileName, fileName, StringComparison.OrdinalIgnoreCase))
@@ -188,7 +191,7 @@ public partial class OHsWorkstationTrackRow : UserControl
 
     private void OnTrackMetadataSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (sender is not ComboBox { IsLoaded: true, DataContext: Track track } selector || selector.Tag is true) return;
+        if (sender is not ComboBox { DataContext: Track track } selector || !selector.IsLoaded && !IsSampleConfigurationOpen || selector.Tag is true) return;
         if (selector.Name == "TrackSampleTypeSelector" && selector.SelectedItem is Hitbench.Core.Enums.SampleType type) { viewModel.SetTrackSampleType(track, type); return; }
         if (selector.SelectedItem is not string value) return;
         if (selector.Name == "TrackAdditionSelector") viewModel.SetTrackAddition(track, value);
@@ -264,7 +267,7 @@ public partial class OHsWorkstationTrackRow : UserControl
         if(row is null)return;
         var left = FindVisualChild<StackPanel>(row, "TrackLeftControls");
         var right = FindVisualChild<StackPanel>(row, "TrackRightControls");
-        if (left is null || right is null && stack.DataContext is not InstrumentalTrack) return;
+        if (left is null) return;
         // Measure controls independently of the timeline's current extent, including touch target growth.
         left.Measure(new Size(left.ActualWidth, double.PositiveInfinity));
         right?.Measure(new Size(right.ActualWidth, double.PositiveInfinity));
@@ -309,6 +312,7 @@ public partial class OHsWorkstationTrackRow : UserControl
     private static void OnTrackChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var row = (OHsWorkstationTrackRow)d;
+        row.InvalidateSampleConfiguration();
         if (e.OldValue is Track old) row.ViewModel?.CancelTrackRename(old);
         row.DetachActionMenu();
         row.RefreshPresentation();
@@ -317,6 +321,7 @@ public partial class OHsWorkstationTrackRow : UserControl
     private static void OnOwnerChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var row = (OHsWorkstationTrackRow)d;
+        row.InvalidateSampleConfiguration();
         if (e.OldValue is WorkstationPageVM old && row.Track is {} track) old.CancelTrackRename(track);
         row.DetachActionMenu(); row.Subscribe(); row.RefreshPresentation(); row.AttachActionMenu();
     }

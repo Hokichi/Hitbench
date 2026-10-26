@@ -77,7 +77,7 @@ public partial class OHsWorkstationTrackList
         if (!double.IsFinite(pagePoint.X) || !double.IsFinite(pagePoint.Y) || deactivationStarted) return false;
         if (grid is null) { viewModel.ClearNodeSelection(); return false; }
         if (!double.IsFinite(gridPoint.X) || !double.IsFinite(gridPoint.Y)) return false;
-        if (IsVolumeOverlayOpen || !viewModel.CanPlaceSamples || !grid.IsEnabled || !grid.CanPlaceSamples || grid.DataContext is not Track track ||
+        if (IsVolumeOverlayOpen || viewModel.IsSampleConfigurationOpen || !viewModel.CanPlaceSamples || !grid.IsEnabled || !grid.CanPlaceSamples || grid.DataContext is not Track track ||
             !viewModel.CanEditTrackGrid(track) || gridPoint.X < 0 || gridPoint.X >= Math.Min(grid.ActualWidth, grid.ViewportWidth) ||
             gridPoint.Y < 0 || gridPoint.Y >= grid.ActualHeight) return false;
         grid.UpdatePointerPosition(gridPoint.X);
