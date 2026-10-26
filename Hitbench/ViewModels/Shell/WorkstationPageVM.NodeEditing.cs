@@ -45,8 +45,16 @@ public partial class WorkstationPageVM
     public IReadOnlyDictionary<Sample, int> NodePreviewTimestamps => nodePreview;
     public IReadOnlyDictionary<Track, IReadOnlyList<int>> NodePreviewByTrack => nodePreviewByTrack;
     public bool IsNodeDragActive => dragAnchor is not null;
+    public bool IsNodeDragCopy { get; private set; }
+    public void SetNodeDragCopy(bool value)
+    {
+        if (!IsNodeDragActive || IsNodeDragCopy == value) return;
+        IsNodeDragCopy = value;
+        OnPropertyChanged(nameof(IsNodeDragCopy));
+    }
     public bool CanCopyNodes => CanPlaceSamples && selectedNodes.Count > 0;
-    public bool CanPasteNodes => CanPlaceSamples && copiedNodes.Length > 0;
+    public bool CanPasteNodes => CanPlaceSamples && copiedNodes.Length > 0 && SelectedTrack is { } track &&
+        CanEditTrackGrid(track) && sampleTrackFiles.Any(file => string.Equals(file, track.SelectedSampleFileName, StringComparison.OrdinalIgnoreCase));
     public bool CanDeleteNodes => CanCopyNodes;
 
     public bool SelectNode(Track track, Sample sample, bool toggle)
@@ -94,8 +102,7 @@ public partial class WorkstationPageVM
         var entries = SelectedNodeEntries(NodeHistoryOperation.Placement);
         if (entries.Length == 0) return false;
         var first = entries.Min(entry => entry.Sample.Timestamp);
-        copiedNodes = entries.Select(entry => new CopiedSampleNode(entry.Track, entry.Sample.FileName,
-            (long)entry.Sample.Timestamp - first)).ToArray();
+        copiedNodes = entries.Select(entry => new CopiedSampleNode((long)entry.Sample.Timestamp - first)).ToArray();
         NotifyNodeEditingState();
         return true;
     }
@@ -129,6 +136,10 @@ public partial class WorkstationPageVM
 
     private async Task<bool> PasteNodesCoreAsync()
     {
+        var destination = SelectedTrack;
+        if (destination is null || !CanEditTrackGrid(destination)) return false;
+        var fileName = sampleTrackFiles.FirstOrDefault(file => string.Equals(file, destination.SelectedSampleFileName, StringComparison.OrdinalIgnoreCase));
+        if (fileName is null) return false;
         var copied = copiedNodes.ToArray();
         var project = Project!; var path = projectPath!; var generation = loadGeneration;
         var marker = Position.TotalMilliseconds;
@@ -137,19 +148,13 @@ public partial class WorkstationPageVM
         var anchor = BeatGridCalculator.GetNearestTimestamp(project.Offsets, project.BPMs, Subdivision, marker, Waveform!.Duration.TotalMilliseconds);
         if (anchor is null) return RejectPaste("No usable grid beat for pasting samples.");
         var batch = new List<NodeHistoryEntry>();
-        var nextIndexes = new Dictionary<Track, int>();
         foreach (var node in copied)
         {
             var candidate = (long)anchor.Value + node.RelativeTimestamp;
             if (candidate >= Waveform.Duration.TotalMilliseconds) continue;
             if (!ValidNodeTimestamp(candidate)) return RejectPaste("The copied formation does not fit within the song.");
-            if (!CanEditTrackGrid(node.Track)) return RejectPaste("The original track is unavailable.");
-            if (!sampleTrackFiles.Any(file => string.Equals(file, node.FileName, StringComparison.OrdinalIgnoreCase)))
-                return RejectPaste("The copied sample file is unavailable.");
-            var sample = new Sample { FileName = node.FileName, Timestamp = (int)candidate };
-            var index = nextIndexes.GetValueOrDefault(node.Track, node.Track.Samples.Count);
-            nextIndexes[node.Track] = index + 1;
-            batch.Add(new(node.Track, sample, index, NodeHistoryOperation.Placement, NextFileName: node.FileName));
+            var sample = new Sample { FileName = fileName, Timestamp = (int)candidate };
+            batch.Add(new(destination, sample, destination.Samples.Count + batch.Count, NodeHistoryOperation.Placement));
         }
         if (batch.Count == 0) return false;
         CancelNodeDrag();
@@ -254,6 +259,7 @@ public partial class WorkstationPageVM
     {
         if (!IsNodeDragActive) return false;
         var destination = DragDestinationTrack;
+        var copy = IsNodeDragCopy;
         if (!CanPlaceSamples || !dragPreviewValid || !TryGetNodeDragDestinations(out var destinations)) { CancelNodeDrag(); return false; }
         var entries = dragNodes.Select(entry =>
         {
@@ -261,21 +267,28 @@ public partial class WorkstationPageVM
             var next = destination is null ? (int?)candidate : BeatGridCalculator.GetNearestTimestamp(Project!.Offsets, Project.BPMs, Subdivision, candidate, Waveform!.Duration.TotalMilliseconds);
             return entry with { NextTimestamp = next ?? -1 };
         }).ToArray();
-        var valid = (dragDelta != 0 || entries.Where((entry, i) => !ReferenceEquals(entry.Track, destinations[i])).Any()) &&
+        var valid = (copy || dragDelta != 0 || entries.Where((entry, i) => !ReferenceEquals(entry.Track, destinations[i])).Any()) &&
             entries.All(entry => ValidNodeTimestamp(entry.NextTimestamp));
         CancelNodeDrag();
         if (!valid) return false;
         var destinationFiles = destinations.Select(track => sampleTrackFiles.FirstOrDefault(file =>
             string.Equals(file, track.SelectedSampleFileName, StringComparison.OrdinalIgnoreCase))).ToArray();
-        if (entries.Where((entry, i) => !ReferenceEquals(entry.Track, destinations[i]) && destinationFiles[i] is null).Any())
+        if (destinationFiles.Any(file => file is null))
             return RejectPaste("The destination sample file is unavailable.");
-        if (HasNodeCollisions(entries.Select((entry, i) => (destinations[i], entry.Sample, entry.NextTimestamp)), entries.Select(entry => entry.Sample)))
+        if (HasNodeCollisions(entries.Select((entry, i) => (destinations[i], entry.Sample, entry.NextTimestamp)), copy ? [] : entries.Select(entry => entry.Sample)))
             return await CollisionAsync(nodeEditCancellation?.Token ?? loadCancellation?.Token ?? CancellationToken.None);
         var batch = new List<NodeHistoryEntry>();
         for (var i = 0; i < entries.Length; i++)
         {
             var entry = entries[i];
             var target = destinations[i];
+            if (copy)
+            {
+                var sample = new Sample { Timestamp = entry.NextTimestamp, FileName = destinationFiles[i]! };
+                batch.Add(new(target, sample, target.Samples.Count, NodeHistoryOperation.Placement));
+                target.Samples.Add(sample);
+                continue;
+            }
             if (!ReferenceEquals(entry.Track, target))
             {
                 var sourceIndex = entry.Track.Samples.IndexOf(entry.Sample);
@@ -283,12 +296,13 @@ public partial class WorkstationPageVM
                 batch.Add(entry with { Index = sourceIndex, DestinationTrack = target, DestinationIndex = targetIndex,
                     PreviousFileName = entry.Sample.FileName, NextFileName = destinationFiles[i] });
                 entry.Track.Samples.Remove(entry.Sample); target.Samples.Add(entry.Sample);
-                entry.Sample.FileName = destinationFiles[i]!;
             }
             else batch.Add(entry);
             entry.Sample.Timestamp = entry.NextTimestamp;
+            entry.Sample.FileName = destinationFiles[i]!;
         }
         history.RecordBatch(batch); if (destination is not null) SelectedTrack = destination;
+        if (copy) SetNodeSelectionCore(batch.Select(entry => entry.Sample));
         PublishNodeChange(); return true;
     }
 
@@ -305,6 +319,7 @@ public partial class WorkstationPageVM
     public void CancelNodeDrag()
     {
         var active = IsNodeDragActive;
+        SetNodeDragCopy(false);
         dragAnchor = null; dragNodes = []; dragTrackOrder = []; dragDelta = 0; DragDestinationTrack = null;
         ClearNodeDragPreview();
         if (active)

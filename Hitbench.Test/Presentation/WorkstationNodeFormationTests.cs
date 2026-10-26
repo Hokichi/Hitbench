@@ -38,6 +38,88 @@ public class WorkstationNodeFormationTests
     [TearDown]
     public async Task Cleanup() { await vm.DeactivateAsync(); audio.Dispose(); }
 
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task CopyDragPreservesOriginalsAndRecordsOnePlacementBatch(bool acrossTracks)
+    {
+        var writes = saves.Writes; var updates = audio.SampleUpdates.Count; var revision = vm.SamplesRevision;
+        vm.BeginNodeDrag(tracks[3], b);
+        vm.PreviewNodeDrag(250, tracks[acrossTracks ? 5 : 3]);
+        vm.SetNodeDragCopy(true);
+        Assert.That(vm.IsNodeDragCopy, Is.True);
+        Assert.That(await vm.CommitNodeDragAsync(), Is.True);
+        Assert.That(tracks[0].Samples.Contains(a), Is.True); Assert.That(tracks[3].Samples.Contains(b), Is.True);
+        Assert.That((a.Timestamp, b.Timestamp), Is.EqualTo((1000, 1500)));
+        var copies = vm.SelectedSamples.OrderBy(n => n.Timestamp).ToArray();
+        Assert.That(copies, Has.Length.EqualTo(2));
+        Assert.That(copies.Intersect(new[] { a, b }), Is.Empty);
+        Assert.That(copies.Select(n => n.Timestamp), Is.EqualTo(new[] { 1250, 1750 }));
+        Assert.That(tracks[acrossTracks ? 2 : 0].Samples.Contains(copies[0]), Is.True);
+        Assert.That(tracks[acrossTracks ? 5 : 3].Samples.Contains(copies[1]), Is.True);
+        Assert.That(copies.Select(n => n.FileName), Is.EqualTo(acrossTracks ? new[] { "t3.wav", "t6.wav" } : new[] { "t1.wav", "t4.wav" }));
+        Assert.That(vm.SamplesRevision, Is.EqualTo(revision + 1));
+        Assert.That(vm.IsNodeDragCopy, Is.False);
+        await vm.FlushSavesAsync(); await vm.FlushPlaybackUpdatesAsync();
+        Assert.That(saves.Writes, Is.EqualTo(writes + 1)); Assert.That(audio.SampleUpdates.Count, Is.EqualTo(updates + 1));
+        vm.UndoCommand.Execute(null); AssertOriginalFormation(); Assert.That(vm.CanUndo, Is.False);
+        vm.RedoCommand.Execute(null); Assert.That(vm.SelectedSamples.Intersect(new[] { a, b }), Is.Empty);
+        Assert.That(tracks.SelectMany(t => t.Samples).Intersect(copies).ToArray(), Has.Length.EqualTo(2));
+    }
+
+    [TestCase("zero")]
+    [TestCase("original")]
+    [TestCase("occupied")]
+    [TestCase("file")]
+    [TestCase("cancel")]
+    [TestCase("invalid")]
+    public async Task CopyDragRejectsWholeGroupWithoutChangingOriginals(string reason)
+    {
+        vm.BeginNodeDrag(tracks[3], b);
+        vm.PreviewNodeDrag(reason == "zero" ? 0 : 250, tracks[3]);
+        vm.SetNodeDragCopy(true);
+        if (reason == "original")
+        {
+            var other = new Sample { Timestamp = 1250, FileName = "t1.wav" }; tracks[0].Samples.Add(other);
+            vm.SetNodeSelection([a, other]); vm.BeginNodeDrag(tracks[0], a); vm.PreviewNodeDrag(250, tracks[0]); vm.SetNodeDragCopy(true);
+        }
+        if (reason == "occupied") tracks[0].Samples.Add(new Sample { Timestamp = 1250, FileName = "t1.wav" });
+        if (reason == "file") vm.SampleFiles.Remove("t1.wav");
+        if (reason == "cancel") vm.CancelNodeDrag();
+        if (reason == "invalid") vm.PreviewNodeDrag(250, tracks[0]);
+        var before = tracks.Select(t => t.Samples.ToArray()).ToArray();
+        Assert.That(await vm.CommitNodeDragAsync(), Is.False);
+        for (var i = 0; i < tracks.Length; i++) Assert.That(tracks[i].Samples, Is.EqualTo(before[i]));
+        Assert.That(vm.CanUndo, Is.False); Assert.That(vm.IsNodeDragActive, Is.False);
+        Assert.That(vm.IsNodeDragCopy, Is.False);
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task LastCopyModeWinsWithoutChangingDraftGeometry(bool copy)
+    {
+        vm.BeginNodeDrag(tracks[3], b); vm.PreviewNodeDrag(250, tracks[5]);
+        var preview = vm.NodePreviewByTrack;
+        vm.SetNodeDragCopy(true); vm.SetNodeDragCopy(false); vm.SetNodeDragCopy(copy);
+        Assert.That(vm.NodePreviewByTrack, Is.SameAs(preview));
+        Assert.That(await vm.CommitNodeDragAsync(), Is.True);
+        Assert.That(tracks[0].Samples.Contains(a), Is.EqualTo(copy));
+        Assert.That(a.Timestamp, Is.EqualTo(copy ? 1000 : 1250));
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task CopyCollisionCannotMutateAfterLifecycleChange(bool deactivate)
+    {
+        var pending = new TaskCompletionSource(); dialogs.Collision = token => pending.Task.WaitAsync(token);
+        vm.BeginNodeDrag(tracks[3], b); vm.PreviewNodeDrag(0, tracks[3]); vm.SetNodeDragCopy(true);
+        var operation = vm.CommitNodeDragAsync();
+        Assert.That(vm.IsNodeEditBusy, Is.True);
+        if (deactivate) await vm.DeactivateAsync();
+        else { await vm.LoadAsync("other.json", default); vm.AcknowledgePresentationReady(vm.LoadGeneration); }
+        pending.TrySetResult(); Assert.That(await operation, Is.False);
+        AssertOriginalFormation(); Assert.That(vm.CanUndo, Is.False);
+    }
+
     [Test]
     public async Task PreviewGroupsEveryNodeByMappedTrack()
     {

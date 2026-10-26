@@ -69,7 +69,12 @@ public sealed class NodeHistoryManager
         from.RemoveAt(index); to.Insert(position, entry.Sample);
         var next = reverse ? entry.PreviousTimestamp : entry.NextTimestamp;
         if (preview is not null) preview[entry.Sample] = next;
-        else { entry.Sample.Timestamp = next; entry.Sample.FileName = (reverse ? entry.PreviousFileName : entry.NextFileName) ?? entry.Sample.FileName; }
+        else
+        {
+            entry.Sample.Timestamp = next;
+            entry.Sample.FileName = (reverse ? entry.Track : entry.DestinationTrack)!.SelectedSampleFileName ??
+                (reverse ? entry.PreviousFileName : entry.NextFileName) ?? entry.Sample.FileName;
+        }
         return true;
     }
 
@@ -84,7 +89,11 @@ public sealed class NodeHistoryManager
             if (index < 0 || current != expected) return false;
             var next = reverse ? entry.PreviousTimestamp : entry.NextTimestamp;
             if (preview is not null) preview[entry.Sample] = next;
-            else entry.Sample.Timestamp = next;
+            else
+            {
+                entry.Sample.Timestamp = next;
+                entry.Sample.FileName = entry.Track.SelectedSampleFileName ?? entry.Sample.FileName;
+            }
             return true;
         }
         if (entry.Operation is not (NodeHistoryOperation.Placement or NodeHistoryOperation.Removal)) return false;
@@ -93,8 +102,8 @@ public sealed class NodeHistoryManager
         {
             if (index >= 0 || entry.Index < 0 || entry.Index > samples.Count) return false;
             if (preview is null) entry.Sample.FileName =
-                (entry.Operation == NodeHistoryOperation.Placement ? entry.NextFileName : null) ??
-                entry.Track.SelectedSampleFileName ?? entry.Sample.FileName;
+                entry.Track.SelectedSampleFileName ??
+                (entry.Operation == NodeHistoryOperation.Placement ? entry.NextFileName : null) ?? entry.Sample.FileName;
             samples.Insert(entry.Index, entry.Sample);
         }
         else

@@ -55,12 +55,14 @@ public class WorkstationNodeScrollTests
         finally { UiTestPump.Run(editor.Page.DeactivateAsync()); }
     }
 
-    [Test]
-    public void ShiftWheelRefreshesPreviewAndDropWithoutPointerMovement()
+    [TestCase(false)]
+    [TestCase(true)]
+    public void ShiftWheelRefreshesPreviewAndDropWithoutPointerMovement(bool copy)
     {
         var editor = CreateEditor(); using var view = editor.View;
         try
         {
+            editor.Page.TrackListComponent.UpdateNodeDragModifiers(copy ? ModifierKeys.Control : ModifierKeys.None);
             var timeline = (ScrollViewer)(editor.Page.Timeline).FindName("WaveformScrollViewer");
             var before = timeline.HorizontalOffset; var width = editor.Grid.ContentWidth;
             Assert.That(editor.Page.HandleContextWheel(ModifierKeys.Shift, -120 * 8, editor.Page), Is.True);
@@ -70,17 +72,21 @@ public class WorkstationNodeScrollTests
             Assert.That(expected, Is.GreaterThan(1125));
             Assert.That(editor.Vm.NodePreviewTimestamps[editor.Node], Is.EqualTo(expected));
             var drop = editor.Page.CompleteNodePointerAsync(); UiTestPump.Run(drop);
-            Assert.That(drop.Result, Is.True); Assert.That(editor.Node.Timestamp, Is.EqualTo(expected));
+            Assert.That(drop.Result, Is.True);
+            Assert.That(editor.Node.Timestamp, Is.EqualTo(copy ? 1000 : expected));
+            Assert.That(editor.Vm.SelectedSamples.Single().Timestamp, Is.EqualTo(expected));
         }
         finally { UiTestPump.Run(editor.Page.DeactivateAsync()); }
     }
 
-    [Test]
-    public void SourceRecyclingKeepsOriginalModelDrag()
+    [TestCase(false)]
+    [TestCase(true)]
+    public void SourceRecyclingKeepsOriginalModelDrag(bool copy)
     {
         var editor = CreateEditor(); using var view = editor.View;
         try
         {
+            editor.Page.TrackListComponent.UpdateNodeDragModifiers(copy ? ModifierKeys.Control : ModifierKeys.None);
             var original = editor.Vm.Tracks[0];
             editor.Grid.DataContext = editor.Vm.Tracks.Last();
             Assert.That(editor.Vm.IsNodeDragActive, Is.True);
@@ -88,11 +94,12 @@ public class WorkstationNodeScrollTests
             var target = editor.Grid;
             var targetTrack = (Track)target.DataContext;
             var local = new Point(625 / 10000d * target.ContentWidth - target.HorizontalOffset, target.ActualHeight / 2);
-            editor.Page.UpdateNodePointer(target.TranslatePoint(local, editor.Page), target, local);
+            editor.Page.UpdateNodePointer(target.TranslatePoint(local, editor.Page), target, local, copy ? ModifierKeys.Control : ModifierKeys.None);
             Assert.That(editor.Vm.NodePreviewTimestamps[editor.Node], Is.EqualTo(625));
             var drop = editor.Page.CompleteNodePointerAsync(); UiTestPump.Run(drop);
-            Assert.That(drop.Result, Is.True); Assert.That(original.Samples, Is.Empty);
-            Assert.That(targetTrack.Samples.Single(), Is.SameAs(editor.Node));
+            Assert.That(drop.Result, Is.True);
+            Assert.That(original.Samples.Contains(editor.Node), Is.EqualTo(copy));
+            Assert.That(ReferenceEquals(targetTrack.Samples.Single(), editor.Node), Is.EqualTo(!copy));
         }
         finally { UiTestPump.Run(editor.Page.DeactivateAsync()); }
     }

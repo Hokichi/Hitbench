@@ -275,7 +275,7 @@
                         IsChecked="{Binding ScrollWithMarker, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                         IsEnabled="{Binding CanPlay, Mode=OneWay}"
                         Style="{StaticResource OHsWorkstationScrollWithMarkerStyle}"
-                        ToolTip="Follow the current playback marker (F3). Selecting a node turns this off." />
+                        ToolTip="Follow the current playback marker (F). Selecting a node turns this off." />
                     <Border Style="{StaticResource OHsWorkstationToolbarSeparatorStyle}" />
                     <StackPanel VerticalAlignment="Center">
                         <TextBlock

@@ -100,6 +100,7 @@ public partial class WorkstationPageVM
         track.SelectedSampleFileName = sampleTrackFiles.FirstOrDefault(name =>
             string.Equals(name, fileName, StringComparison.OrdinalIgnoreCase)) ?? fileName;
         foreach (var sample in track.Samples) sample.FileName = track.SelectedSampleFileName;
+        NotifyNodeEditingState();
         samplesRevision++;
         OnPropertyChanged(nameof(SamplesRevision));
         QueuePlaybackUpdate();

@@ -340,9 +340,9 @@ public partial class WorkstationPage : UserControl
             if (!isRepeat) viewModel.IsAdditionMode = key is Key.D2 or Key.NumPad2;
             return true;
         }
-        if (modifiers == ModifierKeys.None && key == Key.F3)
+        if (modifiers == ModifierKeys.None && key == Key.F)
         {
-            if (!viewModel.CanPlay) return false;
+            if (!viewModel.CanPlay || IsTextInputOrigin(origin)) return false;
             if (!isRepeat) viewModel.ScrollWithMarker = !viewModel.ScrollWithMarker;
             return true;
         }

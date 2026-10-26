@@ -24,6 +24,7 @@ public partial class OHsWorkstationTrackList
     private (Sample Sample, int Timestamp, int TrackIndex)[] nodeDragGroup = [];
     public Task NodeInputCompletion { get; private set; } = Task.CompletedTask;
     private ModifierKeys pointerModifiers;
+    private ModifierKeys nodeModifiers;
     private BeatInterval? pointerInterval;
     private bool pointerMoved;
     private Point pointerLast;
@@ -32,6 +33,12 @@ public partial class OHsWorkstationTrackList
     private bool refreshingNodeDrag;
     private int nodeWheelRemainder;
     internal bool IsRegionSelectionActive => regionAdorner is not null;
+    internal void UpdateNodeDragModifiers(ModifierKeys modifiers)
+    {
+        if (nodeSourceTrack is null) return;
+        nodeModifiers = modifiers;
+        if (nodeDragging) viewModel.SetNodeDragCopy(modifiers.HasFlag(ModifierKeys.Control));
+    }
 
     private void InitializeNodeInteraction()
     {
@@ -40,6 +47,13 @@ public partial class OHsWorkstationTrackList
         PreviewMouseLeftButtonUp += OnNodePointerUp;
         LostMouseCapture += OnNodeCaptureLost;
         PreviewGotKeyboardFocus += OnTrackFocused;
+        AddHandler(Keyboard.PreviewKeyUpEvent, new KeyEventHandler(OnNodeModifierKeyUp), true);
+    }
+    private void OnNodeModifierKeyUp(object sender, KeyEventArgs e)
+    {
+        if (e.Key is not (Key.LeftCtrl or Key.RightCtrl) || nodeSourceTrack is null) return;
+        UpdateNodeDragModifiers(Keyboard.Modifiers);
+        e.Handled = true;
     }
     private void OnTrackFocused(object sender, KeyboardFocusChangedEventArgs e)
     {
@@ -77,7 +91,7 @@ public partial class OHsWorkstationTrackList
         grid.UpdatePointerPosition(gridPoint.X);
         pointerInterval = grid.ActiveInterval;
         nodeSourceGrid = grid; nodeSourceTrack = track; pointerNode = sample; pointerStart = pointerLast = pagePoint;
-        pointerModifiers = modifiers; pointerMoved = false;
+        pointerModifiers = nodeModifiers = modifiers; pointerMoved = false;
         grid.PressedSample = modifiers.HasFlag(ModifierKeys.Control) ? null : sample; grid.SuppressPlacementFeedback = true;
         grid.DataContextChanged += OnNodeGridRecycled;
         grid.Unloaded += OnNodeGridUnloaded;
@@ -113,22 +127,23 @@ public partial class OHsWorkstationTrackList
         UpdateNodePointerAt(e.GetPosition(this));
         e.Handled = true;
     }
-    private void UpdateNodePointerAt(Point pagePoint)
+    private void UpdateNodePointerAt(Point pagePoint, ModifierKeys? modifiers = null)
     {
         var grid = FindAncestor<BeatGridView>(InputHitTest(pagePoint) as DependencyObject);
-        UpdateNodePointer(pagePoint, grid, grid is null ? default : TranslatePoint(pagePoint, grid), Keyboard.Modifiers);
+        UpdateNodePointer(pagePoint, grid, grid is null ? default : TranslatePoint(pagePoint, grid), modifiers ?? Keyboard.Modifiers);
     }
     public void UpdateNodePointer(Point pagePoint, BeatGridView? targetGrid, Point targetPoint, ModifierKeys modifiers = ModifierKeys.None)
     {
         if (!double.IsFinite(pagePoint.X) || !double.IsFinite(pagePoint.Y) || nodeSourceTrack is not { } source ||
             !viewModel.CanPlaceSamples || !viewModel.CanEditTrackGrid(source) || IsVolumeOverlayOpen) { CancelNodePointer(); return; }
         pointerLast = pagePoint;
-        if (!pointerModifiers.HasFlag(ModifierKeys.Control) && modifiers.HasFlag(ModifierKeys.Control)) { CancelNodePointer(); return; }
+        UpdateNodeDragModifiers(modifiers);
         var pastThreshold = Math.Abs(pagePoint.X - pointerStart.X) >= SystemParameters.MinimumHorizontalDragDistance ||
             Math.Abs(pagePoint.Y - pointerStart.Y) >= SystemParameters.MinimumVerticalDragDistance;
-        if (pointerModifiers.HasFlag(ModifierKeys.Control)) { pointerMoved |= pastThreshold; return; }
         if (pointerNode is null)
         {
+            if (!pointerModifiers.HasFlag(ModifierKeys.Control) && modifiers.HasFlag(ModifierKeys.Control)) { CancelNodePointer(); return; }
+            if (pointerModifiers.HasFlag(ModifierKeys.Control)) { pointerMoved |= pastThreshold; return; }
             if (!pointerMoved && !pastThreshold) return;
             if (!viewModel.IsSelectionMode) { CancelNodePointer(); return; }
             pointerMoved = true;
@@ -159,6 +174,7 @@ public partial class OHsWorkstationTrackList
             TrackList.LayoutUpdated += OnNodeDragLayoutUpdated;
             TrackList.AddHandler(ScrollViewer.ScrollChangedEvent, new ScrollChangedEventHandler(OnNodeDragScrollChanged));
         }
+        UpdateNodeDragModifiers(modifiers);
         nodeAdorner!.CursorPosition = TranslatePoint(pagePoint, TrackList);
         UpdateNodeAdornerGeometry();
         targetGrid?.GetBindingExpression(BeatGridView.ContentWidthProperty)?.UpdateTarget();
@@ -232,7 +248,7 @@ public partial class OHsWorkstationTrackList
         try
         {
             nodeDragScrollPending = false;
-            UpdateNodePointerAt(pointerLast);
+            UpdateNodePointerAt(pointerLast, nodeModifiers);
         }
         finally { refreshingNodeDrag = false; }
     }
@@ -377,7 +393,7 @@ public partial class OHsWorkstationTrackList
         DetachNodeSourceGrid();
         if (nodeAdorner is not null) nodeLayer?.Remove(nodeAdorner);
         if (regionAdorner is not null) nodeLayer?.Remove(regionAdorner);
-        regionAdorner = null; pointerInterval = null; pointerModifiers = ModifierKeys.None; pointerMoved = false;
+        regionAdorner = null; pointerInterval = null; pointerModifiers = nodeModifiers = ModifierKeys.None; pointerMoved = false;
         pointerNode = null; nodeSourceTrack = null; nodeAdorner = null; nodeLayer = null; nodeDragGroup = []; nodeDragging = false; nodeTargetValid = false;
         nodeDragScrollPending = false; nodeWheelRemainder = 0;
         if (IsMouseCaptured) ReleaseMouseCapture();
@@ -393,8 +409,8 @@ public partial class OHsWorkstationTrackList
     public bool HandleNodeKey(Key key, ModifierKeys modifiers, bool isRepeat, DependencyObject? origin)
     {
         if (HandleTrackDragKey(key)) return true;
-        if (key is Key.LeftCtrl or Key.RightCtrl && nodeSourceTrack is not null && !pointerModifiers.HasFlag(ModifierKeys.Control))
-        { CancelNodePointer(); return true; }
+        if (key is Key.LeftCtrl or Key.RightCtrl && nodeSourceTrack is not null)
+        { UpdateNodeDragModifiers(modifiers); return true; }
         if (key == Key.Escape && nodeSourceTrack is not null) { CancelNodePointer(); return true; }
         if (FindAncestor<TextBoxBase>(origin) is not null || FindAncestor<PasswordBox>(origin) is not null || FindAncestor<ComboBox>(origin)?.IsEditable == true) return false;
         if (key == Key.Escape && modifiers == ModifierKeys.None && viewModel.SelectedSamples.Count > 0)

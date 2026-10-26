@@ -41,14 +41,44 @@ public class NodeHistoryBatchTests
         Assert.That(destination.Samples.Count, Is.EqualTo(redo ? 0 : 1));
     }
     [Test]
-    public void PinnedPlacementRedoKeepsCopiedFile()
+    public void PlacementRedoUsesCurrentTrackFileInsteadOfSnapshot()
     {
         var sample = new Sample { Timestamp = 500, FileName = "a.wav" };
         var track = new Track { Samples = [sample], SelectedSampleFileName = "b.wav" };
         var history = new NodeHistoryManager();
         history.RecordBatch([new(track, sample, 0, NodeHistoryOperation.Placement, NextFileName: "a.wav")]);
         Assert.That(history.Undo([track]), Is.True); Assert.That(history.Redo([track]), Is.True);
-        Assert.That(sample.FileName, Is.EqualTo("a.wav"));
+        Assert.That(sample.FileName, Is.EqualTo("b.wav"));
+    }
+
+    [Test]
+    public void TransferReplayUsesCurrentSampleOfReceivingTrack()
+    {
+        var sample = new Sample { Timestamp = 500, FileName = "b.wav" };
+        var source = new Track { SelectedSampleFileName = "new-a.wav" };
+        var destination = new Track { SelectedSampleFileName = "new-b.wav", Samples = [sample] };
+        var history = new NodeHistoryManager();
+        history.RecordBatch([new(source, sample, 0, NodeHistoryOperation.Movement, 125, 500, destination, 0, "a.wav", "b.wav")]);
+        Assert.That(history.Undo([source, destination]), Is.True);
+        Assert.That(source.Samples.Single(), Is.SameAs(sample));
+        Assert.That((sample.Timestamp, sample.FileName), Is.EqualTo((125, "new-a.wav")));
+        Assert.That(history.Redo([source, destination]), Is.True);
+        Assert.That(destination.Samples.Single(), Is.SameAs(sample));
+        Assert.That((sample.Timestamp, sample.FileName), Is.EqualTo((500, "new-b.wav")));
+    }
+
+    [Test]
+    public void MovementReplayUsesCurrentTrackSample()
+    {
+        var sample = new Sample { Timestamp = 500, FileName = "old.wav" };
+        var track = new Track { SelectedSampleFileName = "current.wav", Samples = [sample] };
+        var history = new NodeHistoryManager();
+        history.RecordBatch([new(track, sample, 0, NodeHistoryOperation.Movement, 125, 500)]);
+        Assert.That(history.Undo([track]), Is.True);
+        Assert.That((sample.Timestamp, sample.FileName), Is.EqualTo((125, "current.wav")));
+        track.SelectedSampleFileName = "next.wav";
+        Assert.That(history.Redo([track]), Is.True);
+        Assert.That((sample.Timestamp, sample.FileName), Is.EqualTo((500, "next.wav")));
     }
 
     [Test]

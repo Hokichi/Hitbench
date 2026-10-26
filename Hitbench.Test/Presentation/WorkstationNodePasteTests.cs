@@ -21,29 +21,29 @@ public class WorkstationNodePasteTests
         vm = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav", data)) },
             new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), new StubSampleFileService(["a.wav", "b.wav"]), nodePasteDialog: dialogs, trackRemovalDialog: new StubTrackRemovalDialogService { Confirm = _ => Task.FromResult(true) });
         await vm.LoadAsync("project.json", CancellationToken.None); vm.AcknowledgePresentationReady(vm.LoadGeneration);
+        vm.SelectedTrack = source;
     }
     [TearDown] public Task Cleanup() => vm.DeactivateAsync();
     [Test]
-    public async Task MarkerPastePreservesOriginalTracksAndFrozenNodeValues()
+    public async Task MarkerPasteUsesSelectedTrackAndItsSampleWithFrozenTiming()
     {
         var other = new Sample { Timestamp = 1125, FileName = "b.wav" };
         destination.Samples.Add(other);
         vm.SetNodeSelection([node, other]); Assert.That(vm.CopySelectedNodes(), Is.True);
         node.Timestamp = 2000; node.FileName = "b.wav";
-        destination.Samples.Remove(other); vm.SelectedTrack = null;
+        destination.Samples.Remove(other); vm.SelectedTrack = destination;
         await vm.SeekCommand.ExecuteAsync(TimeSpan.FromMilliseconds(3010));
         Assert.That(vm.CanPasteNodes, Is.True);
         Assert.That(await vm.PasteCopiedNodesAsync(), Is.True);
         var first = vm.SelectedSamples.Single(n => n.Timestamp == 3000);
         var second = vm.SelectedSamples.Single(n => n.Timestamp == 3125);
-        Assert.That(source.Samples.Contains(first), Is.True);
-        Assert.That(destination.Samples.Single(), Is.SameAs(second));
-        Assert.That((first.FileName, second.FileName), Is.EqualTo(("a.wav", "b.wav")));
+        Assert.That(destination.Samples, Is.EqualTo(new[] { first, second }));
+        Assert.That((first.FileName, second.FileName), Is.EqualTo(("b.wav", "b.wav")));
         Assert.That(first, Is.Not.SameAs(node)); Assert.That(second, Is.Not.SameAs(other));
         vm.UndoCommand.Execute(null);
         Assert.That(source.Samples.Single(), Is.SameAs(node)); Assert.That(destination.Samples, Is.Empty);
         vm.RedoCommand.Execute(null);
-        Assert.That(source.Samples.Contains(first), Is.True); Assert.That(destination.Samples.Single(), Is.SameAs(second));
+        Assert.That(destination.Samples, Is.EqualTo(new[] { first, second }));
     }
     [Test]
     public async Task OffGridOffsetsSurviveDifferentDestinationBpm()
@@ -101,13 +101,16 @@ public class WorkstationNodePasteTests
         Assert.That(vm.SelectedSamples.Single().Timestamp, Is.EqualTo(9875));
     }
     [Test]
-    public async Task SimultaneousNodesOnDifferentTracksAreAllowed()
+    public async Task SimultaneousNodesFromDifferentTracksRejectEntirePaste()
     {
         var other = new Sample { Timestamp = 1000, FileName = "b.wav" }; destination.Samples.Add(other);
         vm.SetNodeSelection([node, other]); vm.CopySelectedNodes();
         await vm.SeekCommand.ExecuteAsync(TimeSpan.FromMilliseconds(3000));
-        Assert.That(await vm.PasteCopiedNodesAsync(), Is.True);
-        Assert.That(vm.SelectedSamples.Select(n => n.Timestamp), Is.EqualTo(new[] { 3000, 3000 }));
+        Assert.That(await vm.PasteCopiedNodesAsync(), Is.False);
+        Assert.That(source.Samples.Single(), Is.SameAs(node));
+        Assert.That(destination.Samples.Single(), Is.SameAs(other));
+        Assert.That(vm.SelectedSamples, Is.EquivalentTo(new[] { node, other }));
+        Assert.That(dialogs.Collisions, Is.EqualTo(1)); Assert.That(vm.CanUndo, Is.False);
     }
     [TestCase("collision")]
     [TestCase("duplicate")]
@@ -120,7 +123,7 @@ public class WorkstationNodePasteTests
         vm.SetNodeSelection(source.Samples); vm.CopySelectedNodes();
         await vm.SeekCommand.ExecuteAsync(TimeSpan.FromMilliseconds(3000));
         if (reason == "collision") source.Samples.Add(new Sample { Timestamp = 3000, FileName = "a.wav" });
-        if (reason == "track") await vm.RemoveTrackCommand.ExecuteAsync(source);
+        if (reason == "track") { await vm.RemoveTrackCommand.ExecuteAsync(source); vm.SelectedTrack = null; }
         if (reason == "file") vm.SampleFiles.Remove("a.wav");
         if (reason == "grid") { vm.Project!.Offsets = [11000]; vm.Project.BPMs = [120]; }
         var selected = vm.SelectedSamples.ToArray(); var before = vm.Tracks.SelectMany(t => t.Samples).ToArray();
@@ -131,14 +134,66 @@ public class WorkstationNodePasteTests
         Assert.That(vm.SamplesRevision, Is.EqualTo(revision)); Assert.That(vm.CanUndo, Is.False);
     }
     [Test]
-    public async Task PasteAndRedoKeepCopiedFileAfterTrackSampleChanges()
+    public async Task PasteAndRedoFollowCurrentTrackSample()
     {
         vm.SelectNode(source, node, false); vm.CopySelectedNodes(); vm.SelectSample(source, "b.wav");
         await vm.SeekCommand.ExecuteAsync(TimeSpan.FromMilliseconds(3000));
         Assert.That(await vm.PasteCopiedNodesAsync(), Is.True);
-        var copy = vm.SelectedSamples.Single(); Assert.That(copy.FileName, Is.EqualTo("a.wav"));
-        vm.UndoCommand.Execute(null); vm.RedoCommand.Execute(null);
+        var copy = vm.SelectedSamples.Single(); Assert.That(copy.FileName, Is.EqualTo("b.wav"));
+        vm.UndoCommand.Execute(null); vm.SelectSample(source, "a.wav"); vm.RedoCommand.Execute(null);
         Assert.That(copy.FileName, Is.EqualTo("a.wav"));
+    }
+
+    [TestCase("none")]
+    [TestCase("instrumental")]
+    [TestCase("missing")]
+    [TestCase("unassigned")]
+    [TestCase("removed")]
+    public async Task PasteRequiresEditableSelectedTrack(string kind)
+    {
+        vm.SelectNode(source, node, false); vm.CopySelectedNodes();
+        vm.SelectedTrack = destination;
+        if (kind == "none") vm.SelectedTrack = null;
+        if (kind == "instrumental") { var track = new InstrumentalTrack(); vm.Tracks.Add(track); vm.SelectedTrack = track; }
+        if (kind == "missing") destination.SelectedSampleFileName = "missing.wav";
+        if (kind == "unassigned") destination.SelectedSampleFileName = null;
+        if (kind == "removed") vm.Tracks.Remove(destination);
+        Assert.That(vm.CanPasteNodes, Is.False);
+        Assert.That(vm.PasteNodesCommand.CanExecute(null), Is.False);
+        Assert.That(await vm.PasteCopiedNodesAsync(), Is.False);
+        Assert.That(source.Samples.Single(), Is.SameAs(node));
+        Assert.That(vm.CanUndo, Is.False);
+    }
+
+    [Test]
+    public async Task RemovingSourceAfterCopyDoesNotPreventPasteToSelectedTrack()
+    {
+        vm.SelectNode(source, node, false); vm.CopySelectedNodes();
+        await vm.RemoveTrackCommand.ExecuteAsync(source); vm.SelectedTrack = destination;
+        await vm.SeekCommand.ExecuteAsync(TimeSpan.FromMilliseconds(3000));
+        Assert.That(await vm.PasteCopiedNodesAsync(), Is.True);
+        Assert.That(destination.Samples.Single().Timestamp, Is.EqualTo(3000));
+        Assert.That(destination.Samples.Single().FileName, Is.EqualTo("b.wav"));
+    }
+
+    [Test]
+    public void PasteAvailabilityNotifiesOnTrackAndSampleChanges()
+    {
+        vm.SelectNode(source, node, false); vm.CopySelectedNodes();
+        var notifications = 0;
+        vm.PasteNodesCommand.CanExecuteChanged += (_, _) => notifications++;
+        vm.SelectedTrack = null;
+        Assert.That(vm.CanPasteNodes, Is.False);
+        vm.SelectedTrack = destination;
+        Assert.That(vm.CanPasteNodes, Is.True);
+        var before = notifications;
+        vm.SelectSample(destination, "a.wav");
+        Assert.That(destination.SelectedSampleFileName, Is.EqualTo("a.wav"));
+        Assert.That(notifications, Is.GreaterThan(before));
+        destination.SelectedSampleFileName = "missing.wav";
+        Assert.That(vm.CanPasteNodes, Is.False);
+        vm.SelectSample(destination, "b.wav");
+        Assert.That(vm.CanPasteNodes, Is.True);
     }
     [TestCase(false)]
     [TestCase(true)]

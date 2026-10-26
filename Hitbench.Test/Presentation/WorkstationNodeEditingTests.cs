@@ -105,7 +105,7 @@ public class WorkstationNodeEditingTests
     }
 
     [Test]
-    public async Task PastePreservesFormationFrozenFileAndSelectedTrack()
+    public async Task PastePreservesTimingOnSelectedTrack()
     {
         vm.SetNodeSelection([a, b, c]);
         Assert.That(vm.CopySelectedNodes(), Is.True);
@@ -117,7 +117,7 @@ public class WorkstationNodeEditingTests
         var earliest = vm.SelectedSamples.Single(n => n.Timestamp == 3000);
         Assert.That(earliest.FileName, Is.EqualTo("a.wav"));
         Assert.That(first.Samples.Contains(earliest), Is.True);
-        Assert.That(second.Samples.Any(n => n.Timestamp == 3125), Is.True);
+        Assert.That(first.Samples.Any(n => n.Timestamp == 3125), Is.True);
         var copies = vm.SelectedSamples.ToArray();
         Assert.That(await vm.PasteCopiedNodesAsync(), Is.False);
         Assert.That(vm.SelectedSamples, Is.EquivalentTo(copies));
@@ -125,7 +125,7 @@ public class WorkstationNodeEditingTests
         Assert.That(first.Samples.Count, Is.EqualTo(1));
         Assert.That(second.Samples.Count, Is.EqualTo(1));
         vm.RedoCommand.Execute(null);
-        Assert.That(first.Samples.Count, Is.EqualTo(3));
+        Assert.That(first.Samples.Count, Is.EqualTo(4));
     }
 
     [Test]
@@ -140,7 +140,7 @@ public class WorkstationNodeEditingTests
         Assert.That(vm.SamplesRevision, Is.EqualTo(revision + 1));
         Assert.That(saves.Writes, Is.EqualTo(writes + 1));
         Assert.That(audio.SampleUpdates.Count, Is.EqualTo(scheduled + 1));
-        Assert.That(ProjectDataSerializer.Deserialize(saves.LatestJson!).Tracks[1].Samples.Last().Timestamp, Is.EqualTo(3125));
+        Assert.That(ProjectDataSerializer.Deserialize(saves.LatestJson!).Tracks[0].Samples.Last().Timestamp, Is.EqualTo(3125));
     }
 
     [TestCase(260, 1250, 1500, 1375)]

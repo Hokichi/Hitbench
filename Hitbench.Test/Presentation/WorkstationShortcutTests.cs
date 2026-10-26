@@ -47,19 +47,40 @@ public class WorkstationShortcutTests
         }
     }
 
-    [TestCase(Key.F3)]
+    [TestCase(Key.F)]
     [TestCase(Key.F4)]
     public void ToolbarToggleShortcutsToggleOnlyOnce(Key key)
     {
         var (page, vm, view) = CreateShortcutPage(); using (view)
         {
-            var before = key == Key.F3 ? vm.ScrollWithMarker : vm.AreTracksCollapsed;
-            Assert.That(page.HandlePlaybackKey(key, ModifierKeys.None, false, new TextBox()), Is.True);
-            Assert.That(key == Key.F3 ? vm.ScrollWithMarker : vm.AreTracksCollapsed, Is.EqualTo(!before));
+            var before = key == Key.F ? vm.ScrollWithMarker : vm.AreTracksCollapsed;
+            Assert.That(page.HandlePlaybackKey(key, ModifierKeys.None, false, key == Key.F ? page : new TextBox()), Is.True);
+            Assert.That(key == Key.F ? vm.ScrollWithMarker : vm.AreTracksCollapsed, Is.EqualTo(!before));
             Assert.That(page.HandlePlaybackKey(key, ModifierKeys.None, true, page), Is.True);
-            Assert.That(key == Key.F3 ? vm.ScrollWithMarker : vm.AreTracksCollapsed, Is.EqualTo(!before));
+            Assert.That(key == Key.F ? vm.ScrollWithMarker : vm.AreTracksCollapsed, Is.EqualTo(!before));
             Assert.That(page.HandlePlaybackKey(key, ModifierKeys.Control, false, page), Is.False);
             UiTestPump.Run(page.DeactivateAsync());
+        }
+    }
+
+    [TestCase("text")]
+    [TestCase("password")]
+    [TestCase("editable-combo")]
+    public void FollowShortcutPreservesTextInputAndRejectsOldKey(string kind)
+    {
+        var (page, vm, view) = CreateShortcutPage(); using (view)
+        {
+            DependencyObject input = kind switch
+            {
+                "password" => new PasswordBox(), "editable-combo" => new ComboBox { IsEditable = true }, _ => new TextBox()
+            };
+            var before = vm.ScrollWithMarker;
+            Assert.That(page.HandlePlaybackKey(Key.F, ModifierKeys.None, false, input), Is.False);
+            Assert.That(page.HandlePlaybackKey(Key.F3, ModifierKeys.None, false, page), Is.False);
+            Assert.That(vm.ScrollWithMarker, Is.EqualTo(before));
+            UiTestPump.Run(page.DeactivateAsync());
+            Assert.That(page.HandlePlaybackKey(Key.F, ModifierKeys.None, false, page), Is.False);
+            Assert.That(vm.ScrollWithMarker, Is.EqualTo(before));
         }
     }
 

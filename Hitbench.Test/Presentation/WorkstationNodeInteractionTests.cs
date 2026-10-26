@@ -15,6 +15,85 @@ namespace Hitbench.Test.Presentation;
 [NonParallelizable]
 public class WorkstationNodeInteractionTests
 {
+    [TestCase(false, false)]
+    [TestCase(false, true)]
+    [TestCase(true, false)]
+    [TestCase(true, true)]
+    public void ControlDragUsesLiveModeAtDrop(bool startWithControl, bool copyAtDrop)
+    {
+        var editor = CreateEditor(); using var view = editor.View;
+        try
+        {
+            var grids = Descendants<BeatGridView>(editor.Page).ToArray();
+            foreach (var grid in grids) { grid.ContentWidth = 1000; grid.ViewportWidth = 500; grid.HorizontalOffset = 0; }
+            var y = grids[0].ActualHeight / 2;
+            editor.Page.BeginNodePointer(grids[0], new Point(100, y), new Point(), startWithControl ? ModifierKeys.Control : ModifierKeys.None);
+            editor.Page.UpdateNodePointer(new Point(20, 100), grids[1], new Point(125, y), startWithControl ? ModifierKeys.Control : ModifierKeys.None);
+            Assert.That(editor.Vm.IsNodeDragActive, Is.True);
+            Assert.That(grids[0].GetDisplayedSampleBounds(editor.Node).IsEmpty, Is.EqualTo(!startWithControl));
+            var preview = editor.Vm.NodePreviewByTrack;
+            Assert.That(editor.Page.HandlePlaybackKey(Key.LeftCtrl, ModifierKeys.Control, false, grids[0]), Is.True);
+            Assert.That(editor.Vm.IsNodeDragCopy, Is.True);
+            Assert.That(grids[0].GetDisplayedSampleBounds(editor.Node).IsEmpty, Is.False);
+            editor.Page.TrackListComponent.UpdateNodeDragModifiers(ModifierKeys.Control);
+            Assert.That(editor.Vm.IsNodeDragCopy, Is.True, "Another Ctrl key remains held");
+            if (!copyAtDrop)
+                grids[0].RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, PresentationSource.FromVisual(grids[0])!, 0, Key.LeftCtrl) { RoutedEvent = Keyboard.PreviewKeyUpEvent });
+            Assert.That(editor.Vm.IsNodeDragCopy, Is.EqualTo(copyAtDrop));
+            Assert.That(editor.Vm.NodePreviewByTrack, Is.SameAs(preview));
+            Assert.That(grids[0].GetDisplayedSampleBounds(editor.Node).IsEmpty, Is.EqualTo(!copyAtDrop));
+            var drop = editor.Page.CompleteNodePointerAsync(); UiTestPump.Run(drop);
+            Assert.That(drop.Result, Is.True);
+            var placed = editor.Vm.Tracks[1].Samples.Single();
+            Assert.That((placed.Timestamp, placed.FileName), Is.EqualTo((1250, "b.wav")));
+            Assert.That(ReferenceEquals(placed, editor.Node), Is.EqualTo(!copyAtDrop));
+            Assert.That(editor.Vm.Tracks[0].Samples.Contains(editor.Node), Is.EqualTo(copyAtDrop));
+            Assert.That(editor.Node.Timestamp, Is.EqualTo(copyAtDrop ? 1000 : 1250));
+        }
+        finally { UiTestPump.Run(editor.Page.DeactivateAsync()); }
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public void ControlDragResolvesSelectionOnlyWhenDragging(bool alreadySelected)
+    {
+        var editor = CreateEditor(); using var view = editor.View;
+        try
+        {
+            var grid = Descendants<BeatGridView>(editor.Page).First();
+            grid.ContentWidth = 1000; grid.ViewportWidth = 500; grid.HorizontalOffset = 0;
+            var other = new Sample { Timestamp = 1500, FileName = "a.wav" }; editor.Vm.Tracks[0].Samples.Add(other);
+            editor.Vm.SetNodeSelection(alreadySelected ? [editor.Node, other] : [other]);
+            var y = grid.ActualHeight / 2;
+            editor.Page.BeginNodePointer(grid, new Point(100, y), new Point(), ModifierKeys.Control);
+            editor.Page.UpdateNodePointer(new Point(20, 20), grid, new Point(125, y), ModifierKeys.Control);
+            Assert.That(editor.Vm.IsNodeDragCopy, Is.True);
+            var drop = editor.Page.CompleteNodePointerAsync(); UiTestPump.Run(drop);
+            Assert.That(drop.Result, Is.True);
+            Assert.That(editor.Vm.SelectedSamples, Has.Count.EqualTo(alreadySelected ? 2 : 1));
+            Assert.That(editor.Node.Timestamp, Is.EqualTo(1000)); Assert.That(other.Timestamp, Is.EqualTo(1500));
+        }
+        finally { UiTestPump.Run(editor.Page.DeactivateAsync()); }
+    }
+
+    [Test]
+    public void ControlPressedBeforeThresholdStartsCopy()
+    {
+        var editor = CreateEditor(); using var view = editor.View;
+        try
+        {
+            var grid = Descendants<BeatGridView>(editor.Page).First();
+            grid.ContentWidth = 1000; grid.ViewportWidth = 500; grid.HorizontalOffset = 0;
+            var y = grid.ActualHeight / 2;
+            editor.Page.BeginNodePointer(grid, new Point(100, y), new Point());
+            Assert.That(editor.Page.HandlePlaybackKey(Key.RightCtrl, ModifierKeys.Control, false, grid), Is.True);
+            editor.Page.UpdateNodePointer(new Point(20, 20), grid, new Point(125, y), ModifierKeys.Control);
+            Assert.That(editor.Vm.IsNodeDragCopy, Is.True);
+            editor.Page.CancelNodePointer(); Assert.That(editor.Vm.IsNodeDragCopy, Is.False);
+            Assert.That(editor.Node.Timestamp, Is.EqualTo(1000)); Assert.That(editor.Vm.CanUndo, Is.False);
+        }
+        finally { UiTestPump.Run(editor.Page.DeactivateAsync()); }
+    }
     [Test]
     public void SelectedGroupAdornerDrawsEveryNode()
     {
@@ -356,7 +435,7 @@ public class WorkstationNodeInteractionTests
         UiTestPump.Run(editor.Page.DeactivateAsync());
     }
     [Test]
-    public void ControlClickTogglesAcrossTracksWithoutRearmingRemovedNode()
+    public void ControlClickTogglesAcrossTracksAndReleaseBeforeDragMovesGroup()
     {
         var editor = CreateEditor(); using var view = editor.View;
         var grids = Descendants<BeatGridView>(editor.Page).ToArray();
@@ -369,9 +448,9 @@ public class WorkstationNodeInteractionTests
         Assert.That(editor.Page.BeginNodePointer(grids[1], new Point(150, editor.Vm.TrackHeight / 2), new Point(), ModifierKeys.Control), Is.True);
         editor.Page.UpdateNodePointer(new Point(20, 20), grids[1], new Point(200, editor.Vm.TrackHeight / 2));
         var completion = editor.Page.CompleteNodePointerAsync(); UiTestPump.Run(completion);
-        Assert.That(completion.GetAwaiter().GetResult(), Is.False);
+        Assert.That(completion.GetAwaiter().GetResult(), Is.True);
         Assert.That(editor.Vm.SelectedSamples, Is.EquivalentTo(new[] { editor.Node, other }));
-        Assert.That(other.Timestamp, Is.EqualTo(1500)); Assert.That(editor.Vm.CanUndo, Is.False);
+        Assert.That(other.Timestamp, Is.EqualTo(2000)); Assert.That(editor.Vm.CanUndo, Is.True);
         UiTestPump.Run(editor.Page.DeactivateAsync());
     }
     [Test]

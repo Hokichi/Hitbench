@@ -153,19 +153,13 @@ public class WorkstationNodePlaceholderTests
         Assert.That(destination.DragPreviewTimestamps, Is.EqualTo(new[] { 1250 }));
     }
 
-    [TestCase("drop")]
-    [TestCase("escape")]
-    [TestCase("capture")]
-    [TestCase("source-recycle")]
-    [TestCase("target-recycle")]
-    [TestCase("source-unload")]
-    [TestCase("target-unload")]
-    [TestCase("overlay")]
-    [TestCase("reload")]
-    [TestCase("deactivate")]
-    public void PlaceholderGroupClearsOnGestureEnd(string action)
+    [Test, Combinatorial]
+    public void PlaceholderGroupClearsOnGestureEnd(
+        [Values("drop", "escape", "capture", "source-recycle", "target-recycle", "source-unload", "target-unload", "overlay", "reload", "deactivate")] string action,
+        [Values(false, true)] bool copy)
     {
         CreateEditor(); vm.SetNodeSelection([a, b]); BeginLaterTrackDrag(); MoveTo(vm.Tracks[5]);
+        page.TrackListComponent.UpdateNodeDragModifiers(copy ? ModifierKeys.Control : ModifierKeys.None);
         var source = Grid(vm.Tracks[3]); var target = Grid(vm.Tracks[5]);
         Assert.That(Grid(vm.Tracks[2]).DragPreviewTimestamps, Is.EqualTo(new[] { 1250 }));
         switch (action)

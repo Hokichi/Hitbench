@@ -61,6 +61,15 @@ public sealed class InstrumentalDrawerInputTests
         var roll = (PianoRollView)drawer.FindName("PianoRoll");
         try
         {
+            var follow = owner.ScrollWithMarker;
+            Assert.That(shell.HandleWindowKeyDown(true, Key.F, ModifierKeys.None, false, roll), Is.True);
+            Assert.That(owner.ScrollWithMarker, Is.EqualTo(!follow));
+            Assert.That(shell.HandleWindowKeyDown(true, Key.F, ModifierKeys.None, true, roll), Is.True);
+            Assert.That(owner.ScrollWithMarker, Is.EqualTo(!follow));
+            Assert.That(shell.HandleWindowKeyDown(true, Key.F3, ModifierKeys.None, false, roll), Is.False);
+            Assert.That(shell.HandleWindowKeyDown(true, Key.F, ModifierKeys.Control, false, roll), Is.False);
+            Assert.That(shell.HandleWindowKeyDown(true, Key.F, ModifierKeys.None, false, new TextBox()), Is.False);
+            Assert.That(owner.ScrollWithMarker, Is.EqualTo(!follow));
             shell.FlowDirection = FlowDirection.RightToLeft;
             drawer.GetBindingExpression(FrameworkElement.FlowDirectionProperty)!.UpdateTarget();
             Assert.That(drawer.FlowDirection, Is.EqualTo(FlowDirection.RightToLeft));

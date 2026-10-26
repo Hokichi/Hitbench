@@ -695,7 +695,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
         if (OHsInstrumentalArrangementDrawer.IsTextInput(origin)) return false;
         if (drawer.HandleEditorShortcut(key, modifiers, isRepeat, origin)) return true;
         if (page.DataContext is not WorkstationPageVM vm) return false;
-        if (key == Key.F3 && modifiers == ModifierKeys.None)
+        if (key == Key.F && modifiers == ModifierKeys.None)
         { if (!isRepeat && vm.CanPlay) vm.ScrollWithMarker = !vm.ScrollWithMarker; return true; }
         IAsyncRelayCommand? command = (key, modifiers) switch
         {

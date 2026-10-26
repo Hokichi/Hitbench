@@ -43,6 +43,7 @@ public sealed class BeatGridView : FrameworkElement
     public static readonly DependencyProperty SelectionCueBrushProperty = DependencyProperty.Register(nameof(SelectionCueBrush), typeof(Brush), typeof(BeatGridView), new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
     public static readonly DependencyProperty SelectedSamplesProperty = DependencyProperty.Register(nameof(SelectedSamples), typeof(IReadOnlyCollection<Sample>), typeof(BeatGridView), new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
     public static readonly DependencyProperty IsNodeDragActiveProperty = DependencyProperty.Register(nameof(IsNodeDragActive), typeof(bool), typeof(BeatGridView), RenderMetadata(false));
+    public static readonly DependencyProperty IsNodeDragCopyProperty = DependencyProperty.Register(nameof(IsNodeDragCopy), typeof(bool), typeof(BeatGridView), RenderMetadata(false));
     public static readonly DependencyProperty PressedSampleProperty = DependencyProperty.Register(nameof(PressedSample), typeof(Sample), typeof(BeatGridView), new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
     public static readonly DependencyProperty SuppressPlacementFeedbackProperty = DependencyProperty.Register(nameof(SuppressPlacementFeedback), typeof(bool), typeof(BeatGridView), new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsRender));
     public static readonly RoutedEvent SamplePlacementRequestedEvent = EventManager.RegisterRoutedEvent(nameof(SamplePlacementRequested), RoutingStrategy.Bubble, typeof(EventHandler<SamplePlacementRequestedEventArgs>), typeof(BeatGridView));
@@ -72,12 +73,13 @@ public sealed class BeatGridView : FrameworkElement
     public Brush? SelectionCueBrush { get => (Brush?)GetValue(SelectionCueBrushProperty); set => SetValue(SelectionCueBrushProperty, value); }
     public IReadOnlyCollection<Sample>? SelectedSamples { get => (IReadOnlyCollection<Sample>?)GetValue(SelectedSamplesProperty); set => SetValue(SelectedSamplesProperty, value); }
     public bool IsNodeDragActive { get => (bool)GetValue(IsNodeDragActiveProperty); set => SetValue(IsNodeDragActiveProperty, value); }
+    public bool IsNodeDragCopy { get => (bool)GetValue(IsNodeDragCopyProperty); set => SetValue(IsNodeDragCopyProperty, value); }
     public Sample? PressedSample { get => (Sample?)GetValue(PressedSampleProperty); set => SetValue(PressedSampleProperty, value); }
     public bool SuppressPlacementFeedback { get => (bool)GetValue(SuppressPlacementFeedbackProperty); set => SetValue(SuppressPlacementFeedbackProperty, value); }
     public BeatInterval? ActiveInterval { get; private set; }
 
     private bool IsSampleSelected(Sample sample) => SelectedSamples?.Contains(sample) == true;
-    private bool IsSampleHidden(Sample sample) => IsNodeDragActive && IsSampleSelected(sample);
+    private bool IsSampleHidden(Sample sample) => IsNodeDragActive && !IsNodeDragCopy && IsSampleSelected(sample);
 
     private IEnumerable<Sample> SamplesInHitOrder()
     {

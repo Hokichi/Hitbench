@@ -149,7 +149,7 @@ public class WorkstationRegionSelectionTests
     [TestCase("selected")]
     [TestCase("unselected")]
     [TestCase("blank")]
-    public void CtrlDragDoesNotToggleOrMove(string origin)
+    public void CtrlDragCopiesNodesAndLeavesBlankSpaceSelectionAlone(string origin)
     {
         vm.SetNodeSelection([second]);
         var row = origin == "selected" ? 1 : 0;
@@ -157,9 +157,18 @@ public class WorkstationRegionSelectionTests
         var p = PagePoint(row, x, grids[row].ActualHeight / 2);
         Assert.That(page.BeginNodePointer(grids[row], new Point(x, grids[row].ActualHeight / 2), p, ModifierKeys.Control), Is.True);
         page.UpdateNodePointer(new Point(p.X + 100, p.Y + 100), grids[row], new Point(x + 100, grids[row].ActualHeight / 2), ModifierKeys.Control);
-        Release(); Assert.That(vm.SelectedSamples.Single(), Is.SameAs(second));
+        Release();
+        if (origin == "blank") Assert.That(vm.SelectedSamples.Single(), Is.SameAs(second));
+        else
+        {
+            var original = row == 0 ? first : second;
+            var copy = vm.SelectedSamples.Single();
+            Assert.That(copy, Is.Not.SameAs(original));
+            Assert.That((copy.Timestamp, copy.FileName), Is.EqualTo((original.Timestamp + 1000, original.FileName)));
+            Assert.That(vm.Tracks[row].Samples.Contains(copy), Is.True);
+        }
         Assert.That(new[] { first.Timestamp, second.Timestamp }, Is.EqualTo(new[] { 1000, 1500 }));
-        Assert.That(vm.CanUndo, Is.False); AssertNoAdorner();
+        Assert.That(vm.CanUndo, Is.EqualTo(origin != "blank")); AssertNoAdorner();
     }
     [Test]
     public void CtrlClickTogglesOnlyAfterRelease()
@@ -172,15 +181,20 @@ public class WorkstationRegionSelectionTests
         Release(); Assert.That(vm.SelectedSamples.Single(), Is.SameAs(second));
     }
     [Test]
-    public void IntroducingCtrlCancelsMovementWithoutCommit()
+    public void IntroducingCtrlSwitchesMovementToDuplication()
     {
         var p = PagePoint(0, 100, grids[0].ActualHeight / 2);
         page.BeginNodePointer(grids[0], new Point(100, grids[0].ActualHeight / 2), p);
         page.UpdateNodePointer(new Point(p.X + 50, p.Y), grids[0], new Point(150, grids[0].ActualHeight / 2));
         Assert.That(vm.IsNodeDragActive, Is.True);
         page.UpdateNodePointer(new Point(p.X + 100, p.Y), grids[0], new Point(200, grids[0].ActualHeight / 2), ModifierKeys.Control);
-        Release(); Assert.That(first.Timestamp, Is.EqualTo(1000)); Assert.That(vm.CanUndo, Is.False);
-        Assert.That(vm.SelectedSamples.Single(), Is.SameAs(first)); AssertNoAdorner();
+        Release(); Assert.That(first.Timestamp, Is.EqualTo(1000)); Assert.That(vm.CanUndo, Is.True);
+        var copy = vm.SelectedSamples.Single();
+        Assert.That(copy, Is.Not.SameAs(first));
+        Assert.That((copy.Timestamp, copy.FileName), Is.EqualTo((2000, "a.wav")));
+        Assert.That(vm.Tracks[0].Samples.Contains(copy), Is.True); AssertNoAdorner();
+        vm.UndoCommand.Execute(null);
+        Assert.That(vm.Tracks[0].Samples.Single(), Is.SameAs(first));
     }
     [TestCase(false)]
     [TestCase(true)]
