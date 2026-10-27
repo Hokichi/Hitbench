@@ -1,3 +1,5 @@
+using System.IO;
+
 namespace Hitbench.Resources.DataModels;
 
 public sealed class FolderSnapshot
@@ -11,6 +13,22 @@ public sealed class FolderSnapshot
             var order = groupPinned ? right.IsPinned.CompareTo(left.IsPinned) : 0;
             return order != 0 ? order : right.LastChanged.CompareTo(left.LastChanged);
         });
+
+    public FolderSnapshot FilterProjectsByMapset(string mapsetPath, CancellationToken token = default)
+    {
+        static string? Normalize(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path)) return null;
+            try { return Path.TrimEndingDirectorySeparator(Path.GetFullPath(path)); }
+            catch (Exception error) when (error is ArgumentException or NotSupportedException or PathTooLongException) { return null; }
+        }
+        var selected = Normalize(mapsetPath);
+        return ForProjects(entries.Where(entry =>
+        {
+            token.ThrowIfCancellationRequested();
+            return selected is not null && string.Equals(selected, Normalize(entry.BeatmapPath), StringComparison.OrdinalIgnoreCase);
+        }), false, token);
+    }
 
     public FolderSnapshot FilterProjects(string query, CancellationToken token = default)
     {

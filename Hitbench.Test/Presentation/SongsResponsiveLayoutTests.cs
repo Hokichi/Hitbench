@@ -223,7 +223,7 @@ public class SongsResponsiveLayoutTests
     }
 
     private static HomePageVM CreateVM() => new(new StubHomeFolderService(), new StubAppSettingsService(),
-        new StubInstallationDialogService(), new StubProjectCreationDialogService(), new ImmediateUiScheduler(),
+        new StubInstallationDialogService(), new ImmediateUiScheduler(),
         new StubProjectFileService((_, _, _) => Task.FromResult("saved.json")), new WeakReferenceMessenger());
 
     [Test]

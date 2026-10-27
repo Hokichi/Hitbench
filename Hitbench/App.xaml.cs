@@ -73,11 +73,6 @@ public partial class App : Application
         registrations.AddSingleton<IUiScheduler>(_ => uiScheduler ?? new UiScheduler(Current.Dispatcher));
         registrations.AddSingleton<IInstallationDialogService>(_ =>
             new InstallationDialogService(() => Current.MainWindow, Current.Dispatcher));
-        registrations.AddSingleton<Func<string, IReadOnlySet<string>, ProjectNamePopupVM>>(_ =>
-            (suggestedName, existingNames) => new ProjectNamePopupVM(suggestedName, existingNames));
-        registrations.AddSingleton<IProjectCreationDialogService>(provider =>
-            new ProjectCreationDialogService(() => Current.MainWindow, Current.Dispatcher,
-                provider.GetRequiredService<Func<string, IReadOnlySet<string>, ProjectNamePopupVM>>()));
         registrations.AddTransient<HomePageVM>();
         registrations.AddTransient<HomePage>();
         registrations.AddSingleton<Func<HomePage>>(provider => () => provider.GetRequiredService<HomePage>());

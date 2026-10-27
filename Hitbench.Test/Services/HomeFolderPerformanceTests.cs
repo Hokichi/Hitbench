@@ -48,7 +48,7 @@ public class HomeFolderPerformanceTests
                 Assert.That(page[0].Name, Is.EqualTo($"{count - 1:D5}"));
                 var vm = new HomePageVM(folders, settings, new StubInstallationDialogService
                     { Locate = _ => throw new AssertionException("Configured startup must not open picker") },
-                    new StubProjectCreationDialogService(), new ImmediateUiScheduler(),
+                    new ImmediateUiScheduler(),
                     new ProjectFileService(root.FullName), new WeakReferenceMessenger());
                 timer.Restart();
                 await vm.LoadAsync(CancellationToken.None);

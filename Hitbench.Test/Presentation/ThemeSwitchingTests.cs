@@ -14,7 +14,7 @@ public sealed class ThemeSwitchingTests
         service.ApplyInitialTheme(initialTheme);
         var messenger = new CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger();
         var vm = new Hitbench.ViewModels.Shell.HomePage.HomePageVM(new StubHomeFolderService(), settings,
-            new StubInstallationDialogService(), new StubProjectCreationDialogService(), new ImmediateUiScheduler(),
+            new StubInstallationDialogService(), new ImmediateUiScheduler(),
             new StubProjectFileService((_, _, _) => Task.FromResult("saved.json")), messenger);
         var page = new Hitbench.Views.Pages.HomePage(vm);
         var window = new MainWindow(page, messenger, () => throw new AssertionException("Unexpected navigation."),

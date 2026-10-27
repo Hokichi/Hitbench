@@ -32,7 +32,7 @@ public sealed class HomePageGlowOverlayIntegrationTests
                 .Select(i => new FolderEntry($@"C:\Projects\{i:D3}", $"Project {i:D3}", default) { HasProjectMetadata = true }), true))
         };
         vm = new HomePageVM(folders, new StubAppSettingsService(), new StubInstallationDialogService(),
-            new StubProjectCreationDialogService(), new ImmediateUiScheduler(),
+            new ImmediateUiScheduler(),
             new StubProjectFileService((_, _, _) => Task.FromResult("saved.json")), new WeakReferenceMessenger());
         page = new HomePage(vm);
         window = new Window { Content = page, Width = 1920, Height = 1040 };

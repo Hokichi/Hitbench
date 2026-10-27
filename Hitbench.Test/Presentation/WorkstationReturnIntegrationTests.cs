@@ -46,7 +46,7 @@ public class WorkstationReturnIntegrationTests
     private HomePage CreateHome()
     {
         var home = new HomePage(new HomePageVM(new StubHomeFolderService(), new StubAppSettingsService(),
-            new StubInstallationDialogService(), new StubProjectCreationDialogService(), new ImmediateUiScheduler(),
+            new StubInstallationDialogService(), new ImmediateUiScheduler(),
             new StubProjectFileService((_, _, _) => Task.FromResult("project.json")), messenger));
         homes.Add(home);
         return home;

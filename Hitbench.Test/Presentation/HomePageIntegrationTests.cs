@@ -517,7 +517,7 @@ public class HomePageIntegrationTests
         var messenger = new WeakReferenceMessenger();
         var vm = new HomePageVM(new StubHomeFolderService(_ => Task.FromResult(new HomeFolderData([], [], "C:\\osu", true, false))),
             new StubAppSettingsService(), new StubInstallationDialogService(),
-            new StubProjectCreationDialogService { Result = "Selected" }, new ImmediateUiScheduler(),
+            new ImmediateUiScheduler(),
             new StubProjectFileService((_, _, token) => pending.Task.WaitAsync(token)), messenger);
         var window = TestShell.Create(new HomePage(vm), messenger,
             () => throw new AssertionException("Must not navigate"), vm, new StubAppSettingsService());
@@ -550,7 +550,7 @@ public class HomePageIntegrationTests
         var vm = new HomePageVM(new StubHomeFolderService
             { Songs = (_, _) => Task.FromResult<FolderSnapshot?>(new FolderSnapshot([row])) },
             new StubAppSettingsService(), new StubInstallationDialogService(),
-            new StubProjectCreationDialogService { Result = "Selected" }, new ImmediateUiScheduler(),
+            new ImmediateUiScheduler(),
             new StubProjectFileService((folder, _, _) => { selected = folder; return pending.Task; }), messenger);
         var page = new HomePage(vm);
         var window = TestShell.Create(page, messenger, WorkstationTestPage.Create, vm,
@@ -620,7 +620,7 @@ public class HomePageIntegrationTests
         messenger.Register<ProjectOpenRequestedMessage>(this,
             (_, message) => opened.Add(message.ProjectPath));
         var vm = new HomePageVM(folders, new StubAppSettingsService(), new StubInstallationDialogService(),
-            new StubProjectCreationDialogService(), new ImmediateUiScheduler(),
+            new ImmediateUiScheduler(),
             new StubProjectFileService((_, _, _) => Task.FromResult("saved.json")), messenger);
         var page = new HomePage(vm);
         var window = new Window
@@ -1091,6 +1091,6 @@ public class HomePageIntegrationTests
 
     private static HomePageVM CreateVM(IHomeFolderService folders) =>
         new(folders, new StubAppSettingsService(), new StubInstallationDialogService(),
-            new StubProjectCreationDialogService(), new ImmediateUiScheduler(),
+            new ImmediateUiScheduler(),
             new StubProjectFileService((_, _, _) => Task.FromResult("saved.json")), new WeakReferenceMessenger());
 }

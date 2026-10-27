@@ -17,6 +17,23 @@ public partial class HomePageVM
     private FolderSnapshot? projectsInventory;
     private readonly HashSet<Task> projectOperations = [];
     public bool IsProjectSearchActive => !string.IsNullOrWhiteSpace(ProjectSearchText);
+    public bool HasSelectedMapset => SelectedMapset is not null;
+    public bool CanSearchProjects => CanInteract && !HasSelectedMapset && !IsCreatingProject;
+
+    partial void OnSelectedMapsetChanged(FolderEntry? value)
+    {
+        ResetProjectDraft();
+        OnPropertyChanged(nameof(HasSelectedMapset));
+        RefreshCommands();
+        if (active && projectsInventory is not null) SearchProjectsCommand.Execute(null);
+    }
+
+    [RelayCommand]
+    private void SelectMapset(FolderEntry? entry)
+    {
+        if (!CanInteract || IsCreatingProject) return;
+        SelectedMapset = string.Equals(SelectedMapset?.FullName, entry?.FullName, StringComparison.OrdinalIgnoreCase) ? null : entry;
+    }
 
     partial void OnIsMutatingProjectsChanged(bool value) => RefreshCommands();
     partial void OnProjectSearchTextChanged(string value)
@@ -40,10 +57,12 @@ public partial class HomePageVM
         var generation = ++projectsGeneration;
         var inventory = projectsInventory!;
         var query = ProjectSearchText;
+        var mapsetPath = SelectedMapset?.FullName;
         SetBusy(true, true);
         try
         {
-            var snapshot = await Task.Run(() => inventory.FilterProjects(query, linked.Token), linked.Token);
+            var snapshot = await Task.Run(() => mapsetPath is null ? inventory.FilterProjects(query, linked.Token)
+                : inventory.FilterProjectsByMapset(mapsetPath, linked.Token), linked.Token);
             linked.Token.ThrowIfCancellationRequested();
             if (!IsCurrent(true, generation)) return;
             projectsSnapshot = snapshot;
@@ -58,7 +77,7 @@ public partial class HomePageVM
     private void RebuildProjectItems()
     {
         ProjectItems.Clear();
-        if (IsProjectSearchActive)
+        if (HasSelectedMapset || IsProjectSearchActive)
         {
             foreach (var project in Projects) ProjectItems.Add(OHsHomeProjectListItem.ForProject(project));
             return;

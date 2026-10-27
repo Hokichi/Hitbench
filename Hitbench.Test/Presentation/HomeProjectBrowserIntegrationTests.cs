@@ -17,7 +17,7 @@ public sealed class HomeProjectBrowserIntegrationTests
     {
         new SongsResponsiveLayoutTests().SetUp();
         var vm = new HomePageVM(new StubHomeFolderService(), new StubAppSettingsService(), new StubInstallationDialogService(),
-            new StubProjectCreationDialogService(), new ImmediateUiScheduler(), new StubProjectFileService((_, _, _) => Task.FromResult("saved")), new WeakReferenceMessenger());
+            new ImmediateUiScheduler(), new StubProjectFileService((_, _, _) => Task.FromResult("saved")), new WeakReferenceMessenger());
         var page = new HomePage(vm);
         var window = new Window { Content = page, Width = 1280, Height = 720 };
         using var view = new InMemoryView(window);
@@ -38,8 +38,7 @@ public sealed class HomeProjectBrowserIntegrationTests
         new SongsResponsiveLayoutTests().SetUp();
         var row = new FolderEntry("project", "Middle match", default) { HasProjectMetadata = true };
         var vm = new HomePageVM(new StubHomeFolderService { Projects = _ => Task.FromResult(FolderSnapshot.ForProjects([row], true)) },
-            new StubAppSettingsService(), new StubInstallationDialogService(), new StubProjectCreationDialogService(),
-            new ImmediateUiScheduler(), new StubProjectFileService((_, _, _) => Task.FromResult("saved")), new WeakReferenceMessenger());
+            new StubAppSettingsService(), new StubInstallationDialogService(), new ImmediateUiScheduler(), new StubProjectFileService((_, _, _) => Task.FromResult("saved")), new WeakReferenceMessenger());
         var page = new HomePage(vm);
         var window = new Window { Content = page, Width = 1280, Height = 720 };
         using var view = new InMemoryView(window);
@@ -82,8 +81,7 @@ public sealed class HomeProjectBrowserIntegrationTests
         new SongsResponsiveLayoutTests().SetUp();
         var rows = Enumerable.Range(0, 200).Select(i => new FolderEntry(i.ToString(), $"Project {i}", default));
         var vm = new HomePageVM(new StubHomeFolderService { Projects = _ => Task.FromResult(FolderSnapshot.ForProjects(rows, true)) },
-            new StubAppSettingsService(), new StubInstallationDialogService(), new StubProjectCreationDialogService(),
-            new ImmediateUiScheduler(), new StubProjectFileService((_, _, _) => Task.FromResult("saved")), new WeakReferenceMessenger());
+            new StubAppSettingsService(), new StubInstallationDialogService(), new ImmediateUiScheduler(), new StubProjectFileService((_, _, _) => Task.FromResult("saved")), new WeakReferenceMessenger());
         var page = new HomePage(vm);
         var window = new Window { Content = page, Width = 1280, Height = 720 };
         using var view = new InMemoryView(window);

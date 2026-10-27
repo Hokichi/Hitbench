@@ -22,8 +22,7 @@ public class HomePageSongScrollingTests
         vm = new HomePageVM(new StubHomeFolderService
             { Songs = (_, _) => Task.FromResult<FolderSnapshot?>(new FolderSnapshot(Enumerable.Range(0, 500).Select(i =>
                 new FolderEntry($@"C:\Songs\{i:D3}", $"{i:D3}", DateTimeOffset.MinValue)))) },
-            new StubAppSettingsService(), new StubInstallationDialogService(), new StubProjectCreationDialogService(),
-            new ImmediateUiScheduler(), new StubProjectFileService((_, _, _) => Task.FromResult("saved.json")), new WeakReferenceMessenger());
+            new StubAppSettingsService(), new StubInstallationDialogService(), new ImmediateUiScheduler(), new StubProjectFileService((_, _, _) => Task.FromResult("saved.json")), new WeakReferenceMessenger());
         page = new HomePage(vm);
         window = new Window { Content = page, Width = 1920, Height = 1040 };
         view = new InMemoryView(window);

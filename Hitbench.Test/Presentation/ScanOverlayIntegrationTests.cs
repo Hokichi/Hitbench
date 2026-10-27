@@ -102,8 +102,7 @@ public class ScanOverlayIntegrationTests
     }
 
     private static HomePage CreateSongPage() => new(new HomePageVM(new StubHomeFolderService(),
-        new StubAppSettingsService(), new StubInstallationDialogService(), new StubProjectCreationDialogService(),
-        new UiScheduler(Dispatcher.CurrentDispatcher),
+        new StubAppSettingsService(), new StubInstallationDialogService(), new UiScheduler(Dispatcher.CurrentDispatcher),
         new StubProjectFileService((_, _, _) => Task.FromResult("saved.json")), new WeakReferenceMessenger()));
 
     [Test]
@@ -149,7 +148,7 @@ public class ScanOverlayIntegrationTests
             },
             new StubAppSettingsService { Load = _ => Task.FromResult(new AppSettings()) },
             new StubInstallationDialogService { Locate = _ => { picking.SetResult(); return picker.Task; } },
-            new StubProjectCreationDialogService(), new UiScheduler(Dispatcher.CurrentDispatcher),
+            new UiScheduler(Dispatcher.CurrentDispatcher),
             new StubProjectFileService((_, _, _) => Task.FromResult("saved.json")),
             new WeakReferenceMessenger());
         var window = TestShell.Create(new HomePage(vm), new WeakReferenceMessenger(), WorkstationTestPage.Create, vm,
@@ -204,7 +203,7 @@ public class ScanOverlayIntegrationTests
             },
             new StubAppSettingsService { Load = _ => Task.FromResult(new AppSettings { OsuPath = configured ? @"C:\osu" : "" }) },
             new StubInstallationDialogService { Locate = _ => throw new AssertionException("Valid installation must not recover") },
-            new StubProjectCreationDialogService(), new UiScheduler(Dispatcher.CurrentDispatcher),
+            new UiScheduler(Dispatcher.CurrentDispatcher),
             new StubProjectFileService((_, _, _) => Task.FromResult("saved.json")),
             new WeakReferenceMessenger());
         var window = TestShell.Create(new HomePage(vm), new WeakReferenceMessenger(), WorkstationTestPage.Create, vm,

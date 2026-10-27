@@ -15,9 +15,9 @@ namespace Hitbench.ViewModels.Shell.HomePage;
 
 public partial class HomePageVM(
     IHomeFolderService folders, IAppSettingsService settings, IInstallationDialogService dialogs,
-    IProjectCreationDialogService projectDialogs, IUiScheduler ui,
+    IUiScheduler ui,
     IProjectFileService projectFiles, IMessenger messenger,
-    IProjectRemovalDialogService? removalDialogs = null) : ObservableObject
+    IProjectRemovalDialogService? removalDialogs = null) : ObservableObject, System.ComponentModel.INotifyDataErrorInfo
 {
     internal const int InitialSongCount = 9 * 5;
     [ObservableProperty] private string songSearchText = "";
@@ -157,6 +157,9 @@ public partial class HomePageVM(
     private void RefreshCommands()
     {
         OnPropertyChanged(nameof(CanInteract));
+        OnPropertyChanged(nameof(CanSearchProjects));
+        ShowProjectCreationCommand.NotifyCanExecuteChanged();
+        CancelProjectCreationCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(HasMoreProjects));
         OnPropertyChanged(nameof(HasMoreSongs));
         OpenProjectCommand.NotifyCanExecuteChanged();
@@ -172,7 +175,6 @@ public partial class HomePageVM(
         DeleteProjectCommand.NotifyCanExecuteChanged();
     }
 
-    private bool CanCreateProject(FolderEntry? entry) => entry is not null && CanInteract && !IsCreatingProject;
     private bool CanOpenProject(FolderEntry? entry) => entry is not null && CanInteract && !IsCreatingProject;
     private bool CanLoadMoreProjects() => CanInteract && HasMoreProjects && !IsLoadingProjects && !CanRetryProjects;
     private bool CanLoadMoreSongs(int requestedCount) =>
@@ -186,39 +188,6 @@ public partial class HomePageVM(
     {
         if (!CanOpenProject(entry)) return;
         messenger.Send(new ProjectOpenRequestedMessage(Path.Combine(entry!.FullName, "project.json")));
-    }
-
-    [RelayCommand(CanExecute = nameof(CanCreateProject))]
-    private async Task CreateProjectAsync(FolderEntry? entry, CancellationToken cancellationToken)
-    {
-        if (!CanCreateProject(entry)) return;
-        SelectedMapset = entry;
-        using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, lifetime.Token);
-        IsCreatingProject = true;
-        try
-        {
-            string projectPath;
-            try
-            {
-                var existingNames = await projectFiles.GetExistingNamesAsync(linked.Token);
-                linked.Token.ThrowIfCancellationRequested();
-                var projectName = await projectDialogs.RequestNameAsync(
-                    entry!.DisplayName, existingNames, linked.Token);
-                linked.Token.ThrowIfCancellationRequested();
-                if (string.IsNullOrWhiteSpace(projectName)) return;
-                projectPath = await projectFiles.CreateAsync(entry.Directory, projectName, linked.Token);
-                linked.Token.ThrowIfCancellationRequested();
-                if (!active) return;
-            }
-            catch (OperationCanceledException) when (linked.IsCancellationRequested) { return; }
-            catch (Exception error)
-            {
-                if (active) messenger.Send(new ProjectCreationFailedMessage($"Unable to create project: {error.Message}"));
-                return;
-            }
-            messenger.Send(new ProjectCreatedMessage(projectPath));
-        }
-        finally { IsCreatingProject = false; }
     }
 
     public Task LoadAsync(CancellationToken cancellationToken) => loading ??= LoadCoreAsync(cancellationToken);
@@ -374,7 +343,8 @@ public partial class HomePageVM(
             if (projects)
             {
                 projectsInventory = snapshot;
-                snapshot = snapshot?.FilterProjects(ProjectSearchText, token);
+                snapshot = SelectedMapset is { } selected ? snapshot?.FilterProjectsByMapset(selected.FullName, token)
+                    : snapshot?.FilterProjects(ProjectSearchText, token);
                 projectsSnapshot = snapshot;
             }
             else
@@ -523,6 +493,7 @@ public partial class HomePageVM(
         EndProcessing();
         lifetime.Cancel();
         CreateProjectCommand.Cancel();
+        ShowProjectCreationCommand.Cancel();
         LoadMoreProjectsCommand.Cancel();
         LoadMoreSongsCommand.Cancel();
         RetryProjectsCommand.Cancel();
@@ -545,7 +516,7 @@ public partial class HomePageVM(
 
     private async Task CleanupAsync()
     {
-        var tasks = new[] { loading, CreateProjectCommand.ExecutionTask, LoadMoreProjectsCommand.ExecutionTask,
+        var tasks = new[] { loading, CreateProjectCommand.ExecutionTask, ShowProjectCreationCommand.ExecutionTask, LoadMoreProjectsCommand.ExecutionTask,
             LoadMoreSongsCommand.ExecutionTask, RetryProjectsCommand.ExecutionTask, RetrySongsCommand.ExecutionTask,
             ReloadSongsCommand.ExecutionTask }.Concat(searchOperations).Concat(projectOperations).ToArray();
         try { await Task.WhenAll(tasks.OfType<Task>()); }

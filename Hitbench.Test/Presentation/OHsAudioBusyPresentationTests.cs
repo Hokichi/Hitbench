@@ -17,7 +17,7 @@ public class OHsAudioBusyPresentationTests
         new SongsResponsiveLayoutTests().SetUp();
         var messenger = new WeakReferenceMessenger(); var settings = new StubAppSettingsService();
         var vm = new HomePageVM(new StubHomeFolderService(), settings, new StubInstallationDialogService(),
-            new StubProjectCreationDialogService(), new ImmediateUiScheduler(),
+            new ImmediateUiScheduler(),
             new StubProjectFileService((_, _, _) => Task.FromResult("saved.json")), messenger);
         var window = TestShell.Create(new HomePage(vm), messenger, WorkstationTestPage.Create, vm, settings);
         try

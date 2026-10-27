@@ -20,7 +20,7 @@ public sealed class MainWindowPopupHostTests
         var settings = new StubAppSettingsService();
         var messenger = new WeakReferenceMessenger();
         HomePage CreateHome() => new(new HomePageVM(new StubHomeFolderService(), settings, new StubInstallationDialogService(),
-            new StubProjectCreationDialogService(), new ImmediateUiScheduler(),
+            new ImmediateUiScheduler(),
             new StubProjectFileService((_, _, _) => Task.FromResult("saved.json")), messenger));
         var page = CreateHome();
         return TestShell.Create(page, messenger, createWorkstation ?? WorkstationTestPage.Create, (HomePageVM)page.DataContext, settings, createHome: CreateHome);

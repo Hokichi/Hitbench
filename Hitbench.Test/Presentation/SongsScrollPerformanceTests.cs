@@ -30,7 +30,7 @@ public class SongsScrollPerformanceTests
                 var messenger = new WeakReferenceMessenger();
                 var settings = new StubAppSettingsService();
                 var vm = new HomePageVM(new StubHomeFolderService(), settings,
-                    new StubInstallationDialogService(), new StubProjectCreationDialogService(), new ImmediateUiScheduler(),
+                    new StubInstallationDialogService(), new ImmediateUiScheduler(),
                     new StubProjectFileService((_, _, _) => Task.FromResult("saved.json")), messenger);
                 for (var i = 0; i < count; i++)
                     vm.Songs.Add(new FolderEntry($@"C:\Songs\{i}", i.ToString(), DateTimeOffset.MinValue) { BackgroundPath = path });

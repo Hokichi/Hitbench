@@ -5,7 +5,7 @@ public sealed class LoadingPresentationTests
     [Test]
     public async Task InitialMessageEndsAfterPresentationAndStaysOffForPagination()
     {
-        var vm=new HomePageVM(new StubHomeFolderService(),new StubAppSettingsService(),new StubInstallationDialogService(),new StubProjectCreationDialogService(),new ImmediateUiScheduler(), new StubProjectFileService((_,_,_)=>Task.FromResult("saved")), new CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger());
+        var vm=new HomePageVM(new StubHomeFolderService(),new StubAppSettingsService(),new StubInstallationDialogService(),new ImmediateUiScheduler(), new StubProjectFileService((_,_,_)=>Task.FromResult("saved")), new CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger());
         await vm.LoadAsync(default);
         Assert.That(vm.IsInitialLoading,Is.True);
         vm.CompleteSongsPresentation(vm.SongsPresentationGeneration);

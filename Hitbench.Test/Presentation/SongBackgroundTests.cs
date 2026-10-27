@@ -45,7 +45,7 @@ public class SongBackgroundTests
             PixelFormats.Bgra32, null, new byte[400000], 4000)));
         using (var stream = File.Create(path)) encoder.Save(stream);
         var vm = new HomePageVM(new StubHomeFolderService(), new StubAppSettingsService(),
-            new StubInstallationDialogService(), new StubProjectCreationDialogService(), new ImmediateUiScheduler(),
+            new StubInstallationDialogService(), new ImmediateUiScheduler(),
             new StubProjectFileService((_, _, _) => Task.FromResult("saved.json")), new WeakReferenceMessenger());
         viewModel = vm;
         vm.Songs.Add(new FolderEntry(@"C:\Songs\One", "One", DateTimeOffset.MinValue) { BackgroundPath = path });

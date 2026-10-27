@@ -284,7 +284,7 @@ public class WorkstationShellVolumeTests
         var settings = new StubAppSettingsService();
         var messenger = new WeakReferenceMessenger();
         HomePage CreateHome() => new(new HomePageVM(new StubHomeFolderService(), settings,
-            new StubInstallationDialogService(), new StubProjectCreationDialogService(), new ImmediateUiScheduler(),
+            new StubInstallationDialogService(), new ImmediateUiScheduler(),
             new StubProjectFileService((_, _, _) => Task.FromResult("saved.json")), messenger));
         var home = CreateHome();
         var shell = TestShell.Create(home, messenger, WorkstationTestPage.Create,

@@ -6,6 +6,29 @@ namespace Hitbench.Test.Presentation;
 
 public sealed class HomeProjectBrowserTests
 {
+    [Test]
+    public async Task SelectedMapsetFiltersFullInventoryWithoutHeadingsAndRestoresQuery()
+    {
+        var mapset = new FolderEntry(@"C:\Songs\Chosen", "Chosen", default);
+        var rows = Enumerable.Range(0, 90).Select(i => Entry($"project{i}", i % 2 == 0, i) with
+        { BeatmapPath = i == 0 ? @"c:\songs\CHOSEN\" : @"C:\Other\Chosen" }).ToArray();
+        var vm = await Ready(rows);
+        try
+        {
+            vm.ProjectSearchText = "project89";
+            await vm.SearchProjectsCommand.ExecutionTask!;
+            vm.SelectedMapset = mapset;
+            if (vm.SearchProjectsCommand.ExecutionTask is { } filtering) await filtering;
+            Assert.That(vm.Projects.Select(p => p.Name), Is.EqualTo(new[] { "project0" }));
+            Assert.That(vm.ProjectItems.All(p => !p.IsHeading), Is.True);
+            vm.SelectedMapset = null;
+            await vm.SearchProjectsCommand.ExecutionTask!;
+            Assert.That(vm.ProjectSearchText, Is.EqualTo("project89"));
+            Assert.That(vm.Projects.Single().Name, Is.EqualTo("project89"));
+        }
+        finally { vm.Deactivate(); }
+    }
+
     private static FolderEntry Entry(string name, bool pinned = false, int minutes = 0) => new(name, name, default)
         { IsPinned = pinned, LastChanged = DateTimeOffset.UnixEpoch.AddMinutes(minutes), HasProjectMetadata = true };
 
@@ -13,8 +36,7 @@ public sealed class HomeProjectBrowserTests
         StubProjectRemovalDialogService? dialogs = null)
     {
         var vm = new HomePageVM(new StubHomeFolderService { Projects = _ => Task.FromResult(FolderSnapshot.ForProjects(entries, true)) },
-            new StubAppSettingsService(), new StubInstallationDialogService(), new StubProjectCreationDialogService(),
-            new ImmediateUiScheduler(), files ?? new StubProjectFileService((_, _, _) => throw new AssertionException("Unexpected creation")),
+            new StubAppSettingsService(), new StubInstallationDialogService(), new ImmediateUiScheduler(), files ?? new StubProjectFileService((_, _, _) => throw new AssertionException("Unexpected creation")),
             new WeakReferenceMessenger(), dialogs ?? new StubProjectRemovalDialogService());
         await vm.LoadAsync(default);
         await vm.LoadInitialSongsAsync(default);

@@ -73,8 +73,7 @@ public class ProjectOpenCommandTests
 
     private static HomePageVM CreateVM(IMessenger messenger) =>
         new(new StubHomeFolderService(), new StubAppSettingsService(),
-            new StubInstallationDialogService(), new StubProjectCreationDialogService(),
-            new ImmediateUiScheduler(),
+            new StubInstallationDialogService(), new ImmediateUiScheduler(),
             new StubProjectFileService((_, _, _) =>
                 throw new AssertionException("Project opening must not create a project.")), messenger);
 }
