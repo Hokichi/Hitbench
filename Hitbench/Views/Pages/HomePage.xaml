@@ -8,7 +8,8 @@
     xmlns:helpers="clr-namespace:Hitbench.Resources.Helpers"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:pages="clr-namespace:Hitbench.Views.Pages"
-    MinWidth="638" MinHeight="260"
+    MinWidth="638"
+    MinHeight="260"
     d:DesignHeight="720"
     d:DesignWidth="1280"
     PreviewKeyDown="OnHomePageKeyDown"
@@ -20,7 +21,10 @@
             Modifiers="Control" />
     </UserControl.InputBindings>
     <UserControl.Resources>
-        <Style x:Key="OHsHomeSectionTitleStyle" TargetType="TextBlock" BasedOn="{StaticResource OHsPopupTitleTextStyle}">
+        <Style
+            x:Key="OHsHomeSectionTitleStyle"
+            BasedOn="{StaticResource OHsPopupTitleTextStyle}"
+            TargetType="TextBlock">
             <Setter Property="FontSize" Value="{StaticResource FontSize.Title}" />
         </Style>
         <converters:OHsSameFolderConverter x:Key="OHsHomePageSameFolderConverter" />
@@ -32,11 +36,17 @@
                 HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                 VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
         </ControlTemplate>
-        <Style x:Key="OHsHomeMapsetListStyle" TargetType="ListBox" BasedOn="{StaticResource BaseListBoxStyle}">
+        <Style
+            x:Key="OHsHomeMapsetListStyle"
+            BasedOn="{StaticResource BaseListBoxStyle}"
+            TargetType="ListBox">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
         </Style>
-        <Style x:Key="OHsHomeMapsetItemStyle" TargetType="ListBoxItem" BasedOn="{StaticResource PlainListBoxItemStyle}">
+        <Style
+            x:Key="OHsHomeMapsetItemStyle"
+            BasedOn="{StaticResource PlainListBoxItemStyle}"
+            TargetType="ListBoxItem">
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
             <Setter Property="VerticalContentAlignment" Value="Stretch" />
             <Setter Property="AutomationProperties.Name" Value="{Binding DisplayName, Mode=OneWay}" />
@@ -98,7 +108,7 @@
             x:Key="OHsHomePageSearchPlaceholderStyle"
             BasedOn="{StaticResource CardLabelTextStyle}"
             TargetType="TextBlock">
-            <!-- Search padding plus the input border and native TextBox text inset. -->
+            <!--  Search padding plus the input border and native TextBox text inset.  -->
             <Setter Property="Margin" Value="35,0,27,0" />
             <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="IsHitTestVisible" Value="False" />
@@ -133,7 +143,7 @@
             </Style.Triggers>
         </Style>
 
-        <BlurEffect x:Key="OHsHomeLoadingBlur" Radius="8"/>
+        <BlurEffect x:Key="OHsHomeLoadingBlur" Radius="8" />
         <Style
             x:Key="HomePagePanelStyle"
             BasedOn="{StaticResource CardBorderStyle}"
@@ -142,8 +152,12 @@
                 <DataTrigger Binding="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=pages:HomePage}, Mode=OneWay}" Value="True">
                     <Setter Property="Padding" Value="8" />
                 </DataTrigger>
-                <DataTrigger Binding="{Binding IsProcessing, Mode=OneWay}" Value="True"><Setter Property="Effect" Value="{StaticResource OHsHomeLoadingBlur}"/></DataTrigger>
-                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True"><Setter Property="Effect" Value="{x:Null}"/></DataTrigger>
+                <DataTrigger Binding="{Binding IsProcessing, Mode=OneWay}" Value="True">
+                    <Setter Property="Effect" Value="{StaticResource OHsHomeLoadingBlur}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
+                    <Setter Property="Effect" Value="{x:Null}" />
+                </DataTrigger>
             </Style.Triggers>
         </Style>
 
@@ -222,7 +236,9 @@
             <Setter Property="VerticalContentAlignment" Value="Stretch" />
             <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
             <Style.Triggers>
-                <DataTrigger Binding="{Binding Creator, Mode=OneWay}" Value=""><Setter Property="ToolTip" Value="{x:Null}" /></DataTrigger>
+                <DataTrigger Binding="{Binding Creator, Mode=OneWay}" Value="">
+                    <Setter Property="ToolTip" Value="{x:Null}" />
+                </DataTrigger>
                 <MultiDataTrigger>
                     <MultiDataTrigger.Conditions>
                         <Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource Self}, Mode=OneWay}" Value="True" />
@@ -230,8 +246,8 @@
                         <Condition Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="False" />
                     </MultiDataTrigger.Conditions>
                     <Setter Property="helpers:OuterGlow.Effect" Value="{StaticResource OHsHomePageSongCardGlowEffect}" />
-                    <Setter Property="Background" Value="{DynamicResource Brush.Background.Surface}"/>
-                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Control}"/>
+                    <Setter Property="Background" Value="{DynamicResource Brush.Background.Surface}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Control}" />
                 </MultiDataTrigger>
                 <MultiDataTrigger>
                     <MultiDataTrigger.Conditions>
@@ -240,8 +256,8 @@
                         <Condition Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="False" />
                     </MultiDataTrigger.Conditions>
                     <Setter Property="helpers:OuterGlow.Effect" Value="{StaticResource OHsHomePageSongCardGlowEffect}" />
-                    <Setter Property="Background" Value="{DynamicResource Brush.Background.Surface}"/>
-                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Control}"/>
+                    <Setter Property="Background" Value="{DynamicResource Brush.Background.Surface}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Control}" />
                 </MultiDataTrigger>
                 <DataTrigger Value="True">
                     <DataTrigger.Binding>
@@ -263,7 +279,10 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
-        <Style x:Key="OHsHomeMapperPillStyle" TargetType="Border" BasedOn="{StaticResource CardBorderStyle}">
+        <Style
+            x:Key="OHsHomeMapperPillStyle"
+            BasedOn="{StaticResource CardBorderStyle}"
+            TargetType="Border">
             <Setter Property="Padding" Value="8,0" />
             <Setter Property="Margin" Value="8" />
             <Setter Property="Height" Value="{StaticResource Size.Control.Dense}" />
@@ -273,10 +292,15 @@
             <Setter Property="MaxWidth" Value="{Binding ActualWidth, ElementName=SongArtworkViewport, Mode=OneWay}" />
             <Setter Property="IsHitTestVisible" Value="False" />
             <Style.Triggers>
-                <DataTrigger Binding="{Binding Creator, Mode=OneWay}" Value=""><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+                <DataTrigger Binding="{Binding Creator, Mode=OneWay}" Value="">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
             </Style.Triggers>
         </Style>
-        <Style x:Key="OHsHomeMapperTextStyle" TargetType="TextBlock" BasedOn="{StaticResource HomePageBodyStyle}">
+        <Style
+            x:Key="OHsHomeMapperTextStyle"
+            BasedOn="{StaticResource HomePageBodyStyle}"
+            TargetType="TextBlock">
             <Setter Property="FontSize" Value="{StaticResource FontSize.Caption}" />
             <Setter Property="TextTrimming" Value="CharacterEllipsis" />
             <Setter Property="VerticalAlignment" Value="Center" />
@@ -303,15 +327,18 @@
                         Style="{StaticResource HomePageSongBackgroundStyle}"
                         Unloaded="OnSongImageUnloaded" />
                     <Border Style="{StaticResource OHsHomeMapperPillStyle}">
-                        <TextBlock Style="{StaticResource OHsHomeMapperTextStyle}"
-                            Text="{Binding Creator, Mode=OneWay, StringFormat='Mapped by: {0}'}" />
+                        <TextBlock Style="{StaticResource OHsHomeMapperTextStyle}">
+                            <Run Text="Mapped by" />
+                            <Run FontWeight="Bold" Text="{Binding Creator, Mode=OneWay}" />
+                        </TextBlock>
                     </Border>
                     <Border Grid.Row="1" Style="{StaticResource OHsHomePageSongCaptionStyle}">
                         <StackPanel HorizontalAlignment="Stretch" IsHitTestVisible="False">
                             <TextBlock
                                 Margin="0,0,0,4"
-                                FontWeight="Bold" FontFamily="{DynamicResource Bold}"
+                                FontFamily="{DynamicResource Bold}"
                                 FontSize="{StaticResource FontSize.Title}"
+                                FontWeight="Bold"
                                 Style="{StaticResource HomePageSongArtistStyle}"
                                 Text="{Binding Title, Mode=OneWay}" />
                             <TextBlock Style="{StaticResource HomePageSongArtistStyle}" />
@@ -339,24 +366,39 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
-        <Style x:Key="OHsHomeProjectCreationPanelStyle" TargetType="StackPanel" BasedOn="{StaticResource BaseStackPanelStyle}">
+        <Style
+            x:Key="OHsHomeProjectCreationPanelStyle"
+            BasedOn="{StaticResource BaseStackPanelStyle}"
+            TargetType="StackPanel">
             <Setter Property="Margin" Value="0,0,0,12" />
             <Style.Triggers>
-                <DataTrigger Binding="{Binding HasSelectedMapset, Mode=OneWay}" Value="False"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+                <DataTrigger Binding="{Binding HasSelectedMapset, Mode=OneWay}" Value="False">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
             </Style.Triggers>
         </Style>
-        <Style x:Key="OHsHomeProjectNameRowStyle" TargetType="Grid" BasedOn="{StaticResource BaseGridStyle}">
+        <Style
+            x:Key="OHsHomeProjectNameRowStyle"
+            BasedOn="{StaticResource BaseGridStyle}"
+            TargetType="Grid">
             <Setter Property="Margin" Value="0,0,0,8" />
             <Style.Triggers>
-                <DataTrigger Binding="{Binding IsProjectNameEditorVisible, Mode=OneWay}" Value="False"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+                <DataTrigger Binding="{Binding IsProjectNameEditorVisible, Mode=OneWay}" Value="False">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
             </Style.Triggers>
         </Style>
-        <Style x:Key="OHsHomeProjectNameInputStyle" TargetType="TextBox" BasedOn="{StaticResource RoundedTextInputStyle}">
+        <Style
+            x:Key="OHsHomeProjectNameInputStyle"
+            BasedOn="{StaticResource RoundedTextInputStyle}"
+            TargetType="TextBox">
             <Setter Property="Padding" Value="{StaticResource Inset.Field}" />
             <Setter Property="helpers:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
             <Setter Property="IsTabStop" Value="True" />
             <Style.Triggers>
-                <DataTrigger Binding="{Binding IsCreatingProject, Mode=OneWay}" Value="True"><Setter Property="IsEnabled" Value="False" /></DataTrigger>
+                <DataTrigger Binding="{Binding IsCreatingProject, Mode=OneWay}" Value="True">
+                    <Setter Property="IsEnabled" Value="False" />
+                </DataTrigger>
             </Style.Triggers>
         </Style>
         <Style
@@ -434,11 +476,15 @@
         <DataTemplate x:Key="OHsHomePageProjectHeadingTemplate">
             <TextBlock
                 Margin="0,12,0,8"
-                FontWeight="Bold" FontFamily="{DynamicResource Bold}"
+                FontFamily="{DynamicResource Bold}"
+                FontWeight="Bold"
                 Style="{StaticResource OHsHomePageMetadataStyle}"
                 Text="{Binding Mode=OneWay}" />
         </DataTemplate>
-        <Style x:Key="OHsHomePageProjectCardBorderStyle" TargetType="Border" BasedOn="{StaticResource CardBorderStyle}">
+        <Style
+            x:Key="OHsHomePageProjectCardBorderStyle"
+            BasedOn="{StaticResource CardBorderStyle}"
+            TargetType="Border">
             <Style.Triggers>
                 <MultiDataTrigger>
                     <MultiDataTrigger.Conditions>
@@ -549,12 +595,12 @@
         <ControlTemplate x:Key="HomePageItemsTemplate" TargetType="ItemsControl">
             <ScrollViewer
                 x:Name="PART_ScrollViewer"
-                KeyDown="OnSongsViewerKeyDown"
                 Padding="{TemplateBinding Padding}"
                 AutomationProperties.Name="{Binding Path=(AutomationProperties.Name), RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}"
                 CanContentScroll="True"
                 Focusable="True"
                 HorizontalScrollBarVisibility="{TemplateBinding ScrollViewer.HorizontalScrollBarVisibility}"
+                KeyDown="OnSongsViewerKeyDown"
                 VerticalScrollBarVisibility="{TemplateBinding ScrollViewer.VerticalScrollBarVisibility}">
                 <ItemsPresenter />
             </ScrollViewer>
@@ -596,11 +642,22 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
-        <Style x:Key="OHsHomeInitialLoadingStyle" TargetType="TextBlock" BasedOn="{StaticResource OHsLoadingStatusTextStyle}">
-            <Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding IsInitialLoading, Mode=OneWay}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers>
+        <Style
+            x:Key="OHsHomeInitialLoadingStyle"
+            BasedOn="{StaticResource OHsLoadingStatusTextStyle}"
+            TargetType="TextBlock">
+            <Setter Property="Visibility" Value="Collapsed" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsInitialLoading, Mode=OneWay}" Value="True">
+                    <Setter Property="Visibility" Value="Visible" />
+                </DataTrigger>
+            </Style.Triggers>
         </Style>
 
-        <Style x:Key="OHsHomePageLayoutStyle" TargetType="Grid" BasedOn="{StaticResource BaseGridStyle}">
+        <Style
+            x:Key="OHsHomePageLayoutStyle"
+            BasedOn="{StaticResource BaseGridStyle}"
+            TargetType="Grid">
             <Setter Property="Margin" Value="16" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=pages:HomePage}, Mode=OneWay}" Value="True">
@@ -608,7 +665,10 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
-        <Style x:Key="OHsHomeProjectsPanelStyle" TargetType="Border" BasedOn="{StaticResource HomePagePanelStyle}">
+        <Style
+            x:Key="OHsHomeProjectsPanelStyle"
+            BasedOn="{StaticResource HomePagePanelStyle}"
+            TargetType="Border">
             <Setter Property="Grid.Column" Value="1" />
             <Setter Property="Margin" Value="16,0,0,0" />
             <Style.Triggers>
@@ -619,7 +679,10 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
-        <Style x:Key="OHsHomeHeaderGroupStyle" TargetType="Grid" BasedOn="{StaticResource BaseGridStyle}">
+        <Style
+            x:Key="OHsHomeHeaderGroupStyle"
+            BasedOn="{StaticResource BaseGridStyle}"
+            TargetType="Grid">
             <Setter Property="Margin" Value="0,0,0,12" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=pages:HomePage}, Mode=OneWay}" Value="True">
@@ -636,154 +699,182 @@
         </Style>
     </UserControl.Resources>
     <AdornerDecorator x:Name="CardGlowHost" helpers:OuterGlow.IsHost="True">
-    <Grid x:Name="PageLayout" Style="{StaticResource OHsHomePageLayoutStyle}">
-        <Grid.RowDefinitions><RowDefinition Height="*" /><RowDefinition Height="0" /></Grid.RowDefinitions>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="7*" />
-            <ColumnDefinition Width="3*" MinWidth="320" />
-        </Grid.ColumnDefinitions>
-        <Border
-            x:Name="SongsPanel"
-            Grid.Column="0"
-            Style="{StaticResource HomePagePanelStyle}">
-            <Grid x:Name="SongsContent">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
-                <Grid Style="{StaticResource OHsHomeHeaderGroupStyle}">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Style="{StaticResource OHsHomeSectionTitleStyle}" Text="Mapsets" />
-                    <TextBlock
-                        Grid.Column="1"
-                        Margin="8,0,0,0"
-                        VerticalAlignment="Center"
-                        Style="{StaticResource OHsHomePageMetadataStyle}"
-                        Text="{Binding MapsetInventoryText, Mode=OneWay}" />
-                </Grid>
-                <Grid Grid.Row="1" Style="{StaticResource OHsHomeHeaderGroupStyle}">
-                    <TextBox
-                        x:Name="SongSearchTextBox"
-                        AutomationProperties.Name="Search mapsets"
-                        IsEnabled="{Binding CanInteract, Mode=OneWay}"
-                        PreviewKeyDown="OnSongSearchKeyDown"
-                        Style="{StaticResource HomePageSearchInputStyle}"
-                        Text="{Binding SongSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                    <customControls:Icon
-                        Width="16"
-                        Height="16"
-                        Margin="8,0,0,0"
-                        HorizontalAlignment="Left"
-                        IsHitTestVisible="False"
-                        Path="{StaticResource MagnifyingGlass}"
-                        Color="{DynamicResource Brush.Text.Muted}" />
-                    <TextBlock Style="{StaticResource OHsHomePageMapsetPlaceholderStyle}" />
-                    <TextBlock
-                        Margin="0,0,8,0"
-                        HorizontalAlignment="Right"
-                        VerticalAlignment="Center"
-                        IsHitTestVisible="False"
-                        Style="{StaticResource OHsHomePageMetadataStyle}"
-                        Text="/" />
-                </Grid>
-                <customControls:BalloonButton
-                    x:Name="SongsRetryButton"
-                    Grid.Row="2"
-                    AutomationProperties.Name="Refresh Songs"
-                    ButtonIcon="{StaticResource UpdateOutline}"
-                    ButtonText="Refresh Songs"
-                    Command="{Binding RetrySongsCommand, Mode=OneWay}"
-                    ShouldShowText="True"
-                    Style="{StaticResource HomePageSongsRetryStyle}" />
-                <ListBox
-                    x:Name="SongsList"
-                    Grid.Row="3"
-                    AutomationProperties.Name="Songs"
-                    ItemContainerStyle="{StaticResource OHsHomeMapsetItemStyle}"
-                    ItemTemplate="{StaticResource HomePageSongTemplate}"
-                    ItemsPanel="{StaticResource HomePageSongsItemsPanel}"
-                    ItemsSource="{Binding Songs, Mode=OneWay}"
-                    Opacity="0"
-                    ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                    ScrollViewer.VerticalScrollBarVisibility="Visible"
-                    Style="{StaticResource OHsHomeMapsetListStyle}"
-                    IsEnabled="{Binding CanSelectMapset, Mode=OneWay}"
-                    SelectionMode="Single"
-                    SelectedItem="{Binding SelectedMapset, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                    Template="{StaticResource HomePageItemsTemplate}"
-                    VirtualizingPanel.IsVirtualizing="True"
-                    VirtualizingPanel.VirtualizationMode="Recycling" />
-            </Grid>
-        </Border>
-        <Border Style="{StaticResource OHsHomeProjectsPanelStyle}">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-
-                </Grid.RowDefinitions>
-                <Grid Style="{StaticResource OHsHomeHeaderGroupStyle}">
-                    <TextBlock Style="{StaticResource OHsHomeSectionTitleStyle}" Text="Projects" />
-                </Grid>
-                <Grid Grid.Row="1" Style="{StaticResource OHsHomeProjectSearchGroupStyle}">
-                    <TextBox
-                        x:Name="ProjectSearchTextBox"
-                        AutomationProperties.Name="Search all projects"
-                        IsEnabled="{Binding CanSearchProjects, Mode=OneWay}"
-                        Style="{StaticResource HomePageSearchInputStyle}"
-                        Text="{Binding ProjectSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                    <customControls:Icon
-                        Width="16"
-                        Height="16"
-                        Margin="8,0,0,0"
-                        HorizontalAlignment="Left"
-                        IsHitTestVisible="False"
-                        Path="{StaticResource MagnifyingGlass}"
-                        Color="{DynamicResource Brush.Text.Muted}" />
-                    <TextBlock Style="{StaticResource OHsHomePageProjectPlaceholderStyle}" />
-                </Grid>
-                    <StackPanel Grid.Row="1" Style="{StaticResource OHsHomeProjectCreationPanelStyle}">
-                    <Grid Style="{StaticResource OHsHomeProjectNameRowStyle}">
-                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                        <TextBox x:Name="ProjectNameTextBox" AutomationProperties.Name="Project name"
-                            PreviewKeyDown="OnProjectNameKeyDown"
-                            Style="{StaticResource OHsHomeProjectNameInputStyle}"
-                            Text="{Binding DraftProjectName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}" />
-                        <customControls:BalloonButton x:Name="CreateProjectButton" Grid.Column="1" Margin="8,0,0,0"
-                            AutomationProperties.Name="Create project" ButtonIcon="{StaticResource PlusSolid}"
-                            ShouldShowText="False" ToolTip="Create project" Command="{Binding CreateProjectCommand, Mode=OneWay}"
-                            Style="{StaticResource OHsBalloonConfirmActionStyle}" />
+        <Grid x:Name="PageLayout" Style="{StaticResource OHsHomePageLayoutStyle}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition Height="0" />
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="7*" />
+                <ColumnDefinition Width="3*" MinWidth="320" />
+            </Grid.ColumnDefinitions>
+            <Border
+                x:Name="SongsPanel"
+                Grid.Column="0"
+                Style="{StaticResource HomePagePanelStyle}">
+                <Grid x:Name="SongsContent">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <Grid Style="{StaticResource OHsHomeHeaderGroupStyle}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Style="{StaticResource OHsHomeSectionTitleStyle}" Text="Mapsets" />
+                        <TextBlock
+                            Grid.Column="1"
+                            Margin="8,0,0,0"
+                            VerticalAlignment="Center"
+                            Style="{StaticResource OHsHomePageMetadataStyle}"
+                            Text="{Binding MapsetInventoryText, Mode=OneWay}" />
                     </Grid>
-                    <customControls:BalloonButton x:Name="ShowProjectCreationButton" AutomationProperties.Name="Create a new project"
-                        ButtonIcon="{StaticResource PlusSolid}" ButtonText="Create a new project" ShouldShowText="True"
-                        Command="{Binding ShowProjectCreationCommand, Mode=OneWay}" Click="OnShowProjectCreationClick"
-                        Style="{StaticResource OHsBalloonSurfaceActionStyle}" />
-                </StackPanel>
-                <StackPanel Grid.Row="2" Style="{StaticResource BaseStackPanelStyle}">
-                    <customControls:BalloonButton x:Name="ProjectsRetryButton"
-                        AutomationProperties.Name="Retry Projects" ButtonIcon="{StaticResource UpdateOutline}"
-                        ButtonText="Retry Projects" Command="{Binding RetryProjectsCommand, Mode=OneWay}"
-                        ShouldShowText="True" Style="{StaticResource HomePageProjectsRetryStyle}" />
-                </StackPanel>
-                <ItemsControl
-                    x:Name="ProjectsList"
-                    Grid.Row="3"
-                    AutomationProperties.Name="Projects"
-                    ItemContainerStyle="{StaticResource BaseContentPresenterStyle}"
-                    ItemTemplate="{StaticResource OHsHomePageProjectItemTemplate}"
-                    ItemsSource="{Binding ProjectItems, Mode=OneWay}"
-                    Style="{StaticResource OHsVirtualizedDrawerItemsStyle}" />
+                    <Grid Grid.Row="1" Style="{StaticResource OHsHomeHeaderGroupStyle}">
+                        <TextBox
+                            x:Name="SongSearchTextBox"
+                            AutomationProperties.Name="Search mapsets"
+                            IsEnabled="{Binding CanInteract, Mode=OneWay}"
+                            PreviewKeyDown="OnSongSearchKeyDown"
+                            Style="{StaticResource HomePageSearchInputStyle}"
+                            Text="{Binding SongSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        <customControls:Icon
+                            Width="16"
+                            Height="16"
+                            Margin="8,0,0,0"
+                            HorizontalAlignment="Left"
+                            IsHitTestVisible="False"
+                            Path="{StaticResource MagnifyingGlass}"
+                            Color="{DynamicResource Brush.Text.Muted}" />
+                        <TextBlock Style="{StaticResource OHsHomePageMapsetPlaceholderStyle}" />
+                        <TextBlock
+                            Margin="0,0,8,0"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Center"
+                            IsHitTestVisible="False"
+                            Style="{StaticResource OHsHomePageMetadataStyle}"
+                            Text="/" />
+                    </Grid>
+                    <customControls:BalloonButton
+                        x:Name="SongsRetryButton"
+                        Grid.Row="2"
+                        AutomationProperties.Name="Refresh Songs"
+                        ButtonIcon="{StaticResource UpdateOutline}"
+                        ButtonText="Refresh Songs"
+                        Command="{Binding RetrySongsCommand, Mode=OneWay}"
+                        ShouldShowText="True"
+                        Style="{StaticResource HomePageSongsRetryStyle}" />
+                    <ListBox
+                        x:Name="SongsList"
+                        Grid.Row="3"
+                        AutomationProperties.Name="Songs"
+                        IsEnabled="{Binding CanSelectMapset, Mode=OneWay}"
+                        ItemContainerStyle="{StaticResource OHsHomeMapsetItemStyle}"
+                        ItemTemplate="{StaticResource HomePageSongTemplate}"
+                        ItemsPanel="{StaticResource HomePageSongsItemsPanel}"
+                        ItemsSource="{Binding Songs, Mode=OneWay}"
+                        Opacity="0"
+                        ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                        ScrollViewer.VerticalScrollBarVisibility="Visible"
+                        SelectedItem="{Binding SelectedMapset, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                        SelectionMode="Single"
+                        Style="{StaticResource OHsHomeMapsetListStyle}"
+                        Template="{StaticResource HomePageItemsTemplate}"
+                        VirtualizingPanel.IsVirtualizing="True"
+                        VirtualizingPanel.VirtualizationMode="Recycling" />
+                </Grid>
+            </Border>
+            <Border Style="{StaticResource OHsHomeProjectsPanelStyle}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
 
-            </Grid>
-        </Border>
-        <TextBlock x:Name="InitialLoadingText" Grid.ColumnSpan="2" Grid.RowSpan="2" Text="Loading projects..." Style="{StaticResource OHsHomeInitialLoadingStyle}"/>
-    </Grid>
+                    </Grid.RowDefinitions>
+                    <Grid Style="{StaticResource OHsHomeHeaderGroupStyle}">
+                        <TextBlock Style="{StaticResource OHsHomeSectionTitleStyle}" Text="Projects" />
+                    </Grid>
+                    <Grid Grid.Row="1" Style="{StaticResource OHsHomeProjectSearchGroupStyle}">
+                        <TextBox
+                            x:Name="ProjectSearchTextBox"
+                            AutomationProperties.Name="Search all projects"
+                            IsEnabled="{Binding CanSearchProjects, Mode=OneWay}"
+                            Style="{StaticResource HomePageSearchInputStyle}"
+                            Text="{Binding ProjectSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        <customControls:Icon
+                            Width="16"
+                            Height="16"
+                            Margin="8,0,0,0"
+                            HorizontalAlignment="Left"
+                            IsHitTestVisible="False"
+                            Path="{StaticResource MagnifyingGlass}"
+                            Color="{DynamicResource Brush.Text.Muted}" />
+                        <TextBlock Style="{StaticResource OHsHomePageProjectPlaceholderStyle}" />
+                    </Grid>
+                    <StackPanel Grid.Row="1" Style="{StaticResource OHsHomeProjectCreationPanelStyle}">
+                        <Grid Style="{StaticResource OHsHomeProjectNameRowStyle}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox
+                                x:Name="ProjectNameTextBox"
+                                AutomationProperties.Name="Project name"
+                                PreviewKeyDown="OnProjectNameKeyDown"
+                                Style="{StaticResource OHsHomeProjectNameInputStyle}"
+                                Text="{Binding DraftProjectName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}" />
+                            <customControls:BalloonButton
+                                x:Name="CreateProjectButton"
+                                Grid.Column="1"
+                                Margin="8,0,0,0"
+                                AutomationProperties.Name="Create project"
+                                ButtonIcon="{StaticResource PlusSolid}"
+                                Command="{Binding CreateProjectCommand, Mode=OneWay}"
+                                ShouldShowText="False"
+                                Style="{StaticResource OHsBalloonConfirmActionStyle}"
+                                ToolTip="Create project" />
+                        </Grid>
+                        <customControls:BalloonButton
+                            x:Name="ShowProjectCreationButton"
+                            AutomationProperties.Name="Create a new project"
+                            ButtonIcon="{StaticResource PlusSolid}"
+                            ButtonText="Create a new project"
+                            Click="OnShowProjectCreationClick"
+                            Command="{Binding ShowProjectCreationCommand, Mode=OneWay}"
+                            ShouldShowText="True"
+                            Style="{StaticResource OHsBalloonSurfaceActionStyle}" />
+                    </StackPanel>
+                    <StackPanel Grid.Row="2" Style="{StaticResource BaseStackPanelStyle}">
+                        <customControls:BalloonButton
+                            x:Name="ProjectsRetryButton"
+                            AutomationProperties.Name="Retry Projects"
+                            ButtonIcon="{StaticResource UpdateOutline}"
+                            ButtonText="Retry Projects"
+                            Command="{Binding RetryProjectsCommand, Mode=OneWay}"
+                            ShouldShowText="True"
+                            Style="{StaticResource HomePageProjectsRetryStyle}" />
+                    </StackPanel>
+                    <ItemsControl
+                        x:Name="ProjectsList"
+                        Grid.Row="3"
+                        AutomationProperties.Name="Projects"
+                        ItemContainerStyle="{StaticResource BaseContentPresenterStyle}"
+                        ItemTemplate="{StaticResource OHsHomePageProjectItemTemplate}"
+                        ItemsSource="{Binding ProjectItems, Mode=OneWay}"
+                        Style="{StaticResource OHsVirtualizedDrawerItemsStyle}" />
+
+                </Grid>
+            </Border>
+            <TextBlock
+                x:Name="InitialLoadingText"
+                Grid.RowSpan="2"
+                Grid.ColumnSpan="2"
+                Style="{StaticResource OHsHomeInitialLoadingStyle}"
+                Text="Loading projects..." />
+        </Grid>
     </AdornerDecorator>
 </UserControl>
