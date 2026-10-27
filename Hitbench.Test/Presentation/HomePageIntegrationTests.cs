@@ -522,8 +522,10 @@ public class HomePageIntegrationTests
         var window = TestShell.Create(new HomePage(vm), messenger,
             () => throw new AssertionException("Must not navigate"), vm, new StubAppSettingsService());
         using var view = new InMemoryView(window);
-        var operation = vm.CreateProjectCommand.ExecuteAsync(
-            new FolderEntry("C:\\Songs\\Selected", "Selected", DateTimeOffset.MinValue));
+        vm.SelectedMapset = new FolderEntry("C:\\Songs\\Selected", "Selected", DateTimeOffset.MinValue);
+        UiTestPump.Run(vm.ShowProjectCreationCommand.ExecuteAsync(null));
+        vm.DraftProjectName = "Selected";
+        var operation = vm.CreateProjectCommand.ExecuteAsync(null);
         window.Close();
         Assert.That(vm.CreateProjectCommand.IsCancellationRequested, Is.True);
         if (!operation.IsCompleted)
@@ -537,7 +539,7 @@ public class HomePageIntegrationTests
     }
 
     [Test]
-    public void SongButtonInvokesSelectedFolderAndDisablesWhileSaving()
+    public void SongButtonSelectsFolderAndInlineCreateDisablesWhileSaving()
     {
         EnsureResources();
         var song = new DirectoryInfo("C:\\Songs\\Selected");
@@ -561,7 +563,7 @@ public class HomePageIntegrationTests
             UiTestPump.Run(window.LoadAsync());
             PumpUntil(() => vm.Songs.Count == 1);
             var button = Descendants<Button>(page).Single(button => button.IsVisible && button.DataContext is FolderEntry);
-            var text = Descendants<TextBlock>(button).ToArray();
+            var text = Descendants<TextBlock>(button).Where(t => t.IsVisible).ToArray();
             var backgroundControl = Descendants<Image>(button).Single();
             Assert.That(backgroundControl.Source, Is.Not.Null, "Initial background must be ready when loading completes.");
             Assert.That(text.Select(value => value.Text), Is.EquivalentTo(new[] { "Artist", "Title" }));
@@ -578,6 +580,12 @@ public class HomePageIntegrationTests
             Assert.That(peer.GetName(), Is.EqualTo("Artist - Title"));
             button.Command!.Execute(button.CommandParameter);
             window.Dispatcher.Invoke(() => { }, DispatcherPriority.ContextIdle);
+            Assert.That(vm.SelectedMapset, Is.SameAs(row));
+            Assert.That(selected, Is.Null);
+            UiTestPump.Run(vm.ShowProjectCreationCommand.ExecuteAsync(null));
+            vm.DraftProjectName = "Selected";
+            var creating = vm.CreateProjectCommand.ExecuteAsync(null);
+            view.UpdateLayout();
             Assert.That(selected!.FullName, Is.EqualTo(song.FullName));
             Assert.That(button.IsEnabled, Is.False);
             Assert.That(((ContentControl)window.FindName("PageHost")).Content, Is.SameAs(page));
@@ -756,7 +764,7 @@ public class HomePageIntegrationTests
                     var panel = Descendants<SpacedUniformGrid>(songsList).Single();
                     var button = Descendants<Button>(songsList)
                         .First(candidate => candidate.DataContext is FolderEntry);
-                    var labels = Descendants<TextBlock>(button).ToArray();
+                    var labels = Descendants<TextBlock>(button).Where(label => label.IsVisible).ToArray();
                     var backgroundImage = Descendants<Image>(button).Single();
                     UiControlContract.AssertStyle<Button>(button, "HomePageSongCardButtonStyle");
                     UiControlContract.AssertStyle<Image>(backgroundImage, "HomePageSongBackgroundStyle");

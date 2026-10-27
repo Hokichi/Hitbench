@@ -19,6 +19,7 @@ public partial class HomePageVM
     public bool IsProjectSearchActive => !string.IsNullOrWhiteSpace(ProjectSearchText);
     public bool HasSelectedMapset => SelectedMapset is not null;
     public bool CanSearchProjects => CanInteract && !HasSelectedMapset && !IsCreatingProject;
+    public bool CanSelectMapset => CanInteract && !IsCreatingProject;
 
     partial void OnSelectedMapsetChanged(FolderEntry? value)
     {

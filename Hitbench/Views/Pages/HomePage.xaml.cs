@@ -262,6 +262,45 @@ public partial class HomePage : UserControl
         e.Handled = true;
     }
 
+    private void OnSongsViewerKeyDown(object sender, KeyEventArgs e)
+    {
+        if (!ReferenceEquals(e.OriginalSource, sender) || !GetSongsParts() || songsPanel is not { } panel) return;
+        switch (e.Key)
+        {
+            case Key.PageDown: panel.PageDown(); break;
+            case Key.PageUp: panel.PageUp(); break;
+            case Key.Home: panel.SetVerticalOffset(0); break;
+            case Key.End: panel.SetVerticalOffset(panel.ExtentHeight); break;
+            default: return;
+        }
+        CancelSongsScrollMotion();
+        e.Handled = true;
+    }
+
+    private void OnShowProjectCreationClick(object sender, RoutedEventArgs e) =>
+        Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() =>
+        {
+            if (attached && viewModel.IsProjectNameEditorVisible) ProjectNameTextBox.Focus();
+        }));
+
+    private void OnProjectNameKeyDown(object sender, KeyEventArgs e) => e.Handled = HandleProjectNameKey(e.Key);
+
+    internal bool HandleProjectNameKey(Key key)
+    {
+        if (key == Key.Enter)
+        {
+            if (viewModel.CreateProjectCommand.CanExecute(null)) viewModel.CreateProjectCommand.Execute(null);
+            return true;
+        }
+        if (key == Key.Escape && viewModel.CancelProjectCreationCommand.CanExecute(null))
+        {
+            viewModel.CancelProjectCreationCommand.Execute(null);
+            ShowProjectCreationButton.Focus();
+            return true;
+        }
+        return false;
+    }
+
     private void OnHomePageKeyDown(object sender, KeyEventArgs e)
     {
         if (!e.Handled && HandleSearchShortcut(e.Key, Keyboard.Modifiers, e.OriginalSource as DependencyObject)) e.Handled = true;

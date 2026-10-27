@@ -350,7 +350,7 @@ public class SongsResponsiveLayoutTests
         view.UpdateLayout();
         Assert.Multiple(() =>
         {
-            UiControlContract.AssertStyle<ItemsControl>((ItemsControl)page.FindName("SongsList"), "BaseItemsControlStyle");
+            UiControlContract.AssertStyle<ListBox>((ListBox)page.FindName("SongsList"), "OHsHomeMapsetListStyle");
             Assert.That(panel.VerticalOffset, Is.InRange(0, Math.Max(0, panel.ExtentHeight - panel.ViewportHeight)));
         });
     }

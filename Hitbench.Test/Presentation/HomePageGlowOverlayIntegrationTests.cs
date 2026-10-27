@@ -90,7 +90,7 @@ public sealed class HomePageGlowOverlayIntegrationTests
         UiControlContract.AssertStyle<Border>(project, "OHsHomePageProjectCardBorderStyle");
         Assert.That(song.DataContext, Is.SameAs(songContext));
         Assert.That(project.DataContext, Is.SameAs(projectContext));
-        Assert.That(song.Command, Is.SameAs(vm.CreateProjectCommand));
+        Assert.That(song.Command, Is.SameAs(vm.SelectMapsetCommand));
         Assert.That(Descendants<Button>(project).Single().Command, Is.SameAs(vm.OpenProjectCommand));
     }
 
