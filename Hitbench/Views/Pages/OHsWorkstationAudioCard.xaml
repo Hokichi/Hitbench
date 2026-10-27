@@ -158,54 +158,93 @@
                 Header="Instrumental Track"
                 Style="{StaticResource OHsActionMenuItemStyle}"
                 ToolTip="Add instrumental track (Ctrl+Shift+N)" />
-            <MenuItem Header="Control Point" Icon="{StaticResource ClockPlusOutline}"
-                Command="{Binding AddControlPointCommand, Mode=OneWay}" Style="{StaticResource OHsIconActionMenuItemStyle}"
+            <MenuItem
+                Command="{Binding AddControlPointCommand, Mode=OneWay}"
+                Header="Control Point"
+                Icon="{StaticResource ClockPlusOutline}"
+                Style="{StaticResource OHsIconActionMenuItemStyle}"
                 ToolTip="Add control point at playback marker (F6)" />
         </ContextMenu>
-        <Style x:Key="OHsWorkstationProjectActionsStyle" TargetType="customControls:BalloonComboBox" BasedOn="{StaticResource BaseBalloonComboBoxStyle}">
+        <Style
+            x:Key="OHsWorkstationProjectActionsStyle"
+            BasedOn="{StaticResource BaseBalloonComboBoxStyle}"
+            TargetType="customControls:BalloonComboBox">
             <Setter Property="ShouldShowText" Value="False" />
         </Style>
 
-        <ContextMenu x:Key="OHsWorkstationProjectActionsMenu" x:Shared="False" Style="{StaticResource OHsActionContextMenuStyle}" AutomationProperties.Name="Project actions">
+        <ContextMenu
+            x:Key="OHsWorkstationProjectActionsMenu"
+            x:Shared="False"
+            AutomationProperties.Name="Project actions"
+            Style="{StaticResource OHsActionContextMenuStyle}">
             <ContextMenu.Resources>
-        <Style
-            x:Key="OHsWorkstationCollapseMenuItemStyle"
-            BasedOn="{StaticResource OHsIconActionMenuItemStyle}"
-            TargetType="MenuItem">
-            <Setter Property="Header" Value="Collapse all tracks" />
-            <Setter Property="Icon" Value="{StaticResource CompressAlt}" />
-            <Setter Property="ToolTip" Value="Collapse all tracks (F4)" />
-            <Setter Property="AutomationProperties.Name" Value="{Binding Header, RelativeSource={RelativeSource Self}, Mode=OneWay}" />
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding AreTracksCollapsed, Mode=OneWay}" Value="True">
-                    <Setter Property="Header" Value="Expand all tracks" />
-                    <Setter Property="Icon" Value="{StaticResource ExpandAlt}" />
-                    <Setter Property="ToolTip" Value="Expand all tracks (F4)" />
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
+                <Style
+                    x:Key="OHsWorkstationCollapseMenuItemStyle"
+                    BasedOn="{StaticResource OHsIconActionMenuItemStyle}"
+                    TargetType="MenuItem">
+                    <Setter Property="Header" Value="Collapse all tracks" />
+                    <Setter Property="Icon" Value="{StaticResource CompressAlt}" />
+                    <Setter Property="ToolTip" Value="Collapse all tracks (F4)" />
+                    <Setter Property="AutomationProperties.Name" Value="{Binding Header, RelativeSource={RelativeSource Self}, Mode=OneWay}" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding AreTracksCollapsed, Mode=OneWay}" Value="True">
+                            <Setter Property="Header" Value="Expand all tracks" />
+                            <Setter Property="Icon" Value="{StaticResource ExpandAlt}" />
+                            <Setter Property="ToolTip" Value="Expand all tracks (F4)" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
             </ContextMenu.Resources>
-            <MenuItem Header="Resnap" AutomationProperties.Name="Resnap all samples and control points" Icon="{StaticResource ResnapGrid}" Command="{Binding ResnapAllSamplesCommand, Mode=OneWay}"
-                Style="{StaticResource OHsIconActionMenuItemStyle}" ToolTip="Resnap all samples and control points to the current beat subdivision, including instrumental notes"
-                AutomationProperties.HelpText="{Binding ToolTip, RelativeSource={RelativeSource Self}, Mode=OneWay}" />
-            <MenuItem Header="Refresh samples" AutomationProperties.Name="Refresh samples" Icon="{StaticResource ArrowsRotateSolid}" Command="{Binding ReloadSamplesCommand, Mode=OneWay}"
-                Style="{StaticResource OHsIconActionMenuItemStyle}" ToolTip="Refresh project samples (F5)" />
-            <MenuItem Command="{Binding ToggleTracksCollapsedCommand, Mode=OneWay}"
-                Style="{StaticResource OHsWorkstationCollapseMenuItemStyle}" />
-            <MenuItem Header="Export" Icon="{StaticResource Export}" Command="{Binding ExportCommand, Mode=OneWay}"
-                Style="{StaticResource OHsIconActionMenuItemStyle}" AutomationProperties.Name="Export" />
-        </ContextMenu>
-        <ContextMenu x:Key="OHsWorkstationOpenFoldersMenu" x:Shared="False" Style="{StaticResource OHsActionContextMenuStyle}" AutomationProperties.Name="Open folder">
-            <MenuItem Header="Open beatmap folder" Icon="{StaticResource Folder}" Command="{Binding OpenBeatmapFolderCommand, Mode=OneWay}"
+            <MenuItem
+                AutomationProperties.HelpText="{Binding ToolTip, RelativeSource={RelativeSource Self}, Mode=OneWay}"
+                AutomationProperties.Name="Resnap all samples and control points"
+                Command="{Binding ResnapAllSamplesCommand, Mode=OneWay}"
+                Header="Resnap"
+                Icon="{StaticResource ResnapGrid}"
+                Style="{StaticResource OHsIconActionMenuItemStyle}"
+                ToolTip="Resnap all samples and control points to the current beat subdivision, including instrumental notes" />
+            <MenuItem
+                AutomationProperties.Name="Refresh samples"
+                Command="{Binding ReloadSamplesCommand, Mode=OneWay}"
+                Header="Refresh samples"
+                Icon="{StaticResource ArrowsRotateSolid}"
+                Style="{StaticResource OHsIconActionMenuItemStyle}"
+                ToolTip="Refresh project samples (F5)" />
+            <MenuItem Command="{Binding ToggleTracksCollapsedCommand, Mode=OneWay}" Style="{StaticResource OHsWorkstationCollapseMenuItemStyle}" />
+            <MenuItem
+                AutomationProperties.Name="Export"
+                Command="{Binding ExportCommand, Mode=OneWay}"
+                Header="Export"
+                Icon="{StaticResource Export}"
                 Style="{StaticResource OHsIconActionMenuItemStyle}" />
-            <MenuItem Header="Open project folder" Icon="{StaticResource Folder}" Command="{Binding OpenProjectFolderCommand, Mode=OneWay}"
+        </ContextMenu>
+        <ContextMenu
+            x:Key="OHsWorkstationOpenFoldersMenu"
+            x:Shared="False"
+            AutomationProperties.Name="Open folder"
+            Style="{StaticResource OHsActionContextMenuStyle}">
+            <MenuItem
+                Command="{Binding OpenBeatmapFolderCommand, Mode=OneWay}"
+                Header="Open beatmap folder"
+                Icon="{StaticResource Folder}"
+                Style="{StaticResource OHsIconActionMenuItemStyle}" />
+            <MenuItem
+                Command="{Binding OpenProjectFolderCommand, Mode=OneWay}"
+                Header="Open project folder"
+                Icon="{StaticResource Folder}"
                 Style="{StaticResource OHsIconActionMenuItemStyle}" />
         </ContextMenu>
-        <Style x:Key="OHsWorkstationControlPointPillStyle" TargetType="Border" BasedOn="{StaticResource CardBorderStyle}">
+        <Style
+            x:Key="OHsWorkstationControlPointPillStyle"
+            BasedOn="{StaticResource CardBorderStyle}"
+            TargetType="Border">
             <Setter Property="Padding" Value="8,4" />
-            <Setter Property="CornerRadius" Value="1000" />
+            <Setter Property="CornerRadius" Value="8" />
         </Style>
-        <Style x:Key="OHsWorkstationControlPointBadgeStyle" TargetType="Border" BasedOn="{StaticResource BaseBorderStyle}">
+        <Style
+            x:Key="OHsWorkstationControlPointBadgeStyle"
+            BasedOn="{StaticResource BaseBorderStyle}"
+            TargetType="Border">
             <Setter Property="Background" Value="{DynamicResource Brush.Background.Elevated}" />
             <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Control}" />
             <Setter Property="BorderThickness" Value="1" />
@@ -221,13 +260,19 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
-        <Style x:Key="OHsWorkstationControlPointLabelStyle" TargetType="TextBlock" BasedOn="{StaticResource BodyTextStyle}">
+        <Style
+            x:Key="OHsWorkstationControlPointLabelStyle"
+            BasedOn="{StaticResource BodyTextStyle}"
+            TargetType="TextBlock">
             <Setter Property="TextWrapping" Value="NoWrap" />
             <Setter Property="FontSize" Value="{StaticResource FontSize.Label}" />
             <Setter Property="TextTrimming" Value="CharacterEllipsis" />
             <Setter Property="VerticalAlignment" Value="Center" />
         </Style>
-        <Style x:Key="OHsWorkstationControlPointCountStyle" TargetType="TextBlock" BasedOn="{StaticResource BodyTextStyle}">
+        <Style
+            x:Key="OHsWorkstationControlPointCountStyle"
+            BasedOn="{StaticResource BodyTextStyle}"
+            TargetType="TextBlock">
             <Setter Property="TextWrapping" Value="NoWrap" />
             <Setter Property="FontFamily" Value="{DynamicResource Bold}" />
             <Setter Property="FontWeight" Value="Bold" />
@@ -305,14 +350,23 @@
                     Margin="0,8,0,0"
                     HorizontalAlignment="Right"
                     VerticalAlignment="Center">
-                    <customControls:BalloonComboBox x:Name="ProjectActionsButton" AutomationProperties.Name="Project actions"
-                        ButtonIcon="{StaticResource BarsSolid}" ButtonText="Actions" ToolTip="Project actions"
+                    <customControls:BalloonComboBox
+                        x:Name="ProjectActionsButton"
+                        AutomationProperties.Name="Project actions"
+                        ButtonIcon="{StaticResource BarsSolid}"
+                        ButtonText="Actions"
                         ContextMenu="{StaticResource OHsWorkstationProjectActionsMenu}"
-                        Style="{StaticResource OHsWorkstationProjectActionsStyle}" />
-                    <customControls:BalloonComboBox x:Name="OpenFoldersButton" Margin="8,0,0,0" AutomationProperties.Name="Open folder"
-                        ButtonIcon="{StaticResource Folder}" ButtonText="Open" ToolTip="Open folder"
+                        Style="{StaticResource OHsWorkstationProjectActionsStyle}"
+                        ToolTip="Project actions" />
+                    <customControls:BalloonComboBox
+                        x:Name="OpenFoldersButton"
+                        Margin="8,0,0,0"
+                        AutomationProperties.Name="Open folder"
+                        ButtonIcon="{StaticResource Folder}"
+                        ButtonText="Open"
                         ContextMenu="{StaticResource OHsWorkstationOpenFoldersMenu}"
-                        Style="{StaticResource OHsWorkstationProjectActionsStyle}" />
+                        Style="{StaticResource OHsWorkstationProjectActionsStyle}"
+                        ToolTip="Open folder" />
                     <Border Style="{StaticResource OHsWorkstationToolbarSeparatorStyle}" />
                     <Grid Grid.IsSharedSizeScope="True" Style="{StaticResource BaseGridStyle}">
                         <Grid.ColumnDefinitions>
@@ -320,13 +374,25 @@
                             <ColumnDefinition Width="8" />
                             <ColumnDefinition Width="Auto" SharedSizeGroup="OHsWorkstationAddSamplesWidth" />
                         </Grid.ColumnDefinitions>
-                        <customControls:BalloonComboBox x:Name="AddMenuButton" HorizontalAlignment="Stretch"
-                            AutomationProperties.Name="Add" ButtonIcon="{StaticResource PlusSolid}" ButtonText="Add"
-                            ContextMenu="{StaticResource OHsWorkstationAddMenu}" Style="{StaticResource OHsWorkstationAddActionStyle}" ToolTip="Add track or control point" />
-                        <customControls:BalloonButton x:Name="ManageSamplesButton" Grid.Column="2" HorizontalAlignment="Stretch"
-                            AutomationProperties.Name="Samples" ButtonIcon="{StaticResource MusicNote}" ButtonText="Samples"
+                        <customControls:BalloonComboBox
+                            x:Name="AddMenuButton"
+                            HorizontalAlignment="Stretch"
+                            AutomationProperties.Name="Add"
+                            ButtonIcon="{StaticResource PlusSolid}"
+                            ButtonText="Add"
+                            ContextMenu="{StaticResource OHsWorkstationAddMenu}"
+                            Style="{StaticResource OHsWorkstationAddActionStyle}"
+                            ToolTip="Add track or control point" />
+                        <customControls:BalloonButton
+                            x:Name="ManageSamplesButton"
+                            Grid.Column="2"
+                            HorizontalAlignment="Stretch"
+                            AutomationProperties.Name="Samples"
+                            ButtonIcon="{StaticResource MusicNote}"
+                            ButtonText="Samples"
                             Command="{Binding ManageSamplesCommand, Mode=OneWay}"
-                            Style="{StaticResource OHsWorkstationSamplesActionStyle}" ToolTip="Manage samples" />
+                            Style="{StaticResource OHsWorkstationSamplesActionStyle}"
+                            ToolTip="Manage samples" />
                     </Grid>
                     <Border Style="{StaticResource OHsWorkstationToolbarSeparatorStyle}" />
                     <pages:OHsWorkstationFooter x:Name="FooterControls" VerticalAlignment="Center" />
@@ -407,14 +473,19 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <Border Style="{StaticResource OHsWorkstationControlPointPillStyle}"
+                        <Border
                             AutomationProperties.Name="{Binding ControlPointCount, Mode=OneWay, StringFormat='Control Points: {0}'}"
+                            Style="{StaticResource OHsWorkstationControlPointPillStyle}"
                             ToolTip="{Binding ControlPointCount, Mode=OneWay, StringFormat='Control Points: {0}'}">
-                            <Grid Style="{StaticResource BaseGridStyle}">
-                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="8" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                                <TextBlock Text="Control Points:" Style="{StaticResource OHsWorkstationControlPointLabelStyle}" />
+                            <Grid Margin="0,4" Style="{StaticResource BaseGridStyle}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="8" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Style="{StaticResource OHsWorkstationControlPointLabelStyle}" Text="Control Points:" />
                                 <Border Grid.Column="2" Style="{StaticResource OHsWorkstationControlPointBadgeStyle}">
-                                    <TextBlock Text="{Binding ControlPointCount, Mode=OneWay}" Style="{StaticResource OHsWorkstationControlPointCountStyle}" />
+                                    <TextBlock Style="{StaticResource OHsWorkstationControlPointCountStyle}" Text="{Binding ControlPointCount, Mode=OneWay}" />
                                 </Border>
                             </Grid>
                         </Border>
