@@ -21,7 +21,7 @@ public partial class WorkstationPageVM
     private long controlPointsVersion;
     private long controlPointsRevision;
     public bool CanEditControlPoints => controlPointsContext is not null && CanEditTracks &&
-        !managingSamples && !instrumentBusy && !folderRenamesActive && !importBusy && !removalBusy && !IsNodeEditBusy;
+        !instrumentBusy && !folderRenamesActive && !importBusy && !removalBusy && !IsNodeEditBusy;
     public bool CanOpenControlPoints => CanEditControlPoints && ControlPointTimestamp() is not null;
 
     private Guid ControlPointId(ControlPoint point)

@@ -35,7 +35,7 @@ public class WorkstationHistoryTests
             new ImmediateUiScheduler(), files, new StubSampleFileDialogService("a.wav"), saves,
             trackRemovalDialog: removal);
         await vm.LoadAsync("project.json", CancellationToken.None);
-        vm.AcknowledgePresentationReady(vm.LoadGeneration);
+        vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;
     }
 
     [TearDown]
@@ -81,7 +81,7 @@ public class WorkstationHistoryTests
         first.Samples.Add(node);
         first.Volume = 42;
         await vm.LoadAsync("project.json", CancellationToken.None);
-        vm.AcknowledgePresentationReady(vm.LoadGeneration);
+        vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;
         Assert.That(vm.CanUndo, Is.False);
         Assert.That(vm.RemoveSample(first, node), Is.True);
         vm.UndoCommand.Execute(null);
@@ -248,7 +248,7 @@ public class WorkstationHistoryTests
         if (fail) pending.SetException(new IOException("load failed"));
         else pending.SetResult(new WorkstationSource("map.osu", "audio.wav", new ProjectData { Tracks = [first] }));
         await load;
-        vm.AcknowledgePresentationReady(vm.LoadGeneration);
+        vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;
         Assert.That(vm.CanUndo, Is.False);
         Assert.That(vm.CanRedo, Is.False);
     }
@@ -282,7 +282,7 @@ public class WorkstationHistoryTests
         vm = new WorkstationPageVM(source, new MarkerPlaybackCoordinator(audio = new StubWorkstationAudioService(), Task.Delay),
             new ImmediateUiScheduler(), files, projectFiles: saves);
         await vm.LoadAsync("project.json", CancellationToken.None);
-        vm.AcknowledgePresentationReady(vm.LoadGeneration);
+        vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;
         vm.PlaceSample(first, 125);
         Assert.That(saves.FirstWriteStarted, Is.True);
         vm.UndoCommand.Execute(null);
@@ -320,7 +320,7 @@ public class WorkstationHistoryTests
         vm = new WorkstationPageVM(source, new MarkerPlaybackCoordinator(audio = new StubWorkstationAudioService(), Task.Delay),
             new ImmediateUiScheduler(), files, projectFiles: failingSaves);
         await vm.LoadAsync("project.json", CancellationToken.None);
-        vm.AcknowledgePresentationReady(vm.LoadGeneration);
+        vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;
         vm.PlaceSample(first, 125);
         var node = first.Samples.Single();
         Assert.ThrowsAsync<IOException>(async () => await vm.FlushSavesAsync());
