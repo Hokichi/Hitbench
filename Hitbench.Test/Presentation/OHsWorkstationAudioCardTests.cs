@@ -125,16 +125,16 @@ public sealed class OHsWorkstationAudioCardTests
         finally { UiTestPump.Run(vm.DeactivateAsync()); }
     }
     [Test]
-    public void ControlPointAddIsSeparateFromTrackAddMenu()
+    public void TrackAddMenuIncludesControlPointCreation()
     {
         new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
         var vm = (WorkstationPageVM)WorkstationTestPage.Create().DataContext;
         var card = new OHsWorkstationAudioCard { DataContext = vm };
         UiTestPump.Layout(card, 900, 250);
         var add = (BalloonComboBox)card.FindName("AddMenuButton");
-        Assert.That(add.ContextMenu.Items.Count, Is.EqualTo(2));
-        var plus = (BalloonButton)card.FindName("AddControlPointButton");
-        Assert.That(plus.Command, Is.SameAs(vm.AddControlPointCommand));
+        add.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+        UiTestPump.Layout(add.ContextMenu, 320, 200);
+        Assert.That(add.ContextMenu.Items.Cast<MenuItem>().SingleOrDefault(item => item.Command == vm.AddControlPointCommand), Is.Not.Null);
         Assert.That(card.ContainsInputOrigin((DependencyObject)card.FindName("PlayPauseButton")), Is.False);
         UiTestPump.Run(vm.DeactivateAsync());
     }
@@ -211,12 +211,13 @@ public sealed class OHsWorkstationAudioCardTests
             UiTestPump.Layout(trigger.ContextMenu, 320, 200);
             Drain();
             var items = trigger.ContextMenu.Items.Cast<MenuItem>().ToArray();
-            Assert.That(items.Select(item => item.Header), Is.EqualTo(new[] { "Sample Track", "Instrumental Track" }));
+            Assert.That(items.Select(item => item.Header), Is.EqualTo(new[] { "Sample Track", "Instrumental Track", "Control Point" }));
             Assert.That(items.Select(item => item.Command), Is.EqualTo(new System.Windows.Input.ICommand[]
-                { vm.AddSampleTrackCommand, vm.AddPianoTrackCommand }));
+                { vm.AddSampleTrackCommand, vm.AddPianoTrackCommand, vm.AddControlPointCommand }));
             UiControlContract.AssertStyle<BalloonComboBox>(trigger, "OHsWorkstationAddActionStyle");
             Assert.That(trigger.Style.BasedOn, Is.SameAs(trigger.FindResource("BaseBalloonComboBoxStyle")));
-            foreach (var item in items) UiControlContract.AssertStyle<MenuItem>(item, "OHsActionMenuItemStyle");
+            foreach (var item in items.Take(2)) UiControlContract.AssertStyle<MenuItem>(item, "OHsActionMenuItemStyle");
+            UiControlContract.AssertStyle<MenuItem>(items[2], "OHsIconActionMenuItemStyle");
             Assert.That(items.All(item => !item.IsEnabled), Is.True);
             UiTestPump.Run(vm.LoadAsync("project.json", default));
             vm.AcknowledgePresentationReady(vm.LoadGeneration);

@@ -8,6 +8,17 @@ namespace Hitbench.Test.Presentation;
 public class OHsControlPointLaneTests
 {
     [Test]
+    public void BackgroundContextRequestDoesNotPresentMenu()
+    {
+        var lane = Create([]);
+        lane.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+        var menus = 0;
+        lane.PresentMenu = (_, _) => menus++;
+        Assert.That(lane.HandlePointKey(System.Windows.Input.Key.Apps, System.Windows.Input.ModifierKeys.None, lane), Is.True);
+        Assert.That(menus, Is.Zero);
+    }
+
+    [Test]
     public void NonfinitePointerCannotStartZoneGesture()
     {
         var point = new ControlPointSnapshot(Guid.NewGuid(), 0, 50, "Normal");

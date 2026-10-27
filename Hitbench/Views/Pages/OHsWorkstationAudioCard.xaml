@@ -158,6 +158,9 @@
                 Header="Instrumental Track"
                 Style="{StaticResource OHsActionMenuItemStyle}"
                 ToolTip="Add instrumental track (Ctrl+Shift+N)" />
+            <MenuItem Header="Control Point" Icon="{StaticResource ClockPlusOutline}"
+                Command="{Binding AddControlPointCommand, Mode=OneWay}" Style="{StaticResource OHsIconActionMenuItemStyle}"
+                ToolTip="Add control point at playback marker (F6)" />
         </ContextMenu>
         <Style x:Key="OHsWorkstationProjectActionsStyle" TargetType="customControls:BalloonComboBox" BasedOn="{StaticResource BaseBalloonComboBoxStyle}">
             <Setter Property="ShouldShowText" Value="True" />
@@ -198,6 +201,39 @@
             <MenuItem Header="Open project folder" Icon="{StaticResource Folder}" Command="{Binding OpenProjectFolderCommand, Mode=OneWay}"
                 Style="{StaticResource OHsIconActionMenuItemStyle}" />
         </ContextMenu>
+        <Style x:Key="OHsWorkstationControlPointPillStyle" TargetType="Border" BasedOn="{StaticResource CardBorderStyle}">
+            <Setter Property="Padding" Value="8,4" />
+            <Setter Property="CornerRadius" Value="1000" />
+        </Style>
+        <Style x:Key="OHsWorkstationControlPointBadgeStyle" TargetType="Border" BasedOn="{StaticResource BaseBorderStyle}">
+            <Setter Property="Background" Value="{DynamicResource Brush.Background.Elevated}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Control}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="6,0" />
+            <Setter Property="CornerRadius" Value="1000" />
+            <Setter Property="MinWidth" Value="{StaticResource Size.Control.Dense}" />
+            <Setter Property="MinHeight" Value="{StaticResource Size.Control.Dense}" />
+            <Setter Property="Height" Value="{Binding ActualWidth, RelativeSource={RelativeSource Self}, Mode=OneWay}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="OHsWorkstationControlPointLabelStyle" TargetType="TextBlock" BasedOn="{StaticResource BodyTextStyle}">
+            <Setter Property="TextWrapping" Value="NoWrap" />
+            <Setter Property="FontSize" Value="{StaticResource FontSize.Label}" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style x:Key="OHsWorkstationControlPointCountStyle" TargetType="TextBlock" BasedOn="{StaticResource BodyTextStyle}">
+            <Setter Property="TextWrapping" Value="NoWrap" />
+            <Setter Property="FontFamily" Value="{DynamicResource Bold}" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+        </Style>
     </UserControl.Resources>
     <Grid Style="{StaticResource BaseGridStyle}">
         <Grid.RowDefinitions>
@@ -286,7 +322,7 @@
                         </Grid.ColumnDefinitions>
                         <customControls:BalloonComboBox x:Name="AddMenuButton" HorizontalAlignment="Stretch"
                             AutomationProperties.Name="Add" ButtonIcon="{StaticResource PlusSolid}" ButtonText="Add"
-                            ContextMenu="{StaticResource OHsWorkstationAddMenu}" Style="{StaticResource OHsWorkstationAddActionStyle}" ToolTip="Add a track" />
+                            ContextMenu="{StaticResource OHsWorkstationAddMenu}" Style="{StaticResource OHsWorkstationAddActionStyle}" ToolTip="Add track or control point" />
                         <customControls:BalloonButton x:Name="ManageSamplesButton" Grid.Column="2" HorizontalAlignment="Stretch"
                             AutomationProperties.Name="Samples" ButtonIcon="{StaticResource BarsSolid}" ButtonText="Samples"
                             Command="{Binding ManageSamplesCommand, Mode=OneWay}" ShouldShowText="True"
@@ -371,21 +407,17 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock
-                            VerticalAlignment="Center"
-                            Style="{StaticResource BodyTextStyle}"
-                            Text="{Binding ControlPointCount, Mode=OneWay, StringFormat='Control Points: {0}'}"
-                            TextTrimming="CharacterEllipsis" />
-                        <customControls:BalloonButton
-                            x:Name="AddControlPointButton"
-                            Grid.Column="1"
-                            AutomationProperties.Name="Add control point"
-                            ButtonIcon="{StaticResource PlusSolid}"
-                            ButtonText="Add control point"
-                            Command="{Binding AddControlPointCommand, Mode=OneWay}"
-                            ShouldShowText="False"
-                            Style="{StaticResource OHsWorkstationToolbarButtonStyle}"
-                            ToolTip="Add control point at playback marker (F6)" />
+                        <Border Style="{StaticResource OHsWorkstationControlPointPillStyle}"
+                            AutomationProperties.Name="{Binding ControlPointCount, Mode=OneWay, StringFormat='Control Points: {0}'}"
+                            ToolTip="{Binding ControlPointCount, Mode=OneWay, StringFormat='Control Points: {0}'}">
+                            <Grid Style="{StaticResource BaseGridStyle}">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="8" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                <TextBlock Text="Control Points:" Style="{StaticResource OHsWorkstationControlPointLabelStyle}" />
+                                <Border Grid.Column="2" Style="{StaticResource OHsWorkstationControlPointBadgeStyle}">
+                                    <TextBlock Text="{Binding ControlPointCount, Mode=OneWay}" Style="{StaticResource OHsWorkstationControlPointCountStyle}" />
+                                </Border>
+                            </Grid>
+                        </Border>
                     </Grid>
                 </Grid>
                 <pages:OHsWorkstationTimeline

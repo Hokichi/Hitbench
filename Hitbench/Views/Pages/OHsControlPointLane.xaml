@@ -71,10 +71,6 @@
    <Setter Property="ItemTemplate" Value="{StaticResource OHsControlPointContentTemplate}" />
    <Setter Property="VirtualizingPanel.IsVirtualizing" Value="True" /><Setter Property="VirtualizingPanel.VirtualizationMode" Value="Recycling" />
   </Style>
-  <Style x:Key="OHsControlPointLaneEmptyStyle" TargetType="Grid" BasedOn="{StaticResource BaseGridStyle}">
-   <Setter Property="Visibility" Value="Collapsed" />
-   <Style.Triggers><DataTrigger Binding="{Binding HasItems, ElementName=PointItems, Mode=OneWay}" Value="False"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
-  </Style>
   <Style x:Key="OHsControlPointLaneActionStyle" TargetType="c:BalloonButton" BasedOn="{StaticResource OHsBalloonNeutralActionStyle}">
    <Setter Property="ShouldShowText" Value="True" /><Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
    <Setter Property="IsTabStop" Value="True" /><Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
@@ -86,13 +82,9 @@
     <DataTrigger Binding="{Binding State.SaveError, RelativeSource={RelativeSource AncestorType=p:OHsControlPointLane}, Mode=OneWay}" Value=""><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
    </Style.Triggers>
   </Style>
-  <ContextMenu x:Key="OHsControlPointBackgroundMenu" Style="{StaticResource OHsActionContextMenuStyle}" AutomationProperties.Name="Control point lane actions">
-   <MenuItem Header="Add Control Point" Style="{StaticResource OHsActionMenuItemStyle}" Click="OnAddPointClick" AutomationProperties.Name="Add Control Point at playback marker"
-    IsEnabled="{Binding PlacementTarget.State.CanAdd, RelativeSource={RelativeSource AncestorType=ContextMenu}, Mode=OneWay}" />
-  </ContextMenu>
   <ContextMenu x:Key="OHsControlPointZoneMenu" Style="{StaticResource OHsActionContextMenuStyle}" AutomationProperties.Name="Control point actions" Closed="OnZoneMenuClosed">
    <MenuItem Header="{Binding DisableMenuHeader, Mode=OneWay}" Style="{StaticResource OHsActionMenuItemStyle}" Command="{Binding SetPointDisabledCommand, Mode=OneWay}" CommandParameter="{Binding MenuDisableRequest, Mode=OneWay}" AutomationProperties.Name="{Binding DisableMenuHeader, Mode=OneWay}" />
-   <MenuItem Header="Split" Style="{StaticResource OHsActionMenuItemStyle}" Command="{Binding SplitPointCommand, Mode=OneWay}" CommandParameter="{Binding MenuSplitRequest, Mode=OneWay}" AutomationProperties.Name="Split control point zone at playback marker" />
+   <MenuItem Header="Add" Style="{StaticResource OHsActionMenuItemStyle}" Command="{Binding SplitPointCommand, Mode=OneWay}" CommandParameter="{Binding MenuSplitRequest, Mode=OneWay}" AutomationProperties.Name="Add control point at playback marker" />
    <MenuItem Header="Delete" Style="{StaticResource OHsDestructiveActionMenuItemStyle}" Click="OnDeletePointClick" AutomationProperties.Name="Delete control point" />
   </ContextMenu>
   <Style x:Key="OHsControlPointPlayheadHostStyle" TargetType="Grid" BasedOn="{StaticResource BaseGridStyle}">
@@ -109,20 +101,24 @@
    <Setter Property="Background" Value="{Binding PlaybackMarkerBrush, RelativeSource={RelativeSource AncestorType=p:OHsControlPointLane}, Mode=OneWay}" />
    <Style.Triggers><DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True"><Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" /></DataTrigger></Style.Triggers>
   </Style>
+  <Style x:Key="OHsControlPointLaneBorderStyle" TargetType="Border" BasedOn="{StaticResource BaseBorderStyle}">
+   <Setter Property="CornerRadius" Value="{StaticResource Radius.Control}" />
+   <Setter Property="Background" Value="{DynamicResource Brush.Background.Deepened}" />
+   <Style.Triggers><DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True"><Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" /></DataTrigger></Style.Triggers>
+  </Style>
  </UserControl.Resources>
  <Grid Style="{StaticResource BaseGridStyle}" ClipToBounds="True" Background="Transparent">
   <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+  <Border Style="{StaticResource OHsControlPointLaneBorderStyle}" SizeChanged="OnLaneViewportSizeChanged">
+   <Grid Style="{StaticResource BaseGridStyle}">
   <ItemsControl x:Name="PointItems" Style="{StaticResource OHsControlPointLaneItemsStyle}" FlowDirection="LeftToRight" />
-  <Grid Style="{StaticResource OHsControlPointLaneEmptyStyle}">
-   <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-   <c:BalloonButton Grid.Column="1" ButtonText="Add Control Point" ButtonIcon="{StaticResource ClockPlusOutline}" Click="OnAddPointClick"
-    Style="{StaticResource OHsControlPointLaneActionStyle}" IsEnabled="{Binding State.CanAdd, RelativeSource={RelativeSource AncestorType=p:OHsControlPointLane}, Mode=OneWay}" AutomationProperties.Name="Add Control Point at playback marker" />
-  </Grid>
   <Grid x:Name="PlaybackMarker" Style="{StaticResource OHsControlPointPlayheadHostStyle}" Visibility="Collapsed">
    <Grid.RenderTransform><TranslateTransform x:Name="PlaybackMarkerTranslation" /></Grid.RenderTransform>
    <Border Style="{StaticResource OHsControlPointPlayheadOutlineStyle}" />
    <Border Style="{StaticResource OHsControlPointPlayheadStyle}" />
   </Grid>
+   </Grid>
+  </Border>
   <StackPanel Grid.Row="1" Style="{StaticResource BaseStackPanelStyle}">
    <c:BalloonButton ButtonText="Retry save" ButtonIcon="{StaticResource RegularRepeat}" Click="OnRetrySaveClick" Style="{StaticResource OHsControlPointLaneRetryStyle}"
     HorizontalAlignment="Left" IsEnabled="{Binding State.CanEdit, RelativeSource={RelativeSource AncestorType=p:OHsControlPointLane}, Mode=OneWay}" AutomationProperties.Name="Retry control point save" />

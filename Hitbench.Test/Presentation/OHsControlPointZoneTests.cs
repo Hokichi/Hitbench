@@ -24,7 +24,7 @@ public class OHsControlPointZoneTests
             var state = owner.ControlPointsState!; var zone = lane.BringPointIntoView(state.Points[0].Id)!;
             Assert.That(lane.HandlePointKey(Key.Apps, ModifierKeys.None, zone), Is.True);
             var disable = (MenuItem)lane.ZoneMenu.Items[0]; var split = (MenuItem)lane.ZoneMenu.Items[1];
-            Assert.That(disable.Header, Is.EqualTo("Disable")); Assert.That(split.Header, Is.EqualTo("Split"));
+            Assert.That(disable.Header, Is.EqualTo("Disable")); Assert.That(split.Header, Is.EqualTo("Add"));
             Assert.That(split.Command, Is.SameAs(owner.SplitControlPointCommand)); Assert.That(split.IsEnabled, Is.True);
             owner.Position = TimeSpan.FromMilliseconds(3500); Assert.That(split.IsEnabled, Is.False);
             owner.Position = TimeSpan.FromMilliseconds(2000); Assert.That(split.IsEnabled, Is.True);

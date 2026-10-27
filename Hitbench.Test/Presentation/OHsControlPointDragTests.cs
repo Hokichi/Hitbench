@@ -161,10 +161,10 @@ public class OHsControlPointDragTests
             Assert.That(lane.IsEditorOpen, Is.False); Assert.That(project.ControlPoints, Has.Count.EqualTo(3));
             var tag = lane.BringPointIntoView(owner.ControlPointsState.Points[0].Id)!;
             lane.DeletePoint(tag.Point!.Id); Assert.That(project.ControlPoints.Select(p => p.Timestamp), Is.EqualTo(new[] { 2000, 2125 }));
-            UiControlContract.AssertStyle<ContextMenu>(lane.BackgroundMenu, "OHsActionContextMenuStyle");
-            UiControlContract.AssertStyle<MenuItem>((MenuItem)lane.BackgroundMenu.Items[0], "OHsActionMenuItemStyle");
+            UiControlContract.AssertStyle<ContextMenu>(lane.ZoneMenu, "OHsActionContextMenuStyle");
+            Assert.That(((MenuItem)lane.ZoneMenu.Items[1]).Header, Is.EqualTo("Add"));
             UiControlContract.AssertStyle<MenuItem>((MenuItem)lane.ZoneMenu.Items[2], "OHsDestructiveActionMenuItemStyle");
-            Assert.That(lane.BackgroundMenu.IsOpen || lane.ZoneMenu.IsOpen, Is.False);
+            Assert.That(lane.ZoneMenu.IsOpen, Is.False);
         }
         finally { files.Release(); UiTestPump.Run(owner.DeactivateAsync()); }
     }

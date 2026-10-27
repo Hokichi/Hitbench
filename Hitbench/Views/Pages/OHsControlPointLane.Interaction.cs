@@ -57,7 +57,6 @@ public partial class OHsControlPointLane
     internal Func<bool>? CapturePointer { get; set; }
     internal Action? ReleasePointer { get; set; }
     internal Action<ContextMenu, FrameworkElement>? PresentMenu { get; set; }
-    internal ContextMenu BackgroundMenu => (ContextMenu)Resources["OHsControlPointBackgroundMenu"];
     internal ContextMenu ZoneMenu => (ContextMenu)Resources["OHsControlPointZoneMenu"];
     internal bool IsDragPreviewActive { get; private set; }
     internal bool IsDragCandidateValid { get; private set; }
@@ -104,7 +103,6 @@ public partial class OHsControlPointLane
         var request = new RetryControlPointsSaveRequestedMessage(state.Context);
         if (RetrySaveCommand?.CanExecute(request) == true) RetrySaveCommand.Execute(request);
     }
-    private void OnAddPointClick(object sender, RoutedEventArgs e) => RequestAddAtMarker();
     private void OnDeletePointClick(object sender, RoutedEventArgs e)
     {
         if (menuContext == State?.Context && menuPointId is { } id) DeletePoint(id);
@@ -312,9 +310,9 @@ public partial class OHsControlPointLane
     { OpenContextMenu(FindZone(e.OriginalSource as DependencyObject)); e.Handled = true; base.OnPreviewMouseRightButtonDown(e); }
     private void OpenContextMenu(OHsControlPointZone? tag)
     {
-        if (!IsMenuOwnerActive) return;
+        if (!IsMenuOwnerActive || tag is null) return;
         CancelPointDrag(); CancelVolumeDrag();
-        var menu = tag is null ? BackgroundMenu : ZoneMenu;
+        var menu = ZoneMenu;
         menuPointId = tag?.Point?.Id; menuContext = State?.Context;
         if (tag?.Point is { } point && State is { } state)
         {
@@ -331,9 +329,9 @@ public partial class OHsControlPointLane
     private void DismissMenus()
     {
         dismissingMenus = true;
-        try { BackgroundMenu.IsOpen = false; ZoneMenu.IsOpen = false; }
+        try { ZoneMenu.IsOpen = false; }
         finally { dismissingMenus = false; }
-        BackgroundMenu.PlacementTarget = null; ZoneMenu.PlacementTarget = null;
+        ZoneMenu.PlacementTarget = null;
         ClearMenuRequests();
     }
     private void ClearMenuRequests()

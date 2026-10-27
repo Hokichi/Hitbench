@@ -51,6 +51,12 @@ public partial class OHsControlPointLane : UserControl
             lane.UpdateEditorViewport();
         }));
 
+    private void OnLaneViewportSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        var border = (Border)sender;
+        border.Clip = new RectangleGeometry(new Rect(e.NewSize), border.CornerRadius.TopLeft, border.CornerRadius.TopLeft);
+    }
+
     private static void OnStateChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var lane = (OHsControlPointLane)d;

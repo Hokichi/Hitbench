@@ -103,7 +103,7 @@ public class WorkstationPageIntegrationTests
             }
             UiTestPump.Run(page.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle).Task);
             Assert.That(add.ContextMenu.Items.OfType<MenuItem>().Select(item => item.Command),
-                Is.EqualTo(new[] { owner.AddSampleTrackCommand, owner.AddPianoTrackCommand }));
+                Is.EqualTo(new System.Windows.Input.ICommand[] { owner.AddSampleTrackCommand, owner.AddPianoTrackCommand, owner.AddControlPointCommand }));
             UiControlContract.AssertStyle<BalloonComboBox>(add, "OHsWorkstationAddActionStyle");
             UiControlContract.AssertStyle<BalloonButton>(samples, "OHsWorkstationSamplesActionStyle");
         }
