@@ -607,6 +607,55 @@ public class WorkstationNodeInteractionTests
         UiTestPump.Run(editor.Page.DeactivateAsync());
     }
     [SetUp] public void Setup() => new VolumeWheelTests().SetUp();
+
+    [TestCase(false, false)]
+    [TestCase(true, false)]
+    [TestCase(false, true)]
+    [TestCase(true, true)]
+    public void OutsideDismissalRestoresCrossTrackPlacement(bool dismissOverTrack, bool releaseConsumed)
+    {
+        var editor = CreateEditor(); using var view = editor.View;
+        var vm = editor.Vm;
+        var rows = Descendants<OHsWorkstationTrackRow>(editor.Page).ToArray();
+        var first = rows.Single(row => ReferenceEquals(row.Track, vm.Tracks[0]));
+        var second = rows.Single(row => ReferenceEquals(row.Track, vm.Tracks[1]));
+        var firstGrid = first.SampleTimeline!; var secondGrid = second.SampleTimeline!;
+        try
+        {
+            foreach (var grid in new[] { firstGrid, secondGrid })
+            {
+                grid.ContentWidth = 1000; grid.ViewportWidth = 500; grid.HorizontalOffset = 0;
+                grid.Duration = TimeSpan.FromSeconds(10); grid.Subdivision = 4;
+            }
+            var initialSamples = vm.Tracks[0].Samples.ToArray();
+            first.PresentSampleConfiguration = (_, _) => { };
+            Assert.That(first.OpenSampleConfiguration(), Is.True);
+            first.PresentSampleConfiguration = null;
+            first.CloseSampleConfiguration(false, anyMouseButtonPressed: true);
+            var point = new Point(12.6, secondGrid.ActualHeight / 2);
+            Assert.That(editor.Page.BeginNodePointer(dismissOverTrack ? secondGrid : null, point, new Point()), Is.False);
+            var release = releaseConsumed ? Mouse.PreviewMouseMoveEvent : Mouse.PreviewMouseUpEvent;
+            Assert.That(OHsSampleConfigurationPopupTests.DismissalInput(first, release, 0), Is.EqualTo(!releaseConsumed));
+            UiTestPump.Run(first.Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle).Task);
+            Assert.That(vm.Tracks[0].Samples, Is.EquivalentTo(initialSamples));
+            Assert.That(vm.Tracks[1].Samples, Is.Empty);
+
+            firstGrid.UpdatePointerPosition(point.X);
+            Assert.That(firstGrid.HasPlacementPreview, Is.True);
+            firstGrid.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, 0) { RoutedEvent = Mouse.MouseLeaveEvent });
+            secondGrid.UpdatePointerPosition(point.X);
+            Assert.That(firstGrid.HasPlacementPreview, Is.False);
+            Assert.That(secondGrid.HasPlacementPreview, Is.True);
+            Assert.That(secondGrid.ActiveInterval!.Value.StartMilliseconds, Is.EqualTo(125));
+            Assert.That(editor.Page.BeginNodePointer(secondGrid, point, new Point()), Is.True);
+            var place = editor.Page.CompleteNodePointerAsync(); UiTestPump.Run(place);
+            Assert.That(place.Result, Is.True);
+            Assert.That(vm.Tracks[1].Samples.Single().Timestamp, Is.EqualTo(125));
+            Assert.That(vm.Tracks[0].Samples, Is.EquivalentTo(initialSamples));
+        }
+        finally { first.CompleteSampleConfigurationDismissal(); UiTestPump.Run(vm.DeactivateAsync()); }
+    }
+
     [Test]
     public void TrackCardsExposeNativeSingleSelection()
     {

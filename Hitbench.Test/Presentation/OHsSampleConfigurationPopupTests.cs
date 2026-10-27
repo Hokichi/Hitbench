@@ -1,6 +1,8 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Input;
+using System.Windows.Threading;
 using Hitbench.Core.Entities;
 using Hitbench.Core.Enums;
 using Hitbench.Views.Pages;
@@ -149,6 +151,129 @@ public sealed class OHsSampleConfigurationPopupTests
         }
         finally { view.Dispose(); UiTestPump.Run(vm.DeactivateAsync()); }
     }
+
+    [TestCase(true, false)]
+    [TestCase(false, false)]
+    [TestCase(false, true)]
+    public void OutsideDismissalRecoversForEitherReleaseOrdering(bool releaseBeforeClosed, bool releaseConsumed)
+    {
+        var track = new Track { SelectedSampleFileName = "a.wav" };
+        var (vm, row, view) = Create(track);
+        using (view) try
+        {
+            row.OpenSampleConfiguration();
+            // Presentation alone is substituted; closing now follows the native dismissal lifecycle.
+            row.PresentSampleConfiguration = null;
+            row.CloseSampleConfiguration(false, anyMouseButtonPressed: !releaseBeforeClosed);
+            Assert.That(vm.CanCreateSampleNodes, Is.False);
+            Assert.That(vm.PlaceSample(track, 125), Is.False);
+            if (!releaseBeforeClosed && !releaseConsumed)
+                Assert.That(row.HandleConfigurationDismissalInput(Mouse.PreviewMouseUpEvent,
+                    MouseButtonState.Released, MouseButtonState.Released, MouseButtonState.Released), Is.True);
+            else if (releaseConsumed)
+                Assert.That(row.HandleConfigurationDismissalInput(Mouse.PreviewMouseMoveEvent,
+                    MouseButtonState.Released, MouseButtonState.Released, MouseButtonState.Released), Is.False);
+            PumpDismissal(row);
+            Assert.That(track.Samples, Is.Empty);
+            Assert.That(vm.CanCreateSampleNodes, Is.True, "Released input must restore placement without another click.");
+        }
+        finally { row.CompleteSampleConfigurationDismissal(); UiTestPump.Run(vm.DeactivateAsync()); }
+    }
+
+    private static void PumpDismissal(OHsWorkstationTrackRow row) => UiTestPump.Run(
+        row.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle).Task);
+
+    [Test]
+    public void DismissalMovementCannotStartPlacement()
+    {
+        var track = new Track { SelectedSampleFileName = "a.wav" };
+        var (vm, row, view) = Create(track);
+        using (view) try
+        {
+            row.OpenSampleConfiguration(); row.PresentSampleConfiguration = null;
+            row.CloseSampleConfiguration(false, anyMouseButtonPressed: true);
+            Assert.That(DismissalInput(row, Mouse.PreviewMouseMoveEvent, 1), Is.False);
+            PumpDismissal(row);
+            Assert.That(vm.CanCreateSampleNodes, Is.False);
+            Assert.That(vm.PlaceSample(track, 125), Is.False);
+            Assert.That(track.Samples, Is.Empty);
+            DismissalInput(row, Mouse.PreviewMouseMoveEvent, 0); PumpDismissal(row);
+            Assert.That(vm.CanCreateSampleNodes, Is.True);
+        }
+        finally { row.CompleteSampleConfigurationDismissal(); UiTestPump.Run(vm.DeactivateAsync()); }
+    }
+
+    [TestCase(1)]
+    [TestCase(2)]
+    [TestCase(4)]
+    [TestCase(3)]
+    public void DismissalWaitsForHeldButtons(int heldButtons)
+    {
+        var (vm, row, view) = Create(new Track());
+        using (view) try
+        {
+            row.OpenSampleConfiguration(); row.PresentSampleConfiguration = null;
+            row.CloseSampleConfiguration(false, anyMouseButtonPressed: false);
+            // A new press must cancel completion already queued by a previous release.
+            Assert.That(DismissalInput(row, Mouse.PreviewMouseDownEvent, heldButtons), Is.True);
+            PumpDismissal(row);
+            Assert.That(vm.CanCreateSampleNodes, Is.False);
+            Assert.That(DismissalInput(row, Mouse.PreviewMouseUpEvent, heldButtons), Is.True);
+            PumpDismissal(row);
+            Assert.That(vm.CanCreateSampleNodes, Is.False);
+            Assert.That(DismissalInput(row, Mouse.PreviewMouseUpEvent, 0), Is.True);
+            PumpDismissal(row);
+            Assert.That(vm.CanCreateSampleNodes, Is.True);
+            Assert.That(DismissalInput(row, Mouse.PreviewMouseDownEvent, 1), Is.False);
+        }
+        finally { row.CompleteSampleConfigurationDismissal(); UiTestPump.Run(vm.DeactivateAsync()); }
+    }
+
+    [Test]
+    public void PendingDismissalCannotReleaseReplacementOwner()
+    {
+        var track = new Track(); var (vm, row, view) = Create(track);
+        using (view) try
+        {
+            row.OpenSampleConfiguration(); row.PresentSampleConfiguration = null;
+            row.CloseSampleConfiguration(false, anyMouseButtonPressed: false);
+            var replacement = vm.BeginSampleConfiguration(track)!.Value;
+            PumpDismissal(row);
+            Assert.That(vm.OwnsSampleConfiguration(replacement), Is.True);
+            Assert.That(DismissalInput(row, Mouse.PreviewMouseDownEvent, 1), Is.False);
+            vm.EndSampleConfiguration(replacement);
+        }
+        finally { row.CompleteSampleConfigurationDismissal(); UiTestPump.Run(vm.DeactivateAsync()); }
+    }
+
+    [TestCase("recycle")]
+    [TestCase("unload")]
+    [TestCase("deactivate")]
+    public void InvalidatedDismissalCannotConsumeLaterInput(string invalidation)
+    {
+        var (vm, row, view) = Create(new Track());
+        using (view) try
+        {
+            row.OpenSampleConfiguration(); row.PresentSampleConfiguration = null;
+            row.CloseSampleConfiguration(false, anyMouseButtonPressed: false);
+            switch (invalidation)
+            {
+                case "recycle": row.Track = new Track(); break;
+                case "unload": view.Dispose(); break;
+                case "deactivate": UiTestPump.Run(vm.DeactivateAsync()); break;
+            }
+            PumpDismissal(row);
+            Assert.That(vm.IsSampleConfigurationOpen, Is.False);
+            Assert.That(DismissalInput(row, Mouse.PreviewMouseDownEvent, 1), Is.False);
+        }
+        finally { row.CompleteSampleConfigurationDismissal(); UiTestPump.Run(vm.DeactivateAsync()); }
+    }
+
+    internal static bool DismissalInput(OHsWorkstationTrackRow row, RoutedEvent routedEvent, int heldButtons) =>
+        row.HandleConfigurationDismissalInput(routedEvent,
+            (heldButtons & 1) != 0 ? MouseButtonState.Pressed : MouseButtonState.Released,
+            (heldButtons & 2) != 0 ? MouseButtonState.Pressed : MouseButtonState.Released,
+            (heldButtons & 4) != 0 ? MouseButtonState.Pressed : MouseButtonState.Released);
 
     [Test]
     public void EmptyAndMissingFilesRetainSelectionAndGateCreation()

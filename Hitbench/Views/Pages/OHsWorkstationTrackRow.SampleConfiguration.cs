@@ -43,6 +43,10 @@ public partial class OHsWorkstationTrackRow
     }
 
     internal void CloseSampleConfiguration(bool restoreFocus = true)
+        => CloseSampleConfiguration(restoreFocus, Mouse.LeftButton == MouseButtonState.Pressed ||
+            Mouse.RightButton == MouseButtonState.Pressed || Mouse.MiddleButton == MouseButtonState.Pressed);
+
+    internal void CloseSampleConfiguration(bool restoreFocus, bool anyMouseButtonPressed)
     {
         if (IsSampleConfigurationOpen)
         {
@@ -61,7 +65,7 @@ public partial class OHsWorkstationTrackRow
         {
             awaitingConfigurationInput = true;
             InputManager.Current.PreProcessInput += OnConfigurationDismissalInput;
-            ScheduleConfigurationDismissal();
+            ScheduleConfigurationDismissal(anyMouseButtonPressed);
         }
     }
 
@@ -85,11 +89,11 @@ public partial class OHsWorkstationTrackRow
         CompleteSampleConfigurationDismissal();
     }
 
-    private void ScheduleConfigurationDismissal()
+    private void ScheduleConfigurationDismissal(bool anyMouseButtonPressed)
     {
-        if (Mouse.LeftButton == MouseButtonState.Pressed || Mouse.RightButton == MouseButtonState.Pressed || Mouse.MiddleButton == MouseButtonState.Pressed) return;
+        configurationDismissal?.Abort(); configurationDismissal = null;
+        if (anyMouseButtonPressed) return;
         var token = configurationToken;
-        configurationDismissal?.Abort();
         configurationDismissal = Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
         {
             if (configurationToken == token && !IsSampleConfigurationOpen) CompleteSampleConfigurationDismissal();
@@ -98,11 +102,24 @@ public partial class OHsWorkstationTrackRow
 
     private void OnConfigurationDismissalInput(object sender, PreProcessInputEventArgs e)
     {
-        if (e.StagingItem.Input is MouseButtonEventArgs mouse)
+        if (e.StagingItem.Input is MouseEventArgs mouse)
         {
-            mouse.Handled = true;
-            if (mouse.ButtonState == MouseButtonState.Released) ScheduleConfigurationDismissal();
+            mouse.Handled |= HandleConfigurationDismissalInput(mouse.RoutedEvent, mouse.LeftButton, mouse.RightButton, mouse.MiddleButton);
         }
+    }
+
+    internal bool HandleConfigurationDismissalInput(RoutedEvent routedEvent, MouseButtonState leftButton,
+        MouseButtonState rightButton, MouseButtonState middleButton)
+    {
+        if (!awaitingConfigurationInput) return false;
+        var isButton = routedEvent == Mouse.PreviewMouseDownEvent || routedEvent == Mouse.MouseDownEvent ||
+            routedEvent == Mouse.PreviewMouseUpEvent || routedEvent == Mouse.MouseUpEvent;
+        // The dismissing release can be consumed during native popup teardown.
+        // Movement with released buttons also completes that same dismissal sequence.
+        if (isButton || routedEvent == Mouse.PreviewMouseMoveEvent || routedEvent == Mouse.MouseMoveEvent)
+            ScheduleConfigurationDismissal(leftButton == MouseButtonState.Pressed ||
+                rightButton == MouseButtonState.Pressed || middleButton == MouseButtonState.Pressed);
+        return isButton;
     }
 
     internal bool HandleSampleConfigurationEscape(bool? dropdownIsOpen = null)
