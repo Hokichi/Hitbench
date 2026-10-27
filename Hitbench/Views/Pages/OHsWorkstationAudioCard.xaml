@@ -71,7 +71,7 @@
                     <Setter Property="StrokeThickness" Value="1" />
                 </DataTrigger>
                 <Trigger Property="IsChecked" Value="True">
-                    <Setter Property="StrokeThickness" Value="2" />
+                    <Setter Property="StrokeThickness" Value="0" />
                 </Trigger>
             </Style.Triggers>
         </Style>
