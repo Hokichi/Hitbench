@@ -13,6 +13,37 @@ namespace Hitbench.Test.Presentation;
 public sealed class HomeInlineProjectCreationIntegrationTests
 {
     [Test]
+    public void SwitchingMapsetsCancelsHeaderDraft()
+    {
+        new SongsResponsiveLayoutTests().SetUp();
+        var first = HomeInlineProjectCreationTests.Mapset;
+        var second = first with { FullName = @"C:\Maps\second" };
+        string? savedFor = null;
+        var vm = new HomePageVM(new StubHomeFolderService
+        {
+            Songs = (_, _) => Task.FromResult<FolderSnapshot?>(new FolderSnapshot([first, second])),
+            Projects = _ => Task.FromResult(FolderSnapshot.ForProjects([], true))
+        }, new StubAppSettingsService(), new StubInstallationDialogService(), new ImmediateUiScheduler(),
+            new StubProjectFileService((folder, _, _) => { savedFor = folder.FullName; return Task.FromResult("saved.json"); }), new WeakReferenceMessenger());
+        var page = new HomePage(vm);
+        var window = new Window { Content = page, Width = 1280, Height = 720 };
+        using var view = new InMemoryView(window);
+        try
+        {
+            UiTestPump.Run(page.LoadAsync(default));
+            vm.SelectMapsetCommand.Execute(first); UiTestPump.Run(vm.SearchProjectsCommand.ExecutionTask!);
+            UiTestPump.Run(vm.ShowProjectCreationCommand.ExecuteAsync(null)); view.UpdateLayout();
+            var input = (TextBox)page.FindName("ProjectNameTextBox"); input.Text = "old draft";
+            vm.SelectMapsetCommand.Execute(second); UiTestPump.Run(vm.SearchProjectsCommand.ExecutionTask!); view.UpdateLayout();
+            Assert.That(input.IsVisible, Is.False); Assert.That(vm.DraftProjectName, Is.Empty);
+            UiTestPump.Run(vm.ShowProjectCreationCommand.ExecuteAsync(null)); view.UpdateLayout(); input.Text = "second project";
+            Assert.That(page.HandleProjectNameKey(Key.Enter), Is.True); UiTestPump.Run(vm.CreateProjectCommand.ExecutionTask!);
+            Assert.That(savedFor, Is.EqualTo(second.FullName));
+        }
+        finally { page.Deactivate(); window.Close(); }
+    }
+
+    [Test]
     public void SelectionDisablesSearchAndInlineEditorUsesValidatedCommand()
     {
         new SongsResponsiveLayoutTests().SetUp();
@@ -31,9 +62,13 @@ public sealed class HomeInlineProjectCreationIntegrationTests
         {
             UiTestPump.Run(page.LoadAsync(default)); view.UpdateLayout();
             Assert.That(page.FindName("SongsList"), Is.TypeOf<ListBox>());
+            var search = (TextBox)page.FindName("ProjectSearchTextBox");
+            search.Text = "retained query";
+            UiTestPump.Run(vm.SearchProjectsCommand.ExecutionTask!);
             vm.SelectMapsetCommand.Execute(mapset);
             UiTestPump.Run(vm.SearchProjectsCommand.ExecutionTask!); view.UpdateLayout();
             Assert.That(((TextBox)page.FindName("ProjectSearchTextBox")).IsEnabled, Is.False);
+            Assert.That(search.IsVisible, Is.False);
             var show = (BalloonButton)page.FindName("ShowProjectCreationButton");
             Assert.That(show.IsVisible, Is.True);
             Assert.That(show.Command, Is.SameAs(vm.ShowProjectCreationCommand));
@@ -61,6 +96,9 @@ public sealed class HomeInlineProjectCreationIntegrationTests
             vm.SelectMapsetCommand.Execute(mapset);
             UiTestPump.Run(vm.SearchProjectsCommand.ExecutionTask!); view.UpdateLayout();
             Assert.That(((TextBox)page.FindName("ProjectSearchTextBox")).IsEnabled, Is.True);
+            Assert.That(search.IsVisible, Is.True);
+            Assert.That(search.Text, Is.EqualTo("retained query"));
+            Assert.That(show.IsVisible, Is.False);
         }
         finally { page.Deactivate(); window.Close(); }
     }

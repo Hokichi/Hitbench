@@ -340,7 +340,7 @@
             </Style.Triggers>
         </Style>
         <Style x:Key="OHsHomeProjectCreationPanelStyle" TargetType="StackPanel" BasedOn="{StaticResource BaseStackPanelStyle}">
-            <Setter Property="Margin" Value="0,12,0,0" />
+            <Setter Property="Margin" Value="0,0,0,12" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding HasSelectedMapset, Mode=OneWay}" Value="False"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
             </Style.Triggers>
@@ -627,6 +627,13 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
+        <Style x:Key="OHsHomeProjectSearchGroupStyle" TargetType="Grid" BasedOn="{StaticResource OHsHomeHeaderGroupStyle}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding HasSelectedMapset, Mode=OneWay}" Value="True">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
     </UserControl.Resources>
     <AdornerDecorator x:Name="CardGlowHost" helpers:OuterGlow.IsHost="True">
     <Grid x:Name="PageLayout" Style="{StaticResource OHsHomePageLayoutStyle}">
@@ -720,12 +727,12 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
-                    <RowDefinition Height="Auto" />
+
                 </Grid.RowDefinitions>
                 <Grid Style="{StaticResource OHsHomeHeaderGroupStyle}">
                     <TextBlock Style="{StaticResource OHsHomeSectionTitleStyle}" Text="Projects" />
                 </Grid>
-                <Grid Grid.Row="1" Style="{StaticResource OHsHomeHeaderGroupStyle}">
+                <Grid Grid.Row="1" Style="{StaticResource OHsHomeProjectSearchGroupStyle}">
                     <TextBox
                         x:Name="ProjectSearchTextBox"
                         AutomationProperties.Name="Search all projects"
@@ -742,21 +749,7 @@
                         Color="{DynamicResource Brush.Text.Muted}" />
                     <TextBlock Style="{StaticResource OHsHomePageProjectPlaceholderStyle}" />
                 </Grid>
-                <StackPanel Grid.Row="2" Style="{StaticResource BaseStackPanelStyle}">
-                    <customControls:BalloonButton x:Name="ProjectsRetryButton"
-                        AutomationProperties.Name="Retry Projects" ButtonIcon="{StaticResource UpdateOutline}"
-                        ButtonText="Retry Projects" Command="{Binding RetryProjectsCommand, Mode=OneWay}"
-                        ShouldShowText="True" Style="{StaticResource HomePageProjectsRetryStyle}" />
-                </StackPanel>
-                <ItemsControl
-                    x:Name="ProjectsList"
-                    Grid.Row="3"
-                    AutomationProperties.Name="Projects"
-                    ItemContainerStyle="{StaticResource BaseContentPresenterStyle}"
-                    ItemTemplate="{StaticResource OHsHomePageProjectItemTemplate}"
-                    ItemsSource="{Binding ProjectItems, Mode=OneWay}"
-                    Style="{StaticResource OHsVirtualizedDrawerItemsStyle}" />
-                <StackPanel Grid.Row="4" Style="{StaticResource OHsHomeProjectCreationPanelStyle}">
+                    <StackPanel Grid.Row="1" Style="{StaticResource OHsHomeProjectCreationPanelStyle}">
                     <Grid Style="{StaticResource OHsHomeProjectNameRowStyle}">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                         <TextBox x:Name="ProjectNameTextBox" AutomationProperties.Name="Project name"
@@ -773,6 +766,21 @@
                         Command="{Binding ShowProjectCreationCommand, Mode=OneWay}" Click="OnShowProjectCreationClick"
                         Style="{StaticResource OHsBalloonSurfaceActionStyle}" />
                 </StackPanel>
+                <StackPanel Grid.Row="2" Style="{StaticResource BaseStackPanelStyle}">
+                    <customControls:BalloonButton x:Name="ProjectsRetryButton"
+                        AutomationProperties.Name="Retry Projects" ButtonIcon="{StaticResource UpdateOutline}"
+                        ButtonText="Retry Projects" Command="{Binding RetryProjectsCommand, Mode=OneWay}"
+                        ShouldShowText="True" Style="{StaticResource HomePageProjectsRetryStyle}" />
+                </StackPanel>
+                <ItemsControl
+                    x:Name="ProjectsList"
+                    Grid.Row="3"
+                    AutomationProperties.Name="Projects"
+                    ItemContainerStyle="{StaticResource BaseContentPresenterStyle}"
+                    ItemTemplate="{StaticResource OHsHomePageProjectItemTemplate}"
+                    ItemsSource="{Binding ProjectItems, Mode=OneWay}"
+                    Style="{StaticResource OHsVirtualizedDrawerItemsStyle}" />
+
             </Grid>
         </Border>
         <TextBlock x:Name="InitialLoadingText" Grid.ColumnSpan="2" Grid.RowSpan="2" Text="Loading projects..." Style="{StaticResource OHsHomeInitialLoadingStyle}"/>
