@@ -25,6 +25,32 @@ namespace Hitbench.Test.Presentation;
 [NonParallelizable]
 public class HomePageIntegrationTests
 {
+    [TestCase("")]
+    [TestCase("missing.png")]
+    public void MapsetContainerUsesOwnerTemplateAndNativeSelection(string artwork)
+    {
+        EnsureResources();
+        var mapset = new FolderEntry("mapset", "mapset", default) { Creator = new string('X', 160), BackgroundPath = artwork };
+        var vm = CreateVM(new StubHomeFolderService { Songs = (_, _) => Task.FromResult<FolderSnapshot?>(new FolderSnapshot([mapset])) });
+        var page = new HomePage(vm);
+        var window = new Window { Content = page, Width = 1280, Height = 720 };
+        using var view = new InMemoryView(window);
+        try
+        {
+            UiTestPump.Run(page.LoadAsync(default)); view.UpdateLayout();
+            var list = (ListBox)page.FindName("SongsList");
+            list.SelectedItem = mapset; view.UpdateLayout();
+            var item = (ListBoxItem)list.ItemContainerGenerator.ContainerFromItem(mapset)!;
+            UiControlContract.AssertStyle<ListBoxItem>(item, "OHsHomeMapsetItemStyle");
+            Assert.That(item.Template, Is.SameAs(item.FindResource("OHsHomeMapsetItemTemplate")));
+            Assert.That(item.IsSelected, Is.True);
+            Assert.That(vm.SelectedMapset, Is.SameAs(mapset));
+            vm.SelectMapsetCommand.Execute(mapset); view.UpdateLayout();
+            Assert.That(list.SelectedItem, Is.Null);
+        }
+        finally { page.Deactivate(); window.Close(); }
+    }
+
     [Test]
     public void EmptyProjectsKeepNavigationAvailable()
     {

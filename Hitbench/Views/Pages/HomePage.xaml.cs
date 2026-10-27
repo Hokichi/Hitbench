@@ -18,6 +18,12 @@ namespace Hitbench.Views.Pages;
 
 public partial class HomePage : UserControl
 {
+    public static readonly DependencyProperty MapsetArtworkOpacityProperty = DependencyProperty.RegisterAttached(
+        "MapsetArtworkOpacity", typeof(double), typeof(HomePage),
+        new FrameworkPropertyMetadata(1d, FrameworkPropertyMetadataOptions.Inherits));
+    public static double GetMapsetArtworkOpacity(DependencyObject element) => (double)element.GetValue(MapsetArtworkOpacityProperty);
+    public static void SetMapsetArtworkOpacity(DependencyObject element, double value) => element.SetValue(MapsetArtworkOpacityProperty, value);
+
     private readonly HomePageVM viewModel;
     private DispatcherOperation? queuedCheck;
     private Task demand = Task.CompletedTask;
