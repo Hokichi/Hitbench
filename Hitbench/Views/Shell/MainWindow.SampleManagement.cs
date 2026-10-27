@@ -15,7 +15,7 @@ public partial class MainWindow
     private CancellationTokenSource? sampleManagerCancellation;
     private Func<Task>? closeSampleManager;
     private Action? clearSampleFocusRestore;
-    private WorkstationPage? bottomDrawerPage;
+    private WorkstationPage? dockedDrawerPage;
     private Task sampleManagerPresentation = Task.CompletedTask;
     private static readonly DependencyPropertyKey IsSampleManagerVisiblePropertyKey = DependencyProperty.RegisterReadOnly(
         nameof(IsSampleManagerVisible), typeof(bool), typeof(MainWindow), new PropertyMetadata(false));
@@ -30,19 +30,19 @@ public partial class MainWindow
     public static readonly DependencyProperty IsBlockingDrawerVisibleProperty = IsBlockingDrawerVisiblePropertyKey.DependencyProperty;
     public bool IsBlockingDrawerVisible => (bool)GetValue(IsBlockingDrawerVisibleProperty);
     internal bool ShouldRestoreDrawerFocus(bool presentationCanceled, bool focusInsideDrawer) =>
-        !presentationCanceled && (!IsBottomDrawer || focusInsideDrawer);
+        !presentationCanceled && ((!IsBottomDrawer && dockedDrawerPage is null) || focusInsideDrawer);
     internal OHsSampleDrawerPhase SampleManagerPhase { get; private set; }
 
     private void SetSampleManagerPhase(OHsSampleDrawerPhase phase)
     {
         SampleManagerPhase = phase;
         SetValue(IsSampleManagerVisiblePropertyKey, phase != OHsSampleDrawerPhase.Closed);
-        SetValue(IsBlockingDrawerVisiblePropertyKey, phase != OHsSampleDrawerPhase.Closed && !IsBottomDrawer);
+        SetValue(IsBlockingDrawerVisiblePropertyKey, phase != OHsSampleDrawerPhase.Closed && !IsBottomDrawer && dockedDrawerPage is null);
     }
 
     private async void OnSampleManagerBackdropClick(object sender, MouseButtonEventArgs e)
     {
-        if (IsBottomDrawer) return;
+        if (IsBottomDrawer || dockedDrawerPage is not null) return;
         e.Handled = true;
         if (SampleManagerHost.Content is not UserControl drawer || drawer is not IOHsShellDrawer) return;
         try { await RequestSampleManagerCloseAsync(drawer); }
@@ -116,7 +116,7 @@ public partial class MainWindow
         {
             if (SampleManagerPhase != OHsSampleDrawerPhase.Closing) drawer.FocusInitialAction();
         }
-        var workstation = bottomNonModal ? PageHost.Content as WorkstationPage : null;
+        var workstation = PageHost.Content as WorkstationPage;
         Panel? motionParent = null;
         var motionRow = Grid.GetRow(SampleManagerMotionHost);
         var instrumentDrawer = drawer is OHsInstrumentalArrangementDrawer or OHsKeysMappingDrawer;
@@ -129,23 +129,26 @@ public partial class MainWindow
             drawer.CloseRequested += OnCloseRequested;
             drawer.Loaded += OnLoaded;
             CancelBackgroundDrag();
+            dockedDrawerPage = workstation;
             SetValue(IsBottomDrawerPropertyKey, bottomNonModal);
             SetSampleManagerPhase(OHsSampleDrawerPhase.Opening);
             drawer.IsEnabled = true;
-            SampleManagerHost.SetBinding(TagProperty, new Binding(nameof(IsBottomDrawer)) { Source = this, Mode = BindingMode.OneWay });
+            SampleManagerHost.Tag = workstation is not null || bottomNonModal;
             SampleManagerHost.Style = (Style)FindResource(drawer is OHsKeysMappingDrawer
                 ? "OHsMainWindowKeysMappingDrawerHostStyle" : "OHsMainWindowShellDrawerHostStyle");
             SampleManagerHost.Content = drawer;
             if (workstation is not null)
             {
-                bottomDrawerPage = workstation;
+                dockedDrawerPage = workstation;
                 motionParent = (Panel)SampleManagerMotionHost.Parent;
                 motionParent.Children.Remove(SampleManagerMotionHost);
                 Grid.SetRow(SampleManagerMotionHost, 0);
-                workstation.AttachBottomDrawerHost(SampleManagerMotionHost, drawer is OHsKeysMappingDrawer);
+                workstation.AttachDrawerHost(SampleManagerMotionHost, bottomNonModal
+                    ? drawer is OHsKeysMappingDrawer ? OHsWorkstationDrawerKind.KeysMapping : OHsWorkstationDrawerKind.Arrangement
+                    : OHsWorkstationDrawerKind.Samples);
             }
             // Content attachment sets local flow direction; bind after attachment so shell changes remain live.
-            if (instrumentDrawer)
+            if (workstation is not null || instrumentDrawer)
                 drawer.SetBinding(FlowDirectionProperty, new Binding(nameof(FlowDirection)) { Source = this, Mode = BindingMode.OneWay });
             if (piano is not null && PageHost.Content is WorkstationPage page)
             {
@@ -171,7 +174,7 @@ public partial class MainWindow
             {
                 if (!presentation.IsCancellationRequested && SampleManagerPhase == OHsSampleDrawerPhase.Opening)
                 {
-                    bottomDrawerPage?.SettleBottomDrawerHostAnimation(true);
+                    dockedDrawerPage?.SettleDrawerHostAnimation(true);
                     SetSampleManagerPhase(OHsSampleDrawerPhase.Open);
                 }
             });
@@ -191,7 +194,7 @@ public partial class MainWindow
                 SystemParameters.StaticPropertyChanged -= OnSampleManagerAnimationSettingChanged;
                 drawer.CloseRequested -= OnCloseRequested;
                 drawer.Loaded -= OnLoaded;
-                if (instrumentDrawer) BindingOperations.ClearBinding(drawer, FlowDirectionProperty);
+                if (workstation is not null || instrumentDrawer) BindingOperations.ClearBinding(drawer, FlowDirectionProperty);
                 if (piano is not null)
                 {
                     piano.Detach();
@@ -209,13 +212,13 @@ public partial class MainWindow
                 }
                 if (ReferenceEquals(sampleManagerCompletion, completion))
                 {
-                    workstation?.DetachBottomDrawerHost(SampleManagerMotionHost);
+                    workstation?.DetachDrawerHost(SampleManagerMotionHost);
                     if (motionParent is not null)
                     {
                         Grid.SetRow(SampleManagerMotionHost, motionRow);
                         if (SampleManagerMotionHost.Parent is null) motionParent.Children.Add(SampleManagerMotionHost);
                     }
-                    bottomDrawerPage = null;
+                    dockedDrawerPage = null;
                     sampleManagerCompletion = null;
                     sampleManagerCancellation = null;
                     closeSampleManager = null;
@@ -224,7 +227,7 @@ public partial class MainWindow
                 }
                 drawer.IsEnabled = true;
                 if (!closed && !closeRequested && SampleManagerHost.Content is null && restoreFocus && invoker is not null)
-                    RestoreSampleManagerFocus(invoker, bottomNonModal, drawer);
+                    RestoreSampleManagerFocus(invoker, workstation is not null || bottomNonModal, drawer);
             });
         }
     }

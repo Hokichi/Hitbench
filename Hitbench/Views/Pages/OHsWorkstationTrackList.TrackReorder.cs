@@ -266,7 +266,7 @@ public partial class OHsWorkstationTrackList
                 }
                 sourceRow.FlowDirection = FlowDirection;
                 sourceRow.TimelineContentWidth = TimelineContentWidth;
-                sourceRow.TimelineViewportWidth = TimelineViewportWidth;
+                sourceRow.TimelineViewportWidth = TrackViewportWidth;
                 sourceRow.TimelineHorizontalOffset = TimelineHorizontalOffset;
                 sourceRow.RefreshPresentation();
                 sourceRow.Measure(new Size(trackPreviewWidth, sourceRow.CurrentTrackExtent));

@@ -58,7 +58,7 @@ public sealed class ManageSamplesDrawerAnimationTests
     private static void Drain() => UiTestPump.Run(Dispatcher.CurrentDispatcher.InvokeAsync(() => { }, DispatcherPriority.Background).Task);
 
     [Test]
-    public void CoveredWorkstationDoesNotConsumeDrawerKeyboardOrWheelInput()
+    public void DockedWorkstationIsolatesDrawerKeysAndAllowsVolumeShortcut()
     {
         var audio = new StubWorkstationAudioService();
         var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new MarkerPlaybackCoordinator(audio, Task.Delay), new ImmediateUiScheduler());
@@ -71,8 +71,8 @@ public sealed class ManageSamplesDrawerAnimationTests
             Assert.That(vm.PlayPauseCommand.CanExecute(null), Is.True);
             Assert.That(shell.HandleWindowKeyDown(true, Key.Space, ModifierKeys.None, false, drawer), Is.False);
             Assert.That(shell.HandleWindowKeyDown(true, Key.Left, ModifierKeys.None, false, drawer), Is.False);
-            Assert.That(shell.HandleWindowKeyDown(true, Key.V, ModifierKeys.Alt, false, drawer), Is.False);
-            Assert.That(shell.HandleWindowMouseWheel(true, ModifierKeys.Control, 120, page), Is.False);
+            Assert.That(shell.HandleWindowKeyDown(true, Key.V, ModifierKeys.Alt, false, drawer), Is.True);
+            Assert.That(shell.HandleWindowMouseWheel(true, ModifierKeys.Control, 120, page), Is.True);
             Assert.That(audio.Snapshot.IsPlaying, Is.False);
         }
         finally { UiTestPump.Run(page.PlaybackInputCompletion); UiTestPump.Run(page.DeactivateAsync()); }

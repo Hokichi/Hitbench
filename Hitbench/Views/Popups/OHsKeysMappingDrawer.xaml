@@ -189,7 +189,7 @@
                 TextTrimming="CharacterEllipsis" />
         </DataTemplate>
     </UserControl.Resources>
-    <Border Padding="16" Style="{StaticResource BaseBorderStyle}">
+    <Border Style="{StaticResource CardBorderStyle}">
         <ScrollViewer
             AutomationProperties.Name="Key mapping controls"
             HorizontalScrollBarVisibility="Disabled"

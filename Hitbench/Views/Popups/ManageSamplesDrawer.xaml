@@ -73,6 +73,7 @@
             TargetType="c:BalloonButton">
             <Setter Property="ButtonIcon" Value="{StaticResource MediaPlay}" />
             <Setter Property="ButtonText" Value="Play" />
+            <Setter Property="ShouldShowText" Value="False" />
             <Setter Property="ToolTip" Value="{Binding FileName, Mode=OneWay, StringFormat=Play {0}}" />
             <Setter Property="AutomationProperties.Name" Value="{Binding FileName, Mode=OneWay, StringFormat=Play {0}}" />
             <Style.Triggers>
@@ -122,6 +123,7 @@
         <Style x:Key="OHsManageSamplesMenuStyle" TargetType="c:BalloonComboBox" BasedOn="{StaticResource BaseBalloonComboBoxStyle}">
             <Setter Property="ButtonIcon" Value="{StaticResource BarsSolid}" />
             <Setter Property="ButtonText" Value="Actions" />
+            <Setter Property="ShouldShowText" Value="False" />
             <Setter Property="DefaultBackground" Value="{DynamicResource Brush.BalloonButton.Background.Neutral}" />
             <Setter Property="HoveredBackground" Value="{DynamicResource Brush.BalloonButton.Background.Neutral.Hovered}" />
             <Setter Property="PressedBackground" Value="{DynamicResource Brush.BalloonButton.Background.Neutral.Pressed}" />
@@ -138,6 +140,7 @@
         <Style x:Key="OHsManageSamplesConfirmRenameStyle" TargetType="c:BalloonButton" BasedOn="{StaticResource OHsManageSamplesActionStyle}">
             <Setter Property="ButtonIcon" Value="{StaticResource Check}" />
             <Setter Property="ButtonText" Value="Confirm" />
+            <Setter Property="ShouldShowText" Value="False" />
             <Setter Property="ToolTip" Value="{Binding FileName, Mode=OneWay, StringFormat=Confirm rename {0}}" />
             <Setter Property="AutomationProperties.Name" Value="{Binding FileName, Mode=OneWay, StringFormat=Confirm rename {0}}" />
             <Setter Property="Visibility" Value="Collapsed" />
@@ -163,13 +166,13 @@
                 <Grid MinHeight="40" Style="{StaticResource BaseGridStyle}">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="128" />
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <TextBlock VerticalAlignment="Center" Style="{StaticResource OHsManageSamplesNameStyle}"
+                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                    <TextBlock Grid.ColumnSpan="3" VerticalAlignment="Center" Style="{StaticResource OHsManageSamplesNameStyle}"
                         Text="{Binding FileName, Mode=OneWay}" ToolTip="{Binding FileName, Mode=OneWay}" />
-                    <Grid Margin="0,0,8,0" Style="{StaticResource OHsManageSamplesEditorHostStyle}">
+                    <Grid Grid.ColumnSpan="3" Margin="0,0,8,0" Style="{StaticResource OHsManageSamplesEditorHostStyle}">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                         <TextBox AutomationProperties.Name="Sample filename stem"
                             IsEnabled="{Binding DataContext.CanEditDraft, RelativeSource={RelativeSource AncestorType=ItemsControl}, Mode=OneWay}"
@@ -178,12 +181,12 @@
                             Text="{Binding DataContext.DraftStem, RelativeSource={RelativeSource AncestorType=ItemsControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}" />
                         <TextBlock Grid.Column="1" Margin="8,0" VerticalAlignment="Center" Style="{StaticResource BodyTextStyle}" Text="{Binding Extension, Mode=OneWay}" />
                     </Grid>
-                    <c:WaveformView Grid.Column="1" Margin="8,4" Height="32" VerticalAlignment="Center" Data="{Binding Waveform, Mode=OneWay}"
+                    <c:WaveformView Grid.Row="1" Grid.Column="0" Margin="8,4" Height="32" VerticalAlignment="Center" Data="{Binding Waveform, Mode=OneWay}"
                         ShowPlaybackMarker="False" CenterWaveform="True" WaveformBrush="{DynamicResource Brush.Waveform.Unplayed}"
                         Loaded="OnWaveformRowLoaded" DataContextChanged="OnWaveformRowChanged" IsHitTestVisible="False" />
-                    <c:BalloonButton Grid.Column="2" Command="{Binding DataContext.PlayCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}, Mode=OneWay}"
+                    <c:BalloonButton Grid.Row="1" Grid.Column="1" Command="{Binding DataContext.PlayCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}, Mode=OneWay}"
                         CommandParameter="{Binding Mode=OneWay}" Style="{StaticResource OHsManageSamplesPlayStyle}" />
-                    <Grid Grid.Column="3" Margin="4,0,0,0" Style="{StaticResource BaseGridStyle}">
+                    <Grid Grid.Row="1" Grid.Column="2" Margin="4,0,0,0" Style="{StaticResource BaseGridStyle}">
                         <c:BalloonComboBox ContextMenu="{StaticResource OHsManageSamplesRowMenu}" Style="{StaticResource OHsManageSamplesMenuStyle}" />
                         <c:BalloonButton Command="{Binding DataContext.CommitRenameCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}, Mode=OneWay}"
                             Style="{StaticResource OHsManageSamplesConfirmRenameStyle}" />
@@ -192,16 +195,7 @@
             </Border>
         </DataTemplate>
 
-        <Style x:Key="OHsManageSamplesSurfaceStyle" TargetType="Border" BasedOn="{StaticResource OHsPopupSurfaceBorderStyle}">
-            <Setter Property="Padding" Value="{StaticResource Inset.Card}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Default}" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
-                    <Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
+        <Style x:Key="OHsManageSamplesSurfaceStyle" TargetType="Border" BasedOn="{StaticResource CardBorderStyle}" />
     </UserControl.Resources>
     <Border Style="{StaticResource OHsManageSamplesSurfaceStyle}">
         <Grid Style="{StaticResource BaseGridStyle}">
@@ -219,14 +213,14 @@
                 <TextBlock
                     VerticalAlignment="Center"
                     Style="{StaticResource OHsPopupTitleTextStyle}"
-                    Text="Manage Samples" />
+                    Text="Manage Samples" TextWrapping="Wrap" />
                 <c:BalloonButton
                     x:Name="CloseDrawerButton"
                     Grid.Column="1"
                     h:KeyboardNavigationPolicy.AllowTabNavigation="True"
                     AutomationProperties.Name="Close Manage Samples"
                     ButtonIcon="{StaticResource Close}"
-                    ButtonText="Close"
+                    ButtonText="Close" ShouldShowText="False"
                     Click="OnCloseClick"
                     FocusVisualStyle="{StaticResource OHsSampleManagerKeyboardFocusStyle}"
                     IsEnabled="{Binding CanClose, Mode=OneWay}"
@@ -260,7 +254,7 @@
                     AutomationProperties.Name="Add new sample"
                     ButtonIcon="{StaticResource PlusSolid}"
                     ButtonSize="40"
-                    ButtonText="Add New Sample"
+                    ButtonText="Add sample"
                     Command="{Binding AddNewSampleCommand, Mode=OneWay}"
                     ShouldShowText="True"
                     Style="{StaticResource OHsManageSamplesPrimaryActionStyle}" />

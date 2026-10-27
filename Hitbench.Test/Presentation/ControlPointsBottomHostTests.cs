@@ -58,17 +58,17 @@ public class ControlPointsBottomHostTests
     }
 
     [TestCase(true)][TestCase(false)]
-    public void HostModeControlsBlockingWithoutChangingDefaultDrawerContract(bool bottom)
+    public void BothAxesDockWithoutBlockingWorkstation(bool bottom)
     {
         Show(bottom);
         Assert.That(shell.IsBottomDrawer, Is.EqualTo(bottom));
-        Assert.That(shell.IsBlockingDrawerVisible, Is.EqualTo(!bottom));
+        Assert.That(shell.IsBlockingDrawerVisible, Is.False);
         Assert.That(shell.IsSampleManagerVisible, Is.True);
         var content = (FrameworkElement)shell.FindName("SampleManagerAppContent");
         var backdrop = (Border)shell.FindName("SampleManagerBackdrop");
-        Assert.That(content.IsEnabled, Is.EqualTo(bottom));
-        Assert.That(backdrop.Visibility, Is.EqualTo(bottom ? Visibility.Collapsed : Visibility.Visible));
-        Assert.That(backdrop.IsHitTestVisible, Is.EqualTo(!bottom));
+        Assert.That(content.IsEnabled, Is.True);
+        Assert.That(backdrop.Visibility, Is.EqualTo(Visibility.Collapsed));
+        Assert.That(backdrop.IsHitTestVisible, Is.False);
         UiControlContract.AssertStyle<ContentControl>((ContentControl)shell.FindName("SampleManagerHost"), "OHsMainWindowShellDrawerHostStyle");
     }
 
@@ -118,7 +118,7 @@ public class ControlPointsBottomHostTests
     {
         Show(bottom);
         Assert.That(shell.ShouldRestoreDrawerFocus(false, true), Is.True);
-        Assert.That(shell.ShouldRestoreDrawerFocus(false, false), Is.EqualTo(!bottom));
+        Assert.That(shell.ShouldRestoreDrawerFocus(false, false), Is.False);
         Assert.That(shell.ShouldRestoreDrawerFocus(true, true), Is.False);
     }
 
@@ -135,7 +135,7 @@ public class ControlPointsBottomHostTests
         Assert.That(shell.IsBottomDrawer, Is.False);
         Show(!bottom);
         Assert.That(shell.IsBottomDrawer, Is.EqualTo(!bottom));
-        Assert.That(shell.IsBlockingDrawerVisible, Is.EqualTo(bottom));
+        Assert.That(shell.IsBlockingDrawerVisible, Is.False);
     }
 
     [TestCase(true)][TestCase(false)]
@@ -182,7 +182,7 @@ public class ControlPointsBottomHostTests
             Assert.That(presenter.Content, Is.SameAs(drawer));
             Assert.That(drawer.DataContext, Is.SameAs(context));
             Assert.That(shell.IsBottomDrawer, Is.EqualTo(bottom));
-            Assert.That(shell.IsBlockingDrawerVisible, Is.EqualTo(!bottom));
+            Assert.That(shell.IsBlockingDrawerVisible, Is.False);
             UiControlContract.AssertStyle<ContentControl>(presenter, "OHsMainWindowShellDrawerHostStyle");
             UiTestPump.Run(shell.RequestSampleManagerCloseAsync(drawer));
             UiTestPump.Run(showing);

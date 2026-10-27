@@ -147,9 +147,16 @@ public partial class OHsWorkstationTrackList : UserControl
             else foreach (var nested in RealizedRows(child)) yield return nested;
         }
     }
+    private static readonly DependencyPropertyKey TrackViewportWidthPropertyKey = DependencyProperty.RegisterReadOnly(
+        nameof(TrackViewportWidth), typeof(double), typeof(OHsWorkstationTrackList), new PropertyMetadata(0d));
+    public static readonly DependencyProperty TrackViewportWidthProperty = TrackViewportWidthPropertyKey.DependencyProperty;
+    public double TrackViewportWidth => (double)GetValue(TrackViewportWidthProperty);
+
     private void OnTrackListViewportChanged(object sender, ScrollChangedEventArgs e)
     {
         if (deactivationStarted || sender is not ScrollViewer scroll || !ReferenceEquals(e.OriginalSource, sender)) return;
+        var width = Math.Max(0, scroll.ViewportWidth - TrackSideColumnWidth.Value - 12);
+        if (double.IsFinite(width)) SetValue(TrackViewportWidthPropertyKey, width);
         var gutter = Math.Max(0, scroll.ActualWidth - scroll.ViewportWidth);
         if (double.IsFinite(gutter) && TrackScrollBarGutter != gutter)
         {

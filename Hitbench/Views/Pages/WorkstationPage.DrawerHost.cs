@@ -1,94 +1,112 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Animation;
+using Hitbench.Resources.DataModels;
 
 namespace Hitbench.Views.Pages;
 
 public partial class WorkstationPage
 {
-    private static readonly DependencyProperty BottomDrawerProgressProperty = DependencyProperty.Register(
-        "BottomDrawerProgress", typeof(double), typeof(WorkstationPage), new PropertyMetadata(0d,
-            (owner, _) => ((WorkstationPage)owner).UpdateBottomDrawerReveal()));
-    private Grid? bottomDrawerHost;
-    private bool bottomDrawerSizesToContent;
-    private double bottomDrawerTargetHeight;
+    private static readonly DependencyProperty DrawerProgressProperty = DependencyProperty.Register(
+        "DrawerProgress", typeof(double), typeof(WorkstationPage), new PropertyMetadata(0d,
+            (owner, _) => ((WorkstationPage)owner).UpdateDrawerReveal()));
+    private Grid? drawerHost;
+    private OHsWorkstationDrawerKind drawerKind;
+    private double drawerTargetExtent;
+    private Grid DrawerSlot => drawerKind == OHsWorkstationDrawerKind.Samples ? RightDrawerSlot : BottomDrawerSlot;
 
-    internal void AttachBottomDrawerHost(Grid host, bool sizeToContent)
+    internal void AttachDrawerHost(Grid host, OHsWorkstationDrawerKind kind)
     {
-        if (bottomDrawerHost is not null) throw new InvalidOperationException("A bottom drawer is already attached.");
-        BottomDrawerSlot.Children.Add(host);
-        bottomDrawerHost = host;
-        bottomDrawerSizesToContent = sizeToContent;
+        if (drawerHost is not null) throw new InvalidOperationException("A drawer is already attached.");
+        drawerKind = kind;
+        drawerHost = host;
+        DrawerSlot.Children.Add(host);
         host.VerticalAlignment = VerticalAlignment.Top;
-        BottomDrawerSlot.Visibility = Visibility.Visible;
-        host.LayoutUpdated += OnBottomDrawerLayoutUpdated;
-        SettleBottomDrawerHostAnimation(false);
-        UpdateBottomDrawerHostSize();
+        DrawerSlot.Visibility = Visibility.Visible;
+        host.LayoutUpdated += OnDrawerLayoutUpdated;
+        SettleDrawerHostAnimation(false);
+        UpdateDrawerHostSize();
     }
 
-    internal void DetachBottomDrawerHost(Grid host)
+    internal void DetachDrawerHost(Grid host)
     {
-        if (!ReferenceEquals(bottomDrawerHost, host)) return;
-        ClearBottomDrawerHostAnimation();
-        host.LayoutUpdated -= OnBottomDrawerLayoutUpdated;
-        BottomDrawerSlot.Children.Remove(host);
+        if (!ReferenceEquals(drawerHost, host)) return;
+        ClearDrawerHostAnimation();
+        host.LayoutUpdated -= OnDrawerLayoutUpdated;
+        DrawerSlot.Children.Remove(host);
         host.ClearValue(HeightProperty);
+        host.ClearValue(WidthProperty);
         host.ClearValue(VerticalAlignmentProperty);
-        bottomDrawerHost = null;
-        bottomDrawerTargetHeight = 0;
-        SetValue(BottomDrawerProgressProperty, 0d);
-        BottomDrawerSlot.Visibility = Visibility.Collapsed;
-        BottomDrawerSlot.ClearValue(HeightProperty);
+        DrawerSlot.Visibility = Visibility.Collapsed;
+        DrawerSlot.ClearValue(HeightProperty);
+        DrawerSlot.ClearValue(WidthProperty);
+        drawerHost = null;
+        drawerTargetExtent = 0;
+        SetValue(DrawerProgressProperty, 0d);
+        TracksLayout.UpdateLayout();
+        TrackScrollBarGutter = TrackListComponent.TrackScrollBarGutter;
     }
 
-    private void OnTracksLayoutSizeChanged(object sender, SizeChangedEventArgs e) => UpdateBottomDrawerHostSize();
-    private void OnBottomDrawerLayoutUpdated(object? sender, EventArgs e) => UpdateBottomDrawerHostSize();
+    private void OnTracksLayoutSizeChanged(object sender, SizeChangedEventArgs e) => UpdateDrawerHostSize();
+    private void OnDrawerLayoutUpdated(object? sender, EventArgs e) => UpdateDrawerHostSize();
+
+    internal static double CalculateSideDrawerWidth(double availableWidth, double trackSideWidth) =>
+        Math.Min(480, Math.Max(0, availableWidth - trackSideWidth) / 2);
 
     internal static double CalculateBottomDrawerHeight(double availableHeight, double desiredHeight, bool sizeToContent) =>
         sizeToContent ? Math.Min(availableHeight, desiredHeight) : availableHeight / 2;
 
-    private void UpdateBottomDrawerHostSize()
+    private void UpdateDrawerHostSize()
     {
-        if (bottomDrawerHost is not { } host || TracksLayout.ActualWidth <= 0) return;
-        var availableHeight = Math.Max(0, TracksLayout.ActualHeight);
-        var desiredHeight = 0d;
-        if (bottomDrawerSizesToContent)
+        if (drawerHost is not { } host || TracksLayout.ActualWidth <= 0) return;
+        var width = TracksLayout.ActualWidth;
+        var height = Math.Max(0, TracksLayout.ActualHeight);
+        var side = drawerKind == OHsWorkstationDrawerKind.Samples;
+        if (side)
+            width = CalculateSideDrawerWidth(width, TrackSideColumnWidth.Value + TracksCard.Padding.Left + TracksCard.Padding.Right + 24);
+        else if (drawerKind == OHsWorkstationDrawerKind.KeysMapping)
         {
             var presenter = host.Children[0];
-            presenter.Measure(new Size(TracksLayout.ActualWidth, double.PositiveInfinity));
-            desiredHeight = presenter.DesiredSize.Height;
+            presenter.Measure(new Size(width, double.PositiveInfinity));
+            height = CalculateBottomDrawerHeight(height, presenter.DesiredSize.Height, true);
         }
-        var height = CalculateBottomDrawerHeight(availableHeight, desiredHeight, bottomDrawerSizesToContent);
+        else height = CalculateBottomDrawerHeight(height, 0, false);
+        if (host.Width != width) host.Width = width;
         if (host.Height != height) host.Height = height;
-        if (bottomDrawerTargetHeight == height) return;
-        bottomDrawerTargetHeight = height;
-        UpdateBottomDrawerReveal();
+        var extent = side ? width : height;
+        if (drawerTargetExtent == extent) return;
+        drawerTargetExtent = extent;
+        UpdateDrawerReveal();
     }
 
-    private void UpdateBottomDrawerReveal() =>
-        BottomDrawerSlot.Height = bottomDrawerTargetHeight * Math.Clamp((double)GetValue(BottomDrawerProgressProperty), 0, 1);
-
-    private bool IsBottomDrawerOrigin(DependencyObject? origin) =>
-        bottomDrawerHost is not null && IsWithin(origin, bottomDrawerHost);
-
-    internal void BeginBottomDrawerHostAnimation(bool opening, Duration duration, IEasingFunction easing)
+    private void UpdateDrawerReveal()
     {
-        if (bottomDrawerHost is null) return;
-        if (opening) SettleBottomDrawerHostAnimation(false);
-        BeginAnimation(BottomDrawerProgressProperty, new DoubleAnimation(
-            (double)GetValue(BottomDrawerProgressProperty), opening ? 1 : 0, duration) { EasingFunction = easing });
+        if (drawerHost is null) return;
+        var extent = drawerTargetExtent * Math.Clamp((double)GetValue(DrawerProgressProperty), 0, 1);
+        if (drawerKind == OHsWorkstationDrawerKind.Samples) RightDrawerSlot.Width = extent;
+        else BottomDrawerSlot.Height = extent;
     }
 
-    internal void ClearBottomDrawerHostAnimation()
+    private bool IsDrawerOrigin(DependencyObject? origin) => drawerHost is not null && IsWithin(origin, drawerHost);
+
+    internal void BeginDrawerHostAnimation(bool opening, Duration duration, IEasingFunction easing)
     {
-        var progress = (double)GetValue(BottomDrawerProgressProperty);
-        BeginAnimation(BottomDrawerProgressProperty, null);
-        SetValue(BottomDrawerProgressProperty, progress);
+        if (drawerHost is null) return;
+        if (opening) SettleDrawerHostAnimation(false);
+        BeginAnimation(DrawerProgressProperty, new DoubleAnimation(
+            (double)GetValue(DrawerProgressProperty), opening ? 1 : 0, duration) { EasingFunction = easing });
     }
 
-    internal void SettleBottomDrawerHostAnimation(bool opening)
+    internal void ClearDrawerHostAnimation()
     {
-        BeginAnimation(BottomDrawerProgressProperty, null);
-        SetValue(BottomDrawerProgressProperty, opening ? 1d : 0d);
+        var progress = (double)GetValue(DrawerProgressProperty);
+        BeginAnimation(DrawerProgressProperty, null);
+        SetValue(DrawerProgressProperty, progress);
+    }
+
+    internal void SettleDrawerHostAnimation(bool opening)
+    {
+        BeginAnimation(DrawerProgressProperty, null);
+        SetValue(DrawerProgressProperty, opening ? 1d : 0d);
     }
 }

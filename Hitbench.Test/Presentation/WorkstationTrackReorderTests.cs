@@ -13,7 +13,7 @@ public sealed class WorkstationTrackReorderTests
         var vm = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [a,b], Offsets = [0], BPMs = [120] })) }, new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), projectFiles: saves);
         try
         {
-            await vm.LoadAsync("project.json", default); vm.AcknowledgePresentationReady(vm.LoadGeneration);
+            await vm.LoadAsync("project.json", default); vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;
             vm.SampleFiles.Add("hit.wav");
             Assert.That(vm.PlaceSample(a, 125), Is.True);
             var sample = a.Samples.Single(); var note = b.Notes.Single();

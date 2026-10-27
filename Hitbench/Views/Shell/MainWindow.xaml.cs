@@ -223,7 +223,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
         try
         {
             if (!await workstation.PrepareToReturnAsync(lifetime.Token) || closed || closeRequested) return;
-            if (ReferenceEquals(bottomDrawerPage, workstation) && SampleManagerHost.Content is UserControl drawer)
+            if (ReferenceEquals(dockedDrawerPage, workstation) && SampleManagerHost.Content is UserControl drawer)
             {
                 var presentation = sampleManagerPresentation;
                 DismissSampleManager(drawer);

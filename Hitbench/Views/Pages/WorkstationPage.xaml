@@ -234,25 +234,25 @@
                         SmallChange="16"
                         Style="{StaticResource OHsWorkstationWaveformScrollBarStyle}" />
                 </Grid>
-                <Border
-                    x:Name="TracksCard"
-                    Grid.Row="3"
-                    Margin="0,0,0,8"
-                    Style="{StaticResource CardBorderStyle}">
-                    <Grid x:Name="TracksLayout" Style="{StaticResource BaseGridStyle}" SizeChanged="OnTracksLayoutSizeChanged">
+                <Grid x:Name="TracksLayout" Grid.Row="3" Margin="0,0,0,8" FlowDirection="LeftToRight"
+                      Style="{StaticResource BaseGridStyle}" SizeChanged="OnTracksLayoutSizeChanged">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="*" />
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
+                        <Border x:Name="TracksCard" Style="{StaticResource CardBorderStyle}" FlowDirection="{Binding FlowDirection, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}">
                         <pages:OHsWorkstationTrackList TrackSideColumnWidth="{Binding TrackSideColumnWidth, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}" x:Name="TrackListComponent" Grid.Row="0"
  Timeline="{Binding Timeline, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
  TimelineContentWidth="{Binding TimelineContentWidth, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
  TimelineViewportWidth="{Binding TimelineViewportWidth, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
  TimelineHorizontalOffset="{Binding TimelineHorizontalOffset, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}" />
-                        <Grid x:Name="BottomDrawerSlot" Grid.Row="1" ClipToBounds="True"
+                        </Border>
+                        <Grid x:Name="RightDrawerSlot" Grid.Column="1" Grid.RowSpan="2" Margin="12,0,0,0"
+                              ClipToBounds="True" Visibility="Collapsed" Style="{StaticResource BaseGridStyle}" />
+                        <Grid x:Name="BottomDrawerSlot" Grid.Row="1" Margin="0,12,0,0" ClipToBounds="True"
                               Visibility="Collapsed" Style="{StaticResource BaseGridStyle}" />
-                    </Grid>
-                </Border>
+                </Grid>
 
             </Grid>
             <Border

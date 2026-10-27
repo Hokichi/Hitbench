@@ -33,10 +33,10 @@ public class WorkstationShellVolumeTests
     {
         var slot = (Grid)page.FindName("BottomDrawerSlot");
         var motion = (Grid)slot.Children[0];
-        page.DetachBottomDrawerHost(motion);
+        page.DetachDrawerHost(motion);
         Assert.That(slot.Children, Is.Empty);
-        page.AttachBottomDrawerHost(motion, mapping);
-        page.SettleBottomDrawerHostAnimation(true);
+        page.AttachDrawerHost(motion, mapping ? OHsWorkstationDrawerKind.KeysMapping : OHsWorkstationDrawerKind.Arrangement);
+        page.SettleDrawerHostAnimation(true);
         view.Root.Measure(new Size(900, 600));
         view.Root.Arrange(new Rect(0, 0, 900, 600));
         view.Root.UpdateLayout();
@@ -64,7 +64,7 @@ public class WorkstationShellVolumeTests
     [TestCase(false)]
     [TestCase(true)]
     public void BottomDrawerRootUsesCardSurface(bool mapping) => WithDrawer(mapping, (_, _, drawer, _) =>
-        UiControlContract.AssertStyle<Border>((Border)drawer.Content, "BaseBorderStyle"));
+        UiControlContract.AssertStyle<Border>((Border)drawer.Content, mapping ? "CardBorderStyle" : "OHsArrangementCardStyle"));
 
     [TestCase(false)]
     [TestCase(true)]
