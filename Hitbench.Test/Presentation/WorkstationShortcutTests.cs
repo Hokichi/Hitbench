@@ -209,7 +209,7 @@ public class WorkstationShortcutTests
         var page = new WorkstationPage(vm);
         page.SetProjectPath("project.json");
         using var view = new InMemoryView(new Window { Content = page, Width = 900, Height = 600 });
-        UiTestPump.Run(page.LoadCompletion);
+        UiTestPump.Run(page.LoadCompletion); vm.IsAdditionMode = true;
         DependencyObject origin = kind switch
         {
             "text" => new TextBox(), "password" => new PasswordBox(), "selector" => new ComboBox(),
@@ -297,7 +297,7 @@ public class WorkstationShortcutTests
         var page = new WorkstationPage(vm);
         page.SetProjectPath("project.json");
         using var view = new InMemoryView(new Window { Content = page, Width = 900, Height = 600 });
-        UiTestPump.Run(page.LoadCompletion);
+        UiTestPump.Run(page.LoadCompletion); vm.IsAdditionMode = true;
         DependencyObject origin = kind switch
         {
             "text" => new TextBox(), "password" => new PasswordBox(), "selector" => new ComboBox(),

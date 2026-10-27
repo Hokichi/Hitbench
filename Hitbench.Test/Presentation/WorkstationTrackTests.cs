@@ -17,7 +17,7 @@ public class WorkstationTrackTests
         var source = new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav", new ProjectData { Tracks = [track] })) };
         var saves = new DelayedProjectFileService(); saves.Release();
         var vm = new WorkstationPageVM(source, new Hitbench.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), projectFiles: saves);
-        await vm.LoadAsync("project.json", default); vm.AcknowledgePresentationReady(vm.LoadGeneration);
+        await vm.LoadAsync("project.json", default); vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;
         vm.SetTrackVolume(track, 201);
         Assert.That(track.Volume, Is.EqualTo(200));
         await vm.FlushSavesAsync();
@@ -40,7 +40,7 @@ public class WorkstationTrackTests
         await vm.LoadAsync("project.json", CancellationToken.None);
         vm.SetTrackAddition(track, "Drum");
         Assert.That(track.Addition, Is.EqualTo("None"));
-        vm.AcknowledgePresentationReady(vm.LoadGeneration);
+        vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;
         var updates = audio.SampleUpdates.Count;
         vm.SetTrackAddition(other, "Drum");
         vm.SetTrackAddition(track, "unknown");
@@ -69,7 +69,7 @@ public class WorkstationTrackTests
         var vm = new WorkstationPageVM(source, new Hitbench.Services.MarkerPlaybackCoordinator(audio, Task.Delay),
             new ImmediateUiScheduler(), projectFiles: saves);
         await vm.LoadAsync("project.json", CancellationToken.None);
-        vm.AcknowledgePresentationReady(vm.LoadGeneration);
+        vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;
         var audioUpdates = audio.SampleUpdates.Count;
         vm.SetTrackName(track, "Kick");
         vm.SetTrackName(track, "Kick");
@@ -104,7 +104,7 @@ public class WorkstationTrackTests
         await vm.LoadAsync("project.json", CancellationToken.None);
         vm.SetTrackName(track, "Too early");
         Assert.That(track.Name, Is.EqualTo("Original"));
-        vm.AcknowledgePresentationReady(vm.LoadGeneration);
+        vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;
         vm.SetTrackName(stranger, "Wrong track");
         Assert.That(stranger.Name, Is.EqualTo("Other"));
         vm.SetTrackName(track, "Ready");
@@ -127,7 +127,7 @@ public class WorkstationTrackTests
         var dialog = new StubTrackRemovalDialogService();
         var vm = new WorkstationPageVM(source, new Hitbench.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), projectFiles: saves, trackRemovalDialog: dialog);
         await vm.LoadAsync("project.json", CancellationToken.None);
-        vm.AcknowledgePresentationReady(vm.LoadGeneration);
+        vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;
         await vm.RemoveTrackCommand.ExecuteAsync(track);
         await vm.FlushSavesAsync();
         Assert.That(dialog.Calls, Is.Zero);
@@ -141,7 +141,7 @@ public class WorkstationTrackTests
         var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new Hitbench.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
 
         await vm.LoadAsync("project.json", CancellationToken.None);
-        vm.AcknowledgePresentationReady(vm.LoadGeneration);
+        vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;
 
         Assert.That(vm.CanImportSample, Is.False);
         Assert.That(vm.LoadSampleCommand.CanExecute(null), Is.False);
@@ -163,7 +163,7 @@ public class WorkstationTrackTests
                 new StubSampleFileDialogService(sourcePath));
 
             await vm.LoadAsync(projectPath, CancellationToken.None);
-            vm.AcknowledgePresentationReady(vm.LoadGeneration);
+            vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;
             Assert.That(vm.CanAddTrack, Is.False);
             Assert.That(vm.AddSampleTrackCommand.CanExecute(null), Is.False);
 
@@ -197,7 +197,7 @@ public class WorkstationTrackTests
         };
         var vm = new WorkstationPageVM(source, new Hitbench.Services.MarkerPlaybackCoordinator(audio, (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
         await vm.LoadAsync("project.json", CancellationToken.None);
-        vm.AcknowledgePresentationReady(vm.LoadGeneration);
+        vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;
         Assert.That(vm.ErrorMessage, Does.Contain("missing.wav"));
 
         audio.Snapshot = audio.Snapshot with { Error = null };
@@ -224,7 +224,7 @@ public class WorkstationTrackTests
         var vm = new WorkstationPageVM(source, new Hitbench.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)),
             new ImmediateUiScheduler(), null, null, saves, null, dialog);
         await vm.LoadAsync("project.json", CancellationToken.None);
-        vm.AcknowledgePresentationReady(vm.LoadGeneration);
+        vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;
         await vm.RemoveTrackCommand.ExecuteAsync(first);
         await vm.FlushSavesAsync();
         Assert.That(vm.Tracks, Is.EqualTo(new[] { second }));
@@ -247,7 +247,7 @@ public class WorkstationTrackTests
         var vm = new WorkstationPageVM(source, new Hitbench.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)),
             new ImmediateUiScheduler(), trackRemovalDialog: dialog);
         await vm.LoadAsync("project.json", CancellationToken.None);
-        vm.AcknowledgePresentationReady(vm.LoadGeneration);
+        vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;
         await vm.RemoveTrackCommand.ExecuteAsync(track);
         Assert.That(vm.Tracks, Is.EqualTo(new[] { track }));
         Assert.That(dialog.Calls, Is.EqualTo(1));
@@ -268,7 +268,7 @@ public class WorkstationTrackTests
         var vm = new WorkstationPageVM(source, new Hitbench.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)),
             new ImmediateUiScheduler(), trackRemovalDialog: dialog);
         await vm.LoadAsync("project.json", CancellationToken.None);
-        vm.AcknowledgePresentationReady(vm.LoadGeneration);
+        vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;
         var first = vm.RemoveTrackCommand.ExecuteAsync(track);
         await vm.RemoveTrackCommand.ExecuteAsync(track);
         Assert.That(dialog.Calls, Is.EqualTo(1));
@@ -294,10 +294,10 @@ public class WorkstationTrackTests
         var vm = new WorkstationPageVM(source, new Hitbench.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)),
             new ImmediateUiScheduler(), trackRemovalDialog: dialog);
         await vm.LoadAsync("old.json", CancellationToken.None);
-        vm.AcknowledgePresentationReady(vm.LoadGeneration);
+        vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;
         var pending = vm.RemoveTrackCommand.ExecuteAsync(original);
         await vm.LoadAsync("new.json", CancellationToken.None);
-        vm.AcknowledgePresentationReady(vm.LoadGeneration);
+        vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;
         response.SetResult(true);
         await pending;
         Assert.That(vm.Tracks, Is.EqualTo(new[] { replacement }));
@@ -310,7 +310,7 @@ public class WorkstationTrackTests
         var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new Hitbench.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler(),
             trackRemovalDialog: new StubTrackRemovalDialogService());
         await vm.LoadAsync("project.json", CancellationToken.None);
-        vm.AcknowledgePresentationReady(vm.LoadGeneration);
+        vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;
         Assert.That(vm.CanRemoveTrack, Is.True);
         await vm.DeactivateAsync();
         Assert.That(vm.CanRemoveTrack, Is.False);
@@ -330,7 +330,7 @@ public class WorkstationTrackTests
         var vm = new WorkstationPageVM(source, new Hitbench.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)),
             new ImmediateUiScheduler(), trackRemovalDialog: dialog);
         await vm.LoadAsync("project.json", CancellationToken.None);
-        vm.AcknowledgePresentationReady(vm.LoadGeneration);
+        vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;
         var removal = vm.RemoveTrackCommand.ExecuteAsync(track);
         Assert.That(vm.CanImportSample, Is.False);
         var deactivate = vm.DeactivateAsync();
@@ -353,7 +353,7 @@ public class WorkstationTrackTests
         var vm = new WorkstationPageVM(source, new Hitbench.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)),
             new ImmediateUiScheduler(), null, null, saves, null, dialog);
         await vm.LoadAsync("project.json", CancellationToken.None);
-        vm.AcknowledgePresentationReady(vm.LoadGeneration);
+        vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;
         await vm.RemoveTrackCommand.ExecuteAsync(track);
         Assert.CatchAsync<IOException>(() => vm.FlushSavesAsync());
         Assert.That(vm.SaveError, Does.Contain("Disk full"));
@@ -379,7 +379,7 @@ public class WorkstationTrackTests
         var vm = new WorkstationPageVM(source, new Hitbench.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)),
             new ImmediateUiScheduler(), trackRemovalDialog: dialog);
         await vm.LoadAsync("project.json", CancellationToken.None);
-        vm.AcknowledgePresentationReady(vm.LoadGeneration);
+        vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;
         await vm.RemoveTrackCommand.ExecuteAsync(track);
         Assert.That(vm.Tracks, Is.EqualTo(new[] { track }));
         Assert.That(vm.CanRemoveTrack, Is.True);
@@ -409,7 +409,7 @@ public class WorkstationTrackTests
                 new ImmediateUiScheduler(), new SampleFileService(), null,
                 new ProjectFileService(root.FullName), null, dialog);
             await vm.LoadAsync(path, CancellationToken.None);
-            vm.AcknowledgePresentationReady(vm.LoadGeneration);
+            vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;
             await vm.RemoveTrackCommand.ExecuteAsync(track);
             await vm.FlushSavesAsync();
             Assert.That(await File.ReadAllBytesAsync(samplePath), Is.EqualTo(new byte[] { 1, 2, 3 }));
@@ -433,7 +433,7 @@ public class WorkstationTrackTests
         saves.Release();
         var vm = new WorkstationPageVM(source, new Hitbench.Services.MarkerPlaybackCoordinator(audio, (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler(), projectFiles: saves);
         await vm.LoadAsync("project.json", CancellationToken.None);
-        vm.AcknowledgePresentationReady(vm.LoadGeneration);
+        vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;
         vm.SelectSample(track, "new.wav");
         Assert.That(track.Samples, Is.EqualTo(new[] { one, two }));
         Assert.That(track.SelectedSampleFileName, Is.EqualTo("new.wav"));
@@ -461,7 +461,7 @@ public class WorkstationTrackTests
         var vm = new WorkstationPageVM(source, new Hitbench.Services.MarkerPlaybackCoordinator(audio, (duration, token) => Task.Delay(duration, token)),
             new ImmediateUiScheduler(), new StubSampleFileService(["a.wav", "B.wav", "c.wav"]));
         await vm.LoadAsync("project.json", default);
-        vm.AcknowledgePresentationReady(vm.LoadGeneration);
+        vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;
         var originalId = audio.SampleUpdates.Last()[0].Id;
         var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         audio.PrepareSamplesAsync = _ => release.Task;
@@ -491,7 +491,7 @@ public class WorkstationTrackTests
         var vm = new WorkstationPageVM(source, new Hitbench.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)),
             new ImmediateUiScheduler(), new StubSampleFileService(["a.wav", "b.wav"]));
         await vm.LoadAsync("project.json", CancellationToken.None);
-        vm.AcknowledgePresentationReady(vm.LoadGeneration);
+        vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;
 
         vm.AddSampleTrackCommand.Execute(null);
         var track = vm.Tracks.Single();
@@ -523,7 +523,7 @@ public class WorkstationTrackTests
         var vm = new WorkstationPageVM(source, new Hitbench.Services.MarkerPlaybackCoordinator(audio, (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
 
         await vm.LoadAsync("project.json", CancellationToken.None);
-        vm.AcknowledgePresentationReady(vm.LoadGeneration);
+        vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;
 
         var scheduled = audio.SampleUpdates.Last().Single();
         Assert.Multiple(() =>
@@ -544,7 +544,7 @@ public class WorkstationTrackTests
         var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new Hitbench.Services.MarkerPlaybackCoordinator(audio, (duration, token) => Task.Delay(duration, token)),
             new ImmediateUiScheduler(), projectFiles: saves);
         await vm.LoadAsync("project.json", CancellationToken.None);
-        vm.AcknowledgePresentationReady(vm.LoadGeneration);
+        vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;
 
         vm.SongVolume = -10;
         Assert.That(vm.SongVolume, Is.Zero);
@@ -570,7 +570,7 @@ public class WorkstationTrackTests
         var vm = new WorkstationPageVM(source, new Hitbench.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)),
             new ImmediateUiScheduler(), new StubSampleFileService(["a.wav"]));
         await vm.LoadAsync("project.json", CancellationToken.None);
-        vm.AcknowledgePresentationReady(vm.LoadGeneration);
+        vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;
         vm.AddSampleTrackCommand.Execute(null);
         var track = vm.Tracks.Single();
         Assert.That(vm.PlaceSample(track, 125), Is.True);
@@ -597,7 +597,7 @@ public class WorkstationTrackTests
         var vm = new WorkstationPageVM(source, new Hitbench.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)),
             new ImmediateUiScheduler(), new StubSampleFileService(["a.wav"]));
         await vm.LoadAsync("project.json", CancellationToken.None);
-        vm.AcknowledgePresentationReady(vm.LoadGeneration);
+        vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;
         vm.AddSampleTrackCommand.Execute(null);
 
         Assert.That(vm.PlaceSample(vm.Tracks.Single(), timestamp), Is.False);
@@ -622,7 +622,7 @@ public class WorkstationTrackTests
                 new SampleFileService(), new StubSampleFileDialogService(sourcePath),
                 new ProjectFileService(root.FullName), new WeakReferenceMessenger());
             await vm.LoadAsync(projectPath, CancellationToken.None);
-            vm.AcknowledgePresentationReady(vm.LoadGeneration);
+            vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;
             vm.AddSampleTrackCommand.Execute(null);
             var track = vm.Tracks.Single();
             Assert.That(track.SelectedSampleFileName, Is.EqualTo("a.wav"));
@@ -650,7 +650,7 @@ public class WorkstationTrackTests
             new ImmediateUiScheduler(), new StubSampleFileService(["a.wav"]), null, saves,
             new WeakReferenceMessenger());
         await vm.LoadAsync("project.json", CancellationToken.None);
-        vm.AcknowledgePresentationReady(vm.LoadGeneration);
+        vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;
         vm.AddSampleTrackCommand.Execute(null);
         Assert.That(saves.FirstWriteStarted, Is.True);
         var track = vm.Tracks.Single();
@@ -671,7 +671,7 @@ public class WorkstationTrackTests
         var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new Hitbench.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)),
             new ImmediateUiScheduler(), new StubSampleFileService(["a.wav"]), null, null, messenger);
         await vm.LoadAsync("project.json", CancellationToken.None);
-        vm.AcknowledgePresentationReady(vm.LoadGeneration);
+        vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;
         messenger.Send(new AddSampleTrackRequestedMessage());
         Assert.That(vm.Tracks, Has.Count.EqualTo(1));
         await vm.DeactivateAsync();
@@ -687,7 +687,7 @@ public class WorkstationTrackTests
             new ImmediateUiScheduler(), new StubSampleFileService(["a.wav"]), null, saves,
             new WeakReferenceMessenger());
         await vm.LoadAsync("project.json", CancellationToken.None);
-        vm.AcknowledgePresentationReady(vm.LoadGeneration);
+        vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;
         vm.AddSampleTrackCommand.Execute(null);
         Assert.CatchAsync<IOException>(() => vm.FlushSavesAsync());
         Assert.That(vm.SaveError, Does.Contain("Disk full"));

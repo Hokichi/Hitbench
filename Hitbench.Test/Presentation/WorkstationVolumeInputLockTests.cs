@@ -112,7 +112,7 @@ public class WorkstationVolumeInputLockTests
         var page = new WorkstationPage(vm);
         page.SetProjectPath("project.json");
         var view = new InMemoryView(new Window { Content = page, Width = 1000, Height = 700 });
-        UiTestPump.Run(page.LoadCompletion);
+        UiTestPump.Run(page.LoadCompletion); vm.IsAdditionMode = true;
         return (page, vm, view);
     }
 }

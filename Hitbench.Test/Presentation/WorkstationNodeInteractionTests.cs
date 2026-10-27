@@ -626,7 +626,7 @@ public class WorkstationNodeInteractionTests
             new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), new StubSampleFileService(["a.wav", "b.wav"]), nodePasteDialog: new StubNodePasteDialogService());
         var page = new WorkstationPage(vm); page.SetProjectPath("project.json");
         var host = new Window { Content = page, Width = 1100, Height = 800 };
-        var view = new InMemoryView(host); UiTestPump.Run(page.LoadCompletion); view.UpdateLayout();
+        var view = new InMemoryView(host); UiTestPump.Run(page.LoadCompletion); vm.IsAdditionMode = true; view.UpdateLayout();
         // Realize the explicit participants; leave larger collections virtualized.
         host.Height += Math.Min(trackCount, 6) * vm.TrackHeight; view.UpdateLayout();
         return (page, vm, node, view);

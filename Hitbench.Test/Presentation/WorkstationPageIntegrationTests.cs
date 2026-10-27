@@ -290,7 +290,8 @@ public class WorkstationPageIntegrationTests
         Assert.That(mute.IsChecked, Is.True);
         page.TimelineViewportWidth = 210; page.TimelineContentWidth = 1678; page.TimelineHorizontalOffset = 123.75;
         var grid = FindVisualChild<BeatGridView>(container)!;
-        Assert.That(grid.ViewportWidth, Is.EqualTo(210));
+        Assert.That(grid.ViewportWidth, Is.EqualTo(((OHsWorkstationTrackList)page.FindName("TrackListComponent")).TrackViewportWidth));
+        Assert.That(page.TimelineViewportWidth, Is.EqualTo(210));
         Assert.That(grid.ContentWidth, Is.EqualTo(1678));
         Assert.That(grid.HorizontalOffset, Is.EqualTo(123.75));
         Assert.That(saves.Writes, Is.Zero);
@@ -677,7 +678,7 @@ public class WorkstationPageIntegrationTests
 
     [TestCase(FlowDirection.LeftToRight)]
     [TestCase(FlowDirection.RightToLeft)]
-    public void AddedTrackCardUsesWaveformViewportAndOffset(FlowDirection direction)
+    public void AddedTrackCardUsesLocalViewportAndSharedTimelineInputs(FlowDirection direction)
     {
         var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new Hitbench.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)),
             new ImmediateUiScheduler(), new StubSampleFileService(["a.wav"]));
@@ -695,7 +696,7 @@ public class WorkstationPageIntegrationTests
         Assert.Multiple(() =>
         {
             Assert.That(grid.ContentWidth, Is.EqualTo(page.TimelineContentWidth));
-            Assert.That(grid.ViewportWidth, Is.EqualTo(page.TimelineViewportWidth));
+            Assert.That(grid.ViewportWidth, Is.EqualTo(((OHsWorkstationTrackList)page.FindName("TrackListComponent")).TrackViewportWidth));
             Assert.That(grid.HorizontalOffset, Is.EqualTo(page.TimelineHorizontalOffset));
             Assert.That(grid.Subdivision, Is.EqualTo(4));
             Assert.That(grid.FlowDirection, Is.EqualTo(FlowDirection.LeftToRight));

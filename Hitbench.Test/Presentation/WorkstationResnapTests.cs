@@ -37,7 +37,7 @@ public class WorkstationResnapTests
             new StubSampleFileService(["a.wav", "b.wav"]), sampleDialog: importDialog,
             projectFiles: saves, trackRemovalDialog: removal);
         await vm.LoadAsync("project.json", CancellationToken.None);
-        vm.AcknowledgePresentationReady(vm.LoadGeneration);
+        vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;
         await vm.FlushPlaybackUpdatesAsync();
         await vm.FlushSavesAsync();
     }

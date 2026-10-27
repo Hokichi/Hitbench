@@ -27,7 +27,7 @@ public class ScanOverlayIntegrationTests
         UiTestPump.EnsureFontResources(app);
         foreach (var resource in new[] { "Themes/Dark.xaml", "Themes/Tokens.xaml", "Converters/Converters.xaml", "Icons.xaml", "Styles/TextBlock.xaml",
             "Styles/ItemsControl.xaml", "Styles/StackPanel.xaml", "Styles/Image.xaml", "Styles/ColumnDefinition.xaml", "Styles/Grid.xaml", "Styles/Border.xaml", "Styles/ContentPresenter.xaml", "Styles/Button.xaml", "Styles/MenuItem.xaml", "Styles/ContextMenu.xaml", "Styles/BalloonComboBox.xaml",
-            "Styles/ToolTip.xaml", "Styles/Window.xaml", "Styles/TextBox.xaml" })
+            "Styles/ToolTip.xaml", "Styles/Window.xaml", "Styles/TextBox.xaml", "Styles/ListBox.xaml" })
             app.Resources.MergedDictionaries.Add(new ResourceDictionary
             {
                 Source = new Uri($"/Hitbench;component/Resources/{resource}", UriKind.Relative)

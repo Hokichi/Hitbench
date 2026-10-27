@@ -30,7 +30,7 @@ public class WorkstationNodeFormationTests
             new StubSampleFileService(tracks.Select(t => t.SelectedSampleFileName!).ToArray()),
             projectFiles: saves, nodePasteDialog: dialogs);
         await vm.LoadAsync("project.json", CancellationToken.None);
-        vm.AcknowledgePresentationReady(vm.LoadGeneration);
+        vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;
         vm.SetNodeSelection([a, b]);
         await vm.FlushSavesAsync(); await vm.FlushPlaybackUpdatesAsync();
     }
@@ -115,7 +115,7 @@ public class WorkstationNodeFormationTests
         var operation = vm.CommitNodeDragAsync();
         Assert.That(vm.IsNodeEditBusy, Is.True);
         if (deactivate) await vm.DeactivateAsync();
-        else { await vm.LoadAsync("other.json", default); vm.AcknowledgePresentationReady(vm.LoadGeneration); }
+        else { await vm.LoadAsync("other.json", default); vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true; }
         pending.TrySetResult(); Assert.That(await operation, Is.False);
         AssertOriginalFormation(); Assert.That(vm.CanUndo, Is.False);
     }

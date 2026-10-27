@@ -14,7 +14,7 @@ public sealed class WorkstationSampleConfigurationTests
             sampleFiles: new StubSampleFileService(["a.wav", "b.wav"]), sampleDialog: new StubSampleFileDialogService([]),
             trackRemovalDialog: new StubTrackRemovalDialogService { Confirm = _ => Task.FromResult(true) });
         await vm.LoadAsync("project.json", default);
-        vm.AcknowledgePresentationReady(vm.LoadGeneration);
+        vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;
         return vm;
     }
 
@@ -91,7 +91,7 @@ public sealed class WorkstationSampleConfigurationTests
         try
         {
             vm.BeginSampleConfiguration(track);
-            await vm.LoadAsync("replacement.json", default); vm.AcknowledgePresentationReady(vm.LoadGeneration);
+            await vm.LoadAsync("replacement.json", default); vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;
             Assert.That(vm.IsSampleConfigurationOpen, Is.False);
             vm.BeginSampleConfiguration(track); await vm.RemoveTrackCommand.ExecuteAsync(track);
             Assert.That(vm.IsSampleConfigurationOpen, Is.False);

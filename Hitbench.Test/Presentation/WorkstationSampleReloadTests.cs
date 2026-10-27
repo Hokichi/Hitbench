@@ -17,7 +17,7 @@ public class WorkstationSampleReloadTests
         Tracks = [new Track { Name = name, SelectedSampleFileName = "hit.wav" }] };
 
     private static async Task Load(WorkstationPageVM vm)
-    { await vm.LoadAsync("project.json", default); vm.AcknowledgePresentationReady(vm.LoadGeneration); }
+    { await vm.LoadAsync("project.json", default); vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true; }
 
     [Test]
     public async Task ReloadSamplesPreservesProjectIdentityAndEditingState()

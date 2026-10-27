@@ -27,7 +27,7 @@ public sealed class WorkstationSampleManagementTests
             new StubSampleFileDialogService([]), messenger: messenger, sampleManagementDialog: manager, instrumentDialogs: dialogs);
         try
         {
-            await vm.LoadAsync("project.json", default); vm.AcknowledgePresentationReady(vm.LoadGeneration);
+            await vm.LoadAsync("project.json", default); vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;
             Assert.That(vm.SampleFiles, Is.EqualTo(new[] { "kick.wav" }));
             Assert.That(sample.SelectedSampleFileName, Is.EqualTo("Piano/C3.wav"));
             Assert.That(vm.GetSampleAvailability(sample), Is.EqualTo(TrackSampleAvailability.Missing));
@@ -66,7 +66,7 @@ public sealed class WorkstationSampleManagementTests
             new StubSampleFileService(["hit.wav"]), new StubSampleFileDialogService([]), sampleManagementDialog: manager);
         try
         {
-            await vm.LoadAsync("project.json", default); vm.AcknowledgePresentationReady(vm.LoadGeneration);
+            await vm.LoadAsync("project.json", default); vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;
             await vm.SeekCommand.ExecuteAsync(TimeSpan.FromSeconds(3)); await vm.PlayPauseCommand.ExecuteAsync(null);
             var managing = vm.ManageSamplesCommand.ExecuteAsync(null); await presented.Task.WaitAsync(TimeSpan.FromSeconds(3));
             Assert.That(audio.Snapshot.IsPlaying, Is.True); Assert.That(audio.Snapshot.Position, Is.EqualTo(TimeSpan.FromSeconds(3)));
@@ -91,7 +91,7 @@ public sealed class WorkstationSampleManagementTests
             new StubSampleFileService(["hit.wav"]), new StubSampleFileDialogService([]), sampleManagementDialog: manager);
         try
         {
-            await vm.LoadAsync("project.json", default); vm.AcknowledgePresentationReady(vm.LoadGeneration); await vm.FlushPlaybackUpdatesAsync();
+            await vm.LoadAsync("project.json", default); vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true; await vm.FlushPlaybackUpdatesAsync();
             audio.PrepareSamplesAsync = token => { preparing.TrySetResult(); return prepared.Task.WaitAsync(token); };
             vm.AddSampleTrackCommand.Execute(null);
             Assert.That(vm.PlaceSample(vm.Tracks.Single(), 0), Is.True);
@@ -112,8 +112,8 @@ public sealed class WorkstationSampleManagementTests
         manager.Present=(context,_)=>{previous=context;return Task.CompletedTask;};
         var vm=new WorkstationPageVM(new StubWorkstationSourceService(),new MarkerPlaybackCoordinator(new StubWorkstationAudioService(),Task.Delay),new ImmediateUiScheduler(),
             new StubSampleFileService(["hit.wav"]),new StubSampleFileDialogService(Array.Empty<string>()),messenger:messenger,sampleManagementDialog:manager);
-        await vm.LoadAsync("project.json",default); vm.AcknowledgePresentationReady(vm.LoadGeneration); await vm.ManageSamplesCommand.ExecuteAsync(null);
-        await vm.LoadAsync("project.json",default); vm.AcknowledgePresentationReady(vm.LoadGeneration);
+        await vm.LoadAsync("project.json",default); vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true; await vm.ManageSamplesCommand.ExecuteAsync(null);
+        await vm.LoadAsync("project.json",default); vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;
         messenger.Send(new ProjectSamplesChangedMessage(previous!,["obsolete.wav"])); await vm.FlushSavesAsync();
         Assert.That(vm.SampleFiles,Is.EqualTo(new[]{"hit.wav"})); await vm.DeactivateAsync();
         messenger.Send(new ProjectSamplesChangedMessage(previous!,[])); Assert.That(vm.SampleFiles,Is.EqualTo(new[]{"hit.wav"}));
@@ -125,7 +125,7 @@ public sealed class WorkstationSampleManagementTests
         var saves = new DelayedProjectFileService(); saves.Release();
         var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), MarkerPlaybackCoordinator.DelayAsync),
             new ImmediateUiScheduler(), files, new StubSampleFileDialogService(Array.Empty<string>()), projectFiles:saves, messenger: messenger, sampleManagementDialog: manager);
-        await vm.LoadAsync("project.json", default); vm.AcknowledgePresentationReady(vm.LoadGeneration);
+        await vm.LoadAsync("project.json", default); vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;
         vm.AddSampleTrackCommand.Execute(null); var track = vm.Tracks.Single(); vm.PlaceSample(track, 0); var node = track.Samples.Single();
         manager.Present = (context, _) => { messenger.Send(new ProjectSamplesChangedMessage(context, ["kick.wav", "replacement.wav"], "hit.wav", "kick.wav")); return Task.CompletedTask; };
         await vm.ManageSamplesCommand.ExecuteAsync(null);

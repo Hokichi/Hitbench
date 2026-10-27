@@ -144,7 +144,7 @@ public class WorkstationReturnIntegrationTests
         var back = (BalloonButton)((Hitbench.Views.Shell.OHsShellHeader)window.FindName("ShellHeader")).FindName("GoBackButton");
         Assert.That(back, Is.Not.Null);
         Assert.That(back.IsEnabled, Is.True);
-        Assert.That(AutomationProperties.GetName(back), Is.EqualTo("Return home"));
+        Assert.That(AutomationProperties.GetName(back), Is.EqualTo("Return to projects"));
         back.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
         UiTestPump.Run(StubWorkstationAudioService.WaitUntilAsync(() => homes.Count == 2));
         UiTestPump.Run(window.ReturnHomeAsync());
