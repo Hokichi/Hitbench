@@ -7,6 +7,7 @@ public sealed record FolderEntry(string FullName, string Name, DateTimeOffset La
     public string DisplayName { get; init; } = Name;
     public string Artist { get; init; } = "";
     public string Title { get; init; } = "";
+    public string Creator { get; init; } = "";
     public string BackgroundPath { get; init; } = "";
     public bool IsPinned { get; init; }
     public DateTimeOffset LastChanged { get; init; }

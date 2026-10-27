@@ -4,6 +4,36 @@ namespace Hitbench.Test.Services;
 
 public class HomeFolderServiceTests
 {
+    [Test]
+    public async Task CreatorComesOnlyFromFirstOrdinalBeatmapAndSurvivesWarmCache()
+    {
+        var song = CreateMetadataSong("Title:Song\nCreator: Second mapper\n");
+        File.WriteAllText(Path.Combine(song, "a.osu"), "[Metadata]\nTitle:Song\nCreator: First mapper \n");
+        var service = new HomeFolderService(appRoot);
+        var entry = (await service.LoadSongsAsync(root, default))!.ReadPage(0, 1).Single();
+        using var cache = System.Text.Json.JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(appRoot, "data.json")));
+        Assert.That(cache.RootElement.GetProperty("Songs")[0].TryGetProperty("Creator", out var creator), Is.True);
+        Assert.That(creator.GetString(), Is.EqualTo("First mapper"));
+        Assert.That(cache.RootElement.GetProperty("Version").GetInt32(), Is.EqualTo(3));
+        var warm = (await new HomeFolderService(appRoot).LoadSongsAsync(root, default))!.ReadPage(0, 1).Single();
+        Assert.That(warm, Is.EqualTo(entry));
+    }
+
+    [Test]
+    public async Task VersionTwoCacheRebuildsCreatorOnOrdinaryLoad()
+    {
+        var song = CreateMetadataSong("Title:Song\nCreator:Mapper\n");
+        Directory.CreateDirectory(appRoot);
+        var cachePath = Path.Combine(appRoot, "data.json");
+        var old = new Hitbench.Resources.DataModels.SongCache(2, Path.Combine(root, "Songs"), ["Metadata"],
+            [new Hitbench.Core.Entities.Song(song, "Metadata", default, "", "Song", "Song", "")]);
+        await File.WriteAllTextAsync(cachePath, System.Text.Json.JsonSerializer.Serialize(old));
+        await new HomeFolderService(appRoot).LoadSongsAsync(root, default);
+        using var saved = System.Text.Json.JsonDocument.Parse(await File.ReadAllTextAsync(cachePath));
+        Assert.That(saved.RootElement.GetProperty("Version").GetInt32(), Is.EqualTo(3));
+        Assert.That(saved.RootElement.GetProperty("Songs")[0].GetProperty("Creator").GetString(), Is.EqualTo("Mapper"));
+    }
+
     [TestCase(null)]
     [TestCase("   ")]
     public async Task OrdinaryMetadataFillsAbsentOrEmptyUnicode(string? unicode)
@@ -65,7 +95,7 @@ public class HomeFolderServiceTests
         var entry = snapshot!.ReadPage(0, 1).Single();
         Assert.That((entry.Artist, entry.Title), Is.EqualTo(("Composer", "Song")));
         using var saved = System.Text.Json.JsonDocument.Parse(await File.ReadAllTextAsync(cachePath));
-        Assert.That(saved.RootElement.GetProperty("Version").GetInt32(), Is.EqualTo(2));
+        Assert.That(saved.RootElement.GetProperty("Version").GetInt32(), Is.EqualTo(3));
     }
 
     private string CreateMetadataSong(string metadata)

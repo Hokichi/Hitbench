@@ -13,7 +13,7 @@ public sealed class HomeFolderService(string applicationDirectory, Func<Cancella
     : IHomeFolderService
 {
     private readonly ISampleFileService sampleFiles = sampleFiles ?? new SampleFileService(applicationDirectory);
-    private const int CacheVersion = 2;
+    private const int CacheVersion = 3;
     private static readonly HashSet<string> ImageExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
         ".bmp", ".gif", ".jpg", ".jpeg", ".png", ".tif", ".tiff"
@@ -99,13 +99,13 @@ public sealed class HomeFolderService(string applicationDirectory, Func<Cancella
             new FolderEntry(song.FullName, song.Name, song.LastWriteTimeUtc)
             {
                 Artist = song.Artist, Title = song.Title, DisplayName = song.DisplayName,
-                BackgroundPath = song.BackgroundPath
+                BackgroundPath = song.BackgroundPath, Creator = song.Creator
             });
         var snapshot = new FolderSnapshot(reused.Concat(ReadSongEntries(
             folders.Where(folder => !known.Contains(folder.Name)), token)), token);
         if (cache is not null && current.SetEquals(cache.Folders) && snapshot.Count == known.Count) return snapshot;
         var songs = snapshot.ReadPage(0, snapshot.Count).Select(song => new Song(song.FullName,
-            song.Name, song.LastWriteTimeUtc, song.Artist, song.Title, song.DisplayName, song.BackgroundPath)).ToArray();
+            song.Name, song.LastWriteTimeUtc, song.Artist, song.Title, song.DisplayName, song.BackgroundPath, song.Creator)).ToArray();
         token.ThrowIfCancellationRequested();
         SaveCache(cachePath, new SongCache(CacheVersion, path, current.ToArray(), songs), token);
         return snapshot;
@@ -127,7 +127,7 @@ public sealed class HomeFolderService(string applicationDirectory, Func<Cancella
             foreach (var song in cache.Songs)
                 if (song is null || song.Name is null || !names.Contains(song.Name) || !songNames.Add(song.Name) ||
                     !StringComparer.OrdinalIgnoreCase.Equals(song.FullName, Path.Combine(songsRoot, song.Name)) ||
-                    song.Artist is null || song.Title is null || song.DisplayName is null || song.BackgroundPath is null)
+                    song.Artist is null || song.Title is null || song.DisplayName is null || song.BackgroundPath is null || song.Creator is null)
                     return null;
             return cache;
         }
@@ -211,6 +211,7 @@ public sealed class HomeFolderService(string applicationDirectory, Func<Cancella
         var backgroundEvents = false;
         var artist = "";
         var title = "";
+        var creator = "";
         var unicodeArtist = "";
         var unicodeTitle = "";
         string? backgroundPath = null;
@@ -243,6 +244,7 @@ public sealed class HomeFolderService(string applicationDirectory, Func<Cancella
                     var key = line[..separator].Trim();
                     if (key == "Artist") artist = line[(separator + 1)..].Trim();
                     if (key == "Title") title = line[(separator + 1)..].Trim();
+                    if (key == "Creator") creator = line[(separator + 1)..].Trim();
                     if (key == "ArtistUnicode") unicodeArtist = line[(separator + 1)..].Trim();
                     if (key == "TitleUnicode") unicodeTitle = line[(separator + 1)..].Trim();
                 }
@@ -270,6 +272,7 @@ public sealed class HomeFolderService(string applicationDirectory, Func<Cancella
         {
             Artist = artist,
             Title = title,
+            Creator = creator,
             DisplayName = string.IsNullOrWhiteSpace(artist) ? title : $"{artist} - {title}",
             BackgroundPath = backgroundPath ?? ""
         };
