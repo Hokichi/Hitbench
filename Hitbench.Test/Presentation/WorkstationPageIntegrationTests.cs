@@ -236,6 +236,7 @@ public class WorkstationPageIntegrationTests
         var page = new WorkstationPage(vm); page.SetProjectPath("project.json");
         using var view = new InMemoryView(new Window { Content = page, Width = 900, Height = 700 });
         UiTestPump.Run(page.LoadCompletion);
+        vm.IsAdditionMode = true; view.UpdateLayout();
         var addition = (SegmentedToggleOption)((Hitbench.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("AdditionModeButton");
         var selection = (SegmentedToggleOption)((Hitbench.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("SelectionModeButton");
         Assert.That(addition.IsChecked, Is.True);
@@ -327,7 +328,7 @@ public class WorkstationPageIntegrationTests
         Assert.That(mute.IsChecked, Is.True); Assert.That(solo.IsChecked, Is.True);
         var remove = FindRemovalAction(page, a);
         Assert.That(remove.Style, Is.SameAs(FindVisualChildren<OHsWorkstationTrackRow>(page).Single(row => ReferenceEquals(row.Track, a)).FindResource("OHsWorkstationTrackDeleteMenuItemStyle")));
-        Assert.That(remove.Style.BasedOn, Is.SameAs(page.FindResource("OHsDestructiveActionMenuItemStyle")));
+        Assert.That(remove.Style.BasedOn, Is.SameAs(page.FindResource("OHsDestructiveIconActionMenuItemStyle")));
         Assert.That(remove.CommandParameter, Is.SameAs(a));
         var updates = audio.SampleUpdates.Count;
         mute.DataContext = b; solo.DataContext = b;
@@ -376,7 +377,8 @@ public class WorkstationPageIntegrationTests
             new ImmediateUiScheduler(), files, new StubSampleFileDialogService("snare.wav"));
         var page = new WorkstationPage(vm); page.SetProjectPath("project.json");
         using var view = new InMemoryView(new Window { Content = page, Width = 1100, Height = 900 });
-        UiTestPump.Run(page.LoadCompletion); view.UpdateLayout();
+        UiTestPump.Run(page.LoadCompletion);
+        vm.IsAdditionMode = true; view.UpdateLayout(); view.UpdateLayout();
         choices = ["kick.wav", "snare.wav"];
         UiTestPump.Run(vm.ImportSamplesAsync());
         var selectors = FindVisualChildren<ComboBox>(page).Where(box => ReferenceEquals(box.DataContext, track)).ToArray();
@@ -403,7 +405,8 @@ public class WorkstationPageIntegrationTests
             new ImmediateUiScheduler(), new StubSampleFileService(["long-descriptive-sample-file-name-for-track-metadata.wav"]), projectFiles: saves);
         var page = new WorkstationPage(vm); page.SetProjectPath("project.json");
         using var view = new InMemoryView(new Window { Content = page, Width = width, Height = 900, FlowDirection = direction });
-        UiTestPump.Run(page.LoadCompletion); view.UpdateLayout();
+        UiTestPump.Run(page.LoadCompletion);
+        vm.IsAdditionMode = true; view.UpdateLayout(); view.UpdateLayout();
         var selectors = FindVisualChildren<ComboBox>(page).Where(box => ReferenceEquals(box.DataContext, first)).ToArray();
         Assert.That(selectors.Select(box => box.Name), Does.Not.Contain("TrackSamplesetSelector"));
         var addition = selectors.Single(box => box.Name == "TrackAdditionSelector");
@@ -546,7 +549,7 @@ public class WorkstationPageIntegrationTests
         var button = FindRemovalAction(page, track);
         Assert.That(button.CommandParameter, Is.SameAs(track));
         Assert.That(button.Style, Is.SameAs(FindVisualChildren<OHsWorkstationTrackRow>(page).Single(row => ReferenceEquals(row.Track, track)).FindResource("OHsWorkstationTrackDeleteMenuItemStyle")));
-        Assert.That(button.Style.BasedOn, Is.SameAs(page.FindResource("OHsDestructiveActionMenuItemStyle")));
+        Assert.That(button.Style.BasedOn, Is.SameAs(page.FindResource("OHsDestructiveIconActionMenuItemStyle")));
         Assert.That(button.Header, Is.EqualTo("Delete Track"));
         UiTestPump.Run(vm.RemoveTrackCommand.ExecuteAsync(button.CommandParameter));
         view.UpdateLayout();
@@ -749,6 +752,7 @@ public class WorkstationPageIntegrationTests
             var window = new Window { Content = page, Width = 880, Height = 700 };
             using var view = new InMemoryView(window);
             UiTestPump.Run(page.LoadCompletion);
+        vm.IsAdditionMode = true; view.UpdateLayout();
             vm.AddSampleTrackCommand.Execute(null);
             vm.AddSampleTrackCommand.Execute(null);
             view.UpdateLayout();
@@ -814,6 +818,7 @@ public class WorkstationPageIntegrationTests
         Assert.That(FindVisualChildren<ComboBox>(cards[0]).Single(box => box.Name == "TrackSampleFileSelector").SelectedItem, Is.Null);
         choices.SetResult(["Kick.wav", "Snare.wav"]);
         UiTestPump.Run(page.LoadCompletion);
+        vm.IsAdditionMode = true; view.UpdateLayout();
         view.UpdateLayout();
 
         Assert.Multiple(() =>
@@ -892,6 +897,7 @@ public class WorkstationPageIntegrationTests
         page.SetProjectPath("project.json");
         using var view = new InMemoryView(new Window { Content = page, Width = 880, Height = 600 });
         UiTestPump.Run(page.LoadCompletion);
+        vm.IsAdditionMode = true; view.UpdateLayout();
         vm.AddSampleTrackCommand.Execute(null);
         view.UpdateLayout();
         var list = (ItemsControl)((Hitbench.Views.Pages.OHsWorkstationTrackList)page.FindName("TrackListComponent")).FindName("TrackList");
@@ -908,12 +914,8 @@ public class WorkstationPageIntegrationTests
         Assert.That(vm.Tracks.Single().Samples, Is.Empty);
     }
 
-    private static IEnumerable<T> FindVisualChildren<T>(DependencyObject root) where T : DependencyObject
-    {
-        if (root is T match) yield return match;
-        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(root); index++)
-            foreach (var child in FindVisualChildren<T>(VisualTreeHelper.GetChild(root, index))) yield return child;
-    }
+    private static IEnumerable<T> FindVisualChildren<T>(DependencyObject root) where T : DependencyObject =>
+        WorkstationControlTree.Descendants(root).OfType<T>();
 
     private static BeatGridView? FindBeatGrid(DependencyObject root) => FindVisualChild<BeatGridView>(root);
 
@@ -1589,7 +1591,7 @@ public class WorkstationPageIntegrationTests
         using var view = new InMemoryView(new Window { Content = page, Width = width, Height = 720, FlowDirection = direction });
         try
         {
-            var action = ((Hitbench.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("ResnapAllSamplesButton") as BalloonButton;
+            var action = WorkstationActionMenus.Find(page.AudioCard, vm.ResnapAllSamplesCommand);
             Assert.That(action, Is.Not.Null, "The workstation header must expose the resnap action.");
             var button = action!;
             Assert.That(button.IsEnabled, Is.False);
@@ -1599,7 +1601,7 @@ public class WorkstationPageIntegrationTests
             }));
             UiTestPump.Run(page.LoadCompletion);
             view.UpdateLayout();
-            UiControlContract.AssertStyle<BalloonButton>(button, "OHsWorkstationToolbarButtonStyle");
+            UiControlContract.AssertStyle<MenuItem>(button, "OHsIconActionMenuItemStyle");
             Assert.That(button.Command, Is.SameAs(vm.ResnapAllSamplesCommand));
             Assert.That(button.IsEnabled, Is.True);
             Assert.That(AutomationProperties.GetName(button), Is.EqualTo("Resnap all samples and control points"));
@@ -1609,10 +1611,7 @@ public class WorkstationPageIntegrationTests
             Assert.That(button.ToolTip, Is.EqualTo("Resnap all samples and control points to the current beat subdivision, including instrumental notes"));
             Assert.That(AutomationProperties.GetHelpText(button), Is.EqualTo(button.ToolTip));
             Assert.That(page.HandlePlaybackKey(Key.Enter, ModifierKeys.None, false, button), Is.False);
-            using var inputSource = new InMemoryPresentationSource();
-            var enter = CreateKeyEvent(inputSource, Key.Enter);
-            enter.RoutedEvent = Keyboard.KeyDownEvent;
-            button.RaiseEvent(enter);
+            WorkstationActionMenus.Invoke(button);
             Assert.That(sample.Timestamp, Is.EqualTo(1250));
             vm.RemoveSample(track, sample);
             view.UpdateLayout();

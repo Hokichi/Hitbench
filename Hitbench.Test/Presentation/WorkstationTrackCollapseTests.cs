@@ -280,16 +280,16 @@ public class WorkstationTrackCollapseTests
             UiTestPump.Run(trigger.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle).Task);
             var sample = (MenuItem)trigger.ContextMenu.Items[0];
             var instrument = (MenuItem)trigger.ContextMenu.Items[1];
-            var toggle = (BalloonButton)((Hitbench.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("ToggleTracksCollapsedButton");
-            var refresh = (BalloonButton)page.AudioCard.FindName("ReloadSamplesButton");
-            var resnap = (BalloonButton)page.AudioCard.FindName("ResnapAllSamplesButton");
+            var toggle = WorkstationActionMenus.Find(page.AudioCard, vm.ToggleTracksCollapsedCommand);
+            var refresh = WorkstationActionMenus.Find(page.AudioCard, vm.ReloadSamplesCommand);
+            var resnap = WorkstationActionMenus.Find(page.AudioCard, vm.ResnapAllSamplesCommand);
             Assert.That(refresh.Command, Is.SameAs(vm.ReloadSamplesCommand));
             Assert.That(resnap.Command, Is.SameAs(vm.ResnapAllSamplesCommand));
             Assert.That(AutomationProperties.GetName(refresh), Is.EqualTo("Refresh samples"));
             Assert.That(AutomationProperties.GetName(resnap), Is.EqualTo("Resnap all samples and control points"));
             foreach (var action in new[] { refresh, resnap })
             {
-                UiControlContract.AssertStyle<BalloonButton>(action, "OHsWorkstationToolbarButtonStyle");
+                UiControlContract.AssertStyle<MenuItem>(action, "OHsIconActionMenuItemStyle");
                 Assert.That(action.IsEnabled, Is.EqualTo(action.Command!.CanExecute(null)));
                 Assert.That(action.IsTabStop, Is.False);
                 Assert.That(action.Focusable, Is.True);
@@ -297,7 +297,7 @@ public class WorkstationTrackCollapseTests
             Assert.That(sample, Is.Not.Null, "Audio card needs sample creation action");
             UiControlContract.AssertStyle<MenuItem>(sample, "OHsActionMenuItemStyle");
             UiControlContract.AssertStyle<MenuItem>(instrument, "OHsActionMenuItemStyle");
-            UiControlContract.AssertStyle<BalloonButton>(toggle, "OHsWorkstationCollapseTracksStyle");
+            UiControlContract.AssertStyle<MenuItem>(toggle, "OHsWorkstationCollapseMenuItemStyle");
             Assert.Multiple(() =>
             {
                 Assert.That(sample.Command, Is.SameAs(vm.AddSampleTrackCommand));
@@ -319,7 +319,7 @@ public class WorkstationTrackCollapseTests
             Assert.That(vm.Tracks, Has.Count.EqualTo(1));
             InvokeMenuItem(instrument);
             Assert.That(vm.Tracks, Has.Count.EqualTo(2));
-            PressEnter(toggle);
+            InvokeMenuItem(toggle);
             view.UpdateLayout();
             Assert.That(vm.AreTracksCollapsed, Is.True);
             Assert.That(AutomationProperties.GetName(toggle), Is.EqualTo("Expand all tracks"));
@@ -410,10 +410,10 @@ public class WorkstationTrackCollapseTests
         using (view)
         {
             Assert.That(vm.SelectNode(track, node, false), Is.True);
-            var toggle = (BalloonButton)((Hitbench.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("ToggleTracksCollapsedButton");
+            var toggle = WorkstationActionMenus.Find(page.AudioCard, vm.ToggleTracksCollapsedCommand);
             toggle.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left)
                 { RoutedEvent = Mouse.PreviewMouseDownEvent });
-            PressEnter(toggle);
+            InvokeMenuItem(toggle);
             view.UpdateLayout();
             Assert.That(vm.AreTracksCollapsed, Is.True);
             Assert.That(vm.SelectedTrack, Is.SameAs(track));
@@ -466,7 +466,7 @@ public class WorkstationTrackCollapseTests
         using (view)
         {
             var hidden = Find<FrameworkElement>(page, controlName);
-            var toggle = (BalloonButton)((Hitbench.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName(width < 960 ? "ProjectActionsButton" : "ToggleTracksCollapsedButton");
+            var toggle = (BalloonButton)((Hitbench.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("ProjectActionsButton");
             var scope = FocusManager.GetFocusScope(toggle);
             page.RestoreTrackFocusBeforeCollapse(hidden);
             Assert.That(FocusManager.GetFocusedElement(scope), Is.SameAs(toggle));
@@ -524,6 +524,7 @@ public class WorkstationTrackCollapseTests
         page.SetProjectPath("project.json");
         var view = new InMemoryView(new Window { Content = page, Width = width, Height = height });
         UiTestPump.Run(page.LoadCompletion);
+        vm.IsAdditionMode = true; view.UpdateLayout();
         return (page, vm, view);
     }
 }

@@ -26,11 +26,12 @@ public class WorkstationSampleReloadIntegrationTests
         var page = new WorkstationPage(vm); page.SetProjectPath("project.json");
         using var view = new InMemoryView(new Window { Content = page, Width = 900, Height = 600 });
         UiTestPump.Run(page.LoadCompletion);
+        vm.IsAdditionMode = true; view.UpdateLayout();
         files.List = (_, _) => Task.FromException<IReadOnlyList<string>>(new IOException("listing failed"));
         UiTestPump.Run(vm.ReloadSamplesCommand.ExecuteAsync(null)); view.UpdateLayout();
         Assert.That(vm.LoadPhase, Is.EqualTo(ProjectLoadPhase.Ready));
-        Assert.That(((Hitbench.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("ReloadSamplesButton"), Is.TypeOf<BalloonButton>());
-        Assert.That(((BalloonButton)((Hitbench.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("ReloadSamplesButton")).IsEnabled, Is.True);
+        Assert.That(WorkstationActionMenus.Find(page.AudioCard, vm.ReloadSamplesCommand), Is.TypeOf<MenuItem>());
+        Assert.That(WorkstationActionMenus.Find(page.AudioCard, vm.ReloadSamplesCommand).IsEnabled, Is.True);
         Assert.That(((ScrollViewer)(page.Timeline).FindName("WaveformScrollViewer")).IsEnabled, Is.True);
         files.List = (_, _) => Task.FromResult<IReadOnlyList<string>>(["new.wav"]);
         Assert.That(page.HandlePlaybackKey(Key.F5, ModifierKeys.None, false, page), Is.True);
@@ -58,12 +59,13 @@ public class WorkstationSampleReloadIntegrationTests
         UiTestPump.Run(StubWorkstationAudioService.WaitUntilAsync(() => vm.LoadPhase == ProjectLoadPhase.AwaitingPresentation));
         view.UpdateLayout(); page.ProcessPresentationFrame(TimeSpan.FromMilliseconds(1)); page.ProcessPresentationFrame(TimeSpan.FromMilliseconds(2));
         UiTestPump.Run(page.LoadCompletion);
-        var action = ((Hitbench.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("ReloadSamplesButton");
-        Assert.That(action, Is.TypeOf<BalloonButton>());
-        var button = (BalloonButton)action;
+        vm.IsAdditionMode = true; view.UpdateLayout();
+        var action = WorkstationActionMenus.Find(page.AudioCard, vm.ReloadSamplesCommand);
+        Assert.That(action, Is.TypeOf<MenuItem>());
+        var button = action;
         Assert.That(button.IsTabStop, Is.False);
-        UiControlContract.AssertStyle<BalloonButton>(button, "OHsWorkstationToolbarButtonStyle");
-        Assert.That(button.Style, Is.SameAs(button.FindResource("OHsWorkstationToolbarButtonStyle")));
+        UiControlContract.AssertStyle<MenuItem>(button, "OHsIconActionMenuItemStyle");
+        Assert.That(button.Style, Is.SameAs(button.FindResource("OHsIconActionMenuItemStyle")));
         Assert.That(button.FocusVisualStyle, Is.SameAs(button.FindResource("OHsSampleManagerKeyboardFocusStyle")));
         Assert.That(button.Command, Is.SameAs(vm.ReloadSamplesCommand)); Assert.That(button.IsEnabled, Is.True);
         Assert.That(AutomationProperties.GetName(button), Is.EqualTo("Refresh samples"));
@@ -78,7 +80,7 @@ public class WorkstationSampleReloadIntegrationTests
         Assert.That(saves.LatestJson, Does.Contain("name edited before refresh"));
         Assert.That(vm.Tracks.Single().Name, Is.EqualTo("name edited before refresh"));
         Assert.That(vm.CanPlay, Is.True); Assert.That(button.IsEnabled, Is.True);
-        Assert.That(button.ButtonText, Is.EqualTo("Refresh samples"));
+        Assert.That(button.Header, Is.EqualTo("Refresh samples"));
         Assert.That(button.ToolTip, Is.EqualTo("Refresh project samples (F5)"));
         Assert.That(page.HandlePlaybackKey(Key.F5, ModifierKeys.None, true, page), Is.True);
         Assert.That(calls, Is.EqualTo(1));
@@ -98,6 +100,7 @@ public class WorkstationSampleReloadIntegrationTests
         try
         {
             UiTestPump.Run(page.LoadCompletion);
+        vm.IsAdditionMode = true; view.UpdateLayout();
             var list = (ListBox)((Hitbench.Views.Pages.OHsWorkstationTrackList)page.FindName("TrackListComponent")).FindName("TrackList");
             var scroll = Descendants(list).OfType<ScrollViewer>().First();
             scroll.ScrollToVerticalOffset(200); view.UpdateLayout();
@@ -119,10 +122,6 @@ public class WorkstationSampleReloadIntegrationTests
         finally { UiTestPump.Run(page.DeactivateAsync()); }
     }
 
-    private static IEnumerable<DependencyObject> Descendants(DependencyObject parent)
-    {
-        yield return parent;
-        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
-            foreach (var child in Descendants(VisualTreeHelper.GetChild(parent, i))) yield return child;
-    }
+    private static IEnumerable<DependencyObject> Descendants(DependencyObject parent) =>
+        WorkstationControlTree.Descendants(parent);
 }

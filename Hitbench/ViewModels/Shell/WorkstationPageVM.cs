@@ -113,6 +113,7 @@ public partial class WorkstationPageVM(
     public async Task LoadAsync(string projectPath, CancellationToken token)
     {
         if (deactivated) return;
+        IsAdditionMode = false;
         ResetSampleConfiguration();
         trackAppearanceCancellation?.Cancel();
         await SettleFolderOpenAsync();

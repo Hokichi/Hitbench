@@ -46,7 +46,8 @@ public sealed class OHsShellHeaderTests
         UiTestPump.Layout(header, 900, 100);
         var home = (BalloonButton)header.FindName("GoBackButton");
         var actions = (FrameworkElement)header.FindName("WorkstationActions");
-        Assert.That(AutomationProperties.GetName(home), Is.EqualTo("Return home"));
+        Assert.That(AutomationProperties.GetName(home), Is.EqualTo("Return to projects"));
+        Assert.That(home.ButtonIcon, Is.SameAs(home.FindResource("AngleLeft")));
         Assert.That(home.FocusVisualStyle, Is.SameAs(home.FindResource("OHsSampleManagerKeyboardFocusStyle")));
         UiControlContract.AssertStyle<BalloonButton>(home, "OHsMainWindowGoBackStyle");
         header.CanGoBack = false;

@@ -2,6 +2,9 @@
 
     <!--#region Navigation & Arrows-->
     <PathGeometry x:Key="AngleRight">M14.83,11.29,10.59,7.05a1,1,0,0,0-1.42,0,1,1,0,0,0,0,1.41L12.71,12,9.17,15.54a1,1,0,0,0,0,1.41,1,1,0,0,0,.71.29,1,1,0,0,0,.71-.29l4.24-4.24A1,1,0,0,0,14.83,11.29Z</PathGeometry>
+    <GeometryGroup x:Key="AngleLeft" Transform="-1,0,0,1,24,0">
+        <StaticResource ResourceKey="AngleRight" />
+    </GeometryGroup>
     <PathGeometry x:Key="AngleDown">M17,9.17a1,1,0,0,0-1.41,0L12,12.71,8.46,9.17a1,1,0,0,0-1.41,0,1,1,0,0,0,0,1.42l4.24,4.24a1,1,0,0,0,1.42,0L17,10.59A1,1,0,0,0,17,9.17Z</PathGeometry>
     <PathGeometry x:Key="AngleUp">M17,13.41,12.71,9.17a1,1,0,0,0-1.42,0L7.05,13.41a1,1,0,0,0,0,1.42,1,1,0,0,0,1.41,0L12,11.29l3.54,3.54a1,1,0,0,0,.7.29,1,1,0,0,0,.71-.29A1,1,0,0,0,17,13.41Z</PathGeometry>
 

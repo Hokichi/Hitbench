@@ -19,9 +19,37 @@ namespace Hitbench.Test.Presentation;
 [Apartment(ApartmentState.STA), NonParallelizable]
 public sealed class OHsWorkstationAudioCardTests
 {
+    [TestCase(false)]
+    [TestCase(true)]
+    public void ActionAndOpenMenusContainAuthoritativeCommandsAtEveryWidth(bool compact)
+    {
+        new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
+        var page = WorkstationTestPage.Create();
+        var vm = (WorkstationPageVM)page.DataContext;
+        var card = new OHsWorkstationAudioCard { DataContext = vm, IsCompactLayout = compact };
+        try
+        {
+            UiTestPump.Layout(card, 900, 300);
+            var actions = (BalloonComboBox)card.FindName("ProjectActionsButton");
+            actions.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+            UiTestPump.Layout(actions.ContextMenu, 320, 300);
+            Assert.That(actions.Visibility, Is.EqualTo(Visibility.Visible));
+            Assert.That(actions.ContextMenu.Items.Cast<MenuItem>().Select(i => i.Command), Is.EqualTo(new System.Windows.Input.ICommand[]
+            { vm.ResnapAllSamplesCommand, vm.ReloadSamplesCommand, vm.ToggleTracksCollapsedCommand, vm.ExportCommand }));
+            var open = card.FindName("OpenFoldersButton") as BalloonComboBox;
+            Assert.That(open, Is.Not.Null);
+            open!.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+            UiTestPump.Layout(open.ContextMenu, 320, 200);
+            Assert.That(open.ContextMenu.Items.Cast<MenuItem>().Select(i => i.Command), Is.EqualTo(new System.Windows.Input.ICommand[]
+            { vm.OpenBeatmapFolderCommand, vm.OpenProjectFolderCommand }));
+            Assert.That(open.ContextMenu.Items.Cast<MenuItem>().All(i => ReferenceEquals(i.Icon, card.FindResource("Folder"))), Is.True);
+        }
+        finally { UiTestPump.Run(page.DeactivateAsync()); }
+    }
+
     [TestCase(true, false)]
     [TestCase(true, true)]
-    public void CompactProjectMenuKeepsAuthoritativeCommandsAndDeactivatesWhenRoomy(bool compact, bool shortLayout)
+    public void ProjectMenuKeepsAuthoritativeCommandsWhenWidthChanges(bool compact, bool shortLayout)
     {
         new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
         var page = WorkstationTestPage.Create();
@@ -39,10 +67,8 @@ public sealed class OHsWorkstationAudioCardTests
             var commands = menu.Items.Cast<MenuItem>().Select(item => item.Command).ToArray();
             Assert.That(commands, Is.EquivalentTo(new System.Windows.Input.ICommand[]
             {
-                vm.ResnapAllSamplesCommand, vm.ReloadSamplesCommand, vm.ToggleTracksCollapsedCommand,
-                vm.OpenBeatmapFolderCommand, vm.OpenProjectFolderCommand
+                vm.ResnapAllSamplesCommand, vm.ReloadSamplesCommand, vm.ToggleTracksCollapsedCommand, vm.ExportCommand
             }));
-            Assert.That(((BalloonButton)card.FindName("ExportButton")).Command, Is.SameAs(vm.ExportCommand));
             Assert.That(menu.Items.Cast<MenuItem>().All(item => !item.IsEnabled), Is.True);
             // Borrow the real resource through the existing native-presentation substitute.
             trigger.ContextMenu = null;
@@ -53,19 +79,18 @@ public sealed class OHsWorkstationAudioCardTests
             Assert.That(owner.IsDropDownOpen, Is.True);
             card.IsCompactLayout = false;
             card.IsShortLayout = false;
-            Assert.That(owner.IsDropDownOpen, Is.False);
-            Assert.That(owner.IsMenuOwnerActive, Is.False);
-            Assert.That(owner.PresentationRequests.Last().Open, Is.False);
+            Assert.That(owner.IsDropDownOpen, Is.True);
+            Assert.That(owner.IsMenuOwnerActive, Is.True);
             owner.RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent));
         }
         finally { UiTestPump.Run(page.DeactivateAsync()); }
     }
 
-    [TestCase(false, false, false)]
+    [TestCase(false, false, true)]
     [TestCase(true, false, true)]
-    [TestCase(false, true, false)]
+    [TestCase(false, true, true)]
     [TestCase(true, true, true)]
-    public void ProjectOverflowFollowsWidthMode(bool compact, bool shortLayout, bool expected)
+    public void ProjectMenusRemainAvailableAtEveryWidth(bool compact, bool shortLayout, bool expected)
     {
         new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
         var card = new OHsWorkstationAudioCard { IsCompactLayout = compact, IsShortLayout = shortLayout };
@@ -75,7 +100,7 @@ public sealed class OHsWorkstationAudioCardTests
         Assert.That(trigger.Visibility, Is.EqualTo(expected ? Visibility.Visible : Visibility.Collapsed));
         card.IsCompactLayout = false;
         card.IsShortLayout = false;
-        Assert.That(trigger.IsEnabled, Is.False);
+        Assert.That(trigger.IsEnabled, Is.True);
     }
 
     [Test]
@@ -88,9 +113,9 @@ public sealed class OHsWorkstationAudioCardTests
         {
             var card = new OHsWorkstationAudioCard { DataContext = vm };
             UiTestPump.Layout(card, 900, 300);
-            var button = (BalloonButton)card.FindName("ExportButton");
-            UiControlContract.AssertStyle<BalloonButton>(button, "OHsWorkstationToolbarButtonStyle");
-            Assert.That(button.ButtonIcon, Is.SameAs(card.FindResource("Export")));
+            var button = WorkstationActionMenus.Find(card, vm.ExportCommand);
+            UiControlContract.AssertStyle<MenuItem>(button, "OHsIconActionMenuItemStyle");
+            Assert.That(button.Icon, Is.SameAs(card.FindResource("Export")));
             Assert.That(AutomationProperties.GetName(button), Is.EqualTo("Export"));
             Assert.That(button.Command, Is.SameAs(vm.ExportCommand)); Assert.That(button.IsEnabled, Is.False);
             UiTestPump.Run(vm.LoadAsync("project.json", default)); vm.AcknowledgePresentationReady(vm.LoadGeneration);

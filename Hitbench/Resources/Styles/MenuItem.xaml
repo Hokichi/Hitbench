@@ -1,6 +1,7 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                    xmlns:h="clr-namespace:Hitbench.Resources.Helpers">
+                    xmlns:h="clr-namespace:Hitbench.Resources.Helpers"
+                    xmlns:c="clr-namespace:Hitbench.Resources.CustomControls">
     <Style x:Key="BaseMenuItemStyle" TargetType="MenuItem">
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="FontFamily" Value="{DynamicResource Regular}" />
@@ -71,7 +72,32 @@
             </MultiDataTrigger>
         </Style.Triggers>
     </Style>
+    <DataTemplate x:Key="OHsIconActionMenuHeaderTemplate">
+        <Grid Style="{StaticResource BaseGridStyle}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition x:Name="IconGap" Width="12" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <c:Icon x:Name="ActionIcon" Width="12" Height="12" VerticalAlignment="Center"
+                Path="{Binding Icon, RelativeSource={RelativeSource AncestorType=MenuItem}, Mode=OneWay}"
+                Color="{Binding Foreground, RelativeSource={RelativeSource AncestorType=MenuItem}, Mode=OneWay}" />
+            <AccessText Grid.Column="2" VerticalAlignment="Center" Text="{Binding Mode=OneWay}" TextWrapping="Wrap" />
+        </Grid>
+        <DataTemplate.Triggers>
+            <DataTrigger Binding="{Binding Icon, RelativeSource={RelativeSource AncestorType=MenuItem}, Mode=OneWay}" Value="{x:Null}">
+                <Setter TargetName="ActionIcon" Property="Visibility" Value="Collapsed" />
+                <Setter TargetName="IconGap" Property="Width" Value="0" />
+            </DataTrigger>
+        </DataTemplate.Triggers>
+    </DataTemplate>
+    <Style x:Key="OHsIconActionMenuItemStyle" TargetType="MenuItem" BasedOn="{StaticResource OHsActionMenuItemStyle}">
+        <Setter Property="HeaderTemplate" Value="{StaticResource OHsIconActionMenuHeaderTemplate}" />
+    </Style>
     <Style x:Key="OHsDestructiveActionMenuItemStyle" TargetType="MenuItem" BasedOn="{StaticResource OHsActionMenuItemStyle}">
         <Setter Property="Foreground" Value="{DynamicResource Brush.Danger}" />
+    </Style>
+    <Style x:Key="OHsDestructiveIconActionMenuItemStyle" TargetType="MenuItem" BasedOn="{StaticResource OHsDestructiveActionMenuItemStyle}">
+        <Setter Property="HeaderTemplate" Value="{StaticResource OHsIconActionMenuHeaderTemplate}" />
     </Style>
 </ResourceDictionary>

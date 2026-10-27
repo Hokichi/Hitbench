@@ -74,6 +74,7 @@ public class WorkstationNodeEditingTests
             nodePasteDialog: new StubNodePasteDialogService());
         await vm.LoadAsync("project.json", CancellationToken.None);
         vm.AcknowledgePresentationReady(vm.LoadGeneration);
+        vm.IsAdditionMode = true; // This fixture exercises Add-mode editing; startup Select is covered separately.
         vm.SelectedTrack = first;
         await vm.FlushPlaybackUpdatesAsync(); await vm.FlushSavesAsync();
     }

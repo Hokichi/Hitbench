@@ -25,7 +25,8 @@ public partial class OHsWorkstationAudioCard : UserControl
     public static readonly DependencyProperty TrackScrollBarGutterProperty = DependencyProperty.Register(nameof(TrackScrollBarGutter), typeof(double), typeof(OHsWorkstationAudioCard), new PropertyMetadata(0d));
     public double TrackScrollBarGutter { get => (double)GetValue(TrackScrollBarGutterProperty); set => SetValue(TrackScrollBarGutterProperty, value); }
     public bool ContainsInputOrigin(DependencyObject? origin) => IsWithin(origin, SongAudioCard);
-    public bool IsCollapseActionOrigin(DependencyObject? origin) => IsWithin(origin, ToggleTracksCollapsedButton) || IsWithin(origin, ProjectActionsButton);
+    public bool IsCollapseActionOrigin(DependencyObject? origin) => IsWithin(origin, ProjectActionsButton) ||
+        ProjectActionsButton.ContextMenu.Items.OfType<MenuItem>().Any(item => IsWithin(origin, item));
     private static bool IsWithin(DependencyObject? origin, DependencyObject owner)
     {
         for (var current = origin; current is not null; current = current is System.Windows.Media.Visual or System.Windows.Media.Media3D.Visual3D ? System.Windows.Media.VisualTreeHelper.GetParent(current) : LogicalTreeHelper.GetParent(current))
@@ -34,7 +35,7 @@ public partial class OHsWorkstationAudioCard : UserControl
     }
     public bool FocusCollapseAction()
     {
-        var target = IsCompactLayout ? (UIElement)ProjectActionsButton : ToggleTracksCollapsedButton;
+        var target = (UIElement)ProjectActionsButton;
         FocusManager.SetFocusedElement(FocusManager.GetFocusScope(target), target);
         return target.Focus();
     }

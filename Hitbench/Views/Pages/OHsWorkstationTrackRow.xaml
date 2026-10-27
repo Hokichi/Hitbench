@@ -116,33 +116,15 @@
             TargetType="customControls:BalloonComboBox">
             <Setter Property="ButtonIcon" Value="{StaticResource BarsSolid}" />
         </Style>
-        <DataTemplate x:Key="OHsWorkstationTrackActionHeaderTemplate">
-            <StackPanel Orientation="Horizontal" Style="{StaticResource BaseStackPanelStyle}">
-                <customControls:Icon
-                    Width="12"
-                    Height="12"
-                    Margin="0,0,8,0"
-                    VerticalAlignment="Center"
-                    Path="{Binding Icon, RelativeSource={RelativeSource AncestorType=MenuItem}, Mode=OneWay}"
-                    Color="{Binding Foreground, RelativeSource={RelativeSource AncestorType=MenuItem}, Mode=OneWay}" />
-                <TextBlock
-                    VerticalAlignment="Center"
-                    Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=MenuItem}, Mode=OneWay}"
-                    Style="{StaticResource BodyTextStyle}"
-                    Text="{Binding Mode=OneWay}" />
-            </StackPanel>
-        </DataTemplate>
         <Style
             x:Key="OHsWorkstationTrackMenuItemStyle"
-            BasedOn="{StaticResource OHsActionMenuItemStyle}"
+            BasedOn="{StaticResource OHsIconActionMenuItemStyle}"
             TargetType="MenuItem">
-            <Setter Property="HeaderTemplate" Value="{StaticResource OHsWorkstationTrackActionHeaderTemplate}" />
         </Style>
         <Style
             x:Key="OHsWorkstationTrackDeleteMenuItemStyle"
-            BasedOn="{StaticResource OHsDestructiveActionMenuItemStyle}"
+            BasedOn="{StaticResource OHsDestructiveIconActionMenuItemStyle}"
             TargetType="MenuItem">
-            <Setter Property="HeaderTemplate" Value="{StaticResource OHsWorkstationTrackActionHeaderTemplate}" />
         </Style>
         <Style
             x:Key="OHsWorkstationTrackCollapseMenuStyle"

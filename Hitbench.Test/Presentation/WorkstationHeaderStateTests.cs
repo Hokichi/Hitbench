@@ -7,6 +7,22 @@ namespace Hitbench.Test.Presentation;
 public sealed class WorkstationHeaderStateTests
 {
     [Test]
+    public async Task EveryProjectLoadStartsInSelectMode()
+    {
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(),
+            new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), MarkerPlaybackCoordinator.DelayAsync), new ImmediateUiScheduler());
+        try
+        {
+            await vm.LoadAsync("first/project.json", default);
+            Assert.That(vm.IsSelectionMode, Is.True);
+            vm.IsAdditionMode = true;
+            await vm.LoadAsync("second/project.json", default);
+            Assert.That(vm.IsSelectionMode, Is.True);
+        }
+        finally { await vm.DeactivateAsync(); }
+    }
+
+    [Test]
     public async Task ReturnWaitsForAppliedMasterVolume()
     {
         var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);

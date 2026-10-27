@@ -269,13 +269,14 @@
                 Style="{StaticResource OHsShellHeaderAudioActionsStyle}">
                 <customControls:BalloonButton
                     x:Name="GoBackButton"
-                    AutomationProperties.Name="Return home"
-                    ButtonIcon="{StaticResource Home}"
-                    ButtonText="Return home"
+                    AutomationProperties.Name="Return to projects"
+                    ButtonIcon="{StaticResource AngleLeft}"
+                    ButtonText="Return to projects"
+                    ShouldShowText="True"
                     Click="OnGoBackClick"
                     IsEnabled="{Binding CanGoBack, RelativeSource={RelativeSource AncestorType=shell:OHsShellHeader}, Mode=OneWay}"
                     Style="{StaticResource OHsMainWindowGoBackStyle}"
-                    ToolTip="Save project and return to home" />
+                    ToolTip="Save project and return to projects" />
                 <Border Style="{StaticResource OHsShellHeaderHomeSeparatorStyle}" />
             </StackPanel>
             <customControls:BalloonButton

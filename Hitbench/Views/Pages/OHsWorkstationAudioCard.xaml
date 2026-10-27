@@ -159,83 +159,44 @@
                 Style="{StaticResource OHsActionMenuItemStyle}"
                 ToolTip="Add instrumental track (Ctrl+Shift+N)" />
         </ContextMenu>
-        <Style
-            x:Key="OHsWorkstationCollapseTracksStyle"
-            BasedOn="{StaticResource OHsWorkstationToolbarButtonStyle}"
-            TargetType="customControls:BalloonButton">
-            <Setter Property="ButtonIcon" Value="{StaticResource CompressAlt}" />
-            <Setter Property="ButtonText" Value="Collapse all tracks" />
-            <Setter Property="ToolTip" Value="Collapse all tracks (F4)" />
-            <Setter Property="AutomationProperties.Name" Value="Collapse all tracks" />
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding AreTracksCollapsed, Mode=OneWay}" Value="True">
-                    <Setter Property="ButtonIcon" Value="{StaticResource ExpandAlt}" />
-                    <Setter Property="ButtonText" Value="Expand all tracks" />
-                    <Setter Property="ToolTip" Value="Expand all tracks (F4)" />
-                    <Setter Property="AutomationProperties.Name" Value="Expand all tracks" />
-                </DataTrigger>
-            </Style.Triggers>
+        <Style x:Key="OHsWorkstationProjectActionsStyle" TargetType="customControls:BalloonComboBox" BasedOn="{StaticResource BaseBalloonComboBoxStyle}">
+            <Setter Property="ShouldShowText" Value="True" />
         </Style>
 
-        <Style
-            x:Key="OHsWorkstationWideProjectActionsStyle"
-            BasedOn="{StaticResource BaseStackPanelStyle}"
-            TargetType="StackPanel">
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationAudioCard}, Mode=OneWay}" Value="True">
-                    <Setter Property="Visibility" Value="Collapsed" />
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
-        <Style
-            x:Key="OHsWorkstationProjectActionsStyle"
-            BasedOn="{StaticResource BaseBalloonComboBoxStyle}"
-            TargetType="customControls:BalloonComboBox">
-            <Setter Property="ShouldShowText" Value="False" />
-            <Setter Property="Visibility" Value="Collapsed" />
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationAudioCard}, Mode=OneWay}" Value="True">
-                    <Setter Property="Visibility" Value="Visible" />
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
+        <ContextMenu x:Key="OHsWorkstationProjectActionsMenu" x:Shared="False" Style="{StaticResource OHsActionContextMenuStyle}" AutomationProperties.Name="Project actions">
+            <ContextMenu.Resources>
         <Style
             x:Key="OHsWorkstationCollapseMenuItemStyle"
-            BasedOn="{StaticResource OHsActionMenuItemStyle}"
+            BasedOn="{StaticResource OHsIconActionMenuItemStyle}"
             TargetType="MenuItem">
             <Setter Property="Header" Value="Collapse all tracks" />
+            <Setter Property="Icon" Value="{StaticResource CompressAlt}" />
+            <Setter Property="ToolTip" Value="Collapse all tracks (F4)" />
+            <Setter Property="AutomationProperties.Name" Value="{Binding Header, RelativeSource={RelativeSource Self}, Mode=OneWay}" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding AreTracksCollapsed, Mode=OneWay}" Value="True">
                     <Setter Property="Header" Value="Expand all tracks" />
+                    <Setter Property="Icon" Value="{StaticResource ExpandAlt}" />
+                    <Setter Property="ToolTip" Value="Expand all tracks (F4)" />
                 </DataTrigger>
             </Style.Triggers>
         </Style>
-        <ContextMenu
-            x:Key="OHsWorkstationProjectActionsMenu"
-            x:Shared="False"
-            Style="{StaticResource OHsActionContextMenuStyle}">
-            <MenuItem
-                Command="{Binding ResnapAllSamplesCommand, Mode=OneWay}"
-                Header="Resnap"
-                Style="{StaticResource OHsActionMenuItemStyle}"
-                ToolTip="Resnap all samples and control points" />
-            <MenuItem
-                Command="{Binding ReloadSamplesCommand, Mode=OneWay}"
-                Header="Refresh samples"
-                Style="{StaticResource OHsActionMenuItemStyle}"
-                ToolTip="Refresh project samples (F5)" />
-            <MenuItem
-                Command="{Binding ToggleTracksCollapsedCommand, Mode=OneWay}"
-                Style="{StaticResource OHsWorkstationCollapseMenuItemStyle}"
-                ToolTip="Collapse or expand all tracks (F4)" />
-            <MenuItem
-                Command="{Binding OpenBeatmapFolderCommand, Mode=OneWay}"
-                Header="Open beatmap folder"
-                Style="{StaticResource OHsActionMenuItemStyle}" />
-            <MenuItem
-                Command="{Binding OpenProjectFolderCommand, Mode=OneWay}"
-                Header="Open project folder"
-                Style="{StaticResource OHsActionMenuItemStyle}" />
+            </ContextMenu.Resources>
+            <MenuItem Header="Resnap" AutomationProperties.Name="Resnap all samples and control points" Icon="{StaticResource ResnapGrid}" Command="{Binding ResnapAllSamplesCommand, Mode=OneWay}"
+                Style="{StaticResource OHsIconActionMenuItemStyle}" ToolTip="Resnap all samples and control points to the current beat subdivision, including instrumental notes"
+                AutomationProperties.HelpText="{Binding ToolTip, RelativeSource={RelativeSource Self}, Mode=OneWay}" />
+            <MenuItem Header="Refresh samples" AutomationProperties.Name="Refresh samples" Icon="{StaticResource ArrowsRotateSolid}" Command="{Binding ReloadSamplesCommand, Mode=OneWay}"
+                Style="{StaticResource OHsIconActionMenuItemStyle}" ToolTip="Refresh project samples (F5)" />
+            <MenuItem Command="{Binding ToggleTracksCollapsedCommand, Mode=OneWay}"
+                Style="{StaticResource OHsWorkstationCollapseMenuItemStyle}" />
+            <MenuItem Header="Export" Icon="{StaticResource Export}" Command="{Binding ExportCommand, Mode=OneWay}"
+                Style="{StaticResource OHsIconActionMenuItemStyle}" AutomationProperties.Name="Export" />
+        </ContextMenu>
+        <ContextMenu x:Key="OHsWorkstationOpenFoldersMenu" x:Shared="False" Style="{StaticResource OHsActionContextMenuStyle}" AutomationProperties.Name="Open folder">
+            <MenuItem Header="Open beatmap folder" Icon="{StaticResource Folder}" Command="{Binding OpenBeatmapFolderCommand, Mode=OneWay}"
+                Style="{StaticResource OHsIconActionMenuItemStyle}" />
+            <MenuItem Header="Open project folder" Icon="{StaticResource Folder}" Command="{Binding OpenProjectFolderCommand, Mode=OneWay}"
+                Style="{StaticResource OHsIconActionMenuItemStyle}" />
         </ContextMenu>
     </UserControl.Resources>
     <Grid Style="{StaticResource BaseGridStyle}">
@@ -308,98 +269,29 @@
                     Margin="0,8,0,0"
                     HorizontalAlignment="Right"
                     VerticalAlignment="Center">
-                    <StackPanel Orientation="Horizontal" Style="{StaticResource OHsWorkstationWideProjectActionsStyle}">
-                        <StackPanel Orientation="Horizontal" Style="{StaticResource BaseStackPanelStyle}">
-                            <customControls:BalloonButton
-                                x:Name="ResnapAllSamplesButton"
-                                AutomationProperties.HelpText="Resnap all samples and control points to the current beat subdivision, including instrumental notes"
-                                AutomationProperties.Name="Resnap all samples and control points"
-                                ButtonIcon="{StaticResource ResnapGrid}"
-                                ButtonText="Resnap"
-                                Command="{Binding ResnapAllSamplesCommand, Mode=OneWay}"
-                                IconSize="20"
-                                Style="{StaticResource OHsWorkstationToolbarButtonStyle}"
-                                ToolTip="Resnap all samples and control points to the current beat subdivision, including instrumental notes" />
-                            <customControls:BalloonButton
-                                x:Name="ReloadSamplesButton"
-                                Margin="4,0,0,0"
-                                AutomationProperties.Name="Refresh samples"
-                                ButtonIcon="{StaticResource ArrowsRotateSolid}"
-                                ButtonText="Refresh samples"
-                                Command="{Binding ReloadSamplesCommand, Mode=OneWay}"
-                                Style="{StaticResource OHsWorkstationToolbarButtonStyle}"
-                                ToolTip="Refresh project samples (F5)" />
-                            <customControls:BalloonButton
-                                x:Name="ToggleTracksCollapsedButton"
-                                Margin="4,0,0,0"
-                                Command="{Binding ToggleTracksCollapsedCommand, Mode=OneWay}"
-                                Style="{StaticResource OHsWorkstationCollapseTracksStyle}" />
-
-                        </StackPanel>
-                        <Border Style="{StaticResource OHsWorkstationToolbarSeparatorStyle}" />
-                        <StackPanel Orientation="Horizontal" Style="{StaticResource BaseStackPanelStyle}">
-                            <customControls:BalloonButton
-                                x:Name="OpenBeatmapFolderButton"
-                                AutomationProperties.Name="Open beatmap folder"
-                                ButtonIcon="{StaticResource Folder}"
-                                ButtonText="Beatmap"
-                                Command="{Binding OpenBeatmapFolderCommand, Mode=OneWay}"
-                                ShouldShowText="True"
-                                Style="{StaticResource OHsWorkstationToolbarButtonStyle}"
-                                ToolTip="Open beatmap folder" />
-                            <customControls:BalloonButton
-                                x:Name="OpenProjectFolderButton"
-                                AutomationProperties.Name="Open project folder"
-                                ButtonIcon="{StaticResource Folder}"
-                                ButtonText="Project"
-                                Command="{Binding OpenProjectFolderCommand, Mode=OneWay}"
-                                ShouldShowText="True"
-                                Style="{StaticResource OHsWorkstationToolbarButtonStyle}"
-                                ToolTip="Open project folder" />
-                        </StackPanel>
-                    </StackPanel>
-                    <customControls:BalloonComboBox
-                        x:Name="ProjectActionsButton"
-                        AutomationProperties.Name="Project actions"
-                        ButtonIcon="{StaticResource BarsSolid}"
-                        ButtonText="Project actions"
+                    <customControls:BalloonComboBox x:Name="ProjectActionsButton" AutomationProperties.Name="Project actions"
+                        ButtonIcon="{StaticResource BarsSolid}" ButtonText="Actions" ToolTip="Project actions"
                         ContextMenu="{StaticResource OHsWorkstationProjectActionsMenu}"
-                        IsEnabled="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationAudioCard}, Mode=OneWay}"
-                        Style="{StaticResource OHsWorkstationProjectActionsStyle}"
-                        ToolTip="Project actions" />
-                    <customControls:BalloonButton
-                        x:Name="ExportButton"
-                        Margin="4,0,0,0"
-                        AutomationProperties.Name="Export"
-                        ButtonIcon="{StaticResource Export}"
-                        ButtonText="Export"
-                        Command="{Binding ExportCommand, Mode=OneWay}"
-                        Style="{StaticResource OHsWorkstationToolbarButtonStyle}"
-                        ToolTip="Export" />
+                        Style="{StaticResource OHsWorkstationProjectActionsStyle}" />
+                    <customControls:BalloonComboBox x:Name="OpenFoldersButton" Margin="8,0,0,0" AutomationProperties.Name="Open folder"
+                        ButtonIcon="{StaticResource Folder}" ButtonText="Open" ToolTip="Open folder"
+                        ContextMenu="{StaticResource OHsWorkstationOpenFoldersMenu}"
+                        Style="{StaticResource OHsWorkstationProjectActionsStyle}" />
                     <Border Style="{StaticResource OHsWorkstationToolbarSeparatorStyle}" />
-                <StackPanel
-                    Orientation="Horizontal" VerticalAlignment="Center" Style="{StaticResource BaseStackPanelStyle}">
-                    <customControls:BalloonComboBox
-                        x:Name="AddMenuButton"
-                        Margin="0,0,8,0"
-                        HorizontalAlignment="Left"
-                        AutomationProperties.Name="Add"
-                        ButtonIcon="{StaticResource PlusSolid}"
-                        ButtonText="Add"
-                        ContextMenu="{StaticResource OHsWorkstationAddMenu}"
-                        Style="{StaticResource OHsWorkstationAddActionStyle}"
-                        ToolTip="Add a track" />
-                    <customControls:BalloonButton
-                        x:Name="ManageSamplesButton"
-                        Margin="0"
-                        HorizontalAlignment="Left"
-                        AutomationProperties.Name="Samples"
-                        ButtonIcon="{StaticResource BarsSolid}"
-                        ButtonText="Samples"
-                        Command="{Binding ManageSamplesCommand, Mode=OneWay}"
-                        Style="{StaticResource OHsWorkstationSamplesActionStyle}"
-                        ToolTip="Manage project samples (F2)" />
-                </StackPanel>
+                    <Grid Grid.IsSharedSizeScope="True" Style="{StaticResource BaseGridStyle}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="OHsWorkstationAddSamplesWidth" />
+                            <ColumnDefinition Width="8" />
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="OHsWorkstationAddSamplesWidth" />
+                        </Grid.ColumnDefinitions>
+                        <customControls:BalloonComboBox x:Name="AddMenuButton" HorizontalAlignment="Stretch"
+                            AutomationProperties.Name="Add" ButtonIcon="{StaticResource PlusSolid}" ButtonText="Add"
+                            ContextMenu="{StaticResource OHsWorkstationAddMenu}" Style="{StaticResource OHsWorkstationAddActionStyle}" ToolTip="Add a track" />
+                        <customControls:BalloonButton x:Name="ManageSamplesButton" Grid.Column="2" HorizontalAlignment="Stretch"
+                            AutomationProperties.Name="Samples" ButtonIcon="{StaticResource BarsSolid}" ButtonText="Samples"
+                            Command="{Binding ManageSamplesCommand, Mode=OneWay}" ShouldShowText="True"
+                            Style="{StaticResource OHsWorkstationSamplesActionStyle}" ToolTip="Manage samples" />
+                    </Grid>
                     <Border Style="{StaticResource OHsWorkstationToolbarSeparatorStyle}" />
                     <pages:OHsWorkstationFooter x:Name="FooterControls" VerticalAlignment="Center" />
                 </WrapPanel>
