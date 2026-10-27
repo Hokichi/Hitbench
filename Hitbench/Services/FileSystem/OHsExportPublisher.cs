@@ -60,11 +60,16 @@ public sealed class OHsExportPublisher
         var output = Path.Combine(project, "Export");
         if (File.Exists(output)) throw new IOException("Export is occupied by a file.");
         var before = Tree(output, token);
+        var state = Path.Combine(project, Manifest);
+        RejectLink(state);
+        if (Directory.Exists(state)) throw new IOException("Export ownership path is occupied by a directory.");
+        var stateBefore = File.Exists(state) ? HashFile(state) : null;
+        var ownershipSource = stateBefore is not null ? state : before.ContainsKey(Manifest) ? Path.Combine(output, Manifest) : null;
         var owned = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        if (!overwriteEverything && before.ContainsKey(Manifest))
+        if (!overwriteEverything && ownershipSource is not null)
         {
             JObject manifest;
-            try { manifest = JObject.Parse(await File.ReadAllTextAsync(Path.Combine(output, Manifest), token)); }
+            try { manifest = JObject.Parse(await File.ReadAllTextAsync(ownershipSource, token)); }
             catch (Newtonsoft.Json.JsonException error) { throw new IOException("Invalid export manifest.", error); }
             if ((int?)manifest["version"] != 1 || manifest["files"] is not JArray entries) throw new IOException("Unsupported export manifest.");
             foreach (var entry in entries)
@@ -78,14 +83,18 @@ public sealed class OHsExportPublisher
             if (!overwriteEverything && (before.ContainsKey(name) && !owned.Contains(name) || before.ContainsKey(name + "/"))) throw new IOException($"Export filename collision: {name}");
         var stage = Path.Combine(project, ".Export-staging-" + Guid.NewGuid().ToString("N"));
         var backup = Path.Combine(project, ".Export-backup-" + Guid.NewGuid().ToString("N"));
-        var published = false; var backedUp = false;
+        var stateStage = stage + "-state.json";
+        var stateBackup = backup + "-state.json";
+        var published = false; var backedUp = false; var outputMoved = false; var stateBackedUp = false; var recoveryFailed = false;
         void Cleanup(string path)
         {
             var full = Path.GetFullPath(path);
             if (!string.Equals(Path.GetDirectoryName(full), project, StringComparison.OrdinalIgnoreCase) ||
                 !(Path.GetFileName(full).StartsWith(".Export-staging-", StringComparison.Ordinal) || Path.GetFileName(full).StartsWith(".Export-backup-", StringComparison.Ordinal)))
                 throw new IOException("Refusing unsafe export cleanup.");
-            Tree(full, CancellationToken.None, hashContents: false); if (Directory.Exists(full)) Directory.Delete(full, true);
+            Tree(full, CancellationToken.None, hashContents: false);
+            if (Directory.Exists(full)) Directory.Delete(full, true);
+            else if (File.Exists(full)) File.Delete(full);
         }
         try
         {
@@ -104,20 +113,45 @@ public sealed class OHsExportPublisher
             var expected = before.Keys.Where(k => !overwriteEverything && !k.EndsWith('/') && !owned.Contains(k) && !k.Equals(Manifest, StringComparison.OrdinalIgnoreCase)).Concat(inventory.Keys).ToHashSet(StringComparer.OrdinalIgnoreCase);
             if (staged.Keys.Any(k => !k.EndsWith('/') && !expected.Contains(k))) throw new IOException("Export generated an unexpected file.");
             var manifest = new JObject { ["version"] = 1, ["files"] = new JArray(inventory.Select(p => new JObject { ["path"] = p.Key, ["role"] = p.Value, ["hash"] = staged[p.Key] })) };
-            await File.WriteAllTextAsync(Path.Combine(stage, Manifest), manifest.ToString(), token);
+            await File.WriteAllTextAsync(stateStage, manifest.ToString(), token);
+            progress?.Report(new(97, "Publishing export"));
             var current = Tree(output, token);
             if (before.Count != current.Count || before.Any(p => !current.TryGetValue(p.Key, out var hash) || hash != p.Value)) throw new IOException("Export changed while preparing the new version.");
+            RejectLink(state);
+            if (Directory.Exists(state) || stateBefore != (File.Exists(state) ? HashFile(state) : null))
+                throw new IOException("Export ownership changed while preparing the new version.");
             token.ThrowIfCancellationRequested(); RejectLink(output); RejectLink(stage);
-            progress?.Report(new(97, "Publishing export"));
             // Cancellation is intentionally deferred through publication/recovery.
             if (Directory.Exists(output)) { moveDirectory(output, backup); backedUp = true; }
-            try { moveDirectory(stage, output); published = true; }
+            try
+            {
+                moveDirectory(stage, output); outputMoved = true;
+                if (stateBefore is not null) { moveFile(state, stateBackup); stateBackedUp = true; }
+                moveFile(stateStage, state);
+                published = true;
+            }
             catch (Exception failure)
             {
+                var errors = new List<Exception> { failure };
+                if (stateBackedUp)
+                {
+                    try { moveFile(stateBackup, state); stateBackedUp = false; }
+                    catch (Exception recovery) { errors.Add(recovery); }
+                }
+                if (outputMoved)
+                {
+                    try { moveDirectory(output, stage); outputMoved = false; }
+                    catch (Exception recovery) { errors.Add(recovery); }
+                }
                 if (backedUp)
                 {
                     try { moveDirectory(backup, output); backedUp = false; }
-                    catch (Exception recovery) { throw new IOException($"Export publication failed. Previous complete export retained at {backup}", new AggregateException(failure, recovery)); }
+                    catch (Exception recovery) { errors.Add(recovery); }
+                }
+                if (errors.Count > 1)
+                {
+                    recoveryFailed = true;
+                    throw new IOException($"Export publication failed. Recovery assets retained at {backup}, {stateBackup}, {stage}, {stateStage}", new AggregateException(errors));
                 }
                 throw;
             }
@@ -126,13 +160,16 @@ public sealed class OHsExportPublisher
                 try { Cleanup(backup); backedUp = false; }
                 catch (Exception error) when (error is IOException or UnauthorizedAccessException) { System.Diagnostics.Trace.TraceWarning("Export backup retained at {0}: {1}", backup, error.Message); }
             }
+            if (stateBackedUp)
+                try { Cleanup(stateBackup); } catch (Exception error) when (error is IOException or UnauthorizedAccessException) { System.Diagnostics.Trace.TraceWarning("Export ownership backup retained at {0}: {1}", stateBackup, error.Message); }
             return output;
         }
         finally
         {
-            // Never clean a recovery backup from a failed publication.
-            if (!published && Directory.Exists(stage))
-                try { Cleanup(stage); } catch (Exception error) when (error is IOException or UnauthorizedAccessException) { System.Diagnostics.Trace.TraceWarning("Export staging cleanup failed: {0}", error.Message); }
+            // Failed recovery retains every remaining asset for manual recovery.
+            if (!published && !recoveryFailed)
+                foreach (var temporary in new[] { stage, stateStage })
+                    try { Cleanup(temporary); } catch (Exception error) when (error is IOException or UnauthorizedAccessException) { System.Diagnostics.Trace.TraceWarning("Export staging cleanup failed at {0}: {1}", temporary, error.Message); }
         }
     }
 

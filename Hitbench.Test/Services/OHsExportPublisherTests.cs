@@ -146,7 +146,7 @@ public class OHsExportPublisherTests
         using var folder = new TestProjectFolder();
         var publisher = new OHsExportPublisher();
         var output = await Publish(publisher, folder.ProjectPath, "old.osu", "previous");
-        var manifest = await File.ReadAllBytesAsync(Path.Combine(output, ".osuhitsounder-export.json"));
+        var manifest = await File.ReadAllBytesAsync(Path.Combine(Path.GetDirectoryName(folder.ProjectPath)!, ".osuhitsounder-export.json"));
         var map = Hitbench.Resources.DataModels.OHsExportBeatmap.Parse("[TimingPoints]\n0,500,4,1,1,100,1,0\n");
         var input = new Hitbench.Resources.DataModels.OHsExportInput(new("Hitsounds", 1, ".wav", ".wav", false), map, [new(100, "a.wav", 100, "Soft", Hitbench.Core.Enums.SampleType.Clap, 0)], map.TimingPoints);
         var plan = Hitbench.Services.OHsExportPlanner.Plan(input, default);
@@ -155,7 +155,7 @@ public class OHsExportPublisherTests
             new Dictionary<string, string> { ["new.osu"] = "difficulty" },
             (stage, token) => File.WriteAllTextAsync(Path.Combine(stage, "new.osu"), Hitbench.Services.OHsExportBeatmapWriter.Write(input, invalid), token), default));
         Assert.That(await File.ReadAllTextAsync(Path.Combine(output, "old.osu")), Is.EqualTo("previous"));
-        Assert.That(await File.ReadAllBytesAsync(Path.Combine(output, ".osuhitsounder-export.json")), Is.EqualTo(manifest));
+        Assert.That(await File.ReadAllBytesAsync(Path.Combine(Path.GetDirectoryName(folder.ProjectPath)!, ".osuhitsounder-export.json")), Is.EqualTo(manifest));
         Assert.That(Directory.GetDirectories(Path.GetDirectoryName(folder.ProjectPath)!, ".Export-staging-*"), Is.Empty);
     }
 }

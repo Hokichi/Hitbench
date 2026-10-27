@@ -29,10 +29,10 @@ public class OHsExportServiceTests
         Assert.That(map.TimingPoints[0].BeatLength, Is.EqualTo("500"));
         Assert.That(await File.ReadAllTextAsync(first), Is.EqualTo(original));
         Assert.That(await File.ReadAllTextAsync(later), Does.Contain("Title:Later"));
-        var inventory = JObject.Parse(await File.ReadAllTextAsync(Path.Combine(output, ".osuhitsounder-export.json")));
+        var inventory = JObject.Parse(await File.ReadAllTextAsync(Path.Combine(root, ".osuhitsounder-export.json")));
         Assert.That(inventory["files"]!.Select(f => (string?)f["role"]), Is.EqualTo(new[] { "difficulty" }));
         Assert.That(Directory.GetFiles(output).Select(Path.GetFileName), Is.EquivalentTo(new[]
-            { "Artist [Live] - Song (Mapper) [Hitsounds].osu", ".osuhitsounder-export.json" }));
+            { "Artist [Live] - Song (Mapper) [Hitsounds].osu" }));
     }
 
     [TestCase("source.osu", "[General]\nAudioFilename: song.wav\n", "Hitsounds")]
@@ -49,12 +49,12 @@ public class OHsExportServiceTests
         var output = await new OHsExportPublisher().PublishAsync(folder.ProjectPath,
             new Dictionary<string, string> { ["previous.osu"] = "difficulty" },
             (stage, token) => File.WriteAllTextAsync(Path.Combine(stage, "previous.osu"), "previous", token), default);
-        var manifest = await File.ReadAllTextAsync(Path.Combine(output, ".osuhitsounder-export.json"));
+        var manifest = await File.ReadAllTextAsync(Path.Combine(root, ".osuhitsounder-export.json"));
         var request = new OHsExportRequest(Guid.NewGuid(), folder.ProjectPath, source, song,
             ProjectDataSerializer.Serialize(new ProjectData()), new(diffName ?? new string('x', 251), 1, ".wav", ".wav", false));
         Assert.CatchAsync<Exception>(() => new OHsExportService().ExportAsync(request, default));
         Assert.That(await File.ReadAllTextAsync(Path.Combine(output, "previous.osu")), Is.EqualTo("previous"));
-        Assert.That(await File.ReadAllTextAsync(Path.Combine(output, ".osuhitsounder-export.json")), Is.EqualTo(manifest));
+        Assert.That(await File.ReadAllTextAsync(Path.Combine(root, ".osuhitsounder-export.json")), Is.EqualTo(manifest));
         Assert.That(Directory.GetDirectories(root, ".Export-staging-*"), Is.Empty);
     }
 
@@ -77,7 +77,7 @@ public class OHsExportServiceTests
         Assert.That(File.Exists(Path.Combine(output, "__ohs_export_audio.wav")), Is.False);
         Assert.That(File.Exists(Path.Combine(output, "song.wav")), Is.False);
         Assert.That(await File.ReadAllTextAsync(Path.Combine(output, "keep.txt")), Is.EqualTo("user file"));
-        var manifest = JObject.Parse(await File.ReadAllTextAsync(Path.Combine(output, ".osuhitsounder-export.json")));
+        var manifest = JObject.Parse(await File.ReadAllTextAsync(Path.Combine(root, ".osuhitsounder-export.json")));
         Assert.That(manifest["files"]!.Select(f => (string?)f["path"]), Is.EqualTo(new[] { "Song [Hitsounds].osu" }));
     }
 
@@ -116,7 +116,7 @@ public class OHsExportServiceTests
         {
             var output = await exporter.ExportAsync(request, default);
             Assert.That(output, Is.EqualTo(Path.Combine(root, "Export")));
-            Assert.That(File.Exists(Path.Combine(output, ".osuhitsounder-export.json")), Is.True);
+            Assert.That(File.Exists(Path.Combine(root, ".osuhitsounder-export.json")), Is.True);
             var text = await File.ReadAllTextAsync(Path.Combine(output, "Artist - Song (Mapper) [Hitsounds].osu"));
             Assert.That(OHsExportBeatmap.Parse(text).Sections["HitObjects"].Count(l => !string.IsNullOrWhiteSpace(l)), Is.EqualTo(1));
             var clap = OHsExportPlaybackOracle.Resolve(text).Single(p => p.Type == "clap");
