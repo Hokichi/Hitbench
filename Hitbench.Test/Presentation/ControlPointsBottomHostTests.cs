@@ -34,7 +34,7 @@ public class ControlPointsBottomHostTests
         services = App.CreateServices(); shell = services.GetRequiredService<MainWindow>();
         previousContext = SynchronizationContext.Current;
         SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(shell.Dispatcher));
-        owner = new(new StubWorkstationSourceService(), new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler());
+        owner = new(new StubWorkstationSourceService(), new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), new StubSampleFileService(["a.wav"]));
         page = new(owner); UiTestPump.Run(owner.LoadAsync("project.json", default)); owner.AcknowledgePresentationReady(owner.LoadGeneration);
         ((ContentControl)shell.FindName("PageHost")).Content = page;
         drawer = new(); cancellation = new(); showing = Task.CompletedTask;
@@ -70,6 +70,39 @@ public class ControlPointsBottomHostTests
         Assert.That(backdrop.Visibility, Is.EqualTo(Visibility.Collapsed));
         Assert.That(backdrop.IsHitTestVisible, Is.False);
         UiControlContract.AssertStyle<ContentControl>((ContentControl)shell.FindName("SampleManagerHost"), "OHsMainWindowShellDrawerHostStyle");
+    }
+
+    [TestCase(FlowDirection.LeftToRight)]
+    [TestCase(FlowDirection.RightToLeft)]
+    public void SwitchingSideAndBottomKeepsAuthoritativeTimelineInputs(FlowDirection direction)
+    {
+        shell.FlowDirection = direction;
+        owner.AddSampleTrackCommand.Execute(null);
+        using var view = new InMemoryView(shell, scheduleLayout: false);
+        var component = (OHsWorkstationTrackList)page.FindName("TrackListComponent");
+        foreach (var bottom in new[] { false, true, false })
+        {
+            Show(bottom); view.UpdateLayout();
+            foreach (var width in new[] { 1200d, 640d, 900d })
+            {
+                shell.Width = width; view.UpdateLayout();
+                owner.ZoomInCommand.Execute(null); view.UpdateLayout();
+                page.Timeline.ScrollFromUser(125); view.UpdateLayout();
+                var grid = WorkstationControlTree.Descendants(page).OfType<Hitbench.Resources.CustomControls.BeatGridView>().Single();
+                Assert.That(grid.ContentWidth, Is.EqualTo(page.Timeline.TimelineContentWidth));
+                Assert.That(grid.HorizontalOffset, Is.EqualTo(page.Timeline.TimelineHorizontalOffset));
+                Assert.That(grid.ViewportWidth, Is.EqualTo(component.TrackViewportWidth));
+                Assert.That(shell.IsBlockingDrawerVisible, Is.False);
+                Assert.That(owner.IsInteractionReady, Is.True);
+            }
+            page.ShowVolumeOverlay(false, default, false, false);
+            Assert.That(drawer.IsEnabled, Is.False);
+            Assert.That(page.ApplicationVolumeWheel.IsEnabled, Is.True);
+            page.DismissVolumeOverlay();
+            Assert.That(drawer.IsEnabled, Is.True);
+            UiTestPump.Run(shell.RequestSampleManagerCloseAsync(drawer)); UiTestPump.Run(showing);
+            Assert.That(shell.IsSampleManagerVisible, Is.False);
+        }
     }
 
     [Test]

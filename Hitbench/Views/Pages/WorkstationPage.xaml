@@ -192,7 +192,9 @@
             Margin="16,8,16,8"
             IsEnabled="{Binding IsWorkstationContentEnabled, Mode=OneWay}"
             SizeChanged="OnVolumeOverlayHostSizeChanged">
-            <Grid x:Name="WorkstationContent" Style="{StaticResource OHsWorkstationContentStyle}">
+            <Grid x:Name="WorkstationDockLayout" FlowDirection="LeftToRight" Style="{StaticResource OHsWorkstationContentStyle}" SizeChanged="OnTracksLayoutSizeChanged">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <Grid x:Name="WorkstationContent" FlowDirection="{Binding FlowDirection, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}" Style="{StaticResource BaseGridStyle}">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
@@ -236,7 +238,7 @@
                 </Grid>
                 <Grid x:Name="TracksLayout" Grid.Row="3" Margin="0,0,0,8" FlowDirection="LeftToRight"
                       Style="{StaticResource BaseGridStyle}" SizeChanged="OnTracksLayoutSizeChanged">
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+
                         <Grid.RowDefinitions>
                             <RowDefinition Height="*" />
                             <RowDefinition Height="Auto" />
@@ -248,12 +250,13 @@
  TimelineViewportWidth="{Binding TimelineViewportWidth, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}"
  TimelineHorizontalOffset="{Binding TimelineHorizontalOffset, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}" />
                         </Border>
-                        <Grid x:Name="RightDrawerSlot" Grid.Column="1" Grid.RowSpan="2" Margin="12,0,0,0"
-                              ClipToBounds="True" Visibility="Collapsed" Style="{StaticResource BaseGridStyle}" />
                         <Grid x:Name="BottomDrawerSlot" Grid.Row="1" Margin="0,12,0,0" ClipToBounds="True"
                               Visibility="Collapsed" Style="{StaticResource BaseGridStyle}" />
                 </Grid>
 
+            </Grid>
+                <Grid x:Name="RightDrawerSlot" Grid.Column="1" Margin="12,0,0,0" ClipToBounds="True"
+                      Visibility="Collapsed" Style="{StaticResource BaseGridStyle}" />
             </Grid>
             <Border
                 x:Name="VolumeOverlay"

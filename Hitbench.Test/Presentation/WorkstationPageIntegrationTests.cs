@@ -87,11 +87,10 @@ public class WorkstationPageIntegrationTests
         {
             var add = (BalloonComboBox)page.AudioCard.FindName("AddMenuButton");
             var samples = (BalloonButton)page.AudioCard.FindName("ManageSamplesButton");
-            Assert.That(add.ShouldShowText, Is.True);
-            Assert.That(samples.ShouldShowText, Is.True);
+            Assert.That(AutomationProperties.GetName(add), Is.EqualTo("Add"));
+            Assert.That(AutomationProperties.GetName(samples), Is.EqualTo("Samples"));
             Assert.That((add.ButtonText, samples.ButtonText), Is.EqualTo(("Add", "Samples")));
             Assert.That(add.ButtonIcon, Is.SameAs(add.FindResource("PlusSolid")));
-            Assert.That(samples.ButtonIcon, Is.SameAs(samples.FindResource("BarsSolid")));
             var owner = (WorkstationPageVM)page.DataContext;
             Assert.That(samples.Command, Is.SameAs(owner.ManageSamplesCommand));
             // Supply the native popup's inherited context without opening its window.

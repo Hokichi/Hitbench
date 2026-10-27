@@ -47,7 +47,8 @@ public partial class WorkstationPage : UserControl
     }
     private void OnTrackViewportChanged(object? sender, EventArgs e)
     {
-        if (drawerHost is null) TrackScrollBarGutter = TrackListComponent.TrackScrollBarGutter;
+        if (drawerHost is null || drawerKind == Hitbench.Resources.DataModels.OHsWorkstationDrawerKind.Samples)
+            TrackScrollBarGutter = TrackListComponent.TrackScrollBarGutter;
         readinessCandidate = null;
     }
     private bool renderingSubscribed;

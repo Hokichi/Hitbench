@@ -43,7 +43,7 @@ public partial class WorkstationPage
         drawerHost = null;
         drawerTargetExtent = 0;
         SetValue(DrawerProgressProperty, 0d);
-        TracksLayout.UpdateLayout();
+        WorkstationDockLayout.UpdateLayout();
         TrackScrollBarGutter = TrackListComponent.TrackScrollBarGutter;
     }
 
@@ -56,24 +56,31 @@ public partial class WorkstationPage
     internal static double CalculateBottomDrawerHeight(double availableHeight, double desiredHeight, bool sizeToContent) =>
         sizeToContent ? Math.Min(availableHeight, desiredHeight) : availableHeight / 2;
 
+    internal static Size CalculateDrawerHostSize(OHsWorkstationDrawerKind kind, Size dockSize,
+        Size tracksSize, double fixedTrackSideWidth, double desiredContentHeight) =>
+        kind == OHsWorkstationDrawerKind.Samples
+            ? new Size(CalculateSideDrawerWidth(dockSize.Width, fixedTrackSideWidth), dockSize.Height)
+            : new Size(tracksSize.Width, CalculateBottomDrawerHeight(tracksSize.Height, desiredContentHeight,
+                kind == OHsWorkstationDrawerKind.KeysMapping));
+
     private void UpdateDrawerHostSize()
     {
         if (drawerHost is not { } host || TracksLayout.ActualWidth <= 0) return;
-        var width = TracksLayout.ActualWidth;
-        var height = Math.Max(0, TracksLayout.ActualHeight);
+        var tracksSize = new Size(TracksLayout.ActualWidth, Math.Max(0, TracksLayout.ActualHeight));
+        var dockSize = new Size(WorkstationDockLayout.ActualWidth, Math.Max(0, WorkstationDockLayout.ActualHeight));
         var side = drawerKind == OHsWorkstationDrawerKind.Samples;
-        if (side)
-            width = CalculateSideDrawerWidth(width, TrackSideColumnWidth.Value + TracksCard.Padding.Left + TracksCard.Padding.Right + 24);
-        else if (drawerKind == OHsWorkstationDrawerKind.KeysMapping)
+        var desiredHeight = 0d;
+        if (drawerKind == OHsWorkstationDrawerKind.KeysMapping)
         {
             var presenter = host.Children[0];
-            presenter.Measure(new Size(width, double.PositiveInfinity));
-            height = CalculateBottomDrawerHeight(height, presenter.DesiredSize.Height, true);
+            presenter.Measure(new Size(tracksSize.Width, double.PositiveInfinity));
+            desiredHeight = presenter.DesiredSize.Height;
         }
-        else height = CalculateBottomDrawerHeight(height, 0, false);
-        if (host.Width != width) host.Width = width;
-        if (host.Height != height) host.Height = height;
-        var extent = side ? width : height;
+        var size = CalculateDrawerHostSize(drawerKind, dockSize, tracksSize,
+            TrackSideColumnWidth.Value + TracksCard.Padding.Left + TracksCard.Padding.Right + 24, desiredHeight);
+        if (host.Width != size.Width) host.Width = size.Width;
+        if (host.Height != size.Height) host.Height = size.Height;
+        var extent = side ? size.Width : size.Height;
         if (drawerTargetExtent == extent) return;
         drawerTargetExtent = extent;
         UpdateDrawerReveal();
