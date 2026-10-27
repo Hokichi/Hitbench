@@ -132,7 +132,7 @@
             x:Key="OHsWorkstationSamplesActionStyle"
             BasedOn="{StaticResource OHsBalloonDefaultActionStyle}"
             TargetType="customControls:BalloonButton">
-            <Setter Property="ShouldShowText" Value="True" />
+            <Setter Property="ShouldShowText" Value="False" />
             <Setter Property="IsTabStop" Value="True" />
             <Setter Property="helpers:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
             <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
@@ -142,7 +142,7 @@
             x:Key="OHsWorkstationAddActionStyle"
             BasedOn="{StaticResource BaseBalloonComboBoxStyle}"
             TargetType="customControls:BalloonComboBox">
-            <Setter Property="ShouldShowText" Value="True" />
+            <Setter Property="ShouldShowText" Value="False" />
         </Style>
         <ContextMenu
             x:Key="OHsWorkstationAddMenu"
@@ -163,7 +163,7 @@
                 ToolTip="Add control point at playback marker (F6)" />
         </ContextMenu>
         <Style x:Key="OHsWorkstationProjectActionsStyle" TargetType="customControls:BalloonComboBox" BasedOn="{StaticResource BaseBalloonComboBoxStyle}">
-            <Setter Property="ShouldShowText" Value="True" />
+            <Setter Property="ShouldShowText" Value="False" />
         </Style>
 
         <ContextMenu x:Key="OHsWorkstationProjectActionsMenu" x:Shared="False" Style="{StaticResource OHsActionContextMenuStyle}" AutomationProperties.Name="Project actions">
@@ -324,8 +324,8 @@
                             AutomationProperties.Name="Add" ButtonIcon="{StaticResource PlusSolid}" ButtonText="Add"
                             ContextMenu="{StaticResource OHsWorkstationAddMenu}" Style="{StaticResource OHsWorkstationAddActionStyle}" ToolTip="Add track or control point" />
                         <customControls:BalloonButton x:Name="ManageSamplesButton" Grid.Column="2" HorizontalAlignment="Stretch"
-                            AutomationProperties.Name="Samples" ButtonIcon="{StaticResource BarsSolid}" ButtonText="Samples"
-                            Command="{Binding ManageSamplesCommand, Mode=OneWay}" ShouldShowText="True"
+                            AutomationProperties.Name="Samples" ButtonIcon="{StaticResource MusicNote}" ButtonText="Samples"
+                            Command="{Binding ManageSamplesCommand, Mode=OneWay}"
                             Style="{StaticResource OHsWorkstationSamplesActionStyle}" ToolTip="Manage samples" />
                     </Grid>
                     <Border Style="{StaticResource OHsWorkstationToolbarSeparatorStyle}" />
