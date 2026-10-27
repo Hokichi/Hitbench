@@ -41,7 +41,7 @@ public class WorkstationVolumeTransitionTests
         using var view = new InMemoryView(new Window { Content = page, Width = 900, Height = 600 });
         UiTestPump.Run(page.LoadCompletion);
         var content = (Grid)page.FindName("WorkstationContent");
-        UiControlContract.AssertStyle<Grid>(content, "OHsWorkstationContentStyle");
+        UiControlContract.AssertStyle<Grid>((Grid)page.FindName("WorkstationDockLayout"), "OHsWorkstationContentStyle");
         page.ShowVolumeOverlay(false, new Point(), true, false);
         AssertLocked();
         PumpWithVolumeActivity(page, TimeSpan.FromMilliseconds(100));
@@ -77,7 +77,7 @@ public class WorkstationVolumeTransitionTests
         UiTestPump.Run(page.LoadCompletion);
         var root = (Grid)page.FindName("WorkstationRoot");
         var content = (Grid)page.FindName("WorkstationContent");
-        UiControlContract.AssertStyle<Grid>(content, "OHsWorkstationContentStyle");
+        UiControlContract.AssertStyle<Grid>((Grid)page.FindName("WorkstationDockLayout"), "OHsWorkstationContentStyle");
         page.ShowVolumeOverlay(false, new Point(), false, false);
         Assert.That(content.IsHitTestVisible, Is.False);
         root.IsEnabled = false;
@@ -98,7 +98,7 @@ public class WorkstationVolumeTransitionTests
         var panel = (Border)page.FindName("VolumeOverlay");
         UiControlContract.AssertStyle<Border>(panel, "OHsWorkstationVolumeOverlayStyle");
         var content = (Grid)page.FindName("WorkstationContent");
-        UiControlContract.AssertStyle<Grid>(content, "OHsWorkstationContentStyle");
+        UiControlContract.AssertStyle<Grid>((Grid)page.FindName("WorkstationDockLayout"), "OHsWorkstationContentStyle");
         page.RecordVolumeActivity();
         PumpWithVolumeActivity(page, TimeSpan.FromMilliseconds(100));
         PumpWithVolumeActivity(page, TimeSpan.FromMilliseconds(150));
@@ -140,7 +140,7 @@ public class WorkstationVolumeTransitionTests
         var panel = (Border)page.FindName("VolumeOverlay");
         UiControlContract.AssertStyle<Border>(panel, "OHsWorkstationVolumeOverlayStyle");
         var content = (Grid)page.FindName("WorkstationContent");
-        UiControlContract.AssertStyle<Grid>(content, "OHsWorkstationContentStyle");
+        UiControlContract.AssertStyle<Grid>((Grid)page.FindName("WorkstationDockLayout"), "OHsWorkstationContentStyle");
         Assert.That(panel.HasAnimatedProperties, Is.False);
         page.ProcessVolumeOverlayIdle(TimeSpan.FromMilliseconds(99), false);
         Assert.That(page.IsVolumeOverlayOpen, Is.True);
@@ -177,7 +177,7 @@ public class WorkstationVolumeTransitionTests
         var panel = (Border)page.FindName("VolumeOverlay");
         UiControlContract.AssertStyle<Border>(panel, "OHsWorkstationVolumeOverlayStyle");
         var content = (Grid)page.FindName("WorkstationContent");
-        UiControlContract.AssertStyle<Grid>(content, "OHsWorkstationContentStyle");
+        UiControlContract.AssertStyle<Grid>((Grid)page.FindName("WorkstationDockLayout"), "OHsWorkstationContentStyle");
         page.ShowVolumeOverlay(false, new Point(), false, true);
         Assert.That(panel.HasAnimatedProperties, Is.False);
         page.ShowVolumeOverlay(false, new Point(), false, false);
