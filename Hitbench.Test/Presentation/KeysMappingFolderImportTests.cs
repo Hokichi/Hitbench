@@ -11,6 +11,27 @@ namespace Hitbench.Test.Presentation;
 public sealed class KeysMappingFolderImportTests
 {
     [Test]
+    public async Task ClosingAfterFirstCommittedCopyDoesNotStartSecondCopy()
+    {
+        var track = new InstrumentalTrack { Name = "Piano" };
+        var entered = new TaskCompletionSource();
+        var commit = new TaskCompletionSource<string>();
+        var calls = 0;
+        var files = new StubSampleFileService([]) { Import = (_, _, _) => { calls++; entered.TrySetResult(); return commit.Task; } };
+        await RunOwnerAsync(track, files, async vm =>
+        {
+            var importing = vm.OpenFolderAsync(default);
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(2));
+            var closing = vm.DeactivateAsync();
+            commit.SetResult("Piano/committed.wav");
+            await Task.WhenAll(importing, closing);
+            Assert.That(track.KeyFiles.Values, Does.Contain("Piano/committed.wav"));
+            Assert.That(track.FolderName, Is.EqualTo("Piano"));
+            Assert.That(calls, Is.EqualTo(1));
+        }, new(source), new());
+    }
+
+    [Test]
     public async Task CancellationAfterReturnedCopyPublishesThatKeyAndFolder()
     {
         var track = new InstrumentalTrack { Name = "Piano" };
