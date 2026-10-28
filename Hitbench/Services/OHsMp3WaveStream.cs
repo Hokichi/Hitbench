@@ -9,15 +9,22 @@ public sealed class OHsMp3WaveStream : WaveStream
 {
     private readonly Mp3FileReader reader;
     private readonly MemoryStream cache = new();
-    private readonly byte[] block = new byte[8192];
+    private byte[] block;
+    private readonly AudioMemoryBudget budget;
+    private readonly AudioMemoryReservation blockCharge;
+    private AudioMemoryReservation? cacheCharge;
     private long skip;
     private long length;
     private long position;
     private bool disposed;
 
-    public OHsMp3WaveStream(string path)
+    public OHsMp3WaveStream(string path) : this(path, new AudioMemoryBudget()) { }
+    public OHsMp3WaveStream(string path, AudioMemoryBudget budget)
     {
-        reader = new Mp3FileReader(path);
+        this.budget = budget;
+        blockCharge = budget.Reserve(8192);
+        try { block = new byte[8192]; reader = new Mp3FileReader(path); }
+        catch { blockCharge.Dispose(); throw; }
         try
         {
             using var input = File.OpenRead(path);
@@ -30,7 +37,7 @@ public sealed class OHsMp3WaveStream : WaveStream
             skip = checked(head * reader.WaveFormat.BlockAlign);
             length = checked(reader.Length - skip - tail * reader.WaveFormat.BlockAlign);
         }
-        catch { reader.Dispose(); cache.Dispose(); throw; }
+        catch { try { reader.Dispose(); } finally { cache.Dispose(); blockCharge.Dispose(); } throw; }
     }
 
     private static (long Head, long Tail) GetGaps(Mp3Frame? frame, long frames, bool retainedHeader)
@@ -97,16 +104,23 @@ public sealed class OHsMp3WaveStream : WaveStream
     private void FillCache(long target, CancellationToken token)
     {
         if (target > Array.MaxLength) throw new IOException("Decoded MP3 exceeds the supported PCM cache size.");
+        budget.CheckAsset(target);
         while (cache.Length < target)
         {
             token.ThrowIfCancellationRequested();
             var wanted = (int)Math.Min(block.Length, skip > 0 ? skip : target - cache.Length);
+            if (skip == 0 && cache.Length + wanted > cache.Capacity)
+            {
+                var capacity = checked((int)Math.Min(budget.MaximumAssetBytes,
+                    Math.Min(length, Math.Max(cache.Length + wanted, Math.Max(8192L, cache.Capacity * 2L)))));
+                var nextCharge = budget.Reserve(capacity);
+                try { cache.Capacity = capacity; }
+                catch { nextCharge.Dispose(); throw; }
+                cacheCharge?.Dispose(); cacheCharge = nextCharge;
+            }
             var read = reader.Read(block, 0, wanted);
             if (read == 0) { length = cache.Length; break; }
             if (skip > 0) { skip -= read; continue; }
-            // ponytail: retains native PCM (~11 MiB/minute stereo 48 kHz); use bounded paging if measured memory requires it.
-            if (cache.Length + read > cache.Capacity)
-                cache.Capacity = checked((int)Math.Min(Array.MaxLength, Math.Min(length, Math.Max(cache.Length + read, Math.Max(8192L, cache.Capacity * 2L)))));
             cache.Position = cache.Length;
             cache.Write(block, 0, read);
         }
@@ -119,8 +133,13 @@ public sealed class OHsMp3WaveStream : WaveStream
         if (disposing && !disposed)
         {
             disposed = true;
-            reader.Dispose();
-            cache.Dispose();
+            try { reader.Dispose(); }
+            finally
+            {
+                cache.SetLength(0); cache.Capacity = 0; cache.Dispose();
+                block = [];
+                cacheCharge?.Dispose(); cacheCharge = null; blockCharge.Dispose();
+            }
         }
         base.Dispose(disposing);
     }

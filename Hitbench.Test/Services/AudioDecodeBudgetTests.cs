@@ -1,0 +1,48 @@
+using Hitbench.Services;
+using NAudio.Wave;
+
+namespace Hitbench.Test.Services;
+
+public class AudioDecodeBudgetTests
+{
+    [TestCase(262144, 4096, 8192)]
+    [TestCase(90000, 65536, 32768)]
+    public void WrongLengthHintAndFinalCopyCannotBypassBudget(long total, long asset, int inputBytes)
+    {
+        var budget = new AudioMemoryBudget(total, asset);
+        var stream = new RawSourceWaveStream(new MemoryStream(new byte[inputBytes]), WaveFormat.CreateIeeeFloatWaveFormat(44100, 2));
+        Assert.Throws<AudioMemoryLimitException>(() => AudioDecoder.Decode("unused.wav", default, _ => stream, budget));
+        Assert.That(budget.UsedBytes, Is.Zero);
+        Assert.That(budget.PeakBytes, Is.LessThanOrEqualTo(total));
+    }
+
+    [Test]
+    public void SuccessfulDecodeTransfersChargeAndCancellationReleasesAll()
+    {
+        var budget = new AudioMemoryBudget(262144, 65536);
+        using (var pcm = AudioDecoder.Decode("unused", default,
+            _ => new ShortReadWaveStream(new byte[8192], WaveFormat.CreateIeeeFloatWaveFormat(44100, 2)), budget))
+            Assert.That(budget.UsedBytes, Is.EqualTo(8192));
+        Assert.That(budget.UsedBytes, Is.Zero);
+        using var cancel = new CancellationTokenSource();
+        Assert.Catch<OperationCanceledException>(() => AudioDecoder.Decode("unused", cancel.Token,
+            _ => new ShortReadWaveStream(new byte[8192], WaveFormat.CreateIeeeFloatWaveFormat(44100, 2), cancel.Cancel), budget));
+        Assert.That(budget.UsedBytes, Is.Zero);
+    }
+
+    [Test]
+    public void Mp3GrowthRejectionKeepsCachedPrefixAndReleasesOnDispose()
+    {
+        var budget = new AudioMemoryBudget(65536, 64);
+        var path = Directory.EnumerateFiles(Path.Combine(AppContext.BaseDirectory, "Fixtures", "Audio"), "*.mp3").First();
+        using (var stream = new OHsMp3WaveStream(path, budget))
+        {
+            var first = new byte[8]; stream.ReadExactly(first);
+            Assert.Throws<AudioMemoryLimitException>(() => stream.ReadExactly(new byte[80]));
+            stream.Position = 0;
+            var repeated = new byte[8]; stream.ReadExactly(repeated);
+            Assert.That(repeated, Is.EqualTo(first));
+        }
+        Assert.That(budget.UsedBytes, Is.Zero);
+    }
+}
