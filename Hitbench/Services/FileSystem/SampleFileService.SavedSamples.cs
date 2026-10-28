@@ -114,13 +114,11 @@ public sealed partial class SampleFileService
             await using (var output = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, true))
                 await copyBytes(input, output, token);
             var name = Path.GetFileName(source);
-            var stem = Path.GetFileNameWithoutExtension(name);
-            var extension = Path.GetExtension(name);
-            for (var suffix = 1; ; suffix++)
+            for (long suffix = 1; ; suffix = checked(suffix + 1))
             {
                 token.ThrowIfCancellationRequested();
                 SamplePaths.RejectLinkedPath(folder);
-                var candidate = Path.Combine(folder, suffix == 1 ? name : $"{stem} ({suffix}){extension}");
+                var candidate = Path.Combine(folder, SampleFileNames.GetUniqueCopyName(name, suffix));
                 if (Directory.EnumerateFileSystemEntries(folder).Any(path => string.Equals(path, candidate, StringComparison.OrdinalIgnoreCase))) continue;
                 try { File.Move(temporary, candidate); return candidate; }
                 catch (IOException) when (File.Exists(candidate) || Directory.Exists(candidate)) { }

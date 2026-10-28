@@ -5,6 +5,22 @@ namespace Hitbench.Services.FileSystem;
 
 public static class SampleFileNames
 {
+    public static string GetUniqueCopyName(string fileName, long suffix)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(suffix, 1);
+        if (suffix == 1) return fileName;
+        var extension = Path.GetExtension(fileName);
+        var ending = " (" + suffix.ToString(System.Globalization.CultureInfo.InvariantCulture) + ")";
+        var available = Math.Min(251, 255 - extension.Length) - ending.Length;
+        if (available < 1) throw new ArgumentException("The filename is too long.", nameof(fileName));
+        var stem = Path.GetFileNameWithoutExtension(fileName);
+        var length = Math.Min(stem.Length, available);
+        if (length > 0 && char.IsHighSurrogate(stem[length - 1])) length--;
+        var shortened = stem[..length].TrimEnd(' ', '.') + ending;
+        if (GetStemError(shortened) is { } error) throw new ArgumentException(error, nameof(fileName));
+        return shortened + extension;
+    }
+
     public static string? GetStemError(string stem)
     {
         if (string.IsNullOrWhiteSpace(stem)) return "Enter a filename.";
