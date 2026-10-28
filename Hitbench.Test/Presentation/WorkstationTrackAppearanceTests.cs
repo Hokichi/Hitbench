@@ -5,8 +5,29 @@ using Hitbench.ViewModels.Shell;
 namespace Hitbench.Test.Presentation;
 public class WorkstationTrackAppearanceTests
 {
-    [TestCase(false)] [TestCase(true)]
-    public async Task AcceptedMappedTrackRenameSettlesOpenDrawer(bool mapping)
+    [Test]
+    public async Task RemovedTrackDuringFolderMoveCannotRewriteOtherTrackReferences()
+    {
+        var track = new InstrumentalTrack { Name = "Piano", FolderName = "Piano", KeyFiles = new() { ["C3"] = "Piano/C3.wav" } };
+        var other = new Track { Samples = [new() { FileName = "Piano/C3.wav" }] };
+        WorkstationPageVM? owner = null;
+        var files = new StubSampleFileService(["Piano/C3.wav"]) { FolderRename = async (_, _, _, _, _) =>
+        { await Task.Yield(); owner!.Tracks.Remove(track); return "Soft Piano"; } };
+        owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [track, other], Offsets = [0], BPMs = [120] })) },
+            new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), sampleFiles: files,
+            trackAppearanceDialog: new StubOHsTrackAppearanceDialogService { Request = (_, _) => Task.FromResult<OHsTrackAppearanceResult?>(new("Soft Piano", "#123456")) });
+        try
+        {
+            await owner.LoadAsync("project.json", default); owner.AcknowledgePresentationReady(owner.LoadGeneration);
+            await owner.ChangeTrackNameAndColorCommand.ExecuteAsync(track);
+            Assert.That(other.Samples[0].FileName, Is.EqualTo("Piano/C3.wav"));
+            Assert.That(track.Name, Is.EqualTo("Piano"));
+        }
+        finally { await owner.DeactivateAsync(); }
+    }
+
+    [TestCase(0)] [TestCase(1)] [TestCase(2)]
+    public async Task AcceptedMappedTrackRenameSettlesOpenDrawer(int kind)
     {
         var track = new InstrumentalTrack { Name = "Piano", FolderName = "Piano", KeyFiles = new() { ["C3"] = "Piano/C3.wav" } };
         var entered = new TaskCompletionSource();
@@ -23,11 +44,12 @@ public class WorkstationTrackAppearanceTests
         var vm = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [track], Offsets = [0], BPMs = [120] })) },
             new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), sampleFiles: files,
             messenger: new CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger(), instrumentDialogs: dialogs,
+            sampleDialog: new StubSampleFileDialogService((string?)null), sampleManagementDialog: new StubSampleManagementDialogService { Present = (_, token) => Drawer(token) },
             trackAppearanceDialog: new StubOHsTrackAppearanceDialogService { Request = (_, _) => Task.FromResult<OHsTrackAppearanceResult?>(new("Soft Piano", "#123456")) });
         try
         {
             await vm.LoadAsync("project.json", default); vm.AcknowledgePresentationReady(vm.LoadGeneration);
-            var drawer = mapping ? vm.KeysMappingCommand.ExecuteAsync(track) : vm.ViewArrangementCommand.ExecuteAsync(track);
+            var drawer = kind == 2 ? vm.ManageSamplesCommand.ExecuteAsync(null) : kind == 1 ? vm.KeysMappingCommand.ExecuteAsync(track) : vm.ViewArrangementCommand.ExecuteAsync(track);
             await entered.Task.WaitAsync(TimeSpan.FromSeconds(2));
             try { await vm.ChangeTrackNameAndColorCommand.ExecuteAsync(track).WaitAsync(TimeSpan.FromSeconds(2)); }
             finally { await vm.SettleInstrumentalEditorAsync(); }

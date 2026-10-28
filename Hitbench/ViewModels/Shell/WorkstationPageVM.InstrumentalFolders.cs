@@ -34,13 +34,15 @@ public partial class WorkstationPageVM
             foreach (var (track, name) in requests)
             {
                 if (!tracks.Contains(track) || Project is null || projectPath is null) continue;
+                var project = Project; var path = projectPath; var generation = loadGeneration;
                 try
                 {
                     var old = track.FolderName;
                     var reserved = tracks.OfType<InstrumentalTrack>().Where(t => t != track).Select(t => t.FolderName).ToArray();
-                    var renamed = await sampleFiles!.RenameFolderAsync(projectPath, old, name, reserved, CancellationToken.None);
+                    var renamed = await sampleFiles!.RenameFolderAsync(path, old, name, reserved, CancellationToken.None);
                     await uiScheduler.InvokeAsync(() =>
                     {
+                        if (deactivated || generation != loadGeneration || !ReferenceEquals(project, Project) || !tracks.Contains(track)) return;
                         string Rewrite(string file) => file.StartsWith(old + "/", StringComparison.OrdinalIgnoreCase) ? renamed + file[old.Length..] : file;
                         foreach (var item in tracks)
                         {
@@ -56,7 +58,8 @@ public partial class WorkstationPageVM
                         instrumentRevision++; PublishInstrumentSnapshot(); QueueSave(); QueuePlaybackUpdate();
                     }, CancellationToken.None);
                 }
-                catch (Exception error) { await uiScheduler.InvokeAsync(() => ErrorMessage = "Could not rename instrumental folder: " + error.Message, CancellationToken.None); }
+                catch (Exception error) { await uiScheduler.InvokeAsync(() =>
+                { if (!deactivated && generation == loadGeneration && ReferenceEquals(project, Project)) ErrorMessage = "Could not rename instrumental folder: " + error.Message; }, CancellationToken.None); }
             }
         }
         folderDelay?.Dispose(); folderDelay = null;
