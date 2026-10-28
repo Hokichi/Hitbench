@@ -85,11 +85,10 @@ public partial class App : Application
         });
     }
 
-    protected override async void OnStartup(StartupEventArgs e)
+    private async Task StartPrimaryAsync(CancellationToken token)
     {
         Resources["OHsTextLanguage"] = System.Windows.Markup.XmlLanguage.GetLanguage(
             System.Globalization.CultureInfo.CurrentUICulture.IetfLanguageTag);
-        base.OnStartup(e);
         MainWindow? window = null;
         try
         {
@@ -98,10 +97,12 @@ public partial class App : Application
             services = CreateServices(settings.AsioDriverName, null, null, settings.Volume);
             services.GetRequiredService<OHsThemeService>().ApplyInitialTheme(settings.Theme);
             window = services.GetRequiredService<MainWindow>();
+            activeShell = window;
             window.ApplySettings(settings);
             MainWindow = window;
             window.Closed += (_, _) => Shutdown();
             window.Show();
+            activationGate!.MarkReady();
             await window.LoadAsync();
             if (!window.IsVisible)
             {
@@ -134,7 +135,8 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
-        services?.Dispose();
-        base.OnExit(e);
+        activationGate?.Deactivate();
+        try { services?.Dispose(); }
+        finally { instanceCoordinator?.Dispose(); base.OnExit(e); }
     }
 }
