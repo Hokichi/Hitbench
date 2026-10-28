@@ -7,32 +7,42 @@ namespace Hitbench.Services;
 
 public static class OHsExportAudio
 {
-    public static DecodedAudio Render(OHsExportAsset asset, Func<string, DecodedAudio> resolve, CancellationToken token)
+    public static DecodedAudio Render(OHsExportAsset asset, Func<string, DecodedAudio> resolve, CancellationToken token, AudioMemoryBudget? budget = null)
     {
         token.ThrowIfCancellationRequested();
-        if (asset.Sources.Count == 0) return DecodedAudio.CopyFrom(new float[882]);
         var inputs = asset.Sources.Select(s => (Audio: resolve(s.FileName), Gain: s.GainPercent / 100f)).ToArray();
-        var sum = new float[inputs.Max(s => s.Audio.FrameCount) * 2];
-        foreach (var input in inputs)
-            for (var i = 0; i < input.Audio.Samples.Length; i++)
+        budget ??= inputs.Select(input => input.Audio.Budget).FirstOrDefault(value => value is not null) ?? new();
+        foreach (var input in inputs) input.Audio.AttachBudget(budget);
+        var sampleCount = inputs.Length == 0 ? 882 : checked(inputs.Max(s => s.Audio.FrameCount) * 2);
+        AudioMemoryReservation? charge = budget.Reserve(checked((long)sampleCount * sizeof(float)));
+        try
+        {
+            var sum = new float[sampleCount];
+            foreach (var input in inputs)
+                for (var i = 0; i < input.Audio.Samples.Length; i++)
+                {
+                    if ((i & 8191) == 0) token.ThrowIfCancellationRequested();
+                    var value = input.Audio.Samples[i];
+                    if (!float.IsFinite(value) || input.Gain < 0) throw new InvalidDataException("Sample PCM/gain is invalid.");
+                    sum[i] += value * input.Gain;
+                }
+            if (sum.Length == 0 || sum.Any(v => !float.IsFinite(v)))
+                throw new InvalidDataException($"Exported sample contains invalid PCM: {string.Join(", ", asset.Sources.Select(s => $"{s.FileName} ({s.GainPercent}%)"))}.");
+            for (var i = 0; i < sum.Length; i++)
             {
                 if ((i & 8191) == 0) token.ThrowIfCancellationRequested();
-                var value = input.Audio.Samples[i];
-                if (!float.IsFinite(value) || input.Gain < 0) throw new InvalidDataException("Sample PCM/gain is invalid.");
-                sum[i] += value * input.Gain;
+                sum[i] = Math.Clamp(sum[i], -1f, 1f);
             }
-        if (sum.Length == 0 || sum.Any(v => !float.IsFinite(v)))
-            throw new InvalidDataException($"Exported sample contains invalid PCM: {string.Join(", ", asset.Sources.Select(s => $"{s.FileName} ({s.GainPercent}%)"))}.");
-        for (var i = 0; i < sum.Length; i++)
-        {
-            if ((i & 8191) == 0) token.ThrowIfCancellationRequested();
-            sum[i] = Math.Clamp(sum[i], -1f, 1f);
+            var result = DecodedAudio.TakeOwnership(sum, charge);
+            charge = null;
+            return result;
         }
-        return DecodedAudio.TakeOwnership(sum);
+        finally { charge?.Dispose(); }
     }
     public static async Task WriteAsync(string projectPath, string stagingDirectory, OHsExportPlan plan, OHsExportOptions options, CancellationToken token,
-        Func<string, CancellationToken, DecodedAudio>? decode = null, IProgress<OHsExportProgress>? progress = null)
+        Func<string, CancellationToken, DecodedAudio>? decode = null, IProgress<OHsExportProgress>? progress = null, AudioMemoryBudget? budget = null)
     {
+        budget ??= new();
         var decoded = new Dictionary<string, DecodedAudio>(StringComparer.OrdinalIgnoreCase);
         var encoded = new Dictionary<(string Id, string Format), string>();
         var total = plan.Banks.Values.Sum(b => b.Count);
@@ -41,40 +51,59 @@ public static class OHsExportAudio
         DecodedAudio Resolve(string file)
         {
             if (!decoded.TryGetValue(file, out var audio))
-                decoded[file] = audio = (decode ?? ((path, cancellation) => AudioDecoder.Decode(path, cancellation)))(SamplePaths.Resolve(projectPath, file), token);
+            {
+                audio = decode is null ? AudioDecoder.Decode(SamplePaths.Resolve(projectPath, file), token, budget: budget)
+                    : decode(SamplePaths.Resolve(projectPath, file), token);
+                try { audio.AttachBudget(budget); decoded.Add(file, audio); }
+                catch { audio.Dispose(); throw; }
+            }
             return audio;
         }
-        foreach (var bank in plan.Banks.OrderBy(p => p.Key))
-            foreach (var slot in bank.Value)
-            {
-                token.ThrowIfCancellationRequested();
-                var asset = slot.Value;
-                var extension = asset.Sources.Count > 1 ? options.MixedFormat : options.SingleFormat;
-                var output = Path.Combine(stagingDirectory, OHsExportRepresentations.FileName(slot.Key, bank.Key, extension));
-                if (encoded.TryGetValue((asset.Id, extension), out var existing)) { File.Copy(existing, output); ReportOutput(); continue; }
-                var single = asset.Sources.Count == 1 ? asset.Sources[0] : default;
-                var pcm = asset.Sources.Count == 1 && single.GainPercent == 100 ? Resolve(single.FileName) : Render(asset, Resolve, token);
-                ValidatePcm(pcm);
-                var source = asset.Sources.Count == 1 ? SamplePaths.Resolve(projectPath, single.FileName) : null;
-                if (single.GainPercent == 100 && source is not null && MatchesEncoding(source, extension))
+        try
+        {
+            foreach (var bank in plan.Banks.OrderBy(p => p.Key))
+                foreach (var slot in bank.Value)
                 {
-                    await using var input = File.OpenRead(source); await using var destination = File.Create(output);
-                    await input.CopyToAsync(destination, token);
+                    token.ThrowIfCancellationRequested();
+                    var asset = slot.Value;
+                    var extension = asset.Sources.Count > 1 ? options.MixedFormat : options.SingleFormat;
+                    var output = Path.Combine(stagingDirectory, OHsExportRepresentations.FileName(slot.Key, bank.Key, extension));
+                    if (encoded.TryGetValue((asset.Id, extension), out var existing)) { File.Copy(existing, output); ReportOutput(); continue; }
+                    var single = asset.Sources.Count == 1 ? asset.Sources[0] : default;
+                    using var rendered = asset.Sources.Count == 1 && single.GainPercent == 100 ? null : Render(asset, Resolve, token, budget);
+                    var pcm = rendered ?? Resolve(single.FileName);
+                    ValidatePcm(pcm);
+                    var source = asset.Sources.Count == 1 ? SamplePaths.Resolve(projectPath, single.FileName) : null;
+                    if (single.GainPercent == 100 && source is not null && MatchesEncoding(source, extension))
+                    {
+                        await using var input = File.OpenRead(source); await using var destination = File.Create(output);
+                        await input.CopyToAsync(destination, token);
+                    }
+                    else await WriteFileAsync(output, pcm, token, budget: budget);
+                    encoded[(asset.Id, extension)] = output;
+                    ReportOutput();
                 }
-                else await WriteFileAsync(output, pcm, token);
-                encoded[(asset.Id, extension)] = output;
-                ReportOutput();
-            }
-        progress?.Report(new(85, "Writing difficulty"));
+            progress?.Report(new(85, "Writing difficulty"));
+        }
+        finally { foreach (var audio in decoded.Values) audio.Dispose(); }
     }
-    public static Task WriteFileAsync(string path, DecodedAudio audio, CancellationToken token, Action<IWaveProvider, string>? mp3Encoder = null) => Task.Run(() =>
+    public static Task WriteFileAsync(string path, DecodedAudio audio, CancellationToken token, Action<IWaveProvider, string>? mp3Encoder = null, AudioMemoryBudget? budget = null) => Task.Run(() =>
     {
         token.ThrowIfCancellationRequested();
         ValidatePcm(audio);
+        budget ??= audio.Budget ?? new();
+        using var encodingScratch = budget.Reserve(32768);
         var pcm = new CancellationWaveProvider(new DecodedAudioSampleProvider(audio).ToWaveProvider16(), token);
         switch (Path.GetExtension(path).ToLowerInvariant())
         {
-            case ".wav": WaveFileWriter.CreateWaveFile(path, pcm); break;
+            case ".wav":
+                using (var writer = new WaveFileWriter(path, pcm.WaveFormat))
+                {
+                    var block = new byte[8192];
+                    int read;
+                    while ((read = pcm.Read(block, 0, block.Length)) > 0) writer.Write(block, 0, read);
+                }
+                break;
             case ".mp3": (mp3Encoder ?? ((provider, output) => MediaFoundationEncoder.EncodeToMp3(provider, output, 192000)))(pcm, path); break;
             case ".ogg": WriteVorbis(path, audio.Samples, token); break;
             default: throw new ArgumentException("Unsupported export format.");

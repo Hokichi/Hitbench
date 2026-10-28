@@ -4,9 +4,10 @@ using Hitbench.Services.FileSystem;
 using Hitbench.Services.ProjectFiles;
 namespace Hitbench.Services;
 
-public sealed class OHsExportService(OHsExportPublisher? publisher = null, Func<string, CancellationToken, DecodedAudio>? decode = null) : IOHsExportService
+public sealed class OHsExportService(OHsExportPublisher? publisher = null, Func<string, CancellationToken, DecodedAudio>? decode = null, AudioMemoryBudget? memoryBudget = null) : IOHsExportService
 {
     private readonly OHsExportPublisher publisher = publisher ?? new();
+    private readonly AudioMemoryBudget memoryBudget = memoryBudget ?? new();
     public Task<string> ExportAsync(OHsExportRequest request, CancellationToken token, IProgress<OHsExportProgress>? progress = null) => Task.Run(async () =>
     {
         token.ThrowIfCancellationRequested(); request.Options.Validate();
@@ -47,31 +48,40 @@ public sealed class OHsExportService(OHsExportPublisher? publisher = null, Func<
         if (request.Options.Destination == OHsExportDestination.Beatmap) OHsExportPublisher.ValidateBeatmapDestination(request.BeatmapPath, generated, token);
         progress?.Report(new(25, "Decoding samples"));
         var decoded = new Dictionary<string, DecodedAudio>(StringComparer.OrdinalIgnoreCase);
-        foreach (var path in sourcePaths)
+        try
         {
-            token.ThrowIfCancellationRequested();
-            var audio = (decode ?? ((file, cancellation) => AudioDecoder.Decode(file, cancellation)))(path, token);
-            foreach (var value in audio.Samples)
-                if (!float.IsFinite(value)) throw new InvalidDataException("Source sample contains invalid PCM.");
-            decoded.Add(path, audio);
-            progress?.Report(new(25 + 15d * decoded.Count / sourcePaths.Count, "Decoding samples"));
-        }
-        progress?.Report(new(40, "Generating samples"));
-        async Task BuildAsync(string stage, CancellationToken cancellation)
-        {
-            await OHsExportAudio.WriteAsync(request.ProjectPath, stage, plan, request.Options, cancellation, (path, _) => decoded[path], progress);
-            await File.WriteAllTextAsync(Path.Combine(stage, difficultyName), OHsExportBeatmapWriter.Write(input, plan), cancellation);
-            foreach (var source in fingerprints)
+            foreach (var path in sourcePaths)
             {
-                cancellation.ThrowIfCancellationRequested(); ValidateSource(source.Key);
-                if (OHsExportPublisher.HashFile(source.Key) != source.Value) throw new IOException($"Export source changed during preparation: {source.Key}");
+                token.ThrowIfCancellationRequested();
+                var audio = decode is null ? AudioDecoder.Decode(path, token, budget: memoryBudget) : decode(path, token);
+                try
+                {
+                    audio.AttachBudget(memoryBudget);
+                    foreach (var value in audio.Samples)
+                        if (!float.IsFinite(value)) throw new InvalidDataException("Source sample contains invalid PCM.");
+                    decoded.Add(path, audio);
+                }
+                catch { audio.Dispose(); throw; }
+                progress?.Report(new(25 + 15d * decoded.Count / sourcePaths.Count, "Decoding samples"));
             }
-            progress?.Report(new(95, "Validating export"));
+            progress?.Report(new(40, "Generating samples"));
+            async Task BuildAsync(string stage, CancellationToken cancellation)
+            {
+                await OHsExportAudio.WriteAsync(request.ProjectPath, stage, plan, request.Options, cancellation, (path, _) => decoded[path].Retain(), progress, memoryBudget);
+                await File.WriteAllTextAsync(Path.Combine(stage, difficultyName), OHsExportBeatmapWriter.Write(input, plan), cancellation);
+                foreach (var source in fingerprints)
+                {
+                    cancellation.ThrowIfCancellationRequested(); ValidateSource(source.Key);
+                    if (OHsExportPublisher.HashFile(source.Key) != source.Value) throw new IOException($"Export source changed during preparation: {source.Key}");
+                }
+                progress?.Report(new(95, "Validating export"));
+            }
+            var directory = request.Options.Destination == OHsExportDestination.Beatmap
+                ? await publisher.PublishBeatmapAsync(request.BeatmapPath, generated, BuildAsync, token, progress)
+                : await publisher.PublishAsync(request.ProjectPath, generated, BuildAsync, token, progress, request.Options.OverwriteEverything);
+            progress?.Report(new(100, "Export complete"));
+            return directory;
         }
-        var directory = request.Options.Destination == OHsExportDestination.Beatmap
-            ? await publisher.PublishBeatmapAsync(request.BeatmapPath, generated, BuildAsync, token, progress)
-            : await publisher.PublishAsync(request.ProjectPath, generated, BuildAsync, token, progress, request.Options.OverwriteEverything);
-        progress?.Report(new(100, "Export complete"));
-        return directory;
+        finally { foreach (var audio in decoded.Values) audio.Dispose(); }
     }, token);
 }

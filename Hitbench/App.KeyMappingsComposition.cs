@@ -27,5 +27,5 @@ public partial class App
     }
     private static Func<InstrumentalTrackSnapshot, KeysMappingDrawerVM> CreateKeyMappingsFactory(IServiceProvider provider) =>
         snapshot => new KeysMappingDrawerVM(snapshot,provider.GetRequiredService<IMessenger>(),provider.GetRequiredService<IUiScheduler>(),
-                provider.GetRequiredService<ISampleFileService>(),provider.GetRequiredService<ISampleFileDialogService>(),provider.GetRequiredService<IMappingConflictDialogService>(), new SamplePreviewService(AudioDecoder.Open, new AudioOutputFactory().CreateCandidates(null), provider.GetRequiredService<Hitbench.Services.Ui.OHsAudioOperationProgress>()), provider.GetRequiredService<PlaybackVolumeSettings>(), ConfirmClearMappingsAsync);
+                provider.GetRequiredService<ISampleFileService>(),provider.GetRequiredService<ISampleFileDialogService>(),provider.GetRequiredService<IMappingConflictDialogService>(), new SamplePreviewService(path => AudioDecoder.Open(path, provider.GetRequiredService<AudioMemoryBudget>()), new AudioOutputFactory().CreateCandidates(null), provider.GetRequiredService<Hitbench.Services.Ui.OHsAudioOperationProgress>()), provider.GetRequiredService<PlaybackVolumeSettings>(), ConfirmClearMappingsAsync);
 }

@@ -20,12 +20,13 @@ public partial class App : Application
     public static ServiceProvider CreateServices(string? asioDriverName = null, AudioOutputFactory? audioOutputs = null)
         => CreateServices(asioDriverName, audioOutputs, null);
 
-    internal static ServiceProvider CreateServices(string? asioDriverName, AudioOutputFactory? audioOutputs, IUiScheduler? uiScheduler, int applicationVolume = 100)
+    internal static ServiceProvider CreateServices(string? asioDriverName, AudioOutputFactory? audioOutputs, IUiScheduler? uiScheduler, int applicationVolume = 100, AudioMemoryBudget? memoryBudget = null)
     {
         audioOutputs ??= new AudioOutputFactory();
         var registrations = new ServiceCollection();
+        registrations.AddSingleton(memoryBudget ?? new AudioMemoryBudget());
         registrations.AddSingleton<Func<IWorkstationAudioService>>(provider => () => new WorkstationAudioService(
-            AudioDecoder.Open, audioOutputs.CreateCandidates(asioDriverName), provider.GetRequiredService<OHsAudioOperationProgress>()));
+            path => AudioDecoder.Open(path, provider.GetRequiredService<AudioMemoryBudget>()), audioOutputs.CreateCandidates(asioDriverName), provider.GetRequiredService<OHsAudioOperationProgress>(), provider.GetRequiredService<AudioMemoryBudget>()));
         registrations.AddSingleton<IMessenger, WeakReferenceMessenger>();
         registrations.AddSingleton(provider => new OHsAudioOperationProgress(provider.GetRequiredService<IMessenger>(), () => provider.GetRequiredService<IUiScheduler>()));
         registrations.AddSingleton<IProjectFileService>(_ => new ProjectFileService(AppContext.BaseDirectory));
@@ -33,12 +34,12 @@ public partial class App : Application
         registrations.AddSingleton(provider => new PlaybackVolumeSettings(provider.GetRequiredService<IAppSettingsService>(), applicationVolume));
         registrations.AddSingleton<ISampleFileService>(_ => new SampleFileService(AppContext.BaseDirectory));
         registrations.AddSingleton<SampleImportBatch>();
-        registrations.AddSingleton<Func<Hitbench.Resources.DataModels.SampleManagementContext, ISampleFileDialogService, ISampleRemovalDialogService, ManageSamplesPopupVM>>(provider => (context, picker, removal) => new ManageSamplesPopupVM(context, provider.GetRequiredService<ISampleFileService>(), provider.GetRequiredService<SampleImportBatch>(), picker, removal, provider.GetRequiredService<IMessenger>(), provider.GetRequiredService<IUiScheduler>(), new SamplePreviewService(AudioDecoder.Open, audioOutputs.CreateCandidates(null), provider.GetRequiredService<OHsAudioOperationProgress>()), provider.GetRequiredService<PlaybackVolumeSettings>(), waveformReader: new SampleBrowserService()));
+        registrations.AddSingleton<Func<Hitbench.Resources.DataModels.SampleManagementContext, ISampleFileDialogService, ISampleRemovalDialogService, ManageSamplesPopupVM>>(provider => (context, picker, removal) => new ManageSamplesPopupVM(context, provider.GetRequiredService<ISampleFileService>(), provider.GetRequiredService<SampleImportBatch>(), picker, removal, provider.GetRequiredService<IMessenger>(), provider.GetRequiredService<IUiScheduler>(), new SamplePreviewService(path => AudioDecoder.Open(path, provider.GetRequiredService<AudioMemoryBudget>()), audioOutputs.CreateCandidates(null), provider.GetRequiredService<OHsAudioOperationProgress>()), provider.GetRequiredService<PlaybackVolumeSettings>(), waveformReader: new SampleBrowserService(memoryBudget: provider.GetRequiredService<AudioMemoryBudget>())));
         registrations.AddSingleton<ISampleManagementDialogService>(provider => new SampleManagementDialogService(() => Current.MainWindow, Current.Dispatcher, provider.GetRequiredService<Func<SampleLoaderPopupVM>>(), provider.GetRequiredService<Func<Hitbench.Resources.DataModels.SampleManagementContext, ISampleFileDialogService, ISampleRemovalDialogService, ManageSamplesPopupVM>>()));
-        registrations.AddSingleton<ISampleBrowserService>(provider => new SampleBrowserService(operationProgress: provider.GetRequiredService<OHsAudioOperationProgress>(), applicationDirectory: AppContext.BaseDirectory));
+        registrations.AddSingleton<ISampleBrowserService>(provider => new SampleBrowserService(operationProgress: provider.GetRequiredService<OHsAudioOperationProgress>(), applicationDirectory: AppContext.BaseDirectory, memoryBudget: provider.GetRequiredService<AudioMemoryBudget>()));
         registrations.AddSingleton<Func<SampleLoaderPopupVM>>(provider => () => new SampleLoaderPopupVM(
             provider.GetRequiredService<ISampleBrowserService>(),
-            new SamplePreviewService(AudioDecoder.Open, audioOutputs.CreateCandidates(null), provider.GetRequiredService<OHsAudioOperationProgress>()),
+            new SamplePreviewService(path => AudioDecoder.Open(path, provider.GetRequiredService<AudioMemoryBudget>()), audioOutputs.CreateCandidates(null), provider.GetRequiredService<OHsAudioOperationProgress>()),
             provider.GetRequiredService<IUiScheduler>(), provider.GetRequiredService<PlaybackVolumeSettings>()));
         registrations.AddSingleton<ISampleFileDialogService>(provider =>
             new SampleFileDialogService(() => Current.MainWindow, Current.Dispatcher,
@@ -137,6 +138,12 @@ public partial class App : Application
     {
         activationGate?.Deactivate();
         try { services?.Dispose(); }
-        finally { instanceCoordinator?.Dispose(); base.OnExit(e); }
+        finally
+        {
+            // Canceled background I/O can still unwind after WPF exits. Keep the
+            // lifetime mutex until process termination; Windows then releases it.
+            instanceCoordinator?.StopActivation();
+            base.OnExit(e);
+        }
     }
 }

@@ -60,7 +60,7 @@ public class OHsExportAudioTests
         var slots = new Dictionary<OHsExportSlot, OHsExportAsset> { [new("Normal", Hitbench.Core.Enums.SampleType.Normal)] = asset };
         var plan = new OHsExportPlan([], [], new Dictionary<int, IReadOnlyDictionary<OHsExportSlot, OHsExportAsset>> { [1] = slots }, 0);
         var before = GC.GetTotalAllocatedBytes(true);
-        await OHsExportAudio.WriteAsync(project.ProjectPath, stage, plan, new("Hitsounds", 1, ".wav", ".wav", false), default, (_, _) => audio);
+        await OHsExportAudio.WriteAsync(project.ProjectPath, stage, plan, new("Hitsounds", 1, ".wav", ".wav", false), default, (_, _) => audio.Retain());
         var allocated = GC.GetTotalAllocatedBytes(true) - before;
         Assert.That(allocated, Is.LessThan(audio.Samples.Length * sizeof(float)));
         Assert.That(await File.ReadAllBytesAsync(Path.Combine(stage, "normal-hitnormal.wav")), Is.EqualTo(await File.ReadAllBytesAsync(source)));

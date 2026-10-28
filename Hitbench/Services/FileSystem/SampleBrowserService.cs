@@ -4,9 +4,19 @@ using Hitbench.Resources.DataModels;
 
 namespace Hitbench.Services.FileSystem;
 
-public sealed class SampleBrowserService(Func<string, WaveStream>? openDecoder = null, Ui.OHsAudioOperationProgress? operationProgress = null,
-    string? applicationDirectory = null) : ISampleBrowserService
+public sealed class SampleBrowserService : ISampleBrowserService
 {
+    private readonly AudioMemoryBudget memoryBudget;
+    private readonly Func<string, WaveStream> openDecoder;
+    private readonly Ui.OHsAudioOperationProgress? operationProgress;
+    private readonly string? applicationDirectory;
+    public SampleBrowserService(Func<string, WaveStream>? openDecoder = null, Ui.OHsAudioOperationProgress? operationProgress = null,
+        string? applicationDirectory = null, AudioMemoryBudget? memoryBudget = null)
+    {
+        this.memoryBudget = memoryBudget ?? new();
+        this.openDecoder = openDecoder ?? (path => AudioDecoder.Open(path, this.memoryBudget));
+        this.operationProgress = operationProgress; this.applicationDirectory = applicationDirectory;
+    }
     public Task<string> GetSavedDirectoryAsync(CancellationToken token) => Task.Run(() =>
     {
         token.ThrowIfCancellationRequested();
@@ -15,7 +25,6 @@ public sealed class SampleBrowserService(Func<string, WaveStream>? openDecoder =
         token.ThrowIfCancellationRequested();
         return saved;
     }, token);
-    private readonly Func<string, WaveStream> openDecoder = openDecoder ?? AudioDecoder.Open;
     private static bool IsSupported(string path) => Path.GetExtension(path).ToLowerInvariant() is ".wav" or ".ogg" or ".mp3";
     public Task<Hitbench.Core.Entities.WaveformData> ReadWaveformAsync(string path, CancellationToken token) => operationProgress is null
         ? ReadWaveformCoreAsync(path, token) : operationProgress.RunAsync("Reading sample...", t => ReadWaveformCoreAsync(path, t), token);
@@ -25,7 +34,7 @@ public sealed class SampleBrowserService(Func<string, WaveStream>? openDecoder =
         token.ThrowIfCancellationRequested();
         if (!IsSupported(path)) throw new InvalidDataException("Select a WAV, OGG, or MP3 file.");
         using var reader = openDecoder(Path.GetFullPath(path));
-        return new WaveformPeakReader().Read(reader.ToSampleProvider(), token);
+        return new WaveformPeakReader().Read(reader.ToSampleProvider(), token, memoryBudget);
     }, token);
 
     public Task<IReadOnlyList<SampleBrowserEntry>> GetRootsAsync(CancellationToken token) => Task.Run<IReadOnlyList<SampleBrowserEntry>>(() =>
