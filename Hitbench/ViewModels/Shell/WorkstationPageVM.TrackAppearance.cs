@@ -32,7 +32,15 @@ public partial class WorkstationPageVM
             if(track.Name==result.Name && track.Color==color)return;
             if (track is InstrumentalTrack)
             {
-                if (track.Name != result.Name) { SetTrackName(track, result.Name); await SettleInstrumentalFoldersAsync(); }
+                if (track.Name != result.Name)
+                {
+                    await SettleInstrumentalEditorAsync();
+                    await SettleSampleManagerAsync();
+                    await DrainProjectSaveQueueAsync();
+                    if (cancellation.IsCancellationRequested || deactivated || generation != loadGeneration || !ReferenceEquals(project, Project) || !tracks.Contains(track)) return;
+                    SetTrackName(track, result.Name);
+                    await SettleInstrumentalFoldersAsync();
+                }
                 if (cancellation.IsCancellationRequested || deactivated || generation != loadGeneration || !ReferenceEquals(project, Project) || !tracks.Contains(track) || track.Name != result.Name) return;
                 track.Color = color; instrumentRevision++; PublishInstrumentSnapshot();
             }

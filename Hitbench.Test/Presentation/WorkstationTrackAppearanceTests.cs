@@ -5,6 +5,39 @@ using Hitbench.ViewModels.Shell;
 namespace Hitbench.Test.Presentation;
 public class WorkstationTrackAppearanceTests
 {
+    [TestCase(false)] [TestCase(true)]
+    public async Task AcceptedMappedTrackRenameSettlesOpenDrawer(bool mapping)
+    {
+        var track = new InstrumentalTrack { Name = "Piano", FolderName = "Piano", KeyFiles = new() { ["C3"] = "Piano/C3.wav" } };
+        var entered = new TaskCompletionSource();
+        var settled = false;
+        async Task Drawer(CancellationToken token)
+        {
+            entered.TrySetResult();
+            try { await Task.Delay(Timeout.Infinite, token); }
+            finally { settled = true; }
+        }
+        var files = new StubSampleFileService(["Piano/C3.wav"]) { FolderRename = (_, _, _, _, _) =>
+        { Assert.That(settled, Is.True); return Task.FromResult("Soft Piano"); } };
+        var dialogs = new StubInstrumentalTrackDialogService { Arrangement = (_, token) => Drawer(token), Mapping = (_, token) => Drawer(token) };
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [track], Offsets = [0], BPMs = [120] })) },
+            new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), sampleFiles: files,
+            messenger: new CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger(), instrumentDialogs: dialogs,
+            trackAppearanceDialog: new StubOHsTrackAppearanceDialogService { Request = (_, _) => Task.FromResult<OHsTrackAppearanceResult?>(new("Soft Piano", "#123456")) });
+        try
+        {
+            await vm.LoadAsync("project.json", default); vm.AcknowledgePresentationReady(vm.LoadGeneration);
+            var drawer = mapping ? vm.KeysMappingCommand.ExecuteAsync(track) : vm.ViewArrangementCommand.ExecuteAsync(track);
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(2));
+            try { await vm.ChangeTrackNameAndColorCommand.ExecuteAsync(track).WaitAsync(TimeSpan.FromSeconds(2)); }
+            finally { await vm.SettleInstrumentalEditorAsync(); }
+            await drawer;
+            Assert.That(track.KeyFiles["C3"], Is.EqualTo("Soft Piano/C3.wav"));
+            Assert.That(track.Color, Is.EqualTo("#123456"));
+        }
+        finally { await vm.DeactivateAsync(); }
+    }
+
     [TestCase(false)][TestCase(true)]
     public async Task OneSaveContainsBothFieldsAndFailureUsesExistingRecovery(bool fails)
     {
