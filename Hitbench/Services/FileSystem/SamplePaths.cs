@@ -43,7 +43,7 @@ public static class SamplePaths
     {
         if (string.IsNullOrWhiteSpace(path) || Path.IsPathRooted(path)) return "Use a path relative to Samples.";
         var parts = path.Replace('\\', '/').Split('/');
-        foreach (var part in parts) if (SampleFileNames.GetStemError(part) is { } error) return error;
+        foreach (var part in parts[..^1]) if (SampleFileNames.GetStemError(part) is { } error) return error;
         return SampleFileNames.GetFileNameError(parts[^1]);
     }
     public static string Root(string projectPath)
