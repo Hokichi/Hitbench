@@ -10,6 +10,30 @@ namespace Hitbench.Test.Presentation;
 
 public sealed class KeysMappingFolderImportTests
 {
+    [Test]
+    public async Task CancellationAfterReturnedCopyPublishesThatKeyAndFolder()
+    {
+        var track = new InstrumentalTrack { Name = "Piano" };
+        using var cancellation = new CancellationTokenSource();
+        var calls = 0;
+        string? committed = null;
+        var files = new StubSampleFileService([]) { Import = (_, path, _) =>
+        {
+            calls++;
+            committed = "Piano/" + Path.GetFileName(path);
+            cancellation.Cancel();
+            return Task.FromResult(committed);
+        } };
+        await RunOwnerAsync(track, files, async vm =>
+        {
+            await vm.OpenFolderAsync(cancellation.Token);
+            Assert.That(track.KeyFiles.Values, Does.Contain(committed));
+            Assert.That(track.FolderName, Is.EqualTo("Piano"));
+            Assert.That(calls, Is.EqualTo(1));
+            Assert.That(vm.IsBusy, Is.False);
+        }, new(source), new());
+    }
+
     private string root = null!, source = null!, project = null!;
     [SetUp] public void Setup()
     {

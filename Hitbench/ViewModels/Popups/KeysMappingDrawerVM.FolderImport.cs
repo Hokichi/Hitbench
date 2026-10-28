@@ -67,8 +67,8 @@ public sealed partial class KeysMappingDrawerVM
                 try
                 {
                     var path = await files.ImportAsync(snapshot.Context.ProjectPath, pair.Value, cancel.Token, folder);
-                    cancel.Token.ThrowIfCancellationRequested();
                     mappings[pair.Key] = path;
+                    cancel.Token.ThrowIfCancellationRequested();
                 }
                 catch (OperationCanceledException) when (cancel.IsCancellationRequested) { throw; }
                 catch (Exception error) { failures.Add(Path.GetFileName(pair.Value) + ": " + error.Message); }
