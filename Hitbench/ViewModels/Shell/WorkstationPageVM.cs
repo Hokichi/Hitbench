@@ -127,7 +127,7 @@ public partial class WorkstationPageVM(
         await SettleSampleManagerAsync();
         await SettleInstrumentalFoldersAsync();
         sampleSession = Guid.NewGuid();
-        instrumentHistories.Clear(); instrumentIds.Clear(); instrumentNoteIds.Clear(); instrumentEventIds.Clear(); instrumentRevision=0;
+        ClearInstrumentalHistories(); instrumentIds.Clear(); instrumentNoteIds.Clear(); instrumentEventIds.Clear(); instrumentRevision=0;
         ResetNodeEditing();
         history.Clear();
         NotifyHistoryState();
@@ -160,7 +160,7 @@ public partial class WorkstationPageVM(
         await SettleInstrumentalEditorAsync();
         await SettleSampleManagerAsync();
         await SettleInstrumentalFoldersAsync();
-        deactivated = true; instrumentHistories.Clear();
+        deactivated = true; ClearInstrumentalHistories();
         ResetNodeEditing();
         history.Clear();
         NotifyHistoryState();
@@ -189,9 +189,12 @@ public partial class WorkstationPageVM(
         try { await FlushSavesAsync(); }
         finally
         {
-            await playback.DisposeAsync();
-            audioService.Stop();
-            audioService.Dispose();
+            try { await playback.DisposeAsync(); }
+            catch (Exception error) { System.Diagnostics.Trace.TraceWarning("Playback cleanup: {0}", error); }
+            try { audioService.Stop(); }
+            catch (Exception error) { System.Diagnostics.Trace.TraceWarning("Audio stop cleanup: {0}", error); }
+            try { audioService.Dispose(); }
+            catch (Exception error) { System.Diagnostics.Trace.TraceWarning("Audio disposal: {0}", error); }
             nodeEditCancellation?.Dispose();
             nodeEditCancellation = null;
             loadCancellation?.Dispose();

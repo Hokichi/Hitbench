@@ -431,7 +431,7 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
             if (superseded)
             {
                 output.PlaybackStopped -= stopped;
-                output.Dispose();
+                DisposeOutput(output);
                 return null;
             }
             output.Init(sessionMixer, () => sessionMixer.RenderedFrames - startFrame,
@@ -440,7 +440,7 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
         catch
         {
             output.PlaybackStopped -= stopped;
-            output.Dispose();
+            DisposeOutput(output);
             throw;
         }
         lock (sync)
@@ -459,7 +459,7 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
             }
         }
         output.PlaybackStopped -= stopped;
-        output.Dispose();
+        DisposeOutput(output);
         return null;
     }
 
@@ -479,7 +479,7 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
             ResetPosition();
             if (args.Exception is null) currentPosition = GetDuration();
         }
-        completedPlayer?.Dispose();
+        DisposeOutput(completedPlayer);
     }
 
     private IAudioOutput? DetachPlayback()
@@ -503,8 +503,10 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
     private static void DisposeOutput(IAudioOutput? retired)
     {
         if (retired is null) return;
-        try { retired.Stop(); } catch { }
-        retired.Dispose();
+        try { retired.Stop(); }
+        catch (Exception error) { System.Diagnostics.Trace.TraceWarning("Audio stop cleanup: {0}", error); }
+        try { retired.Dispose(); }
+        catch (Exception error) { System.Diagnostics.Trace.TraceWarning("Audio output cleanup: {0}", error); }
     }
 
     private TimeSpan GetCurrentPosition()

@@ -97,6 +97,8 @@ public partial class WorkstationPageVM
     [RelayCommand(CanExecute = nameof(CanUseTransport))]
     private async Task PlayPauseAsync()
     {
+        try
+        {
         if (!CanUseTransport()) return;
         if (audioService.GetSnapshot().IsPlaying)
         {
@@ -142,6 +144,9 @@ public partial class WorkstationPageVM
         RefreshPlayback();
     }
 
+        catch (Exception failure) { if (!deactivated) ErrorMessage = failure.Message; }
+    }
+
     [RelayCommand(CanExecute = nameof(CanUseTransport))]
     private async Task StopAsync()
     {
@@ -180,6 +185,8 @@ public partial class WorkstationPageVM
 
     private async Task SeekAdjacentGridLineAsync(bool forward, int subdivision)
     {
+        try
+        {
         if (!CanUseTransport() || Project is null || Waveform is null) return;
         var position = audioService.GetSnapshot().Position;
         if (lastGridTarget is { } lastTarget && lastGridAudioPosition is { } lastAudioPosition &&
@@ -197,6 +204,8 @@ public partial class WorkstationPageVM
                 lastGridAudioPosition = Position;
             }
         }
+        }
+        catch (Exception failure) { if (!deactivated) ErrorMessage = failure.Message; }
     }
 
     [RelayCommand(CanExecute = nameof(CanIncreaseSubdivision))]

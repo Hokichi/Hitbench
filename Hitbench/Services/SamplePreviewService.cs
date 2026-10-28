@@ -88,9 +88,13 @@ public sealed class SamplePreviewService(Func<string, WaveStream> openDecoder,
             if (error is null) position = duration;
             Retire();
         }
-        if (output is not null && reader is not null)
-            position = TimeSpan.FromTicks(Math.Clamp((origin + TimeSpan.FromSeconds(
-                output.GetPlayedFrames() / (double)reader.WaveFormat.SampleRate)).Ticks, 0, duration.Ticks));
+        try
+        {
+            if (output is not null && reader is not null)
+                position = TimeSpan.FromTicks(Math.Clamp((origin + TimeSpan.FromSeconds(
+                    output.GetPlayedFrames() / (double)reader.WaveFormat.SampleRate)).Ticks, 0, duration.Ticks));
+        }
+        catch (Exception failure) { error = failure.Message; Retire(); }
         return new SamplePreviewSnapshot(output?.PlaybackState == PlaybackState.Playing, error, warning, position, duration);
     }, token);
 
@@ -107,23 +111,25 @@ public sealed class SamplePreviewService(Func<string, WaveStream> openDecoder,
     private void Retire()
     {
         var retired = output;
+        var retiredReader = reader;
+        var handler = stoppedHandler;
         output = null;
-        try
+        reader = null;
+        stoppedHandler = null;
+        Interlocked.Exchange(ref stopped, null);
+        if (retired is not null)
         {
-            if (retired is not null)
-            {
-                retired.PlaybackStopped -= stoppedHandler;
-                try { retired.Stop(); }
-                finally { retired.Dispose(); }
-            }
+            Cleanup(() => retired.PlaybackStopped -= handler);
+            Cleanup(retired.Stop);
+            Cleanup(retired.Dispose);
         }
-        finally
-        {
-            stoppedHandler = null;
-            Interlocked.Exchange(ref stopped, null);
-            reader?.Dispose();
-            reader = null;
-        }
+        if (retiredReader is not null) Cleanup(retiredReader.Dispose);
+    }
+
+    private static void Cleanup(Action cleanup)
+    {
+        try { cleanup(); }
+        catch (Exception failure) { System.Diagnostics.Trace.TraceWarning("Preview cleanup: {0}", failure); }
     }
 
     public async ValueTask DisposeAsync() => await RunAsync(() =>

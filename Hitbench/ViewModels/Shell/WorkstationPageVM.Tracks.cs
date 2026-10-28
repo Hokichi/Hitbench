@@ -74,7 +74,9 @@ public partial class WorkstationPageVM
             tracks.Remove(track);
             NotifyTrackPresentation(); NotifyTrackAuditionState();
             if (wasSelected) SelectedTrack = tracks.Count == 0 ? null : tracks[Math.Min(removedIndex, tracks.Count - 1)];
-            history.RemoveTrack(track); if (track is InstrumentalTrack instrument) instrumentHistories.Remove(instrument);
+            history.RemoveTrack(track);
+            if (track is InstrumentalTrack instrument && instrumentHistories.Remove(instrument, out var retainedHistory))
+            { retainedHistory.Changed -= PublishInstrumentSnapshot; retainedHistory.Clear(); }
             PruneNodeSelection();
             NotifyHistoryState();
             QueuePlaybackUpdate();

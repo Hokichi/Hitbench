@@ -13,8 +13,22 @@ namespace Hitbench.ViewModels.Shell;
 public partial class WorkstationPageVM
 {
     private readonly Dictionary<InstrumentalTrack, InstrumentalNoteHistoryManager> instrumentHistories = [];
+    private readonly InstrumentalHistoryBudget instrumentalHistoryBudget = new();
     private InstrumentalNoteHistoryManager InstrumentHistory(InstrumentalTrack track)
-    { if (!instrumentHistories.TryGetValue(track, out var value)) instrumentHistories[track] = value = new(); return value; }
+    {
+        if (!instrumentHistories.TryGetValue(track, out var value))
+        {
+            instrumentHistories[track] = value = new(instrumentalHistoryBudget);
+            value.Changed += PublishInstrumentSnapshot;
+        }
+        return value;
+    }
+    private void ClearInstrumentalHistories()
+    {
+        foreach (var manager in instrumentHistories.Values)
+        { manager.Changed -= PublishInstrumentSnapshot; manager.Clear(); }
+        instrumentHistories.Clear();
+    }
     private readonly Dictionary<InstrumentalTrack, Guid> instrumentIds = new(ReferenceEqualityComparer.Instance);
     private readonly Dictionary<InstrumentalNote, Guid> instrumentNoteIds = new(ReferenceEqualityComparer.Instance);
     private readonly Dictionary<Guid, long> instrumentEventIds = [];

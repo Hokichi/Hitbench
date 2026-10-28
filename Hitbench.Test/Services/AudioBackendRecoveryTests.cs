@@ -6,6 +6,35 @@ namespace Hitbench.Test.Services;
 public class AudioBackendRecoveryTests
 {
     [Test]
+    public async Task PlayFailureAndDisposeFailureStillTryFallback()
+    {
+        using var project = new TestProjectFolder();
+        var failed = new StubWavePlayer { FailPlayback = true, Disposing = () => throw new IOException("dispose failed") };
+        var fallback = new StubWavePlayer();
+        using var service = new WorkstationAudioService(_ => Signal(),
+            [Candidate("WASAPI", () => failed), Candidate("WaveOut", () => fallback)]);
+        service.Open("song.wav");
+        await service.UpdateSamplesAsync(project.ProjectPath, [], default);
+        Assert.DoesNotThrow(service.Play);
+        Assert.That(service.GetSnapshot().IsPlaying, Is.True);
+        Assert.That(service.GetSnapshot().Warning, Does.Contain("Cannot start device"));
+    }
+
+    [Test]
+    public async Task PolledStopCleanupFailureDoesNotEscapeTransport()
+    {
+        using var project = new TestProjectFolder();
+        var player = new StubWavePlayer { Disposing = () => throw new IOException("dispose failed") };
+        using var service = new WorkstationAudioService(_ => Signal(), [Candidate("WASAPI", () => player)]);
+        service.Open("song.wav");
+        await service.UpdateSamplesAsync(project.ProjectPath, [], default);
+        service.Play();
+        player.RaiseStopped(new IOException("original"));
+        Assert.DoesNotThrow(() => service.GetSnapshot());
+        Assert.That(service.GetSnapshot().Error, Does.Contain("original"));
+    }
+
+    [Test]
     public async Task AsynchronousStartupFailureDoesNotStartFallbackUntilExplicitPlay()
     {
         using var project = new TestProjectFolder();
