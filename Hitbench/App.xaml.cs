@@ -136,14 +136,15 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
-        activationGate?.Deactivate();
-        try { services?.Dispose(); }
+        // Stop acknowledging activation before the gate closes or cleanup can block.
+        try { instanceCoordinator?.StopActivation(); }
         finally
         {
+            activationGate?.Deactivate();
             // Canceled background I/O can still unwind after WPF exits. Keep the
             // lifetime mutex until process termination; Windows then releases it.
-            instanceCoordinator?.StopActivation();
-            base.OnExit(e);
+            try { services?.Dispose(); }
+            finally { base.OnExit(e); }
         }
     }
 }

@@ -22,9 +22,10 @@ public sealed class OHsInstanceActivationChannel(string identity, Action<uint>? 
 
     private NamedPipeServerStream CreateServer()
     {
+        using var currentIdentity = WindowsIdentity.GetCurrent();
         var security = new PipeSecurity();
         security.AddAccessRule(new PipeAccessRule(new SecurityIdentifier(WellKnownSidType.NetworkSid, null), PipeAccessRights.FullControl, AccessControlType.Deny));
-        security.AddAccessRule(new PipeAccessRule(WindowsIdentity.GetCurrent().User!, PipeAccessRights.FullControl, AccessControlType.Allow));
+        security.AddAccessRule(new PipeAccessRule(currentIdentity.User!, PipeAccessRights.FullControl, AccessControlType.Allow));
         security.AddAccessRule(new PipeAccessRule(new SecurityIdentifier(WellKnownSidType.AuthenticatedUserSid, null), PipeAccessRights.ReadData | PipeAccessRights.WriteData | PipeAccessRights.Synchronize, AccessControlType.Allow));
         return NamedPipeServerStreamAcl.Create(identity, PipeDirection.InOut, 1, PipeTransmissionMode.Byte,
             PipeOptions.Asynchronous | PipeOptions.FirstPipeInstance, 64, 64, security);

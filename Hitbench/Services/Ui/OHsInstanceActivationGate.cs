@@ -27,8 +27,8 @@ public sealed class OHsInstanceActivationGate(IUiScheduler scheduler, Action act
                 {
                     if (closed) return;
                     pending = false;
-                    activate();
                 }
+                activate();
             }, default);
         }
         catch (Exception error) { Trace.TraceError("Instance activation: {0}", error); }

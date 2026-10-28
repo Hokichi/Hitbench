@@ -34,7 +34,7 @@ public sealed class SampleBrowserService : ISampleBrowserService
         token.ThrowIfCancellationRequested();
         if (!IsSupported(path)) throw new InvalidDataException("Select a WAV, OGG, or MP3 file.");
         using var reader = openDecoder(Path.GetFullPath(path));
-        return new WaveformPeakReader().Read(reader.ToSampleProvider(), token, memoryBudget);
+        return new WaveformPeakReader().Read(reader as ISampleProvider ?? reader.ToSampleProvider(), token, memoryBudget);
     }, token);
 
     public Task<IReadOnlyList<SampleBrowserEntry>> GetRootsAsync(CancellationToken token) => Task.Run<IReadOnlyList<SampleBrowserEntry>>(() =>

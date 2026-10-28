@@ -28,8 +28,9 @@ public sealed class OHsMachineInstanceLease : IDisposable
         try
         {
             token.ThrowIfCancellationRequested();
+            using var currentIdentity = WindowsIdentity.GetCurrent();
             var security = new MutexSecurity();
-            security.AddAccessRule(new MutexAccessRule(WindowsIdentity.GetCurrent().User!, MutexRights.FullControl, AccessControlType.Allow));
+            security.AddAccessRule(new MutexAccessRule(currentIdentity.User!, MutexRights.FullControl, AccessControlType.Allow));
             security.AddAccessRule(new MutexAccessRule(new SecurityIdentifier(WellKnownSidType.AuthenticatedUserSid, null), MutexRights.Synchronize | MutexRights.Modify, AccessControlType.Allow));
             Mutex mutex;
             try

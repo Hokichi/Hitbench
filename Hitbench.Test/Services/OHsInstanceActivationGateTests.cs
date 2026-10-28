@@ -6,6 +6,25 @@ namespace Hitbench.Test.Services;
 public class OHsInstanceActivationGateTests
 {
     [Test]
+    public async Task BusyWindowActivationDoesNotBlockFurtherRequests()
+    {
+        using var entered = new ManualResetEventSlim();
+        using var release = new ManualResetEventSlim();
+        var gate = new OHsInstanceActivationGate(new ImmediateUiScheduler(), () =>
+        { entered.Set(); release.Wait(TimeSpan.FromSeconds(8)); });
+        gate.MarkReady(); gate.Request();
+        var activation = gate.Completion;
+        Assert.That(await Task.Run(() => entered.Wait(TimeSpan.FromSeconds(3))), Is.True);
+        var request = Task.Run(gate.Request);
+        try { await request.WaitAsync(TimeSpan.FromSeconds(2)); }
+        finally
+        {
+            release.Set(); gate.Deactivate();
+            await Task.WhenAll(activation, request).WaitAsync(TimeSpan.FromSeconds(3));
+        }
+    }
+
+    [Test]
     public async Task RequestsBeforeReadyCoalesceAndLateRequestsDoNothing()
     {
         var calls = 0;

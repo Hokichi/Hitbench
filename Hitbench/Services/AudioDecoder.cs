@@ -2,7 +2,6 @@ using System.IO;
 using NAudio.Vorbis;
 using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
-using System.Runtime.InteropServices;
 
 namespace Hitbench.Services;
 
@@ -20,8 +19,35 @@ public static class AudioDecoder
     {
         budget ??= new();
         token.ThrowIfCancellationRequested();
-        using var stream = openDecoder is null ? Open(path, budget) : openDecoder(path);
-        ISampleProvider provider = stream.ToSampleProvider();
+        var stream = openDecoder is null ? Open(path, budget) : openDecoder(path);
+        DecodedAudio? decoded = null;
+        var disposalAttempted = false;
+        try
+        {
+            decoded = DecodePcm(stream, token, budget);
+            disposalAttempted = true;
+            stream.Dispose();
+            return decoded;
+        }
+        catch
+        {
+            decoded?.Dispose();
+            if (!disposalAttempted)
+            {
+                try { stream.Dispose(); }
+                catch (Exception cleanup) { System.Diagnostics.Trace.TraceWarning("Audio decoder cleanup: {0}", cleanup); }
+            }
+            throw;
+        }
+    }
+
+    private static DecodedAudio DecodePcm(WaveStream stream, CancellationToken token, AudioMemoryBudget budget)
+    {
+        // Raw seekable PCM has a physical length; other codecs/hints remain incremental.
+        if (stream is RawSourceWaveStream && stream.CanSeek && stream.WaveFormat.SampleRate == 44_100 &&
+            stream.Length / stream.WaveFormat.BlockAlign > budget.MaximumAssetBytes / 8)
+            throw new AudioMemoryLimitException("Decoded audio exceeds the asset memory limit.");
+        ISampleProvider provider = stream as ISampleProvider ?? stream.ToSampleProvider();
         provider = provider.WaveFormat.Channels switch
         {
             1 => new MonoToStereoSampleProvider(provider),
@@ -30,11 +56,15 @@ public static class AudioDecoder
         };
         if (provider.WaveFormat.SampleRate != 44_100)
             provider = new WdlResamplingSampleProvider(provider, 44_100);
-        using var scratch = budget.Reserve(8192 * sizeof(float));
+        // Include bounded conversion/resampling workspaces before the first read.
+        var resampling = stream.WaveFormat.SampleRate != 44_100;
+        var inputSamples = resampling ? Math.Max(8192L, checked((8192L * stream.WaveFormat.SampleRate + 44_099) / 44_100 + 64)) : 8192L;
+        using var scratch = budget.Reserve(checked((8192L + (resampling ? 4 : 3) * inputSamples) * sizeof(float)));
         var buffer = new float[8192];
         var chunks = new List<(float[] Values, AudioMemoryReservation Charge)>();
         AudioMemoryReservation? final = null;
         var count = 0;
+        var filled = buffer.Length;
         try
         {
             int read;
@@ -43,9 +73,20 @@ public static class AudioDecoder
                 token.ThrowIfCancellationRequested();
                 count = checked(count + read);
                 budget.CheckAsset(checked((long)count * sizeof(float)));
-                var charge = budget.Reserve(checked((long)read * sizeof(float)));
-                try { chunks.Add((buffer.AsSpan(0, read).ToArray(), charge)); }
-                catch { charge.Dispose(); throw; }
+                var sourceOffset = 0;
+                while (sourceOffset < read)
+                {
+                    if (filled == buffer.Length)
+                    {
+                        var charge = budget.Reserve(checked((long)buffer.Length * sizeof(float)));
+                        try { chunks.Add((new float[buffer.Length], charge)); }
+                        catch { charge.Dispose(); throw; }
+                        filled = 0;
+                    }
+                    var length = Math.Min(read - sourceOffset, buffer.Length - filled);
+                    buffer.AsSpan(sourceOffset, length).CopyTo(chunks[^1].Values.AsSpan(filled));
+                    filled += length; sourceOffset += length;
+                }
             }
             token.ThrowIfCancellationRequested();
             if (count == 0) throw new InvalidDataException("Audio file is empty.");
@@ -56,7 +97,8 @@ public static class AudioDecoder
             foreach (var chunk in chunks)
             {
                 token.ThrowIfCancellationRequested();
-                chunk.Values.CopyTo(result, offset); offset += chunk.Values.Length;
+                var length = Math.Min(chunk.Values.Length, count - offset);
+                chunk.Values.AsSpan(0, length).CopyTo(result.AsSpan(offset)); offset += length;
             }
             var audio = DecodedAudio.TakeOwnership(result, final);
             final = null;

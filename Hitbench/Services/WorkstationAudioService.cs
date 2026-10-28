@@ -72,7 +72,7 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
     private Task<WaveformData> AnalyzeCoreAsync(string path, CancellationToken token) => Task.Run(() =>
     {
         using var analysisStream = openDecoder(path);
-        return new WaveformPeakReader().Read(analysisStream.ToSampleProvider(), token, memoryBudget);
+        return new WaveformPeakReader().Read(analysisStream as ISampleProvider ?? analysisStream.ToSampleProvider(), token, memoryBudget);
     }, token);
 
     public void Open(string path)

@@ -2,7 +2,7 @@ using NAudio.Wave;
 
 namespace Hitbench.Test.Services;
 
-internal sealed class ShortReadWaveStream(byte[] data, WaveFormat format, Action? onRead = null) : WaveStream
+internal sealed class ShortReadWaveStream(byte[] data, WaveFormat format, Action? onRead = null, Action? onDispose = null, int maximumFramesPerRead = 17) : WaveStream
 {
     private readonly MemoryStream stream = new(data, false);
     public bool WasDisposed { get; private set; }
@@ -11,7 +11,7 @@ internal sealed class ShortReadWaveStream(byte[] data, WaveFormat format, Action
     public override long Position { get => stream.Position; set => stream.Position = value; }
     public override int Read(byte[] buffer, int offset, int count)
     {
-        var read = stream.Read(buffer, offset, Math.Min(count, format.BlockAlign * 17));
+        var read = stream.Read(buffer, offset, Math.Min(count, format.BlockAlign * maximumFramesPerRead));
         onRead?.Invoke();
         return read;
     }
@@ -19,6 +19,7 @@ internal sealed class ShortReadWaveStream(byte[] data, WaveFormat format, Action
     {
         WasDisposed = true;
         if (disposing) stream.Dispose();
+        onDispose?.Invoke();
         base.Dispose(disposing);
     }
 }
