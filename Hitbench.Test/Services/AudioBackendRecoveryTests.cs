@@ -9,7 +9,7 @@ public class AudioBackendRecoveryTests
     public async Task PlayFailureAndDisposeFailureStillTryFallback()
     {
         using var project = new TestProjectFolder();
-        var failed = new StubWavePlayer { FailPlayback = true, Disposing = () => throw new IOException("dispose failed") };
+        var failed = new StubWavePlayer { FailPlayback = true, FailStop = true, Disposing = () => throw new IOException("dispose failed") };
         var fallback = new StubWavePlayer();
         using var service = new WorkstationAudioService(_ => Signal(),
             [Candidate("WASAPI", () => failed), Candidate("WaveOut", () => fallback)]);

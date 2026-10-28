@@ -17,6 +17,7 @@ public sealed class StubWorkstationAudioService : IWorkstationAudioService
     }
     public string? OpenedPath { get; private set; }
     public bool Disposed { get; private set; }
+    public Action? Stopping { get; set; }
     public bool IsPrepared { get; set; } = true;
     public int SongVolume { get; private set; } = 100;
     public int SamplesVolume { get; private set; } = 100;
@@ -35,7 +36,7 @@ public sealed class StubWorkstationAudioService : IWorkstationAudioService
     public int SeekCalls { get; private set; }
     public void Play() { PlayCalls++; Playing?.Invoke(); Snapshot = Snapshot with { IsPlaying = true }; }
     public void Pause() { PauseCalls++; Snapshot = Snapshot with { IsPlaying = false }; }
-    public void Stop() => Snapshot = Snapshot with { Position = TimeSpan.Zero, IsPlaying = false };
+    public void Stop() { Stopping?.Invoke(); Snapshot = Snapshot with { Position = TimeSpan.Zero, IsPlaying = false }; }
     public void Seek(TimeSpan position) { SeekCalls++; Snapshot = Snapshot with { Position = position }; }
     public void SetSongVolume(int volume) => SongVolume = volume;
     public void SetSamplesVolume(int volume) => SamplesVolume = volume;

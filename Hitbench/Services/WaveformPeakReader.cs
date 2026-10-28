@@ -5,13 +5,15 @@ namespace Hitbench.Services;
 
 public sealed class WaveformPeakReader(int framesPerPeak = 256, int maximumPeaks = 65_536)
 {
-    public WaveformData Read(ISampleProvider source, CancellationToken token)
+    public WaveformData Read(ISampleProvider source, CancellationToken token, AudioMemoryBudget? budget = null)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(framesPerPeak);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maximumPeaks);
         var channels = source.WaveFormat.Channels;
         var sampleRate = source.WaveFormat.SampleRate;
-        var buffer = new float[Math.Max(channels * 1024, channels)];
+        var bufferLength = checked(channels * 1024);
+        using var scratch = budget?.Reserve(checked((long)bufferLength * sizeof(float)));
+        var buffer = new float[bufferLength];
         var peaks = new List<float>();
         var framesInPeak = 0;
         var currentPeak = 0f;

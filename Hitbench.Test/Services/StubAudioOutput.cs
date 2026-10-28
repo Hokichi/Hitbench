@@ -8,6 +8,8 @@ public sealed class StubAudioOutput : IAudioOutput
     public ISampleProvider? Source { get; private set; }
     public bool FailInitialization { get; set; }
     public bool IsDisposed { get; private set; }
+    public bool FailStop { get; set; }
+    public bool FailDispose { get; set; }
     public PlaybackState PlaybackState { get; private set; }
     public string? Warning => null;
     public event EventHandler<StoppedEventArgs>? PlaybackStopped;
@@ -19,7 +21,7 @@ public sealed class StubAudioOutput : IAudioOutput
         Source = source;
     }
     public void Play() => PlaybackState = PlaybackState.Playing;
-    public void Stop() => PlaybackState = PlaybackState.Stopped;
+    public void Stop() { PlaybackState = PlaybackState.Stopped; if (FailStop) throw new IOException("stop failed"); }
     public void Complete(Exception? error = null) => stopped = new(error);
     public void Poll()
     {
@@ -31,5 +33,5 @@ public sealed class StubAudioOutput : IAudioOutput
     public void RaiseRetiredStopped() => retired?.Invoke(this, new StoppedEventArgs());
     public long PlayedFrames { get; set; }
     public long GetPlayedFrames() => PlayedFrames;
-    public void Dispose() { retired = PlaybackStopped; IsDisposed = true; }
+    public void Dispose() { retired = PlaybackStopped; IsDisposed = true; if (FailDispose) throw new IOException("dispose failed"); }
 }

@@ -2,7 +2,7 @@ using NAudio.Wave;
 
 namespace Hitbench.Services;
 
-public sealed class ScheduledSampleMixer : ISampleProvider
+public sealed class ScheduledSampleMixer : ISampleProvider, IDisposable
 {
     private readonly DecodedAudio song;
     private readonly object sync = new();
@@ -13,23 +13,43 @@ public sealed class ScheduledSampleMixer : ISampleProvider
     private bool pending;
     private float right;
     private int faulted;
+    private volatile bool disposed;
+    private Dictionary<AudioPcmBuffer, DecodedAudio> ownedSamples = new();
 
     public ScheduledSampleMixer(DecodedAudio song, long startFrame)
     {
         ArgumentNullException.ThrowIfNull(song);
         if (startFrame < 0) throw new ArgumentOutOfRangeException(nameof(startFrame));
-        this.song = song;
+        this.song = song.Retain();
         frame = Math.Min(startFrame, song.FrameCount);
     }
 
     public WaveFormat WaveFormat { get; } = WaveFormat.CreateIeeeFloatWaveFormat(44_100, 2);
     public long RenderedFrames => Volatile.Read(ref frame);
-    public bool EndOfStream => RenderedFrames >= song.FrameCount;
+    public bool EndOfStream => disposed || RenderedFrames >= song.FrameCount;
     public bool Faulted => Volatile.Read(ref faulted) != 0;
     public void Publish(PreparedPlaybackSchedule value)
     {
         ArgumentNullException.ThrowIfNull(value);
-        lock (sync) schedule = value;
+        lock (sync)
+        {
+            ObjectDisposedException.ThrowIf(disposed, this);
+            var next = new Dictionary<AudioPcmBuffer, DecodedAudio>();
+            try
+            {
+                var events = new List<PreparedSampleEvent>(value.Events.Length);
+                foreach (var item in value.Events)
+                {
+                    if (!next.TryGetValue(item.Audio.Storage, out var handle))
+                        next.Add(item.Audio.Storage, handle = item.Audio.Retain());
+                    events.Add(item with { Audio = handle });
+                }
+                var snapshot = new PreparedPlaybackSchedule(events);
+                var retired = ownedSamples; ownedSamples = next; schedule = snapshot;
+                foreach (var handle in retired.Values) handle.Dispose();
+            }
+            catch { foreach (var handle in next.Values) handle.Dispose(); throw; }
+        }
     }
 
     public void SetVolumes(float song, float samples, float application) =>
@@ -43,7 +63,19 @@ public sealed class ScheduledSampleMixer : ISampleProvider
 
     public int Read(float[] buffer, int offset, int count)
     {
-        lock (sync) return ReadCore(buffer, offset, count);
+        lock (sync) return disposed ? 0 : ReadCore(buffer, offset, count);
+    }
+
+    public void Dispose()
+    {
+        lock (sync)
+        {
+            if (disposed) return;
+            disposed = true;
+            schedule = PreparedPlaybackSchedule.Empty;
+            foreach (var handle in ownedSamples.Values) handle.Dispose();
+            ownedSamples.Clear(); song.Dispose();
+        }
     }
 
     private int ReadCore(float[] buffer, int offset, int count)

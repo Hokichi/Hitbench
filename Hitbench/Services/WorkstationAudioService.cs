@@ -8,6 +8,7 @@ namespace Hitbench.Services;
 public sealed class WorkstationAudioService : IWorkstationAudioService
 {
     private readonly Ui.OHsAudioOperationProgress? operationProgress;
+    private readonly AudioMemoryBudget memoryBudget;
     private const int OutputSampleRate = 44_100;
     private readonly Func<string, WaveStream> openDecoder;
     private readonly AudioOutputCandidate[] outputCandidates;
@@ -18,7 +19,9 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
     private string? playbackError;
     private readonly object sync = new();
     private readonly SemaphoreSlim preparationGate = new(1, 1);
-    private readonly Dictionary<string, (long Length, DateTime LastWrite, DecodedAudio Samples)> sampleCache =
+    private readonly CancellationTokenSource lifetime = new();
+    private CancellationTokenSource? pendingPreparation;
+    private Dictionary<string, (long Length, DateTime LastWrite, DecodedAudio Samples)> sampleCache =
         new(StringComparer.OrdinalIgnoreCase);
     private IAudioOutput? player;
     private ScheduledSampleMixer? mixer;
@@ -38,7 +41,8 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
     private TimeSpan playbackOrigin;
     public bool IsPrepared { get { lock (sync) return !disposed && preparedSong is not null; } }
 
-    public WorkstationAudioService() : this(AudioDecoder.Open, new AudioOutputFactory().CreateCandidates(null)) { }
+    public WorkstationAudioService() : this(new AudioMemoryBudget()) { }
+    private WorkstationAudioService(AudioMemoryBudget budget) : this(path => AudioDecoder.Open(path, budget), new AudioOutputFactory().CreateCandidates(null), memoryBudget: budget) { }
 
     internal static IWavePlayer CreateOutput() => new WaveOutEvent { DesiredLatency = 60, NumberOfBuffers = 3 };
 
@@ -50,9 +54,10 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
             ? [new AudioOutputCandidate("Preferred", createPlayer)]
             : [new AudioOutputCandidate("Preferred", createPlayer), new AudioOutputCandidate("Fallback", createFallback)]) { }
 
-    public WorkstationAudioService(Func<string, WaveStream> openDecoder, IReadOnlyList<AudioOutputCandidate> outputCandidates, Ui.OHsAudioOperationProgress? operationProgress = null)
+    public WorkstationAudioService(Func<string, WaveStream> openDecoder, IReadOnlyList<AudioOutputCandidate> outputCandidates, Ui.OHsAudioOperationProgress? operationProgress = null, AudioMemoryBudget? memoryBudget = null)
     {
         this.operationProgress = operationProgress;
+        this.memoryBudget = memoryBudget ?? new();
         ArgumentNullException.ThrowIfNull(openDecoder);
         ArgumentNullException.ThrowIfNull(outputCandidates);
         this.outputCandidates = outputCandidates.ToArray();
@@ -67,20 +72,22 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
     private Task<WaveformData> AnalyzeCoreAsync(string path, CancellationToken token) => Task.Run(() =>
     {
         using var analysisStream = openDecoder(path);
-        return new WaveformPeakReader().Read(analysisStream.ToSampleProvider(), token);
+        return new WaveformPeakReader().Read(analysisStream.ToSampleProvider(), token, memoryBudget);
     }, token);
 
     public void Open(string path)
     {
-        IAudioOutput? retired;
+        (IAudioOutput? Output, ScheduledSampleMixer? Mixer) retired;
         lock (sync)
         {
             ThrowIfDisposed();
             retired = DetachPlayback();
             audioPath = path;
-            preparedSong = null;
+            pendingPreparation?.Cancel();
+            preparedSong?.Dispose(); preparedSong = null;
             preparedEvents = PreparedPlaybackSchedule.Empty;
             controlPoints = ControlPointVolumeTimeline.Empty;
+            foreach (var cached in sampleCache.Values) cached.Samples.Dispose();
             sampleCache.Clear();
             preparationGeneration++;
             error = null;
@@ -103,12 +110,17 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
         ArgumentNullException.ThrowIfNull(projectPath);
         ArgumentNullException.ThrowIfNull(events);
         events = events.ToArray();
+        var callerToken = token;
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(token, lifetime.Token);
+        token = cancellation.Token;
         string songPath;
         int request;
         lock (sync)
         {
             ThrowIfDisposed();
             songPath = audioPath ?? throw new InvalidOperationException("Open a song before preparing playback.");
+            pendingPreparation?.Cancel();
+            pendingPreparation = cancellation;
             request = ++preparationGeneration;
             if (events.All(item => item.Id > 0) && events.Select(item => item.Id).Distinct().Count() == events.Count)
             {
@@ -120,6 +132,8 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
         }
 
         var acquired = false;
+        DecodedAudio? candidateSong = null;
+        var candidateCache = new Dictionary<string, (long Length, DateTime LastWrite, DecodedAudio Samples)>(StringComparer.OrdinalIgnoreCase);
         try
         {
             await preparationGate.WaitAsync(token);
@@ -129,10 +143,10 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
             lock (sync)
             {
                 if (disposed || request != preparationGeneration) return;
-                if (forceReload) sampleCache.Clear();
-                song = preparedSong;
+                song = preparedSong?.Retain();
             }
-            if (song is null) song = await Task.Run(() => Decode(songPath, token), token);
+            candidateSong = song;
+            if (song is null) candidateSong = song = await Task.Run(() => Decode(songPath, token), token);
 
             if (events.Any(item => item.Id <= 0) || events.Select(item => item.Id).Distinct().Count() != events.Count)
                 throw new ArgumentException("Invalid or duplicate sample placement identity.");
@@ -157,20 +171,24 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
                     {
                         if (!File.Exists(samplePath)) throw new FileNotFoundException("Sample file was not found.", samplePath);
                         var info = new FileInfo(samplePath);
-                        (long Length, DateTime LastWrite, DecodedAudio Samples) cached;
-                        bool found;
-                        lock (sync) found = sampleCache.TryGetValue(samplePath, out cached);
-                        if (!found || cached.Length != info.Length ||
-                            cached.LastWrite != info.LastWriteTimeUtc)
+                        if (!candidateCache.TryGetValue(samplePath, out var cached))
                         {
-                            cached = (info.Length, info.LastWriteTimeUtc,
-                                await Task.Run(() => Decode(samplePath, token), token));
+                            bool found;
                             lock (sync)
-                                if (!disposed && request == preparationGeneration) sampleCache[samplePath] = cached;
+                            {
+                                found = !forceReload && sampleCache.TryGetValue(samplePath, out cached) &&
+                                    cached.Length == info.Length && cached.LastWrite == info.LastWriteTimeUtc;
+                                if (found) cached = (cached.Length, cached.LastWrite, cached.Samples.Retain());
+                            }
+                            if (!found)
+                                cached = (info.Length, info.LastWriteTimeUtc,
+                                    await Task.Run(() => Decode(samplePath, token), token));
+                            candidateCache.Add(samplePath, cached);
                         }
                         result = (cached.Samples, null);
                     }
                     catch (OperationCanceledException) { throw; }
+                    catch (AudioMemoryLimitException) { throw; }
                     catch (Exception failure)
                     {
                         result = (null, $"Unable to load sample '{item.FileName}': {failure.Message}");
@@ -189,12 +207,12 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
             {
                 if (disposed || request != preparationGeneration || !string.Equals(songPath, audioPath, StringComparison.Ordinal))
                     return;
-                // ponytail: full-song PCM is ~20 MiB/minute; replace with bounded background decoding only if measured memory use requires it.
-                preparedSong = song;
-                foreach (var path in sampleCache.Keys.Where(path => !referencedPaths.Contains(path)).ToArray())
-                    sampleCache.Remove(path);
-                preparedEvents = schedule;
                 mixer?.Publish(schedule);
+                preparedSong?.Dispose(); preparedSong = song; candidateSong = null;
+                foreach (var cached in sampleCache.Values) cached.Samples.Dispose();
+                sampleCache = candidateCache;
+                candidateCache = new(StringComparer.OrdinalIgnoreCase);
+                preparedEvents = schedule;
                 error = errors.Count == 0 ? null : string.Join(Environment.NewLine, errors.Distinct());
             }
         }
@@ -202,7 +220,7 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
         {
             lock (sync)
                 if (request == preparationGeneration) AbandonPreparation();
-            throw;
+            if (callerToken.IsCancellationRequested) throw;
         }
         catch (Exception failure)
         {
@@ -215,7 +233,13 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
                 }
             }
         }
-        finally { if (acquired) preparationGate.Release(); }
+        finally
+        {
+            lock (sync) { if (ReferenceEquals(pendingPreparation, cancellation)) pendingPreparation = null; }
+            candidateSong?.Dispose();
+            foreach (var cached in candidateCache.Values) cached.Samples.Dispose();
+            if (acquired) preparationGate.Release();
+        }
     }
 
     public void SetControlPoints(IReadOnlyList<ControlPointVolumeSnapshot> points)
@@ -287,7 +311,7 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
             {
                 if (disposed || generation != request) return;
             }
-            IAudioOutput? retired;
+            (IAudioOutput? Output, ScheduledSampleMixer? Mixer) retired;
             try
             {
                 var active = EnsurePlayback(index, request);
@@ -327,7 +351,7 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
 
     public void Pause()
     {
-        IAudioOutput? retired;
+        (IAudioOutput? Output, ScheduledSampleMixer? Mixer) retired;
         lock (sync)
         {
             ThrowIfDisposed();
@@ -340,7 +364,7 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
 
     public void Stop()
     {
-        IAudioOutput? retired;
+        (IAudioOutput? Output, ScheduledSampleMixer? Mixer) retired;
         lock (sync)
         {
             ThrowIfDisposed();
@@ -352,7 +376,7 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
 
     public void Seek(TimeSpan position)
     {
-        IAudioOutput? retired;
+        (IAudioOutput? Output, ScheduledSampleMixer? Mixer) retired;
         bool resume;
         int detachedGeneration;
         lock (sync)
@@ -388,20 +412,23 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
 
     public void Dispose()
     {
-        IAudioOutput? retired;
+        (IAudioOutput? Output, ScheduledSampleMixer? Mixer) retired;
         lock (sync)
         {
             if (disposed) return;
             disposed = true;
+            lifetime.Cancel();
             preparationGeneration++;
             retired = DetachPlayback();
             ResetPosition();
-            preparedSong = null;
+            preparedSong?.Dispose(); preparedSong = null;
             preparedEvents = PreparedPlaybackSchedule.Empty;
             controlPoints = ControlPointVolumeTimeline.Empty;
+            foreach (var cached in sampleCache.Values) cached.Samples.Dispose();
             sampleCache.Clear();
         }
         DisposeOutput(retired);
+        lifetime.Dispose();
     }
 
     private IAudioOutput? EnsurePlayback(int candidateIndex, int request)
@@ -416,12 +443,18 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
             ThrowIfDisposed();
             startFrame = TimeToFrame(currentPosition);
             sessionMixer = new ScheduledSampleMixer(preparedSong!, startFrame);
-            sessionMixer.SetControlPoints(controlPoints);
-            sessionMixer.SetVolumes(songVolume, samplesVolume, applicationVolume);
-            sessionMixer.Publish(preparedEvents);
+            try
+            {
+                sessionMixer.SetControlPoints(controlPoints);
+                sessionMixer.SetVolumes(songVolume, samplesVolume, applicationVolume);
+                sessionMixer.Publish(preparedEvents);
+            }
+            catch { sessionMixer.Dispose(); throw; }
             sessionGeneration = generation;
         }
-        var output = outputCandidates[candidateIndex].Create();
+        IAudioOutput output;
+        try { output = outputCandidates[candidateIndex].Create(); }
+        catch { sessionMixer.Dispose(); throw; }
         EventHandler<StoppedEventArgs> stopped = (_, args) => OnPlaybackStopped(sessionGeneration, args);
         output.PlaybackStopped += stopped;
         try
@@ -431,7 +464,7 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
             if (superseded)
             {
                 output.PlaybackStopped -= stopped;
-                DisposeOutput(output);
+                DisposeOutput((output, sessionMixer));
                 return null;
             }
             output.Init(sessionMixer, () => sessionMixer.RenderedFrames - startFrame,
@@ -440,7 +473,7 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
         catch
         {
             output.PlaybackStopped -= stopped;
-            DisposeOutput(output);
+            DisposeOutput((output, sessionMixer));
             throw;
         }
         lock (sync)
@@ -459,13 +492,13 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
             }
         }
         output.PlaybackStopped -= stopped;
-        DisposeOutput(output);
+        DisposeOutput((output, sessionMixer));
         return null;
     }
 
     private void OnPlaybackStopped(int eventGeneration, StoppedEventArgs args)
     {
-        IAudioOutput? completedPlayer;
+        (IAudioOutput? Output, ScheduledSampleMixer? Mixer) completedPlayer;
         lock (sync)
         {
             if (eventGeneration != generation || disposed) return;
@@ -482,16 +515,17 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
         DisposeOutput(completedPlayer);
     }
 
-    private IAudioOutput? DetachPlayback()
+    private (IAudioOutput? Output, ScheduledSampleMixer? Mixer) DetachPlayback()
     {
         generation++;
         var retired = player;
+        var retiredMixer = mixer;
         if (retired is not null && playbackStoppedHandler is not null)
             retired.PlaybackStopped -= playbackStoppedHandler;
         player = null;
         playbackStoppedHandler = null;
         mixer = null;
-        return retired;
+        return (retired, retiredMixer);
     }
 
     private void ResetPosition()
@@ -500,13 +534,15 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
         playbackOrigin = TimeSpan.Zero;
     }
 
-    private static void DisposeOutput(IAudioOutput? retired)
+    private static void DisposeOutput((IAudioOutput? Output, ScheduledSampleMixer? Mixer) playback)
     {
-        if (retired is null) return;
+        var retired = playback.Output;
+        if (retired is null) { playback.Mixer?.Dispose(); return; }
         try { retired.Stop(); }
         catch (Exception error) { System.Diagnostics.Trace.TraceWarning("Audio stop cleanup: {0}", error); }
         try { retired.Dispose(); }
         catch (Exception error) { System.Diagnostics.Trace.TraceWarning("Audio output cleanup: {0}", error); }
+        finally { playback.Mixer?.Dispose(); }
     }
 
     private TimeSpan GetCurrentPosition()
@@ -528,7 +564,7 @@ public sealed class WorkstationAudioService : IWorkstationAudioService
 
     private static TimeSpan FrameToTime(long frame) => TimeSpan.FromSeconds(frame / (double)OutputSampleRate);
 
-    private DecodedAudio Decode(string path, CancellationToken token) => AudioDecoder.Decode(path, token, openDecoder);
+    private DecodedAudio Decode(string path, CancellationToken token) => AudioDecoder.Decode(path, token, openDecoder, memoryBudget);
 
     private static bool TryResolveSamplePath(string projectPath, string fileName, out string path)
     {

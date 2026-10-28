@@ -99,50 +99,50 @@ public partial class WorkstationPageVM
     {
         try
         {
-        if (!CanUseTransport()) return;
-        if (audioService.GetSnapshot().IsPlaying)
-        {
-            try { await playback.PauseAsync(CancellationToken.None); }
-            catch (Exception error) { if (!deactivated) ErrorMessage = error.Message; return; }
-            // Intentional pause preserves consumed position, unlike a device-stopped session.
-            IsPlaying = false;
-        }
-        else
-        {
-            if (!markerClock.IsValid)
+            if (!CanUseTransport()) return;
+            if (audioService.GetSnapshot().IsPlaying)
             {
-                ErrorMessage = "Playback requires valid BPM timing data. Reload a beatmap with timing points.";
-                return;
+                try { await playback.PauseAsync(CancellationToken.None); }
+                catch (Exception error) { if (!deactivated) ErrorMessage = error.Message; return; }
+                // Intentional pause preserves consumed position, unlike a device-stopped session.
+                IsPlaying = false;
             }
-            pendingPlayCancellation?.Cancel();
-            using var cancellation = new CancellationTokenSource();
-            pendingPlayCancellation = cancellation;
-            var generation = loadGeneration;
-            try
+            else
             {
-                Task pending;
-                do
+                if (!markerClock.IsValid)
                 {
-                    pending = playbackUpdates;
-                    await pending.WaitAsync(cancellation.Token);
-                } while (!ReferenceEquals(pending, playbackUpdates));
-                if (cancellation.IsCancellationRequested || deactivated || generation != loadGeneration ||
-                    !CanPlay || playbackPreparationFailed) return;
-                if (Waveform is not null && audioService.GetSnapshot().Position >= Waveform.Duration)
-                {
-                    await playback.StopAsync(cancellation.Token);
+                    ErrorMessage = "Playback requires valid BPM timing data. Reload a beatmap with timing points.";
+                    return;
                 }
-                await playback.PlayAsync(cancellation.Token);
+                pendingPlayCancellation?.Cancel();
+                using var cancellation = new CancellationTokenSource();
+                pendingPlayCancellation = cancellation;
+                var generation = loadGeneration;
+                try
+                {
+                    Task pending;
+                    do
+                    {
+                        pending = playbackUpdates;
+                        await pending.WaitAsync(cancellation.Token);
+                    } while (!ReferenceEquals(pending, playbackUpdates));
+                    if (cancellation.IsCancellationRequested || deactivated || generation != loadGeneration ||
+                        !CanPlay || playbackPreparationFailed) return;
+                    if (Waveform is not null && audioService.GetSnapshot().Position >= Waveform.Duration)
+                    {
+                        await playback.StopAsync(cancellation.Token);
+                    }
+                    await playback.PlayAsync(cancellation.Token);
+                }
+                catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { return; }
+                catch (Exception error) { ErrorMessage = error.Message; return; }
+                finally
+                {
+                    if (ReferenceEquals(pendingPlayCancellation, cancellation)) pendingPlayCancellation = null;
+                }
             }
-            catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { return; }
-            catch (Exception error) { ErrorMessage = error.Message; return; }
-            finally
-            {
-                if (ReferenceEquals(pendingPlayCancellation, cancellation)) pendingPlayCancellation = null;
-            }
+            RefreshPlayback();
         }
-        RefreshPlayback();
-    }
 
         catch (Exception failure) { if (!deactivated) ErrorMessage = failure.Message; }
     }
@@ -187,23 +187,23 @@ public partial class WorkstationPageVM
     {
         try
         {
-        if (!CanUseTransport() || Project is null || Waveform is null) return;
-        var position = audioService.GetSnapshot().Position;
-        if (lastGridTarget is { } lastTarget && lastGridAudioPosition is { } lastAudioPosition &&
-            position >= TimeSpan.FromTicks(Math.Min(lastAudioPosition.Ticks, lastTarget.Ticks)) &&
-            position <= TimeSpan.FromTicks(Math.Max(lastAudioPosition.Ticks, lastTarget.Ticks)))
-            position = lastTarget;
-        var target = BeatGridCalculator.GetAdjacentPosition(Project.Offsets, Project.BPMs,
-            subdivision, position, Waveform.Duration, forward);
-        if (target is not null)
-        {
-            await SeekAsync(target.Value);
-            if (audioService.GetSnapshot().Error is null)
+            if (!CanUseTransport() || Project is null || Waveform is null) return;
+            var position = audioService.GetSnapshot().Position;
+            if (lastGridTarget is { } lastTarget && lastGridAudioPosition is { } lastAudioPosition &&
+                position >= TimeSpan.FromTicks(Math.Min(lastAudioPosition.Ticks, lastTarget.Ticks)) &&
+                position <= TimeSpan.FromTicks(Math.Max(lastAudioPosition.Ticks, lastTarget.Ticks)))
+                position = lastTarget;
+            var target = BeatGridCalculator.GetAdjacentPosition(Project.Offsets, Project.BPMs,
+                subdivision, position, Waveform.Duration, forward);
+            if (target is not null)
             {
-                lastGridTarget = target.Value;
-                lastGridAudioPosition = Position;
+                await SeekAsync(target.Value);
+                if (audioService.GetSnapshot().Error is null)
+                {
+                    lastGridTarget = target.Value;
+                    lastGridAudioPosition = Position;
+                }
             }
-        }
         }
         catch (Exception failure) { if (!deactivated) ErrorMessage = failure.Message; }
     }

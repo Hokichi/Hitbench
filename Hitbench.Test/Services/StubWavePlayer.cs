@@ -23,6 +23,7 @@ public sealed class StubWavePlayer : IWavePlayer, IWavePosition
     public bool IsDisposed { get; private set; }
     public bool FailInitialization { get; set; }
     public bool FailPlayback { get; set; }
+    public bool FailStop { get; set; }
     public bool FailPosition { get; set; }
     public Action? Disposing { get; set; }
     public bool HasPlaybackStoppedSubscribers => playbackStopped is not null;
@@ -49,6 +50,7 @@ public sealed class StubWavePlayer : IWavePlayer, IWavePosition
     public void Pause() => PlaybackState = PlaybackState.Paused;
     public void Stop()
     {
+        if (FailStop) throw new IOException("stop failed");
         PlaybackState = PlaybackState.Stopped;
         playbackStopped?.Invoke(this, new StoppedEventArgs());
     }

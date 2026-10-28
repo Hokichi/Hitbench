@@ -411,7 +411,7 @@ public partial class WorkstationPageVM(
             await CommitAsync(generation, CancellationToken.None, () =>
             {
                 if (token.IsCancellationRequested) return;
-                playbackPreparationFailed = playbackError?.StartsWith("Unable to prepare audio:", StringComparison.Ordinal) == true;
+                playbackPreparationFailed = !audioService.IsPrepared && playbackError?.StartsWith("Unable to prepare audio:", StringComparison.Ordinal) == true;
                 if (!string.IsNullOrWhiteSpace(playbackError))
                 {
                     playbackErrorMessage = playbackError;
