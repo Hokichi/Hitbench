@@ -56,7 +56,11 @@ public sealed class OHsInstanceActivationChannel(string identity, Action<uint>? 
                 catch (OperationCanceledException) { }
                 catch (IOException error) { Trace.TraceWarning("Activation channel: {0}", error); }
                 catch (Exception error) { Trace.TraceError("Activation callback: {0}", error); }
-                finally { if (server.IsConnected) server.Disconnect(); }
+                finally
+                {
+                    try { if (server.IsConnected) server.Disconnect(); }
+                    catch (IOException error) { Trace.TraceWarning("Activation disconnect: {0}", error); }
+                }
             }
         }
     }

@@ -6,6 +6,15 @@ namespace Hitbench.Test.Presentation;
 [NonParallelizable]
 public class OHsInstanceActivationTests
 {
+    [Test]
+    public void NativePickerRemainsTheActivationTargetInsteadOfItsDisabledOwner()
+    {
+        var target = MainWindow.FindNativeActivationTarget(1, owner => owner == 1 ? 2 : owner == 2 ? 3 : 3,
+            _ => true, window => window == 3);
+        Assert.That(target, Is.EqualTo((nint)3));
+        Assert.That(MainWindow.FindNativeActivationTarget(1, _ => 2, _ => false, _ => true), Is.EqualTo((nint)1));
+    }
+
     [TestCase(false, WindowState.Normal)]
     [TestCase(true, WindowState.Maximized)]
     public void MinimizedShellRestoresPreviousStateAndTargetsDeepestModal(bool wasMaximized, WindowState expected)

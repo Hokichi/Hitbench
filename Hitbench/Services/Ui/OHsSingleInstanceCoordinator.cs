@@ -1,8 +1,9 @@
 using System.IO;
+using System.Diagnostics;
 
 namespace Hitbench.Services.Ui;
 
-public sealed class OHsSingleInstanceCoordinator(string identity = "Hitbench.Application.Activation", Action<uint>? grantForeground = null) : IDisposable
+public sealed class OHsSingleInstanceCoordinator(string identity = "Hitbench.Application.Activation", Action<uint>? grantForeground = null, TimeSpan? handoffTimeout = null) : IDisposable
 {
     public const string MachineIdentity = "Global\\Hitbench.Application.Instance";
     private OHsMachineInstanceLease? lease;
@@ -10,7 +11,8 @@ public sealed class OHsSingleInstanceCoordinator(string identity = "Hitbench.App
 
     public async Task<bool> RunPrimaryOrActivateAsync(Func<CancellationToken, Task> initializePrimary, Action requestActivation, CancellationToken token)
     {
-        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
+        var started = Stopwatch.GetTimestamp();
+        var timeout = handoffTimeout ?? TimeSpan.FromSeconds(5);
         while (true)
         {
             token.ThrowIfCancellationRequested();
@@ -29,12 +31,14 @@ public sealed class OHsSingleInstanceCoordinator(string identity = "Hitbench.App
             using var client = new OHsInstanceActivationChannel(identity, grantForeground);
             try
             {
-                await client.RequestAsync(TimeSpan.FromMilliseconds(200), token);
+                var remaining = timeout - Stopwatch.GetElapsedTime(started);
+                if (remaining <= TimeSpan.Zero) throw new IOException("Activation handoff timed out.");
+                await client.RequestAsync(remaining < TimeSpan.FromMilliseconds(200) ? remaining : TimeSpan.FromMilliseconds(200), token);
                 return false;
             }
             catch (Exception error) when (error is IOException || error is OperationCanceledException && !token.IsCancellationRequested)
             {
-                if (DateTime.UtcNow >= deadline) throw new IOException("Unable to activate the running Hitbench instance.", error);
+                if (Stopwatch.GetElapsedTime(started) >= timeout) throw new IOException("Unable to activate the running Hitbench instance.", error);
                 await Task.Delay(25, token);
             }
         }
@@ -42,7 +46,9 @@ public sealed class OHsSingleInstanceCoordinator(string identity = "Hitbench.App
 
     public void Dispose()
     {
-        try { channel?.Dispose(); }
-        finally { channel = null; lease?.Dispose(); lease = null; }
+        try { StopActivation(); }
+        finally { lease?.Dispose(); lease = null; }
     }
+
+    public void StopActivation() => Interlocked.Exchange(ref channel, null)?.Dispose();
 }
