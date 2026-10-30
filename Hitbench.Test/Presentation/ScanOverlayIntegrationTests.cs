@@ -161,8 +161,8 @@ public class ScanOverlayIntegrationTests
             view.UpdateLayout();
             var host = (ContentControl)window.FindName("PageHost");
             Assert.That(host.IsEnabled, Is.True);
-            pending.SetResult(new OsuSearchResult(null, false));
-            UiTestPump.Run(picking.Task);
+            pending.SetResult(new OsuSearchResult(@"C:\chosen", false));
+            UiTestPump.Run(readingSongs.Task);
             view.UpdateLayout();
             Assert.That(vm.IsProcessing, Is.True);
             Assert.That(host.IsEnabled, Is.True, "Input gate must survive the picker transition.");
@@ -201,7 +201,7 @@ public class ScanOverlayIntegrationTests
                     : Task.FromResult(new OsuSearchResult(@"C:\osu", false)),
                 Songs = (_, token) => { reading.SetResult(); return songs.Task.WaitAsync(token); }
             },
-            new StubAppSettingsService { Load = _ => Task.FromResult(new AppSettings { OsuPath = configured ? @"C:\osu" : "" }) },
+            new StubAppSettingsService { Load = _ => Task.FromResult(new AppSettings { MapsetsDirectory = configured ? @"C:\osu\Songs" : "" }) },
             new StubInstallationDialogService { Locate = _ => throw new AssertionException("Valid installation must not recover") },
             new UiScheduler(Dispatcher.CurrentDispatcher),
             new StubProjectFileService((_, _, _) => Task.FromResult("saved.json")),

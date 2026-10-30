@@ -74,9 +74,9 @@ public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, I
     public SampleSelectionMode SelectionMode { get; private set; }
     public void ConfigureSelectionMode(SampleSelectionMode mode) { SelectionMode = mode; OnPropertyChanged(nameof(SelectionMode)); NotifyState(); }
     public bool IsFolderSelection => SelectionMode == SampleSelectionMode.Folder;
-    public string PopupTitle => IsFolderSelection ? "Select sample folder" : "Load samples";
+    public string PopupTitle => Context?.FolderPurpose == OHsFolderSelectionPurpose.OsuInstallation ? "Locate osu! folder" : Context?.FolderPurpose == OHsFolderSelectionPurpose.Mapsets ? "Locate mapset folder" : IsFolderSelection ? "Select sample folder" : "Load samples";
     public string ConfirmActionText => IsFolderSelection ? "Select folder" : CheckedCount == 0 ? "Import samples" : string.Format(CultureInfo.CurrentCulture, CheckedCount == 1 ? "Import {0} sample" : "Import {0} samples", CheckedCount);
-    public string ConfirmAutomationName => IsFolderSelection ? "Select sample folder" : "Import checked files";
+    public string ConfirmAutomationName => Context?.FolderPurpose is OHsFolderSelectionPurpose.OsuInstallation or OHsFolderSelectionPurpose.Mapsets ? PopupTitle : IsFolderSelection ? "Select sample folder" : "Import checked files";
     public string SelectionPrompt => IsFolderSelection ? "Choose a folder, then select it to map note-named audio files." : "Select a .wav, .ogg or .mp3";
     public string FolderEmptyPromptText => IsFolderSelection ? "No subfolders. Select this folder to import its audio files." : "No audio file to display";
     public string ContentsAutomationName => IsFolderSelection ? "Folders" : "Folders and audio files";
@@ -134,9 +134,9 @@ public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, I
         await UpdateAsync(() =>
         {
             Locations.Clear();
-            Locations.Add(new("Song folder", Context?.SongDirectory, "", !string.IsNullOrWhiteSpace(Context?.SongDirectory)));
+            Locations.Add(new(Context?.FolderPurpose == OHsFolderSelectionPurpose.OsuInstallation ? "osu! folder" : Context?.FolderPurpose == OHsFolderSelectionPurpose.Mapsets ? "Mapsets folder" : "Song folder", Context?.SongDirectory, "", !string.IsNullOrWhiteSpace(Context?.SongDirectory)));
             savedLocation = new("Saved Samples", saved, "", true);
-            Locations.Add(savedLocation);
+            if (Context?.FolderPurpose is null or OHsFolderSelectionPurpose.SampleImport) Locations.Add(savedLocation);
         });
         try
         {
@@ -152,6 +152,13 @@ public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, I
         {
             var folder = string.IsNullOrWhiteSpace(initialDirectory)
                 ? await browser.GetDefaultDirectoryAsync(lifetime.Token) : initialDirectory;
+            if (!string.IsNullOrWhiteSpace(initialDirectory) && Context?.FolderPurpose is OHsFolderSelectionPurpose.OsuInstallation or OHsFolderSelectionPurpose.Mapsets)
+            {
+                folder = await browser.GetExistingAncestorAsync(folder, lifetime.Token);
+                if (!SamePath(folder, Context.SongDirectory) && Locations.Count > 0)
+                    await UpdateAsync(() => Locations[0] = Locations[0] with { IsAvailable = false });
+            }
+            lifetime.Token.ThrowIfCancellationRequested();
             await NavigateToAsync(folder);
             if (CurrentDirectory.Length == 0 && DirectoryError is { } failure)
             { await NavigateToAsync(""); await UpdateAsync(() => DirectoryError = failure); }

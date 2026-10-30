@@ -65,17 +65,17 @@ public sealed class HomeFolderService(string applicationDirectory, Func<Cancella
         { Trace.TraceWarning("Project metadata could not be read: {0}", error.Message); return entry; }
     }
 
-    public Task<FolderSnapshot?> LoadSongsAsync(string osuDirectory, CancellationToken cancellationToken) =>
-        LoadSongsAsync(osuDirectory, false, cancellationToken);
+    public Task<FolderSnapshot?> LoadSongsAsync(string mapsetsDirectory, CancellationToken cancellationToken) =>
+        LoadSongsAsync(mapsetsDirectory, false, cancellationToken);
 
-    public Task<FolderSnapshot?> ReloadSongsAsync(string osuDirectory, CancellationToken cancellationToken) =>
-        LoadSongsAsync(osuDirectory, true, cancellationToken);
+    public Task<FolderSnapshot?> ReloadSongsAsync(string mapsetsDirectory, CancellationToken cancellationToken) =>
+        LoadSongsAsync(mapsetsDirectory, true, cancellationToken);
 
-    private Task<FolderSnapshot?> LoadSongsAsync(string osuDirectory, bool forceReload, CancellationToken cancellationToken) =>
+    private Task<FolderSnapshot?> LoadSongsAsync(string mapsetsDirectory, bool forceReload, CancellationToken cancellationToken) =>
         Task.Run(() =>
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var songsPath = Path.GetFullPath(Path.Combine(osuDirectory, "Songs"));
+            var songsPath = Path.GetFullPath(mapsetsDirectory);
             try { return ReadCachedSongs(songsPath, forceReload, cancellationToken); }
             catch (DirectoryNotFoundException) when (!Directory.Exists(songsPath)) { return null; }
         }, cancellationToken);
@@ -336,7 +336,8 @@ public sealed class HomeFolderService(string applicationDirectory, Func<Cancella
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 if (!visited.Add(directory) || !Path.IsPathFullyQualified(directory)) continue;
-                if (File.Exists(Path.Combine(directory, "osu!.exe")))
+                if (File.Exists(Path.Combine(directory, "osu!.exe")) &&
+                    Directory.Exists(Path.Combine(directory, "Songs")))
                     return new OsuSearchResult(directory, skipped);
             }
             cancellationToken.ThrowIfCancellationRequested();

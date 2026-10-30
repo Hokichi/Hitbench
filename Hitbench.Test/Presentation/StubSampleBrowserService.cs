@@ -12,6 +12,17 @@ public sealed class StubSampleBrowserService : ISampleBrowserService
     public string DefaultDirectory { get; set; } = "";
     public string SavedDirectory => Path.Combine(RootPath, "saved");
     public Func<CancellationToken, Task<string>>? SavedDirectoryLoader { get; set; }
+    public Task<string> GetExistingAncestorAsync(string directory, CancellationToken token)
+    {
+        string? candidate = Path.GetFullPath(directory);
+        while (candidate is not null)
+        {
+            token.ThrowIfCancellationRequested();
+            if (Entries.ContainsKey(candidate)) return Task.FromResult(candidate);
+            candidate = Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(candidate));
+        }
+        return Task.FromResult("");
+    }
     public Task<string> GetSavedDirectoryAsync(CancellationToken token)
     {
         token.ThrowIfCancellationRequested();

@@ -6,6 +6,26 @@ namespace Hitbench.Test.Presentation;
 
 public sealed class SampleFolderSelectionTests
 {
+    [TestCase(OHsFolderSelectionPurpose.OsuInstallation)]
+    [TestCase(OHsFolderSelectionPurpose.Mapsets)]
+    public async Task MissingHomeInitialDirectoryOpensExistingParent(OHsFolderSelectionPurpose purpose)
+    {
+        var root = Directory.CreateTempSubdirectory("home-picker-");
+        using var browser = new Hitbench.Services.FileSystem.SampleBrowserService(applicationDirectory: root.FullName);
+        var vm = new SampleLoaderPopupVM(browser, new StubSamplePreviewService(), new ImmediateUiScheduler(), new PlaybackVolumeSettings());
+        try
+        {
+            var missing = Path.Combine(root.FullName, "removed", "Songs");
+            await vm.InitializeAsync(new SamplePickerContext(null, missing, SampleSelectionMode.Folder, missing, purpose), default);
+            Assert.That(vm.CurrentDirectory, Is.EqualTo(root.FullName));
+            Assert.That(vm.DirectoryError, Is.Null);
+            Assert.That(vm.CanConfirm, Is.True);
+            Assert.That(vm.Locations[0].IsAvailable, Is.False, "Missing source shortcut must not navigate to the missing folder.");
+            Assert.That(Directory.Exists(missing), Is.False, "Opening a picker must not create the missing Songs folder.");
+        }
+        finally { await vm.DeactivateAsync(); root.Delete(true); }
+    }
+
     [TestCase(false)][TestCase(true)]
     public async Task ConfirmsCurrentOrSelectedFolderWithoutAudio(bool selectChild)
     {

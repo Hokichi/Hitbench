@@ -38,7 +38,7 @@ public class HomeFolderPerformanceTests
                     StringComparer.CurrentCultureIgnoreCase).ThenBy(folder => folder.FullName, StringComparer.Ordinal).ToArray();
                 var baselineMs = timer.Elapsed.TotalMilliseconds;
                 timer.Restart();
-                var snapshot = await folders.LoadSongsAsync(root.FullName, CancellationToken.None);
+                var snapshot = await folders.LoadSongsAsync(Path.Combine(root.FullName, "Songs"), CancellationToken.None);
                 var metadataMs = timer.Elapsed.TotalMilliseconds;
                 timer.Restart();
                 var page = snapshot!.ReadPage(0, 64);

@@ -17,6 +17,32 @@ public class AppSettingsServiceTests
         Assert.That((await service.LoadAsync(CancellationToken.None)).AsioDriverName,Is.EqualTo(expected));
     }
 
+    [TestCase("{\"mapsetsDirectory\":null}")]
+    [TestCase("{\"mapsetsDirectory\":\"  \"}")]
+    public async Task BlankMapsetsDirectoryNormalizes(string json)
+    {
+        await File.WriteAllTextAsync(FilePath, json);
+        using var service = new AppSettingsService(root.FullName);
+        Assert.That((await service.LoadAsync(default)).MapsetsDirectory, Is.Empty);
+    }
+    [Test]
+    public async Task InvalidMapsetsDirectoryTypePreservesSettings()
+    {
+        const string json = "{\"mapsetsDirectory\":12}";
+        await File.WriteAllTextAsync(FilePath, json);
+        using var service = new AppSettingsService(root.FullName);
+        Assert.ThrowsAsync<IOException>(() => service.LoadAsync(default));
+        Assert.That(await File.ReadAllTextAsync(FilePath), Is.EqualTo(json));
+    }
+    [Test]
+    public async Task MapsetsDirectoryDefaultsAndRoundTrips()
+    {
+        using var service = new AppSettingsService(root.FullName);
+        Assert.That((await service.LoadAsync(default)).MapsetsDirectory, Is.Empty);
+        await service.SaveMapsetsDirectoryAsync(root.FullName, default);
+        Assert.That((await service.LoadAsync(default)).MapsetsDirectory, Is.EqualTo(root.FullName));
+    }
+
     [Test]
     public async Task SavingOtherSettingsPreservesDriverAndUnknownFields()
     {

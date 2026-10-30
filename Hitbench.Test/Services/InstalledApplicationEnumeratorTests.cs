@@ -47,6 +47,7 @@ public class InstalledApplicationEnumeratorTests
         try
         {
             File.WriteAllText(Path.Combine(root.FullName, "osu!.exe"), "");
+            root.CreateSubdirectory("Songs");
             var service = new HomeFolderService(root.FullName, (_, skipped) =>
             {
                 skipped();

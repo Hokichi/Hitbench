@@ -30,9 +30,9 @@ public class HomePageVMTests
         try
         {
             await vm.LoadAsync(default); await PresentAsync(vm);
-            Assert.That(vm.MapsetInventoryText, Is.EqualTo("2 in your osu! Songs folder"));
+            Assert.That(vm.MapsetInventoryText, Is.EqualTo("2 mapsets"));
             vm.SongSearchText = "one"; await vm.SearchSongsCommand.ExecutionTask!;
-            Assert.That(vm.MapsetInventoryText, Is.EqualTo("2 in your osu! Songs folder"));
+            Assert.That(vm.MapsetInventoryText, Is.EqualTo("2 mapsets"));
         }
         finally { vm.Deactivate(); }
     }

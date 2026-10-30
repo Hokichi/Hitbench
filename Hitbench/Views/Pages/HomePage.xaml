@@ -2,6 +2,7 @@
     x:Class="Hitbench.Views.Pages.HomePage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:dataModels="clr-namespace:Hitbench.Resources.DataModels"
     xmlns:converters="clr-namespace:Hitbench.Resources.Converters"
     xmlns:customControls="clr-namespace:Hitbench.Resources.CustomControls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -32,9 +33,11 @@
         <ScaleTransform x:Key="OHsHomeMapsetRestingScale" x:Shared="False" ScaleX="0.970873786" ScaleY="0.970873786" />
         <ScaleTransform x:Key="OHsHomeMapsetSelectedScale" x:Shared="False" ScaleX="1" ScaleY="1" />
         <ControlTemplate x:Key="OHsHomeMapsetItemTemplate" TargetType="ListBoxItem">
-            <ContentPresenter Style="{StaticResource BaseContentPresenterStyle}" ContentSource="Content"
+            <ContentPresenter
                 HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
-                VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                ContentSource="Content"
+                Style="{StaticResource BaseContentPresenterStyle}" />
         </ControlTemplate>
         <Style
             x:Key="OHsHomeMapsetListStyle"
@@ -633,9 +636,10 @@
             BasedOn="{StaticResource HomePageRetryButtonStyle}"
             TargetType="customControls:BalloonButton">
             <Style.Triggers>
-                <DataTrigger Binding="{Binding CanRetrySongs, Mode=OneWay}" Value="True">
-                    <Setter Property="Visibility" Value="Visible" />
-                </DataTrigger>
+                <MultiDataTrigger><MultiDataTrigger.Conditions>
+                    <Condition Binding="{Binding CanRetrySongs, Mode=OneWay}" Value="True" />
+                    <Condition Binding="{Binding MapsetsAvailability, Mode=OneWay}" Value="{x:Static dataModels:OHsHomeMapsetsAvailability.Available}" />
+                </MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Visible" /></MultiDataTrigger>
             </Style.Triggers>
         </Style>
         <Style
@@ -686,12 +690,37 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
-        <Style x:Key="OHsHomeProjectSearchGroupStyle" TargetType="Grid" BasedOn="{StaticResource OHsHomeHeaderGroupStyle}">
+        <Style
+            x:Key="OHsHomeProjectSearchGroupStyle"
+            BasedOn="{StaticResource OHsHomeHeaderGroupStyle}"
+            TargetType="Grid">
             <Style.Triggers>
                 <DataTrigger Binding="{Binding HasSelectedMapset, Mode=OneWay}" Value="True">
                     <Setter Property="Visibility" Value="Collapsed" />
                 </DataTrigger>
             </Style.Triggers>
+        </Style>
+        <Style x:Key="OHsHomeLocateActionStyle" TargetType="customControls:BalloonButton" BasedOn="{StaticResource OHsBalloonNeutralActionStyle}">
+            <Setter Property="helpers:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
+            <Setter Property="IsTabStop" Value="True" />
+            <Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="True" />
+        </Style>
+        <Style x:Key="OHsHomeLocatePanelStyle" TargetType="StackPanel" BasedOn="{StaticResource BaseStackPanelStyle}">
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Visibility" Value="Collapsed" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding MapsetsAvailability, Mode=OneWay}" Value="{x:Static dataModels:OHsHomeMapsetsAvailability.NotFound}"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
+                <DataTrigger Binding="{Binding MapsetsAvailability, Mode=OneWay}" Value="{x:Static dataModels:OHsHomeMapsetsAvailability.Empty}"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="OHsHomeNoMapsetsStyle" TargetType="TextBlock" BasedOn="{StaticResource HomePageBodyStyle}">
+            <Setter Property="Visibility" Value="Collapsed" /><Setter Property="TextWrapping" Value="Wrap" /><Setter Property="TextAlignment" Value="Center" /><Setter Property="Margin" Value="0,0,0,8" />
+            <Style.Triggers><DataTrigger Binding="{Binding MapsetsAvailability, Mode=OneWay}" Value="{x:Static dataModels:OHsHomeMapsetsAvailability.Empty}"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
+        </Style>
+        <Style x:Key="OHsHomeLocateMapsetsActionStyle" TargetType="customControls:BalloonButton" BasedOn="{StaticResource OHsHomeLocateActionStyle}">
+            <Setter Property="Visibility" Value="Collapsed" />
+            <Style.Triggers><DataTrigger Binding="{Binding MapsetsAvailability, Mode=OneWay}" Value="{x:Static dataModels:OHsHomeMapsetsAvailability.Available}"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
         </Style>
     </UserControl.Resources>
     <AdornerDecorator x:Name="CardGlowHost" helpers:OuterGlow.IsHost="True">
@@ -729,6 +758,8 @@
                             Text="{Binding MapsetInventoryText, Mode=OneWay}" />
                     </Grid>
                     <Grid Grid.Row="1" Style="{StaticResource OHsHomeHeaderGroupStyle}">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                        <Grid>
                         <TextBox
                             x:Name="SongSearchTextBox"
                             AutomationProperties.Name="Search mapsets"
@@ -752,6 +783,8 @@
                             IsHitTestVisible="False"
                             Style="{StaticResource OHsHomePageMetadataStyle}"
                             Text="/" />
+                        </Grid>
+                        <customControls:BalloonButton x:Name="LocateMapsetsDirectoryButton" Click="OnLocateFolderClick" Grid.Column="1" Margin="8,0,0,0" ButtonIcon="{StaticResource DotsThreeOutlineFill}" ShouldShowText="False" ToolTip="Locate mapset folder" AutomationProperties.Name="Locate mapset folder" Command="{Binding LocateMapsetsDirectoryCommand, Mode=OneWay}" Style="{StaticResource OHsHomeLocateMapsetsActionStyle}" />
                     </Grid>
                     <customControls:BalloonButton
                         x:Name="SongsRetryButton"
@@ -780,6 +813,10 @@
                         Template="{StaticResource HomePageItemsTemplate}"
                         VirtualizingPanel.IsVirtualizing="True"
                         VirtualizingPanel.VirtualizationMode="Recycling" />
+                    <StackPanel Grid.Row="3" Style="{StaticResource OHsHomeLocatePanelStyle}">
+                        <TextBlock x:Name="NoMapsetsText" Text="No mapsets found" Style="{StaticResource OHsHomeNoMapsetsStyle}" />
+                        <customControls:BalloonButton x:Name="LocateOsuFolderButton" Click="OnLocateFolderClick" ButtonIcon="{StaticResource Folder}" ButtonText="Locate osu! folder" ShouldShowText="True" AutomationProperties.Name="Locate osu! folder" Command="{Binding LocateOsuFolderCommand, Mode=OneWay}" Style="{StaticResource OHsHomeLocateActionStyle}" />
+                    </StackPanel>
                 </Grid>
             </Border>
             <Border Style="{StaticResource OHsHomeProjectsPanelStyle}">

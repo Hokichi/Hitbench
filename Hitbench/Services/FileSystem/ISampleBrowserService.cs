@@ -4,6 +4,7 @@ namespace Hitbench.Services.FileSystem;
 
 public interface ISampleBrowserService
 {
+    Task<string> GetExistingAncestorAsync(string directory, CancellationToken token);
     Task<string> GetSavedDirectoryAsync(CancellationToken token);
     Task<IReadOnlyList<SampleBrowserEntry>> GetRootsAsync(CancellationToken token);
     Task<string> GetDefaultDirectoryAsync(CancellationToken token);

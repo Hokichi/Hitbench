@@ -23,9 +23,34 @@ public class IncrementalFolderServiceTests
             old.LastWriteTimeUtc = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc);
             newest.LastWriteTimeUtc = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc);
             var service = new HomeFolderService(root.FullName, (_, _) => []);
-            var snapshot = await service.LoadSongsAsync(root.FullName, CancellationToken.None);
+            var snapshot = await service.LoadSongsAsync(Path.Combine(root.FullName, "Songs"), CancellationToken.None);
             Assert.That(snapshot!.ReadPage(0, 64).Select(x => x.Name), Is.EqualTo(new[] { "Newest", "Old" }));
-            Assert.That(await service.LoadSongsAsync(old.FullName, CancellationToken.None), Is.Null);
+            Assert.That(await service.LoadSongsAsync(Path.Combine(old.FullName, "Songs"), CancellationToken.None), Is.Null);
+        }
+        finally { root.Delete(true); }
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task DiscoveryContinuesUntilExecutableHasSongsDirectory(bool songsIsFile)
+    {
+        var root = Directory.CreateTempSubdirectory("osu-scan-songs-");
+        try
+        {
+            var incomplete = root.CreateSubdirectory("incomplete");
+            var complete = root.CreateSubdirectory("complete");
+            await File.WriteAllTextAsync(Path.Combine(incomplete.FullName, "osu!.exe"), "");
+            if (songsIsFile) await File.WriteAllTextAsync(Path.Combine(incomplete.FullName, "Songs"), "");
+            await File.WriteAllTextAsync(Path.Combine(complete.FullName, "osu!.exe"), "");
+            complete.CreateSubdirectory("Songs");
+            IEnumerable<string> Candidates(CancellationToken token, Action skipped)
+            {
+                yield return incomplete.FullName;
+                yield return complete.FullName;
+                throw new AssertionException("Scan must stop after finding executable and Songs directory.");
+            }
+            var service = new HomeFolderService(root.FullName, Candidates);
+            Assert.That((await service.FindInstallationAsync(default)).Directory, Is.EqualTo(complete.FullName));
         }
         finally { root.Delete(true); }
     }
@@ -38,6 +63,7 @@ public class IncrementalFolderServiceTests
         try
         {
             await File.WriteAllTextAsync(Path.Combine(root.FullName, name), "");
+            root.CreateSubdirectory("Songs");
             var service = new HomeFolderService(root.FullName, (_, _) => [root.FullName]);
             Assert.That(await service.IsInstallationAsync(root.FullName, CancellationToken.None), Is.True);
             Assert.That((await service.FindInstallationAsync(CancellationToken.None)).Directory, Is.EqualTo(root.FullName));

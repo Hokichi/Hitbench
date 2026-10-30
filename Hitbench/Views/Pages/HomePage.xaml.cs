@@ -224,8 +224,21 @@ public partial class HomePage : UserControl
     }
 
     private void OnVisibilityChanged(object sender, DependencyPropertyChangedEventArgs e) => QueueCheck();
+    private bool locationInvoked;
+    private void OnLocateFolderClick(object sender, RoutedEventArgs e) => locationInvoked = true;
+
     private void OnStateChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (locationInvoked && e.PropertyName == nameof(HomePageVM.MapsetsAvailability) && viewModel.CanInteract)
+        {
+            locationInvoked = false;
+            Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() =>
+            {
+                if (!attached) return;
+                if (LocateMapsetsDirectoryButton.IsVisible) LocateMapsetsDirectoryButton.Focus();
+                else if (LocateOsuFolderButton.IsVisible) LocateOsuFolderButton.Focus();
+            }));
+        }
         if (e.PropertyName == nameof(HomePageVM.CanInteract) && !viewModel.CanInteract)
             CancelSongsScrollMotion();
         if (e.PropertyName == nameof(HomePageVM.SongsInventoryGeneration))

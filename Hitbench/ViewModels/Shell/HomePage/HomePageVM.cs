@@ -17,7 +17,7 @@ public partial class HomePageVM(
     IHomeFolderService folders, IAppSettingsService settings, IInstallationDialogService dialogs,
     IUiScheduler ui,
     IProjectFileService projectFiles, IMessenger messenger,
-    IProjectRemovalDialogService? removalDialogs = null, Func<TimeSpan, CancellationToken, Task>? searchDelay = null) : ObservableObject, System.ComponentModel.INotifyDataErrorInfo
+    IProjectRemovalDialogService? removalDialogs = null, Func<TimeSpan, CancellationToken, Task>? searchDelay = null, ISampleFileDialogService? picker = null) : ObservableObject, System.ComponentModel.INotifyDataErrorInfo
 {
     private readonly TaskCompletionSource projectsReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
     public OHsHomePanelState ProjectsState => !active ? OHsHomePanelState.Inactive : IsLoadingProjects ? OHsHomePanelState.Loading : CanRetryProjects ? OHsHomePanelState.Failed : projectsSnapshot is null ? OHsHomePanelState.Unavailable : OHsHomePanelState.Ready;
@@ -37,7 +37,7 @@ public partial class HomePageVM(
     [ObservableProperty] private bool isSearchingSongs;
     public int SongsInventoryGeneration => songsInventoryGeneration;
     public string MapsetInventoryText => songsInventory is null ? "" : string.Format(
-        System.Globalization.CultureInfo.CurrentCulture, "{0} in your osu! Songs folder", songsInventory.Count);
+        System.Globalization.CultureInfo.CurrentCulture, "{0} mapsets", songsInventory.Count);
 
     public ObservableCollection<FolderEntry> Projects { get; } = [];
     public ObservableCollection<FolderEntry> Songs { get; } = [];
@@ -74,7 +74,7 @@ public partial class HomePageVM(
     private int songsGeneration;
 
     public bool IsLoading => IsLoadingProjects || IsLoadingSongs;
-    public bool CanInteract => active && !IsInteractionBlocked && !RequiresShutdown && FatalError is null && !IsMutatingProjects;
+    public bool CanInteract => active && !isLocatingFolder && !IsInteractionBlocked && !RequiresShutdown && FatalError is null && !IsMutatingProjects;
     public string SongsStatus => IsCreatingProject ? "Creating project..." : SongsLoadStatus;
     public bool HasMoreProjects => active && projectsSnapshot is not null && Projects.Count < projectsSnapshot.Count;
     public bool HasMoreSongs => active && !IsSearchingSongs && songsSnapshot is not null && Songs.Count < songsSnapshot.Count;
@@ -90,6 +90,7 @@ public partial class HomePageVM(
     partial void OnIsAwaitingSongsPresentationChanged(bool value) => RefreshCommands();
     partial void OnIsProcessingChanged(bool value)
     {
+        RefreshCommands();
         if (!value && appliedSongSearchText != SongSearchText)
             OnSongSearchTextChanged(SongSearchText);
     }
@@ -100,7 +101,7 @@ public partial class HomePageVM(
     }
 
     private bool CanSearchSongs() => CanInteract && !IsCreatingProject;
-    private bool CanReloadSongs() => CanSearchSongs() && !IsLoadingSongs &&
+    private bool CanReloadSongs() => !isLocatingFolder && CanSearchSongs() && !IsLoadingSongs &&
         !IsSearchingSongs && !IsAwaitingSongsPresentation;
 
     [RelayCommand(CanExecute = nameof(CanSearchSongs))]
@@ -177,6 +178,10 @@ public partial class HomePageVM(
     private void RefreshCommands()
     {
         OnPropertyChanged(nameof(CanInteract));
+        OnPropertyChanged(nameof(MapsetsAvailability));
+        OnPropertyChanged(nameof(MapsetsDirectory));
+        LocateOsuFolderCommand.NotifyCanExecuteChanged();
+        LocateMapsetsDirectoryCommand.NotifyCanExecuteChanged();
         foreach (var name in new[] { nameof(ProjectsState), nameof(SongsState), nameof(CanUseProjects), nameof(CanUseSongs), nameof(IsSongsProcessing) }) OnPropertyChanged(name);
         OnPropertyChanged(nameof(CanSearchProjects));
         OnPropertyChanged(nameof(CanSelectMapset));
@@ -307,46 +312,18 @@ public partial class HomePageVM(
 
     private async Task<string?> ResolveInstallationAsync(CancellationToken token)
     {
-        var configured = (await settings.LoadAsync(token)).OsuPath;
+        var configured = (await settings.LoadAsync(token)).MapsetsDirectory;
         token.ThrowIfCancellationRequested();
         if (!string.IsNullOrWhiteSpace(configured))
         {
-            if (await folders.IsInstallationAsync(configured, token))
-            {
-                token.ThrowIfCancellationRequested();
-                return configured;
-            }
+            if (!Path.IsPathFullyQualified(configured)) throw new IOException("The mapsets directory must be absolute.");
+            return configured;
         }
-
         var result = await folders.FindInstallationAsync(token);
         token.ThrowIfCancellationRequested();
-        var path = result.Directory;
-        var manual = path is null;
-        if (manual) path = await dialogs.LocateAfterScanAsync(token);
+        if (result.Directory is not { } found || !await folders.IsInstallationAsync(found, token)) return null;
         token.ThrowIfCancellationRequested();
-        if (path is null)
-        {
-            CanRetrySongs = true;
-            return null;
-        }
-        bool valid;
-        try { valid = await folders.IsInstallationAsync(path, token); }
-        catch (Exception error) when (manual && error is IOException or UnauthorizedAccessException or ArgumentException)
-        {
-            valid = false;
-        }
-        token.ThrowIfCancellationRequested();
-        if (!valid)
-        {
-            if (!manual) throw new IOException("The discovered osu! installation is no longer available.");
-            await dialogs.ShowNotFoundAsync(token);
-            token.ThrowIfCancellationRequested();
-            CanRetrySongs = true;
-            return null;
-        }
-        await settings.SaveOsuPathAsync(path, token);
-        token.ThrowIfCancellationRequested();
-        return path;
+        return Path.Combine(found, "Songs");
     }
 
     private async Task PreparePanelAsync(bool projects, CancellationToken token, bool forceReload = false)
@@ -381,6 +358,9 @@ public partial class HomePageVM(
                     token.ThrowIfCancellationRequested();
                     if (!IsCurrent(false, generation)) return;
                 } while (query != SongSearchText);
+                if (snapshot is not null) await settings.SaveMapsetsDirectoryAsync(osuDirectory!, token);
+                token.ThrowIfCancellationRequested();
+                if (!IsCurrent(false, generation)) return;
                 songsInventory = snapshot;
                 songsSnapshot = filtered;
                 appliedSongSearchText = query;
@@ -527,6 +507,8 @@ public partial class HomePageVM(
         RetryProjectsCommand.Cancel();
         RetrySongsCommand.Cancel();
         ReloadSongsCommand.Cancel();
+        LocateOsuFolderCommand.Cancel();
+        LocateMapsetsDirectoryCommand.Cancel();
         SearchSongsCommand.Cancel();
         SearchProjectsCommand.Cancel();
         ToggleProjectPinCommand.Cancel();
@@ -546,7 +528,7 @@ public partial class HomePageVM(
     {
         var tasks = new[] { loading, CreateProjectCommand.ExecutionTask, ShowProjectCreationCommand.ExecutionTask, LoadMoreProjectsCommand.ExecutionTask,
             LoadMoreSongsCommand.ExecutionTask, RetryProjectsCommand.ExecutionTask, RetrySongsCommand.ExecutionTask,
-            ReloadSongsCommand.ExecutionTask }.Concat(searchOperations).Concat(projectOperations).ToArray();
+            ReloadSongsCommand.ExecutionTask, LocateOsuFolderCommand.ExecutionTask, LocateMapsetsDirectoryCommand.ExecutionTask }.Concat(searchOperations).Concat(projectOperations).ToArray();
         try { await Task.WhenAll(tasks.OfType<Task>()); }
         catch (OperationCanceledException) { }
         catch (Exception error) { Trace.TraceError("HomePage cleanup: {0}", error); }

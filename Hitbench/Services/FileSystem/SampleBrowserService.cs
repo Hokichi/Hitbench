@@ -17,6 +17,19 @@ public sealed partial class SampleBrowserService : ISampleBrowserService, IDispo
         this.openDecoder = openDecoder ?? (path => AudioDecoder.Open(path, this.memoryBudget));
         this.operationProgress = operationProgress; this.applicationDirectory = applicationDirectory;
     }
+    public Task<string> GetExistingAncestorAsync(string directory, CancellationToken token) => Task.Run(() =>
+    {
+        token.ThrowIfCancellationRequested();
+        string? candidate = Path.GetFullPath(directory);
+        while (candidate is not null)
+        {
+            token.ThrowIfCancellationRequested();
+            if (Directory.Exists(candidate)) return candidate;
+            candidate = Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(candidate));
+        }
+        return ""; // No available ancestor: open This PC rather than enumerate a missing path.
+    }, token);
+
     public Task<string> GetSavedDirectoryAsync(CancellationToken token) => Task.Run(() =>
     {
         token.ThrowIfCancellationRequested();

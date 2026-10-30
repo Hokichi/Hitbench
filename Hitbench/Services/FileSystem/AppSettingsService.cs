@@ -27,6 +27,7 @@ public sealed class AppSettingsService(string applicationDirectory) : IAppSettin
                 json["volume"] = volume;
                 changed = true;
             }
+            if (!json.ContainsKey("mapsetsDirectory")) { json["mapsetsDirectory"] = ""; changed = true; }
             if (!json.ContainsKey("osuPath"))
             {
                 json["osuPath"] = "";
@@ -52,6 +53,7 @@ public sealed class AppSettingsService(string applicationDirectory) : IAppSettin
             {
                 ContractResolver = new CamelCasePropertyNamesContractResolver()
             }))!;
+            settings.MapsetsDirectory = string.IsNullOrWhiteSpace(settings.MapsetsDirectory) ? "" : settings.MapsetsDirectory;
             settings.OsuPath = string.IsNullOrWhiteSpace(settings.OsuPath) ? "" : settings.OsuPath;
             if (string.IsNullOrWhiteSpace(settings.AsioDriverName)) settings.AsioDriverName = null;
             if (json["isMaximized"]?.Type == JTokenType.Null) settings.IsMaximized = false;
@@ -96,6 +98,20 @@ public sealed class AppSettingsService(string applicationDirectory) : IAppSettin
         finally { gate.Release(); }
     }
 
+    public async Task SaveMapsetsDirectoryAsync(string mapsetsDirectory, CancellationToken cancellationToken)
+    {
+        if (!Path.IsPathFullyQualified(mapsetsDirectory))
+            throw new ArgumentException("The installation path must be absolute.", nameof(mapsetsDirectory));
+        await gate.WaitAsync(cancellationToken);
+        try
+        {
+            var json = await ReadAsync(cancellationToken);
+            json["mapsetsDirectory"] = mapsetsDirectory;
+            await WriteAsync(json, cancellationToken);
+        }
+        finally { gate.Release(); }
+    }
+
     public async Task SaveWindowPlacementAsync(bool isMaximized, double restoredWidth, double restoredHeight,
         CancellationToken cancellationToken)
     {
@@ -125,6 +141,8 @@ public sealed class AppSettingsService(string applicationDirectory) : IAppSettin
                 throw new JsonSerializationException("volume must be a finite number or null.");
             if (json.TryGetValue("asioDriverName", out var driver) && driver.Type is not (JTokenType.String or JTokenType.Null))
                 throw new JsonSerializationException("asioDriverName must be a string or null.");
+            if (json.TryGetValue("mapsetsDirectory", out var mapsets) && mapsets.Type is not (JTokenType.String or JTokenType.Null))
+                throw new JsonSerializationException("mapsetsDirectory must be a string or null.");
             if (json.TryGetValue("osuPath", out var value) &&
                 value.Type is not (JTokenType.String or JTokenType.Null))
                 throw new JsonSerializationException("osuPath must be a string or null.");

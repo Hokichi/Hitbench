@@ -138,10 +138,10 @@ public sealed class UxPerformanceMeasurements
             {
                 File.Delete(Path.Combine(app.FullName,"data.json"));
                 var service = new HomeFolderService(app.FullName); var timer = Stopwatch.StartNew();
-                await service.LoadSongsAsync(osu.FullName,default);
+                await service.LoadSongsAsync(Path.Combine(osu.FullName, "Songs"),default);
                 var elapsed = timer.Elapsed.TotalMilliseconds;
                 Assert.That(service.MetadataReadCount, Is.EqualTo(count));
-                timer.Restart(); await service.ReloadSongsAsync(osu.FullName,default);
+                timer.Restart(); await service.ReloadSongsAsync(Path.Combine(osu.FullName, "Songs"),default);
                 Assert.That(service.MetadataReadCount, Is.EqualTo(count), "Unchanged refresh must not parse metadata again.");
                 if (run > 0) { cold.Add(elapsed); refresh.Add(timer.Elapsed.TotalMilliseconds); }
             }

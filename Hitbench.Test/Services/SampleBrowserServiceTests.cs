@@ -5,6 +5,28 @@ namespace Hitbench.Test.Services;
 
 public sealed class SampleBrowserServiceTests
 {
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task InitialDirectoryResolutionKeepsExistingOrFindsNearestParent(bool missing)
+    {
+        var root = Directory.CreateTempSubdirectory("initial-directory-");
+        using var browser = new SampleBrowserService();
+        try
+        {
+            var requested = missing ? Path.Combine(root.FullName, "removed", "Songs") : root.FullName;
+            Assert.That(await browser.GetExistingAncestorAsync(requested, default), Is.EqualTo(root.FullName));
+            Assert.CatchAsync<OperationCanceledException>(() => browser.GetExistingAncestorAsync(requested, new CancellationToken(true)));
+        }
+        finally { root.Delete(true); }
+    }
+    [Test]
+    public async Task UnavailableDriveResolvesToThisPc()
+    {
+        var letter = Enumerable.Range('A', 26).Select(c => (char)c).First(c => !DriveInfo.GetDrives().Any(d => char.ToUpperInvariant(d.Name[0]) == c));
+        using var browser = new SampleBrowserService();
+        Assert.That(await browser.GetExistingAncestorAsync($"{letter}:\\missing\\Songs", default), Is.Empty);
+    }
+
     [Test]
     public async Task SavedDirectoryCanBeRecreatedWithoutProjectContext()
     {
