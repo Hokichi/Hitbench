@@ -7,6 +7,40 @@ namespace Hitbench.Test.Services;
 
 public class OHsAudioOperationProgressTests
 {
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task NestedFailureOrCancellationLeavesIndependentOperationsUsable(bool cancel)
+    {
+        var messenger = new WeakReferenceMessenger();
+        var messages = new List<OHsAudioBusyChangedMessage>();
+        messenger.Register<OHsAudioBusyChangedMessage>(messages, (_, m) => messages.Add(m));
+        var progress = new OHsAudioOperationProgress(messenger, new ImmediateUiScheduler(), (_, _) => Task.CompletedTask);
+        var gate = new TaskCompletionSource();
+        var task = progress.RunAsync("outer", _ => progress.RunAsync("inner", _ => gate.Task, default), default);
+        if (cancel) gate.SetCanceled(); else gate.SetException(new IOException("copy failed"));
+        try { await task; Assert.Fail("Expected failure"); } catch (Exception e) when (e is IOException or OperationCanceledException) { }
+        Assert.That(messages.Select(m => m.IsBusy), Is.EqualTo(new[] { true, false }));
+        var nextGate = new TaskCompletionSource();
+        var next = progress.RunAsync("next", _ => nextGate.Task, default);
+        nextGate.SetResult(); await next;
+        Assert.That(messages.Select(m => m.OperationId).Distinct().Count(), Is.EqualTo(2));
+    }
+
+    [Test]
+    public async Task NestedWorkUsesOneOperationThroughCompletion()
+    {
+        var messenger = new WeakReferenceMessenger();
+        var messages = new List<OHsAudioBusyChangedMessage>();
+        messenger.Register<OHsAudioBusyChangedMessage>(messages, (_, m) => messages.Add(m));
+        var progress = new OHsAudioOperationProgress(messenger, new ImmediateUiScheduler(), (_, _) => Task.CompletedTask);
+        var gate = new TaskCompletionSource();
+        var task = progress.RunAsync("import", _ => progress.RunAsync("refresh", _ => gate.Task, default), default);
+        Assert.That(messages.Count(m => m.IsBusy), Is.EqualTo(1));
+        Assert.That(task.IsCompleted, Is.False);
+        gate.SetResult();
+        await task;
+        Assert.That(messages.Select(m => m.IsBusy), Is.EqualTo(new[] { true, false }));
+    }
     [Test]
     public async Task FastWorkIsSilent()
     {

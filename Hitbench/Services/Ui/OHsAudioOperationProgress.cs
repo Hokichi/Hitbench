@@ -6,6 +6,7 @@ namespace Hitbench.Services.Ui;
 public sealed class OHsAudioOperationProgress(IMessenger messenger, Func<IUiScheduler> getScheduler,
     Func<TimeSpan, CancellationToken, Task>? delay = null)
 {
+    private readonly AsyncLocal<bool> nested = new();
     public OHsAudioOperationProgress(IMessenger messenger, IUiScheduler scheduler, Func<TimeSpan, CancellationToken, Task>? delay = null)
         : this(messenger, () => scheduler, delay) { }
 
@@ -15,6 +16,8 @@ public sealed class OHsAudioOperationProgress(IMessenger messenger, Func<IUiSche
     public async Task<T> RunAsync<T>(string phase, Func<CancellationToken, Task<T>> operation, CancellationToken token)
     {
         token.ThrowIfCancellationRequested();
+        if (nested.Value) return await operation(token).ConfigureAwait(false);
+        nested.Value = true;
         using var timerCancellation = CancellationTokenSource.CreateLinkedTokenSource(token);
         var id = Guid.NewGuid();
         var visible = false;
@@ -37,6 +40,7 @@ public sealed class OHsAudioOperationProgress(IMessenger messenger, Func<IUiSche
         }
         finally
         {
+            nested.Value = false;
             timerCancellation.Cancel();
             // Keep ownership even if a presentation recipient fails during the start notification.
             try { await work.ConfigureAwait(false); } catch { /* Cleanup must not replace the original failure. */ }
