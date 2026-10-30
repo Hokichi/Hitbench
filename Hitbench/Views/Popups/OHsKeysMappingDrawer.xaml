@@ -47,8 +47,6 @@
             </Style.Triggers>
         </Style>
 
-
-
         <ItemsPanelTemplate x:Key="OHsKeysKeyboardItemsPanel">
             <popups:OHsKeysMappingPianoPanel />
         </ItemsPanelTemplate>

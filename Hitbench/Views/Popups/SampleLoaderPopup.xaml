@@ -127,7 +127,6 @@
             <Setter Property="Width" Value="16" />
             <Style.Triggers>
 
-
                 <DataTrigger Binding="{Binding IsDirectory, Mode=OneWay}" Value="True">
                     <Setter Property="Visibility" Value="Collapsed" />
                 </DataTrigger>
@@ -469,7 +468,6 @@
                 <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
                     <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
                 </DataTrigger>
-
             </Style.Triggers>
         </Style>
         <CollectionViewSource x:Key="OHsSampleLoaderLocationsView" Source="{Binding Locations, Mode=OneWay}">

@@ -62,7 +62,7 @@
             </Style.Triggers>
         </Style>
 
-<Style
+        <Style
             x:Key="OHsWorkstationControlPointPillStyle"
             BasedOn="{StaticResource CardBorderStyle}"
             TargetType="Border">
@@ -208,7 +208,6 @@
                     x:Name="TimelineControl"
                     Grid.Column="2"
                     IsShortLayout="{Binding IsShortLayout, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationAudioCard}, Mode=OneWay}" />
-
             </Grid>
         </Border>
     </Grid>
