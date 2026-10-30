@@ -19,7 +19,7 @@ public class WorkstationInstrumentalEditingTests
         var opens = 0;
         dialogs.Arrangement = (_, _) => { opens++; return Task.CompletedTask; };
         var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [track], Offsets = [0], BPMs = [120] })) },
-            new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), messenger: messenger, instrumentDialogs: dialogs);
+            new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), messenger: messenger, instrumentDialogs: dialogs, saveDelay: (_, _) => Task.CompletedTask);
         try
         {
             await owner.LoadAsync("project.json", default); owner.AcknowledgePresentationReady(owner.LoadGeneration);
@@ -66,7 +66,7 @@ public class WorkstationInstrumentalEditingTests
             await Task.Delay(Timeout.Infinite, token);
         };
         var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [track], Offsets = [0], BPMs = [120] })) },
-            new MarkerPlaybackCoordinator(audio, Task.Delay), new ImmediateUiScheduler(), projectFiles: saves, messenger: messenger, instrumentDialogs: dialogs);
+            new MarkerPlaybackCoordinator(audio, Task.Delay), new ImmediateUiScheduler(), projectFiles: saves, messenger: messenger, instrumentDialogs: dialogs, saveDelay: (_, _) => Task.CompletedTask);
         try
         {
             await owner.LoadAsync("project.json", default); owner.AcknowledgePresentationReady(owner.LoadGeneration);
@@ -96,7 +96,7 @@ public class WorkstationInstrumentalEditingTests
         var dialogs = new StubInstrumentalTrackDialogService(); InstrumentalSaveStateChangedMessage? state = null;
         messenger.Register<InstrumentalSaveStateChangedMessage>(this, (_, m) => state = m);
         var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [track], Offsets = [0], BPMs = [120] })) },
-            new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), projectFiles: saves, messenger: messenger, instrumentDialogs: dialogs);
+            new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), projectFiles: saves, messenger: messenger, instrumentDialogs: dialogs, saveDelay: (_, _) => Task.CompletedTask);
         dialogs.Mapping = async (data, _) =>
         {
             messenger.Send(new SetInstrumentalKeyMappingRequestedMessage(data.Context, Guid.NewGuid(), "C4", "missing.wav"));
@@ -115,7 +115,7 @@ public class WorkstationInstrumentalEditingTests
         var saves = new DelayedProjectFileService(); saves.Release();
         var project = new ProjectData { Tracks = [new InstrumentalTrack { Notes = [new() { Key = "C4", Timestamp = 10000 }] }], Offsets = [0], BPMs = [120] };
         var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", project)) },
-            new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), projectFiles: saves);
+            new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), projectFiles: saves, saveDelay: (_, _) => Task.CompletedTask);
         try { await owner.LoadAsync("project.json", default); Assert.That(owner.ErrorMessage, Does.Contain("beyond the song")); Assert.That(owner.CanAddInstrumentalTrack, Is.False); Assert.That(saves.Writes, Is.Zero); }
         finally { await owner.DeactivateAsync(); }
     }
@@ -128,7 +128,7 @@ public class WorkstationInstrumentalEditingTests
         var saves = new DelayedProjectFileService(); saves.Release();
         var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "song.wav", project)) },
             new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(),
-            projectFiles: saves, messenger: messenger, instrumentDialogs: dialogs);
+            projectFiles: saves, messenger: messenger, instrumentDialogs: dialogs, saveDelay: (_, _) => Task.CompletedTask);
         InstrumentalTrackContext? old = null; InstrumentalEditResultMessage? result = null;
         messenger.Register<InstrumentalEditResultMessage>(this, (_, m) => result = m);
         dialogs.Arrangement = (ctx, _) =>
@@ -158,7 +158,7 @@ public class WorkstationInstrumentalEditingTests
     [Test]
     public async Task InstrumentCreationNeedsNoFiles()
     {
-        var owner = new WorkstationPageVM(new StubWorkstationSourceService(), new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler());
+        var owner = new WorkstationPageVM(new StubWorkstationSourceService(), new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), saveDelay: (_, _) => Task.CompletedTask);
         try { await owner.LoadAsync("project.json", default); owner.AcknowledgePresentationReady(owner.LoadGeneration); owner.AddPianoTrackCommand.Execute(null); Assert.That(owner.Tracks.OfType<InstrumentalTrack>().Count(), Is.EqualTo(1)); }
         finally { await owner.DeactivateAsync(); }
     }

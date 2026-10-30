@@ -10,7 +10,7 @@ public class WorkstationControlPointStateTests
     internal static WorkstationPageVM Create(ProjectData project, StubWorkstationAudioService audio,
         Hitbench.Services.ProjectFiles.IProjectFileService? files = null) =>
         new(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", project)) },
-            new MarkerPlaybackCoordinator(audio, Task.Delay), new ImmediateUiScheduler(), projectFiles: files);
+            new MarkerPlaybackCoordinator(audio, Task.Delay), new ImmediateUiScheduler(), projectFiles: files, saveDelay: (_, _) => Task.CompletedTask);
 
     internal static async Task Ready(WorkstationPageVM owner)
     {

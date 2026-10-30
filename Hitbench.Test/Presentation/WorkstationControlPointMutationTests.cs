@@ -15,7 +15,7 @@ public class WorkstationControlPointMutationTests
         var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", project)) },
             new MarkerPlaybackCoordinator(audio, Task.Delay), new ImmediateUiScheduler(), new StubSampleFileService(["a.wav"]),
             new StubSampleFileDialogService([]), messenger: new CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger(),
-            trackRemovalDialog: new StubTrackRemovalDialogService(), sampleManagementDialog: new StubSampleManagementDialogService(), instrumentDialogs: new StubInstrumentalTrackDialogService());
+            trackRemovalDialog: new StubTrackRemovalDialogService(), sampleManagementDialog: new StubSampleManagementDialogService(), instrumentDialogs: new StubInstrumentalTrackDialogService(), saveDelay: (_, _) => Task.CompletedTask);
         try
         {
             await WorkstationControlPointStateTests.Ready(owner); audio.Play();

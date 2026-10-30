@@ -33,7 +33,7 @@ public class WorkstationHistoryTests
         saves.Release();
         vm = new WorkstationPageVM(source, new MarkerPlaybackCoordinator(audio, Task.Delay),
             new ImmediateUiScheduler(), files, new StubSampleFileDialogService("a.wav"), saves,
-            trackRemovalDialog: removal);
+            trackRemovalDialog: removal, saveDelay: (_, _) => Task.CompletedTask);
         await vm.LoadAsync("project.json", CancellationToken.None);
         vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;
     }
@@ -280,7 +280,7 @@ public class WorkstationHistoryTests
         await vm.DeactivateAsync();
         saves = new DelayedProjectFileService();
         vm = new WorkstationPageVM(source, new MarkerPlaybackCoordinator(audio = new StubWorkstationAudioService(), Task.Delay),
-            new ImmediateUiScheduler(), files, projectFiles: saves);
+            new ImmediateUiScheduler(), files, projectFiles: saves, saveDelay: (_, _) => Task.CompletedTask);
         await vm.LoadAsync("project.json", CancellationToken.None);
         vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;
         vm.PlaceSample(first, 125);
@@ -318,7 +318,7 @@ public class WorkstationHistoryTests
         await vm.DeactivateAsync();
         var failingSaves = new FailOnceProjectFileService();
         vm = new WorkstationPageVM(source, new MarkerPlaybackCoordinator(audio = new StubWorkstationAudioService(), Task.Delay),
-            new ImmediateUiScheduler(), files, projectFiles: failingSaves);
+            new ImmediateUiScheduler(), files, projectFiles: failingSaves, saveDelay: (_, _) => Task.CompletedTask);
         await vm.LoadAsync("project.json", CancellationToken.None);
         vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;
         vm.PlaceSample(first, 125);

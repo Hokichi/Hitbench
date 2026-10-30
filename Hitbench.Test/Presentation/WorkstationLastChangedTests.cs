@@ -21,6 +21,21 @@ public sealed class WorkstationLastChangedTests
         return vm;
     }
 
+    [Test, Repeat(20)]
+    public async Task SnapshotCreationWaitsForFlushOrQuietPeriod()
+    {
+        var files = new DelayedProjectFileService(); files.Release();
+        var clock = new ManualTimeProvider(); clock.SetUtcNow(Instant);
+        var vm = await Ready(files, clock);
+        try
+        {
+            for (var i = 0; i < 100; i++) vm.ToggleTracksCollapsedCommand.Execute(null);
+            Assert.That(vm.SaveSnapshotCount, Is.Zero);
+            await vm.FlushSavesAsync();
+            Assert.That(vm.SaveSnapshotCount, Is.EqualTo(1));
+        }
+        finally { await vm.DeactivateAsync(); }
+    }
     [Test]
     public async Task BurstKeepsOnlyLatestPendingSnapshotAndFlushDrainsNewWork()
     {

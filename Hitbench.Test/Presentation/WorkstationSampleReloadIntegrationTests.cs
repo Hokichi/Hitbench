@@ -77,6 +77,7 @@ public class WorkstationSampleReloadIntegrationTests
         Assert.That(vm.Tracks.Single().Name, Is.EqualTo("name edited before refresh"));
         Assert.That(page.HandlePlaybackKey(Key.F5, ModifierKeys.None, false, name), Is.True);
         UiTestPump.Run(page.PlaybackInputCompletion);
+        UiTestPump.Run(vm.FlushSavesAsync());
         Assert.That(saves.LatestJson, Does.Contain("name edited before refresh"));
         Assert.That(vm.Tracks.Single().Name, Is.EqualTo("name edited before refresh"));
         Assert.That(vm.CanPlay, Is.True); Assert.That(button.IsEnabled, Is.True);

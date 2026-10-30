@@ -34,7 +34,7 @@ public partial class WorkstationPageVM(
     TimeProvider? timeProvider = null,
     IOHsExportDialogService? exportDialog = null,
     IOHsExportDirectoryLauncher? directoryLauncher = null,
-    IOHsTrackAppearanceDialogService? trackAppearanceDialog = null) : ObservableObject
+    IOHsTrackAppearanceDialogService? trackAppearanceDialog = null, Func<TimeSpan, CancellationToken, Task>? saveDelay = null) : ObservableObject
 {
     private readonly IWorkstationAudioService audioService = playback.Audio;
     private bool subscribedToPlayback;
@@ -203,7 +203,7 @@ public partial class WorkstationPageVM(
             reloadSamplesCancellation = null;
             playbackUpdateCancellation?.Dispose();
             playbackUpdateCancellation = null;
-            NotifyCommandState();
+            await uiScheduler.InvokeAsync(NotifyCommandState, CancellationToken.None);
         }
     }
 
@@ -364,7 +364,7 @@ public partial class WorkstationPageVM(
                 if (activeNodeEdit is not null) await WaitForReturnAsync(activeNodeEdit);
                 await WaitForReturnAsync(playbackUpdates);
                 QueueSave(CommitPendingZoom(false));
-                await WaitForReturnAsync(saveTail);
+                await WaitForReturnAsync(AwaitProjectSavesAsync());
                 if (lastSaveError is not null) throw new IOException("Could not save project.", lastSaveError);
             }
             if (token.IsCancellationRequested) return false;

@@ -83,7 +83,7 @@ public class WorkstationTrackAuditionTests
         var source = new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(
             new WorkstationSource("map.osu", "audio.wav", ProjectDataSerializer.Deserialize(json))) };
         var audio = new StubWorkstationAudioService(); var saves = new DelayedProjectFileService(); saves.Release();
-        var vm = new WorkstationPageVM(source, new MarkerPlaybackCoordinator(audio, Task.Delay), new ImmediateUiScheduler(), projectFiles: saves);
+        var vm = new WorkstationPageVM(source, new MarkerPlaybackCoordinator(audio, Task.Delay), new ImmediateUiScheduler(), projectFiles: saves, saveDelay: (_, _) => Task.CompletedTask);
         await vm.LoadAsync("project.json", CancellationToken.None);
         Assert.That(audio.SampleUpdates.First().Select(e => e.FileName), Is.EqualTo(new[] { "b.wav" }));
         vm.AcknowledgePresentationReady(vm.LoadGeneration);
@@ -161,7 +161,7 @@ public class WorkstationTrackAuditionTests
         var vm = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(
             new WorkstationSource("map.osu", "audio.wav", Project([track]))) },
             new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(),
-            files, dialog, projectFiles: saves);
+            files, dialog, projectFiles: saves, saveDelay: (_, _) => Task.CompletedTask);
         await vm.LoadAsync("project.json", default); vm.AcknowledgePresentationReady(vm.LoadGeneration);
         var import = vm.ImportSamplesAsync();
         vm.SetTrackMuted(track, false); vm.SetTrackSoloed(track, false);
@@ -182,7 +182,7 @@ public class WorkstationTrackAuditionTests
         var vm = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(
             new WorkstationSource("map.osu", "audio.wav", Project([a, b]))) },
             new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(),
-            new StubSampleFileService(["a.wav", "b.wav"]), projectFiles: saves, nodePasteDialog: dialog);
+            new StubSampleFileService(["a.wav", "b.wav"]), projectFiles: saves, nodePasteDialog: dialog, saveDelay: (_, _) => Task.CompletedTask);
         await vm.LoadAsync("project.json", default); vm.AcknowledgePresentationReady(vm.LoadGeneration);
         vm.SelectNode(a, a.Samples.Single(), false); vm.CopySelectedNodes(); vm.SelectedTrack = b;
         await vm.SeekCommand.ExecuteAsync(TimeSpan.FromMilliseconds(125));
@@ -225,7 +225,7 @@ public class WorkstationTrackAuditionTests
     private static WorkstationPageVM CreateVM(StubWorkstationAudioService audio, IProjectFileService saves, Track[] tracks,
         StubTrackRemovalDialogService? dialog = null) => new(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(
             new WorkstationSource("map.osu", "audio.wav", Project(tracks))) }, new MarkerPlaybackCoordinator(audio, Task.Delay),
-            new ImmediateUiScheduler(), projectFiles: saves, trackRemovalDialog: dialog);
+            new ImmediateUiScheduler(), projectFiles: saves, trackRemovalDialog: dialog, saveDelay: (_, _) => Task.CompletedTask);
     private static async Task<(WorkstationPageVM Vm, StubWorkstationAudioService Audio, DelayedProjectFileService Saves)> CreateReadyAsync(params Track[] tracks)
     {
         var audio = new StubWorkstationAudioService(); var saves = new DelayedProjectFileService(); saves.Release();

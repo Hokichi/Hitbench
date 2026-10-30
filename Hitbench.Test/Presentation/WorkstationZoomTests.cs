@@ -177,7 +177,7 @@ public class WorkstationZoomTests
     {
         var saves = new FailOnceProjectFileService();
         var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), projectFiles: saves,
-            zoomDelay: (_, token) => Task.Delay(Timeout.Infinite, token));
+            zoomDelay: (_, token) => Task.Delay(Timeout.Infinite, token), saveDelay: (_, _) => Task.CompletedTask);
         await Load(vm);
         vm.ZoomInCommand.Execute(null);
         Assert.ThrowsAsync<IOException>(() => vm.FlushSavesAsync());
@@ -192,7 +192,7 @@ public class WorkstationZoomTests
     {
         var saves = new DelayedProjectFileService();
         saves.Release();
-        return (new WorkstationPageVM(new StubWorkstationSourceService(), new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), projectFiles: saves, zoomDelay: delay), saves);
+        return (new WorkstationPageVM(new StubWorkstationSourceService(), new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), projectFiles: saves, zoomDelay: delay, saveDelay: (_, _) => Task.CompletedTask), saves);
     }
 
     private static async Task Load(WorkstationPageVM vm)
@@ -215,7 +215,7 @@ public class WorkstationZoomTests
     {
         var project = ProjectDataSerializer.Deserialize($"{{\"WorkstationZoom\":{stored}}}");
         var source = new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav", project)) };
-        var vm = new WorkstationPageVM(source, new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler());
+        var vm = new WorkstationPageVM(source, new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), saveDelay: (_, _) => Task.CompletedTask);
         await vm.LoadAsync("project.json", CancellationToken.None);
         Assert.That(vm.ZoomFactor, Is.EqualTo(expected));
         await vm.DeactivateAsync();
@@ -224,7 +224,7 @@ public class WorkstationZoomTests
     [Test]
     public async Task ZoomCommandsClampAt8And128()
     {
-        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler());
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), saveDelay: (_, _) => Task.CompletedTask);
         await vm.LoadAsync("project.json", CancellationToken.None);
         vm.AcknowledgePresentationReady(vm.LoadGeneration);
         Assert.That(vm.ZoomFactor, Is.EqualTo(32));
