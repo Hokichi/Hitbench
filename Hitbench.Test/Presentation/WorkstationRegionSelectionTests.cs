@@ -20,6 +20,7 @@ public class WorkstationRegionSelectionTests
     private InMemoryView view = null!;
     private BeatGridView[] grids = [];
     private Sample first = null!, second = null!;
+    private DelayedProjectFileService saves = null!;
 
     [SetUp]
     public void Setup()
@@ -30,9 +31,10 @@ public class WorkstationRegionSelectionTests
         var data = new ProjectData { Offsets = [0], BPMs = [120], Tracks =
             [new Track { SelectedSampleFileName = "a.wav", Samples = [first] },
              new Track { SelectedSampleFileName = "b.wav", Samples = [second] }] };
+        saves = new DelayedProjectFileService(); saves.Release();
         vm = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav", data)) },
             new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(),
-            new StubSampleFileService(["a.wav", "b.wav"]), nodePasteDialog: new StubNodePasteDialogService());
+            new StubSampleFileService(["a.wav", "b.wav"]), projectFiles: saves, nodePasteDialog: new StubNodePasteDialogService());
         page = new WorkstationPage(vm); page.SetProjectPath("project.json");
         view = new InMemoryView(new Window { Content = page, Width = 1100, Height = 800 });
         UiTestPump.Run(page.LoadCompletion); view.UpdateLayout();
@@ -254,6 +256,24 @@ public class WorkstationRegionSelectionTests
         Assert.That(vm.SelectedSamples.Contains(vm.Tracks.Last().Samples.Single()), Is.False);
         Assert.That(((ListBox)((Hitbench.Views.Pages.OHsWorkstationTrackList)page.FindName("TrackListComponent")).FindName("TrackList")).ItemContainerGenerator.ContainerFromItem(vm.Tracks.Last()), Is.Null);
     }
+    [Test]
+    public void ScrolledSelectionCanEditAndReturnWithLatestSnapshot()
+    {
+        StartBox();
+        var point = PagePoint(1, 2000, grids[1].ActualHeight - 1);
+        page.UpdateNodePointer(point, null, default);
+        page.TrackListComponent.AdvanceRegionSelection(TimeSpan.FromMilliseconds(50));
+        view.UpdateLayout(); Release();
+        Assert.That(vm.SelectedSamples, Is.Not.Empty);
+        vm.DeleteSelectedNodesCommand.Execute(null);
+        var returning = vm.PrepareToReturnAsync(default); UiTestPump.Run(returning);
+        Assert.That(returning.Result, Is.True);
+        var saved = Hitbench.Services.ProjectFiles.ProjectDataSerializer.Deserialize(saves.LatestJson!);
+        Assert.That(saved.Tracks.SelectMany(track => track.Samples), Is.Empty);
+        Assert.That(page.TrackListComponent.IsRegionAutoScrollActive, Is.False);
+        Assert.That(vm.HasPendingSaves, Is.False);
+    }
+
     [Test]
     public void VerticalAutoscrollKeepsOriginAfterRowRecycling()
     {
