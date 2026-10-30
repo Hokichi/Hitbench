@@ -12,7 +12,7 @@ using Hitbench.Services.Ui;
 namespace Hitbench.ViewModels.Popups;
 
 public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, ISamplePreviewService preview,
-    IUiScheduler uiScheduler, PlaybackVolumeSettings volumes) : ObservableObject
+    IUiScheduler uiScheduler, PlaybackVolumeSettings volumes, Func<TimeSpan, CancellationToken, Task>? searchDelay = null) : ObservableObject
 {
     private readonly CancellationTokenSource lifetime = new();
     private readonly HashSet<Task> operations = [];

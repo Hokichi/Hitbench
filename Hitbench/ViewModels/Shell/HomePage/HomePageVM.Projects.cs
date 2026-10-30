@@ -39,22 +39,24 @@ public partial class HomePageVM
     partial void OnIsMutatingProjectsChanged(bool value) => RefreshCommands();
     partial void OnProjectSearchTextChanged(string value)
     {
-        if (active && projectsInventory is not null) SearchProjectsCommand.Execute(null);
+        if (active && projectsInventory is not null) SearchProjectsCommand.Execute(true);
     }
 
     [RelayCommand(AllowConcurrentExecutions = true)]
-    private async Task SearchProjectsAsync(CancellationToken cancellationToken)
+    private async Task SearchProjectsAsync(bool? debounce, CancellationToken cancellationToken)
     {
         if (!active || projectsInventory is null) return;
-        var operation = ApplyProjectQueryAsync(cancellationToken);
+        var operation = ApplyProjectQueryAsync(debounce == true, cancellationToken);
         projectOperations.Add(operation);
         try { await operation; }
         finally { projectOperations.Remove(operation); }
     }
 
-    private async Task ApplyProjectQueryAsync(CancellationToken cancellationToken)
+    private async Task ApplyProjectQueryAsync(bool debounce, CancellationToken cancellationToken)
     {
+        projectQueryCancellation?.Cancel();
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token, cancellationToken);
+        projectQueryCancellation = linked;
         var generation = ++projectsGeneration;
         var inventory = projectsInventory!;
         var query = ProjectSearchText;
@@ -62,17 +64,26 @@ public partial class HomePageVM
         SetBusy(true, true);
         try
         {
+            if (debounce && !string.IsNullOrEmpty(query)) await (searchDelay ?? Task.Delay)(TimeSpan.FromMilliseconds(150), linked.Token);
             var snapshot = await Task.Run(() => mapsetPath is null ? inventory.FilterProjects(query, linked.Token)
                 : inventory.FilterProjectsByMapset(mapsetPath, linked.Token), linked.Token);
             linked.Token.ThrowIfCancellationRequested();
             if (!IsCurrent(true, generation)) return;
+            var page = snapshot.ReadPage(0, 64);
             projectsSnapshot = snapshot;
             Projects.Clear();
-            await PublishPageAsync(true, snapshot, generation, 64, linked.Token);
+            foreach (var row in page)
+            {
+                linked.Token.ThrowIfCancellationRequested();
+                if (!IsCurrent(true, generation)) return;
+                Projects.Add(row);
+            }
+            RebuildProjectItems();
+            RefreshCommands();
         }
         catch (OperationCanceledException) when (linked.IsCancellationRequested) { }
         catch (Exception error) { if (IsCurrent(true, generation)) FailPanel(true, error); }
-        finally { if (IsCurrent(true, generation)) SetBusy(true, false); }
+        finally { if (ReferenceEquals(projectQueryCancellation, linked)) projectQueryCancellation = null; if (IsCurrent(true, generation)) SetBusy(true, false); }
     }
 
     private void RebuildProjectItems()

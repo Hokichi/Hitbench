@@ -166,10 +166,10 @@ public sealed class SampleLoaderBasketTests
             await vm.SetCheckedAsync(first, true);
             await vm.NavigateCommand.ExecuteAsync(folderB);
             await vm.SetCheckedAsync(second, true);
-            vm.SearchText = "no match";
+            vm.SearchText = "no match"; await vm.SearchCompletion;
             Assert.That(vm.VisibleEntries, Is.Empty);
             Assert.That(vm.CheckedCount, Is.EqualTo(2));
-            vm.SearchText = "SAME";
+            vm.SearchText = "SAME"; await vm.SearchCompletion;
             Assert.That(vm.VisibleEntries.Single(), Is.SameAs(second));
             await vm.NavigateCommand.ExecuteAsync(folderA);
             Assert.That(first.IsChecked, Is.True);

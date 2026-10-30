@@ -69,7 +69,24 @@ public sealed partial class SampleLoaderPopupVM
     public string SelectionSummary => string.Format(CultureInfo.CurrentCulture, CheckedCount == 1 ? "{0} sample" : "{0} samples", CheckedCount);
     public string SelectedDurationText => selectedSamples.Any(x => x.Metadata is null || x.IsMetadataLoading || x.IsMetadataUnavailable) ? "—" :
         string.Format(CultureInfo.CurrentCulture, "{0:0.000} s", selectedSamples.Sum(x => x.Metadata!.Duration.TotalSeconds));
-    partial void OnSearchTextChanged(string value) { rangeAnchor = null; RefreshVisibleEntries(); }
+    private CancellationTokenSource? searchCancellation;
+    internal Task SearchCompletion { get; private set; } = Task.CompletedTask;
+    partial void OnSearchTextChanged(string value)
+    {
+        rangeAnchor = null;
+        searchCancellation?.Cancel();
+        var cancellation = searchCancellation = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);
+        SearchCompletion = OwnAsync(async () =>
+        {
+            try
+            {
+                if (!string.IsNullOrEmpty(value)) await (searchDelay ?? Task.Delay)(TimeSpan.FromMilliseconds(150), cancellation.Token);
+                await UpdateAsync(() => { if (!cancellation.IsCancellationRequested && SearchText == value) RefreshVisibleEntries(); });
+            }
+            catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { }
+            finally { if (ReferenceEquals(searchCancellation, cancellation)) searchCancellation = null; cancellation.Dispose(); }
+        });
+    }
     private void RefreshVisibleEntries()
     {
         visibleEntries.Clear();
