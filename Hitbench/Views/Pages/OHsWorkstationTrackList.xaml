@@ -1,5 +1,5 @@
 <UserControl
-    x:Class="Hitbench.Views.Pages.OHsWorkstationTrackList"
+    x:Class="Hitbench.Views.Pages.OHsWorkstationTrackList" AllowDrop="True" Background="Transparent" DragOver="OnSampleDragOver" Drop="OnSampleDrop"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:converters="clr-namespace:Hitbench.Resources.Converters"

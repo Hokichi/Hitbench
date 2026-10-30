@@ -19,6 +19,7 @@ public partial class ManageSamplesDrawer : UserControl,IOHsShellDrawer
     public ManageSamplesDrawer(ManageSamplesPopupVM viewModel)
     {
         InitializeComponent(); this.viewModel = viewModel; DataContext = viewModel;
+        InitializeSampleDrag();
         ((ObjectDataProvider)Resources["OHsManageSamplesOwner"]).ObjectInstance = this;
         Loaded += OnDrawerLoaded;
         Unloaded += OnDrawerUnloaded;
