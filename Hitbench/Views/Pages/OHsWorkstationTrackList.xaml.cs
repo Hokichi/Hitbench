@@ -29,6 +29,7 @@ public partial class OHsWorkstationTrackList : UserControl
         InitializeComponent();
         ((ObjectDataProvider)Resources["OHsWorkstationTrackListSource"]).ObjectInstance = this;
         InitializeNodeInteraction();
+        Unloaded += (_, e) => { if (ReferenceEquals(e.OriginalSource, this)) CancelNodePointer(); };
         InitializeTrackReorder();
         DataContextChanged += OnViewModelChanged;
     }
@@ -40,6 +41,7 @@ public partial class OHsWorkstationTrackList : UserControl
     }
     private void OnPresentationChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (IsRegionSelectionActive && (!viewModel.IsSelectionMode || e.PropertyName == nameof(WorkstationPageVM.ZoomFactor))) CancelNodePointer();
         if (e.PropertyName == nameof(WorkstationPageVM.IsSampleConfigurationOpen) && viewModel.IsSampleConfigurationOpen) CancelNodePointer();
         if (e.PropertyName == nameof(WorkstationPageVM.IsSelectionMode) && !viewModel.IsSelectionMode) CancelTrackPointer();
         if (e.PropertyName == nameof(WorkstationPageVM.LoadPhase) && viewModel.IsLoading) CancelNodePointer();
@@ -93,6 +95,7 @@ public partial class OHsWorkstationTrackList : UserControl
     private void OnTracksCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         trackOrderRevision++;
+        if (IsRegionSelectionActive) CancelNodePointer();
         foreach (var row in RealizedRows(TrackList)) row.RefreshPresentation();
         CancelTrackPointer();
         if (e.Action == NotifyCollectionChangedAction.Add && !deactivationStarted && viewModel.IsInteractionReady && e.NewItems is { Count: > 0 })

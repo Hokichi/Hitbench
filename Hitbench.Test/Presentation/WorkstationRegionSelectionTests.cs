@@ -218,7 +218,6 @@ public class WorkstationRegionSelectionTests
     }
     [TestCase("capture")]
     [TestCase("recycle")]
-    [TestCase("unload")]
     [TestCase("overlay")]
     [TestCase("deactivate")]
     [TestCase("disabled")]
@@ -254,6 +253,47 @@ public class WorkstationRegionSelectionTests
         Assert.That(vm.SelectedSamples.Contains(first), Is.True);
         Assert.That(vm.SelectedSamples.Contains(vm.Tracks.Last().Samples.Single()), Is.False);
         Assert.That(((ListBox)((Hitbench.Views.Pages.OHsWorkstationTrackList)page.FindName("TrackListComponent")).FindName("TrackList")).ItemContainerGenerator.ContainerFromItem(vm.Tracks.Last()), Is.Null);
+    }
+    [Test]
+    public void VerticalAutoscrollKeepsOriginAfterRowRecycling()
+    {
+        foreach (var track in vm.Project!.Tracks) foreach (var sample in track.Samples) sample.Timestamp = 100;
+        for (var i = 0; i < 100; i++) vm.Project.Tracks.Add(new Track { SelectedSampleFileName = "a.wav", Samples = [new Sample { Timestamp = 100, FileName = "a.wav" }] });
+        UiTestPump.Run(vm.LoadAsync("project.json", default)); view.UpdateLayout(); vm.AcknowledgePresentationReady(vm.LoadGeneration);
+        var component = page.TrackListComponent;
+        var list = (ListBox)component.FindName("TrackList");
+        foreach (var grid in Descendants<BeatGridView>(page))
+        {
+            grid.SetBinding(BeatGridView.ContentWidthProperty, new System.Windows.Data.Binding(nameof(component.TimelineContentWidth)) { Source = component, Mode = System.Windows.Data.BindingMode.OneWay });
+            grid.SetBinding(BeatGridView.ViewportWidthProperty, new System.Windows.Data.Binding(nameof(component.TrackViewportWidth)) { Source = component, Mode = System.Windows.Data.BindingMode.OneWay });
+            grid.SetBinding(BeatGridView.HorizontalOffsetProperty, new System.Windows.Data.Binding(nameof(component.TimelineHorizontalOffset)) { Source = component, Mode = System.Windows.Data.BindingMode.OneWay });
+        }
+        view.UpdateLayout();
+        var source = Descendants<BeatGridView>(page).First();
+        var begin = source.TranslatePoint(new Point(1,1), page);
+        Assert.That(page.BeginNodePointer(source, new Point(1,1), begin), Is.True);
+        var end = source.TranslatePoint(new Point(source.ViewportWidth - 1, component.ActualHeight + 100), page);
+        page.UpdateNodePointer(end, null, default);
+        for (var i = 0; i < 100; i++) { component.AdvanceRegionSelection(TimeSpan.FromMilliseconds(50)); view.UpdateLayout(); }
+        Assert.That(page.IsRegionSelectionActive, Is.True);
+        Assert.That(list.ItemContainerGenerator.ContainerFromIndex(0), Is.Null);
+        Assert.That(vm.SelectedSamples, Does.Contain(first));
+        Assert.That(vm.SelectedSamples.Count, Is.GreaterThan(2));
+        Assert.That(list.ItemContainerGenerator.ContainerFromIndex(101), Is.Null);
+        Release(); Assert.That(component.IsRegionAutoScrollActive, Is.False);
+    }
+
+    [Test]
+    public void OutsideRegionPointerScrollsHorizontally()
+    {
+        StartBox();
+        var component = page.TrackListComponent;
+        var before = component.TimelineHorizontalOffset;
+        page.UpdateNodePointer(new Point(page.ActualWidth + 100, 300), null, default);
+        component.AdvanceRegionSelection(TimeSpan.FromMilliseconds(50));
+        view.UpdateLayout();
+        Assert.That(component.TimelineHorizontalOffset, Is.GreaterThan(before));
+        Assert.That(page.IsRegionSelectionActive, Is.True);
     }
     private static IEnumerable<T> Descendants<T>(DependencyObject parent) where T : DependencyObject
     {

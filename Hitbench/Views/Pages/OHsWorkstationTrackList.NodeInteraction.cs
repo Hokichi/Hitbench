@@ -80,6 +80,7 @@ public partial class OHsWorkstationTrackList
         if (IsVolumeOverlayOpen || viewModel.IsSampleConfigurationOpen || !viewModel.CanPlaceSamples || !grid.IsEnabled || !grid.CanPlaceSamples || grid.DataContext is not Track track ||
             !viewModel.CanEditTrackGrid(track) || gridPoint.X < 0 || gridPoint.X >= Math.Min(grid.ActualWidth, grid.ViewportWidth) ||
             gridPoint.Y < 0 || gridPoint.Y >= grid.ActualHeight) return false;
+        grid.RefreshSampleIndex();
         grid.UpdatePointerPosition(gridPoint.X);
         pointerPlacement = grid.HasPlacementPreview;
         var sample = pointerPlacement ? null : grid.FindSampleAt(gridPoint);
@@ -104,6 +105,7 @@ public partial class OHsWorkstationTrackList
 
     private void DetachNodeGrid(BeatGridView? grid)
     {
+        if (regionAdorner is not null) { if (grid?.DataContext is Track current && !viewModel.Tracks.Contains(current)) CancelNodePointer(); else DetachNodeSourceGrid(); return; }
         if (!nodeDragging) { CancelNodePointer(); return; }
         if (ReferenceEquals(grid, nodeTargetGrid)) SetNodeDragTarget(null);
         if (ReferenceEquals(grid, nodeSourceGrid)) DetachNodeSourceGrid();
@@ -154,6 +156,7 @@ public partial class OHsWorkstationTrackList
             {
                 nodeLayer = AdornerLayer.GetAdornerLayer(TrackList);
                 if (nodeLayer is null) { CancelNodePointer(); return; }
+                CaptureRegionOrigin();
                 regionAdorner = new OHsSelectionRegionAdorner(TrackList);
                 nodeLayer.Add(regionAdorner);
                 TrackList.LayoutUpdated += OnRegionLayoutUpdated;
@@ -285,42 +288,6 @@ public partial class OHsWorkstationTrackList
 
     private void OnRegionLayoutUpdated(object? sender, EventArgs e) => UpdateRegionSelection(pointerLast);
 
-    private Rect GetTimelineViewportBounds()
-    {
-        if (nodeSourceGrid is null) return Rect.Empty;
-        var presenter = FindVisualChild<ScrollContentPresenter>(TrackList);
-        if (presenter is null) return Rect.Empty;
-        var viewport = presenter.TransformToVisual(TrackList).TransformBounds(new Rect(presenter.RenderSize));
-        var gridBounds = nodeSourceGrid.TransformToVisual(TrackList).TransformBounds(new Rect(0, 0,
-            Math.Max(0, Math.Min(nodeSourceGrid.ActualWidth, nodeSourceGrid.ViewportWidth)), nodeSourceGrid.ActualHeight));
-        var timeline = new Rect(gridBounds.Left, viewport.Top, gridBounds.Width, viewport.Height);
-        timeline.Intersect(viewport);
-        return timeline;
-    }
-
-    private void UpdateRegionSelection(Point pagePoint)
-    {
-        if (regionAdorner is null) return;
-        if (nodeSourceGrid?.DataContext is not Track source || !viewModel.IsSelectionMode || !viewModel.CanPlaceSamples || !viewModel.CanEditTrackGrid(source))
-        { CancelNodePointer(); return; }
-        var clip = GetTimelineViewportBounds();
-        var bounds = new Rect(TranslatePoint(pointerStart, TrackList), TranslatePoint(pagePoint, TrackList));
-        bounds.Intersect(clip);
-        regionAdorner.ClipBounds = clip;
-        regionAdorner.SelectionBounds = bounds;
-        var selected = new List<Sample>();
-        if (!bounds.IsEmpty && bounds.Width > 0 && bounds.Height > 0)
-            foreach (var grid in RealizedTrackGrids(TrackList))
-            {
-                if (!grid.IsEnabled || grid.DataContext is not Track track || !viewModel.CanEditTrackGrid(track)) continue;
-                grid.GetBindingExpression(BeatGridView.ContentWidthProperty)?.UpdateTarget();
-                grid.GetBindingExpression(BeatGridView.HorizontalOffsetProperty)?.UpdateTarget();
-                var local = TrackList.TransformToVisual(grid).TransformBounds(bounds);
-                selected.AddRange(grid.GetSamplesIntersecting(local));
-            }
-        viewModel.SetNodeSelection(selected);
-    }
-
     private static IEnumerable<BeatGridView> RealizedTrackGrids(DependencyObject root)
     {
         for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
@@ -393,6 +360,8 @@ public partial class OHsWorkstationTrackList
     {
         TrackList.LayoutUpdated -= OnNodeDragLayoutUpdated;
         TrackList.RemoveHandler(ScrollViewer.ScrollChangedEvent, new ScrollChangedEventHandler(OnNodeDragScrollChanged));
+        regionScrollTimer?.Stop();
+        regionOrigin = null; regionAnchor = null; regionIndices.Clear();
         TrackList.LayoutUpdated -= OnRegionLayoutUpdated;
         SetNodeDragTarget(null);
         DetachNodeSourceGrid();
