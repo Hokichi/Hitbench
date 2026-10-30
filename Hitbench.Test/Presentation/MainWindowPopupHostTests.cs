@@ -59,15 +59,15 @@ public sealed class MainWindowPopupHostTests
             Assert.That(dimmer.Focusable, Is.False);
             vm.IsProcessing = true;
             view.UpdateLayout();
-            Assert.That(dimmer.Visibility, Is.EqualTo(Visibility.Visible));
+            Assert.That(dimmer.Visibility, Is.EqualTo(Visibility.Collapsed));
             window.ShowPopupOverlay();
             window.HidePopupOverlay();
-            Assert.That(dimmer.Visibility, Is.EqualTo(Visibility.Visible));
+            Assert.That(dimmer.Visibility, Is.EqualTo(Visibility.Collapsed));
             var drawer = new StubShellDrawer();
             var showing = window.PresentDrawerAsync(drawer, default, (_, _) => Task.CompletedTask);
             window.DismissSampleManager(drawer);
             UiTestPump.Run(showing);
-            Assert.That(dimmer.Visibility, Is.EqualTo(Visibility.Visible));
+            Assert.That(dimmer.Visibility, Is.EqualTo(Visibility.Collapsed));
             vm.IsProcessing = false;
             view.UpdateLayout();
             Assert.That(dimmer.Visibility, Is.EqualTo(Visibility.Collapsed));
@@ -168,7 +168,7 @@ public sealed class MainWindowPopupHostTests
             UiTestPump.Layout((FrameworkElement)window.Content, 1280, 720);
             var header = (Border)window.FindName("HeaderScanBlurHost");
             Assert.That(header, Is.Not.Null);
-            Assert.That(header.Effect, Is.Not.Null);
+            Assert.That(header.Effect, Is.Null);
             var scanEffect = header.Effect;
             window.ShowPopupOverlay();
             UiTestPump.Layout((FrameworkElement)window.Content, 1280, 720);

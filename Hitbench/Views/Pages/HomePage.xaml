@@ -143,7 +143,6 @@
             </Style.Triggers>
         </Style>
 
-        <BlurEffect x:Key="OHsHomeLoadingBlur" Radius="8" />
         <Style
             x:Key="HomePagePanelStyle"
             BasedOn="{StaticResource CardBorderStyle}"
@@ -151,9 +150,6 @@
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=pages:HomePage}, Mode=OneWay}" Value="True">
                     <Setter Property="Padding" Value="8" />
-                </DataTrigger>
-                <DataTrigger Binding="{Binding IsProcessing, Mode=OneWay}" Value="True">
-                    <Setter Property="Effect" Value="{StaticResource OHsHomeLoadingBlur}" />
                 </DataTrigger>
                 <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
                     <Setter Property="Effect" Value="{x:Null}" />

@@ -151,6 +151,11 @@ public partial class HomePage : UserControl
     }
     public async Task LoadAsync(CancellationToken cancellationToken)
     {
+        try { await viewModel.LoadProjectsAsync(cancellationToken); QueueCheck(); }
+        catch (OperationCanceledException) { Deactivate(); throw; }
+    }
+    internal async Task LoadSongsPresentationAsync(CancellationToken cancellationToken)
+    {
         try
         {
             await viewModel.LoadAsync(cancellationToken);
@@ -159,11 +164,7 @@ public partial class HomePage : UserControl
             using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, lifetime.Token);
             await presentation.Task.WaitAsync(linked.Token);
         }
-        catch (OperationCanceledException)
-        {
-            Deactivate();
-            throw;
-        }
+        catch (OperationCanceledException) { Deactivate(); throw; }
     }
     public void CancelProjectCreation() => viewModel.CreateProjectCommand.Cancel();
     public void Deactivate()

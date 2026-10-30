@@ -13,21 +13,21 @@ public class InstallationRecoveryTests
             new StubProjectFileService((_, _, _) => Task.FromResult("saved.json")), new WeakReferenceMessenger());
 
     [Test]
-    public async Task InvalidConfiguredPathNeverScansOrShowsPicker()
+    public async Task InvalidConfiguredPathCanRecoverWithoutEditingSettings()
     {
-        var folders = new StubHomeFolderService
+        var scans = 0; var picks = 0;
+        var vm = Create(new StubHomeFolderService
         {
-            Valid = (_, _) => Task.FromResult(false),
-            Find = _ => throw new AssertionException("Configured paths must not scan")
-        };
-        var vm = Create(folders, new StubAppSettingsService(), new StubInstallationDialogService
+            Valid = (path, _) => Task.FromResult(path == @"C:\chosen"),
+            Find = _ => { scans++; return Task.FromResult(new OsuSearchResult(null, false)); }
+        }, new StubAppSettingsService(), new StubInstallationDialogService
         {
-            Locate = _ => throw new AssertionException("Configured paths must not open picker")
+            Locate = _ => { picks++; return Task.FromResult<string?>(@"C:\chosen"); }
         });
-        await vm.LoadAsync(CancellationToken.None);
-        Assert.That(vm.FatalError, Does.Contain("osuPath"));
-        Assert.That(vm.RequiresShutdown, Is.True);
-        Assert.That(vm.IsProcessing, Is.False);
+        await vm.LoadAsync(default);
+        Assert.That(scans, Is.EqualTo(1)); Assert.That(picks, Is.EqualTo(1));
+        Assert.That(vm.FatalError, Is.Null); Assert.That(vm.RequiresShutdown, Is.False);
+        vm.Deactivate();
     }
 
     [Test]
@@ -51,7 +51,7 @@ public class InstallationRecoveryTests
         await vm.LoadAsync(CancellationToken.None);
         Assert.That(calls, Is.EqualTo(new[] { "picker", @"save:C:\chosen", @"songs:C:\chosen" }));
         Assert.That(vm.RequiresShutdown, Is.False);
-        Assert.That(vm.IsInteractionBlocked, Is.True);
+        Assert.That(vm.IsInteractionBlocked, Is.False);
         vm.CompleteSongsPresentation(vm.SongsPresentationGeneration);
         Assert.That(vm.IsInteractionBlocked, Is.False);
     }
@@ -72,10 +72,10 @@ public class InstallationRecoveryTests
         var loading = vm.LoadAsync(CancellationToken.None);
         await shown.Task;
         Assert.That(vm.RequiresShutdown, Is.False);
-        Assert.That(vm.IsInteractionBlocked, Is.True);
+        Assert.That(vm.IsInteractionBlocked, Is.False);
         dismissed.SetResult();
         await loading;
-        Assert.That(vm.RequiresShutdown, Is.True);
+        Assert.That(vm.RequiresShutdown, Is.False);
         Assert.That(vm.FatalError, Is.Null);
     }
 
@@ -113,7 +113,7 @@ public class InstallationRecoveryTests
             new StubAppSettingsService { Load = _ => Task.FromResult(new AppSettings()) },
             new StubInstallationDialogService { NotFound = _ => throw new AssertionException("No error on cancel") });
         await vm.LoadAsync(CancellationToken.None);
-        Assert.That(vm.RequiresShutdown, Is.True);
+        Assert.That(vm.RequiresShutdown, Is.False);
         Assert.That(vm.FatalError, Is.Null);
     }
 }

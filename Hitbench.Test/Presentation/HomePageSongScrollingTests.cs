@@ -27,7 +27,7 @@ public class HomePageSongScrollingTests
         window = new Window { Content = page, Width = 1920, Height = 1040 };
         view = new InMemoryView(window);
         page.UpdateSongsLayout(new Size(1920, 1040));
-        UiTestPump.Run(page.LoadAsync(CancellationToken.None));
+        UiTestPump.Run(page.LoadSongsPresentationAsync(CancellationToken.None));
         view.UpdateLayout();
     }
     [TearDown]

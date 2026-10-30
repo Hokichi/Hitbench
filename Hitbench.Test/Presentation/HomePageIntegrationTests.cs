@@ -37,7 +37,7 @@ public class HomePageIntegrationTests
         using var view = new InMemoryView(window);
         try
         {
-            UiTestPump.Run(page.LoadAsync(default)); view.UpdateLayout();
+            UiTestPump.Run(page.LoadSongsPresentationAsync(default)); view.UpdateLayout();
             var list = (ListBox)page.FindName("SongsList");
             list.SelectedItem = mapset; view.UpdateLayout();
             var item = (ListBoxItem)list.ItemContainerGenerator.ContainerFromItem(mapset)!;
@@ -58,7 +58,7 @@ public class HomePageIntegrationTests
         var vm = CreateVM(new StubHomeFolderService { Projects = _ => Task.FromResult(new FolderSnapshot([])) });
         var page = new HomePage(vm);
         using var view = new InMemoryView(new Window { Content = page, Width = 720, Height = 520 });
-        UiTestPump.Run(page.LoadAsync(CancellationToken.None));
+        UiTestPump.Run(page.LoadSongsPresentationAsync(CancellationToken.None));
         view.UpdateLayout();
         Assert.That(((ItemsControl)page.FindName("ProjectsList")).Items.OfType<OHsHomeProjectListItem>().Where(item => !item.IsHeading), Is.Empty);
         Assert.That(vm.OpenSongSearchCommand.CanExecute(null), Is.True);
@@ -77,7 +77,7 @@ public class HomePageIntegrationTests
         var page = new HomePage(vm);
         var window = new Window { Content = page, Width = 1280, Height = 720 };
         using var view = new InMemoryView(window);
-        UiTestPump.Run(page.LoadAsync(CancellationToken.None));
+        UiTestPump.Run(page.LoadSongsPresentationAsync(CancellationToken.None));
         var input = (TextBox)page.FindName("SongSearchTextBox");
         Assert.That(input.IsVisible, Is.True);
         Assert.That(AutomationProperties.GetName(input), Is.EqualTo("Search mapsets"));
@@ -108,7 +108,7 @@ public class HomePageIntegrationTests
         var page = new HomePage(vm);
         var window = new Window { Content = page, Width = 1280, Height = 720 };
         using var view = new InMemoryView(window);
-        UiTestPump.Run(page.LoadAsync(CancellationToken.None));
+        UiTestPump.Run(page.LoadSongsPresentationAsync(CancellationToken.None));
         var binding = page.InputBindings.OfType<System.Windows.Input.KeyBinding>().SingleOrDefault(x =>
             x.Key == System.Windows.Input.Key.R && x.Modifiers == System.Windows.Input.ModifierKeys.Control);
         Assert.That(binding, Is.Not.Null, "Home must bind Ctrl+R.");
@@ -139,7 +139,7 @@ public class HomePageIntegrationTests
         using var view = new InMemoryView(window);
         try
         {
-            UiTestPump.Run(page.LoadAsync(CancellationToken.None));
+            UiTestPump.Run(page.LoadSongsPresentationAsync(CancellationToken.None));
             var original = Descendants<Image>(page).Single().Source;
             Assert.That(original, Is.Not.Null);
             var encoder = new System.Windows.Media.Imaging.PngBitmapEncoder();
@@ -340,7 +340,7 @@ public class HomePageIntegrationTests
         using var view = new InMemoryView(window);
         try
         {
-            var startup = window.LoadAsync();
+            var startup = HomeTestReadiness.LoadAllAsync(window);
             UiTestPump.Run(songsReady.Task);
             messenger.Send(new ProjectCreatedMessage("saved.json"));
             UiTestPump.Run(startup);
@@ -359,7 +359,7 @@ public class HomePageIntegrationTests
         var window = TestShell.Create(new HomePage(vm), new WeakReferenceMessenger(), WorkstationTestPage.Create, vm,
             new StubAppSettingsService());
         using var view = new InMemoryView(window);
-        var load = window.LoadAsync();
+        var load = HomeTestReadiness.LoadAllAsync(window);
         window.Close();
         var frame = new DispatcherFrame();
         load.ContinueWith(_ => window.Dispatcher.BeginInvoke(() => frame.Continue = false));
@@ -379,7 +379,7 @@ public class HomePageIntegrationTests
         using var view = new InMemoryView(window);
         try
         {
-            var loading = page.LoadAsync(cancellation.Token);
+            var loading = page.LoadSongsPresentationAsync(cancellation.Token);
             UiTestPump.Run(vm.LoadAsync(cancellation.Token));
             Assert.That(vm.IsProcessing, Is.True);
             cancellation.Cancel();
@@ -400,7 +400,7 @@ public class HomePageIntegrationTests
         page.UpdateSongsLayout(new Size(1920, 1040));
         try
         {
-            var loading = page.LoadAsync(CancellationToken.None);
+            var loading = page.LoadSongsPresentationAsync(CancellationToken.None);
             UiTestPump.Run(vm.LoadAsync(CancellationToken.None));
             Assert.That(vm.IsProcessing, Is.True);
             page.Visibility = Visibility.Visible;
@@ -450,7 +450,7 @@ public class HomePageIntegrationTests
         using var view = new InMemoryView(window);
         try
         {
-            UiTestPump.Run(window.LoadAsync());
+            UiTestPump.Run(HomeTestReadiness.LoadAllAsync(window));
             var host = (ContentControl)window.FindName("PageHost");
             Assert.That(host.Content, Is.SameAs(page));
             Assert.That(((FrameworkElement)((Hitbench.Views.Shell.OHsShellHeader)window.FindName("ShellHeader")).FindName("WorkstationActions")).Visibility, Is.EqualTo(Visibility.Collapsed));
@@ -586,7 +586,7 @@ public class HomePageIntegrationTests
         using var view = new InMemoryView(window);
         try
         {
-            UiTestPump.Run(window.LoadAsync());
+            UiTestPump.Run(HomeTestReadiness.LoadAllAsync(window));
             PumpUntil(() => vm.Songs.Count == 1);
             var button = Descendants<Button>(page).Single(button => button.IsVisible && button.DataContext is FolderEntry);
             var text = Descendants<TextBlock>(button).Where(t => t.IsVisible).ToArray();
@@ -668,7 +668,7 @@ public class HomePageIntegrationTests
         using var view = new InMemoryView(window);
         try
         {
-            UiTestPump.Run(page.LoadAsync(CancellationToken.None));
+            UiTestPump.Run(page.LoadSongsPresentationAsync(CancellationToken.None));
             view.UpdateLayout();
             var projects = (ItemsControl)page.FindName("ProjectsList");
             var button = Descendants<Button>(projects).Single(value => value.Command == vm.OpenProjectCommand);
@@ -781,7 +781,7 @@ public class HomePageIntegrationTests
                 {
                     using var view = new InMemoryView(window);
                     page.UpdateSongsLayout(new Size(1920, 1080));
-                    UiTestPump.Run(page.LoadAsync(CancellationToken.None));
+                    UiTestPump.Run(page.LoadSongsPresentationAsync(CancellationToken.None));
                     PumpUntil(() => vm.Songs.Count == 45);
                     view.UpdateLayout();
                     TestContext.Progress.WriteLine($"Theme={theme} StubFolders=2000 HomePageFirstActionableRowMs={firstRowTimer.Elapsed.TotalMilliseconds:F2}");
@@ -867,7 +867,7 @@ public class HomePageIntegrationTests
             var songsList = (ItemsControl)page.FindName("SongsList");
             Assert.That(vm.Songs, Is.Empty);
             page.UpdateSongsLayout(new Size(1920, 1080));
-            UiTestPump.Run(page.LoadAsync(CancellationToken.None));
+            UiTestPump.Run(page.LoadSongsPresentationAsync(CancellationToken.None));
             PumpUntil(() => vm.Songs.Count == HomePageVM.InitialSongCount);
             PumpUntil(() => !vm.IsAwaitingSongsPresentation);
             var panel = Descendants<SpacedUniformGrid>(songsList).Single();
@@ -955,7 +955,7 @@ public class HomePageIntegrationTests
         try
         {
             page.UpdateSongsLayout(new Size(1920, 1040));
-            UiTestPump.Run(page.LoadAsync(CancellationToken.None));
+            UiTestPump.Run(page.LoadSongsPresentationAsync(CancellationToken.None));
 
             PumpUntil(() => !vm.IsAwaitingSongsPresentation);
             foreach (var path in validPaths) File.Delete(path);
@@ -1005,7 +1005,7 @@ public class HomePageIntegrationTests
         page.UpdateSongsLayout(new Size(1920, 1040));
         try
         {
-            UiTestPump.Run(page.LoadAsync(CancellationToken.None));
+            UiTestPump.Run(page.LoadSongsPresentationAsync(CancellationToken.None));
 
             PumpUntil(() => !vm.IsAwaitingSongsPresentation);
             vm.ReportDemandFailure(new IOException("retry"));
@@ -1054,7 +1054,7 @@ public class HomePageIntegrationTests
         page.UpdateSongsLayout(new Size(1920, 1040));
         try
         {
-            UiTestPump.Run(page.LoadAsync(CancellationToken.None));
+            UiTestPump.Run(page.LoadSongsPresentationAsync(CancellationToken.None));
 
             PumpUntil(() => !vm.IsAwaitingSongsPresentation);
             var initialSongs = vm.Songs.ToArray();

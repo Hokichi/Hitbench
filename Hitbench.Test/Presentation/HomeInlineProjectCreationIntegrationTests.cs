@@ -30,7 +30,7 @@ public sealed class HomeInlineProjectCreationIntegrationTests
         using var view = new InMemoryView(window);
         try
         {
-            UiTestPump.Run(page.LoadAsync(default));
+            UiTestPump.Run(page.LoadSongsPresentationAsync(default));
             vm.SelectMapsetCommand.Execute(first); UiTestPump.Run(vm.SearchProjectsCommand.ExecutionTask!);
             UiTestPump.Run(vm.ShowProjectCreationCommand.ExecuteAsync(null)); view.UpdateLayout();
             var input = (TextBox)page.FindName("ProjectNameTextBox"); input.Text = "old draft";
@@ -60,7 +60,7 @@ public sealed class HomeInlineProjectCreationIntegrationTests
         using var view = new InMemoryView(window);
         try
         {
-            UiTestPump.Run(page.LoadAsync(default)); view.UpdateLayout();
+            UiTestPump.Run(page.LoadSongsPresentationAsync(default)); view.UpdateLayout();
             Assert.That(page.FindName("SongsList"), Is.TypeOf<ListBox>());
             var search = (TextBox)page.FindName("ProjectSearchTextBox");
             search.Text = "retained query";

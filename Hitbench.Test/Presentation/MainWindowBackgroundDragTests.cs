@@ -157,8 +157,17 @@ public class MainWindowBackgroundDragTests
         Assert.That(calls, Is.EqualTo(new[] { "Drag" }));
     }
 
+    [Test]
+    public void SongProcessingDoesNotCancelWindowDragging()
+    {
+        Press(); calls.Clear();
+        vm.IsProcessing = true;
+        Assert.That(Move(), Is.True);
+        Assert.That(calls, Does.Contain("Drag"));
+    }
+
     [TestCase("release"), TestCase("capture"), TestCase("deactivate"), TestCase("close")]
-    [TestCase("state"), TestCase("blocked"), TestCase("processing"), TestCase("modal"), TestCase("popup")]
+    [TestCase("state"), TestCase("blocked"), TestCase("modal"), TestCase("popup")]
     public void CancelledOrInvalidatedGestureDoesNotResume(string reason)
     {
         Press();
@@ -172,7 +181,6 @@ public class MainWindowBackgroundDragTests
             case "close": window.Close(); break;
             case "state": window.WindowState = WindowState.Normal; window.WindowState = WindowState.Maximized; break;
             case "blocked": vm.IsInteractionBlocked = true; vm.IsInteractionBlocked = false; break;
-            case "processing": vm.IsProcessing = true; vm.IsProcessing = false; break;
             case "modal": ComponentDispatcher.PushModal(); ComponentDispatcher.PopModal(); break;
             case "popup": window.ShowPopupOverlay(); window.HidePopupOverlay(); break;
         }

@@ -577,7 +577,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
         return true;
     }
 
-    private bool CanDragBackground => !closed && !IsAudioBusy && !viewModel.IsInteractionBlocked && !viewModel.IsProcessing &&
+    private bool CanDragBackground => !closed && !IsAudioBusy && !viewModel.IsInteractionBlocked &&
         !IsPopupOverlayVisible && !IsBlockingDrawerVisible && volumePresentationPage?.IsVolumeOverlayOpen != true && !ComponentDispatcher.IsThreadModal;
 
     private void BeginBackgroundDrag(Point cursorPixels, Rect currentPixels, double dpiX, double dpiY)
@@ -758,7 +758,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
 
     private void OnStateChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (viewModel.IsInteractionBlocked || viewModel.IsProcessing) CancelBackgroundDrag();
+        if (viewModel.IsInteractionBlocked) CancelBackgroundDrag();
         if (e.PropertyName != nameof(HomePageVM.IsInteractionBlocked) || closed) return;
         if (viewModel.IsInteractionBlocked)
         {

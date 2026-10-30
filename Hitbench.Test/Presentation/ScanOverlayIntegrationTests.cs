@@ -156,21 +156,21 @@ public class ScanOverlayIntegrationTests
         using var view = new InMemoryView(window);
         try
         {
-            var load = window.LoadAsync();
+            var load = HomeTestReadiness.LoadAllAsync(window);
             UiTestPump.Run(started.Task);
             view.UpdateLayout();
             var host = (ContentControl)window.FindName("PageHost");
-            Assert.That(host.IsEnabled, Is.False);
+            Assert.That(host.IsEnabled, Is.True);
             pending.SetResult(new OsuSearchResult(null, false));
             UiTestPump.Run(picking.Task);
             view.UpdateLayout();
             Assert.That(vm.IsProcessing, Is.True);
-            Assert.That(host.IsEnabled, Is.False, "Input gate must survive the picker transition.");
+            Assert.That(host.IsEnabled, Is.True, "Input gate must survive the picker transition.");
             picker.SetResult(@"C:\chosen");
             UiTestPump.Run(readingSongs.Task);
             view.UpdateLayout();
             Assert.That(vm.IsProcessing, Is.True);
-            Assert.That(host.IsEnabled, Is.False);
+            Assert.That(host.IsEnabled, Is.True);
             songs.SetResult(new FolderSnapshot(Enumerable.Range(0, 130)
                 .Select(i => new FolderEntry($@"C:\Songs\{i}", $"{i}", DateTimeOffset.MinValue))));
             UiTestPump.Run(load);
@@ -211,14 +211,14 @@ public class ScanOverlayIntegrationTests
         using var view = new InMemoryView(window);
         try
         {
-            var load = window.LoadAsync();
+            var load = HomeTestReadiness.LoadAllAsync(window);
             UiTestPump.Run(reading.Task);
             view.UpdateLayout();
             var host = (ContentControl)window.FindName("PageHost");
             Assert.That(vm.IsProcessing, Is.True);
-            Assert.That(host.IsEnabled, Is.False);
+            Assert.That(host.IsEnabled, Is.True);
             var states = new List<bool>();
-            vm.Songs.CollectionChanged += (_, _) => states.Add(vm.IsProcessing && !host.IsEnabled);
+            vm.Songs.CollectionChanged += (_, _) => states.Add(vm.IsProcessing && host.IsEnabled);
             songs.SetResult(new FolderSnapshot(Enumerable.Range(0, 130)
                 .Select(i => new FolderEntry($@"C:\Songs\{i}", $"{i}", DateTimeOffset.MinValue))));
             UiTestPump.Run(load);

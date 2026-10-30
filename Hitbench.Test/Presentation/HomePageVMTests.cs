@@ -7,6 +7,22 @@ namespace Hitbench.Test.Presentation;
 public class HomePageVMTests
 {
     [Test]
+    public async Task ProjectsRemainUsableDuringSongLoading()
+    {
+        var pending = new TaskCompletionSource<FolderSnapshot?>();
+        var vm = CreateVM(new StubHomeFolderService { Songs = (_, token) => pending.Task.WaitAsync(token) });
+        try
+        {
+            var load = vm.LoadAsync(default);
+            await vm.LoadProjectsAsync(default);
+            Assert.That(load.IsCompleted, Is.False);
+            Assert.That(vm.CanInteract, Is.True);
+            pending.SetResult(new FolderSnapshot([]));
+            await load;
+        }
+        finally { vm.Deactivate(); }
+    }
+    [Test]
     public async Task MapsetInventoryCaptionKeepsFullCountWhileSearching()
     {
         var vm = CreateVM(new StubHomeFolderService { Songs = (_, _) => Task.FromResult<FolderSnapshot?>(new FolderSnapshot([
@@ -179,7 +195,7 @@ public class HomePageVMTests
         var generation = vm.SongsPresentationGeneration;
         await vm.LoadInitialSongsAsync(CancellationToken.None);
         Assert.That(vm.Songs.Count, Is.EqualTo(1));
-        Assert.That(vm.CanInteract, Is.False);
+        Assert.That(vm.CanInteract, Is.True);
         vm.CompleteSongsPresentation(generation - 1);
         Assert.That(vm.IsProcessing, Is.True);
         vm.CompleteSongsPresentation(generation);
@@ -239,7 +255,7 @@ public class HomePageVMTests
         try
         {
             Assert.That(vm.IsProcessing, Is.True);
-            Assert.That(vm.CanInteract, Is.False);
+            Assert.That(vm.CanInteract, Is.True);
         }
         finally
         {
@@ -356,19 +372,15 @@ public class HomePageVMTests
     }
 
     [Test]
-    public async Task ProjectFailureCancelsPendingSongsAndReportsOneFatalError()
+    public async Task ProjectFailurePreservesSongsAndOffersRetry()
     {
-        var vm = CreateVM(new StubHomeFolderService
-        {
-            Projects = _ => throw new IOException("Disk unavailable"),
-            Songs = (_, token) => Task.Delay(Timeout.Infinite, token).ContinueWith<FolderSnapshot?>(_ => null)
-        });
-        await vm.LoadAsync(CancellationToken.None);
-        Assert.That(vm.FatalError, Does.Contain("Disk unavailable"));
-        Assert.That(vm.RequiresShutdown, Is.True);
-        Assert.That(vm.IsLoading, Is.False);
-        Assert.That(vm.IsProcessing, Is.False);
-        Assert.That(vm.IsInteractionBlocked, Is.False);
+        var vm = CreateVM(new StubHomeFolderService { Projects = _ => throw new IOException("Disk unavailable") });
+        await vm.LoadAsync(default);
+        Assert.That(vm.ProjectsStatus, Does.Contain("Disk unavailable"));
+        Assert.That(vm.CanRetryProjects, Is.True);
+        Assert.That(vm.FatalError, Is.Null);
+        Assert.That(vm.RequiresShutdown, Is.False);
+        vm.Deactivate();
     }
 
     [Test]
@@ -406,7 +418,7 @@ public class HomePageVMTests
         try
         {
             Assert.That(vm.IsProcessing, Is.True);
-            Assert.That(vm.CanInteract, Is.False);
+            Assert.That(vm.CanInteract, Is.True);
         }
         finally
         {
@@ -428,8 +440,8 @@ public class HomePageVMTests
     {
         var vm = CreateVM(new StubHomeFolderService { Songs = (_, _) => throw new IOException("Song read failed") });
         await vm.LoadAsync(CancellationToken.None);
-        Assert.That(vm.FatalError, Does.Contain("Song read failed"));
-        Assert.That(vm.RequiresShutdown, Is.True);
+        Assert.That(vm.SongsStatus, Does.Contain("Song read failed"));
+        Assert.That(vm.RequiresShutdown, Is.False);
         Assert.That(vm.IsProcessing, Is.False);
         Assert.That(vm.IsInteractionBlocked, Is.False);
     }

@@ -38,7 +38,7 @@ public sealed class HomePageGlowOverlayIntegrationTests
         window = new Window { Content = page, Width = 1920, Height = 1040 };
         view = new InMemoryView(window);
         page.UpdateSongsLayout(new Size(1920, 1040));
-        UiTestPump.Run(page.LoadAsync(default));
+        UiTestPump.Run(page.LoadSongsPresentationAsync(default));
         view.UpdateLayout();
     }
 

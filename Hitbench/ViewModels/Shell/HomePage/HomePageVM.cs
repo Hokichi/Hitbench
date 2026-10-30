@@ -19,6 +19,17 @@ public partial class HomePageVM(
     IProjectFileService projectFiles, IMessenger messenger,
     IProjectRemovalDialogService? removalDialogs = null, Func<TimeSpan, CancellationToken, Task>? searchDelay = null) : ObservableObject, System.ComponentModel.INotifyDataErrorInfo
 {
+    private readonly TaskCompletionSource projectsReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    public OHsHomePanelState ProjectsState => !active ? OHsHomePanelState.Inactive : IsLoadingProjects ? OHsHomePanelState.Loading : CanRetryProjects ? OHsHomePanelState.Failed : projectsSnapshot is null ? OHsHomePanelState.Unavailable : OHsHomePanelState.Ready;
+    public OHsHomePanelState SongsState => !active ? OHsHomePanelState.Inactive : IsLoadingSongs ? OHsHomePanelState.Loading : IsAwaitingSongsPresentation ? OHsHomePanelState.AwaitingPresentation : CanRetrySongs ? OHsHomePanelState.Unavailable : songsSnapshot is null ? OHsHomePanelState.Unavailable : OHsHomePanelState.Ready;
+    public bool CanUseProjects => CanInteract && ProjectsState == OHsHomePanelState.Ready;
+    public bool CanUseSongs => CanInteract && SongsState == OHsHomePanelState.Ready;
+    public bool IsSongsProcessing => IsProcessing;
+    public async Task LoadProjectsAsync(CancellationToken token)
+    {
+        _ = LoadAsync(token); // The loading task remains owned by this screen and CleanupAsync.
+        await projectsReady.Task.WaitAsync(token);
+    }
     internal int SongSearchFilterCount { get; private set; }
     internal const int InitialSongCount = 9 * 5;
     [ObservableProperty] private string songSearchText = "";
@@ -90,7 +101,7 @@ public partial class HomePageVM(
 
     private bool CanSearchSongs() => CanInteract && !IsCreatingProject;
     private bool CanReloadSongs() => CanSearchSongs() && !IsLoadingSongs &&
-        !IsSearchingSongs && !IsAwaitingSongsPresentation && osuDirectory is not null;
+        !IsSearchingSongs && !IsAwaitingSongsPresentation;
 
     [RelayCommand(CanExecute = nameof(CanSearchSongs))]
     private void OpenSongSearch() => IsSongSearchExpanded = true;
@@ -166,6 +177,7 @@ public partial class HomePageVM(
     private void RefreshCommands()
     {
         OnPropertyChanged(nameof(CanInteract));
+        foreach (var name in new[] { nameof(ProjectsState), nameof(SongsState), nameof(CanUseProjects), nameof(CanUseSongs), nameof(IsSongsProcessing) }) OnPropertyChanged(name);
         OnPropertyChanged(nameof(CanSearchProjects));
         OnPropertyChanged(nameof(CanSelectMapset));
         ShowProjectCreationCommand.NotifyCanExecuteChanged();
@@ -211,7 +223,7 @@ public partial class HomePageVM(
         var songs = InitializeSongsAsync();
         var projects = InitializeProjectsAsync();
         try { await Task.WhenAll(projects, songs); }
-        finally { initialDataComplete = true; IsInitialLoading = active && !lifetime.IsCancellationRequested && !RequiresShutdown && IsAwaitingSongsPresentation; }
+        finally { initialDataComplete = true; IsInitialLoading = false; }
         if (callerToken.IsCancellationRequested || !active)
             throw new OperationCanceledException(callerToken.IsCancellationRequested ? callerToken : new CancellationToken(true));
     }
@@ -220,13 +232,14 @@ public partial class HomePageVM(
     {
         try { await PreparePanelAsync(true, lifetime.Token); }
         catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
-        catch (Exception error) { FailInitialization(error); }
+        catch (Exception error) { FailPanel(true, error); }
+        finally { IsInitialLoading = false; projectsReady.TrySetResult(); }
     }
 
     private async Task InitializeSongsAsync()
     {
         IsProcessing = true;
-        IsInteractionBlocked = true;
+        IsInteractionBlocked = false;
         IsLoadingSongs = true;
         try
         {
@@ -241,7 +254,7 @@ public partial class HomePageVM(
             }
         }
         catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
-        catch (Exception error) { FailInitialization(error); }
+        catch (Exception error) { FailPanel(false, error); }
         finally
         {
             IsLoadingSongs = false;
@@ -298,10 +311,11 @@ public partial class HomePageVM(
         token.ThrowIfCancellationRequested();
         if (!string.IsNullOrWhiteSpace(configured))
         {
-            if (!await folders.IsInstallationAsync(configured, token))
-                throw new IOException("Invalid osuPath in appsettings.json beside the application. Correct the installation folder or clear osuPath to scan.");
-            token.ThrowIfCancellationRequested();
-            return configured;
+            if (await folders.IsInstallationAsync(configured, token))
+            {
+                token.ThrowIfCancellationRequested();
+                return configured;
+            }
         }
 
         var result = await folders.FindInstallationAsync(token);
@@ -312,8 +326,7 @@ public partial class HomePageVM(
         token.ThrowIfCancellationRequested();
         if (path is null)
         {
-            RequiresShutdown = true;
-            lifetime.Cancel();
+            CanRetrySongs = true;
             return null;
         }
         bool valid;
@@ -328,8 +341,7 @@ public partial class HomePageVM(
             if (!manual) throw new IOException("The discovered osu! installation is no longer available.");
             await dialogs.ShowNotFoundAsync(token);
             token.ThrowIfCancellationRequested();
-            RequiresShutdown = true;
-            lifetime.Cancel();
+            CanRetrySongs = true;
             return null;
         }
         await settings.SaveOsuPathAsync(path, token);
@@ -465,9 +477,14 @@ public partial class HomePageVM(
             {
                 IsAwaitingSongsPresentation = false;
                 IsProcessing = true;
-                IsInteractionBlocked = true;
+                IsInteractionBlocked = false;
                 await ui.YieldForRenderAsync(linked.Token);
                 linked.Token.ThrowIfCancellationRequested();
+            }
+            if (!projects && osuDirectory is null)
+            {
+                osuDirectory = await ResolveInstallationAsync(linked.Token);
+                if (osuDirectory is null) { EndProcessing(); return; }
             }
             await PreparePanelAsync(projects, linked.Token, forceReload: !projects);
             if (!projects) IsAwaitingSongsPresentation = true;

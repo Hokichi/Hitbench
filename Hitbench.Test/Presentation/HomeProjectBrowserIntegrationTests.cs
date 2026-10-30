@@ -44,7 +44,7 @@ public sealed class HomeProjectBrowserIntegrationTests
         using var view = new InMemoryView(window);
         try
         {
-            UiTestPump.Run(page.LoadAsync(default)); view.UpdateLayout();
+            UiTestPump.Run(page.LoadSongsPresentationAsync(default)); view.UpdateLayout();
             var input = page.FindName("ProjectSearchTextBox") as TextBox;
             Assert.That(input, Is.Not.Null);
             Assert.That(input!.IsVisible, Is.True);
@@ -87,7 +87,7 @@ public sealed class HomeProjectBrowserIntegrationTests
         using var view = new InMemoryView(window);
         try
         {
-            UiTestPump.Run(page.LoadAsync(default)); view.UpdateLayout();
+            UiTestPump.Run(page.LoadSongsPresentationAsync(default)); view.UpdateLayout();
             var list = (ItemsControl)page.FindName("ProjectsList");
             var viewer = Children<ScrollViewer>(list).First();
             viewer.ScrollToEnd(); view.UpdateLayout();

@@ -108,9 +108,6 @@
             BasedOn="{StaticResource BaseBorderStyle}"
             TargetType="Border">
             <Style.Triggers>
-                <DataTrigger Binding="{Binding IsProcessing, Mode=OneWay}" Value="True">
-                    <Setter Property="Effect" Value="{StaticResource MainWindowScanBlur}" />
-                </DataTrigger>
                 <MultiDataTrigger>
                     <MultiDataTrigger.Conditions>
                         <Condition Binding="{Binding IsAudioBusy, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}" Value="True" />
@@ -144,9 +141,6 @@
             <Setter Property="Visibility" Value="Collapsed" />
             <Setter Property="Focusable" Value="False" />
             <Style.Triggers>
-                <DataTrigger Binding="{Binding IsProcessing, Mode=OneWay}" Value="True">
-                    <Setter Property="Visibility" Value="Visible" />
-                </DataTrigger>
                 <DataTrigger Binding="{Binding IsAudioBusy, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}" Value="True">
                     <Setter Property="Visibility" Value="Visible" />
                 </DataTrigger>
