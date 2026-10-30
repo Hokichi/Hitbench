@@ -254,7 +254,7 @@
             x:Key="OHsWorkstationActionRegionStyle"
             BasedOn="{StaticResource BaseColumnDefinitionStyle}"
             TargetType="ColumnDefinition">
-            <Setter Property="Width" Value="48" />
+            <Setter Property="Width" Value="52" />
         </Style>
         <Style
             x:Key="OHsWorkstationActionColumnStyle"
@@ -286,14 +286,14 @@
                 </Grid>
                 <StackPanel
                     x:Name="TrackLeftExpandedControls"
-                    Margin="0,4,0,0"
+                    Margin="0,12,0,0"
                     Style="{StaticResource OHsWorkstationExpandedTrackControlsStyle}">
                     <Grid Style="{StaticResource BaseGridStyle}">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="4" />
+                            <ColumnDefinition Width="12" />
                             <ColumnDefinition Style="{StaticResource OHsWorkstationActionColumnStyle}" />
-                            <ColumnDefinition Width="4" />
+                            <ColumnDefinition Width="12" />
                             <ColumnDefinition Style="{StaticResource OHsWorkstationActionColumnStyle}" />
                         </Grid.ColumnDefinitions>
                         <customControls:ValueSlider

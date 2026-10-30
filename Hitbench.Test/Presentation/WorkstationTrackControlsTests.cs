@@ -29,7 +29,7 @@ public class WorkstationTrackControlsTests
         try
         {
             UiTestPump.Run(vm.LoadAsync("project.json", default)); vm.AcknowledgePresentationReady(vm.LoadGeneration);
-            var card = new OHsWorkstationAudioCard { DataContext = vm, FlowDirection = direction };
+            var card = new OHsWorkstationToolbar { DataContext = vm, FlowDirection = direction };
             using var view = new InMemoryView(new Window { Content = card, Width = 700, Height = 400 });
             var add = (Hitbench.Resources.CustomControls.BalloonComboBox)card.FindName("AddMenuButton");
             var samples = (Hitbench.Resources.CustomControls.BalloonButton)card.FindName("ManageSamplesButton");
@@ -94,8 +94,8 @@ public class WorkstationTrackControlsTests
         var page = new WorkstationPage(vm) { FlowDirection = direction }; page.SetProjectPath("project.json");
         using var view = new InMemoryView(new Window { Content = page, Width = 900, Height = 700 });
         UiTestPump.Run(page.LoadCompletion);
-        var mute = (ToggleButton)((Hitbench.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("ClearTrackMutesToggle");
-        var solo = (ToggleButton)((Hitbench.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("ClearTrackSolosToggle");
+        var mute = (ToggleButton)page.AudioCard.FindName("ClearTrackMutesToggle");
+        var solo = (ToggleButton)page.AudioCard.FindName("ClearTrackSolosToggle");
         UiControlContract.AssertStyle<ToggleButton>(mute, "OHsWorkstationAggregateToggleStyle");
         Assert.That(mute.Tag, Is.SameAs(vm.ToggleTrackMutesCommand));
         Assert.That(solo.Tag, Is.SameAs(vm.ClearTrackSolosCommand));

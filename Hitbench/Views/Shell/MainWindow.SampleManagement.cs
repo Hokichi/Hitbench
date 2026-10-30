@@ -74,7 +74,7 @@ public partial class MainWindow
         if (token.IsCancellationRequested || closed) return;
         clearSampleFocusRestore?.Invoke();
         var invoker = Keyboard.FocusedElement as FrameworkElement ??
-            (PageHost.Content as WorkstationPage)?.FindName("ManageSamplesButton") as FrameworkElement;
+            (PageHost.Content as WorkstationPage)?.Toolbar.FindName("ManageSamplesButton") as FrameworkElement;
         using var presentation = CancellationTokenSource.CreateLinkedTokenSource(token, lifetime.Token);
         using var entranceCancellation = CancellationTokenSource.CreateLinkedTokenSource(presentation.Token);
         var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -123,6 +123,7 @@ public partial class MainWindow
         OHsInstrumentalArrangementDrawer? piano = drawer as OHsInstrumentalArrangementDrawer;
         Action<double>? scrollPiano = null;
         EventHandler? alignPiano = null;
+        EventHandler? expandPiano = null;
         using var cancellation = presentation.Token.Register(() => completion.TrySetResult());
         try
         {
@@ -152,6 +153,15 @@ public partial class MainWindow
                 drawer.SetBinding(FlowDirectionProperty, new Binding(nameof(FlowDirection)) { Source = this, Mode = BindingMode.OneWay });
             if (piano is not null && PageHost.Content is WorkstationPage page)
             {
+                piano.SetBinding(OHsInstrumentalArrangementDrawer.IsExpandedProperty,
+                    new Binding(nameof(page.IsPianoRollExpanded)) { Source = page, Mode = BindingMode.OneWay });
+                expandPiano = (_, _) =>
+                {
+                    if (!ReferenceEquals(SampleManagerHost.Content, piano) || !ReferenceEquals(PageHost.Content, page)) return;
+                    page.TogglePianoRollExpansion();
+                    piano.FocusExpansionAction();
+                };
+                piano.ExpansionRequested += expandPiano;
                 piano.SetBinding(OHsInstrumentalArrangementDrawer.TimelineContentWidthProperty, new Binding(nameof(page.Timeline.TimelineContentWidth)) { Source = page.Timeline, Mode = BindingMode.OneWay });
                 piano.SetBinding(OHsInstrumentalArrangementDrawer.TimelineViewportWidthProperty, new Binding(nameof(page.Timeline.TimelineViewportWidth)) { Source = page.Timeline, Mode = BindingMode.OneWay });
                 piano.SetBinding(OHsInstrumentalArrangementDrawer.TimelineHorizontalOffsetProperty, new Binding(nameof(page.Timeline.TimelineHorizontalOffset)) { Source = page.Timeline, Mode = BindingMode.OneWay });
@@ -198,6 +208,8 @@ public partial class MainWindow
                 if (piano is not null)
                 {
                     piano.Detach();
+                    if (expandPiano is not null) piano.ExpansionRequested -= expandPiano;
+                    BindingOperations.ClearBinding(piano, OHsInstrumentalArrangementDrawer.IsExpandedProperty);
                     if (alignPiano is not null) piano.LayoutUpdated -= alignPiano;
                     if (scrollPiano is not null) piano.HorizontalOffsetRequested -= scrollPiano;
                     BindingOperations.ClearBinding(piano, OHsInstrumentalArrangementDrawer.TimelineContentWidthProperty);

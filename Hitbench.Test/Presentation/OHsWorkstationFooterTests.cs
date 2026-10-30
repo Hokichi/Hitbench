@@ -11,14 +11,14 @@ public sealed class OHsWorkstationFooterTests
         var page = WorkstationTestPage.Create();
         var vm = (WorkstationPageVM)page.DataContext;
         var audio = (OHsWorkstationAudioCard)page.FindName("AudioCard");
-        var footer = audio.Footer;
+        var footer = page.Toolbar.Footer;
         var slider = (Hitbench.Resources.CustomControls.ValueSlider)footer.FindName("SubdivisionSelector");
         try
         {
             foreach (var size in new[] { new System.Windows.Size(1280, 720), new System.Windows.Size(640, 360), new System.Windows.Size(1280, 720) })
             {
                 UiTestPump.Layout(page, size.Width, size.Height);
-                Assert.That(audio.Footer, Is.SameAs(footer));
+                Assert.That(page.Toolbar.Footer, Is.SameAs(footer));
                 Assert.That(footer.DataContext, Is.SameAs(vm));
                 vm.SelectedSubdivisionIndex = 4;
                 Assert.That(slider.Value, Is.EqualTo(4));

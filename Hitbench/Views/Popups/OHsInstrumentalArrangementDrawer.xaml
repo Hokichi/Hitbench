@@ -14,17 +14,31 @@
    <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
    <Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="True" />
   </Style>
+  <Style x:Key="OHsArrangementExpansionStyle" TargetType="c:BalloonButton" BasedOn="{StaticResource OHsBalloonNeutralActionStyle}">
+   <Setter Property="ButtonIcon" Value="{StaticResource AngleUp}" />
+   <Setter Property="ShouldShowText" Value="False" />
+   <Setter Property="ToolTip" Value="Expand piano roll (Ctrl+Shift+Enter)" />
+   <Setter Property="AutomationProperties.Name" Value="Expand piano roll" />
+   <Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="True" />
+   <Style.Triggers><DataTrigger Binding="{Binding IsExpanded, ElementName=Drawer, Mode=OneWay}" Value="True">
+    <Setter Property="ButtonIcon" Value="{StaticResource AngleDown}" />
+    <Setter Property="ToolTip" Value="Restore tracks (Ctrl+Shift+Enter)" />
+    <Setter Property="AutomationProperties.Name" Value="Restore tracks" />
+   </DataTrigger></Style.Triggers>
+  </Style>
  </UserControl.Resources>
  <Border Style="{StaticResource OHsArrangementCardStyle}">
  <Grid Style="{StaticResource BaseGridStyle}">
   <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
   <Grid Margin="0,0,16,12" Style="{StaticResource BaseGridStyle}">
+   <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-   <TextBlock Text="{Binding PopupTitle,Mode=OneWay}" Style="{StaticResource OHsPopupTitleTextStyle}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip="{Binding PopupTitle, Mode=OneWay}"/>
-   <c:BalloonButton x:Name="KeysMappingButton" Grid.Column="1" ButtonText="Keys Mapping" ButtonIcon="{StaticResource KeyboardBoxFill}"
+   <c:BalloonButton x:Name="ExpansionButton" Grid.ColumnSpan="3" HorizontalAlignment="Center" Click="OnExpansionClick" Style="{StaticResource OHsArrangementExpansionStyle}" />
+   <TextBlock Grid.Row="1" Text="{Binding PopupTitle,Mode=OneWay}" Style="{StaticResource OHsPopupTitleTextStyle}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip="{Binding PopupTitle, Mode=OneWay}"/>
+   <c:BalloonButton x:Name="KeysMappingButton" Grid.Row="1" Grid.Column="1" ButtonText="Keys Mapping" ButtonIcon="{StaticResource KeyboardBoxFill}"
     Command="{Binding RequestKeysMappingCommand, Mode=OneWay}" Style="{StaticResource OHsArrangementMappingActionStyle}"
     AutomationProperties.Name="Keys Mapping" ToolTip="Map samples to instrument keys" />
-   <c:BalloonButton Grid.Column="2" ButtonText="Close" ButtonIcon="{StaticResource Close}" Style="{StaticResource OHsBalloonDestructiveActionStyle}"
+   <c:BalloonButton Grid.Row="1" Grid.Column="2" ButtonText="Close" ButtonIcon="{StaticResource Close}" Style="{StaticResource OHsBalloonDestructiveActionStyle}"
     Click="OnCloseClick" AutomationProperties.Name="Close arrangement" ToolTip="Close (Esc)" ShouldShowText="True" IsTabStop="True"
     h:KeyboardNavigationPolicy.AllowTabNavigation="True" FocusVisualStyle="{StaticResource OHsSampleManagerKeyboardFocusStyle}" ToolTipService.ShowsToolTipOnKeyboardFocus="True"/>
   </Grid>

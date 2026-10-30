@@ -30,8 +30,8 @@ public class WorkstationSampleReloadIntegrationTests
         files.List = (_, _) => Task.FromException<IReadOnlyList<string>>(new IOException("listing failed"));
         UiTestPump.Run(vm.ReloadSamplesCommand.ExecuteAsync(null)); view.UpdateLayout();
         Assert.That(vm.LoadPhase, Is.EqualTo(ProjectLoadPhase.Ready));
-        Assert.That(WorkstationActionMenus.Find(page.AudioCard, vm.ReloadSamplesCommand), Is.TypeOf<MenuItem>());
-        Assert.That(WorkstationActionMenus.Find(page.AudioCard, vm.ReloadSamplesCommand).IsEnabled, Is.True);
+        Assert.That(WorkstationActionMenus.Find(page.Toolbar, vm.ReloadSamplesCommand), Is.TypeOf<MenuItem>());
+        Assert.That(WorkstationActionMenus.Find(page.Toolbar, vm.ReloadSamplesCommand).IsEnabled, Is.True);
         Assert.That(((ScrollViewer)(page.Timeline).FindName("WaveformScrollViewer")).IsEnabled, Is.True);
         files.List = (_, _) => Task.FromResult<IReadOnlyList<string>>(["new.wav"]);
         Assert.That(page.HandlePlaybackKey(Key.F5, ModifierKeys.None, false, page), Is.True);
@@ -60,7 +60,7 @@ public class WorkstationSampleReloadIntegrationTests
         view.UpdateLayout(); page.ProcessPresentationFrame(TimeSpan.FromMilliseconds(1)); page.ProcessPresentationFrame(TimeSpan.FromMilliseconds(2));
         UiTestPump.Run(page.LoadCompletion);
         vm.IsAdditionMode = true; view.UpdateLayout();
-        var action = WorkstationActionMenus.Find(page.AudioCard, vm.ReloadSamplesCommand);
+        var action = WorkstationActionMenus.Find(page.Toolbar, vm.ReloadSamplesCommand);
         Assert.That(action, Is.TypeOf<MenuItem>());
         var button = action;
         Assert.That(button.IsTabStop, Is.False);

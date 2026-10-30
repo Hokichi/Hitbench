@@ -58,6 +58,30 @@ public partial class HomePageVM(
     private readonly CancellationTokenSource lifetime = new();
     private CancellationTokenRegistration callerRegistration;
     private Task? loading;
+    [ObservableProperty] private bool isScanningMapsets;
+    private int mapsetScanGeneration;
+    private int scanPresentationGeneration = -1;
+    private int scanPresentationOwner;
+    private int BeginMapsetScan()
+    {
+        scanPresentationGeneration = -1;
+        var generation = ++mapsetScanGeneration;
+        IsScanningMapsets = true;
+        return generation;
+    }
+    private void EndMapsetScan(int generation)
+    {
+        if (generation != mapsetScanGeneration) return;
+        scanPresentationGeneration = -1;
+        IsScanningMapsets = false;
+    }
+    private void AwaitMapsetScanPresentation(int generation)
+    {
+        if (generation != mapsetScanGeneration || !active) return;
+        if (songsSnapshot is not { Count: > 0 }) { EndMapsetScan(generation); return; }
+        scanPresentationGeneration = songsGeneration;
+        scanPresentationOwner = generation;
+    }
     private bool initialDataComplete;
     [ObservableProperty] private bool isInitialLoading;
     private Task? cleanup;
@@ -79,6 +103,7 @@ public partial class HomePageVM(
     public bool HasMoreProjects => active && projectsSnapshot is not null && Projects.Count < projectsSnapshot.Count;
     public bool HasMoreSongs => active && !IsSearchingSongs && songsSnapshot is not null && Songs.Count < songsSnapshot.Count;
 
+    partial void OnIsScanningMapsetsChanged(bool value) => RefreshCommands();
     partial void OnIsInteractionBlockedChanged(bool value) => RefreshCommands();
     partial void OnRequiresShutdownChanged(bool value) => RefreshCommands();
     partial void OnIsCreatingProjectChanged(bool value) => RefreshCommands();
@@ -243,6 +268,7 @@ public partial class HomePageVM(
 
     private async Task InitializeSongsAsync()
     {
+        var scan = BeginMapsetScan();
         IsProcessing = true;
         IsInteractionBlocked = false;
         IsLoadingSongs = true;
@@ -256,6 +282,7 @@ public partial class HomePageVM(
             {
                 await PreparePanelAsync(false, lifetime.Token);
                 IsAwaitingSongsPresentation = true;
+                AwaitMapsetScanPresentation(scan);
             }
         }
         catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
@@ -264,7 +291,10 @@ public partial class HomePageVM(
         {
             IsLoadingSongs = false;
             if (!IsAwaitingSongsPresentation || lifetime.IsCancellationRequested || RequiresShutdown)
+            {
+                EndMapsetScan(scan);
                 EndProcessing();
+            }
         }
     }
 
@@ -280,6 +310,7 @@ public partial class HomePageVM(
     private void EndProcessing()
     {
         if (initialDataComplete || RequiresShutdown || lifetime.IsCancellationRequested) IsInitialLoading = false;
+        if (scanPresentationGeneration == songsGeneration) EndMapsetScan(scanPresentationOwner);
         IsAwaitingSongsPresentation = false;
         IsProcessing = false;
         IsInteractionBlocked = false;
@@ -451,6 +482,7 @@ public partial class HomePageVM(
     {
         if (!(projects ? CanRestartProjects() : reload ? CanReloadSongs() : CanRestartSongs())) return;
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token, cancellationToken);
+        var scan = projects ? 0 : BeginMapsetScan();
         try
         {
             if (!projects)
@@ -467,7 +499,11 @@ public partial class HomePageVM(
                 if (osuDirectory is null) { EndProcessing(); return; }
             }
             await PreparePanelAsync(projects, linked.Token, forceReload: !projects);
-            if (!projects) IsAwaitingSongsPresentation = true;
+            if (!projects)
+            {
+                IsAwaitingSongsPresentation = true;
+                AwaitMapsetScanPresentation(scan);
+            }
         }
         catch (OperationCanceledException) when (linked.IsCancellationRequested) { }
         catch (Exception error) { FailPanel(projects, error); }
@@ -475,7 +511,11 @@ public partial class HomePageVM(
         {
             if (!projects)
             {
-                if (!IsAwaitingSongsPresentation || linked.IsCancellationRequested) EndProcessing();
+                if (!IsAwaitingSongsPresentation || linked.IsCancellationRequested)
+                {
+                    EndMapsetScan(scan);
+                    EndProcessing();
+                }
             }
         }
     }
@@ -492,6 +532,8 @@ public partial class HomePageVM(
         IsInitialLoading = false;
         if (!active) return;
         active = false;
+        EndMapsetScan(mapsetScanGeneration);
+        mapsetScanGeneration++;
         projectsGeneration++;
         songsGeneration++;
         projectsSnapshot = songsSnapshot = null;

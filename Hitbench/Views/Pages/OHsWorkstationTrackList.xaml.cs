@@ -58,6 +58,12 @@ public partial class OHsWorkstationTrackList : UserControl
     }
     public bool RestoreTrackFocusBeforeCollapse(DependencyObject? focusedElement) =>
         !deactivationStarted && RealizedRows(TrackList).Any(row => row.HasExpandedControlFocus(focusedElement));
+    internal double CaptureVerticalOffset() => FindVisualChild<ScrollViewer>(TrackList)?.VerticalOffset ?? 0;
+    internal void RestoreVerticalOffset(double offset)
+    {
+        TrackList.UpdateLayout();
+        FindVisualChild<ScrollViewer>(TrackList)?.ScrollToVerticalOffset(offset);
+    }
     public void RefreshViewport() { UpdateNodeAdornerGeometry(); RefreshNodeDragAfterScroll(); RefreshTrackDragPresentation(); }
     public static readonly DependencyProperty TimelineProperty = DependencyProperty.Register(nameof(Timeline), typeof(OHsWorkstationTimeline), typeof(OHsWorkstationTrackList), new PropertyMetadata(null));
     public OHsWorkstationTimeline? Timeline { get => (OHsWorkstationTimeline?)GetValue(TimelineProperty); set => SetValue(TimelineProperty, value); }

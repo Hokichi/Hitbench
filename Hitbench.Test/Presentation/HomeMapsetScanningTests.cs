@@ -1,0 +1,105 @@
+using CommunityToolkit.Mvvm.Messaging;
+using Hitbench.Resources.DataModels;
+using Hitbench.ViewModels.Shell.HomePage;
+
+namespace Hitbench.Test.Presentation;
+
+public sealed class HomeMapsetScanningTests
+{
+    [Test]
+    public async Task FolderPickerDoesNotScanUntilConfirmationAndLateLoadCannotReactivateHome()
+    {
+        var selection = new TaskCompletionSource<IReadOnlyList<string>>();
+        var snapshot = new TaskCompletionSource<FolderSnapshot?>();
+        var scanStarted = new TaskCompletionSource();
+        var folders = new StubHomeFolderService();
+        var picker = new StubSampleFileDialogService([]) { Selection = _ => selection.Task };
+        var vm = new HomePageVM(folders, new StubAppSettingsService(), new StubInstallationDialogService(),
+            new ImmediateUiScheduler(), new StubProjectFileService((_, _, _) => Task.FromResult("saved.json")),
+            new WeakReferenceMessenger(), picker: picker);
+        try
+        {
+            await vm.LoadAsync(default);
+            vm.CompleteSongsPresentation(vm.SongsPresentationGeneration);
+            folders.ReloadSongs = (_, _) => { scanStarted.TrySetResult(); return snapshot.Task; }; // Deliberately ignores cancellation.
+            var locate = vm.LocateMapsetsDirectoryCommand.ExecuteAsync(null);
+            Assert.That(vm.IsScanningMapsets, Is.False);
+            selection.SetResult([@"C:\maps"]);
+            await scanStarted.Task.WaitAsync(TimeSpan.FromSeconds(3));
+            Assert.That(vm.IsScanningMapsets, Is.True);
+            vm.Deactivate();
+            snapshot.SetResult(new FolderSnapshot([new FolderEntry("late", "late", default)]));
+            await locate;
+            Assert.That(vm.IsScanningMapsets, Is.False);
+            Assert.That(vm.Songs, Is.Empty);
+        }
+        finally { selection.TrySetResult([]); snapshot.TrySetResult(new FolderSnapshot([])); vm.Deactivate(); }
+    }
+
+    internal static HomePageVM Create(StubHomeFolderService folders) => new(folders,
+        new StubAppSettingsService(), new StubInstallationDialogService(), new ImmediateUiScheduler(),
+        new StubProjectFileService((_, _, _) => Task.FromResult("saved.json")), new WeakReferenceMessenger());
+
+    [Test]
+    public async Task InitialScanRemainsActiveUntilCurrentPresentationCompletes()
+    {
+        var pending = new TaskCompletionSource<FolderSnapshot?>();
+        var vm = Create(new StubHomeFolderService { Songs = (_, _) => pending.Task });
+        try
+        {
+            var loading = vm.LoadAsync(default);
+            Assert.That(vm.IsScanningMapsets, Is.True);
+            pending.SetResult(new FolderSnapshot([new FolderEntry("one", "one", default)]));
+            await loading;
+            await vm.LoadInitialSongsAsync(default);
+            vm.CompleteSongsPresentation(vm.SongsPresentationGeneration - 1);
+            Assert.That(vm.IsScanningMapsets, Is.True);
+            vm.CompleteSongsPresentation(vm.SongsPresentationGeneration);
+            Assert.That(vm.IsScanningMapsets, Is.False);
+        }
+        finally { vm.Deactivate(); }
+    }
+
+    [TestCase(false)] [TestCase(true)]
+    public async Task FailureAndCancellationEndScanning(bool cancel)
+    {
+        var pending = new TaskCompletionSource<FolderSnapshot?>();
+        var vm = Create(new StubHomeFolderService { Songs = (_, token) => pending.Task.WaitAsync(token) });
+        try
+        {
+            var loading = vm.LoadAsync(default);
+            Assert.That(vm.IsScanningMapsets, Is.True);
+            if (cancel) vm.Deactivate(); else pending.SetException(new IOException("scan failed"));
+            try { await loading; } catch (OperationCanceledException) when (cancel) { }
+            Assert.That(vm.IsScanningMapsets, Is.False);
+        }
+        finally { vm.Deactivate(); }
+    }
+
+    [Test]
+    public async Task ReloadOwnsScanButSearchAndPagingDoNot()
+    {
+        var folders = new StubHomeFolderService { Songs = (_, _) => Task.FromResult<FolderSnapshot?>(new FolderSnapshot(
+            Enumerable.Range(0, 100).Select(i => new FolderEntry(i.ToString(), "map", default)))) };
+        var vm = Create(folders);
+        try
+        {
+            await vm.LoadAsync(default); await vm.LoadInitialSongsAsync(default);
+            vm.CompleteSongsPresentation(vm.SongsPresentationGeneration);
+            await vm.LoadMoreSongsCommand.ExecuteAsync(10);
+            Assert.That(vm.IsScanningMapsets, Is.False);
+            vm.SongSearchText = "map";
+            await vm.SearchSongsCommand.ExecutionTask!;
+            Assert.That(vm.IsScanningMapsets, Is.False);
+            vm.CompleteSongsPresentation(vm.SongsPresentationGeneration);
+            var pending = new TaskCompletionSource<FolderSnapshot?>();
+            folders.ReloadSongs = (_, _) => pending.Task;
+            var reload = vm.ReloadSongsCommand.ExecuteAsync(null);
+            Assert.That(vm.IsScanningMapsets, Is.True);
+            pending.SetResult(new FolderSnapshot([])); await reload;
+            vm.CompleteSongsPresentation(vm.SongsPresentationGeneration);
+            Assert.That(vm.IsScanningMapsets, Is.False);
+        }
+        finally { vm.Deactivate(); }
+    }
+}

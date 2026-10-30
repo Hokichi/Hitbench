@@ -32,6 +32,7 @@ public partial class WorkstationPage
                 ? SystemParameters.HighContrast ? null : (System.Windows.Media.Effects.Effect)FindResource("OHsWorkstationLoadingBlurEffect")
                 : volumeOverlayHost is null ? VolumeBlurEffect : null;
         WorkstationContent.Effect = effect;
+        Toolbar.Effect = effect;
         SetValue(HeaderBlurEffectPropertyKey, effect);
     }
     private void OnLoadingSystemChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)

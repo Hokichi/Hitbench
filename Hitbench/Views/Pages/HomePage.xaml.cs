@@ -171,6 +171,7 @@ public partial class HomePage : UserControl
     {
         OuterGlow.SetIsActive(CardGlowHost, false);
         Detach();
+        ReleaseScanningAnimation();
         lifetime.Cancel();
         presentation.TrySetCanceled(lifetime.Token);
         viewModel.Deactivate();
@@ -192,6 +193,8 @@ public partial class HomePage : UserControl
         LayoutUpdated += OnLayoutUpdated;
         IsVisibleChanged += OnVisibilityChanged;
         viewModel.PropertyChanged += OnStateChanged;
+        SystemParameters.StaticPropertyChanged += OnScanningSystemChanged;
+        RefreshScanningFromSystem();
         QueueCheck();
     }
 
@@ -223,12 +226,21 @@ public partial class HomePage : UserControl
         if (maximizedPageSize.Width > 0) UpdateSongsLayout(maximizedPageSize);
     }
 
-    private void OnVisibilityChanged(object sender, DependencyPropertyChangedEventArgs e) => QueueCheck();
+    private void OnVisibilityChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        RefreshScanningFromSystem();
+        QueueCheck();
+    }
     private bool locationInvoked;
     private void OnLocateFolderClick(object sender, RoutedEventArgs e) => locationInvoked = true;
 
     private void OnStateChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(HomePageVM.IsScanningMapsets))
+        {
+            if (viewModel.IsScanningMapsets) HideSongs();
+            RefreshScanningFromSystem();
+        }
         if (locationInvoked && e.PropertyName == nameof(HomePageVM.MapsetsAvailability) && viewModel.CanInteract)
         {
             locationInvoked = false;
@@ -504,6 +516,8 @@ public partial class HomePage : UserControl
     {
         if (!attached) return;
         attached = false;
+        SystemParameters.StaticPropertyChanged -= OnScanningSystemChanged;
+        RefreshScanningFromSystem();
         CancelSongsScrollMotion();
         songsPanel = null;
         songsViewer = null;

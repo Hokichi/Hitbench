@@ -24,7 +24,7 @@ public class WorkstationPlaybackRefreshTests
     [Test]
     public void CheckingDuringPlaybackRevealsMarkerWithoutAudioSeek()
     {
-        var checkBox = ((Hitbench.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("ScrollWithMarkerCheckBox") as BalloonCheckBox;
+        var checkBox = page.Toolbar.FindName("ScrollWithMarkerCheckBox") as BalloonCheckBox;
         Assert.That(checkBox, Is.Not.Null); Assert.That(checkBox!.IsChecked, Is.True);
         Assert.That(checkBox.Style, Is.SameAs(checkBox.FindResource("OHsWorkstationScrollWithMarkerStyle")));
         Assert.That(checkBox.IsTabStop, Is.False);

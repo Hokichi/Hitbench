@@ -275,14 +275,14 @@ public class WorkstationTrackCollapseTests
         var (page, vm, view) = Create(direction);
         using (view)
         {
-            var trigger = (BalloonComboBox)page.AudioCard.FindName("AddMenuButton");
+            var trigger = (BalloonComboBox)page.Toolbar.FindName("AddMenuButton");
             UiTestPump.Layout(trigger.ContextMenu, 320, 200);
             UiTestPump.Run(trigger.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle).Task);
             var sample = (MenuItem)trigger.ContextMenu.Items[0];
             var instrument = (MenuItem)trigger.ContextMenu.Items[1];
-            var toggle = WorkstationActionMenus.Find(page.AudioCard, vm.ToggleTracksCollapsedCommand);
-            var refresh = WorkstationActionMenus.Find(page.AudioCard, vm.ReloadSamplesCommand);
-            var resnap = WorkstationActionMenus.Find(page.AudioCard, vm.ResnapAllSamplesCommand);
+            var toggle = WorkstationActionMenus.Find(page.Toolbar, vm.ToggleTracksCollapsedCommand);
+            var refresh = WorkstationActionMenus.Find(page.Toolbar, vm.ReloadSamplesCommand);
+            var resnap = WorkstationActionMenus.Find(page.Toolbar, vm.ResnapAllSamplesCommand);
             Assert.That(refresh.Command, Is.SameAs(vm.ReloadSamplesCommand));
             Assert.That(resnap.Command, Is.SameAs(vm.ResnapAllSamplesCommand));
             Assert.That(AutomationProperties.GetName(refresh), Is.EqualTo("Refresh samples"));
@@ -410,7 +410,7 @@ public class WorkstationTrackCollapseTests
         using (view)
         {
             Assert.That(vm.SelectNode(track, node, false), Is.True);
-            var toggle = WorkstationActionMenus.Find(page.AudioCard, vm.ToggleTracksCollapsedCommand);
+            var toggle = WorkstationActionMenus.Find(page.Toolbar, vm.ToggleTracksCollapsedCommand);
             toggle.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left)
                 { RoutedEvent = Mouse.PreviewMouseDownEvent });
             InvokeMenuItem(toggle);
@@ -432,7 +432,7 @@ public class WorkstationTrackCollapseTests
         {
             var list = (ListBox)((Hitbench.Views.Pages.OHsWorkstationTrackList)page.FindName("TrackListComponent")).FindName("TrackList");
             vm.ToggleTracksCollapsedCommand.Execute(null);
-            var menu = ((BalloonComboBox)page.AudioCard.FindName("AddMenuButton")).ContextMenu;
+            var menu = ((BalloonComboBox)page.Toolbar.FindName("AddMenuButton")).ContextMenu;
             UiTestPump.Layout(menu, 320, 200);
             InvokeMenuItem((MenuItem)menu.Items[0]);
             list.ScrollIntoView(vm.Tracks.Last());
@@ -466,7 +466,7 @@ public class WorkstationTrackCollapseTests
         using (view)
         {
             var hidden = Find<FrameworkElement>(page, controlName);
-            var toggle = (BalloonButton)((Hitbench.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("ProjectActionsButton");
+            var toggle = (BalloonButton)page.Toolbar.FindName("ProjectActionsButton");
             var scope = FocusManager.GetFocusScope(toggle);
             page.RestoreTrackFocusBeforeCollapse(hidden);
             Assert.That(FocusManager.GetFocusedElement(scope), Is.SameAs(toggle));

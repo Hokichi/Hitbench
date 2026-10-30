@@ -15,7 +15,7 @@ internal static class WorkstationActionMenus
         UiTestPump.Run(item.Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle).Task);
     }
 
-    internal static MenuItem Find(OHsWorkstationAudioCard card, ICommand command)
+    internal static MenuItem Find(OHsWorkstationToolbar card, ICommand command)
     {
         var trigger = (BalloonComboBox)card.FindName("ProjectActionsButton");
         trigger.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));

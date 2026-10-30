@@ -84,6 +84,14 @@ public sealed class InstrumentalDrawerInputTests
         try
         {
             var follow = owner.ScrollWithMarker;
+            var expansionKeys = ModifierKeys.Control | ModifierKeys.Shift;
+            Assert.That(shell.HandleWindowKeyDown(true, Key.Enter, expansionKeys, false, roll), Is.True);
+            Assert.That(page.IsPianoRollExpanded, Is.True);
+            Assert.That(drawer.IsExpanded, Is.True);
+            Assert.That(shell.HandleWindowKeyDown(true, Key.Enter, expansionKeys, true, roll), Is.True);
+            Assert.That(page.IsPianoRollExpanded, Is.True);
+            Assert.That(shell.HandleWindowKeyDown(true, Key.Enter, expansionKeys, false, roll), Is.True);
+            Assert.That(page.IsPianoRollExpanded, Is.False);
             Assert.That(shell.HandleWindowKeyDown(true, Key.F, ModifierKeys.None, false, roll), Is.True);
             Assert.That(owner.ScrollWithMarker, Is.EqualTo(!follow));
             Assert.That(shell.HandleWindowKeyDown(true, Key.F, ModifierKeys.None, true, roll), Is.True);
@@ -106,6 +114,12 @@ public sealed class InstrumentalDrawerInputTests
             Assert.That(shell.HandleWindowKeyDown(true, Key.D2, ModifierKeys.None, false, roll), Is.True);
             Assert.That(vm.IsAdditionMode, Is.True);
             Assert.That(owner.IsAdditionMode, Is.False);
+            drawer.HandleEditorShortcut(Key.Enter, expansionKeys, false, roll);
+            Assert.That(page.IsPianoRollExpanded, Is.True);
+            cancel.Cancel(); UiTestPump.Run(showing);
+            Assert.That(page.IsPianoRollExpanded, Is.False);
+            drawer.HandleEditorShortcut(Key.Enter, expansionKeys, false, roll);
+            Assert.That(page.IsPianoRollExpanded, Is.False, "Detached drawers must not retain layout event handlers.");
         }
         finally { cancel.Cancel(); UiTestPump.Run(showing); UiTestPump.Run(vm.DeactivateAsync()); UiTestPump.Run(page.DeactivateAsync()); shell.Close(); SynchronizationContext.SetSynchronizationContext(previousContext); }
     }

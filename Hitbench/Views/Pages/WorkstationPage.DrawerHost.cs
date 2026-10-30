@@ -10,6 +10,39 @@ public partial class WorkstationPage
     private static readonly DependencyProperty DrawerProgressProperty = DependencyProperty.Register(
         "DrawerProgress", typeof(double), typeof(WorkstationPage), new PropertyMetadata(0d,
             (owner, _) => ((WorkstationPage)owner).UpdateDrawerReveal()));
+    private static readonly DependencyPropertyKey IsPianoRollExpandedPropertyKey = DependencyProperty.RegisterReadOnly(
+        nameof(IsPianoRollExpanded), typeof(bool), typeof(WorkstationPage), new PropertyMetadata(false));
+    public static readonly DependencyProperty IsPianoRollExpandedProperty = IsPianoRollExpandedPropertyKey.DependencyProperty;
+    public bool IsPianoRollExpanded => (bool)GetValue(IsPianoRollExpandedProperty);
+    private double savedTrackOffset;
+    private int drawerAttachmentGeneration;
+    internal void TogglePianoRollExpansion()
+    {
+        if (drawerHost is null || drawerKind != OHsWorkstationDrawerKind.Arrangement || deactivationStarted) return;
+        SetPianoRollExpanded(!IsPianoRollExpanded);
+    }
+    private void SetPianoRollExpanded(bool expanded)
+    {
+        if (expanded == IsPianoRollExpanded) return;
+        if (expanded)
+        {
+            savedTrackOffset = TrackListComponent.CaptureVerticalOffset();
+            TrackListComponent.CancelNodePointer();
+        }
+        SetValue(IsPianoRollExpandedPropertyKey, expanded);
+        TracksCard.Visibility = expanded ? Visibility.Collapsed : Visibility.Visible;
+        BottomDrawerSlot.Margin = expanded ? new Thickness(0) : new Thickness(0, 12, 0, 0);
+        UpdateDrawerHostSize();
+        if (!expanded)
+        {
+            var generation = drawerAttachmentGeneration;
+            Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, () =>
+            {
+                if (!deactivationStarted && !IsPianoRollExpanded && drawerAttachmentGeneration == generation)
+                    TrackListComponent.RestoreVerticalOffset(savedTrackOffset);
+            });
+        }
+    }
     private Grid? drawerHost;
     private OHsWorkstationDrawerKind drawerKind;
     private double drawerTargetExtent;
@@ -18,6 +51,7 @@ public partial class WorkstationPage
     internal void AttachDrawerHost(Grid host, OHsWorkstationDrawerKind kind)
     {
         if (drawerHost is not null) throw new InvalidOperationException("A drawer is already attached.");
+        drawerAttachmentGeneration++;
         drawerKind = kind;
         drawerHost = host;
         DrawerSlot.Children.Add(host);
@@ -31,6 +65,8 @@ public partial class WorkstationPage
     internal void DetachDrawerHost(Grid host)
     {
         if (!ReferenceEquals(drawerHost, host)) return;
+        var restoreTrackOffset = IsPianoRollExpanded;
+        SetPianoRollExpanded(false);
         ClearDrawerHostAnimation();
         host.LayoutUpdated -= OnDrawerLayoutUpdated;
         DrawerSlot.Children.Remove(host);
@@ -44,6 +80,7 @@ public partial class WorkstationPage
         drawerTargetExtent = 0;
         SetValue(DrawerProgressProperty, 0d);
         WorkstationDockLayout.UpdateLayout();
+        if (restoreTrackOffset) TrackListComponent.RestoreVerticalOffset(savedTrackOffset);
         TrackScrollBarGutter = TrackListComponent.TrackScrollBarGutter;
     }
 
@@ -57,10 +94,10 @@ public partial class WorkstationPage
         sizeToContent ? Math.Min(availableHeight, desiredHeight) : availableHeight / 2;
 
     internal static Size CalculateDrawerHostSize(OHsWorkstationDrawerKind kind, Size dockSize,
-        Size tracksSize, double fixedTrackSideWidth, double desiredContentHeight) =>
+        Size tracksSize, double fixedTrackSideWidth, double desiredContentHeight, bool arrangementExpanded = false) =>
         kind == OHsWorkstationDrawerKind.Samples
             ? new Size(CalculateSideDrawerWidth(dockSize.Width, fixedTrackSideWidth), dockSize.Height)
-            : new Size(tracksSize.Width, CalculateBottomDrawerHeight(tracksSize.Height, desiredContentHeight,
+            : new Size(tracksSize.Width, arrangementExpanded && kind == OHsWorkstationDrawerKind.Arrangement ? tracksSize.Height : CalculateBottomDrawerHeight(tracksSize.Height, desiredContentHeight,
                 kind == OHsWorkstationDrawerKind.KeysMapping));
 
     private void UpdateDrawerHostSize()
@@ -77,7 +114,7 @@ public partial class WorkstationPage
             desiredHeight = presenter.DesiredSize.Height;
         }
         var size = CalculateDrawerHostSize(drawerKind, dockSize, tracksSize,
-            TrackSideColumnWidth.Value + TracksCard.Padding.Left + TracksCard.Padding.Right + 24, desiredHeight);
+            TrackSideColumnWidth.Value + TracksCard.Padding.Left + TracksCard.Padding.Right + 24, desiredHeight, IsPianoRollExpanded);
         if (host.Width != size.Width) host.Width = size.Width;
         if (host.Height != size.Height) host.Height = size.Height;
         var extent = side ? size.Width : size.Height;

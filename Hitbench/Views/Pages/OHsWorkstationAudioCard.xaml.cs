@@ -20,24 +20,15 @@ public partial class OHsWorkstationAudioCard : UserControl
 
     public OHsWorkstationAudioCard() { InitializeComponent(); }
     public OHsWorkstationTimeline Timeline => TimelineControl;
-    public OHsWorkstationFooter Footer => FooterControls;
     public Thickness AudioCardBorderThickness => SongAudioCard.BorderThickness;
     public static readonly DependencyProperty TrackScrollBarGutterProperty = DependencyProperty.Register(nameof(TrackScrollBarGutter), typeof(double), typeof(OHsWorkstationAudioCard), new PropertyMetadata(0d));
     public double TrackScrollBarGutter { get => (double)GetValue(TrackScrollBarGutterProperty); set => SetValue(TrackScrollBarGutterProperty, value); }
     public bool ContainsInputOrigin(DependencyObject? origin) => IsWithin(origin, SongAudioCard);
-    public bool IsCollapseActionOrigin(DependencyObject? origin) => IsWithin(origin, ProjectActionsButton) ||
-        ProjectActionsButton.ContextMenu.Items.OfType<MenuItem>().Any(item => IsWithin(origin, item));
     private static bool IsWithin(DependencyObject? origin, DependencyObject owner)
     {
         for (var current = origin; current is not null; current = current is System.Windows.Media.Visual or System.Windows.Media.Media3D.Visual3D ? System.Windows.Media.VisualTreeHelper.GetParent(current) : LogicalTreeHelper.GetParent(current))
             if (ReferenceEquals(current, owner)) return true;
         return false;
-    }
-    public bool FocusCollapseAction()
-    {
-        var target = (UIElement)ProjectActionsButton;
-        FocusManager.SetFocusedElement(FocusManager.GetFocusScope(target), target);
-        return target.Focus();
     }
     private bool synchronizingAggregate;
     private void OnAggregateToggleChanged(object sender, RoutedEventArgs e)

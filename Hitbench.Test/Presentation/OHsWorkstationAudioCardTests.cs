@@ -26,7 +26,7 @@ public sealed class OHsWorkstationAudioCardTests
         new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
         var page = WorkstationTestPage.Create();
         var vm = (WorkstationPageVM)page.DataContext;
-        var card = new OHsWorkstationAudioCard { DataContext = vm, IsCompactLayout = compact };
+        var card = new OHsWorkstationToolbar { DataContext = vm, };
         try
         {
             UiTestPump.Layout(card, 900, 300);
@@ -54,7 +54,7 @@ public sealed class OHsWorkstationAudioCardTests
         new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
         var page = WorkstationTestPage.Create();
         var vm = (WorkstationPageVM)page.DataContext;
-        var card = new OHsWorkstationAudioCard { DataContext = vm, IsCompactLayout = compact, IsShortLayout = shortLayout };
+        var card = new OHsWorkstationToolbar { DataContext = vm, IsShortLayout = shortLayout };
         try
         {
             UiTestPump.Layout(card, 640, 300);
@@ -77,7 +77,7 @@ public sealed class OHsWorkstationAudioCardTests
             owner.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
             owner.Activate();
             Assert.That(owner.IsDropDownOpen, Is.True);
-            card.IsCompactLayout = false;
+
             card.IsShortLayout = false;
             Assert.That(owner.IsDropDownOpen, Is.True);
             Assert.That(owner.IsMenuOwnerActive, Is.True);
@@ -93,12 +93,12 @@ public sealed class OHsWorkstationAudioCardTests
     public void ProjectMenusRemainAvailableAtEveryWidth(bool compact, bool shortLayout, bool expected)
     {
         new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
-        var card = new OHsWorkstationAudioCard { IsCompactLayout = compact, IsShortLayout = shortLayout };
+        var card = new OHsWorkstationToolbar { IsShortLayout = shortLayout };
         UiTestPump.Layout(card, 900, 300);
         var trigger = (BalloonComboBox)card.FindName("ProjectActionsButton");
         Assert.That(trigger.IsEnabled, Is.EqualTo(expected));
         Assert.That(trigger.Visibility, Is.EqualTo(expected ? Visibility.Visible : Visibility.Collapsed));
-        card.IsCompactLayout = false;
+
         card.IsShortLayout = false;
         Assert.That(trigger.IsEnabled, Is.True);
     }
@@ -111,7 +111,7 @@ public sealed class OHsWorkstationAudioCardTests
         var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), exportDialog: dialogs);
         try
         {
-            var card = new OHsWorkstationAudioCard { DataContext = vm };
+            var card = new OHsWorkstationToolbar { DataContext = vm };
             UiTestPump.Layout(card, 900, 300);
             var button = WorkstationActionMenus.Find(card, vm.ExportCommand);
             UiControlContract.AssertStyle<MenuItem>(button, "OHsIconActionMenuItemStyle");
@@ -125,17 +125,17 @@ public sealed class OHsWorkstationAudioCardTests
         finally { UiTestPump.Run(vm.DeactivateAsync()); }
     }
     [Test]
-    public void TrackAddMenuIncludesControlPointCreation()
+    public void TrackAddMenuOmitsControlPointCreation()
     {
         new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
         var vm = (WorkstationPageVM)WorkstationTestPage.Create().DataContext;
-        var card = new OHsWorkstationAudioCard { DataContext = vm };
+        var card = new OHsWorkstationToolbar { DataContext = vm };
         UiTestPump.Layout(card, 900, 250);
         var add = (BalloonComboBox)card.FindName("AddMenuButton");
         add.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
         UiTestPump.Layout(add.ContextMenu, 320, 200);
-        Assert.That(add.ContextMenu.Items.Cast<MenuItem>().SingleOrDefault(item => item.Command == vm.AddControlPointCommand), Is.Not.Null);
-        Assert.That(card.ContainsInputOrigin((DependencyObject)card.FindName("PlayPauseButton")), Is.False);
+        Assert.That(add.ContextMenu.Items.Cast<MenuItem>().SingleOrDefault(item => item.Command == vm.AddControlPointCommand), Is.Null);
+
         UiTestPump.Run(vm.DeactivateAsync());
     }
     [TestCase(false, false)]
@@ -201,7 +201,7 @@ public sealed class OHsWorkstationAudioCardTests
         new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
         var vm = new WorkstationPageVM(new StubWorkstationSourceService(),
             new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), new StubSampleFileService(["hit.wav"]));
-        var card = new OHsWorkstationAudioCard { DataContext = vm };
+        var card = new OHsWorkstationToolbar { DataContext = vm };
         try
         {
             UiTestPump.Layout(card, 900, 300);
@@ -211,13 +211,13 @@ public sealed class OHsWorkstationAudioCardTests
             UiTestPump.Layout(trigger.ContextMenu, 320, 200);
             Drain();
             var items = trigger.ContextMenu.Items.Cast<MenuItem>().ToArray();
-            Assert.That(items.Select(item => item.Header), Is.EqualTo(new[] { "Sample Track", "Instrumental Track", "Control Point" }));
+            Assert.That(items.Select(item => item.Header), Is.EqualTo(new[] { "Sample Track", "Instrumental Track" }));
             Assert.That(items.Select(item => item.Command), Is.EqualTo(new System.Windows.Input.ICommand[]
-                { vm.AddSampleTrackCommand, vm.AddPianoTrackCommand, vm.AddControlPointCommand }));
+                { vm.AddSampleTrackCommand, vm.AddPianoTrackCommand }));
             UiControlContract.AssertStyle<BalloonComboBox>(trigger, "OHsWorkstationAddActionStyle");
             Assert.That(trigger.Style.BasedOn, Is.SameAs(trigger.FindResource("BaseBalloonComboBoxStyle")));
             foreach (var item in items.Take(2)) UiControlContract.AssertStyle<MenuItem>(item, "OHsActionMenuItemStyle");
-            UiControlContract.AssertStyle<MenuItem>(items[2], "OHsIconActionMenuItemStyle");
+
             Assert.That(items.All(item => !item.IsEnabled), Is.True);
             UiTestPump.Run(vm.LoadAsync("project.json", default));
             vm.AcknowledgePresentationReady(vm.LoadGeneration);
@@ -236,7 +236,7 @@ public sealed class OHsWorkstationAudioCardTests
     public void MenuRebindingUsesCurrentCommandsAndUnloadedOwnersCannotInvoke()
     {
         new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
-        var card = new OHsWorkstationAudioCard();
+        var card = new OHsWorkstationToolbar();
         var trigger = card.FindName("AddMenuButton") as BalloonComboBox;
         Assert.That(trigger, Is.Not.Null);
         var menu = trigger!.ContextMenu;
@@ -283,7 +283,7 @@ public sealed class OHsWorkstationAudioCardTests
             new WeakReferenceMessenger(), new ImmediateUiScheduler());
         try
         {
-            var card = new OHsWorkstationAudioCard { DataContext = vm };
+            var card = new OHsWorkstationToolbar { DataContext = vm };
             using var view = new InMemoryView(new Window { Content = card, Width = 900, Height = 300 }, processFrames: false, scheduleLayout: false);
             UiTestPump.Run(vm.LoadAsync("project.json", default)); vm.AcknowledgePresentationReady(vm.LoadGeneration);
             vm.SelectNode(track, node, false);
@@ -326,7 +326,7 @@ public sealed class OHsWorkstationAudioCardTests
             new StubSampleFileService([]), new StubSampleFileDialogService(Array.Empty<string>()), messenger: new WeakReferenceMessenger(),
             instrumentDialogs: dialogs, sampleManagementDialog: new StubSampleManagementDialogService
                 { Present = (_, _) => { sampleRequests++; return Task.CompletedTask; } });
-        var card = new OHsWorkstationAudioCard { DataContext = vm };
+        var card = new OHsWorkstationToolbar { DataContext = vm };
         using var view = new InMemoryView(new Window { Content = card, Width = 900, Height = 300 }, processFrames: false, scheduleLayout: false);
         try
         {
@@ -361,7 +361,7 @@ public sealed class OHsWorkstationAudioCardTests
             new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(),
             messenger: new WeakReferenceMessenger(), instrumentDialogs: new StubInstrumentalTrackDialogService
             { Mapping = async (_, token) => { opened.TrySetResult(); await release.Task.WaitAsync(token); } });
-        var card = new OHsWorkstationAudioCard { DataContext = vm };
+        var card = new OHsWorkstationToolbar { DataContext = vm };
         using var view = new InMemoryView(new Window { Content = card, Width = 900, Height = 300 }, processFrames: false, scheduleLayout: false);
         try
         {
@@ -381,7 +381,7 @@ public sealed class OHsWorkstationAudioCardTests
         finally { release.TrySetResult(); UiTestPump.Run(vm.DeactivateAsync()); }
     }
 
-    private static void AssertTransport(OHsWorkstationAudioCard card, WorkstationPageVM vm, bool enabled)
+    private static void AssertTransport(OHsWorkstationToolbar card, WorkstationPageVM vm, bool enabled)
     {
         Drain();
         Assert.That(((BalloonButton)card.FindName("PlayPauseButton")).IsEnabled, Is.EqualTo(enabled));
@@ -396,7 +396,7 @@ public sealed class OHsWorkstationAudioCardTests
     {
         new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
         var vm = (WorkstationPageVM)WorkstationTestPage.Create().DataContext;
-        var owner = new OHsWorkstationAudioCard { DataContext = vm };
+        var owner = new OHsWorkstationToolbar { DataContext = vm };
         UiTestPump.Layout(owner, 900, 250);
         var trigger = owner.FindName("AddMenuButton") as BalloonComboBox;
         Assert.That(trigger, Is.Not.Null);
@@ -404,7 +404,7 @@ public sealed class OHsWorkstationAudioCardTests
         Drain();
         var action = (MenuItem)trigger.ContextMenu.Items[0];
         Assert.That(action.Command, Is.SameAs(vm.AddSampleTrackCommand));
-        Assert.That(owner.Timeline.DataContext, Is.SameAs(vm));
+        Assert.That(owner.Footer.DataContext, Is.SameAs(vm));
         UiTestPump.Run(vm.DeactivateAsync());
     }
 }

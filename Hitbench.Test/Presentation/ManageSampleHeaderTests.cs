@@ -28,14 +28,14 @@ public sealed class ManageSampleHeaderTests
         var page = services.GetRequiredService<Func<Hitbench.Views.Pages.WorkstationPage>>()();
         var host = new Window { Content = page };
         using var view = new InMemoryView(host, scheduleLayout: false);
-        var button = (BalloonButton)((Hitbench.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("ManageSamplesButton");
+        var button = (BalloonButton)page.Toolbar.FindName("ManageSamplesButton");
         var vm = (Hitbench.ViewModels.Shell.WorkstationPageVM)page.DataContext;
         Assert.That(button, Is.TypeOf<BalloonButton>());
         Assert.That(button.Command, Is.SameAs(vm.ManageSamplesCommand));
         UiControlContract.AssertStyle<BalloonButton>(button, "OHsWorkstationSamplesActionStyle");
         Assert.That(button.Style.BasedOn, Is.SameAs(button.FindResource("OHsBalloonDefaultActionStyle")));
         Assert.That(button.IsTabStop, Is.False);
-        var trigger = (BalloonComboBox)page.AudioCard.FindName("AddMenuButton");
+        var trigger = (BalloonComboBox)page.Toolbar.FindName("AddMenuButton");
         // This unloaded DI page is disabled; supply the native placement boundary without opening its menu.
         trigger.ContextMenu.PlacementTarget = trigger;
         UiTestPump.Layout(trigger.ContextMenu, 320, 200);

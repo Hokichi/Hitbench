@@ -646,8 +646,12 @@
             x:Key="OHsHomeInitialLoadingStyle"
             BasedOn="{StaticResource OHsLoadingStatusTextStyle}"
             TargetType="TextBlock">
+            <Setter Property="Grid.Column" Value="1" />
             <Setter Property="Visibility" Value="Collapsed" />
             <Style.Triggers>
+                <DataTrigger Binding="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=pages:HomePage}, Mode=OneWay}" Value="True">
+                    <Setter Property="Grid.Column" Value="0" /><Setter Property="Grid.Row" Value="1" />
+                </DataTrigger>
                 <DataTrigger Binding="{Binding IsInitialLoading, Mode=OneWay}" Value="True">
                     <Setter Property="Visibility" Value="Visible" />
                 </DataTrigger>
@@ -721,6 +725,18 @@
         <Style x:Key="OHsHomeLocateMapsetsActionStyle" TargetType="customControls:BalloonButton" BasedOn="{StaticResource OHsHomeLocateActionStyle}">
             <Setter Property="Visibility" Value="Collapsed" />
             <Style.Triggers><DataTrigger Binding="{Binding MapsetsAvailability, Mode=OneWay}" Value="{x:Static dataModels:OHsHomeMapsetsAvailability.Available}"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
+        </Style>
+        <Style x:Key="OHsHomeScanningPresentationStyle" TargetType="Grid" BasedOn="{StaticResource BaseGridStyle}">
+            <Setter Property="Visibility" Value="Collapsed" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="ClipToBounds" Value="True" />
+            <Setter Property="IsHitTestVisible" Value="False" />
+            <Style.Triggers><DataTrigger Binding="{Binding IsScanningMapsets, Mode=OneWay}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
+        </Style>
+        <Style x:Key="OHsHomeScanningTextStyle" TargetType="TextBlock" BasedOn="{StaticResource BodyTextStyle}">
+            <Setter Property="TextAlignment" Value="Center" />
+            <Setter Property="AutomationProperties.LiveSetting" Value="Polite" />
         </Style>
     </UserControl.Resources>
     <AdornerDecorator x:Name="CardGlowHost" helpers:OuterGlow.IsHost="True">
@@ -813,6 +829,11 @@
                         Template="{StaticResource HomePageItemsTemplate}"
                         VirtualizingPanel.IsVirtualizing="True"
                         VirtualizingPanel.VirtualizationMode="Recycling" />
+                    <Grid Grid.Row="3" Style="{StaticResource OHsHomeScanningPresentationStyle}">
+                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                        <Viewbox x:Name="MapsetScanningAnimationHost" MaxWidth="300" MaxHeight="150" Stretch="Uniform" StretchDirection="DownOnly"><Grid x:Name="MapsetScanningAnimationContent" Style="{StaticResource BaseGridStyle}" /></Viewbox>
+                        <TextBlock x:Name="MapsetScanningText" Grid.Row="1" Text="Scanning..." Style="{StaticResource OHsHomeScanningTextStyle}" />
+                    </Grid>
                     <StackPanel Grid.Row="3" Style="{StaticResource OHsHomeLocatePanelStyle}">
                         <TextBlock x:Name="NoMapsetsText" Text="No mapsets found" Style="{StaticResource OHsHomeNoMapsetsStyle}" />
                         <customControls:BalloonButton x:Name="LocateOsuFolderButton" Click="OnLocateFolderClick" ButtonIcon="{StaticResource Folder}" ButtonText="Locate osu! folder" ShouldShowText="True" AutomationProperties.Name="Locate osu! folder" Command="{Binding LocateOsuFolderCommand, Mode=OneWay}" Style="{StaticResource OHsHomeLocateActionStyle}" />
@@ -904,8 +925,6 @@
             </Border>
             <TextBlock
                 x:Name="InitialLoadingText"
-                Grid.RowSpan="2"
-                Grid.ColumnSpan="2"
                 Style="{StaticResource OHsHomeInitialLoadingStyle}"
                 Text="Loading projects..." />
         </Grid>

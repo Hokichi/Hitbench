@@ -23,8 +23,9 @@ public partial class WorkstationPage : UserControl
     public double TimelineViewportWidth { get => (double)GetValue(TimelineViewportWidthProperty); set => SetValue(TimelineViewportWidthProperty, value); }
     public double TimelineHorizontalOffset { get => (double)GetValue(TimelineHorizontalOffsetProperty); set => SetValue(TimelineHorizontalOffsetProperty, value); }
     private readonly WorkstationPageVM viewModel;
+    internal OHsWorkstationToolbar Toolbar => ToolbarComponent;
     public OHsWorkstationTimeline Timeline => AudioCard.Timeline;
-    internal OHsWorkstationFooter Footer => AudioCard.Footer;
+    internal OHsWorkstationFooter Footer => Toolbar.Footer;
     internal Task NodeInputCompletion => TrackListComponent.NodeInputCompletion;
     internal bool IsRegionSelectionActive => TrackListComponent.IsRegionSelectionActive;
     internal IInputElement FindRemovalFocusTarget(int index) => TrackListComponent.FindRemovalFocusTarget(index) ?? Timeline.FocusTarget;
@@ -41,7 +42,7 @@ public partial class WorkstationPage : UserControl
     {
         var origin = e.OriginalSource as DependencyObject;
         if (IsDrawerOrigin(origin)) return;
-        if (AudioCard.IsCollapseActionOrigin(origin)) return;
+        if (Toolbar.IsCollapseActionOrigin(origin)) return;
         if (!deactivationStarted && !IsWithin(origin, TracksCard)) viewModel.SelectedTrack = null;
         if (!IsWithin(origin, TrackListComponent)) TrackListComponent.BeginNodePointer(null, default, default);
     }

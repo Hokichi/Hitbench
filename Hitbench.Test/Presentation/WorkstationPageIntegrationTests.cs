@@ -85,8 +85,8 @@ public class WorkstationPageIntegrationTests
         using var view = new InMemoryView(new Window { Content = page, Width = 1100, Height = 800, FlowDirection = direction });
         try
         {
-            var add = (BalloonComboBox)page.AudioCard.FindName("AddMenuButton");
-            var samples = (BalloonButton)page.AudioCard.FindName("ManageSamplesButton");
+            var add = (BalloonComboBox)page.Toolbar.FindName("AddMenuButton");
+            var samples = (BalloonButton)page.Toolbar.FindName("ManageSamplesButton");
             Assert.That(AutomationProperties.GetName(add), Is.EqualTo("Add"));
             Assert.That(AutomationProperties.GetName(samples), Is.EqualTo("Samples"));
             Assert.That((add.ButtonText, samples.ButtonText), Is.EqualTo(("Add", "Samples")));
@@ -102,7 +102,7 @@ public class WorkstationPageIntegrationTests
             }
             UiTestPump.Run(page.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle).Task);
             Assert.That(add.ContextMenu.Items.OfType<MenuItem>().Select(item => item.Command),
-                Is.EqualTo(new System.Windows.Input.ICommand[] { owner.AddSampleTrackCommand, owner.AddPianoTrackCommand, owner.AddControlPointCommand }));
+                Is.EqualTo(new System.Windows.Input.ICommand[] { owner.AddSampleTrackCommand, owner.AddPianoTrackCommand }));
             UiControlContract.AssertStyle<BalloonComboBox>(add, "OHsWorkstationAddActionStyle");
             UiControlContract.AssertStyle<BalloonButton>(samples, "OHsWorkstationSamplesActionStyle");
         }
@@ -121,8 +121,8 @@ public class WorkstationPageIntegrationTests
         var page = new WorkstationPage(vm); page.SetProjectPath("project.json");
         using var view = new InMemoryView(new Window { Content = page, Width = 1100, Height = 800, FlowDirection = direction });
         UiTestPump.Run(page.LoadCompletion); view.UpdateLayout();
-        var selection = (SegmentedToggleOption)((Hitbench.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("SelectionModeButton");
-        var addition = (SegmentedToggleOption)((Hitbench.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("AdditionModeButton");
+        var selection = (SegmentedToggleOption)page.Toolbar.FindName("SelectionModeButton");
+        var addition = (SegmentedToggleOption)page.Toolbar.FindName("AdditionModeButton");
         var grid = FindVisualChild<BeatGridView>(page)!;
         foreach (var mode in new[] { selection, addition, selection })
         {
@@ -166,7 +166,7 @@ public class WorkstationPageIntegrationTests
         {
             "page" => (UIElement)page,
             "track" => FindVisualChildren<OHsWorkstationTrackRow>(page).Single(row => ReferenceEquals(row.Track, track)),
-            _ => (UIElement)(originName is "SongAudioCard" or "PlayPauseButton" ? page.AudioCard.FindName(originName) : originName == "ZoomFooter" ? page.Footer.FindName(originName) : page.FindName(originName))
+            _ => (UIElement)(originName == "PlayPauseButton" ? page.Toolbar.FindName(originName) : originName == "SongAudioCard" ? page.AudioCard.FindName(originName) : originName == "ZoomFooter" ? page.Footer.FindName(originName) : page.FindName(originName))
         };
         var click = new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left)
             { RoutedEvent = Mouse.PreviewMouseDownEvent };
@@ -236,8 +236,8 @@ public class WorkstationPageIntegrationTests
         using var view = new InMemoryView(new Window { Content = page, Width = 900, Height = 700 });
         UiTestPump.Run(page.LoadCompletion);
         vm.IsAdditionMode = true; view.UpdateLayout();
-        var addition = (SegmentedToggleOption)((Hitbench.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("AdditionModeButton");
-        var selection = (SegmentedToggleOption)((Hitbench.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("SelectionModeButton");
+        var addition = (SegmentedToggleOption)page.Toolbar.FindName("AdditionModeButton");
+        var selection = (SegmentedToggleOption)page.Toolbar.FindName("SelectionModeButton");
         Assert.That(addition.IsChecked, Is.True);
         UiControlContract.AssertStyle<SegmentedToggleOption>(selection, typeof(SegmentedToggleOption));
         selection.SetCurrentValue(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, true);
@@ -636,7 +636,7 @@ public class WorkstationPageIntegrationTests
         UiTestPump.Run(page.LoadCompletion);
         view.UpdateLayout();
 
-        var play = (BalloonButton)((Hitbench.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("PlayPauseButton");
+        var play = (BalloonButton)page.Toolbar.FindName("PlayPauseButton");
         UiControlContract.AssertStyle<BalloonButton>(play, "OHsWorkstationPlayPauseStyle");
         Assert.That(vm.IsPlaying, Is.False);
         Hitbench.Test.Presentation.UiTestPump.Run(vm.PlayPauseCommand.ExecuteAsync(null));
@@ -1560,7 +1560,7 @@ public class WorkstationPageIntegrationTests
         var window = new Window { Content = page, Width = width, Height = height, FlowDirection = direction };
         using var view = new InMemoryView(window);
         UiTestPump.Run(page.LoadCompletion);
-        var card = (Border)((Hitbench.Views.Pages.OHsWorkstationAudioCard)page.FindName("AudioCard")).FindName("SongAudioCard");
+        var card = (Border)page.AudioCard.FindName("SongAudioCard");
         foreach (var cardHeight in new[] { 200d, 260d, 180d })
         {
             card.Height = cardHeight;
@@ -1591,7 +1591,7 @@ public class WorkstationPageIntegrationTests
         using var view = new InMemoryView(new Window { Content = page, Width = width, Height = 720, FlowDirection = direction });
         try
         {
-            var action = WorkstationActionMenus.Find(page.AudioCard, vm.ResnapAllSamplesCommand);
+            var action = WorkstationActionMenus.Find(page.Toolbar, vm.ResnapAllSamplesCommand);
             Assert.That(action, Is.Not.Null, "The workstation header must expose the resnap action.");
             var button = action!;
             Assert.That(button.IsEnabled, Is.False);

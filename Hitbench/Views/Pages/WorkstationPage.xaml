@@ -192,7 +192,9 @@
             Margin="16,8,16,8"
             IsEnabled="{Binding IsWorkstationContentEnabled, Mode=OneWay}"
             SizeChanged="OnVolumeOverlayHostSizeChanged">
-            <Grid x:Name="WorkstationDockLayout" FlowDirection="LeftToRight" Style="{StaticResource OHsWorkstationContentStyle}" SizeChanged="OnTracksLayoutSizeChanged">
+            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+            <pages:OHsWorkstationToolbar IsEnabled="{Binding IsEnabled, ElementName=WorkstationDockLayout, Mode=OneWay}" x:Name="ToolbarComponent" IsShortLayout="{Binding IsShortLayout, ElementName=Page, Mode=OneWay}"/>
+            <Grid Grid.Row="1" x:Name="WorkstationDockLayout" FlowDirection="LeftToRight" Style="{StaticResource OHsWorkstationContentStyle}" SizeChanged="OnTracksLayoutSizeChanged">
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                 <Grid x:Name="WorkstationContent" FlowDirection="{Binding FlowDirection, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}" Style="{StaticResource BaseGridStyle}">
                 <Grid.RowDefinitions>
@@ -259,6 +261,7 @@
                       Visibility="Collapsed" Style="{StaticResource BaseGridStyle}" />
             </Grid>
             <Border
+                Grid.RowSpan="2"
                 x:Name="VolumeOverlay"
                 Width="320"
                 VerticalAlignment="Center"

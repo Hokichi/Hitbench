@@ -12,10 +12,12 @@
   <ItemGroup>
     <EmbeddedResource Include="Resources\OHsExportTemplate.osu" LogicalName="Hitbench.Resources.OHsExportTemplate.osu" />
     <Resource Include="Resources\logo.ico;Resources\logo.png;Resources\logo-light.ico;Resources\logo-light.png" />
+    <Resource Include="Resources\Insider-loading.json" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="LottieSharp" Version="2.4.3" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.11" />
     <PackageReference Include="NAudio" Version="2.2.1" />
     <PackageReference Include="NAudio.Vorbis" Version="1.5.0" />

@@ -9,7 +9,7 @@ public partial class HomePageVM
     private bool isLocatingFolder;
     public string MapsetsDirectory => osuDirectory ?? "";
     public OHsHomeMapsetsAvailability MapsetsAvailability => !active ? OHsHomeMapsetsAvailability.Inactive
-        : IsLoadingSongs && songsInventory is null ? OHsHomeMapsetsAvailability.Loading
+        : IsScanningMapsets || IsLoadingSongs && songsInventory is null ? OHsHomeMapsetsAvailability.Loading
         : osuDirectory is null ? OHsHomeMapsetsAvailability.NotFound
         : songsInventory is { Count: > 0 } ? OHsHomeMapsetsAvailability.Available : OHsHomeMapsetsAvailability.Empty;
     private bool CanLocateFolder() => picker is not null && CanInteract && !isLocatingFolder && !IsProcessing && !IsLoadingSongs && !IsSearchingSongs && !IsCreatingProject;
@@ -21,6 +21,8 @@ public partial class HomePageVM
     {
         if (!CanLocateFolder()) return;
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(token, lifetime.Token);
+        var scan = 0;
+        var awaitingScan = false;
         isLocatingFolder = true;
         RefreshCommands();
         try
@@ -30,6 +32,7 @@ public partial class HomePageVM
             linked.Token.ThrowIfCancellationRequested();
             if (selected.Count == 0) return;
             if (selected.Count != 1 || !Path.IsPathFullyQualified(selected[0])) throw new IOException("Invalid folder selection.");
+            scan = BeginMapsetScan();
             if (installation && !await folders.IsInstallationAsync(selected[0], linked.Token)) throw new IOException("osu! not found.");
             var root = installation ? Path.Combine(selected[0], "Songs") : selected[0];
             var snapshot = await folders.ReloadSongsAsync(root, linked.Token);
@@ -65,9 +68,11 @@ public partial class HomePageVM
             OnPropertyChanged(nameof(SongsPresentationGeneration));
             UpdateSongsStatus();
             IsAwaitingSongsPresentation = true;
+            AwaitMapsetScanPresentation(scan);
+            awaitingScan = true;
         }
         catch (OperationCanceledException) when (linked.IsCancellationRequested) { }
         catch (Exception error) { if (active) FailPanel(false, error); }
-        finally { isLocatingFolder = false; RefreshCommands(); }
+        finally { if (!awaitingScan && scan != 0) EndMapsetScan(scan); isLocatingFolder = false; RefreshCommands(); }
     }
 }

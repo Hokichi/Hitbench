@@ -25,8 +25,21 @@ public partial class OHsInstrumentalArrangementDrawer : UserControl, IOHsShellDr
         Loaded += (_, _) => Attach();
         Unloaded += (_, _) => Detach();
     }
+    public event EventHandler? ExpansionRequested;
+    public static readonly DependencyProperty IsExpandedProperty = DependencyProperty.Register(nameof(IsExpanded), typeof(bool), typeof(OHsInstrumentalArrangementDrawer));
+    public bool IsExpanded { get => (bool)GetValue(IsExpandedProperty); set => SetValue(IsExpandedProperty, value); }
+    private void OnExpansionClick(object sender, RoutedEventArgs e)
+    {
+        PianoRoll.CancelInteraction();
+        ExpansionRequested?.Invoke(this, EventArgs.Empty);
+    }
     public event EventHandler? CloseRequested;
     public event Action<double>? HorizontalOffsetRequested;
+    internal void FocusExpansionAction()
+    {
+        FocusManager.SetFocusedElement(FocusManager.GetFocusScope(ExpansionButton), ExpansionButton);
+        ExpansionButton.Focus();
+    }
     public bool CanDismiss => true;
     public bool TryPrepareClose() { PianoRoll.CancelInteraction(); return true; }
     public void FocusInitialAction() => PianoRoll.Focus();
@@ -126,6 +139,11 @@ public partial class OHsInstrumentalArrangementDrawer : UserControl, IOHsShellDr
     internal bool HandleEditorShortcut(Key key, ModifierKeys modifiers, bool repeat, DependencyObject? origin)
     {
         if (IsTextInput(origin)) return false;
+        if (key == Key.Enter && modifiers == (ModifierKeys.Control | ModifierKeys.Shift))
+        {
+            if (!repeat) OnExpansionClick(this, new RoutedEventArgs());
+            return true;
+        }
         ICommand? command = modifiers == ModifierKeys.Control ? key switch
         { Key.Z => viewModel.UndoCommand, Key.Y => viewModel.RedoCommand, Key.C => viewModel.CopyNotesCommand, Key.V => viewModel.PasteNotesCommand, Key.A => viewModel.SelectAllNotesCommand, _ => null }
             : modifiers == ModifierKeys.None && key == Key.Delete ? viewModel.DeleteSelectedNotesCommand : null;

@@ -6,6 +6,6 @@ public partial class WorkstationPage
     public double TrackScrollBarGutter { get => (double)GetValue(TrackScrollBarGutterProperty); set => SetValue(TrackScrollBarGutterProperty, value); }
     internal void RestoreTrackFocusBeforeCollapse(DependencyObject? focusedElement)
     {
-        if (TrackListComponent.RestoreTrackFocusBeforeCollapse(focusedElement)) AudioCard.FocusCollapseAction();
+        if (TrackListComponent.RestoreTrackFocusBeforeCollapse(focusedElement)) Toolbar.FocusCollapseAction();
     }
 }
