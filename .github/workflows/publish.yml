@@ -1,0 +1,82 @@
+name: Publish Hitbench
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Read build version from commit subject
+        id: version
+        env:
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+        run: |
+          $subject = ($env:COMMIT_MESSAGE -split '\r?\n', 2)[0]
+          $prefix = 'Last commit for build '
+          if (-not $subject.StartsWith($prefix, [StringComparison]::Ordinal)) { exit 0 }
+          $version = $subject.Substring($prefix.Length)
+          if ($version -cnotmatch '\A[A-Za-z0-9][A-Za-z0-9._-]*\z') {
+            throw 'Build version must start with a letter or digit and contain only letters, digits, dots, underscores, or hyphens.'
+          }
+          git check-ref-format "refs/tags/$version"
+          if ($LASTEXITCODE -ne 0) { throw 'Build version is not a valid Git tag.' }
+          "version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Reject existing tags and releases
+        id: available
+        if: steps.version.outputs.version != ''
+        env:
+          BUILD_VERSION: ${{ steps.version.outputs.version }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git ls-remote --exit-code --tags origin "refs/tags/$env:BUILD_VERSION"
+          if ($LASTEXITCODE -eq 0) { throw "Tag $env:BUILD_VERSION already exists." }
+          if ($LASTEXITCODE -ne 2) { throw 'Unable to check remote tags.' }
+          $release = gh api "repos/$env:GITHUB_REPOSITORY/releases" --paginate --jq ".[] | select(.tag_name == `"$env:BUILD_VERSION`") | .id"
+          if ($LASTEXITCODE -ne 0) { throw 'Unable to check existing releases.' }
+          if ($release) { throw "Release $env:BUILD_VERSION already exists." }
+
+      - name: Set up .NET
+        if: steps.version.outputs.version != ''
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Publish and package self-contained application
+        id: package
+        if: steps.version.outputs.version != ''
+        env:
+          BUILD_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          $publishDir = Join-Path $env:RUNNER_TEMP 'hitbench-publish'
+          dotnet publish Hitbench/Hitbench.csproj -c Release -r win-x64 --self-contained true -o $publishDir
+          if ($LASTEXITCODE -ne 0) { throw 'Self-contained publish failed.' }
+          $archive = Join-Path $env:RUNNER_TEMP "Hitbench-$env:BUILD_VERSION-win-x64.zip"
+          Compress-Archive -Path "$publishDir/*" -DestinationPath $archive
+
+      - name: Create tag and GitHub Release
+        id: release
+        if: steps.version.outputs.version != ''
+        env:
+          BUILD_VERSION: ${{ steps.version.outputs.version }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $archive = Join-Path $env:RUNNER_TEMP "Hitbench-$env:BUILD_VERSION-win-x64.zip"
+          git tag $env:BUILD_VERSION $env:GITHUB_SHA
+          if ($LASTEXITCODE -ne 0) { throw 'Unable to create release tag.' }
+          git push origin "refs/tags/$env:BUILD_VERSION"
+          if ($LASTEXITCODE -ne 0) { throw 'Unable to push release tag; it may already exist.' }
+          gh release create $env:BUILD_VERSION $archive --verify-tag --target $env:GITHUB_SHA --title $env:BUILD_VERSION --generate-notes
+          if ($LASTEXITCODE -ne 0) { throw 'Unable to create GitHub Release.' }
