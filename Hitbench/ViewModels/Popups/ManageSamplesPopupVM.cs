@@ -135,6 +135,7 @@ public sealed partial class ManageSamplesPopupVM(SampleManagementContext context
     public async Task InitializeAsync(CancellationToken token)
     {
         lifetime.Dispose(); lifetime = CancellationTokenSource.CreateLinkedTokenSource(token);
+        RegisterExternalImport();
         try { var names = await files.ListAsync(Context.ProjectPath, lifetime.Token, includeSubfolders: false); lifetime.Token.ThrowIfCancellationRequested(); Replace(names); await PublishAsync(); }
         catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
         catch (Exception error) { ErrorMessage = error.Message; }
@@ -239,7 +240,7 @@ public sealed partial class ManageSamplesPopupVM(SampleManagementContext context
     public async Task DeactivateAsync()
     {
         if (deactivated) return;
-        deactivated = true; lifetime.Cancel(); NotifyEditingState(); await operation; await StopWaveformsAsync();
+        deactivated = true; messenger.UnregisterAll(this); lifetime.Cancel(); NotifyEditingState(); await operation; await StopWaveformsAsync();
         if (ownsWaveformReader && waveformReader is IDisposable ownedReader) ownedReader.Dispose();
         ActiveEdit = null; ClearErrors();
         try { await StopPreviewAsync(); if (preview is not null) await preview.DisposeAsync(); }

@@ -34,7 +34,7 @@ public partial class WorkstationPageVM(
     TimeProvider? timeProvider = null,
     IOHsExportDialogService? exportDialog = null,
     IOHsExportDirectoryLauncher? directoryLauncher = null,
-    IOHsTrackAppearanceDialogService? trackAppearanceDialog = null, Func<TimeSpan, CancellationToken, Task>? saveDelay = null) : ObservableObject
+    IOHsTrackAppearanceDialogService? trackAppearanceDialog = null, Func<TimeSpan, CancellationToken, Task>? saveDelay = null, IOHsSampleDropImportDialogService? sampleDropDialog = null, OHsAudioOperationProgress? audioOperationProgress = null) : ObservableObject
 {
     private readonly IWorkstationAudioService audioService = playback.Audio;
     private bool subscribedToPlayback;
@@ -112,6 +112,7 @@ public partial class WorkstationPageVM(
 
     public async Task LoadAsync(string projectPath, CancellationToken token)
     {
+        await CancelDroppedImportAsync();
         if (deactivated) return;
         IsAdditionMode = false;
         ResetSampleConfiguration();
@@ -151,6 +152,7 @@ public partial class WorkstationPageVM(
     private async Task DeactivateCoreAsync()
     {
         if (deactivated) return;
+        await CancelDroppedImportAsync();
         ResetSampleConfiguration();
         trackAppearanceCancellation?.Cancel();
         await SettleFolderOpenAsync();
@@ -655,6 +657,7 @@ public partial class WorkstationPageVM(
         OnPropertyChanged(nameof(CanEditTracks));
         ToggleTracksCollapsedCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(CanImportSample));
+        OnPropertyChanged(nameof(CanImportDroppedSamples));
         OnPropertyChanged(nameof(CanAddTrack));
         OnPropertyChanged(nameof(CanRemoveTrack));
         OnPropertyChanged(nameof(CanPlaceSamples));
