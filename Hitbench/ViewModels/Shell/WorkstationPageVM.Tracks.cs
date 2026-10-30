@@ -22,7 +22,12 @@ public partial class WorkstationPageVM
     private void AddSampleTrack()
     {
         if (!CanAddTrack) return;
-        var track = new Track { SelectedSampleFileName = sampleTrackFiles[0] };
+        AddSampleTrackCore(sampleTrackFiles[0]);
+    }
+
+    private void AddSampleTrackCore(string fileName)
+    {
+        var track = new Track { SelectedSampleFileName = fileName };
         Project!.Tracks.Add(track);
         tracks.Add(track);
         SelectedTrack = track;

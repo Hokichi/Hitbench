@@ -67,6 +67,7 @@ public sealed partial class ManageSamplesPopupVM(SampleManagementContext context
             row.IsInteractionEnabled = CanInteract() && (ActiveEdit is null || row.IsEditing);
         }
         OnPropertyChanged(nameof(CanClose)); OnPropertyChanged(nameof(CanEditDraft)); OnPropertyChanged(nameof(CanCommitRename));
+        CreateTrackCommand.NotifyCanExecuteChanged();
         PlayCommand.NotifyCanExecuteChanged(); EditCommand.NotifyCanExecuteChanged(); DeleteCommand.NotifyCanExecuteChanged(); SaveCommand.NotifyCanExecuteChanged();
         AddNewSampleCommand.NotifyCanExecuteChanged(); CancelEditCommand.NotifyCanExecuteChanged(); CommitRenameCommand.NotifyCanExecuteChanged();
     }
@@ -236,6 +237,10 @@ public sealed partial class ManageSamplesPopupVM(SampleManagementContext context
         });
         await operation;
     }
+    public OHsSampleTrackDragData? GetTrackDragData(SampleManagementEntry entry) => CanAct() && Entries.Contains(entry) ? new(Context,entry.FileName) : null;
+    private bool CanCreateTrack(SampleManagementEntry? entry)=>entry is not null && GetTrackDragData(entry) is not null;
+    [RelayCommand(CanExecute=nameof(CanCreateTrack))]
+    private void CreateTrack(SampleManagementEntry entry) {if(GetTrackDragData(entry) is {} data)messenger.Send(new AddSampleTrackRequestedMessage(data));}
     public Task<bool> PrepareToCloseAsync() => Task.FromResult(CanClose);
     public async Task DeactivateAsync()
     {

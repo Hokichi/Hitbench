@@ -568,7 +568,7 @@ public partial class WorkstationPageVM(
                 if (messenger is not null)
                 {
                     messenger.UnregisterAll(this);
-                    messenger.Register<AddSampleTrackRequestedMessage>(this, (_, _) => AddSampleTrackCommand.Execute(null));
+                    messenger.Register<AddSampleTrackRequestedMessage>(this, (_, m) => { if(m.Sample is {} sample) TryAddSampleTrack(sample); else AddSampleTrackCommand.Execute(null); });
                     messenger.Register<AddPianoTrackRequestedMessage>(this, (_, _) => AddPianoTrackCommand.Execute(null));
                     messenger.Register<LoadSampleRequestedMessage>(this, (_, _) => LoadSampleCommand.Execute(null));
                     messenger.Register<ManageSamplesRequestedMessage>(this, (_, _) => ManageSamplesCommand.Execute(null));

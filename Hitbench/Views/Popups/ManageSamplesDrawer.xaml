@@ -84,6 +84,7 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
+        <DataTemplate x:Key="OHsManageSamplesCreateTrackHeader"><StackPanel Orientation="Horizontal" Style="{StaticResource BaseStackPanelStyle}"><c:Icon Path="{StaticResource PlusSolid}" Color="{Binding Foreground,RelativeSource={RelativeSource AncestorType=MenuItem},Mode=OneWay}" Width="16" Height="16"/><TextBlock Text="{Binding Mode=OneWay}" Margin="8,0,0,0" Style="{StaticResource BodyTextStyle}" Foreground="{Binding Foreground,RelativeSource={RelativeSource AncestorType=MenuItem},Mode=OneWay}"/></StackPanel></DataTemplate>
         <ContextMenu x:Key="OHsManageSamplesRowMenu" x:Shared="False" Style="{StaticResource OHsActionContextMenuStyle}">
             <MenuItem Header="Edit" Style="{StaticResource OHsActionMenuItemStyle}" Click="OnEditActionClick"
                 Command="{Binding DataContext.EditCommand, Source={StaticResource OHsManageSamplesOwner}, Mode=OneWay}"
@@ -94,6 +95,7 @@
             <MenuItem Header="Save" Style="{StaticResource OHsActionMenuItemStyle}"
                 Command="{Binding DataContext.SaveCommand, Source={StaticResource OHsManageSamplesOwner}, Mode=OneWay}"
                 CommandParameter="{Binding Mode=OneWay}" AutomationProperties.Name="{Binding FileName, Mode=OneWay, StringFormat=Save {0}}" />
+            <MenuItem Header="Create track" HeaderTemplate="{StaticResource OHsManageSamplesCreateTrackHeader}" Style="{StaticResource OHsActionMenuItemStyle}" Command="{Binding DataContext.CreateTrackCommand,Source={StaticResource OHsManageSamplesOwner},Mode=OneWay}" CommandParameter="{Binding Mode=OneWay}" AutomationProperties.Name="{Binding FileName,Mode=OneWay,StringFormat=Create track with {0}}"></MenuItem>
         </ContextMenu>
 <DataTemplate x:Key="OHsManageSamplesEditorTemplate"><Grid Grid.ColumnSpan="3" Margin="0,0,8,0" Style="{StaticResource OHsManageSamplesEditorHostStyle}">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>

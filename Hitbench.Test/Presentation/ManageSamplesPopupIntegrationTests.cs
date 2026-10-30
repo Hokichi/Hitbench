@@ -28,8 +28,8 @@ public sealed class ManageSamplesPopupIntegrationTests
                 Assert.That(trigger.ContextMenu.Style, Is.SameAs(drawer.FindResource("OHsActionContextMenuStyle")));
                 UiTestPump.Layout(trigger.ContextMenu, 320, 200);
                 var items = trigger.ContextMenu.Items.Cast<System.Windows.Controls.MenuItem>().ToArray();
-                Assert.That(items.Select(item => item.Header), Is.EqualTo(new[] { "Edit", "Delete", "Save" }));
-                Assert.That(items.Select(item => item.Command), Is.EqualTo(new System.Windows.Input.ICommand[] { vm.EditCommand, vm.DeleteCommand, vm.SaveCommand }));
+                Assert.That(items.Select(item => item.Header), Is.EqualTo(new[] { "Edit", "Delete", "Save", "Create track" }));
+                Assert.That(items.Select(item => item.Command), Is.EqualTo(new System.Windows.Input.ICommand[] { vm.EditCommand, vm.DeleteCommand, vm.SaveCommand, vm.CreateTrackCommand }));
                 Assert.That(items.All(item => ReferenceEquals(item.CommandParameter, trigger.DataContext)), Is.True, $"row={trigger.DataContext}, target={trigger.ContextMenu.PlacementTarget}, context={trigger.ContextMenu.DataContext}, params={string.Join(",", items.Select(item => item.CommandParameter?.ToString() ?? "null"))}");
                 Assert.That(items[1].Style, Is.SameAs(drawer.FindResource("OHsDestructiveActionMenuItemStyle")));
                 Assert.That(items[2].Style, Is.SameAs(drawer.FindResource("OHsActionMenuItemStyle")));
