@@ -34,6 +34,7 @@ public partial class ManageSamplesDrawer : UserControl,IOHsShellDrawer
         if (viewModel.CanClose) CloseRequested?.Invoke(this, EventArgs.Empty);
     }
 
+    private void OnSharedWaveformRequested(object? sender, EventArgs e) { if (sender is FrameworkElement element) OnWaveformRowLoaded(element, new RoutedEventArgs()); }
     private async void OnWaveformRowLoaded(object sender, RoutedEventArgs e)
     {
         try { if (sender is FrameworkElement { DataContext: SampleManagementEntry row }) await viewModel.LoadWaveformAsync(row); }

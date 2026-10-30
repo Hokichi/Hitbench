@@ -12,19 +12,6 @@
             <Setter Property="IsTabStop" Value="True" />
             <Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
         </Style>
-
-        <Style
-            x:Key="OHsManageSamplesNameStyle"
-            BasedOn="{StaticResource BodyTextStyle}"
-            TargetType="TextBlock">
-            <Setter Property="TextWrapping" Value="NoWrap" />
-            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding IsEditing, Mode=OneWay}" Value="True">
-                    <Setter Property="Visibility" Value="Collapsed" />
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
         <Style
             x:Key="OHsManageSamplesEditorHostStyle"
             BasedOn="{StaticResource BaseGridStyle}"
@@ -65,59 +52,6 @@
             <Setter Property="IsTabStop" Value="True" />
             <Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
             <Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="True" />
-        </Style>
-
-        <Style
-            x:Key="OHsManageSamplesPlayStyle"
-            BasedOn="{StaticResource OHsManageSamplesActionStyle}"
-            TargetType="c:BalloonButton">
-            <Setter Property="ButtonIcon" Value="{StaticResource MediaPlay}" />
-            <Setter Property="ButtonText" Value="Play" />
-            <Setter Property="ShouldShowText" Value="False" />
-            <Setter Property="ToolTip" Value="{Binding FileName, Mode=OneWay, StringFormat=Play {0}}" />
-            <Setter Property="AutomationProperties.Name" Value="{Binding FileName, Mode=OneWay, StringFormat=Play {0}}" />
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding IsPlaying, Mode=OneWay}" Value="True">
-                    <Setter Property="ButtonIcon" Value="{StaticResource MediaPause}" />
-                    <Setter Property="ButtonText" Value="Pause" />
-                    <Setter Property="ToolTip" Value="{Binding FileName, Mode=OneWay, StringFormat=Pause {0}}" />
-                    <Setter Property="AutomationProperties.Name" Value="{Binding FileName, Mode=OneWay, StringFormat=Pause {0}}" />
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
-        <Style
-            x:Key="OHsManageSamplesRowStyle"
-            BasedOn="{StaticResource BaseBorderStyle}"
-            TargetType="Border">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderBrush" Value="Transparent" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="8" />
-            <Setter Property="Padding" Value="8,4" />
-            <Setter Property="Margin" Value="0,2" />
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource Brush.Background.Hover}" />
-                </Trigger>
-                <Trigger Property="IsKeyboardFocusWithin" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource Brush.Background.Hover}" />
-                </Trigger>
-                <MultiDataTrigger>
-                    <MultiDataTrigger.Conditions>
-                        <Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource Self}, Mode=OneWay}" Value="True" />
-                        <Condition Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True" />
-                    </MultiDataTrigger.Conditions>
-                    <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
-                    <Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
-                </MultiDataTrigger>
-                <MultiDataTrigger>
-                    <MultiDataTrigger.Conditions>
-                        <Condition Binding="{Binding IsKeyboardFocusWithin, RelativeSource={RelativeSource Self}, Mode=OneWay}" Value="True" />
-                        <Condition Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True" />
-                    </MultiDataTrigger.Conditions>
-                    <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
-                </MultiDataTrigger>
-            </Style.Triggers>
         </Style>
 
         <Style x:Key="OHsManageSamplesMenuStyle" TargetType="c:BalloonComboBox" BasedOn="{StaticResource BaseBalloonComboBoxStyle}">
@@ -161,18 +95,7 @@
                 Command="{Binding DataContext.SaveCommand, Source={StaticResource OHsManageSamplesOwner}, Mode=OneWay}"
                 CommandParameter="{Binding Mode=OneWay}" AutomationProperties.Name="{Binding FileName, Mode=OneWay, StringFormat=Save {0}}" />
         </ContextMenu>
-        <DataTemplate x:Key="OHsManageSamplesRowTemplate">
-            <Border IsEnabled="{Binding IsInteractionEnabled, Mode=OneWay}" Style="{StaticResource OHsManageSamplesRowStyle}">
-                <Grid MinHeight="40" Style="{StaticResource BaseGridStyle}">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-                    <TextBlock Grid.ColumnSpan="3" VerticalAlignment="Center" Style="{StaticResource OHsManageSamplesNameStyle}"
-                        Text="{Binding FileName, Mode=OneWay}" ToolTip="{Binding FileName, Mode=OneWay}" />
-                    <Grid Grid.ColumnSpan="3" Margin="0,0,8,0" Style="{StaticResource OHsManageSamplesEditorHostStyle}">
+<DataTemplate x:Key="OHsManageSamplesEditorTemplate"><Grid Grid.ColumnSpan="3" Margin="0,0,8,0" Style="{StaticResource OHsManageSamplesEditorHostStyle}">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                         <TextBox AutomationProperties.Name="Sample filename stem"
                             IsEnabled="{Binding DataContext.CanEditDraft, RelativeSource={RelativeSource AncestorType=ItemsControl}, Mode=OneWay}"
@@ -180,20 +103,13 @@
                             Style="{StaticResource OHsManageSamplesEditorStyle}"
                             Text="{Binding DataContext.DraftStem, RelativeSource={RelativeSource AncestorType=ItemsControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}" />
                         <TextBlock Grid.Column="1" Margin="8,0" VerticalAlignment="Center" Style="{StaticResource BodyTextStyle}" Text="{Binding Extension, Mode=OneWay}" />
-                    </Grid>
-                    <c:WaveformView Grid.Row="1" Grid.Column="0" Margin="8,4" Height="32" VerticalAlignment="Center" Data="{Binding Waveform, Mode=OneWay}"
-                        ShowPlaybackMarker="False" CenterWaveform="True" WaveformBrush="{DynamicResource Brush.Waveform.Unplayed}"
-                        Loaded="OnWaveformRowLoaded" DataContextChanged="OnWaveformRowChanged" IsHitTestVisible="False" />
-                    <c:BalloonButton Grid.Row="1" Grid.Column="1" Command="{Binding DataContext.PlayCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}, Mode=OneWay}"
-                        CommandParameter="{Binding Mode=OneWay}" Style="{StaticResource OHsManageSamplesPlayStyle}" />
-                    <Grid Grid.Row="1" Grid.Column="2" Margin="4,0,0,0" Style="{StaticResource BaseGridStyle}">
+                    </Grid></DataTemplate>
+<DataTemplate x:Key="OHsManageSamplesActionsTemplate"><Grid Grid.Row="1" Grid.Column="2" Margin="4,0,0,0" Style="{StaticResource BaseGridStyle}">
                         <c:BalloonComboBox ContextMenu="{StaticResource OHsManageSamplesRowMenu}" Style="{StaticResource OHsManageSamplesMenuStyle}" />
                         <c:BalloonButton Command="{Binding DataContext.CommitRenameCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}, Mode=OneWay}"
                             Style="{StaticResource OHsManageSamplesConfirmRenameStyle}" />
-                    </Grid>
-                </Grid>
-            </Border>
-        </DataTemplate>
+                    </Grid></DataTemplate>
+<DataTemplate x:Key="OHsManageSamplesRowTemplate"><c:OHsSampleRow FileName="{Binding FileName, Mode=OneWay}" FileToolTip="{Binding FileName, Mode=OneWay}" Waveform="{Binding Waveform, Mode=OneWay}" IsPlaying="{Binding IsPlaying, Mode=OneWay}" IsEditing="{Binding IsEditing, Mode=OneWay}" IsEnabled="{Binding IsInteractionEnabled, Mode=OneWay}" PlayCommand="{Binding DataContext.PlayCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}, Mode=OneWay}" PlayCommandParameter="{Binding Mode=OneWay}" NameEditorTemplate="{StaticResource OHsManageSamplesEditorTemplate}" ActionsTemplate="{StaticResource OHsManageSamplesActionsTemplate}" WaveformRequested="OnSharedWaveformRequested"/></DataTemplate>
 
         <Style x:Key="OHsManageSamplesSurfaceStyle" TargetType="Border" BasedOn="{StaticResource CardBorderStyle}" />
     </UserControl.Resources>

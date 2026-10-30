@@ -148,7 +148,7 @@ public sealed class ManageSamplesPopupIntegrationTests
             var menu = Descendants(view.Root).OfType<BalloonComboBox>().Single().ContextMenu;
             UiTestPump.Layout(menu, 320, 200);
             Assert.That(menu.Items.Cast<System.Windows.Controls.MenuItem>().All(item => item.IsEnabled), Is.True);
-            var row=Descendants(view.Root).OfType<System.Windows.Controls.Border>().Single(b=>ReferenceEquals(b.DataContext,vm.Entries.Single()) && b.Style==drawer.FindResource("OHsManageSamplesRowStyle"));
+            var row=Descendants(view.Root).OfType<System.Windows.Controls.Border>().Single(b=>ReferenceEquals(b.DataContext,vm.Entries.Single()) && b.Style==b.FindResource("OHsSampleRowBorderStyle"));
             Assert.That(row.Style.BasedOn,Is.SameAs(drawer.FindResource("BaseBorderStyle")));
         }
         finally { UiTestPump.Run(vm.DeactivateAsync()); popup.Close(); }
@@ -178,10 +178,11 @@ public sealed class ManageSamplesPopupIntegrationTests
         var drawer = new ManageSamplesDrawer(vm); var popup = CreateHost(drawer);
         try
         {
-            UiTestPump.Run(vm.InitializeAsync(default)); using var view = new InMemoryView(popup, scheduleLayout:false);
+            UiTestPump.Run(vm.InitializeAsync(default)); using var view = new InMemoryView(popup, scheduleLayout:false); view.UpdateLayout();
             var edit = (System.Windows.Controls.MenuItem)Descendants(view.Root).OfType<BalloonComboBox>().Single().ContextMenu.Items[0];
             Assert.That(edit.Command, Is.SameAs(vm.EditCommand));
-            UiTestPump.Run(vm.EditCommand.ExecuteAsync(edit.CommandParameter)); view.UpdateLayout();
+            UiTestPump.Run(vm.EditCommand.ExecuteAsync(edit.CommandParameter));
+            drawer.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.DataBind); view.UpdateLayout();
             var input = Descendants(view.Root).OfType<System.Windows.Controls.TextBox>().Single();
             input.Text = "kick"; Assert.That(vm.DraftStem, Is.EqualTo("kick"));
             vm.CancelEditCommand.Execute(null); Assert.That(vm.Entries.Single().FileName, Is.EqualTo("hit.wav"));
