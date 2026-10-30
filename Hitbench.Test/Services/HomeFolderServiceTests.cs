@@ -9,12 +9,13 @@ public class HomeFolderServiceTests
     {
         var song = CreateMetadataSong("Title:Song\nCreator: Second mapper\n");
         File.WriteAllText(Path.Combine(song, "a.osu"), "[Metadata]\nTitle:Song\nCreator: First mapper \n");
+        Directory.SetLastWriteTimeUtc(song, DateTime.UnixEpoch);
         var service = new HomeFolderService(appRoot);
         var entry = (await service.LoadSongsAsync(root, default))!.ReadPage(0, 1).Single();
         using var cache = System.Text.Json.JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(appRoot, "data.json")));
         Assert.That(cache.RootElement.GetProperty("Songs")[0].TryGetProperty("Creator", out var creator), Is.True);
         Assert.That(creator.GetString(), Is.EqualTo("First mapper"));
-        Assert.That(cache.RootElement.GetProperty("Version").GetInt32(), Is.EqualTo(3));
+        Assert.That(cache.RootElement.GetProperty("Version").GetInt32(), Is.EqualTo(4));
         var warm = (await new HomeFolderService(appRoot).LoadSongsAsync(root, default))!.ReadPage(0, 1).Single();
         Assert.That(warm, Is.EqualTo(entry));
     }
@@ -30,7 +31,7 @@ public class HomeFolderServiceTests
         await File.WriteAllTextAsync(cachePath, System.Text.Json.JsonSerializer.Serialize(old));
         await new HomeFolderService(appRoot).LoadSongsAsync(root, default);
         using var saved = System.Text.Json.JsonDocument.Parse(await File.ReadAllTextAsync(cachePath));
-        Assert.That(saved.RootElement.GetProperty("Version").GetInt32(), Is.EqualTo(3));
+        Assert.That(saved.RootElement.GetProperty("Version").GetInt32(), Is.EqualTo(4));
         Assert.That(saved.RootElement.GetProperty("Songs")[0].GetProperty("Creator").GetString(), Is.EqualTo("Mapper"));
     }
 
@@ -95,7 +96,7 @@ public class HomeFolderServiceTests
         var entry = snapshot!.ReadPage(0, 1).Single();
         Assert.That((entry.Artist, entry.Title), Is.EqualTo(("Composer", "Song")));
         using var saved = System.Text.Json.JsonDocument.Parse(await File.ReadAllTextAsync(cachePath));
-        Assert.That(saved.RootElement.GetProperty("Version").GetInt32(), Is.EqualTo(3));
+        Assert.That(saved.RootElement.GetProperty("Version").GetInt32(), Is.EqualTo(4));
     }
 
     private string CreateMetadataSong(string metadata)
@@ -153,7 +154,7 @@ public class HomeFolderServiceTests
         await new HomeFolderService(appRoot).LoadSongsAsync(root, CancellationToken.None);
         File.WriteAllText(map, "[Metadata]\nArtistUnicode:Artist\nTitleUnicode:Changed\n");
         var warm = await new HomeFolderService(appRoot).LoadSongsAsync(root, CancellationToken.None);
-        Assert.That(warm!.ReadPage(0, 10).Single().Title, Is.EqualTo("Original"));
+        Assert.That(warm!.ReadPage(0, 10).Single().Title, Is.EqualTo("Changed"));
         Assert.That(File.Exists(Path.Combine(appRoot, "data.json")), Is.True);
     }
 
@@ -163,16 +164,44 @@ public class HomeFolderServiceTests
         CreateCachedSong("A");
         var service = new HomeFolderService(appRoot);
         await service.LoadSongsAsync(root, CancellationToken.None);
+        Assert.That(service.MetadataReadCount, Is.EqualTo(1));
         CreateCachedSong("B");
         var added = await service.LoadSongsAsync(root, CancellationToken.None);
         Assert.That(added!.ReadPage(0, 10).Select(x => x.Name), Is.EquivalentTo(new[] { "A", "B" }));
+        Assert.That(service.MetadataReadCount, Is.EqualTo(2));
         Directory.Delete(Path.Combine(root, "Songs", "A"), true);
         CreateCachedSong("C");
         var replaced = await service.LoadSongsAsync(root, CancellationToken.None);
         Assert.That(replaced!.ReadPage(0, 10).Select(x => x.Name), Is.EquivalentTo(new[] { "B", "C" }));
+        Assert.That(service.MetadataReadCount, Is.EqualTo(3));
         Directory.Delete(Path.Combine(root, "Songs", "B"), true);
         var removed = await service.LoadSongsAsync(root, CancellationToken.None);
         Assert.That(removed!.ReadPage(0, 10).Single().Name, Is.EqualTo("C"));
+        Assert.That(service.MetadataReadCount, Is.EqualTo(3));
+    }
+
+    [Test]
+    public async Task RefreshReusesUnchangedSourcesAndInvalidatesOrdinalSourceAndFallbackArtwork()
+    {
+        CreateCachedSong("A"); CreateCachedSong("B");
+        var folder = Path.Combine(root, "Songs", "A");
+        var service = new HomeFolderService(appRoot);
+        await service.LoadSongsAsync(root, default);
+        await service.ReloadSongsAsync(root, default);
+        Assert.That(service.MetadataReadCount, Is.EqualTo(2));
+        var source = Path.Combine(folder, "000.osu");
+        File.WriteAllText(source, "[Metadata]\nTitle:Replacement\n");
+        var changed = await service.ReloadSongsAsync(root, default);
+        Assert.That(changed!.ReadPage(0, 10).Single(row => row.Name == "A").Title, Is.EqualTo("Replacement"));
+        Assert.That(service.MetadataReadCount, Is.EqualTo(3));
+        var image = Path.Combine(folder, "000.jpg"); File.WriteAllText(image, "image");
+        changed = await service.LoadSongsAsync(root, default);
+        Assert.That(changed!.ReadPage(0, 10).Single(row => row.Name == "A").BackgroundPath, Is.EqualTo(image));
+        Assert.That(service.MetadataReadCount, Is.EqualTo(4));
+        File.Delete(image);
+        changed = await service.LoadSongsAsync(root, default);
+        Assert.That(changed!.ReadPage(0, 10).Single(row => row.Name == "A").BackgroundPath, Is.Not.EqualTo(image));
+        Assert.That(service.MetadataReadCount, Is.EqualTo(5));
     }
 
     [TestCase("broken")]
@@ -228,7 +257,7 @@ public class HomeFolderServiceTests
         Assert.That(cache.RootElement.GetProperty("Songs").GetArrayLength(), Is.EqualTo(1));
         File.WriteAllText(map, "[Metadata]\nTitleUnicode:Changed\n");
         var warm = await new HomeFolderService(appRoot).LoadSongsAsync(root, CancellationToken.None);
-        Assert.That(warm!.ReadPage(0, 10).Single().Title, Is.EqualTo("Recovered"));
+        Assert.That(warm!.ReadPage(0, 10).Single().Title, Is.EqualTo("Changed"));
     }
 
     [Test]

@@ -13,7 +13,8 @@ public sealed class HomeFolderService(string applicationDirectory, Func<Cancella
     : IHomeFolderService
 {
     private readonly ISampleFileService sampleFiles = sampleFiles ?? new SampleFileService(applicationDirectory);
-    private const int CacheVersion = 3;
+    internal int MetadataReadCount { get; private set; }
+    private const int CacheVersion = 4;
     private static readonly HashSet<string> ImageExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
         ".bmp", ".gif", ".jpg", ".jpeg", ".png", ".tif", ".tiff"
@@ -92,23 +93,51 @@ public sealed class HomeFolderService(string applicationDirectory, Func<Cancella
         var inventory = ReadSnapshot(path, token);
         var folders = inventory.ReadPage(0, inventory.Count);
         var cachePath = Path.Combine(applicationDirectory, "data.json");
-        var cache = forceReload ? null : ReadCache(cachePath, path);
-        var known = (cache?.Songs ?? []).Select(song => song.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var current = folders.Select(folder => folder.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var reused = (cache?.Songs ?? []).Where(song => current.Contains(song.Name)).Select(song =>
-            new FolderEntry(song.FullName, song.Name, song.LastWriteTimeUtc)
+        var cache = ReadCache(cachePath, path);
+        var known = (cache?.Songs ?? []).ToDictionary(song => song.Name, StringComparer.OrdinalIgnoreCase);
+        var fingerprints = new Dictionary<string, SongCacheFingerprint>(StringComparer.OrdinalIgnoreCase);
+        var rows = new List<FolderEntry>();
+        foreach (var folder in folders)
+        {
+            token.ThrowIfCancellationRequested();
+            try
             {
-                Artist = song.Artist, Title = song.Title, DisplayName = song.DisplayName,
-                BackgroundPath = song.BackgroundPath, Creator = song.Creator
-            });
-        var snapshot = new FolderSnapshot(reused.Concat(ReadSongEntries(
-            folders.Where(folder => !known.Contains(folder.Name)), token)), token);
-        if (cache is not null && current.SetEquals(cache.Folders) && snapshot.Count == known.Count) return snapshot;
+                known.TryGetValue(folder.Name, out var saved);
+                var stamp = ReadSongFingerprint(folder.FullName, saved?.BackgroundPath, token);
+                if (stamp is null) continue;
+                FolderEntry? row;
+                if (saved is not null && cache?.Fingerprints?.TryGetValue(folder.Name, out var previous) == true && previous == stamp)
+                    row = folder with { Artist = saved.Artist, Title = saved.Title, DisplayName = saved.DisplayName, BackgroundPath = saved.BackgroundPath, Creator = saved.Creator };
+                else { MetadataReadCount++; row = ReadSongEntry(folder, token); }
+                if (row is null) continue;
+                var after = ReadSongFingerprint(folder.FullName, row.BackgroundPath, token);
+                if (after is null || after.BeatmapName != stamp.BeatmapName || after.Length != stamp.Length || after.LastWriteTimeUtc != stamp.LastWriteTimeUtc || after.FallbackImageName != stamp.FallbackImageName) continue;
+                rows.Add(row); fingerprints[folder.Name] = after;
+            }
+            catch (Exception error) when (error is IOException or UnauthorizedAccessException or ArgumentException)
+            { token.ThrowIfCancellationRequested(); Trace.TraceWarning("Song refresh failed: {0}", error.Message); }
+        }
+        var snapshot = new FolderSnapshot(rows, token);
         var songs = snapshot.ReadPage(0, snapshot.Count).Select(song => new Song(song.FullName,
             song.Name, song.LastWriteTimeUtc, song.Artist, song.Title, song.DisplayName, song.BackgroundPath, song.Creator)).ToArray();
         token.ThrowIfCancellationRequested();
-        SaveCache(cachePath, new SongCache(CacheVersion, path, current.ToArray(), songs), token);
+        SaveCache(cachePath, new SongCache(CacheVersion, path, folders.Select(folder => folder.Name).ToArray(), songs, fingerprints), token);
         return snapshot;
+    }
+
+    private static SongCacheFingerprint? ReadSongFingerprint(string folder, string? background, CancellationToken token)
+    {
+        string? beatmap = null, image = null;
+        foreach (var file in Directory.EnumerateFiles(folder))
+        {
+            token.ThrowIfCancellationRequested();
+            var extension = Path.GetExtension(file);
+            if (extension.Equals(".osu", StringComparison.OrdinalIgnoreCase) && (beatmap is null || StringComparer.Ordinal.Compare(file, beatmap) < 0)) beatmap = file;
+            if (ImageExtensions.Contains(extension) && (image is null || StringComparer.Ordinal.Compare(file, image) < 0)) image = file;
+        }
+        if (beatmap is null) return null;
+        var info = new FileInfo(beatmap);
+        return new(Path.GetFileName(beatmap), info.Length, info.LastWriteTimeUtc, image is null ? null : Path.GetFileName(image), background is not null && File.Exists(background));
     }
 
     private static SongCache? ReadCache(string cachePath, string songsRoot)
