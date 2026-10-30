@@ -4,6 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:customControls="clr-namespace:Hitbench.Resources.CustomControls"
     xmlns:shell="clr-namespace:Hitbench.Views.Shell"
+    AllowDrop="True" PreviewDragOver="OnSampleFileDragOver" PreviewDrop="OnSampleFileDrop"
     Title="Hitbench"
     Width="1280"
     Height="720"
