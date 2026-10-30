@@ -1,0 +1,46 @@
+<c:BasePopup xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:c="clr-namespace:Hitbench.Resources.CustomControls" x:Class="Hitbench.Views.Popups.OHsSampleDropImportPopup" PopupTitle="Import samples" SizeToContent="Manual" ShowCloseButton="False">
+    <c:BasePopup.Resources>
+        <Style x:Key="OHsSampleImportChoiceStyle" TargetType="CheckBox" BasedOn="{StaticResource RegularCheckBoxStyle}">
+            <Setter Property="MinHeight" Value="40"/>
+            <Setter Property="MinWidth" Value="40"/>
+            <Setter Property="IsChecked" Value="{Binding IsChecked,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"/>
+            <Setter Property="AutomationProperties.Name" Value="{Binding SourcePath,Mode=OneWay}"/>
+            <Setter Property="ToolTip" Value="{Binding SourcePath,Mode=OneWay}"/>
+            <Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="True"/>
+        </Style>
+        <Style x:Key="OHsSampleImportListStyle" TargetType="ListBox" BasedOn="{StaticResource BaseListBoxStyle}">
+            <Setter Property="Background" Value="{DynamicResource Brush.Background.Popup}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Default}"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast),Mode=OneWay}" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="OHsSampleImportItemStyle" TargetType="ListBoxItem" BasedOn="{StaticResource PlainListBoxItemStyle}">
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        </Style>
+        <DataTemplate x:Key="OHsSampleImportRowTemplate">
+            <Grid Style="{StaticResource BaseGridStyle}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <CheckBox Style="{StaticResource OHsSampleImportChoiceStyle}"/>
+                <c:OHsSampleRow Grid.Column="1" FileName="{Binding FileName,Mode=OneWay}" FileToolTip="{Binding SourcePath,Mode=OneWay}" Waveform="{Binding Waveform,Mode=OneWay}" IsPlaying="{Binding IsPlaying,Mode=OneWay}" PlayCommand="{Binding DataContext.PlayCommand,RelativeSource={RelativeSource AncestorType=ListBox},Mode=OneWay}" PlayCommandParameter="{Binding Mode=OneWay}" WaveformRequested="OnWaveformRequested"/>
+            </Grid>
+        </DataTemplate>
+    </c:BasePopup.Resources>
+    <Grid Margin="16,0" Style="{StaticResource BaseGridStyle}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <ListBox x:Name="FileList" ItemsSource="{Binding Entries,Mode=OneWay}" ItemTemplate="{StaticResource OHsSampleImportRowTemplate}" ItemContainerStyle="{StaticResource OHsSampleImportItemStyle}" Style="{StaticResource OHsSampleImportListStyle}" ItemsPanel="{StaticResource OHsVirtualizedDrawerItemsPanel}" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" ScrollViewer.CanContentScroll="True" AutomationProperties.Name="Dropped audio files"/>
+        <WrapPanel Grid.Row="1" Margin="0,16,0,0" HorizontalAlignment="Right">
+            <c:BalloonButton x:Name="CancelAction" ButtonText="Cancel" ButtonIcon="{StaticResource Close}" ShouldShowText="True" Style="{StaticResource OHsBalloonDestructiveActionStyle}" Click="OnCancel" AutomationProperties.Name="Cancel sample import" ToolTip="Cancel sample import (Escape)"/>
+            <c:BalloonButton x:Name="ImportAction" Margin="8,0,0,0" ButtonText="Import" ButtonIcon="{StaticResource Check}" ShouldShowText="True" Style="{StaticResource OHsBalloonConfirmActionStyle}" IsEnabled="{Binding CanConfirm,Mode=OneWay}" Click="OnConfirm" AutomationProperties.Name="Import checked samples" ToolTip="Import checked samples (Enter)"/>
+        </WrapPanel>
+    </Grid>
+</c:BasePopup>
