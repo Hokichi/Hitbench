@@ -81,7 +81,7 @@ public sealed partial class PianoRollView
         BeatGridDrawing.Draw(dc, this, Offsets, Bpms, Subdivision, Duration.TotalMilliseconds, ContentWidth, HorizontalOffset, TimeViewportWidth, ActualHeight, false);
         dc.Pop(); dc.Pop();
         if(pointerInteraction && dragging && !IsAdditionMode && !pointerModifiers.HasFlag(ModifierKeys.Control) && pressedNote is null)
-            dc.DrawRectangle(null,new Pen(selection,1),new Rect(pointerStart,pointerLast));
+            dc.DrawRectangle(null,new Pen(selection,1),SelectionViewportBounds);
         if(dragging && pressedNote is {} anchor && hover is {} destination && !IsAdditionMode)
         {
             InstrumentalKeys.TryGetIndex(anchor.Key,out var originalPitch);InstrumentalKeys.TryGetIndex(destination.Key,out var targetPitch);

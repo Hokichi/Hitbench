@@ -120,7 +120,7 @@ public sealed partial class PianoRollView : Control
     private void OnSystemChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     { if (Dispatcher.CheckAccess()) InvalidateContent(); else Dispatcher.BeginInvoke(InvalidateContent); }
     private static void OnGeometryChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    { var roll = (PianoRollView)d; if(e.Property==NotesProperty || e.Property==CanEditProperty)roll.CancelInteraction(); if (e.Property == LaneHeightProperty || e.Property == VerticalOffsetProperty) roll.OnMaximumChanged(); if (e.Property == PositionProperty) roll.UpdateMarker(); else roll.InvalidateContent(); }
+    { var roll = (PianoRollView)d; if(e.Property==NotesProperty || e.Property==CanEditProperty || e.Property==DurationProperty || e.Property==ContentWidthProperty || e.Property==LaneHeightProperty || e.Property==KeyColumnWidthProperty || e.Property==ViewportWidthProperty || e.Property==ZoomFactorProperty)roll.CancelInteraction(); if (e.Property == LaneHeightProperty || e.Property == VerticalOffsetProperty) roll.OnMaximumChanged(); if (e.Property == PositionProperty) roll.UpdateMarker(); else roll.InvalidateContent(); }
     protected override void OnRenderSizeChanged(SizeChangedInfo info) { base.OnRenderSizeChanged(info); OnMaximumChanged(); InvalidateContent(); }
     private void OnMaximumChanged()
     { SetValue(MaximumVerticalOffsetPropertyKey, double.IsFinite(LaneHeight) ? Math.Max(0, 108 * LaneHeight - ActualHeight) : 0d); var value = Math.Clamp(VerticalOffset, 0, MaximumVerticalOffset); if (value != VerticalOffset) SetCurrentValue(VerticalOffsetProperty, value); }
@@ -204,7 +204,7 @@ public sealed partial class PianoRollView : Control
         if (x < HorizontalOffset || x > HorizontalOffset + width) SetCurrentValue(HorizontalOffsetProperty, Math.Clamp(x - width / 2, 0, Math.Max(0, ContentWidth - width)));
     }
     public bool CancelInteraction()
-    { var active = pointerInteraction || IsMouseCaptured; pointerInteraction = false; pressedNote = null; dragging = false; hover = null; gestureIds=[]; if (IsMouseCaptured) ReleaseMouseCapture(); InvalidateContent(); return active; }
+    { selectionTimer?.Stop(); var active = pointerInteraction || IsMouseCaptured; pointerInteraction = false; pressedNote = null; dragging = false; hover = null; gestureIds=[]; if (IsMouseCaptured) ReleaseMouseCapture(); InvalidateContent(); return active; }
     protected override void OnGotKeyboardFocus(KeyboardFocusChangedEventArgs e)
     { base.OnGotKeyboardFocus(e); if(!pointerInteraction)InitializeActiveCell(); InvalidateContent(); }
     protected override void OnLostKeyboardFocus(KeyboardFocusChangedEventArgs e) { base.OnLostKeyboardFocus(e); CancelInteraction(); }
@@ -221,6 +221,7 @@ public sealed partial class PianoRollView : Control
         if (!CellAt(p, out var key, out var ms)) return false;
         pointerInteraction = true;
         pointerModifiers=modifiers;pointerLast=p;gestureIds=[];
+        selectionOrigin = SelectionContentPoint(p);
         pointerStart = p; pressedNote = FindNoteAt(p); dragging = false; hover = (key, ms);
         if (pressedNote is not null) { gestureIds=SelectedNoteIds.Contains(pressedNote.Id)?SelectedNoteIds:new[]{pressedNote.Id};InstrumentalKeys.TryGetIndex(pressedNote.Key, out activeKey); activeMs = GridTime(pressedNote.Timestamp); grabOffset = ms - pressedNote.Timestamp; }
         else { InstrumentalKeys.TryGetIndex(key, out activeKey); activeMs = BeatGridCalculator.GetContainingInterval(Offsets, Bpms, Subdivision, ms, Duration.TotalMilliseconds)?.StartMilliseconds ?? ms; }
@@ -233,7 +234,10 @@ public sealed partial class PianoRollView : Control
     internal void UpdatePointerPosition(Point p,ModifierKeys modifiers=ModifierKeys.None)
     {
         if(pointerInteraction && modifiers.HasFlag(ModifierKeys.Control) && !pointerModifiers.HasFlag(ModifierKeys.Control)){CancelInteraction();return;}
+        if (!double.IsFinite(p.X) || !double.IsFinite(p.Y)) { CancelInteraction(); return; }
         pointerLast=p;
+        if (pointerInteraction && (Math.Abs(p.X - pointerStart.X) >= SystemParameters.MinimumHorizontalDragDistance || Math.Abs(p.Y - pointerStart.Y) >= SystemParameters.MinimumVerticalDragDistance)) dragging = true;
+        UpdateSelectionScroll();
         if (CellAt(p, out var key, out var ms))
         {
             if (pointerInteraction && (Math.Abs(p.X - pointerStart.X) >= SystemParameters.MinimumHorizontalDragDistance || Math.Abs(p.Y - pointerStart.Y) >= SystemParameters.MinimumVerticalDragDistance)) dragging = true;
@@ -250,10 +254,10 @@ public sealed partial class PianoRollView : Control
     internal bool CompletePointerInteraction()
     {
         if (!pointerInteraction) return false;
-        var note = pressedNote; var moved = dragging; var target = hover; var ids=gestureIds;var start=pointerStart;var end=pointerLast;var modifiers=pointerModifiers; CancelInteraction();
+        var note = pressedNote; var moved = dragging; var target = hover; var ids=gestureIds;var rectangle=SelectionContentBounds;var modifiers=pointerModifiers; CancelInteraction();
         if(modifiers.HasFlag(ModifierKeys.Control)){if(!moved && note is not null)SelectIds(SelectedNoteIds.Contains(note.Id)?SelectedNoteIds.Where(id=>id!=note.Id).ToArray():[..SelectedNoteIds,note.Id],note.Id);return true;}
         if(IsAdditionMode && moved)return true;
-        if(!IsAdditionMode && note is null && moved){var rectangle=new Rect(start,end);rectangle.Intersect(new Rect(KeyColumnWidth,0,TimeViewportWidth,ActualHeight));var chosen=Notes.Where(n=>GetNoteBounds(n).IntersectsWith(rectangle)).Select(n=>n.Id).ToArray();SelectIds(chosen,chosen.Length>0?chosen[0]:null);return true;}
+        if(!IsAdditionMode && note is null && moved){var chosen=Notes.Where(n=>{var bounds=GetNoteBounds(n);bounds.Offset(HorizontalOffset-KeyColumnWidth,VerticalOffset);return bounds.IntersectsWith(rectangle);}).Select(n=>n.Id).ToArray();SelectIds(chosen,chosen.Length>0?chosen[0]:null);return true;}
         if (CanEdit && target is { } cell)
         {
             if (note is not null && moved) {gestureIds=ids;Request(InstrumentalNoteEditKind.Move, note.Id, cell.Key, cell.Time);gestureIds=[];}
