@@ -1,14 +1,20 @@
 <UserControl xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:converters="clr-namespace:Hitbench.Resources.Converters" xmlns:customControls="clr-namespace:Hitbench.Resources.CustomControls" xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:entities="clr-namespace:Hitbench.Core.Entities;assembly=Hitbench.Core" xmlns:helpers="clr-namespace:Hitbench.Resources.Helpers" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:pages="clr-namespace:Hitbench.Views.Pages" x:Class="Hitbench.Views.Pages.OHsWorkstationFooter" d:DesignHeight="600" d:DesignWidth="1100" mc:Ignorable="d">
+<UserControl.Resources>
+<Style x:Key="OHsFooterSubdivisionStyle" TargetType="customControls:ValueSlider" BasedOn="{StaticResource BaseValueSliderStyle}"><Setter Property="Width" Value="160"/><Style.Triggers><DataTrigger Binding="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationFooter}, Mode=OneWay}" Value="True"><Setter Property="Width" Value="64" /></DataTrigger></Style.Triggers></Style>
+<Style x:Key="OHsFooterSubdivisionPanelStyle" TargetType="StackPanel" BasedOn="{StaticResource BaseStackPanelStyle}"><Setter Property="Margin" Value="0,0,12,0"/><Style.Triggers><DataTrigger Binding="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationFooter}, Mode=OneWay}" Value="True"><Setter Property="Margin" Value="0" /></DataTrigger></Style.Triggers></Style>
+<Style x:Key="OHsFooterSeparatorStyle" TargetType="Border" BasedOn="{StaticResource OHsWorkstationToolbarSeparatorStyle}"><Style.Triggers><DataTrigger Binding="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationFooter}, Mode=OneWay}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style>
+<Style x:Key="OHsFooterZoomStyle" TargetType="customControls:BalloonButton" BasedOn="{StaticResource OHsBalloonNeutralActionStyle}"><Setter Property="Margin" Value="4,0,0,0"/><Style.Triggers><DataTrigger Binding="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationFooter}, Mode=OneWay}" Value="True"><Setter Property="Margin" Value="0" /></DataTrigger></Style.Triggers></Style>
+</UserControl.Resources>
     <Grid x:Name="ZoomFooter" Style="{StaticResource BaseGridStyle}">
-        <WrapPanel VerticalAlignment="Center">
-            <StackPanel x:Name="SubdivisionPanel" Margin="0,0,12,0" VerticalAlignment="Center" Orientation="Horizontal">
-                <customControls:ValueSlider x:Name="SubdivisionSelector" AutomationProperties.Name="Beat subdivision" DisplayText="{Binding Subdivision, Mode=OneWay, StringFormat=1/{0}}" IsSnapToTickEnabled="True" LargeChange="1" Maximum="8" Minimum="0" SmallChange="1" Style="{StaticResource BaseValueSliderStyle}" TickFrequency="1" Value="{Binding SelectedSubdivisionIndex, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="160"/>
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+            <StackPanel x:Name="SubdivisionPanel" Style="{StaticResource OHsFooterSubdivisionPanelStyle}" VerticalAlignment="Center" Orientation="Horizontal">
+                <customControls:ValueSlider x:Name="SubdivisionSelector" AutomationProperties.Name="Beat subdivision" DisplayText="{Binding Subdivision, Mode=OneWay, StringFormat=1/{0}}" IsSnapToTickEnabled="True" LargeChange="1" Maximum="8" Minimum="0" SmallChange="1" Style="{StaticResource OHsFooterSubdivisionStyle}" TickFrequency="1" Value="{Binding SelectedSubdivisionIndex, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
             </StackPanel>
-            <Border Style="{StaticResource OHsWorkstationToolbarSeparatorStyle}"/>
+            <Border Style="{StaticResource OHsFooterSeparatorStyle}"/>
             <StackPanel x:Name="ZoomControls" VerticalAlignment="Center" FlowDirection="{Binding RelativeSource={RelativeSource AncestorType=UserControl}, Path=FlowDirection, Mode=OneWay}" Orientation="Horizontal">
-                <customControls:BalloonButton AutomationProperties.Name="Zoom waveform out" ButtonIcon="{StaticResource Minus}" Command="{Binding ZoomOutCommand, Mode=OneWay}" Style="{StaticResource OHsBalloonNeutralActionStyle}" ToolTip="Zoom waveform out" Margin="4,0,0,0" ShouldShowText="False"/>
-                <customControls:BalloonButton AutomationProperties.Name="Zoom waveform in" ButtonIcon="{StaticResource PlusSolid}" Command="{Binding ZoomInCommand, Mode=OneWay}" Style="{StaticResource OHsBalloonNeutralActionStyle}" ToolTip="Zoom waveform in" Margin="4,0,0,0" ShouldShowText="False"/>
+                <customControls:BalloonButton AutomationProperties.Name="Zoom waveform out" ButtonIcon="{StaticResource Minus}" Command="{Binding ZoomOutCommand, Mode=OneWay}" Style="{StaticResource OHsFooterZoomStyle}" ToolTip="Zoom waveform out" ShouldShowText="False"/>
+                <customControls:BalloonButton AutomationProperties.Name="Zoom waveform in" ButtonIcon="{StaticResource PlusSolid}" Command="{Binding ZoomInCommand, Mode=OneWay}" Style="{StaticResource OHsFooterZoomStyle}" ToolTip="Zoom waveform in" ShouldShowText="False"/>
             </StackPanel>
-        </WrapPanel>
+        </StackPanel>
     </Grid>
 </UserControl>

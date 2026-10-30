@@ -36,7 +36,7 @@ public class SongBackgroundTests
         UiTestPump.EnsureFontResources(app);
         foreach (var resource in new[] { "Themes/Dark.xaml", "Themes/Tokens.xaml", "Converters/Converters.xaml", "Icons.xaml",
                      "Styles/TextBlock.xaml", "Styles/ItemsControl.xaml", "Styles/StackPanel.xaml", "Styles/Image.xaml", "Styles/ColumnDefinition.xaml", "Styles/Grid.xaml", "Styles/Border.xaml",
-                     "Styles/ContentControl.xaml", "Styles/ContentPresenter.xaml", "Styles/Button.xaml", "Styles/ListBox.xaml", "Styles/MenuItem.xaml", "Styles/ContextMenu.xaml", "Styles/BalloonComboBox.xaml", "Styles/ToolTip.xaml", "Styles/TextBox.xaml" })
+                     "Styles/ContentControl.xaml", "Styles/ContentPresenter.xaml", "Styles/Button.xaml", "Styles/ListBox.xaml", "Styles/MenuItem.xaml", "Styles/ContextMenu.xaml", "Styles/BalloonComboBox.xaml", "Styles/SegmentedToggleGroup.xaml", "Styles/SegmentedToggleOption.xaml", "Styles/ToolTip.xaml", "Styles/TextBox.xaml" })
             app.Resources.MergedDictionaries.Add(new ResourceDictionary
             { Source = new Uri($"/Hitbench;component/Resources/{resource}", UriKind.Relative) });
         path = Path.GetTempFileName();

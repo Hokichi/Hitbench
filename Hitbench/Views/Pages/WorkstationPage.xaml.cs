@@ -99,6 +99,7 @@ public partial class WorkstationPage : UserControl
     {
         if (deactivationStarted) return LoadCompletion;
         CancelNodePointer();
+        ResetPianoRollExpansion();
         Timeline.Reset();
         deactivationStarted = true;
         SystemParameters.StaticPropertyChanged -= OnLoadingSystemChanged;

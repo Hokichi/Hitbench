@@ -12,7 +12,7 @@
   <ItemGroup>
     <EmbeddedResource Include="Resources\OHsExportTemplate.osu" LogicalName="Hitbench.Resources.OHsExportTemplate.osu" />
     <Resource Include="Resources\logo.ico;Resources\logo.png;Resources\logo-light.ico;Resources\logo-light.png" />
-    <Resource Include="Resources\Insider-loading.json" />
+    <Resource Include="Resources\LoadingSpinnerD.json;Resources\LoadingSpinnerL.json" />
   </ItemGroup>
 
   <ItemGroup>

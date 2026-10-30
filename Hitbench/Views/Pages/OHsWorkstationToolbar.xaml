@@ -35,19 +35,20 @@
             <Setter Property="helpers:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
             <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
             <Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="True" />
+                    <Style.Triggers><DataTrigger Binding="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationToolbar}, Mode=OneWay}" Value="True"><Setter Property="Margin" Value="0" /></DataTrigger></Style.Triggers>
         </Style>
         <Style
             x:Key="OHsWorkstationScrollWithMarkerStyle"
             BasedOn="{StaticResource {x:Type customControls:BalloonCheckBox}}"
             TargetType="customControls:BalloonCheckBox">
             <Setter Property="ButtonSize" Value="{StaticResource Size.Control.Primary}" />
-            <Setter Property="Margin" Value="0,0,8,0" />
+            <Setter Property="Margin" Value="4,0,0,0" />
             <Setter Property="ShouldShowText" Value="False" />
             <Setter Property="IsTabStop" Value="True" />
             <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
             <Setter Property="helpers:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
             <Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="True" />
-            <Style.Triggers>
+            <Style.Triggers><DataTrigger Binding="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationToolbar}, Mode=OneWay}" Value="True"><Setter Property="Margin" Value="0" /></DataTrigger>
                 <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
                     <Setter Property="DefaultBackground" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
                     <Setter Property="CheckedBackground" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
@@ -93,10 +94,13 @@
             TargetType="customControls:BalloonComboBox">
             <Setter Property="ShouldShowText" Value="False" />
         </Style>
+        <Style x:Key="OHsWorkstationToolbarMenuStyle" TargetType="ContextMenu" BasedOn="{StaticResource OHsActionContextMenuStyle}">
+            <Setter Property="VerticalOffset" Value="16" />
+        </Style>
         <ContextMenu
             x:Key="OHsWorkstationAddMenu"
             x:Shared="False"
-            Style="{StaticResource OHsActionContextMenuStyle}">
+            Style="{StaticResource OHsWorkstationToolbarMenuStyle}">
             <MenuItem
                 Command="{Binding AddSampleTrackCommand, Mode=OneWay}"
                 Header="Sample Track"
@@ -114,12 +118,13 @@
             BasedOn="{StaticResource BaseBalloonComboBoxStyle}"
             TargetType="customControls:BalloonComboBox">
             <Setter Property="ShouldShowText" Value="False" />
+                    <Style.Triggers><DataTrigger Binding="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationToolbar}, Mode=OneWay}" Value="True"><Setter Property="Margin" Value="0" /></DataTrigger></Style.Triggers>
         </Style>
         <ContextMenu
             x:Key="OHsWorkstationProjectActionsMenu"
             x:Shared="False"
             AutomationProperties.Name="Project actions"
-            Style="{StaticResource OHsActionContextMenuStyle}">
+            Style="{StaticResource OHsWorkstationToolbarMenuStyle}">
             <ContextMenu.Resources>
                 <Style
                     x:Key="OHsWorkstationCollapseMenuItemStyle"
@@ -165,7 +170,7 @@
             x:Key="OHsWorkstationOpenFoldersMenu"
             x:Shared="False"
             AutomationProperties.Name="Open folder"
-            Style="{StaticResource OHsActionContextMenuStyle}">
+            Style="{StaticResource OHsWorkstationToolbarMenuStyle}">
             <MenuItem
                 Command="{Binding OpenBeatmapFolderCommand, Mode=OneWay}"
                 Header="Open beatmap folder"
@@ -177,14 +182,28 @@
                 Icon="{StaticResource Folder}"
                 Style="{StaticResource OHsIconActionMenuItemStyle}" />
         </ContextMenu>
+
+        <Style x:Key="OHsWorkstationCompactSeparatorStyle" TargetType="Border" BasedOn="{StaticResource OHsWorkstationToolbarSeparatorStyle}">
+            <Style.Triggers><DataTrigger Binding="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationToolbar}, Mode=OneWay}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers>
+        </Style>
+        <Style x:Key="OHsWorkstationStopStyle" TargetType="customControls:BalloonButton" BasedOn="{StaticResource OHsWorkstationTransportButtonStyle}">
+            <Setter Property="Margin" Value="4,0,0,0" />
+        </Style>
+        <Style x:Key="OHsWorkstationFolderActionStyle" TargetType="customControls:BalloonComboBox" BasedOn="{StaticResource OHsWorkstationProjectActionsStyle}">
+            <Setter Property="Margin" Value="8,0,0,0" />
+        </Style>
+        <Style x:Key="OHsWorkstationEditingModeStyle" TargetType="customControls:SegmentedToggleGroup" BasedOn="{StaticResource {x:Type customControls:SegmentedToggleGroup}}">
+            <Setter Property="Width" Value="160" />
+            <Style.Triggers><DataTrigger Binding="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationToolbar}, Mode=OneWay}" Value="True"><Setter Property="Width" Value="128" /></DataTrigger></Style.Triggers>
+        </Style>
+        <Style x:Key="OHsWorkstationEditingOptionStyle" TargetType="customControls:SegmentedToggleOption" BasedOn="{StaticResource {x:Type customControls:SegmentedToggleOption}}">
+            <Style.Triggers><DataTrigger Binding="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationToolbar}, Mode=OneWay}" Value="True"><Setter Property="Padding" Value="8,6" /></DataTrigger></Style.Triggers>
+        </Style>
     </UserControl.Resources>
         <Border Style="{StaticResource OHsWorkstationHeaderCardStyle}">
             <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
-                <WrapPanel VerticalAlignment="Center">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*" MinWidth="8"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <StackPanel Orientation="Horizontal">
                         <customControls:BalloonButton
                             x:Name="PlayPauseButton"
@@ -193,19 +212,17 @@
                             IsEnabled="{Binding CanPlay, Mode=OneWay}"
                             Style="{StaticResource OHsWorkstationPlayPauseStyle}" />
                         <customControls:BalloonButton
-                            Margin="4,0,0,0"
                             AutomationProperties.Name="Stop audio"
                             ButtonIcon="{StaticResource MediaStop}"
                             ButtonText="Stop"
                             Command="{Binding StopCommand, Mode=OneWay}"
                             IsEnabled="{Binding CanPlay, Mode=OneWay}"
-                            Style="{StaticResource OHsWorkstationTransportButtonStyle}"
+                            Style="{StaticResource OHsWorkstationStopStyle}"
                             ToolTip="Stop audio and return to the beginning" />
                     </StackPanel>
-                    <Border Style="{StaticResource OHsWorkstationToolbarSeparatorStyle}" />
+                    <Border Style="{StaticResource OHsWorkstationCompactSeparatorStyle}" />
                     <customControls:BalloonCheckBox
                         x:Name="ScrollWithMarkerCheckBox"
-                        Margin="4,0,0,0"
                         AutomationProperties.HelpText="Follow the current playback marker. Selecting a node turns this off."
                         AutomationProperties.Name="Scroll with marker"
                         ButtonIcon="{StaticResource AlignArrowRightFill}"
@@ -215,16 +232,16 @@
                         IsEnabled="{Binding CanPlay, Mode=OneWay}"
                         Style="{StaticResource OHsWorkstationScrollWithMarkerStyle}"
                         ToolTip="Follow the current playback marker (F). Selecting a node turns this off." />
-                    <Border Style="{StaticResource OHsWorkstationToolbarSeparatorStyle}" />
+                    <Border Style="{StaticResource OHsWorkstationCompactSeparatorStyle}" />
                     <customControls:SegmentedToggleGroup
                         x:Name="EditingModeGroup"
-                        Width="160"
+                        Style="{StaticResource OHsWorkstationEditingModeStyle}"
                         Margin="0"
                         AutomationProperties.Name="Workstation editing mode"
                         IsEnabled="{Binding CanPlaceSamples, Mode=OneWay}"
                         SelectedValue="{Binding IsAdditionMode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
                         <customControls:SegmentedToggleOption
-                            x:Name="SelectionModeButton"
+                            x:Name="SelectionModeButton" Style="{StaticResource OHsWorkstationEditingOptionStyle}"
                             AutomationProperties.Name="Selection Mode"
                             Content="Select"
                             ToolTip="Select and move nodes (1)">
@@ -233,7 +250,7 @@
                             </customControls:SegmentedToggleOption.Value>
                         </customControls:SegmentedToggleOption>
                         <customControls:SegmentedToggleOption
-                            x:Name="AdditionModeButton"
+                            x:Name="AdditionModeButton" Style="{StaticResource OHsWorkstationEditingOptionStyle}"
                             AutomationProperties.Name="Addition Mode"
                             Content="Draw"
                             ToolTip="Create nodes (2)">
@@ -242,10 +259,9 @@
                             </customControls:SegmentedToggleOption.Value>
                         </customControls:SegmentedToggleOption>
                     </customControls:SegmentedToggleGroup>
-                </WrapPanel>
-                <WrapPanel
-                    Grid.Row="1"
-                    Margin="0,8,0,0"
+                </StackPanel>
+                <StackPanel Orientation="Horizontal"
+                    Grid.Column="2"
                     HorizontalAlignment="Right"
                     VerticalAlignment="Center">
                     <customControls:BalloonComboBox
@@ -258,14 +274,13 @@
                         ToolTip="Project actions" />
                     <customControls:BalloonComboBox
                         x:Name="OpenFoldersButton"
-                        Margin="8,0,0,0"
                         AutomationProperties.Name="Open folder"
                         ButtonIcon="{StaticResource Folder}"
                         ButtonText="Open"
                         ContextMenu="{StaticResource OHsWorkstationOpenFoldersMenu}"
-                        Style="{StaticResource OHsWorkstationProjectActionsStyle}"
+                        Style="{StaticResource OHsWorkstationFolderActionStyle}"
                         ToolTip="Open folder" />
-                    <Border Style="{StaticResource OHsWorkstationToolbarSeparatorStyle}" />
+                    <Border Style="{StaticResource OHsWorkstationCompactSeparatorStyle}" />
                     <Grid Grid.IsSharedSizeScope="True" Style="{StaticResource BaseGridStyle}">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" SharedSizeGroup="OHsWorkstationAddSamplesWidth" />
@@ -292,9 +307,9 @@
                             Style="{StaticResource OHsWorkstationSamplesActionStyle}"
                             ToolTip="Manage samples" />
                     </Grid>
-                    <Border Style="{StaticResource OHsWorkstationToolbarSeparatorStyle}" />
-                    <pages:OHsWorkstationFooter x:Name="FooterControls" VerticalAlignment="Center" />
-                </WrapPanel>
+                    <Border Style="{StaticResource OHsWorkstationCompactSeparatorStyle}" />
+                    <pages:OHsWorkstationFooter IsCompactLayout="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationToolbar}, Mode=OneWay}" x:Name="FooterControls" VerticalAlignment="Center" />
+                </StackPanel>
             </Grid>
         </Border>
 </UserControl>

@@ -40,7 +40,7 @@ public sealed class SharedActionControlResourceTests
         foreach (var path in new[] { $"Themes/{theme}.xaml", "Themes/Tokens.xaml", "Converters/Converters.xaml", "Icons.xaml",
             "Styles/Grid.xaml", "Styles/StackPanel.xaml", "Styles/TextBlock.xaml", "Styles/ItemsControl.xaml",
             "Styles/Border.xaml", "Styles/ContentPresenter.xaml", "Styles/Button.xaml", "Styles/ScrollViewer.xaml",
-            "Styles/MenuItem.xaml", "Styles/ContextMenu.xaml", "Styles/BalloonComboBox.xaml" })
+            "Styles/MenuItem.xaml", "Styles/ContextMenu.xaml", "Styles/BalloonComboBox.xaml", "Styles/SegmentedToggleGroup.xaml", "Styles/SegmentedToggleOption.xaml" })
             resources.MergedDictionaries.Add(new ResourceDictionary
                 { Source = new Uri($"/Hitbench;component/Resources/{path}", UriKind.Relative) });
         if (deferFonts) Fonts();

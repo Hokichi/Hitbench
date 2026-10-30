@@ -2,12 +2,34 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Windows;
 using Hitbench.Resources.CustomControls;
+using Hitbench.Services.Ui;
 
 namespace Hitbench.Views.Pages;
 
 public partial class HomePage
 {
-    private const string ScanningResource = "pack://application:,,,/Hitbench;component/Resources/Insider-loading.json";
+    private readonly OHsThemeService? themeService;
+    private bool scanningMotionEnabled;
+    private bool scanningHighContrast;
+    internal string ScanningResourcePath { get; private set; } = SpinnerResource(false);
+    private static string SpinnerResource(bool light) => "pack://application:,,,/Hitbench;component/Resources/" +
+        (light ? "LoadingSpinnerL.json" : "LoadingSpinnerD.json");
+    private void OnScanningThemeChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(OHsThemeService.Theme)) return;
+        if (Dispatcher.CheckAccess()) SynchronizeScanningTheme();
+        else Dispatcher.BeginInvoke(new Action(SynchronizeScanningTheme));
+    }
+    private void SynchronizeScanningTheme()
+    {
+        if (!attached || lifetime.IsCancellationRequested) return;
+        var resource = SpinnerResource(themeService?.IsLightTheme == true);
+        if (resource == ScanningResourcePath) return;
+        ScanningResourcePath = resource;
+        scanningAnimationFailed = false;
+        ReleaseScanningAnimation();
+        RefreshScanningPresentation(scanningMotionEnabled, scanningHighContrast);
+    }
     private OHsScanningAnimationView? scanningAnimation;
     private bool scanningAnimationFailed;
     internal bool IsScanningAnimationPlaying => scanningAnimation?.IsPlaying == true;
@@ -43,6 +65,8 @@ public partial class HomePage
 
     internal void RefreshScanningPresentation(bool motionEnabled, bool highContrast)
     {
+        scanningMotionEnabled = motionEnabled;
+        scanningHighContrast = highContrast;
         var play = attached && IsVisible && viewModel.IsScanningMapsets && motionEnabled && !highContrast && !scanningAnimationFailed;
         if (!play)
         {
@@ -50,7 +74,7 @@ public partial class HomePage
             MapsetScanningAnimationHost.Visibility = Visibility.Collapsed;
             return;
         }
-        if (scanningAnimation is null) LoadScanningAnimation(ScanningResource);
+        if (scanningAnimation is null) LoadScanningAnimation(ScanningResourcePath);
         if (scanningAnimation is null) return;
         MapsetScanningAnimationHost.Visibility = Visibility.Visible;
         if (!scanningAnimation.IsPlaying) scanningAnimation.PlayAnimation();

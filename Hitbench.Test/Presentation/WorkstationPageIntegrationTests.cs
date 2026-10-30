@@ -131,7 +131,7 @@ public class WorkstationPageIntegrationTests
             Assert.That(selection.IsChecked, Is.EqualTo(vm.IsSelectionMode));
             Assert.That(addition.IsChecked, Is.EqualTo(vm.IsAdditionMode));
             Assert.That(grid.AllowNodeCreation, Is.EqualTo(vm.IsAdditionMode));
-            UiControlContract.AssertStyle<SegmentedToggleOption>(mode, typeof(SegmentedToggleOption));
+            UiControlContract.AssertStyle<SegmentedToggleOption>(mode, "OHsWorkstationEditingOptionStyle");
         }
         Assert.That(AutomationProperties.GetName(selection), Is.EqualTo("Selection Mode"));
         Assert.That(AutomationProperties.GetName(addition), Is.EqualTo("Addition Mode"));
@@ -239,7 +239,7 @@ public class WorkstationPageIntegrationTests
         var addition = (SegmentedToggleOption)page.Toolbar.FindName("AdditionModeButton");
         var selection = (SegmentedToggleOption)page.Toolbar.FindName("SelectionModeButton");
         Assert.That(addition.IsChecked, Is.True);
-        UiControlContract.AssertStyle<SegmentedToggleOption>(selection, typeof(SegmentedToggleOption));
+        UiControlContract.AssertStyle<SegmentedToggleOption>(selection, "OHsWorkstationEditingOptionStyle");
         selection.SetCurrentValue(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, true);
         Assert.That(vm.IsSelectionMode, Is.True);
         Assert.That(addition.IsChecked, Is.False);
@@ -1506,7 +1506,8 @@ public class WorkstationPageIntegrationTests
                 Assert.That(AutomationProperties.GetName(selector), Is.EqualTo("Beat subdivision"));
                 foreach (var button in buttons)
                 {
-                    UiControlContract.AssertStyle<BalloonButton>(button, "OHsBalloonNeutralActionStyle");
+                    UiControlContract.AssertStyle<BalloonButton>(button, "OHsFooterZoomStyle");
+                    Assert.That(button.Style.BasedOn, Is.SameAs(button.FindResource("OHsBalloonNeutralActionStyle")));
                     Assert.That(AutomationProperties.GetName(button), Is.Not.Empty);
                 }
                 UiControlContract.AssertStyle<ScrollBar>(bar, "OHsWorkstationWaveformScrollBarStyle");
@@ -1568,7 +1569,8 @@ public class WorkstationPageIntegrationTests
             window.Height = height + cardHeight - 200;
             view.UpdateLayout();
             var selector = (ValueSlider)((Hitbench.Views.Pages.OHsWorkstationFooter)page.Footer).FindName("SubdivisionSelector");
-            UiControlContract.AssertStyle<ValueSlider>(selector, "BaseValueSliderStyle");
+            UiControlContract.AssertStyle<ValueSlider>(selector, "OHsFooterSubdivisionStyle");
+            Assert.That(selector.Style.BasedOn, Is.SameAs(selector.FindResource("BaseValueSliderStyle")));
             Assert.That(selector.Value, Is.EqualTo(vm.SelectedSubdivisionIndex));
         }
     }

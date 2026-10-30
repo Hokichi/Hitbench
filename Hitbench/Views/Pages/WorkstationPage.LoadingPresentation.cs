@@ -37,7 +37,15 @@ public partial class WorkstationPage
     }
     private void OnLoadingSystemChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName != nameof(SystemParameters.HighContrast) || deactivationStarted) return;
+        if (deactivationStarted) return;
+        if (e.PropertyName == nameof(SystemParameters.ClientAreaAnimation))
+        {
+            void SettleIfNeeded() { if (!deactivationStarted && !SystemParameters.ClientAreaAnimation) SettlePianoRollExpansion(); }
+            if (Dispatcher.CheckAccess()) SettleIfNeeded();
+            else Dispatcher.BeginInvoke(new Action(SettleIfNeeded));
+            return;
+        }
+        if (e.PropertyName != nameof(SystemParameters.HighContrast)) return;
         if (Dispatcher.CheckAccess()) RefreshBlurPresentation();
         else Dispatcher.BeginInvoke(new Action(() => { if (!deactivationStarted) RefreshBlurPresentation(); }));
     }

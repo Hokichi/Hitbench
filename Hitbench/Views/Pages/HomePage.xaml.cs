@@ -52,9 +52,11 @@ public partial class HomePage : UserControl
     private readonly CancellationTokenSource lifetime = new();
     private readonly TaskCompletionSource presentation = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-    public HomePage(HomePageVM viewModel)
+    public HomePage(HomePageVM viewModel, OHsThemeService? themeService = null)
     {
         this.viewModel = viewModel;
+        this.themeService = themeService;
+        ScanningResourcePath = SpinnerResource(themeService?.IsLightTheme == true);
         InitializeComponent();
         ((ObjectDataProvider)Resources["OHsHomePageSource"]).ObjectInstance = this;
         DataContext = viewModel;
@@ -194,6 +196,8 @@ public partial class HomePage : UserControl
         IsVisibleChanged += OnVisibilityChanged;
         viewModel.PropertyChanged += OnStateChanged;
         SystemParameters.StaticPropertyChanged += OnScanningSystemChanged;
+        if (themeService is not null) themeService.PropertyChanged += OnScanningThemeChanged;
+        SynchronizeScanningTheme();
         RefreshScanningFromSystem();
         QueueCheck();
     }
@@ -517,6 +521,7 @@ public partial class HomePage : UserControl
         if (!attached) return;
         attached = false;
         SystemParameters.StaticPropertyChanged -= OnScanningSystemChanged;
+        if (themeService is not null) themeService.PropertyChanged -= OnScanningThemeChanged;
         RefreshScanningFromSystem();
         CancelSongsScrollMotion();
         songsPanel = null;

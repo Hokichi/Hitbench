@@ -6,7 +6,14 @@ namespace Hitbench.Views.Pages;
 
 public partial class OHsWorkstationToolbar : UserControl
 {
-    public OHsWorkstationToolbar() => InitializeComponent();
+    private static readonly DependencyPropertyKey IsCompactLayoutPropertyKey = DependencyProperty.RegisterReadOnly(nameof(IsCompactLayout), typeof(bool), typeof(OHsWorkstationToolbar), new PropertyMetadata(false));
+    public static readonly DependencyProperty IsCompactLayoutProperty = IsCompactLayoutPropertyKey.DependencyProperty;
+    public bool IsCompactLayout => (bool)GetValue(IsCompactLayoutProperty);
+    public OHsWorkstationToolbar()
+    {
+        InitializeComponent();
+        SizeChanged += (_, e) => SetValue(IsCompactLayoutPropertyKey, e.NewSize.Width < 960);
+    }
     public OHsWorkstationFooter Footer => FooterControls;
     public static readonly DependencyProperty IsShortLayoutProperty = DependencyProperty.Register(nameof(IsShortLayout), typeof(bool), typeof(OHsWorkstationToolbar));
     public bool IsShortLayout { get => (bool)GetValue(IsShortLayoutProperty); set => SetValue(IsShortLayoutProperty, value); }

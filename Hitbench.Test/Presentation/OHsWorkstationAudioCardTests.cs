@@ -291,8 +291,9 @@ public sealed class OHsWorkstationAudioCardTests
             Assert.That(group, Is.Not.Null);
             var select = (SegmentedToggleOption)card.FindName("SelectionModeButton");
             var draw = (SegmentedToggleOption)card.FindName("AdditionModeButton");
-            UiControlContract.AssertStyle<SegmentedToggleGroup>(group!, typeof(SegmentedToggleGroup));
-            UiControlContract.AssertStyle<SegmentedToggleOption>(select, typeof(SegmentedToggleOption));
+            UiControlContract.AssertStyle<SegmentedToggleGroup>(group!, "OHsWorkstationEditingModeStyle");
+            Assert.That(group!.Style.BasedOn, Is.SameAs(group.FindResource(typeof(SegmentedToggleGroup))));
+            UiControlContract.AssertStyle<SegmentedToggleOption>(select, "OHsWorkstationEditingOptionStyle");
             var selected = vm.SelectedTrack;
             var editorMode = editor.IsAdditionMode;
             select.SetCurrentValue(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, true);

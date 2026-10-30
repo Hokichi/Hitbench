@@ -8,7 +8,30 @@ namespace Hitbench.Test.Presentation;
 public sealed class OHsWorkstationToolbarTests
 {
     [Test]
-    public void ToolbarPreservesCommandsAndReadinessAcrossSampleDrawerAttachment()
+    public void ToolbarMenusKeepOwnerBindingsAndAssignedMenuStyle()
+    {
+        new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
+        var page = WorkstationTestPage.Create();
+        var vm = (Hitbench.ViewModels.Shell.WorkstationPageVM)page.DataContext;
+        try
+        {
+            UiTestPump.Layout(page, 1200, 800);
+            foreach (var name in new[] { "ProjectActionsButton", "OpenFoldersButton", "AddMenuButton" })
+            {
+                var trigger = (BalloonComboBox)page.Toolbar.FindName(name);
+                trigger.ContextMenu.PlacementTarget = trigger;
+                UiTestPump.Layout(trigger.ContextMenu, 320, 300);
+                Assert.That(trigger.ContextMenu, Is.TypeOf<ContextMenu>());
+                Assert.That(trigger.ContextMenu.Style, Is.SameAs(trigger.FindResource("OHsWorkstationToolbarMenuStyle")));
+                Assert.That(trigger.ContextMenu.Style.BasedOn, Is.SameAs(trigger.FindResource("OHsActionContextMenuStyle")));
+                Assert.That(trigger.ContextMenu.DataContext, Is.SameAs(vm));
+            }
+        }
+        finally { UiTestPump.Run(page.DeactivateAsync()); }
+    }
+
+    [TestCase(640)] [TestCase(1200)]
+    public void ToolbarPreservesCommandsAndReadinessAcrossSampleDrawerAttachment(double width)
     {
         new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
         var page = WorkstationTestPage.Create();
@@ -17,16 +40,16 @@ public sealed class OHsWorkstationToolbarTests
         var host = new Grid();
         try
         {
-            UiTestPump.Layout(page, 1200, 800);
+            UiTestPump.Layout(page, width, 800);
             Assert.That(play.Command, Is.SameAs(vm.PlayPauseCommand));
             Assert.That(play.IsEnabled, Is.False);
             UiTestPump.Run(vm.LoadAsync("project.json", default));
             vm.AcknowledgePresentationReady(vm.LoadGeneration);
-            UiTestPump.Layout(page, 1200, 800);
+            UiTestPump.Layout(page, width, 800);
             Assert.That(play.IsEnabled, Is.True);
             page.AttachDrawerHost(host, Hitbench.Resources.DataModels.OHsWorkstationDrawerKind.Samples);
             page.SettleDrawerHostAnimation(true);
-            UiTestPump.Layout(page, 1200, 800);
+            UiTestPump.Layout(page, width, 800);
             Assert.That(play.Command, Is.SameAs(vm.PlayPauseCommand));
             Assert.That(play.IsEnabled, Is.True);
             Assert.That(play.IsTabStop, Is.False);
