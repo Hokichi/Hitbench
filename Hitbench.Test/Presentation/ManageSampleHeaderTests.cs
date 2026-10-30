@@ -12,7 +12,7 @@ public sealed class ManageSampleHeaderTests
     [Test] public void HeaderDoesNotOfferManagerAction()
     {
         new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
-        using var services = App.CreateServices();
+        using var services = App.CreateServices(null, null, new Hitbench.Services.Ui.UiScheduler(System.Windows.Threading.Dispatcher.CurrentDispatcher));
         var shell = services.GetRequiredService<MainWindow>();
         try
         {
@@ -24,7 +24,7 @@ public sealed class ManageSampleHeaderTests
     [Test] public void WorkstationOffersManagerWithExistingToolbarContract()
     {
         new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
-        using var services = App.CreateServices();
+        using var services = App.CreateServices(null, null, new Hitbench.Services.Ui.UiScheduler(System.Windows.Threading.Dispatcher.CurrentDispatcher));
         var page = services.GetRequiredService<Func<Hitbench.Views.Pages.WorkstationPage>>()();
         var host = new Window { Content = page };
         using var view = new InMemoryView(host, scheduleLayout: false);

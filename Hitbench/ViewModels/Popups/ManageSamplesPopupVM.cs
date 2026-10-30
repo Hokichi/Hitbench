@@ -16,7 +16,7 @@ namespace Hitbench.ViewModels.Popups;
 public sealed partial class ManageSamplesPopupVM(SampleManagementContext context, ISampleFileService files,
     SampleImportBatch imports, ISampleFileDialogService picker, ISampleRemovalDialogService removal,
     IMessenger messenger, IUiScheduler scheduler, ISamplePreviewService? preview = null,
-    PlaybackVolumeSettings? playbackVolumes = null, ISampleBrowserService? waveformReader = null) : ObservableValidator
+    PlaybackVolumeSettings? playbackVolumes = null, ISampleBrowserService? waveformReader = null, bool ownsWaveformReader = false) : ObservableValidator
 {
     private CancellationTokenSource lifetime = new();
     private Task operation = Task.CompletedTask;
@@ -240,6 +240,7 @@ public sealed partial class ManageSamplesPopupVM(SampleManagementContext context
     {
         if (deactivated) return;
         deactivated = true; lifetime.Cancel(); NotifyEditingState(); await operation; await StopWaveformsAsync();
+        if (ownsWaveformReader && waveformReader is IDisposable ownedReader) ownedReader.Dispose();
         ActiveEdit = null; ClearErrors();
         try { await StopPreviewAsync(); if (preview is not null) await preview.DisposeAsync(); }
         finally { previewCancellation?.Dispose(); lifetime.Dispose(); await scheduler.InvokeAsync(NotifyEditingState, CancellationToken.None); }

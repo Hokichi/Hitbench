@@ -49,7 +49,7 @@ public sealed class SampleLoaderBasketTests
             var count = Interlocked.Increment(ref active);
             int seen;
             do { seen = maximum; } while (count > seen && Interlocked.CompareExchange(ref maximum, count, seen) != seen);
-            if (count == 2) twoReaders.TrySetResult();
+            if (count == 1) twoReaders.TrySetResult();
             try { await release.Task.WaitAsync(token); return new(path, Path.GetFileName(path), "WAV", 1024, TimeSpan.FromSeconds(1), 44100, 1); }
             finally { Interlocked.Decrement(ref active); }
         };
@@ -58,7 +58,7 @@ public sealed class SampleLoaderBasketTests
         {
             await vm.InitializeAsync(default(CancellationToken));
             await twoReaders.Task.WaitAsync(TimeSpan.FromSeconds(5));
-            Assert.That(maximum, Is.EqualTo(2));
+            Assert.That(maximum, Is.EqualTo(1));
             await vm.NavigateCommand.ExecuteAsync(other);
             await vm.DeactivateAsync();
             Assert.That(active, Is.Zero);

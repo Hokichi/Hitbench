@@ -32,7 +32,7 @@ public sealed partial class SampleLoaderPopupVM
         {
             try
             {
-                await Parallel.ForEachAsync(files, new ParallelOptions { MaxDegreeOfParallelism = 2, CancellationToken = token }, async (entry, cancellation) =>
+                await Parallel.ForEachAsync(files, new ParallelOptions { MaxDegreeOfParallelism = 1, CancellationToken = token }, async (entry, cancellation) =>
                 {
                     try
                     {

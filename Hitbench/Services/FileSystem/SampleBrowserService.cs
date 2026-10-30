@@ -4,7 +4,7 @@ using Hitbench.Resources.DataModels;
 
 namespace Hitbench.Services.FileSystem;
 
-public sealed class SampleBrowserService : ISampleBrowserService
+public sealed partial class SampleBrowserService : ISampleBrowserService, IDisposable
 {
     private readonly AudioMemoryBudget memoryBudget;
     private readonly Func<string, WaveStream> openDecoder;
@@ -27,7 +27,7 @@ public sealed class SampleBrowserService : ISampleBrowserService
     }, token);
     private static bool IsSupported(string path) => Path.GetExtension(path).ToLowerInvariant() is ".wav" or ".ogg" or ".mp3";
     public Task<Hitbench.Core.Entities.WaveformData> ReadWaveformAsync(string path, CancellationToken token) => operationProgress is null
-        ? ReadWaveformCoreAsync(path, token) : operationProgress.RunAsync("Reading sample...", t => ReadWaveformCoreAsync(path, t), token);
+        ? ReadWaveformCachedAsync(path, token) : operationProgress.RunAsync("Reading sample...", t => ReadWaveformCachedAsync(path, t), token);
 
     private Task<Hitbench.Core.Entities.WaveformData> ReadWaveformCoreAsync(string path, CancellationToken token) => Task.Run(() =>
     {
@@ -71,7 +71,7 @@ public sealed class SampleBrowserService : ISampleBrowserService
     }, token);
 
     public Task<SampleFileMetadata> ReadMetadataAsync(string path, CancellationToken token) => operationProgress is null
-        ? ReadMetadataCoreAsync(path, token) : operationProgress.RunAsync("Reading sample...", t => ReadMetadataCoreAsync(path, t), token);
+        ? ReadMetadataCachedAsync(path, token) : operationProgress.RunAsync("Reading sample...", t => ReadMetadataCachedAsync(path, t), token);
 
     private Task<SampleFileMetadata> ReadMetadataCoreAsync(string path, CancellationToken token) => Task.Run(() =>
     {
