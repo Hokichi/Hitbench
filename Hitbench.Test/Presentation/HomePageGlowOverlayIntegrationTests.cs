@@ -95,6 +95,29 @@ public sealed class HomePageGlowOverlayIntegrationTests
     }
 
     [Test]
+    public void ReloadSuppressesOnlyMapsetGlowsAndPreservesSelection()
+    {
+        var song = (Button)Card(false);
+        var project = Card(true);
+        var selected = (FolderEntry)song.DataContext;
+        Activate(song);
+        Activate(project);
+        vm.SelectMapsetCommand.Execute(selected);
+        if (vm.SearchProjectsCommand.ExecutionTask is { } filtering) UiTestPump.Run(filtering);
+        var ready = new TaskCompletionSource();
+        vm.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(vm.CanSelectMapset) && vm.CanSelectMapset) ready.TrySetResult(); };
+        var reload = vm.ReloadSongsCommand.ExecuteAsync(null);
+        Assert.That(((ListBox)page.FindName("SongsList")).IsEnabled, Is.False);
+        Assert.That(OuterGlow.GetIsActive(song), Is.False);
+        Assert.That(Host.AdornerLayer.GetAdorners(song), Is.Null);
+        UiTestPump.Run(reload);
+        UiTestPump.Run(ready.Task);
+        view.UpdateLayout();
+        Assert.That(vm.SelectedMapset?.FullName, Is.EqualTo(selected.FullName));
+        Assert.That(vm.CanSelectMapset, Is.True);
+    }
+
+    [Test]
     public void DeactivateReleasesAllCardGlows()
     {
         var song = Card(false);

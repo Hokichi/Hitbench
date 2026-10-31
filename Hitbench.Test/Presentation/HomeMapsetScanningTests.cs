@@ -7,6 +7,79 @@ namespace Hitbench.Test.Presentation;
 public sealed class HomeMapsetScanningTests
 {
     [Test]
+    public async Task SearchSupersedingPublicationReleasesOldBusyOwnership()
+    {
+        var vm = Create(new StubHomeFolderService { Songs = (_, _) => Task.FromResult<FolderSnapshot?>(new FolderSnapshot(
+            Enumerable.Range(0, 100).Select(i => new FolderEntry(i.ToString(), "map", default)))) });
+        try
+        {
+            await vm.LoadAsync(default);
+            await vm.LoadInitialSongsAsync(default);
+            vm.CompleteSongsPresentation(vm.SongsPresentationGeneration);
+            var superseded = false;
+            vm.Songs.CollectionChanged += (_, _) =>
+            {
+                if (superseded) return;
+                superseded = true;
+                vm.SongSearchText = "map";
+            };
+            await vm.LoadMoreSongsCommand.ExecuteAsync(10);
+            await vm.SearchSongsCommand.ExecutionTask!;
+            Assert.That(vm.IsLoadingSongs, Is.False);
+            Assert.That(vm.CompleteSongsPresentation(vm.SongsPresentationGeneration), Is.True);
+        }
+        finally { vm.Deactivate(); }
+    }
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task FailedOrCancelledReloadRetainsInventoryBehindPreparation(bool cancel)
+    {
+        var entry = new FolderEntry("one", "one", default);
+        var pending = new TaskCompletionSource<FolderSnapshot?>();
+        var folders = new StubHomeFolderService { Songs = (_, _) => Task.FromResult<FolderSnapshot?>(new FolderSnapshot([entry])) };
+        var vm = Create(folders);
+        try
+        {
+            await vm.LoadAsync(default);
+            await vm.LoadInitialSongsAsync(default);
+            vm.CompleteSongsPresentation(vm.SongsPresentationGeneration);
+            var oldGeneration = vm.SongsPresentationGeneration;
+            folders.ReloadSongs = (_, token) => pending.Task.WaitAsync(token);
+            var reload = vm.ReloadSongsCommand.ExecuteAsync(null);
+            Assert.That(vm.CanSelectMapset, Is.False);
+            Assert.That(vm.CompleteSongsPresentation(oldGeneration), Is.False);
+            if (cancel) vm.ReloadSongsCommand.Cancel();
+            else pending.SetException(new IOException("reload failed"));
+            await reload;
+            Assert.That(vm.IsScanningMapsets, Is.False);
+            Assert.That(vm.IsAwaitingSongsPresentation, Is.True);
+            Assert.That(vm.CanSelectMapset, Is.False);
+            Assert.That(vm.CompleteSongsPresentation(vm.SongsPresentationGeneration), Is.True);
+            Assert.That(vm.CanSelectMapset, Is.True);
+        }
+        finally { vm.Deactivate(); }
+    }
+
+    [Test]
+    public async Task SuspendAndLaterPagingUseDifferentReadinessBoundaries()
+    {
+        var vm = Create(new StubHomeFolderService { Songs = (_, _) => Task.FromResult<FolderSnapshot?>(new FolderSnapshot(
+            Enumerable.Range(0, 100).Select(i => new FolderEntry(i.ToString(), "map", default)))) });
+        try
+        {
+            await vm.LoadAsync(default);
+            await vm.LoadInitialSongsAsync(default);
+            vm.CompleteSongsPresentation(vm.SongsPresentationGeneration);
+            vm.Songs.CollectionChanged += (_, _) => Assert.That(vm.CanSelectMapset, Is.True);
+            await vm.LoadMoreSongsCommand.ExecuteAsync(10);
+            vm.SuspendSongsPresentation();
+            Assert.That(vm.CanSelectMapset, Is.False);
+            Assert.That(vm.CompleteSongsPresentation(vm.SongsPresentationGeneration), Is.True);
+            Assert.That(vm.CompleteSongsPresentation(vm.SongsPresentationGeneration), Is.False);
+        }
+        finally { vm.Deactivate(); }
+    }
+    [Test]
     public async Task HiddenMapsetsRejectDirectSelectionUntilPresentation()
     {
         var entry = new FolderEntry("one", "one", default);

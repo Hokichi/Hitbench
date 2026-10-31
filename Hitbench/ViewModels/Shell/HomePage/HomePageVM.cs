@@ -157,6 +157,7 @@ public partial class HomePageVM(
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token, cancellationToken);
         songQueryCancellation = linked;
         var generation = ++songsGeneration;
+        IsLoadingSongs = false;
         var inventory = songsInventory!;
         var query = SongSearchText;
         IsAwaitingSongsPresentation = false;
@@ -322,7 +323,8 @@ public partial class HomePageVM(
 
     public bool CompleteSongsPresentation(int generation)
     {
-        if (!active || generation != songsGeneration || !IsAwaitingSongsPresentation || IsLoading || IsSearchingSongs) return false;
+        if (!active || generation != songsGeneration || !IsAwaitingSongsPresentation || IsLoading || IsSearchingSongs ||
+            (IsScanningMapsets && scanPresentationGeneration != generation)) return false;
         EndProcessing();
         return true;
     }
@@ -520,10 +522,10 @@ public partial class HomePageVM(
             }
         }
         catch (OperationCanceledException) when (linked.IsCancellationRequested) { }
-        catch (Exception error) { FailPanel(projects, error); }
+        catch (Exception error) { if (projects || scan == mapsetScanGeneration) FailPanel(projects, error); }
         finally
         {
-            if (!projects)
+            if (!projects && scan == mapsetScanGeneration)
             {
                 if (!IsAwaitingSongsPresentation || linked.IsCancellationRequested)
                 {

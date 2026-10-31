@@ -73,7 +73,7 @@ public partial class HomePageVM
             awaitingScan = true;
         }
         catch (OperationCanceledException) when (linked.IsCancellationRequested) { }
-        catch (Exception error) { if (active) FailPanel(false, error); }
-        finally { if (!awaitingScan && scan != 0) { EndMapsetScan(scan); SuspendSongsPresentation(); } isLocatingFolder = false; RefreshCommands(); }
+        catch (Exception error) { if (active && (scan == 0 || scan == mapsetScanGeneration)) FailPanel(false, error); }
+        finally { if (!awaitingScan && scan != 0 && scan == mapsetScanGeneration) { EndMapsetScan(scan); SuspendSongsPresentation(); } isLocatingFolder = false; RefreshCommands(); }
     }
 }
