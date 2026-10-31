@@ -45,6 +45,15 @@
             TargetType="ListBox">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="IsEnabled" Value="{Binding CanSelectMapset, Mode=OneWay}" />
+            <Setter Property="IsHitTestVisible" Value="{Binding AreSongsPresented, RelativeSource={RelativeSource AncestorType=pages:HomePage}, Mode=OneWay}" />
+            <Setter Property="ToolTipService.IsEnabled" Value="{Binding AreSongsPresented, RelativeSource={RelativeSource AncestorType=pages:HomePage}, Mode=OneWay}" />
+            <Setter Property="helpers:OuterGlow.IsActive" Value="{Binding AreSongsPresented, RelativeSource={RelativeSource AncestorType=pages:HomePage}, Mode=OneWay}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding AreSongsPresented, RelativeSource={RelativeSource AncestorType=pages:HomePage}, Mode=OneWay}" Value="False">
+                    <Setter Property="IsEnabled" Value="False" />
+                </DataTrigger>
+            </Style.Triggers>
         </Style>
         <Style
             x:Key="OHsHomeMapsetItemStyle"
@@ -841,7 +850,6 @@
                         x:Name="SongsList"
                         Grid.Row="3"
                         AutomationProperties.Name="Songs"
-                        IsEnabled="{Binding CanSelectMapset, Mode=OneWay}"
                         ItemContainerStyle="{StaticResource OHsHomeMapsetItemStyle}"
                         ItemTemplate="{StaticResource HomePageSongTemplate}"
                         ItemsPanel="{StaticResource HomePageSongsItemsPanel}"

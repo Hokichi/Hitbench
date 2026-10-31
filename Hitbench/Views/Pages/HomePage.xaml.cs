@@ -18,6 +18,11 @@ namespace Hitbench.Views.Pages;
 
 public partial class HomePage : UserControl
 {
+    private static readonly DependencyPropertyKey AreSongsPresentedPropertyKey = DependencyProperty.RegisterReadOnly(
+        nameof(AreSongsPresented), typeof(bool), typeof(HomePage), new PropertyMetadata(false));
+    public static readonly DependencyProperty AreSongsPresentedProperty = AreSongsPresentedPropertyKey.DependencyProperty;
+    public bool AreSongsPresented => (bool)GetValue(AreSongsPresentedProperty);
+
     public static readonly DependencyProperty MapsetArtworkOpacityProperty = DependencyProperty.RegisterAttached(
         "MapsetArtworkOpacity", typeof(double), typeof(HomePage),
         new FrameworkPropertyMetadata(1d, FrameworkPropertyMetadataOptions.Inherits));
@@ -69,7 +74,7 @@ public partial class HomePage : UserControl
     public bool RequiresShutdown => viewModel.RequiresShutdown;
     internal bool HandleSongsMouseWheel(int delta, int wheelLines, bool animate, TimeSpan now)
     {
-        if (!attached || !viewModel.CanInteract || delta == 0 || !GetSongsParts() || songsPanel!.ViewportHeight <= 0) return false;
+        if (!attached || !AreSongsPresented || !viewModel.CanSelectMapset || delta == 0 || !GetSongsParts() || songsPanel!.ViewportHeight <= 0) return false;
         var panel = songsPanel;
         if (scrollMotion.IsActive && panel.VerticalScrollRequestVersion != lastScrollRequest) CancelSongsScrollMotion();
         var offset = scrollMotion.Request(delta, wheelLines, panel.RowStride, panel.ViewportHeight,
@@ -93,7 +98,7 @@ public partial class HomePage : UserControl
 
     internal void ProcessSongScrollFrame(TimeSpan now)
     {
-        if (!viewModel.CanInteract)
+        if (!AreSongsPresented || !viewModel.CanSelectMapset)
         {
             CancelSongsScrollMotion();
             return;
@@ -171,6 +176,7 @@ public partial class HomePage : UserControl
     public void CancelProjectCreation() => viewModel.CreateProjectCommand.Cancel();
     public void Deactivate()
     {
+        HideSongs();
         OuterGlow.SetIsActive(CardGlowHost, false);
         Detach();
         ReleaseScanningAnimation();
@@ -232,6 +238,12 @@ public partial class HomePage : UserControl
 
     private void OnVisibilityChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
+        if (!IsVisible)
+        {
+            HideSongs();
+            CancelSongsScrollMotion();
+            viewModel.SuspendSongsPresentation();
+        }
         RefreshScanningFromSystem();
         QueueCheck();
     }
@@ -300,7 +312,7 @@ public partial class HomePage : UserControl
 
     private void OnSongsViewerKeyDown(object sender, KeyEventArgs e)
     {
-        if (!ReferenceEquals(e.OriginalSource, sender) || !GetSongsParts() || songsPanel is not { } panel) return;
+        if (!AreSongsPresented || !viewModel.CanSelectMapset || !ReferenceEquals(e.OriginalSource, sender) || !GetSongsParts() || songsPanel is not { } panel) return;
         switch (e.Key)
         {
             case Key.PageDown: panel.PageDown(); break;
@@ -406,8 +418,7 @@ public partial class HomePage : UserControl
                 checkAgain = true;
                 return;
             }
-            viewModel.CompleteSongsPresentation(generation);
-            RevealSongs(generation);
+            if (viewModel.CompleteSongsPresentation(generation)) RevealSongs(generation);
             return;
         }
 
@@ -468,7 +479,7 @@ public partial class HomePage : UserControl
             .Select(song => ImageLoader.LoadAsync(song.BackgroundPath, SongImageDecodeWidth, token))
             .ToArray();
         await Task.WhenAll(preloadTasks).WaitAsync(token);
-        if (!attached || generation != viewModel.SongsPresentationGeneration) return false;
+        if (!attached || !IsVisible || token.IsCancellationRequested || generation != viewModel.SongsPresentationGeneration) return false;
 
         await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Loaded, token);
         SongsList.UpdateLayout();
@@ -488,30 +499,40 @@ public partial class HomePage : UserControl
         var changed = backgrounds.Where((background, index) =>
             !imageRequests.TryGetValue(background, out var request) ||
             !ReferenceEquals(request.LoadingTask, tasks[index])).Any();
-        return attached && generation == viewModel.SongsPresentationGeneration &&
+        return attached && IsVisible && !token.IsCancellationRequested && generation == viewModel.SongsPresentationGeneration &&
             size == SongsList.RenderSize && !changed;
     }
 
     private void RevealSongs(int generation)
     {
-        if (!attached || generation != viewModel.SongsPresentationGeneration ||
-            viewModel.IsAwaitingSongsPresentation)
+        if (!attached || !IsVisible || lifetime.IsCancellationRequested || generation != viewModel.SongsPresentationGeneration ||
+            viewModel.IsAwaitingSongsPresentation || viewModel.IsScanningMapsets)
             return;
 
         SongsList.BeginAnimation(OpacityProperty, null);
         SongsList.Opacity = 1;
-        if (!SystemParameters.ClientAreaAnimation) return;
+        SetValue(AreSongsPresentedPropertyKey, true);
+        if (!SystemParameters.ClientAreaAnimation || SystemParameters.HighContrast) return;
 
-        SongsList.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1,
+        try { SongsList.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1,
             TimeSpan.FromMilliseconds(160))
         {
             EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
             FillBehavior = FillBehavior.Stop
-        }, HandoffBehavior.SnapshotAndReplace);
+        }, HandoffBehavior.SnapshotAndReplace); }
+        catch (Exception error) { Trace.TraceError("Home reveal: {0}", error); SongsList.BeginAnimation(OpacityProperty, null); }
+    }
+
+    internal void RefreshSongsRevealPolicy(bool motionEnabled, bool highContrast)
+    {
+        if (!motionEnabled || highContrast) SongsList.BeginAnimation(OpacityProperty, null);
     }
 
     private void HideSongs()
     {
+        var ownedFocus = SongsList.IsKeyboardFocusWithin;
+        SetValue(AreSongsPresentedPropertyKey, false);
+        if (ownedFocus && SongSearchTextBox.IsEnabled) SongSearchTextBox.Focus();
         SongsList.BeginAnimation(OpacityProperty, null);
         SongsList.Opacity = 0;
     }

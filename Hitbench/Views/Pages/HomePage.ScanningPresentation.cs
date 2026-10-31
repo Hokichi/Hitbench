@@ -89,7 +89,11 @@ public partial class HomePage
 
     private void RefreshScanningFromSystem()
     {
-        try { RefreshScanningPresentation(SystemParameters.ClientAreaAnimation, SystemParameters.HighContrast); }
+        try
+        {
+            RefreshSongsRevealPolicy(SystemParameters.ClientAreaAnimation, SystemParameters.HighContrast);
+            RefreshScanningPresentation(SystemParameters.ClientAreaAnimation, SystemParameters.HighContrast);
+        }
         catch (Exception error)
         {
             Trace.TraceError("Mapset scan playback: {0}", error);

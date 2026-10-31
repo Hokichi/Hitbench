@@ -8,6 +8,35 @@ namespace Hitbench.Test.Presentation;
 [Apartment(ApartmentState.STA), NonParallelizable]
 public sealed class HomeMapsetScanningIntegrationTests
 {
+    [Test]
+    public void PreparingListRejectsInputAndVisibilityLossSuspendsReadiness()
+    {
+        new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
+        var pending = new TaskCompletionSource<FolderSnapshot?>();
+        var vm = HomeMapsetScanningTests.Create(new StubHomeFolderService { Songs = (_, _) => pending.Task });
+        var page = new HomePage(vm);
+        using var view = new InMemoryView(new Window { Content = page, Width = 1200, Height = 800 });
+        var list = (ListBox)page.FindName("SongsList");
+        try
+        {
+            var loading = vm.LoadAsync(default);
+            Assert.That(list.IsHitTestVisible, Is.False);
+            Assert.That(list.IsEnabled, Is.False);
+            Assert.That(ToolTipService.GetIsEnabled(list), Is.False);
+            pending.SetResult(new FolderSnapshot([new FolderEntry("one", "one", default)]));
+            UiTestPump.Run(loading);
+            UiTestPump.Run(page.LoadSongsPresentationAsync(default));
+            view.UpdateLayout();
+            Assert.That(list.IsHitTestVisible, Is.True);
+            Assert.That(list.IsEnabled, Is.True);
+            page.Visibility = Visibility.Hidden;
+            Assert.That(list.IsHitTestVisible, Is.False);
+            Assert.That(vm.CanSelectMapset, Is.False);
+            page.Visibility = Visibility.Visible;
+            UiTestPump.Run(page.Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle).Task);
+        }
+        finally { pending.TrySetResult(new FolderSnapshot([])); page.Deactivate(); }
+    }
     [TestCase("LoadingSpinnerD.json")] [TestCase("LoadingSpinnerL.json")]
     public void BothSpinnerResourcesParseWithoutDisplaying(string fileName)
     {
