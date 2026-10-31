@@ -22,7 +22,13 @@ public partial class OHsSampleDropImportPopup : BasePopup
     private void OnLoaded(object sender, RoutedEventArgs e) { if (Owner is not null) Owner.SizeChanged += OnOwnerSizeChanged; ResizeToOwner(); FileList.SelectedIndex = vm.Entries.Count > 0 ? 0 : -1; FocusRow(false); }
     private void OnDpiChanged(object sender, DpiChangedEventArgs e) => ResizeToOwner();
     private void OnOwnerSizeChanged(object? sender, SizeChangedEventArgs e) => ResizeToOwner();
-    private void ResizeToOwner() { var size = WindowWorkArea.GetClientSize(Owner ?? this); Width = Math.Min(760, Math.Min(size.Width > 0 ? size.Width : 760, Owner?.ActualWidth > 0 ? Owner.ActualWidth : 760)); Height = Math.Min(560, Math.Min(size.Height > 0 ? size.Height : 560, Owner?.ActualHeight > 0 ? Owner.ActualHeight : 560)); }
+    private void ResizeToOwner() => ResizeToBounds(WindowWorkArea.GetClientSize(Owner ?? this), Owner?.RenderSize ?? Size.Empty);
+    internal void ResizeToBounds(Size workArea, Size ownerClientSize)
+    {
+        Width = Math.Min(Limit(workArea.Width, 760), Limit(ownerClientSize.Width, 760));
+        Height = Math.Min(Limit(workArea.Height, 560), Limit(ownerClientSize.Height, 560));
+        static double Limit(double value, double maximum) => double.IsFinite(value) && value > 0 ? Math.Min(value, maximum) : maximum;
+    }
     internal bool IsPresentationActive => presentationActive;
     internal void BeginPresentation() => presentationActive = true;
     private void OnClosed(object? sender, EventArgs e) { presentationActive = false; vm.TryCompleteSelection(false); ReleaseOwner(); }
@@ -50,7 +56,9 @@ public partial class OHsSampleDropImportPopup : BasePopup
     private void FocusRow(bool play)
     {
         if (FileList.SelectedItem is not { } item) return; FileList.ScrollIntoView(item); FileList.UpdateLayout();
-        if (FileList.ItemContainerGenerator.ContainerFromItem(item) is DependencyObject container) { var elements = Descendants(container); (play ? elements.OfType<BalloonButton>().FirstOrDefault() as UIElement : elements.OfType<CheckBox>().FirstOrDefault())?.Focus(); }
+        if (FileList.ItemContainerGenerator.ContainerFromItem(item) is not DependencyObject container) return;
+        if (play) Descendants(container).OfType<OHsSampleRow>().FirstOrDefault()?.FocusPreview();
+        else Descendants(container).OfType<CheckBox>().FirstOrDefault()?.Focus();
     }
     private static IEnumerable<DependencyObject> Descendants(DependencyObject parent) { yield return parent; for (var i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++) foreach (var child in Descendants(VisualTreeHelper.GetChild(parent, i))) yield return child; }
 }

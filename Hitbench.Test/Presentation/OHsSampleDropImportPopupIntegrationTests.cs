@@ -1,6 +1,8 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Automation;
+using System.Windows.Input;
+using System.Windows.Threading;
 using CommunityToolkit.Mvvm.Input;
 using Hitbench.Resources.CustomControls;
 using Hitbench.Resources.Helpers;
@@ -11,6 +13,114 @@ namespace Hitbench.Test.Presentation;
 [Apartment(ApartmentState.STA), NonParallelizable]
 public sealed class OHsSampleDropImportPopupIntegrationTests
 {
+    [TestCase(FlowDirection.LeftToRight)]
+    [TestCase(FlowDirection.RightToLeft)]
+    public void NavigationDoesNotChangeCheckedSelectionOrCompleteImport(FlowDirection flow)
+    {
+        var preview = new StubSamplePreviewService();
+        var vm = new OHsSampleDropImportPopupVM(["C:/a.wav", "C:/b.wav", "C:/c.wav"], new StubSampleBrowserService(), preview, new ImmediateUiScheduler());
+        WithPopup(vm, (popup, view) =>
+        {
+            var list = (ListBox)popup.FindName("FileList");
+            vm.Entries[0].IsChecked = false;
+            list.SelectedIndex = 0;
+            foreach (var (key, expected) in new[] { (Key.Down, 1), (Key.End, 2), (Key.Up, 1), (Key.Home, 0) })
+            {
+                Assert.That(popup.HandleKey(key), Is.True);
+                Assert.That(list.SelectedIndex, Is.EqualTo(expected));
+                Assert.That(vm.GetCheckedPaths(), Is.EqualTo(new[] { "C:/b.wav", "C:/c.wav" }));
+            }
+            foreach (var key in new[] { Key.Left, Key.Right, Key.F6 }) Assert.That(popup.HandleKey(key), Is.True);
+            Assert.That(vm.SelectionAccepted, Is.Null);
+            Assert.That(preview.PlayedPaths, Is.Empty);
+        }, flow: flow);
+
+        var empty = new OHsSampleDropImportPopupVM([], new StubSampleBrowserService(), new StubSamplePreviewService(), new ImmediateUiScheduler());
+        WithPopup(empty, (popup, view) =>
+        {
+            foreach (var key in new[] { Key.Up, Key.Down, Key.Home, Key.End, Key.Left, Key.Right, Key.F6 })
+                Assert.That(popup.HandleKey(key), Is.True);
+            Assert.That(((BalloonButton)popup.FindName("ImportAction")).IsEnabled, Is.False);
+            Assert.That(((BalloonButton)popup.FindName("CancelAction")).IsEnabled, Is.True);
+            popup.HandleKey(Key.Enter);
+            Assert.That(empty.SelectionAccepted, Is.Null);
+            popup.HandleKey(Key.Escape);
+            Assert.That(empty.SelectionAccepted, Is.False);
+            Assert.That(empty.SelectedPaths, Is.Empty);
+        }, flow: flow);
+    }
+
+    [Test]
+    public void ExplicitBoundsConstrainPopupSize()
+    {
+        var vm = new OHsSampleDropImportPopupVM([], new StubSampleBrowserService(), new StubSamplePreviewService(), new ImmediateUiScheduler());
+        WithPopup(vm, (popup, view) =>
+        {
+            foreach (var (work, owner, expected) in new[]
+                     {
+                         (new Size(900, 600), new Size(640, 360), new Size(640, 360)),
+                         (new Size(400, 250), new Size(700, 500), new Size(400, 250)),
+                         (Size.Empty, new Size(640, 360), new Size(640, 360)),
+                         (Size.Empty, Size.Empty, new Size(760, 560)),
+                         (new Size(double.PositiveInfinity, 250), new Size(640, double.NaN), new Size(640, 250))
+                     })
+            {
+                popup.ResizeToBounds(work, owner);
+                Assert.That(new Size(popup.Width, popup.Height), Is.EqualTo(expected));
+                Assert.That(double.IsFinite(popup.Width) && popup.Width > 0, Is.True);
+                Assert.That(double.IsFinite(popup.Height) && popup.Height > 0, Is.True);
+                view.UpdateLayout();
+                Assert.That(((BalloonButton)popup.FindName("CancelAction")).IsEnabled, Is.True);
+                Assert.That(((BalloonButton)popup.FindName("ImportAction")).IsEnabled, Is.False);
+            }
+        });
+    }
+
+    [Test]
+    public void LargeImportRebindsRealizedRows()
+    {
+        var preview = new StubSamplePreviewService();
+        var paths = Enumerable.Range(0, 2000).Select(i => $"C:/sample{i}.wav").ToArray();
+        var vm = new OHsSampleDropImportPopupVM(paths, new StubSampleBrowserService(), preview, new ImmediateUiScheduler());
+        WithPopup(vm, (popup, view) =>
+        {
+            var list = (ListBox)popup.FindName("FileList");
+            Assert.That(list.Items.Count, Is.EqualTo(2000));
+            Assert.That(list.ItemsPanel, Is.SameAs(list.FindResource("OHsVirtualizedDrawerItemsPanel")));
+            Assert.That(VirtualizingPanel.GetIsVirtualizing(list), Is.True);
+            Assert.That(VirtualizingPanel.GetVirtualizationMode(list), Is.EqualTo(VirtualizationMode.Recycling));
+            Assert.That(ScrollViewer.GetCanContentScroll(list), Is.True);
+            Assert.That(list.ItemContainerGenerator.ContainerFromIndex(1999), Is.Null);
+            list.ScrollIntoView(vm.Entries[^1]);
+            UiTestPump.Run(list.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle).Task);
+            view.UpdateLayout();
+            var last = (ListBoxItem)list.ItemContainerGenerator.ContainerFromIndex(1999);
+            Assert.That(last, Is.Not.Null);
+            var row = Children(last).OfType<OHsSampleRow>().Single();
+            Assert.That(row.PlayCommandParameter, Is.SameAs(vm.Entries[^1]));
+
+            var first = vm.Entries[0];
+            first.IsChecked = false;
+            UiTestPump.Run(vm.LoadWaveformAsync(first));
+            last.Content = first;
+            view.UpdateLayout();
+            row = Children(last).OfType<OHsSampleRow>().Single();
+            Assert.That(row.PlayCommandParameter, Is.SameAs(first));
+            Assert.That(row.Waveform, Is.SameAs(first.Waveform));
+            Assert.That(Children(last).OfType<CheckBox>().Single().IsChecked, Is.False);
+            Assert.That(Children(last).OfType<BalloonButton>().Count(), Is.EqualTo(1));
+            Assert.That(Children(last).OfType<Control>().All(control => !control.IsTabStop), Is.True);
+            var play = Children(row).OfType<BalloonButton>().Single();
+            UiTestPump.Run(((IAsyncRelayCommand)play.Command).ExecuteAsync(play.CommandParameter));
+            Assert.That(preview.PlayedPaths, Is.EqualTo(new[] { paths[0] }));
+
+            list.ScrollIntoView(first);
+            UiTestPump.Run(list.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle).Task);
+            view.UpdateLayout();
+            Assert.That(list.ItemContainerGenerator.ContainerFromIndex(0), Is.Not.Null);
+        });
+    }
+
     [TestCase("Dark", FlowDirection.LeftToRight)]
     [TestCase("Light", FlowDirection.LeftToRight)]
     [TestCase("Dark", FlowDirection.RightToLeft)]

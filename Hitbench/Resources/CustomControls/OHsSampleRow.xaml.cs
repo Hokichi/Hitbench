@@ -25,4 +25,5 @@ public partial class OHsSampleRow : UserControl
     public DataTemplate? ActionsTemplate { get => (DataTemplate?)GetValue(ActionsTemplateProperty); set => SetValue(ActionsTemplateProperty, value); }
     public event EventHandler? WaveformRequested;
     public OHsSampleRow() { InitializeComponent(); Loaded += (_, _) => WaveformRequested?.Invoke(this, EventArgs.Empty); DataContextChanged += (_, _) => { if (IsLoaded) WaveformRequested?.Invoke(this, EventArgs.Empty); }; }
+    public bool FocusPreview() => PlayAction.Focus();
 }
