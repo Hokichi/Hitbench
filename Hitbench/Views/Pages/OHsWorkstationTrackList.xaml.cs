@@ -44,6 +44,7 @@ public partial class OHsWorkstationTrackList : UserControl
         if (IsRegionSelectionActive && (!viewModel.IsSelectionMode || e.PropertyName == nameof(WorkstationPageVM.ZoomFactor))) CancelNodePointer();
         if (e.PropertyName == nameof(WorkstationPageVM.IsSampleConfigurationOpen) && viewModel.IsSampleConfigurationOpen) CancelNodePointer();
         if (e.PropertyName == nameof(WorkstationPageVM.IsSelectionMode) && !viewModel.IsSelectionMode) CancelTrackPointer();
+        if (e.PropertyName == nameof(WorkstationPageVM.RenamingTrack) && viewModel.RenamingTrack is not null) CancelTrackPointer();
         if (e.PropertyName == nameof(WorkstationPageVM.LoadPhase) && viewModel.IsLoading) CancelNodePointer();
         if (e.PropertyName == nameof(WorkstationPageVM.IsSelectionMode) && nodeSourceGrid is not null && pointerNode is null) CancelNodePointer();
         if (!viewModel.CanPlaceSamples || nodeDragging && !viewModel.IsNodeDragActive) CancelNodePointer();

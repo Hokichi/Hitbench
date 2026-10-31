@@ -7,21 +7,21 @@ public partial class WorkstationPageVM
     private bool trackAppearancePending;
     private CancellationTokenSource? trackAppearanceCancellation;
     private Task? trackAppearanceTask;
-    private bool CanChangeTrackNameAndColor(Track? track)=>!trackAppearancePending && trackAppearanceDialog is not null && CanEditTracks && track is not null && tracks.Contains(track);
-    [RelayCommand(CanExecute=nameof(CanChangeTrackNameAndColor))]
-    private Task ChangeTrackNameAndColorAsync(Track track)
+    private bool CanChangeTrackColor(Track? track)=>!trackAppearancePending && trackAppearanceDialog is not null && CanEditTracks && track is not null && tracks.Contains(track);
+    [RelayCommand(CanExecute=nameof(CanChangeTrackColor))]
+    private Task ChangeTrackColorAsync(Track track)
     {
-        if(!CanChangeTrackNameAndColor(track))return Task.CompletedTask;
+        if(!CanChangeTrackColor(track))return Task.CompletedTask;
         trackAppearanceTask=ChangeTrackAppearanceCoreAsync(track); return trackAppearanceTask;
     }
     private async Task ChangeTrackAppearanceCoreAsync(Track track)
     {
         var project=Project; var generation=loadGeneration;
         using var cancellation=CancellationTokenSource.CreateLinkedTokenSource(loadCancellation?.Token??CancellationToken.None);
-        trackAppearanceCancellation=cancellation; trackAppearancePending=true; ChangeTrackNameAndColorCommand.NotifyCanExecuteChanged();
+        trackAppearanceCancellation=cancellation; trackAppearancePending=true; ChangeTrackColorCommand.NotifyCanExecuteChanged();
         try
         {
-            var result=await trackAppearanceDialog!.RequestAsync(new(track.Name,track.Color,tracks.IndexOf(track)),cancellation.Token);
+            var result=await trackAppearanceDialog!.RequestAsync(new(track.Color,tracks.IndexOf(track)),cancellation.Token);
             if(cancellation.IsCancellationRequested || result is null || !CanEditTracks || deactivated || generation!=loadGeneration || !ReferenceEquals(project,Project) || !tracks.Contains(track))return;
             string? color=null;
             if(result.Color is not null)
@@ -29,26 +29,13 @@ public partial class WorkstationPageVM
                 if(!RgbColor.TryParse(result.Color,out var rgb))throw new InvalidOperationException("Invalid track color.");
                 color=rgb.ToHex();
             }
-            if(track.Name==result.Name && track.Color==color)return;
-            if (track is InstrumentalTrack)
-            {
-                if (track.Name != result.Name)
-                {
-                    await SettleInstrumentalEditorAsync();
-                    await SettleSampleManagerAsync();
-                    await DrainProjectSaveQueueAsync();
-                    if (cancellation.IsCancellationRequested || deactivated || generation != loadGeneration || !ReferenceEquals(project, Project) || !tracks.Contains(track)) return;
-                    SetTrackName(track, result.Name);
-                    await SettleInstrumentalFoldersAsync();
-                }
-                if (cancellation.IsCancellationRequested || deactivated || generation != loadGeneration || !ReferenceEquals(project, Project) || !tracks.Contains(track) || track.Name != result.Name) return;
-                track.Color = color; instrumentRevision++; PublishInstrumentSnapshot();
-            }
-            else { track.Name = result.Name; track.Color = color; }
+            if(track.Color==color)return;
+            track.Color = color;
+            if (track is InstrumentalTrack) { instrumentRevision++; PublishInstrumentSnapshot(); }
             NotifyTrackPresentation(); QueueSave();
         }
         catch(OperationCanceledException) when(cancellation.IsCancellationRequested) { }
         catch(Exception error){ if(!deactivated && generation==loadGeneration)ErrorMessage=error.Message; }
-        finally{ trackAppearanceCancellation=null; trackAppearancePending=false; ChangeTrackNameAndColorCommand.NotifyCanExecuteChanged(); }
+        finally{ trackAppearanceCancellation=null; trackAppearancePending=false; ChangeTrackColorCommand.NotifyCanExecuteChanged(); }
     }
 }

@@ -48,7 +48,7 @@ public partial class OHsTrackAppearancePopup : BasePopup
             watchingWorkArea = true;
         }
         RefreshWorkArea();
-        NameInput.Focus();
+        ColorInput.Focus();
     }
 
     private void OnWorkAreaChanged(object? sender, PropertyChangedEventArgs e) => RefreshWorkArea();

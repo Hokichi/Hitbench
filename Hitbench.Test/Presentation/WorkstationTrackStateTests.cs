@@ -56,9 +56,9 @@ public sealed class WorkstationTrackStateTests
             vm.SetTrackCollapsed(a, true); Assert.That(b.IsCollapsed, Is.False); Assert.That(vm.AreTracksCollapsed, Is.False);
             vm.ToggleTracksCollapsedCommand.Execute(null); Assert.That(vm.AreTracksCollapsed, Is.True);
             Assert.That(vm.MoveTrack(a, 1), Is.True); Assert.That(vm.Project!.Tracks[1], Is.SameAs(a)); Assert.That(vm.MoveTrack(a,1), Is.False);
-            await vm.ChangeTrackNameAndColorCommand.ExecuteAsync(a); Assert.That(a.Name, Is.EqualTo("A"));
-            appearance.Request = (_, _) => Task.FromResult<Hitbench.Resources.DataModels.OHsTrackAppearanceResult?>(new("Accepted", null));
-            await vm.ChangeTrackNameAndColorCommand.ExecuteAsync(a); Assert.That(a.Name, Is.EqualTo("Accepted"));
+            await vm.ChangeTrackColorCommand.ExecuteAsync(a); Assert.That(a.Name, Is.EqualTo("A"));
+            vm.BeginTrackRenameCommand.Execute(a); vm.TrackNameDraft = "Accepted";
+            await vm.CommitTrackRenameAsync(a); Assert.That(a.Name, Is.EqualTo("Accepted"));
             vm.ToggleTrackMutesCommand.Execute(null); Assert.That(vm.AreTracksMuted, Is.True);
             vm.ToggleTrackMutesCommand.Execute(null); Assert.That(vm.HasMutedTracks, Is.False);
             Assert.That(a.SelectedSampleFileName, Is.EqualTo("a.wav"));

@@ -4,6 +4,24 @@ using Hitbench.ViewModels.Shell;
 namespace Hitbench.Test.Presentation;
 public sealed class WorkstationTrackRenameTests
 {
+    [Test]
+    public async Task SampleRenameCommitsDraftAndCancelPreservesName()
+    {
+        var track = new Track { Name = "Old" };
+        var vm = await WorkstationSampleConfigurationTests.CreateAsync(track);
+        try
+        {
+            Assert.That(vm.BeginTrackRenameCommand.CanExecute(track), Is.True);
+            vm.BeginTrackRenameCommand.Execute(track); vm.TrackNameDraft = "Kick";
+            await vm.CommitTrackRenameAsync(track);
+            Assert.That(track.Name, Is.EqualTo("Kick"));
+            vm.BeginTrackRenameCommand.Execute(track); vm.TrackNameDraft = "Discard";
+            vm.CancelTrackRename(track); await vm.CommitTrackRenameAsync(track);
+            Assert.That(track.Name, Is.EqualTo("Kick"));
+        }
+        finally { await vm.DeactivateAsync(); }
+    }
+
     [TestCase(true)][TestCase(false)]
     public async Task InstrumentalCommitWaitsForFolderResult(bool succeeds)
     {

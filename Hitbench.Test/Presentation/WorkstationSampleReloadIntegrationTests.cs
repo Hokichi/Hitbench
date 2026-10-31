@@ -53,7 +53,7 @@ public class WorkstationSampleReloadIntegrationTests
         var vm = new WorkstationPageVM(source, new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay),
             new ImmediateUiScheduler(), new StubSampleFileService(["hit.wav"]), projectFiles: saves,
             trackAppearanceDialog: new StubOHsTrackAppearanceDialogService { Request = (_, _) =>
-                Task.FromResult<Hitbench.Resources.DataModels.OHsTrackAppearanceResult?>(new("name edited before refresh", null)) });
+                Task.FromResult<Hitbench.Resources.DataModels.OHsTrackAppearanceResult?>(new(null)) });
         var page = new WorkstationPage(vm); page.SetProjectPath("project.json");
         using var view = new InMemoryView(new Window { Content = page, Width = 900, Height = 600 }, processFrames: false);
         UiTestPump.Run(StubWorkstationAudioService.WaitUntilAsync(() => vm.LoadPhase == ProjectLoadPhase.AwaitingPresentation));
@@ -71,7 +71,9 @@ public class WorkstationSampleReloadIntegrationTests
         Assert.That(AutomationProperties.GetName(button), Is.EqualTo("Refresh samples"));
         var name = Descendants(page).OfType<TextBlock>().First(input => input.Name == "SampleTrackName");
         UiTestPump.Run(StubWorkstationAudioService.WaitUntilAsync(() => name.IsLoaded));
-        UiTestPump.Run(vm.ChangeTrackNameAndColorCommand.ExecuteAsync(vm.Tracks.Single()));
+        var track = vm.Tracks.Single();
+        vm.BeginTrackRenameCommand.Execute(track); vm.TrackNameDraft = "name edited before refresh";
+        UiTestPump.Run(vm.CommitTrackRenameAsync(track));
         view.UpdateLayout();
         Assert.That(name.Text, Is.EqualTo("name edited before refresh"));
         Assert.That(vm.Tracks.Single().Name, Is.EqualTo("name edited before refresh"));

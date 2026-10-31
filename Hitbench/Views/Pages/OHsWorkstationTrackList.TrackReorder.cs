@@ -113,7 +113,7 @@ public partial class OHsWorkstationTrackList
         return true;
     }
 
-    private bool CanReorderTrack(Track track) => !deactivationStarted && !IsVolumeOverlayOpen && viewModel is not null && viewModel.IsSelectionMode &&
+    private bool CanReorderTrack(Track track) => !deactivationStarted && !IsVolumeOverlayOpen && viewModel is not null && viewModel.IsSelectionMode && viewModel.RenamingTrack is null &&
         (viewModel.MoveTrackUpCommand.CanExecute(track) || viewModel.MoveTrackDownCommand.CanExecute(track));
 
     private bool IsTrackSessionCurrent() => DraggedTrack is { } track && ReferenceEquals(trackDragOwner, viewModel) &&

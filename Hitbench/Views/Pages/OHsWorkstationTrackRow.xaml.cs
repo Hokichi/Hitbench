@@ -100,8 +100,14 @@ public partial class OHsWorkstationTrackRow : UserControl
             if (!IsTrackCollapsed && current.IsCollapsed && HasExpandedControlFocus(Keyboard.FocusedElement as DependencyObject ?? FocusManager.GetFocusedElement(FocusManager.GetFocusScope(this)) as DependencyObject)) FindVisualChild<BalloonComboBox>(this)?.Focus();
             IsTrackCollapsed = current.IsCollapsed; CurrentTrackExtent = viewModel.GetTrackExtent(current);
             IsTrackMuted = current.IsTrackMuted; IsTrackSoloed = current.IsTrackSoloed;
+            var wasRenaming = IsRenaming;
             IsRenaming = ReferenceEquals(viewModel.RenamingTrack, current);
             SetCurrentValue(TrackNameDraftProperty, IsRenaming ? viewModel.TrackNameDraft : current.Name);
+            if (IsRenaming && !wasRenaming)
+                Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background, () =>
+                {
+                    if (IsRenaming && ReferenceEquals(Track, current)) FocusTrackNameEditor();
+                });
         }
         RefreshSampleSelectors(this);
         RefreshSampleConfigurationSelectors();
@@ -340,13 +346,6 @@ public partial class OHsWorkstationTrackRow : UserControl
             BindingOperations.GetBindingExpression(item, MenuItem.CommandProperty)?.UpdateTarget();
         }
         trigger.ContextMenu = menu;
-        if (menu.Items[2] is MenuItem appearance)
-        {
-            BindingOperations.ClearBinding(appearance, MenuItem.CommandProperty);
-            appearance.Command = ViewModel.ChangeTrackNameAndColorCommand;
-            appearance.Header = "Change Name and Color";
-            appearance.Click += (_, _) => trigger.Focus();
-        }
     }
 
     private static readonly DependencyPropertyKey IsInstrumentalTrackPropertyKey = DependencyProperty.RegisterReadOnly(nameof(IsInstrumentalTrack), typeof(bool), typeof(OHsWorkstationTrackRow), new PropertyMetadata(false));

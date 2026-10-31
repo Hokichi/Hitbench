@@ -11,7 +11,7 @@ public class OHsTrackAppearancePopupIntegrationTests
     public void AppearanceActionsOptIntoTabNavigation()
     {
         new VolumeWheelTests().SetUp();
-        var popup = new OHsTrackAppearancePopup(new(new("Old", null, 0), "#123456"), _ => { });
+        var popup = new OHsTrackAppearancePopup(new(new(null, 0), "#123456"), _ => { });
         using var view = new InMemoryView(popup, scheduleLayout: false);
         view.Root.Resources.MergedDictionaries.Add(popup.Resources);
         foreach (var name in new[] { "Cancel", "Save" })
@@ -29,7 +29,7 @@ public class OHsTrackAppearancePopupIntegrationTests
     {
         new VolumeWheelTests().SetUp();
         bool? accepted = null;
-        var vm = new OHsTrackAppearancePopupVM(new("Old", null, 0), "#123456") { Name = "New" };
+        var vm = new OHsTrackAppearancePopupVM(new(null, 0), "#123456") { Color = "#ABCDEF" };
         var popup = new OHsTrackAppearancePopup(vm, value => accepted = value);
         using var view = new InMemoryView(popup, scheduleLayout: false);
         popup.HandleKey(Key.Enter, Action(view.Root, "Cancel"));
@@ -42,7 +42,7 @@ public class OHsTrackAppearancePopupIntegrationTests
     {
         new VolumeWheelTests().SetUp();
         bool? accepted = null;
-        var vm = new OHsTrackAppearancePopupVM(new("Old", null, 0), "#123456") { Name = "New" };
+        var vm = new OHsTrackAppearancePopupVM(new(null, 0), "#123456") { Color = "#ABCDEF" };
         var popup = new OHsTrackAppearancePopup(vm, value => accepted = value);
         using var view = new InMemoryView(popup, scheduleLayout: false);
         using var source = new InMemoryPresentationSource();
@@ -57,7 +57,7 @@ public class OHsTrackAppearancePopupIntegrationTests
     {
         new VolumeWheelTests().SetUp();
         bool? accepted = null;
-        var vm = new OHsTrackAppearancePopupVM(new("Old", null, 0), "#123456") { Color = "invalid" };
+        var vm = new OHsTrackAppearancePopupVM(new(null, 0), "#123456") { Color = "invalid" };
         var popup = new OHsTrackAppearancePopup(vm, value => accepted = value);
         using var view = new InMemoryView(popup, scheduleLayout: false);
         var save = Action(view.Root, "Save");
@@ -80,7 +80,7 @@ public class OHsTrackAppearancePopupIntegrationTests
     {
         new VolumeWheelTests().SetUp();
         bool? accepted = null;
-        var vm = new OHsTrackAppearancePopupVM(new("Old", null, 0), "#123456") { Name = "Draft" };
+        var vm = new OHsTrackAppearancePopupVM(new(null, 0), "#123456") { Color = "#ABCDEF" };
         var popup = new OHsTrackAppearancePopup(vm, value => accepted = value) { FlowDirection = direction };
         const double suppliedChrome = 96;
         var content = (System.Windows.FrameworkElement)popup.Content;
@@ -98,7 +98,7 @@ public class OHsTrackAppearancePopupIntegrationTests
             scroll.ScrollToBottom();
             scroll.UpdateLayout();
             Assert.That(scroll.VerticalOffset, Is.EqualTo(scroll.ScrollableHeight));
-            Assert.That(vm.Name, Is.EqualTo("Draft"));
+            Assert.That(vm.Color, Is.EqualTo("#ABCDEF"));
         }
         popup.HandleKey(Key.Enter, popup.FindName("CancelAction") as System.Windows.DependencyObject);
         Assert.That(accepted, Is.False);
@@ -108,7 +108,7 @@ public class OHsTrackAppearancePopupIntegrationTests
     public void HueMarkerUsesNativeInputAndUpdatesDraft()
     {
         new VolumeWheelTests().SetUp();
-        var vm = new OHsTrackAppearancePopupVM(new("Old", null, 0), "#FF0000");
+        var vm = new OHsTrackAppearancePopupVM(new(null, 0), "#FF0000");
         var popup = new OHsTrackAppearancePopup(vm, _ => { });
         using var view = new InMemoryView(popup, scheduleLayout: false);
         var slider = (ValueSlider)popup.FindName("HueInput");
@@ -142,7 +142,7 @@ public class OHsTrackAppearancePopupIntegrationTests
     public void HueTrackMapsExplicitInputDirection(double width, System.Windows.FlowDirection direction)
     {
         new VolumeWheelTests().SetUp();
-        var popup = new OHsTrackAppearancePopup(new(new("Old", null, 0), "#FF0000"), _ => { });
+        var popup = new OHsTrackAppearancePopup(new(new(null, 0), "#FF0000"), _ => { });
         var slider = new ValueSlider { Style = (System.Windows.Style)popup.FindResource("OHsTrackAppearanceHueStyle"),
             Minimum = 0, Maximum = 360, FlowDirection = direction };
         var host = new Border { Child = slider, FlowDirection = System.Windows.FlowDirection.LeftToRight };
@@ -157,7 +157,7 @@ public class OHsTrackAppearancePopupIntegrationTests
     [Test] public void CleanEscapeAndExplicitCancelCompleteWithoutSaving()
     {
         new VolumeWheelTests().SetUp();bool? accepted=null;
-        var vm=new OHsTrackAppearancePopupVM(new("Old",null,0),"#123456");
+        var vm=new OHsTrackAppearancePopupVM(new(null, 0),"#123456");
         var popup=new OHsTrackAppearancePopup(vm,v=>accepted=v);
         using var view=new InMemoryView(popup,scheduleLayout:false);
         popup.HandleKey(Key.Escape);Assert.That(accepted,Is.False);
@@ -170,19 +170,18 @@ public class OHsTrackAppearancePopupIntegrationTests
     [Test] public void DraftBindingAndEscapeAreIntentional()
     {
         new VolumeWheelTests().SetUp(); bool? accepted=null;
-        var vm=new OHsTrackAppearancePopupVM(new("Old",null,0),"#123456");
+        var vm=new OHsTrackAppearancePopupVM(new(null, 0),"#123456");
         var popup=new OHsTrackAppearancePopup(vm,v=>accepted=v);
         using var view=new InMemoryView(popup,scheduleLayout:false);
-        var name=(TextBox)popup.FindName("NameInput");
         var picker=(OHsColorPicker)popup.FindName("ColorInput");
-        Assert.That(name.Style,Is.SameAs(popup.FindResource("RoundedTextInputStyle")));
+        Assert.That(popup.FindName("NameInput"), Is.Null);
         Assert.That(picker.Style,Is.SameAs(popup.FindResource("OHsTrackAppearanceColorPickerStyle")));
-        name.Text="New"; view.UpdateLayout(); Assert.That(vm.Name,Is.EqualTo("New"));
-        name.RaiseEvent(new KeyboardFocusChangedEventArgs(Keyboard.PrimaryDevice, 0, name, null) { RoutedEvent = Keyboard.LostKeyboardFocusEvent });
-        Assert.That(accepted, Is.Null, "Leaving the name field must not commit the popup draft.");
+        picker.SelectedColor="#ABCDEF"; view.UpdateLayout(); Assert.That(vm.Color,Is.EqualTo("#ABCDEF"));
+        picker.RaiseEvent(new KeyboardFocusChangedEventArgs(Keyboard.PrimaryDevice, 0, picker, null) { RoutedEvent = Keyboard.LostKeyboardFocusEvent });
+        Assert.That(accepted, Is.Null, "Leaving the picker must not commit the popup draft.");
         Assert.That(popup.HandleKey(Key.Escape),Is.True); Assert.That(accepted,Is.Null);
         popup.HandleKey(Key.Enter); Assert.That(accepted,Is.True);
-        Assert.That(vm.CreateResult().Color,Is.Null);
+        Assert.That(vm.CreateResult().Color,Is.EqualTo("#ABCDEF"));
     }
 
     private static IEnumerable<System.Windows.DependencyObject> Descendants(System.Windows.DependencyObject owner)

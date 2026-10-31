@@ -11,6 +11,21 @@ namespace Hitbench.Test.Presentation;
 [Apartment(ApartmentState.STA), NonParallelizable]
 public sealed class WorkstationTrackDragTests
 {
+    [TestCase(false)]
+    [TestCase(true)]
+    public void InlineRenameCancelsRowDragAndPreventsRearming(bool active)
+    {
+        using var context = new WorkstationTrackDragTestContext();
+        if (active) context.Start();
+        else context.Owner.BeginTrackPointer(context.Row(0), context.PointOn(context.Row(0)));
+        context.Vm.BeginTrackRenameCommand.Execute(context.Vm.Tracks[0]);
+        Assert.That(context.Vm.RenamingTrack, Is.SameAs(context.Vm.Tracks[0]));
+        Assert.That(context.Owner.DraggedTrack, Is.Null);
+        Assert.That(context.Owner.IsTrackDragActive, Is.False);
+        Assert.That(context.Owner.BeginTrackPointer(context.Row(0), context.PointOn(context.Row(0))), Is.False);
+        Assert.That(context.Saves.Writes, Is.Zero);
+    }
+
     [Test]
     public void DrawModeCannotArmTrackDrag()
     {

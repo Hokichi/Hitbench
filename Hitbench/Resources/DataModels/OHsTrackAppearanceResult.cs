@@ -1,2 +1,2 @@
 namespace Hitbench.Resources.DataModels;
-public sealed record OHsTrackAppearanceResult(string Name, string? Color);
+public sealed record OHsTrackAppearanceResult(string? Color);

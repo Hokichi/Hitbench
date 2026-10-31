@@ -171,6 +171,7 @@ public partial class WorkstationPageVM
         { QueueInstrumentFolderRename(instrument, name); return; }
         if (string.Equals(track.Name, name, StringComparison.Ordinal)) return;
         track.Name = name;
+        NotifyTrackPresentation();
         QueueSave();
         instrumentRevision++; PublishInstrumentSnapshot();
     }
@@ -228,7 +229,7 @@ public partial class WorkstationPageVM
     }
     private void NotifyTrackCommands()
     {
-        ChangeTrackNameAndColorCommand.NotifyCanExecuteChanged();
+        ChangeTrackColorCommand.NotifyCanExecuteChanged();
         if (!IsInteractionReady && RenamingTrack is {} editing) { RenamingTrack = null; TrackNameDraft = editing.Name; }
         MoveTrackUpCommand.NotifyCanExecuteChanged(); MoveTrackDownCommand.NotifyCanExecuteChanged();
         ToggleTrackCollapsedCommand.NotifyCanExecuteChanged(); BeginTrackRenameCommand.NotifyCanExecuteChanged();
@@ -259,7 +260,7 @@ public partial class WorkstationPageVM
     [ObservableProperty] private Track? renamingTrack;
     [ObservableProperty] private string trackNameDraft = string.Empty;
     [ObservableProperty] private bool isTrackRenamePending;
-    private bool CanBeginTrackRename(Track? track) => track is InstrumentalTrack && CanMoveTrack(track) && !IsTrackRenamePending && (RenamingTrack is null || ReferenceEquals(RenamingTrack, track));
+    private bool CanBeginTrackRename(Track? track) => CanPlaceSamples && track is not null && tracks.Contains(track) && !IsTrackRenamePending && (RenamingTrack is null || ReferenceEquals(RenamingTrack, track));
     [RelayCommand(CanExecute = nameof(CanBeginTrackRename))]
     private void BeginTrackRename(Track track)
     {
@@ -275,9 +276,21 @@ public partial class WorkstationPageVM
     {
         if (!ReferenceEquals(RenamingTrack, track) || IsTrackRenamePending) return;
         var name = TrackNameDraft; RenamingTrack = null;
-        if (!CanMoveTrack(track) || track.Name == name) { TrackNameDraft = track.Name; return; }
+        if (!CanPlaceSamples || !tracks.Contains(track) || track.Name == name) { TrackNameDraft = track.Name; return; }
         IsTrackRenamePending = true; NotifyTrackCommands();
-        try { SetTrackName(track, name); await SettleInstrumentalFoldersAsync(); }
+        var project = Project; var generation = loadGeneration;
+        try
+        {
+            if (track is InstrumentalTrack { FolderName.Length: > 0 })
+            {
+                await SettleInstrumentalEditorAsync();
+                await SettleSampleManagerAsync();
+                await DrainProjectSaveQueueAsync();
+            }
+            if (deactivated || generation != loadGeneration || !ReferenceEquals(Project, project) || !tracks.Contains(track)) return;
+            SetTrackName(track, name);
+            await SettleInstrumentalFoldersAsync();
+        }
         catch (OperationCanceledException) { }
         catch (Exception error) { ErrorMessage = error.Message; }
         finally { TrackNameDraft = track.Name; IsTrackRenamePending = false; NotifyTrackCommands(); }

@@ -12,15 +12,17 @@ public sealed class FollowupContractTests
         var files = new StubSampleFileService(["Piano/C3.wav"]) { FolderRename = (_, _, _, _, _) => fail ? Task.FromException<string>(new IOException("rename failed")) : Task.FromResult("Soft") };
         var vm = new Hitbench.ViewModels.Shell.WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new Hitbench.Core.Entities.WorkstationSource("map", "song", new Hitbench.Core.Entities.ProjectData { Tracks = [track], Offsets = [0], BPMs = [120] })) },
             new Hitbench.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), sampleFiles: files,
-            trackAppearanceDialog: new StubOHsTrackAppearanceDialogService { Request = (_, _) => Task.FromResult<OHsTrackAppearanceResult?>(new("Soft", "#123456")) });
+            trackAppearanceDialog: new StubOHsTrackAppearanceDialogService { Request = (_, _) => Task.FromResult<OHsTrackAppearanceResult?>(new("#123456")) });
         try
         {
             await vm.LoadAsync("project.json", default); vm.AcknowledgePresentationReady(vm.LoadGeneration);
-            await vm.ChangeTrackNameAndColorCommand.ExecuteAsync(track);
+            vm.BeginTrackRenameCommand.Execute(track); vm.TrackNameDraft = "Soft";
+            await vm.CommitTrackRenameAsync(track);
+            await vm.ChangeTrackColorCommand.ExecuteAsync(track);
             Assert.That(track.Name, Is.EqualTo(fail ? "Piano" : "Soft"));
             Assert.That(track.FolderName, Is.EqualTo(fail ? "Piano" : "Soft"));
             Assert.That(track.KeyFiles["C3"], Is.EqualTo(fail ? "Piano/C3.wav" : "Soft/C3.wav"));
-            Assert.That(track.Color, Is.EqualTo(fail ? "#ABCDEF" : "#123456"));
+            Assert.That(track.Color, Is.EqualTo("#123456"));
             if (fail) Assert.That(vm.ErrorMessage, Does.Contain("rename failed"));
         }
         finally { await vm.DeactivateAsync(); }

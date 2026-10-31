@@ -454,10 +454,10 @@ public class WorkstationPageIntegrationTests
         Assert.That(Name().Text, Is.EqualTo(first.Name));
         Assert.That(Name().Style, Is.SameAs(row.FindResource("OHsWorkstationSampleTrackNameStyle")));
         Assert.That(saves.Writes, Is.Zero);
-        UiTestPump.Run(vm.ChangeTrackNameAndColorCommand.ExecuteAsync(first));
+        UiTestPump.Run(vm.ChangeTrackColorCommand.ExecuteAsync(first));
         Assert.That(saves.Writes, Is.Zero); // Cancelled draft.
-        result = new("กลอง", null);
-        UiTestPump.Run(vm.ChangeTrackNameAndColorCommand.ExecuteAsync(first));
+        vm.BeginTrackRenameCommand.Execute(first); vm.TrackNameDraft = "กลอง";
+        UiTestPump.Run(vm.CommitTrackRenameAsync(first));
         UiTestPump.Run(vm.FlushSavesAsync()); view.UpdateLayout();
         Assert.That(Name().Text, Is.EqualTo("กลอง"));
         Assert.That(ProjectDataSerializer.Deserialize(saves.LatestJson!).Tracks[0].Name, Is.EqualTo("กลอง"));
@@ -468,13 +468,13 @@ public class WorkstationPageIntegrationTests
         Assert.That(first.Name, Is.EqualTo("กลอง"));
         Assert.That(second.Name, Is.EqualTo("Snare"));
         Assert.That(saves.Writes, Is.EqualTo(writes));
-        result = new("", null);
-        UiTestPump.Run(vm.ChangeTrackNameAndColorCommand.ExecuteAsync(second));
+        vm.BeginTrackRenameCommand.Execute(second); vm.TrackNameDraft = "";
+        UiTestPump.Run(vm.CommitTrackRenameAsync(second));
         UiTestPump.Run(vm.FlushSavesAsync()); view.UpdateLayout();
         Assert.That(Name().Text, Is.Empty);
         Assert.That(ProjectDataSerializer.Deserialize(saves.LatestJson!).Tracks[1].Name, Is.Empty);
         UiTestPump.Run(vm.DeactivateAsync());
-        Assert.That(vm.ChangeTrackNameAndColorCommand.CanExecute(second), Is.False);
+        Assert.That(vm.ChangeTrackColorCommand.CanExecute(second), Is.False);
     }
 
     [Test]

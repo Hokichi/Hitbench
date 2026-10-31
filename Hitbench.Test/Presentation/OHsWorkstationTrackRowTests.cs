@@ -79,10 +79,10 @@ public sealed class OHsWorkstationTrackRowTests
     {
         new VolumeWheelTests().SetUp();
         Hitbench.Resources.DataModels.OHsTrackAppearanceResult? result = null;
-        var requested = new List<string>();
+        var requested = new List<string?>();
         var dialog = new StubOHsTrackAppearanceDialogService { Request = (request, _) =>
         {
-            requested.Add(request.Name);
+            requested.Add(request.Color);
             return Task.FromResult(result);
         }};
         var vm = new WorkstationPageVM(new StubWorkstationSourceService(),
@@ -95,21 +95,21 @@ public sealed class OHsWorkstationTrackRowTests
         try
         {
             var trigger = (Hitbench.Resources.CustomControls.BalloonComboBox)row.GetRemovalFocusTarget()!;
-            var action = (MenuItem)trigger.ContextMenu!.Items[2];
-            Assert.That(action.Command, Is.SameAs(vm.ChangeTrackNameAndColorCommand));
+            var action = trigger.ContextMenu!.Items.OfType<MenuItem>().Single(item => Equals(item.Header, "Change Color"));
+            Assert.That(action.Command, Is.SameAs(vm.ChangeTrackColorCommand));
             Assert.That(action.CommandParameter, Is.SameAs(track));
             var command = (CommunityToolkit.Mvvm.Input.IAsyncRelayCommand)action.Command;
             UiTestPump.Run(command.ExecuteAsync(action.CommandParameter));
             Assert.That(track.Name, Is.EqualTo("Original"));
-            result = new("Accepted", "#123456");
+            result = new("#123456");
             UiTestPump.Run(command.ExecuteAsync(action.CommandParameter)); view.UpdateLayout();
-            Assert.That(FindNameText(row)!.Text, Is.EqualTo("Accepted"));
+            Assert.That(FindNameText(row)!.Text, Is.EqualTo("Original"));
             Assert.That(track.Color, Is.EqualTo("#123456"));
             result = null;
             UiTestPump.Run(command.ExecuteAsync(action.CommandParameter));
-            Assert.That(track.Name, Is.EqualTo("Accepted"));
+            Assert.That(track.Name, Is.EqualTo("Original"));
             Assert.That(track.Color, Is.EqualTo("#123456"));
-            Assert.That(requested, Is.EqualTo(new[] { "Original", "Original", "Accepted" }));
+            Assert.That(requested, Is.EqualTo(new string?[] { null, null, "#123456" }));
         }
         finally { UiTestPump.Run(vm.DeactivateAsync()); }
     }
