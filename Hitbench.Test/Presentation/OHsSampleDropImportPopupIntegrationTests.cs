@@ -13,6 +13,50 @@ namespace Hitbench.Test.Presentation;
 [Apartment(ApartmentState.STA), NonParallelizable]
 public sealed class OHsSampleDropImportPopupIntegrationTests
 {
+    [Test]
+    public void OldWaveformCompletionDoesNotReplaceReboundRowData()
+    {
+        var oldRead = new TaskCompletionSource<Hitbench.Core.Entities.WaveformData>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var oldWaveform = new Hitbench.Core.Entities.WaveformData(TimeSpan.FromSeconds(1), [.1f]);
+        var currentWaveform = new Hitbench.Core.Entities.WaveformData(TimeSpan.FromSeconds(2), [.7f]);
+        var preview = new StubSamplePreviewService();
+        var browser = new StubSampleBrowserService
+        {
+            Waveform = (path, token) => path == "C:/a.wav" ? oldRead.Task.WaitAsync(token) : Task.FromResult(currentWaveform)
+        };
+        var vm = new OHsSampleDropImportPopupVM(["C:/a.wav", "C:/b.wav"], browser, preview, new ImmediateUiScheduler());
+        vm.Entries[1].IsChecked = false;
+        try
+        {
+            WithPopup(vm, (popup, view) =>
+            {
+                var pending = vm.LoadWaveformAsync(vm.Entries[0]);
+                Assert.That(pending.IsCompleted, Is.False);
+                UiTestPump.Run(vm.LoadWaveformAsync(vm.Entries[1]));
+                var list = (ListBox)popup.FindName("FileList");
+                var item = (ListBoxItem)list.ItemContainerGenerator.ContainerFromIndex(0);
+                item.Content = vm.Entries[1];
+                view.UpdateLayout();
+                oldRead.TrySetResult(oldWaveform);
+                UiTestPump.Run(pending);
+                view.UpdateLayout();
+
+                var row = Children(item).OfType<OHsSampleRow>().Single();
+                Assert.That(vm.Entries[0].Waveform, Is.SameAs(oldWaveform));
+                Assert.That(row.Waveform, Is.SameAs(currentWaveform));
+                Assert.That(Children(row).OfType<WaveformView>().Single().Data, Is.SameAs(currentWaveform));
+                Assert.That(row.PlayCommandParameter, Is.SameAs(vm.Entries[1]));
+                Assert.That(AutomationProperties.GetName(row), Is.EqualTo("C:/b.wav"));
+                Assert.That(Children(item).OfType<CheckBox>().Single().IsChecked, Is.False);
+                Assert.That(vm.GetCheckedPaths(), Is.EqualTo(new[] { "C:/a.wav" }));
+                var play = Children(row).OfType<BalloonButton>().Single();
+                UiTestPump.Run(((IAsyncRelayCommand)play.Command).ExecuteAsync(play.CommandParameter));
+                Assert.That(preview.PlayedPaths, Is.EqualTo(new[] { "C:/b.wav" }));
+            });
+        }
+        finally { oldRead.TrySetResult(oldWaveform); }
+    }
+
     [TestCase(FlowDirection.LeftToRight)]
     [TestCase(FlowDirection.RightToLeft)]
     public void NavigationDoesNotChangeCheckedSelectionOrCompleteImport(FlowDirection flow)

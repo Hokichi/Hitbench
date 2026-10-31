@@ -4,6 +4,49 @@ namespace Hitbench.Test.Presentation;
 public sealed class OHsSampleDropImportPopupVMTests
 {
     [Test]
+    public async Task SwitchingPreviewLeavesOneActiveEntry()
+    {
+        var snapshot = new TaskCompletionSource<Hitbench.Services.SamplePreviewSnapshot>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var snapshotRequested = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var finished = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var preview = new StubSamplePreviewService
+        {
+            Snapshot = token => { snapshotRequested.TrySetResult(); return snapshot.Task.WaitAsync(token); }
+        };
+        var vm = new OHsSampleDropImportPopupVM(["C:/a.wav", "C:/b.wav"], new StubSampleBrowserService(), preview, new ImmediateUiScheduler());
+        await vm.InitializeAsync(default);
+        try
+        {
+            await vm.PlayCommand.ExecuteAsync(vm.Entries[0]);
+            Assert.That(vm.Entries[0].IsPlaying, Is.True);
+            await vm.PlayCommand.ExecuteAsync(vm.Entries[1]);
+            Assert.That(vm.Entries[0].IsPlaying, Is.False);
+            Assert.That(vm.Entries[1].IsPlaying, Is.True);
+            Assert.That(preview.PlayedPaths, Is.EqualTo(new[] { "C:/a.wav", "C:/b.wav" }));
+            await vm.PlayCommand.ExecuteAsync(vm.Entries[1]);
+            Assert.That(vm.Entries.All(entry => !entry.IsPlaying), Is.True);
+            Assert.That(preview.Playing, Is.False);
+
+            await vm.PlayCommand.ExecuteAsync(vm.Entries[1]);
+            vm.Entries[1].PropertyChanged += (_, args) =>
+            {
+                if (args.PropertyName == nameof(Hitbench.Resources.DataModels.OHsDroppedSampleEntry.IsPlaying) && !vm.Entries[1].IsPlaying)
+                    finished.TrySetResult();
+            };
+            await snapshotRequested.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            snapshot.TrySetResult(new(false, null, null));
+            await finished.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.That(vm.Entries.All(entry => !entry.IsPlaying), Is.True);
+            Assert.That(vm.Entries.All(entry => entry.IsChecked), Is.True);
+        }
+        finally
+        {
+            snapshot.TrySetResult(new(false, null, null));
+            await vm.DeactivateAsync();
+        }
+    }
+
+    [Test]
     public async Task ReentrantDeactivateUsesThePublishedCleanupTask()
     {
         var preview = new StubSamplePreviewService();
