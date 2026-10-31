@@ -64,6 +64,7 @@
     <Color x:Key="Color.Info.Dark">#E4F0FF</Color>
 
     <!-- Audio domain (NEW) -->
+    <Color x:Key="Color.Track.Default">#000000</Color>
     <Color x:Key="Color.Track.1">#2474CF</Color>
     <Color x:Key="Color.Track.2">#7D5CC7</Color>
     <Color x:Key="Color.Track.3">#B2468A</Color>
@@ -174,6 +175,7 @@
     <SolidColorBrush x:Key="Brush.Danger.Dark" Color="{StaticResource Color.Danger.Dark}" />
     <SolidColorBrush x:Key="Brush.Info.Dark" Color="{StaticResource Color.Info.Dark}" />
 
+    <SolidColorBrush x:Key="Brush.Track.Default" Color="{StaticResource Color.Track.Default}" />
     <SolidColorBrush x:Key="Brush.Track.1" Color="{StaticResource Color.Track.1}" />
     <SolidColorBrush x:Key="Brush.Track.2" Color="{StaticResource Color.Track.2}" />
     <SolidColorBrush x:Key="Brush.Track.3" Color="{StaticResource Color.Track.3}" />

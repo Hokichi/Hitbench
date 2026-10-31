@@ -63,7 +63,7 @@ public sealed partial class PianoRollView
         dc.DrawRectangle(SystemParameters.HighContrast ? SystemColors.WindowBrush : BrushOr(Background, "Brush.Background.Deepened"), null, new Rect(RenderSize));
         if (ActualWidth <= KeyColumnWidth || ActualHeight <= 0 || LaneHeight <= 0 || !double.IsFinite(LaneHeight)) return;
         var hc = SystemParameters.HighContrast; var text = hc ? SystemColors.WindowTextBrush : BrushOr(Foreground, "Brush.Text.Primary");
-        var marker = hc ? SystemColors.WindowTextBrush : BrushOr(MarkerBrush, "Brush.Track.1");
+        var marker = hc ? SystemColors.WindowTextBrush : BrushOr(MarkerBrush, Hitbench.Resources.Helpers.OHsTrackPalette.DefaultResourceKey);
         var selection = hc ? SystemColors.HighlightBrush : BrushOr(SelectionBrush, "Brush.Navy");
         var cue = hc ? SystemColors.HighlightTextBrush : BrushOr(SelectionCueBrush, "Brush.Node.SelectedOutline");
         var border = new Pen(hc ? SystemColors.WindowTextBrush : BrushOr(NodeBorderBrush, "Brush.Border.Default"), 1);

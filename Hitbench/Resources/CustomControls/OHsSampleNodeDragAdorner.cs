@@ -9,6 +9,7 @@ public sealed class OHsSampleNodeDragAdorner : Adorner
     public OHsSampleNodeDragAdorner(UIElement adornedElement) : base(adornedElement)
     {
         IsHitTestVisible = false;
+        SetResourceReference(DefaultTrackBrushProperty, Hitbench.Resources.Helpers.OHsTrackPalette.DefaultResourceKey);
         Loaded += (_, _) => { SystemParameters.StaticPropertyChanged -= OnSystemSettingsChanged; SystemParameters.StaticPropertyChanged += OnSystemSettingsChanged; };
         Unloaded += (_, _) => SystemParameters.StaticPropertyChanged -= OnSystemSettingsChanged;
     }
@@ -17,6 +18,9 @@ public sealed class OHsSampleNodeDragAdorner : Adorner
         if (Dispatcher.CheckAccess()) InvalidateVisual();
         else Dispatcher.BeginInvoke(InvalidateVisual);
     }
+    private static readonly DependencyProperty DefaultTrackBrushProperty = DependencyProperty.Register(
+        "DefaultTrackBrush", typeof(Brush), typeof(OHsSampleNodeDragAdorner),
+        new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
     private Point cursorPosition;
     public Point CursorPosition { get => cursorPosition; set { cursorPosition = value; InvalidateVisual(); } }
     private IReadOnlyList<Rect> nodeBounds = Array.Empty<Rect>();

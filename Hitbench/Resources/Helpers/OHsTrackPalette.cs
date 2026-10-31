@@ -5,7 +5,8 @@ namespace Hitbench.Resources.Helpers;
 
 public static class OHsTrackPalette
 {
-    public static string GetResourceKey(int zeroBasedIndex) => $"Brush.Track.{(zeroBasedIndex < 0 ? 0 : zeroBasedIndex % 8) + 1}";
+    public const string DefaultResourceKey = "Brush.Track.Default";
+    public static string GetResourceKey(int zeroBasedIndex) => DefaultResourceKey;
     public static Brush ResolveBrush(FrameworkElement owner, int zeroBasedIndex, string? customColor)
     {
         if (!RgbColor.TryParse(customColor, out var rgb)) return owner.TryFindResource(GetResourceKey(zeroBasedIndex)) as Brush ?? SystemColors.WindowTextBrush;
