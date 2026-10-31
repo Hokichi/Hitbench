@@ -24,7 +24,7 @@ public class WorkstationHistoryTests
         source = new StubWorkstationSourceService
         {
             Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav",
-                new ProjectData { Offsets = [0], BPMs = [120], Tracks = [first, second] }))
+                new ProjectData { Offsets = [0], BPMs = [120], ControlPoints = [new()], Tracks = [first, second] }))
         };
         audio = new StubWorkstationAudioService();
         files = new StubSampleFileService(["a.wav", "b.wav"]);

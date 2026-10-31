@@ -45,5 +45,6 @@ public static class OHsControlPointLayout
 
     public static bool CanPlace(Guid excludedId, int timestamp, double durationMilliseconds, IReadOnlyList<ControlPointSnapshot> points) =>
         double.IsFinite(durationMilliseconds) && timestamp >= 0 && timestamp < durationMilliseconds &&
+        !points.Any(p => p.Id == excludedId && p.IsOffsetAnchor) &&
         !points.Any(p => p.Id != excludedId && p.Timestamp == timestamp);
 }

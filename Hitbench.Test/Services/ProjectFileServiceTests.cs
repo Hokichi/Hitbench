@@ -131,7 +131,10 @@ public class ProjectFileServiceTests
         Assert.That(path, Is.EqualTo(Path.Combine(applicationDirectory, "projects", "Manual name", "project.json")));
         Assert.That((string?)json["BeatmapPath"], Is.EqualTo(song.FullName));
         Assert.That((JArray)json["Tracks"]!, Is.Empty);
-        Assert.That((JArray)json["ControlPoints"]!, Is.Empty);
+        var point = (JObject)((JArray)json["ControlPoints"]!).Single();
+        Assert.That((int)point["Timestamp"]!, Is.EqualTo(125));
+        Assert.That((int)point["Volume"]!, Is.EqualTo(100));
+        Assert.That((string)point["Sampleset"]!, Is.EqualTo("Normal"));
         Assert.That((JArray)json["Offsets"]!, Is.EqualTo(new JArray(125)));
         Assert.That((JArray)json["BPMs"]!, Is.EqualTo(new JArray(120)));
         Assert.That(Directory.GetFiles(Path.GetDirectoryName(path)!), Has.Length.EqualTo(1));

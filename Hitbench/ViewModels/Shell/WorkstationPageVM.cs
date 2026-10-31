@@ -539,6 +539,7 @@ public partial class WorkstationPageVM(
             if (!subscribedToPlayback) { playback.StateChanged += OnPlaybackStateChanged; subscribedToPlayback = true; }
             await playback.StopAsync(token);
             var source = await sourceService.LoadAsync(projectPath, token);
+            var addedOffsetControlPoint = source.Project.EnsureOffsetControlPoint();
             var waveform = await audioService.AnalyzeAsync(source.AudioPath, token);
             if(source.Project.Tracks.OfType<InstrumentalTrack>().SelectMany(t=>t.Notes).Any(n=>n.Timestamp>=waveform.Duration.TotalMilliseconds))
                 throw new InvalidDataException("Instrumental note lies beyond the song duration.");
@@ -593,6 +594,8 @@ public partial class WorkstationPageVM(
             await UpdatePlaybackAsync(projectPath, generation, token);
             if (audioService.GetSnapshot().Error?.StartsWith("Unable to prepare audio:", StringComparison.Ordinal) == true)
                 await CommitAsync(generation, CancellationToken.None, () => Waveform = null);
+            if (addedOffsetControlPoint)
+                await CommitAsync(generation, token, () => { if (Waveform is not null) QueueSave(isChange: false); });
 
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { }

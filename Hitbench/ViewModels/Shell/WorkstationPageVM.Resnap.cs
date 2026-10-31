@@ -18,7 +18,13 @@ namespace Hitbench.ViewModels.Shell;
 
 public partial class WorkstationPageVM
 {
-    private bool CanResnapAllSamples() => CanPlaceSamples && (Project!.ControlPoints.Count == 0 || CanEditControlPoints) && (Project.ControlPoints.Count > 0 || tracks.Any(track => track.Samples.Count > 0 || track is InstrumentalTrack { Notes.Count: > 0 }));
+    private bool CanResnapAllSamples()
+    {
+        if (!CanPlaceSamples) return false;
+        var movablePoints = Project!.ControlPoints.Any(point => !Project.IsOffsetControlPoint(point));
+        return (!movablePoints || CanEditControlPoints) &&
+            (movablePoints || tracks.Any(track => track.Samples.Count > 0 || track is InstrumentalTrack { Notes.Count: > 0 }));
+    }
 
     // Legacy public name retained for callers; the workstation action includes instrumental notes.
     public bool ResnapAllSampleNodes()
@@ -53,6 +59,7 @@ public partial class WorkstationPageVM
         var occupied = Project.ControlPoints.GroupBy(p => p.Timestamp).ToDictionary(g => g.Key, g => g.Count());
         foreach (var point in Project.ControlPoints.OrderBy(p => p.Timestamp))
         {
+            if (Project.IsOffsetControlPoint(point)) continue;
             var target = BeatGridCalculator.GetNearestTimestamp(timing.AsSpan(), Subdivision, point.Timestamp, Waveform!.Duration.TotalMilliseconds);
             if (target is null) { ErrorMessage = "No usable grid beat for resnapping control points."; return false; }
             if (target == point.Timestamp || occupied.GetValueOrDefault(target.Value) > 0) continue;

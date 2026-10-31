@@ -23,7 +23,7 @@ public class WorkstationResnapTests
         c = new Sample { Timestamp = 1188, FileName = "b.wav" };
         first = new Track { SelectedSampleFileName = "a.wav", Samples = [a, b] };
         second = new Track { SelectedSampleFileName = "b.wav", Samples = [c] };
-        var project = new ProjectData { Offsets = [0], BPMs = [120], Tracks = [first, second] };
+        var project = new ProjectData { Offsets = [0], BPMs = [120], Tracks = [first, second], ControlPoints = [new()] };
         var source = new StubWorkstationSourceService
         {
             Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav", project))
@@ -57,7 +57,7 @@ public class WorkstationResnapTests
         vm.Project!.ControlPoints.AddRange([firstPoint, secondPoint]);
         vm.ResnapAllSampleNodes();
         Assert.That(new[] { firstPoint.Timestamp, secondPoint.Timestamp }, Is.EqualTo(new[] { 1125, 1120 }));
-        Assert.That(vm.Project.ControlPoints, Has.Count.EqualTo(2));
+        Assert.That(vm.Project.ControlPoints, Has.Count.EqualTo(3));
         vm.Project.BPMs = [0];
         firstPoint.Timestamp = 1100;
         Assert.That(vm.ResnapAllSampleNodes(), Is.False);
@@ -86,7 +86,7 @@ public class WorkstationResnapTests
         Assert.That(point.Volume, Is.EqualTo(70));
         Assert.That(point.IsDisabled, Is.True);
         await vm.FlushSavesAsync();
-        Assert.That(ProjectDataSerializer.Deserialize(saves.LatestJson!).ControlPoints.Single().Timestamp, Is.EqualTo(1125));
+        Assert.That(ProjectDataSerializer.Deserialize(saves.LatestJson!).ControlPoints.Single(p => p.Timestamp != 0).Timestamp, Is.EqualTo(1125));
     }
 
     [Test]

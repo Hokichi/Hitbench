@@ -34,7 +34,7 @@ public class WorkstationTrackCollapseTests
         var tracks = CreateTracks(files);
         var saves = new DelayedProjectFileService();
         saves.Release();
-        var (page, vm, view) = Create(direction, new ProjectData { Tracks = tracks, Offsets = [0], BPMs = [120] }, files, width, height, saves);
+        var (page, vm, view) = Create(direction, new ProjectData { Tracks = tracks, Offsets = [0], BPMs = [120], ControlPoints = [new()] }, files, width, height, saves);
         using (view)
         try
         {

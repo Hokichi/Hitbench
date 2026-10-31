@@ -6,6 +6,17 @@ namespace Hitbench.Test.Services;
 public class ControlPointSerializationTests
 {
     [Test]
+    public void NegativePointIsAcceptedOnlyAtTheFirstTimingOffset()
+    {
+        var project = new ProjectData { Offsets = [-100, -50], BPMs = [120, 150],
+            ControlPoints = [new() { Timestamp = -100, Volume = 40, Sampleset = "Soft" }] };
+        var saved = ProjectDataSerializer.Deserialize(ProjectDataSerializer.Serialize(project));
+        Assert.That((saved.ControlPoints.Single().Timestamp, saved.ControlPoints.Single().Volume), Is.EqualTo((-100, 40)));
+        project.ControlPoints[0].Timestamp = -50;
+        Assert.Throws<InvalidDataException>(() => ProjectDataSerializer.Deserialize(ProjectDataSerializer.Serialize(project)));
+    }
+
+    [Test]
     public void DisabledStateRoundTripsAndMissingDefaultsFalse()
     {
         var project = ProjectDataSerializer.Deserialize("{\"ControlPoints\":[{\"Timestamp\":0},{\"Timestamp\":900,\"Volume\":0,\"Sampleset\":\"Drum\",\"IsDisabled\":true}]}");

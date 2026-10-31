@@ -84,10 +84,10 @@ public class WaveformControlPointMarkerTests
             var page = new WorkstationPage(owner); UiTestPump.Layout(page, 900, 600);
             var view = (WaveformView)(page.Timeline).FindName("WaveformDisplay");
             Assert.That(BindingOperations.GetBinding(view, WaveformView.ControlPointTimestampsProperty)!.Mode, Is.EqualTo(BindingMode.OneWay));
-            Assert.That(view.ControlPointTimestamps, Is.EqualTo(new[] { 1000 }));
+            Assert.That(view.ControlPointTimestamps, Is.EqualTo(new[] { 0, 1000 }));
             var initial = owner.ControlPointsState!;
-            owner.DeleteControlPointCommand.Execute(new Hitbench.Resources.Messages.DeleteControlPointRequestedMessage(initial.Context, initial.Points[0].Id));
-            Assert.That(view.ControlPointTimestamps, Is.Empty); Assert.That(owner.ErrorMessage, Is.Null);
+            owner.DeleteControlPointCommand.Execute(new Hitbench.Resources.Messages.DeleteControlPointRequestedMessage(initial.Context, initial.Points.Single(p => p.Timestamp == 1000).Id));
+            Assert.That(view.ControlPointTimestamps, Is.EqualTo(new[] { 0 })); Assert.That(owner.ErrorMessage, Is.Null);
         }
         finally { UiTestPump.Run(owner.DeactivateAsync()); }
     }

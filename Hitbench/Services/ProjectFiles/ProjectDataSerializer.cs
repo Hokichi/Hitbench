@@ -203,7 +203,11 @@ public static class ProjectDataSerializer
             var disabled = Member(point, nameof(ControlPoint.IsDisabled));
             if (disabled is not null && disabled.Type != JTokenType.Boolean)
                 throw new InvalidDataException("Control point IsDisabled must be a boolean.");
-            if (!IsIntegerInRange(time, int.MaxValue)) throw new InvalidDataException("Control point Timestamp must be a nonnegative integer.");
+            var isNegativeOffset = time?.Type == JTokenType.Integer && int.TryParse(time.ToString(Formatting.None),
+                System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var timestamp) &&
+                timestamp < 0 && root[nameof(ProjectData.Offsets)] is JArray { Count: > 0 } offsets && JToken.DeepEquals(time, offsets[0]);
+            if (!IsIntegerInRange(time, int.MaxValue) && !isNegativeOffset)
+                throw new InvalidDataException("Control point Timestamp must be nonnegative or match the first timing offset.");
             if (volume is null) point[nameof(ControlPoint.Volume)] = 100;
             else if (!IsIntegerInRange(volume, 100)) throw new InvalidDataException("Control point Volume must be an integer from 0 to 100.");
             if (sampleset is null or { Type: JTokenType.Null }) point[nameof(ControlPoint.Sampleset)] = "Normal";

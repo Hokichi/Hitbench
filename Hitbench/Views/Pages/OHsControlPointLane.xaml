@@ -85,7 +85,7 @@
   <ContextMenu x:Key="OHsControlPointZoneMenu" Style="{StaticResource OHsActionContextMenuStyle}" AutomationProperties.Name="Control point actions" Closed="OnZoneMenuClosed">
    <MenuItem Header="{Binding DisableMenuHeader, Mode=OneWay}" Style="{StaticResource OHsActionMenuItemStyle}" Command="{Binding SetPointDisabledCommand, Mode=OneWay}" CommandParameter="{Binding MenuDisableRequest, Mode=OneWay}" AutomationProperties.Name="{Binding DisableMenuHeader, Mode=OneWay}" />
    <MenuItem Header="Add" Style="{StaticResource OHsActionMenuItemStyle}" Command="{Binding SplitPointCommand, Mode=OneWay}" CommandParameter="{Binding MenuSplitRequest, Mode=OneWay}" AutomationProperties.Name="Add control point at playback marker" />
-   <MenuItem Header="Delete" Style="{StaticResource OHsDestructiveActionMenuItemStyle}" Click="OnDeletePointClick" AutomationProperties.Name="Delete control point" />
+   <MenuItem Header="Delete" Style="{StaticResource OHsDestructiveActionMenuItemStyle}" Command="{Binding DeletePointCommand, Mode=OneWay}" CommandParameter="{Binding MenuDeleteRequest, Mode=OneWay}" AutomationProperties.Name="Delete control point" />
   </ContextMenu>
   <Style x:Key="OHsControlPointPlayheadHostStyle" TargetType="Grid" BasedOn="{StaticResource BaseGridStyle}">
    <Setter Property="Width" Value="3.5" /><Setter Property="HorizontalAlignment" Value="Left" />

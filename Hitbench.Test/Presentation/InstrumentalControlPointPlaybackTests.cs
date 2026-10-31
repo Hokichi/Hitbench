@@ -23,12 +23,12 @@ public class InstrumentalControlPointPlaybackTests
             try
             {
                 await drawer.InitializeAsync(default);
-                Assert.That(audio.ControlPoints.Count, Is.EqualTo(hasPoints ? 1 : 0));
+                Assert.That(audio.ControlPoints.Count, Is.EqualTo(hasPoints ? 2 : 1));
                 Assert.That(new ControlPointVolumeTimeline(audio.ControlPoints).GetGain(66150), Is.EqualTo(hasPoints ? .5f : 1f));
                 Assert.That(audio.SampleUpdates.Last().Single().FileName, Is.EqualTo("piano.wav"));
                 await owner.SeekCommand.ExecuteAsync(TimeSpan.FromMilliseconds(1600));
                 Assert.That(drawer.Position, Is.EqualTo(TimeSpan.FromMilliseconds(1600)));
-                Assert.That(audio.ControlPoints.Count, Is.EqualTo(hasPoints ? 1 : 0));
+                Assert.That(audio.ControlPoints.Count, Is.EqualTo(hasPoints ? 2 : 1));
             }
             finally { await drawer.DeactivateAsync(); }
         };

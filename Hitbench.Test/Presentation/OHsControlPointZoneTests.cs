@@ -21,7 +21,7 @@ public class OHsControlPointZoneTests
             UiTestPump.Run(WorkstationControlPointStateTests.Ready(owner)); var lane = OHsControlPointDragTests.Connect(owner);
             lane.SetPointDisabledCommand = owner.SetControlPointDisabledCommand; lane.SplitPointCommand = owner.SplitControlPointCommand;
             lane.PresentMenu = (menu, _) => UiTestPump.Layout(menu, 240, 180); owner.Position = TimeSpan.FromMilliseconds(2000);
-            var state = owner.ControlPointsState!; var zone = lane.BringPointIntoView(state.Points[0].Id)!;
+            var state = owner.ControlPointsState!; var zone = lane.BringPointIntoView(state.Points.First(p => p.Timestamp == 1000).Id)!;
             Assert.That(lane.HandlePointKey(Key.Apps, ModifierKeys.None, zone), Is.True);
             var disable = (MenuItem)lane.ZoneMenu.Items[0]; var split = (MenuItem)lane.ZoneMenu.Items[1];
             Assert.That(disable.Header, Is.EqualTo("Disable")); Assert.That(split.Header, Is.EqualTo("Add"));
@@ -29,11 +29,11 @@ public class OHsControlPointZoneTests
             owner.Position = TimeSpan.FromMilliseconds(3500); Assert.That(split.IsEnabled, Is.False);
             owner.Position = TimeSpan.FromMilliseconds(2000); Assert.That(split.IsEnabled, Is.True);
             var captured = lane.MenuSplitRequest!;
-            zone.Point = state.Points[1];
+            zone.Point = state.Points.Single(p => p.Timestamp == 3000);
             disable.Command.Execute(disable.CommandParameter);
             Assert.That(project.ControlPoints[0].IsDisabled, Is.True); Assert.That(project.ControlPoints[1].IsDisabled, Is.False);
-            owner.SplitControlPointCommand.Execute(captured); Assert.That(project.ControlPoints, Has.Count.EqualTo(2));
-            zone = lane.BringPointIntoView(state.Points[0].Id)!; lane.HandlePointKey(Key.Apps, ModifierKeys.None, zone);
+            owner.SplitControlPointCommand.Execute(captured); Assert.That(project.ControlPoints, Has.Count.EqualTo(3));
+            zone = lane.BringPointIntoView(state.Points.First(p => p.Timestamp == 1000).Id)!; lane.HandlePointKey(Key.Apps, ModifierKeys.None, zone);
             Assert.That(((MenuItem)lane.ZoneMenu.Items[0]).Header, Is.EqualTo("Enable"));
             lane.ResetInteraction(); Assert.That(lane.MenuSplitRequest, Is.Null); Assert.That(lane.ZoneMenu.IsOpen, Is.False);
         }

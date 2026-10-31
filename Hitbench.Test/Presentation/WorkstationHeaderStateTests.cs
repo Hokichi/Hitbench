@@ -98,7 +98,7 @@ public sealed class WorkstationHeaderStateTests
         {
             await vm.LoadAsync(Path.Combine(Path.GetTempPath(), "Project name", "project.json"), default);
             Assert.That(vm.ProjectName, Is.EqualTo("Project name"));
-            Assert.That(vm.ControlPointCount, Is.EqualTo(2));
+            Assert.That(vm.ControlPointCount, Is.EqualTo(3));
             vm.Position = TimeSpan.Zero;
             Assert.That(vm.CurrentBpmText, Is.EqualTo("120 BPM"));
             vm.Position = TimeSpan.FromMilliseconds(1000);

@@ -26,6 +26,8 @@ public partial class OHsControlPointLane
     public static readonly DependencyProperty MenuDisableRequestProperty = MenuDisableRequestPropertyKey.DependencyProperty;
     private static readonly DependencyPropertyKey MenuSplitRequestPropertyKey = DependencyProperty.RegisterReadOnly(nameof(MenuSplitRequest), typeof(SplitControlPointRequestedMessage), typeof(OHsControlPointLane), new PropertyMetadata(null));
     public static readonly DependencyProperty MenuSplitRequestProperty = MenuSplitRequestPropertyKey.DependencyProperty;
+    private static readonly DependencyPropertyKey MenuDeleteRequestPropertyKey = DependencyProperty.RegisterReadOnly(nameof(MenuDeleteRequest), typeof(DeleteControlPointRequestedMessage), typeof(OHsControlPointLane), new PropertyMetadata(null));
+    public static readonly DependencyProperty MenuDeleteRequestProperty = MenuDeleteRequestPropertyKey.DependencyProperty;
     private static readonly DependencyPropertyKey DisableMenuHeaderPropertyKey = DependencyProperty.RegisterReadOnly(nameof(DisableMenuHeader), typeof(string), typeof(OHsControlPointLane), new PropertyMetadata("Disable"));
     public static readonly DependencyProperty DisableMenuHeaderProperty = DisableMenuHeaderPropertyKey.DependencyProperty;
     public static readonly DependencyProperty PendingAddProperty = DependencyProperty.Register(nameof(PendingAdd), typeof(AddControlPointRequestedMessage), typeof(OHsControlPointLane), new PropertyMetadata(null, (d, e) => ((OHsControlPointLane)d).AcceptPendingAdd(e.NewValue as AddControlPointRequestedMessage)));
@@ -46,6 +48,7 @@ public partial class OHsControlPointLane
     public ICommand? SplitPointCommand { get => (ICommand?)GetValue(SplitPointCommandProperty); set => SetValue(SplitPointCommandProperty, value); }
     public SetControlPointDisabledRequestedMessage? MenuDisableRequest => (SetControlPointDisabledRequestedMessage?)GetValue(MenuDisableRequestProperty);
     public SplitControlPointRequestedMessage? MenuSplitRequest => (SplitControlPointRequestedMessage?)GetValue(MenuSplitRequestProperty);
+    public DeleteControlPointRequestedMessage? MenuDeleteRequest => (DeleteControlPointRequestedMessage?)GetValue(MenuDeleteRequestProperty);
     public string DisableMenuHeader => (string)GetValue(DisableMenuHeaderProperty);
     public AddControlPointRequestedMessage? PendingAdd { get => (AddControlPointRequestedMessage?)GetValue(PendingAddProperty); set => SetValue(PendingAddProperty, value); }
     public IReadOnlyList<int> Offsets { get => (IReadOnlyList<int>)GetValue(OffsetsProperty); set => SetValue(OffsetsProperty, value); }
@@ -103,10 +106,6 @@ public partial class OHsControlPointLane
         var request = new RetryControlPointsSaveRequestedMessage(state.Context);
         if (RetrySaveCommand?.CanExecute(request) == true) RetrySaveCommand.Execute(request);
     }
-    private void OnDeletePointClick(object sender, RoutedEventArgs e)
-    {
-        if (menuContext == State?.Context && menuPointId is { } id) DeletePoint(id);
-    }
     private void UpdateSaveStatus() => SetValue(SaveStatusPropertyKey, State is null ? "" : State.IsSaving ? "Saving…" : "Autosaved");
     private void SetRejection(string? text)
     {
@@ -129,7 +128,7 @@ public partial class OHsControlPointLane
     {
         CancelVolumeDrag();
         CancelPointDrag(); suppressTagClick = false;
-        if (State is not { CanEdit: true } state || !IsMenuOwnerActive || state.Points.FirstOrDefault(p => p.Id == id) is not { } point) return;
+        if (State is not { CanEdit: true } state || !IsMenuOwnerActive || state.Points.FirstOrDefault(p => p.Id == id) is not { IsOffsetAnchor: false } point) return;
         dragPointId = id; dragContext = state.Context; originalTimestamp = point.Timestamp; dragRevision = state.Revision;
         startPointerX = lastPointerX = pointerX;
         grabOffset = pointerX + HorizontalOffset - OHsControlPointLayout.GetLeft(point.Timestamp, DurationMilliseconds, ContentWidth);
@@ -145,7 +144,7 @@ public partial class OHsControlPointLane
             DismissEditor(false); IsDragPreviewActive = true; suppressTagClick = true;
         }
         var point = state.Points.FirstOrDefault(p => p.Id == id);
-        if (point is null || point.Timestamp != originalTimestamp || ContentWidth <= 0) { CancelPointDrag(); return; }
+        if (point is null || point.IsOffsetAnchor || point.Timestamp != originalTimestamp || ContentWidth <= 0) { CancelPointDrag(); return; }
         PreviewTimestamp = BeatGridCalculator.GetNearestTimestamp(Offsets, Bpms, Subdivision,
             (pointerX + HorizontalOffset - grabOffset) / ContentWidth * DurationMilliseconds, DurationMilliseconds);
         var extents = GetExtents();
@@ -198,10 +197,11 @@ public partial class OHsControlPointLane
             if (extent.Id != zoneId) continue;
             if (extent.Width <= 0) return null;
             var left = extent.Left - HorizontalOffset;
-            var leftDistance = extent.Timestamp >= 0 && left >= 0 && left <= ViewportWidth
+            var leftDistance = !state.Points.Any(p => p.Id == extent.Id && p.IsOffsetAnchor) && extent.Timestamp >= 0 && left >= 0 && left <= ViewportWidth
                 ? Math.Abs(viewportX - left) : double.PositiveInfinity;
             var right = index + 1 < extents.Count ? extents[index + 1].Left - HorizontalOffset : double.NaN;
-            var rightDistance = right >= 0 && right <= ViewportWidth && extents[index + 1].Timestamp < DurationMilliseconds
+            var rightDistance = right >= 0 && right <= ViewportWidth && extents[index + 1].Timestamp < DurationMilliseconds &&
+                !state.Points.Any(p => p.Id == extents[index + 1].Id && p.IsOffsetAnchor)
                 ? Math.Abs(viewportX - right) : double.PositiveInfinity;
             if (leftDistance <= 6 && leftDistance <= rightDistance) return extent.Id;
             if (rightDistance <= 6) return extents[index + 1].Id;
@@ -288,6 +288,7 @@ public partial class OHsControlPointLane
         if (tag is not null && modifiers == ModifierKeys.None && key is Key.Up or Key.Down) return EditVolumeFromKeyboard(tag, key == Key.Up ? 1 : -1);
         if (tag?.Point is { } point && modifiers == ModifierKeys.Alt && key is Key.Left or Key.Right)
         {
+            if (point.IsOffsetAnchor) return true;
             if (IsMenuOwnerActive && double.IsFinite(DurationMilliseconds) && DurationMilliseconds > 0 && State is { CanEdit: true } state && BeatGridCalculator.GetAdjacentPosition(Offsets, Bpms, Subdivision,
                 TimeSpan.FromMilliseconds(point.Timestamp), TimeSpan.FromMilliseconds(DurationMilliseconds), key == Key.Right) is { } target)
             {
@@ -319,6 +320,7 @@ public partial class OHsControlPointLane
             ZoneMenu.DataContext = this;
             SetValue(MenuDisableRequestPropertyKey, new SetControlPointDisabledRequestedMessage(state.Context, point.Id, state.Revision, !point.IsDisabled));
             SetValue(MenuSplitRequestPropertyKey, new SplitControlPointRequestedMessage(state.Context, point.Id, state.Revision));
+            SetValue(MenuDeleteRequestPropertyKey, new DeleteControlPointRequestedMessage(state.Context, point.Id));
             SetValue(DisableMenuHeaderPropertyKey, point.IsDisabled ? "Enable" : "Disable");
         }
         var target = (FrameworkElement?)tag ?? this;
@@ -337,6 +339,7 @@ public partial class OHsControlPointLane
     private void ClearMenuRequests()
     {
         SetValue(MenuDisableRequestPropertyKey, null); SetValue(MenuSplitRequestPropertyKey, null);
+        SetValue(MenuDeleteRequestPropertyKey, null);
         menuPointId = null; menuContext = null;
     }
     private void OnZoneMenuClosed(object sender, RoutedEventArgs e)

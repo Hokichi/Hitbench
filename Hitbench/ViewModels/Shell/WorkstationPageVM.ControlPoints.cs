@@ -56,7 +56,7 @@ public partial class WorkstationPageVM
         var canAdd = CanOpenControlPoints;
         SetProperty(ref controlPointsState, new ControlPointsSnapshot(context,
             Project!.ControlPoints.OrderBy(p => p.Timestamp).Select(p =>
-                new ControlPointSnapshot(ControlPointId(p), p.Timestamp, p.Volume, p.Sampleset, p.IsDisabled)).ToArray(),
+                new ControlPointSnapshot(ControlPointId(p), p.Timestamp, p.Volume, p.Sampleset, p.IsDisabled, Project.IsOffsetControlPoint(p))).ToArray(),
             ++controlPointsVersion, canAdd, canAdd ? null : "Adding control points requires an active project, valid BPM timing, and a song duration.",
             pendingProjectWrites > 0, SaveError, controlPointsRevision, CanEditControlPoints), nameof(ControlPointsState));
         NotifyControlPointCommands();
@@ -65,7 +65,7 @@ public partial class WorkstationPageVM
     private void PublishControlPointTimeline()
     {
         audioService.SetControlPoints(Project?.ControlPoints
-            .Select(p => new ControlPointVolumeSnapshot(p.Timestamp, p.Volume, p.IsDisabled)).ToArray() ?? []);
+            .OrderBy(p => p.Timestamp).Select(p => new ControlPointVolumeSnapshot(Math.Max(0, p.Timestamp), p.Volume, p.IsDisabled)).ToArray() ?? []);
         RefreshControlPointTimestamps();
     }
 
@@ -139,20 +139,27 @@ public partial class WorkstationPageVM
         FinishControlPointMutation(true);
     }
 
-    [RelayCommand]
+    private bool CanMoveControlPoint(MoveControlPointRequestedMessage? request) =>
+        request is not null && request.ExpectedRevision == controlPointsRevision &&
+        FindControlPoint(request.Context, request.PointId) is { } point && !Project!.IsOffsetControlPoint(point);
+
+    [RelayCommand(CanExecute = nameof(CanMoveControlPoint))]
     private void MoveControlPoint(MoveControlPointRequestedMessage? request)
     {
-        if (request is null || FindControlPoint(request.Context, request.PointId) is not { } point ||
+        if (!CanMoveControlPoint(request) || FindControlPoint(request!.Context, request.PointId) is not { } point ||
             point.Timestamp == request.Timestamp ||
             !CanPlaceControlPoint(request.Context, request.ExpectedRevision, request.PointId, request.Timestamp)) return;
         point.Timestamp = request.Timestamp;
         FinishControlPointMutation(true);
     }
 
-    [RelayCommand]
+    private bool CanDeleteControlPoint(DeleteControlPointRequestedMessage? request) =>
+        request is not null && FindControlPoint(request.Context, request.PointId) is { } point && !Project!.IsOffsetControlPoint(point);
+
+    [RelayCommand(CanExecute = nameof(CanDeleteControlPoint))]
     private void DeleteControlPoint(DeleteControlPointRequestedMessage? request)
     {
-        if (request is null || FindControlPoint(request.Context, request.PointId) is not { } point) return;
+        if (!CanDeleteControlPoint(request) || FindControlPoint(request!.Context, request.PointId) is not { } point) return;
         Project!.ControlPoints.Remove(point);
         controlPointIds.Remove(point);
         FinishControlPointMutation(true);
@@ -186,6 +193,8 @@ public partial class WorkstationPageVM
 
     private void NotifyControlPointCommands()
     {
+        MoveControlPointCommand.NotifyCanExecuteChanged();
+        DeleteControlPointCommand.NotifyCanExecuteChanged();
         SetControlPointCommand.NotifyCanExecuteChanged();
         SetControlPointDisabledCommand.NotifyCanExecuteChanged();
         SplitControlPointCommand.NotifyCanExecuteChanged();

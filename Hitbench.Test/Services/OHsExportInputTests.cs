@@ -10,6 +10,19 @@ public class OHsExportInputTests
     private static OHsExportOptions Options(int index = 1) => new("Hitsounds", index, ".ogg", ".ogg", false);
     private static OHsExportBeatmap Map() => OHsExportBeatmap.Parse("osu file format v14\n[TimingPoints]\n123.456,428.571428571429,4,2,4,60,1,0\n200,-50,4,2,4,60,0,1\n");
 
+    [Test]
+    public void NegativeOffsetAnchorExportsAtItsOriginalTimestamp()
+    {
+        var project = new ProjectData { Offsets = [-100], BPMs = [120],
+            ControlPoints = [new() { Timestamp = -100, Volume = 40, Sampleset = "Drum" }],
+            Tracks = [new() { Samples = [new() { Timestamp = 0, FileName = "hit.wav" }] }] };
+        var input = OHsExportInputFactory.Create(project, Map(), Options(), default);
+        Assert.That(input.RequiredPoints.Single(p => p.Kind == OHsExportTimingKind.ProjectControl).Timestamp, Is.EqualTo(-100));
+        Assert.That(input.Voices.Single().Sampleset, Is.EqualTo("Drum"));
+        project.ControlPoints[0].Timestamp = -50;
+        Assert.Throws<InvalidDataException>(() => OHsExportInputFactory.Create(project, Map(), Options(), default));
+    }
+
     [TestCase(false)]
     [TestCase(true)]
     public void AcceptsTwoHundredPercentForBothTrackKinds(bool instrumental)

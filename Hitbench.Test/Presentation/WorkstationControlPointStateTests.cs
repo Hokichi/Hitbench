@@ -7,10 +7,62 @@ namespace Hitbench.Test.Presentation;
 
 public class WorkstationControlPointStateTests
 {
+    [Test]
+    public async Task ResnapCannotMoveNegativeOffsetAnchor()
+    {
+        var project = new ProjectData { Offsets = [-100], BPMs = [120] };
+        var owner = Create(project, new());
+        try
+        {
+            await Ready(owner);
+            Assert.That(owner.ResnapAllSampleNodes(), Is.False);
+            Assert.That(project.ControlPoints.Single().Timestamp, Is.EqualTo(-100));
+        }
+        finally { await owner.DeactivateAsync(); }
+    }
+
+    [TestCase(250)]
+    [TestCase(-100)]
+    public async Task LegacyLoadSeedsPersistsAndProtectsOffsetPoint(int offset)
+    {
+        var project = new ProjectData { Offsets = [offset], BPMs = [120] };
+        var audio = new StubWorkstationAudioService();
+        var files = new DelayedProjectFileService(); files.Release();
+        var owner = Create(project, audio, files, includeOffsetAnchor: false);
+        try
+        {
+            await Ready(owner); await owner.FlushSavesAsync();
+            var state = owner.ControlPointsState!;
+            var point = state.Points.Single();
+            Assert.That((point.Timestamp, point.Volume, point.Sampleset), Is.EqualTo((offset, 100, "Normal")));
+            Assert.That(point.IsOffsetAnchor, Is.True);
+            Assert.That(Hitbench.Services.ProjectFiles.ProjectDataSerializer.Deserialize(files.LatestJson!).ControlPoints.Single().Timestamp, Is.EqualTo(offset));
+            var move = new MoveControlPointRequestedMessage(state.Context, point.Id, state.Revision, 1000);
+            var delete = new DeleteControlPointRequestedMessage(state.Context, point.Id);
+            Assert.That(owner.MoveControlPointCommand.CanExecute(move), Is.False);
+            Assert.That(owner.DeleteControlPointCommand.CanExecute(delete), Is.False);
+            owner.MoveControlPointCommand.Execute(move); owner.DeleteControlPointCommand.Execute(delete);
+            Assert.That(project.ControlPoints.Single().Timestamp, Is.EqualTo(offset));
+            owner.SetControlPointCommand.Execute(new SetControlPointRequestedMessage(state.Context, point.Id, 50, "Drum"));
+            Assert.That((project.ControlPoints.Single().Volume, project.ControlPoints.Single().Sampleset), Is.EqualTo((50, "Drum")));
+            Assert.That(new ControlPointVolumeTimeline(audio.ControlPoints).GetGain(44100), Is.EqualTo(.5f));
+            await owner.FlushSavesAsync(); var writes = files.Writes;
+            await Ready(owner); await owner.FlushSavesAsync();
+            Assert.That(project.ControlPoints, Has.Count.EqualTo(1));
+            Assert.That(project.ControlPoints.Single().Volume, Is.EqualTo(50));
+            Assert.That(files.Writes, Is.EqualTo(writes));
+        }
+        finally { await owner.DeactivateAsync(); }
+    }
+
     internal static WorkstationPageVM Create(ProjectData project, StubWorkstationAudioService audio,
-        Hitbench.Services.ProjectFiles.IProjectFileService? files = null) =>
-        new(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", project)) },
+        Hitbench.Services.ProjectFiles.IProjectFileService? files = null, bool includeOffsetAnchor = true)
+    {
+        // Ordinary editing fixtures represent persisted projects; legacy normalization has a dedicated opt-out test.
+        if (includeOffsetAnchor) project.EnsureOffsetControlPoint();
+        return new(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", project)) },
             new MarkerPlaybackCoordinator(audio, Task.Delay), new ImmediateUiScheduler(), projectFiles: files, saveDelay: (_, _) => Task.CompletedTask);
+    }
 
     internal static async Task Ready(WorkstationPageVM owner)
     {
@@ -60,26 +112,26 @@ public class WorkstationControlPointStateTests
     [Test]
     public async Task AcceptedEditsAndDeletePublishBeforeBlockedSaveAndDrainInOrder()
     {
-        var project = new ProjectData { Offsets = [0], BPMs = [120], ControlPoints = [new() { Volume = 50 }] };
+        var project = new ProjectData { Offsets = [0], BPMs = [120], ControlPoints = [new() { Timestamp = 500, Volume = 50 }] };
         var audio = new StubWorkstationAudioService(); var files = new DelayedProjectFileService(); var owner = Create(project, audio, files);
         try
         {
-            await Ready(owner); var state = owner.ControlPointsState!; var id = state.Points[0].Id;
+            await Ready(owner); var state = owner.ControlPointsState!; var id = state.Points.Single(p => p.Timestamp == 500).Id;
             foreach (var volume in new[] { 5, 100 })
             {
                 owner.SetControlPointCommand.Execute(new SetControlPointRequestedMessage(state.Context, id, volume, null));
-                Assert.That(audio.ControlPoints.Single().Volume, Is.EqualTo(volume));
+                Assert.That(audio.ControlPoints.Single(p => p.Timestamp == 500).Volume, Is.EqualTo(volume));
             }
             Assert.That(files.FirstWriteStarted, Is.True); Assert.That(files.LatestJson, Is.Null);
             owner.DeleteControlPointCommand.Execute(new DeleteControlPointRequestedMessage(state.Context, id));
-            Assert.That(project.ControlPoints, Is.Empty); Assert.That(audio.ControlPoints, Is.Empty);
+            Assert.That(project.ControlPoints.Single().Timestamp, Is.Zero); Assert.That(audio.ControlPoints.Single().Timestamp, Is.Zero);
             Assert.That(new ControlPointVolumeTimeline(audio.ControlPoints).GetGain(88200), Is.EqualTo(1f));
             var revision = owner.ControlPointsState!.Revision;
             owner.DeleteControlPointCommand.Execute(new DeleteControlPointRequestedMessage(state.Context, id));
             Assert.That(owner.ControlPointsState.Revision, Is.EqualTo(revision));
             files.Release(); await owner.FlushSavesAsync();
             Assert.That(files.Writes, Is.EqualTo(2), "In-flight snapshot plus latest pending deletion");
-            Assert.That(Hitbench.Services.ProjectFiles.ProjectDataSerializer.Deserialize(files.LatestJson!).ControlPoints, Is.Empty);
+            Assert.That(Hitbench.Services.ProjectFiles.ProjectDataSerializer.Deserialize(files.LatestJson!).ControlPoints.Single().Timestamp, Is.Zero);
         }
         finally { files.Release(); await owner.DeactivateAsync(); }
     }

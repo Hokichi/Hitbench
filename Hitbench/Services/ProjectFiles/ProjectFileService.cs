@@ -115,6 +115,7 @@ public sealed class ProjectFileService(string applicationDirectory) : IProjectFi
             var beatmapPath = BeatmapTimingReader.FindBeatmap(folder.FullName);
             BeatmapTimingReader.Populate(project, beatmapPath, cancellationToken);
         }, cancellationToken);
+        project.EnsureOffsetControlPoint();
         var json = ProjectDataSerializer.Serialize(project);
         var applicationRoot = Path.GetFullPath(applicationDirectory);
         for (var parent = new DirectoryInfo(applicationRoot); parent is not null; parent = parent.Parent)

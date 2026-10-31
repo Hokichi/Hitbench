@@ -18,7 +18,7 @@ public class WorkstationInstrumentalEditingTests
         var dialogs = new StubInstrumentalTrackDialogService();
         var opens = 0;
         dialogs.Arrangement = (_, _) => { opens++; return Task.CompletedTask; };
-        var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [track], Offsets = [0], BPMs = [120] })) },
+        var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [track], Offsets = [0], BPMs = [120], ControlPoints = [new()] })) },
             new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), messenger: messenger, instrumentDialogs: dialogs, saveDelay: (_, _) => Task.CompletedTask);
         try
         {
@@ -65,7 +65,7 @@ public class WorkstationInstrumentalEditingTests
             entered.SetResult(data.Track.Context);
             await Task.Delay(Timeout.Infinite, token);
         };
-        var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [track], Offsets = [0], BPMs = [120] })) },
+        var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [track], Offsets = [0], BPMs = [120], ControlPoints = [new()] })) },
             new MarkerPlaybackCoordinator(audio, Task.Delay), new ImmediateUiScheduler(), projectFiles: saves, messenger: messenger, instrumentDialogs: dialogs, saveDelay: (_, _) => Task.CompletedTask);
         try
         {
@@ -95,7 +95,7 @@ public class WorkstationInstrumentalEditingTests
         var track = new InstrumentalTrack(); var saves = new FailOnceProjectFileService(); var messenger = new WeakReferenceMessenger();
         var dialogs = new StubInstrumentalTrackDialogService(); InstrumentalSaveStateChangedMessage? state = null;
         messenger.Register<InstrumentalSaveStateChangedMessage>(this, (_, m) => state = m);
-        var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [track], Offsets = [0], BPMs = [120] })) },
+        var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [track], Offsets = [0], BPMs = [120], ControlPoints = [new()] })) },
             new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), projectFiles: saves, messenger: messenger, instrumentDialogs: dialogs, saveDelay: (_, _) => Task.CompletedTask);
         dialogs.Mapping = async (data, _) =>
         {
@@ -113,7 +113,7 @@ public class WorkstationInstrumentalEditingTests
     public async Task PersistedNotesAtSongEndFailWithoutWriting()
     {
         var saves = new DelayedProjectFileService(); saves.Release();
-        var project = new ProjectData { Tracks = [new InstrumentalTrack { Notes = [new() { Key = "C4", Timestamp = 10000 }] }], Offsets = [0], BPMs = [120] };
+        var project = new ProjectData { Tracks = [new InstrumentalTrack { Notes = [new() { Key = "C4", Timestamp = 10000 }] }], Offsets = [0], BPMs = [120], ControlPoints = [new()] };
         var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", project)) },
             new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), projectFiles: saves, saveDelay: (_, _) => Task.CompletedTask);
         try { await owner.LoadAsync("project.json", default); Assert.That(owner.ErrorMessage, Does.Contain("beyond the song")); Assert.That(owner.CanAddInstrumentalTrack, Is.False); Assert.That(saves.Writes, Is.Zero); }

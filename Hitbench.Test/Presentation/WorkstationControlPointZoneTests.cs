@@ -51,12 +51,12 @@ public class WorkstationControlPointZoneTests
                 audio.Snapshot = new(owner.Position, false, null); await owner.PlayPauseCommand.ExecuteAsync(null);
                 owner.Position = TimeSpan.FromMilliseconds(250);
             }
-            var state = owner.ControlPointsState!; var original = state.Points[0]; var transport = (audio.PlayCalls, audio.PauseCalls, audio.SeekCalls);
+            var state = owner.ControlPointsState!; var original = state.Points.First(p => p.Timestamp == 1000); var transport = (audio.PlayCalls, audio.PauseCalls, audio.SeekCalls);
             var before = new ControlPointVolumeTimeline(audio.ControlPoints).GetGain(88200);
             var request = new SplitControlPointRequestedMessage(state.Context, original.Id, state.Revision);
             Assert.That(owner.SplitControlPointCommand.CanExecute(request), Is.True);
             owner.SplitControlPointCommand.Execute(request); await owner.FlushSavesAsync();
-            var points = owner.ControlPointsState!.Points;
+            var points = owner.ControlPointsState!.Points.Where(p => !p.IsOffsetAnchor).ToArray();
             Assert.That(points[0].Id, Is.EqualTo(original.Id)); Assert.That(points[1].Id, Is.Not.EqualTo(original.Id));
             // The existing playing marker is quantized by its clock to 1750; paused marker retains the half millisecond.
             Assert.That((points[1].Timestamp, points[1].Volume, points[1].Sampleset, points[1].IsDisabled), Is.EqualTo((playing ? 1750 : 1751, 4, "Drum", disabled)));
@@ -75,9 +75,9 @@ public class WorkstationControlPointZoneTests
         try
         {
             await WorkstationControlPointStateTests.Ready(owner); owner.Position = TimeSpan.FromMilliseconds(marker); var state = owner.ControlPointsState!;
-            var request = new SplitControlPointRequestedMessage(state.Context, state.Points[0].Id, state.Revision);
+            var request = new SplitControlPointRequestedMessage(state.Context, state.Points.First(p => p.Timestamp == 1000).Id, state.Revision);
             Assert.That(owner.SplitControlPointCommand.CanExecute(request), Is.False); owner.SplitControlPointCommand.Execute(request);
-            Assert.That(project.ControlPoints, Has.Count.EqualTo(2)); Assert.That(owner.ControlPointsState!.Revision, Is.EqualTo(state.Revision));
+            Assert.That(project.ControlPoints, Has.Count.EqualTo(3)); Assert.That(owner.ControlPointsState!.Revision, Is.EqualTo(state.Revision));
         }
         finally { await owner.DeactivateAsync(); }
     }
@@ -89,21 +89,21 @@ public class WorkstationControlPointZoneTests
         var audio = new StubWorkstationAudioService(); var owner = WorkstationControlPointStateTests.Create(project, audio);
         try
         {
-            await WorkstationControlPointStateTests.Ready(owner); var state = owner.ControlPointsState!; var id = state.Points[0].Id;
+            await WorkstationControlPointStateTests.Ready(owner); var state = owner.ControlPointsState!; var id = state.Points.First(p => p.Timestamp == 1000).Id;
             var request = new SplitControlPointRequestedMessage(state.Context, id, state.Revision); var notifications = 0;
             owner.SplitControlPointCommand.CanExecuteChanged += (_, _) => notifications++;
             owner.Position = TimeSpan.FromMilliseconds(2000); Assert.That(owner.SplitControlPointCommand.CanExecute(request), Is.True);
             owner.Position = TimeSpan.FromMilliseconds(3500); Assert.That(owner.SplitControlPointCommand.CanExecute(request), Is.False);
-            owner.SplitControlPointCommand.Execute(request); Assert.That(project.ControlPoints, Has.Count.EqualTo(2));
+            owner.SplitControlPointCommand.Execute(request); Assert.That(project.ControlPoints, Has.Count.EqualTo(3));
             owner.Position = TimeSpan.FromMilliseconds(2000); Assert.That(owner.SplitControlPointCommand.CanExecute(request), Is.True);
             Assert.That(notifications, Is.GreaterThanOrEqualTo(3));
             owner.SetControlPointCommand.Execute(new(state.Context, id, 50, null));
             owner.SetControlPointCommand.Execute(new(state.Context, id, 25, null, state.Revision));
             owner.SetControlPointDisabledCommand.Execute(new(state.Context, id, state.Revision, true));
             owner.SplitControlPointCommand.Execute(request);
-            Assert.That((project.ControlPoints[0].Volume, project.ControlPoints[0].IsDisabled, project.ControlPoints.Count), Is.EqualTo((50, false, 2)));
+            Assert.That((project.ControlPoints[0].Volume, project.ControlPoints[0].IsDisabled, project.ControlPoints.Count), Is.EqualTo((50, false, 3)));
             await WorkstationControlPointStateTests.Ready(owner);
-            owner.SplitControlPointCommand.Execute(request); Assert.That(project.ControlPoints, Has.Count.EqualTo(2));
+            owner.SplitControlPointCommand.Execute(request); Assert.That(project.ControlPoints, Has.Count.EqualTo(3));
         }
         finally { await owner.DeactivateAsync(); }
     }
@@ -116,8 +116,8 @@ public class WorkstationControlPointZoneTests
         try
         {
             await WorkstationControlPointStateTests.Ready(owner); owner.Position = TimeSpan.FromMilliseconds(2000); var state = owner.ControlPointsState!;
-            Assert.That(owner.SplitControlPointCommand.CanExecute(new(state.Context, state.Points[0].Id, state.Revision)), Is.False);
-            Assert.That(owner.SplitControlPointCommand.CanExecute(new(state.Context, state.Points[1].Id, state.Revision)), Is.True);
+            Assert.That(owner.SplitControlPointCommand.CanExecute(new(state.Context, state.Points.First(p => p.Timestamp == 1000).Id, state.Revision)), Is.False);
+            Assert.That(owner.SplitControlPointCommand.CanExecute(new(state.Context, state.Points.Last(p => p.Timestamp == 1000).Id, state.Revision)), Is.True);
         }
         finally { await owner.DeactivateAsync(); }
     }

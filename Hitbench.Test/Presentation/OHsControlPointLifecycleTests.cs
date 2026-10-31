@@ -24,7 +24,7 @@ public class OHsControlPointLifecycleTests
             var page = new WorkstationPage(owner); UiTestPump.Layout(page, 1100, 700);
             var lane = (OHsControlPointLane)page.Timeline.FindName("ControlPointLane");
             lane.PresentEditor = (_, _) => { }; var menus = 0; lane.PresentMenu = (_, _) => menus++;
-            var state = owner.ControlPointsState!; var id = state.Points[0].Id; var zone = lane.BringPointIntoView(id)!;
+            var state = owner.ControlPointsState!; var id = state.Points.First(p => p.Timestamp == project.ControlPoints[0].Timestamp).Id; var zone = lane.BringPointIntoView(id)!;
             Assert.That(page.HandlePlaybackKey(Key.Up, ModifierKeys.None, false, zone), Is.True);
             Assert.That(project.ControlPoints[0].Volume, Is.EqualTo(51)); Assert.That(owner.ControlPointsState!.Revision, Is.EqualTo(state.Revision + 1));
             UiTestPump.Layout(page, 1100, 700); zone = lane.BringPointIntoView(id)!;
@@ -49,13 +49,13 @@ public class OHsControlPointLifecycleTests
             new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
             var page = new WorkstationPage(owner); UiTestPump.Layout(page, 1100, 700);
             var lane = (OHsControlPointLane)page.Timeline.FindName("ControlPointLane"); lane.PresentEditor = (_, _) => { };
-            var point = owner.ControlPointsState!.Points[0];
+            var point = owner.ControlPointsState!.Points.First(p => p.Timestamp == project.ControlPoints[0].Timestamp);
             Assert.That(lane.OpenEditor(point.Id), Is.True); page.Timeline.Reset();
             Assert.That(lane.IsEditorOpen, Is.False);
             lane.CapturePointer = () => true; lane.ReleasePointer = () => { };
-            var left = lane.GetExtents().Single().Left; lane.BeginPointDrag(point.Id, left); lane.UpdatePointDrag(left + 50);
+            var left = lane.GetExtents().Single(e => e.Id == point.Id).Left; lane.BeginPointDrag(point.Id, left); lane.UpdatePointDrag(left + 50);
             Assert.That(lane.IsDragPreviewActive, Is.True); page.Timeline.Reset();
-            Assert.That(lane.IsDragPreviewActive, Is.False); Assert.That(project.ControlPoints.Single().Timestamp, Is.EqualTo(1000));
+            Assert.That(lane.IsDragPreviewActive, Is.False); Assert.That(project.ControlPoints.Single(p => !project.IsOffsetControlPoint(p)).Timestamp, Is.EqualTo(1000));
         }
         finally { UiTestPump.Run(owner.DeactivateAsync()); }
     }
@@ -71,7 +71,7 @@ public class OHsControlPointLifecycleTests
             new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
             var page = new WorkstationPage(owner); UiTestPump.Layout(page, 1100, 700);
             var lane = (OHsControlPointLane)page.Timeline.FindName("ControlPointLane"); lane.PresentEditor = (_, _) => { };
-            var tag = lane.BringPointIntoView(owner.ControlPointsState!.Points[0].Id)!;
+            var tag = lane.BringPointIntoView(owner.ControlPointsState!.Points.First(p => p.Timestamp == project.ControlPoints[0].Timestamp).Id)!;
             page.HandlePlaybackKey(Key.Right, ModifierKeys.None, false, tag); UiTestPump.Run(page.PlaybackInputCompletion);
             Assert.That(owner.Position, Is.EqualTo(TimeSpan.Zero));
             lane.OpenEditor(tag.Point!.Id); var editor = (OHsControlPointEditor)lane.FindName("ValueEditor");
@@ -89,7 +89,7 @@ public class OHsControlPointLifecycleTests
         try
         {
             UiTestPump.Run(WorkstationControlPointStateTests.Ready(owner)); var lane = OHsControlPointDragTests.Connect(owner);
-            var id = owner.ControlPointsState!.Points[0].Id; var opens = 0; lane.PresentEditor = (open, _) => { if (open) opens++; };
+            var id = owner.ControlPointsState!.Points.First(p => p.Timestamp == project.ControlPoints[0].Timestamp).Id; var opens = 0; lane.PresentEditor = (open, _) => { if (open) opens++; };
             var tag = lane.BringPointIntoView(id)!; tag.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
             Assert.That(lane.IsEditorOpen, Is.True); lane.OpenEditor(id); Assert.That(opens, Is.EqualTo(1));
             var editor = (OHsControlPointEditor)lane.FindName("ValueEditor"); UiTestPump.Layout(editor, 320, 260);
@@ -100,7 +100,7 @@ public class OHsControlPointLifecycleTests
             input.Text = "5";
             using var source = new InMemoryPresentationSource();
             editor.VolumeControl.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, source, 0, Key.Enter) { RoutedEvent = Keyboard.KeyDownEvent });
-            Assert.That(project.ControlPoints.Single().Volume, Is.EqualTo(5));
+            Assert.That(project.ControlPoints.Single(p => !project.IsOffsetControlPoint(p)).Volume, Is.EqualTo(5));
             lane.DismissEditor(); var revision = owner.ControlPointsState!.Revision;
             input.Text = "75"; editor.CommitVolumeInput(true);
             Assert.That(owner.ControlPointsState!.Revision, Is.EqualTo(revision));
@@ -116,9 +116,9 @@ public class OHsControlPointLifecycleTests
         try
         {
             UiTestPump.Run(WorkstationControlPointStateTests.Ready(owner)); var lane = OHsControlPointDragTests.Connect(owner);
-            lane.OpenEditor(owner.ControlPointsState!.Points[0].Id); lane.HorizontalOffset = offset;
+            lane.OpenEditor(owner.ControlPointsState!.Points.First(p => p.Timestamp == project.ControlPoints[0].Timestamp).Id); lane.HorizontalOffset = offset;
             Assert.That(lane.IsEditorOpen, Is.False);
-            lane.HorizontalOffset = 0; lane.OpenEditor(owner.ControlPointsState.Points[0].Id);
+            lane.HorizontalOffset = 0; lane.OpenEditor(owner.ControlPointsState.Points.First(p => p.Timestamp == project.ControlPoints[0].Timestamp).Id);
             UiTestPump.Run(owner.DeactivateAsync());
             Assert.That(lane.IsEditorOpen, Is.False); Assert.That(lane.PendingAdd, Is.Null); Assert.That(lane.IsMenuOwnerActive, Is.False);
         }
@@ -133,7 +133,7 @@ public class OHsControlPointLifecycleTests
         try
         {
             UiTestPump.Run(WorkstationControlPointStateTests.Ready(owner)); var lane = OHsControlPointDragTests.Connect(owner);
-            var id = owner.ControlPointsState!.Points[0].Id; lane.OpenEditor(id);
+            var id = owner.ControlPointsState!.Points.First(p => p.Timestamp == project.ControlPoints[0].Timestamp).Id; lane.OpenEditor(id);
             var editor = (OHsControlPointEditor)lane.FindName("ValueEditor"); UiTestPump.Layout(editor, 320, 260);
             ((TextBox)editor.VolumeControl.Template.FindName("PART_TextBox", editor.VolumeControl)).Text = "25";
             lane.DismissEditor(); Assert.That(project.ControlPoints[0].Volume, Is.EqualTo(25));
@@ -167,7 +167,7 @@ public class OHsControlPointLifecycleTests
         try
         {
             UiTestPump.Run(WorkstationControlPointStateTests.Ready(owner)); var lane = OHsControlPointDragTests.Connect(owner);
-            var state = owner.ControlPointsState!; var id = state.Points[0].Id; lane.OpenEditor(id);
+            var state = owner.ControlPointsState!; var id = state.Points.First(p => p.Timestamp == project.ControlPoints[0].Timestamp).Id; lane.OpenEditor(id);
             owner.SetControlPointCommand.Execute(new SetControlPointRequestedMessage(state.Context, id, 25, null));
             UiTestPump.Layout(lane, 4000, 200);
             Assert.That(lane.IsEditorOpen, Is.True); Assert.That(lane.BringPointIntoView(id)!.IsEditing, Is.True);
@@ -185,7 +185,7 @@ public class OHsControlPointLifecycleTests
         {
             UiTestPump.Run(WorkstationControlPointStateTests.Ready(owner)); var lane = OHsControlPointDragTests.Connect(owner);
             OHsControlPointZone? restored = null; lane.PresentEditor = (open, target) => { if (!open) restored = target as OHsControlPointZone; };
-            var id = owner.ControlPointsState!.Points[0].Id; lane.OpenEditor(id);
+            var id = owner.ControlPointsState!.Points.First(p => p.Timestamp == project.ControlPoints[0].Timestamp).Id; lane.OpenEditor(id);
             var editor = (OHsControlPointEditor)lane.FindName("ValueEditor"); UiTestPump.Layout(editor, 320, 260);
             ((TextBox)editor.VolumeControl.Template.FindName("PART_TextBox", editor.VolumeControl)).Text = "25";
             lane.DismissEditor();
@@ -205,7 +205,7 @@ public class OHsControlPointLifecycleTests
             new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
             var page = new WorkstationPage(owner); UiTestPump.Layout(page, 1100, 700);
             var lane = (OHsControlPointLane)page.Timeline.FindName("ControlPointLane"); lane.PresentEditor = (_, _) => { };
-            owner.ScrollWithMarker = true; lane.OpenEditor(owner.ControlPointsState!.Points[0].Id);
+            owner.ScrollWithMarker = true; lane.OpenEditor(owner.ControlPointsState!.Points.First(p => p.Timestamp == project.ControlPoints[0].Timestamp).Id);
             Assert.That(owner.ScrollWithMarker, Is.True); lane.DismissEditor();
         }
         finally { UiTestPump.Run(owner.DeactivateAsync()); }

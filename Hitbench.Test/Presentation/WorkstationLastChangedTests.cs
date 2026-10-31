@@ -12,7 +12,7 @@ public sealed class WorkstationLastChangedTests
     private static async Task<WorkstationPageVM> Ready(IProjectFileService files, ManualTimeProvider clock,
         StubSampleFileService? samples = null, StubSampleFileDialogService? dialog = null, CancellationToken token = default)
     {
-        var project = new ProjectData { Tracks = [new Track()], Offsets = [0], BPMs = [120] };
+        var project = new ProjectData { Tracks = [new Track()], Offsets = [0], BPMs = [120], ControlPoints = [new()] };
         var source = new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", project)) };
         var vm = new WorkstationPageVM(source, new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay),
             new ImmediateUiScheduler(), samples, dialog, files, timeProvider: clock);

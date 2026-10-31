@@ -21,7 +21,7 @@ public sealed class WorkstationInstrumentalResnapTests
         dialogs.Arrangement = async (context, token) => { entered.TrySetResult(context); await Task.Delay(Timeout.Infinite, token); };
         InstrumentalTrackSnapshot? latest = null;
         messenger.Register<InstrumentalTrackChangedMessage>(this, (_, m) => latest = m.Snapshot);
-        var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [sampleTrack, instrument], Offsets = [0], BPMs = [120] })) },
+        var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [sampleTrack, instrument], Offsets = [0], BPMs = [120], ControlPoints = [new()] })) },
             new MarkerPlaybackCoordinator(audio, Task.Delay), new ImmediateUiScheduler(), projectFiles: saves, messenger: messenger, instrumentDialogs: dialogs);
         try
         {
@@ -58,7 +58,7 @@ public sealed class WorkstationInstrumentalResnapTests
         var owner = new WorkstationPageVM(new StubWorkstationSourceService
         {
             Load = (_, _) => Task.FromResult(
-            new WorkstationSource("map", "song", new ProjectData { Tracks = [track, other], Offsets = [0], BPMs = [120] }))
+            new WorkstationSource("map", "song", new ProjectData { Tracks = [track, other], Offsets = [0], BPMs = [120], ControlPoints = [new()] }))
         },
             new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler());
         try

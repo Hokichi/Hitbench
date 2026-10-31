@@ -13,7 +13,7 @@ public static class OHsExportInputFactory
         options.Validate(); token.ThrowIfCancellationRequested();
         var controls = project.ControlPoints.GroupBy(p => p.Timestamp).Select(g => g.Last()).Where(p => !p.IsDisabled).OrderBy(p => p.Timestamp).ToArray();
         foreach (var point in controls)
-            if (point.Timestamp < 0 || point.Volume is < 0 or > 100 || !ControlPoint.SamplesetOptions.Contains(point.Sampleset))
+            if (point.Timestamp < 0 && !project.IsOffsetControlPoint(point) || point.Volume is < 0 or > 100 || !ControlPoint.SamplesetOptions.Contains(point.Sampleset))
                 throw new InvalidDataException("Invalid export control point.");
         (int Set, int Volume) State(decimal time)
         {

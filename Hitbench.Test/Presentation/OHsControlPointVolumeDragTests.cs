@@ -42,12 +42,12 @@ public class OHsControlPointVolumeDragTests
     [TestCase("context")][TestCase("delete")][TestCase("revision")][TestCase("scale")][TestCase("cancel")][TestCase("lostcapture")][TestCase("scroll")]
     public void CancelledVolumeGestureNeverSubmits(string reason)
     {
-        var project = new ProjectData { Offsets = [0], BPMs = [120], ControlPoints = [new() { Volume = 50 }, new() { Timestamp = 5000, Volume = 60 }] };
+        var project = new ProjectData { Offsets = [0], BPMs = [120], ControlPoints = [new() { Timestamp = 1000, Volume = 50 }, new() { Timestamp = 5000, Volume = 60 }] };
         var files = new DelayedProjectFileService(); var owner = WorkstationControlPointStateTests.Create(project, new(), files);
         try
         {
             UiTestPump.Run(WorkstationControlPointStateTests.Ready(owner)); var lane = OHsControlPointDragTests.Connect(owner);
-            var state = owner.ControlPointsState!; var id = state.Points[0].Id;
+            var state = owner.ControlPointsState!; var id = state.Points.Single(p => p.Timestamp == 1000).Id;
             if (reason == "capture") lane.CapturePointer = () => false;
             lane.BeginVolumeDrag(id, 100, 200); lane.UpdateVolumeDrag(50);
             switch (reason)
@@ -58,7 +58,7 @@ public class OHsControlPointVolumeDragTests
                 case "gate": lane.IsEnabled = false; break;
                 case "context": UiTestPump.Run(owner.SettleControlPointsAsync()); break;
                 case "delete": lane.DeletePoint(id); break;
-                case "revision": owner.SetControlPointCommand.Execute(new(state.Context, state.Points[1].Id, 40, null)); break;
+                case "revision": owner.SetControlPointCommand.Execute(new(state.Context, state.Points.Single(p => p.Timestamp == 5000).Id, 40, null)); break;
                 case "scale": lane.ContentWidth *= 2; break;
                 case "scroll": lane.HorizontalOffset = 5000; break;
                 case "lostcapture": lane.RaiseEvent(new System.Windows.Input.MouseEventArgs(System.Windows.Input.Mouse.PrimaryDevice, 0) { RoutedEvent = System.Windows.Input.Mouse.LostMouseCaptureEvent }); break;

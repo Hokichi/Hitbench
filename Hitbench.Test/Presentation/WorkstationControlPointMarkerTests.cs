@@ -16,16 +16,17 @@ public class WorkstationControlPointMarkerTests
         try
         {
             await WorkstationControlPointStateTests.Ready(owner); var initial = owner.ControlPointsState!;
+            var points = initial.Points.Where(p => !p.IsOffsetAnchor).ToArray();
             var original = owner.ControlPointTimestamps;
-            Assert.That(original, Is.EqualTo(new[] { 500, 1500 })); Assert.That(((IList<int>)original).IsReadOnly, Is.True);
-            owner.DeleteControlPointCommand.Execute(new DeleteControlPointRequestedMessage(initial.Context, initial.Points[0].Id));
+            Assert.That(original, Is.EqualTo(new[] { 0, 500, 1500 })); Assert.That(((IList<int>)original).IsReadOnly, Is.True);
+            owner.DeleteControlPointCommand.Execute(new DeleteControlPointRequestedMessage(initial.Context, points[0].Id));
             Assert.That(owner.ControlPointTimestamps, Is.SameAs(original));
-            owner.DeleteControlPointCommand.Execute(new DeleteControlPointRequestedMessage(initial.Context, initial.Points[1].Id));
-            Assert.That(owner.ControlPointTimestamps, Is.EqualTo(new[] { 1500 })); Assert.That(original, Is.EqualTo(new[] { 500, 1500 }));
-            owner.SetControlPointCommand.Execute(new SetControlPointRequestedMessage(initial.Context, initial.Points[2].Id, 35, "Drum"));
-            Assert.That(owner.ControlPointTimestamps, Is.EqualTo(new[] { 1500 }));
-            owner.DeleteControlPointCommand.Execute(new DeleteControlPointRequestedMessage(initial.Context, initial.Points[2].Id));
-            Assert.That(owner.ControlPointTimestamps, Is.Empty);
+            owner.DeleteControlPointCommand.Execute(new DeleteControlPointRequestedMessage(initial.Context, points[1].Id));
+            Assert.That(owner.ControlPointTimestamps, Is.EqualTo(new[] { 0, 1500 })); Assert.That(original, Is.EqualTo(new[] { 0, 500, 1500 }));
+            owner.SetControlPointCommand.Execute(new SetControlPointRequestedMessage(initial.Context, points[2].Id, 35, "Drum"));
+            Assert.That(owner.ControlPointTimestamps, Is.EqualTo(new[] { 0, 1500 }));
+            owner.DeleteControlPointCommand.Execute(new DeleteControlPointRequestedMessage(initial.Context, points[2].Id));
+            Assert.That(owner.ControlPointTimestamps, Is.EqualTo(new[] { 0 }));
         }
         finally { await owner.DeactivateAsync(); }
     }
