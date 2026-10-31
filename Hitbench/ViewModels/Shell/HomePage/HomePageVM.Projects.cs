@@ -19,7 +19,7 @@ public partial class HomePageVM
     public bool IsProjectSearchActive => !string.IsNullOrWhiteSpace(ProjectSearchText);
     public bool HasSelectedMapset => SelectedMapset is not null;
     public bool CanSearchProjects => CanInteract && !HasSelectedMapset && !IsCreatingProject;
-    public bool CanSelectMapset => CanInteract && !IsCreatingProject;
+    public bool CanSelectMapset => CanInteract && !IsCreatingProject && !IsScanningMapsets && !IsProcessing && !IsAwaitingSongsPresentation;
 
     partial void OnSelectedMapsetChanged(FolderEntry? value)
     {
@@ -29,10 +29,12 @@ public partial class HomePageVM
         if (active && projectsInventory is not null) SearchProjectsCommand.Execute(null);
     }
 
-    [RelayCommand]
+    private bool CanSelectMapsetEntry(FolderEntry? entry) => entry is not null && CanSelectMapset;
+
+    [RelayCommand(CanExecute = nameof(CanSelectMapsetEntry))]
     private void SelectMapset(FolderEntry? entry)
     {
-        if (!CanInteract || IsCreatingProject) return;
+        if (!CanSelectMapsetEntry(entry)) return;
         SelectedMapset = string.Equals(SelectedMapset?.FullName, entry?.FullName, StringComparison.OrdinalIgnoreCase) ? null : entry;
     }
 

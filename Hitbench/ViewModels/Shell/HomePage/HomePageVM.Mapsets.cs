@@ -59,9 +59,10 @@ public partial class HomePageVM
             songsInventory = snapshot;
             songsSnapshot = filtered;
             appliedSongSearchText = SongSearchText;
+            var selection = SelectedMapset;
             Songs.Clear();
             foreach (var entry in filtered.ReadPage(0, InitialSongCount)) Songs.Add(entry);
-            if (SelectedMapset is { } current && !snapshot.ReadPage(0, snapshot.Count).Any(x => string.Equals(x.FullName, current.FullName, StringComparison.OrdinalIgnoreCase))) SelectedMapset = null;
+            if (selection is not null) SelectedMapset = snapshot.ReadPage(0, snapshot.Count).FirstOrDefault(x => string.Equals(x.FullName, selection.FullName, StringComparison.OrdinalIgnoreCase));
             songsInventoryGeneration++;
             OnPropertyChanged(nameof(SongsInventoryGeneration));
             OnPropertyChanged(nameof(MapsetInventoryText));
@@ -73,6 +74,6 @@ public partial class HomePageVM
         }
         catch (OperationCanceledException) when (linked.IsCancellationRequested) { }
         catch (Exception error) { if (active) FailPanel(false, error); }
-        finally { if (!awaitingScan && scan != 0) EndMapsetScan(scan); isLocatingFolder = false; RefreshCommands(); }
+        finally { if (!awaitingScan && scan != 0) { EndMapsetScan(scan); SuspendSongsPresentation(); } isLocatingFolder = false; RefreshCommands(); }
     }
 }

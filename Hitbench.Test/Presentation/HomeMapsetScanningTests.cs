@@ -7,6 +7,28 @@ namespace Hitbench.Test.Presentation;
 public sealed class HomeMapsetScanningTests
 {
     [Test]
+    public async Task HiddenMapsetsRejectDirectSelectionUntilPresentation()
+    {
+        var entry = new FolderEntry("one", "one", default);
+        var vm = Create(new StubHomeFolderService { Songs = (_, _) => Task.FromResult<FolderSnapshot?>(new FolderSnapshot([entry])) });
+        try
+        {
+            await vm.LoadAsync(default);
+            await vm.LoadInitialSongsAsync(default);
+            Assert.That(vm.CanSelectMapset, Is.False);
+            Assert.That(vm.SelectMapsetCommand.CanExecute(entry), Is.False);
+            vm.SelectMapsetCommand.Execute(entry);
+            Assert.That(vm.SelectedMapset, Is.Null);
+            vm.CompleteSongsPresentation(vm.SongsPresentationGeneration - 1);
+            Assert.That(vm.CanSelectMapset, Is.False);
+            vm.CompleteSongsPresentation(vm.SongsPresentationGeneration);
+            Assert.That(vm.CanSelectMapset, Is.True);
+            vm.SelectMapsetCommand.Execute(entry);
+            Assert.That(vm.SelectedMapset, Is.SameAs(entry));
+        }
+        finally { vm.Deactivate(); }
+    }
+    [Test]
     public async Task FolderPickerDoesNotScanUntilConfirmationAndLateLoadCannotReactivateHome()
     {
         var selection = new TaskCompletionSource<IReadOnlyList<string>>();

@@ -67,6 +67,8 @@ public partial class HomePageVM(
         scanPresentationGeneration = -1;
         var generation = ++mapsetScanGeneration;
         IsScanningMapsets = true;
+        songsGeneration++;
+        OnPropertyChanged(nameof(SongsPresentationGeneration));
         return generation;
     }
     private void EndMapsetScan(int generation)
@@ -170,6 +172,7 @@ public partial class HomePageVM(
             var initialPage = filtered.ReadPage(0, InitialSongCount);
             songsSnapshot = filtered;
             appliedSongSearchText = query;
+            IsAwaitingSongsPresentation = true;
             Songs.Clear();
             foreach (var row in initialPage) Songs.Add(row);
             UpdateSongsStatus();
@@ -210,6 +213,7 @@ public partial class HomePageVM(
         foreach (var name in new[] { nameof(ProjectsState), nameof(SongsState), nameof(CanUseProjects), nameof(CanUseSongs), nameof(IsSongsProcessing) }) OnPropertyChanged(name);
         OnPropertyChanged(nameof(CanSearchProjects));
         OnPropertyChanged(nameof(CanSelectMapset));
+        SelectMapsetCommand.NotifyCanExecuteChanged();
         ShowProjectCreationCommand.NotifyCanExecuteChanged();
         CancelProjectCreationCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(HasMoreProjects));
@@ -316,10 +320,16 @@ public partial class HomePageVM(
         IsInteractionBlocked = false;
     }
 
-    public void CompleteSongsPresentation(int generation)
+    public bool CompleteSongsPresentation(int generation)
     {
-        if (!active || generation != songsGeneration || !IsAwaitingSongsPresentation || IsLoading || IsSearchingSongs) return;
+        if (!active || generation != songsGeneration || !IsAwaitingSongsPresentation || IsLoading || IsSearchingSongs) return false;
         EndProcessing();
+        return true;
+    }
+
+    public void SuspendSongsPresentation()
+    {
+        if (active && songsSnapshot is not null) IsAwaitingSongsPresentation = true;
     }
 
     public async Task LoadInitialSongsAsync(CancellationToken cancellationToken)
@@ -401,7 +411,11 @@ public partial class HomePageVM(
                 OnPropertyChanged(nameof(SongsPresentationGeneration));
             }
             var rows = projects ? Projects : Songs;
+            var selection = projects ? null : SelectedMapset;
             rows.Clear();
+            if (!projects && selection is not null)
+                SelectedMapset = snapshot?.ReadPage(0, snapshot.Count).FirstOrDefault(x =>
+                    string.Equals(x.FullName, selection.FullName, StringComparison.OrdinalIgnoreCase));
             if (projects && snapshot is not null)
                 await PublishPageAsync(true, snapshot, generation, 64, token);
             if (projects) RebuildProjectItems();
@@ -515,6 +529,7 @@ public partial class HomePageVM(
                 {
                     EndMapsetScan(scan);
                     EndProcessing();
+                    if (active && songsSnapshot is not null) SuspendSongsPresentation();
                 }
             }
         }

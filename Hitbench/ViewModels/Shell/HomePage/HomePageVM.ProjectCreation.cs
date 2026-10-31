@@ -41,7 +41,7 @@ public partial class HomePageVM
         DraftProjectName = "";
         RefreshProjectNameValidation();
     }
-    private bool CanShowProjectCreation() => active && CanInteract && HasSelectedMapset && !IsCreatingProject;
+    private bool CanShowProjectCreation() => CanSelectMapset && HasSelectedMapset;
     private bool CanCancelProjectCreation() => IsProjectNameEditorVisible && !IsCreatingProject;
     private bool CanCreateProject() => CanShowProjectCreation() && IsProjectNameEditorVisible && !IsLoadingProjectNames
         && existingProjectNames is not null && !HasErrors;
