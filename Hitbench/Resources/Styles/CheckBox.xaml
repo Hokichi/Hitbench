@@ -6,7 +6,7 @@
         TargetType="CheckBox">
         <Setter Property="OverridesDefaultStyle" Value="True" />
         <Setter Property="Cursor" Value="Hand" />
-        <Setter Property="FocusVisualStyle" Value="{StaticResource DefaultFocusVisualStyle}" />
+        <Setter Property="FocusVisualStyle" Value="{DynamicResource DefaultFocusVisualStyle}" />
         <Style.Triggers>
 
             <Trigger Property="IsEnabled" Value="False">
@@ -92,7 +92,7 @@
         <Setter Property="Template" Value="{StaticResource RegularCheckBoxTemplate}"/><Setter Property="Background" Value="Transparent"/>
         <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}"/><Setter Property="FontFamily" Value="{DynamicResource Regular}"/>
         <Setter Property="FontWeight" Value="Normal" /><Setter Property="FontSize" Value="{StaticResource FontSize.Body}"/>
-        <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}"/><Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True"/>
+        <Setter Property="FocusVisualStyle" Value="{DynamicResource OHsSampleManagerKeyboardFocusStyle}"/><Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True"/>
         <Style.Triggers><Trigger Property="IsEnabled" Value="False"><Setter Property="Foreground" Value="{DynamicResource Brush.Text.Disabled}"/></Trigger><DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True"><Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}"/></DataTrigger></Style.Triggers>
     </Style>
     <Style TargetType="CheckBox" BasedOn="{StaticResource RegularCheckBoxStyle}"/>

@@ -14,6 +14,7 @@ public sealed class OHsSampleDropImportDialogService(Func<Window?> getOwner, Dis
             token.ThrowIfCancellationRequested(); var owner = present is null ? getOwner() : null;
             if (present is null && owner?.IsVisible != true) return Array.Empty<string>();
             var vm = create(paths); OHsSampleDropImportPopup? popup = null;
+            Exception? primary = null;
             try
             {
                 await vm.InitializeAsync(token); bool accepted;
@@ -21,13 +22,26 @@ public sealed class OHsSampleDropImportDialogService(Func<Window?> getOwner, Dis
                 else
                 {
                     popup = new(vm) { Owner = owner, FlowDirection = owner!.FlowDirection };
-                    using var cancel = token.Register(() => dispatcher.BeginInvoke(() => { if (popup.IsVisible) popup.DialogResult = false; }));
+                    popup.BeginPresentation();
+                    using var cancel = token.Register(() => dispatcher.BeginInvoke(() => { if (popup.IsPresentationActive) popup.TryComplete(false); }));
                     token.ThrowIfCancellationRequested(); accepted = popup.ShowDialog() == true;
                 }
-                token.ThrowIfCancellationRequested(); return accepted ? vm.GetCheckedPaths() : Array.Empty<string>();
+                vm.TryCompleteSelection(accepted);
             }
             catch (OperationCanceledException) when (token.IsCancellationRequested) { return Array.Empty<string>(); }
-            finally { if (popup is not null) popup.ReleaseOwner(); await vm.DeactivateAsync(); }
+            catch (Exception error) { primary = error; throw; }
+            finally
+            {
+                Exception? cleanup = null;
+                try { popup?.ReleaseOwner(); } catch (Exception error) { cleanup = error; }
+                try { await vm.DeactivateAsync(); } catch (Exception error) { cleanup ??= error; }
+                if (cleanup is not null)
+                {
+                    System.Diagnostics.Trace.TraceWarning("Dropped import dialog cleanup failed: {0}", cleanup);
+                    if (primary is null) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(cleanup).Throw();
+                }
+            }
+            return !token.IsCancellationRequested && vm.SelectionAccepted == true ? vm.SelectedPaths : Array.Empty<string>();
         }).Task.Unwrap();
     }
 }

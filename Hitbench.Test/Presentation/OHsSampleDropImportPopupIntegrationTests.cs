@@ -9,12 +9,81 @@ namespace Hitbench.Test.Presentation;
 [Apartment(ApartmentState.STA), NonParallelizable]
 public sealed class OHsSampleDropImportPopupIntegrationTests
 {
+    [TestCase("Dark", false)]
+    [TestCase("Light", false)]
+    [TestCase("Dark", true)]
+    [TestCase("Light", true)]
+    public void ImportConsumersResolveFocusStylesInBothThemes(string theme, bool suppressTab)
+    {
+        new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
+        var app = Application.Current;
+        var dictionaries = app.Resources.MergedDictionaries.ToArray();
+        var fonts = new[] { "Display", "Regular", "Italic", "Bold", "BoldItalic", "Light", "LightItalic" };
+        var previousFonts = fonts.ToDictionary(key => key, key => app.Resources[key]);
+        var vm = new OHsSampleDropImportPopupVM(new[] { "C:/a.wav" }, new StubSampleBrowserService(), new StubSamplePreviewService(), new ImmediateUiScheduler());
+        OHsSampleDropImportPopup? popup = null;
+        using var diagnostics = new StringWriter();
+        using var listener = new System.Diagnostics.TextWriterTraceListener(diagnostics);
+        var source = System.Diagnostics.PresentationTraceSources.DataBindingSource;
+        var previousLevel = source.Switch.Level;
+        source.Listeners.Add(listener);
+        source.Switch.Level = System.Diagnostics.SourceLevels.Error;
+        try
+        {
+            foreach (var key in fonts)
+                app.Resources[key] = new System.Windows.Media.FontFamily("pack://application:,,,/Hitbench;component/Resources/Fonts/#Hitbench Noto Sans");
+            app.Resources.MergedDictionaries[0] = new ResourceDictionary
+            {
+                Source = new Uri($"/Hitbench;component/Resources/Themes/{theme}.xaml", UriKind.Relative)
+            };
+            UiTestPump.Run(vm.InitializeAsync(default));
+            popup = new OHsSampleDropImportPopup(vm, _ => { }) { Width = 700, Height = 500 };
+            KeyboardNavigationPolicy.SetSuppressTabNavigation(popup, suppressTab);
+            Assert.That(popup.ApplyTemplate(), Is.True);
+            UiControlContract.AssertTemplate(popup, "BasePopupTemplate");
+            using var view = new InMemoryView(popup, scheduleLayout: false);
+            view.UpdateLayout();
+            var list = (ListBox)popup.FindName("FileList");
+            var container = (ListBoxItem)list.ItemContainerGenerator.ContainerFromIndex(0);
+            var checkbox = Children(container).OfType<CheckBox>().Single();
+            Assert.That(checkbox.Style.BasedOn, Is.SameAs(checkbox.FindResource("RegularCheckBoxStyle")));
+            Assert.That(checkbox.FocusVisualStyle, Is.SameAs(checkbox.FindResource("OHsSampleManagerKeyboardFocusStyle")));
+            Assert.That(container.FocusVisualStyle, Is.SameAs(container.FindResource("DefaultFocusVisualStyle")));
+            foreach (var action in Children(container).OfType<BalloonButton>().Concat(new[]
+                     { (BalloonButton)popup.FindName("ImportAction"), (BalloonButton)popup.FindName("CancelAction") }))
+            {
+                Assert.That(action.FocusVisualStyle, Is.InstanceOf<Style>());
+                Assert.That(action.FocusVisualStyle.TargetType, Is.EqualTo(typeof(Control)));
+                var expected = action == popup.FindName("ImportAction") || action == popup.FindName("CancelAction")
+                    ? "DefaultFocusVisualStyle" : "OHsSampleManagerKeyboardFocusStyle";
+                Assert.That(action.FocusVisualStyle, Is.SameAs(action.FindResource(expected)));
+                if (suppressTab) Assert.That(action.IsTabStop, Is.False);
+            }
+            checkbox.IsChecked = false;
+            Assert.That(vm.CanConfirm, Is.False);
+            if (suppressTab) Assert.That(checkbox.IsTabStop, Is.False);
+            listener.Flush();
+            Assert.That(diagnostics.ToString(), Is.Empty);
+        }
+        finally
+        {
+            source.Listeners.Remove(listener);
+            source.Switch.Level = previousLevel;
+            popup?.ReleaseOwner();
+            UiTestPump.Run(vm.DeactivateAsync());
+            popup?.Close();
+            app.Resources.MergedDictionaries.Clear();
+            foreach (var dictionary in dictionaries) app.Resources.MergedDictionaries.Add(dictionary);
+            foreach (var key in fonts) app.Resources[key] = previousFonts[key];
+        }
+    }
+
     [Test]
     public void RealCheckboxBindingAndActionsRespectSelectionAndTabSuppression()
     {
         new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts(); var vm = new OHsSampleDropImportPopupVM(new[] { "C:/a.wav" }, new StubSampleBrowserService(), new StubSamplePreviewService(), new ImmediateUiScheduler()); UiTestPump.Run(vm.InitializeAsync(default)); bool? accepted = null; var popup = new OHsSampleDropImportPopup(vm, value => accepted = value) { Width = 700, Height = 500 }; KeyboardNavigationPolicy.SetSuppressTabNavigation(popup, true);
         using var view = new InMemoryView(popup, scheduleLayout: false); view.UpdateLayout();
-        try { var list = (ListBox)popup.FindName("FileList"); var container = (ListBoxItem)list.ItemContainerGenerator.ContainerFromIndex(0); var checkbox = Children(container).OfType<CheckBox>().Single(); Assert.That(checkbox.Style.BasedOn, Is.SameAs(popup.FindResource("RegularCheckBoxStyle"))); Assert.That(System.Windows.Input.KeyboardNavigation.GetIsTabStop(checkbox), Is.False); checkbox.IsChecked = false; Assert.That(vm.CanConfirm, Is.False); Assert.That(((BalloonButton)popup.FindName("ImportAction")).IsEnabled, Is.False); popup.HandleKey(System.Windows.Input.Key.Enter); Assert.That(accepted, Is.Null); checkbox.IsChecked = true; popup.HandleKey(System.Windows.Input.Key.Enter); Assert.That(accepted, Is.True); popup.HandleKey(System.Windows.Input.Key.Escape); Assert.That(accepted, Is.False); }
+        try { var list = (ListBox)popup.FindName("FileList"); var container = (ListBoxItem)list.ItemContainerGenerator.ContainerFromIndex(0); var checkbox = Children(container).OfType<CheckBox>().Single(); Assert.That(checkbox.Style.BasedOn, Is.SameAs(popup.FindResource("RegularCheckBoxStyle"))); Assert.That(System.Windows.Input.KeyboardNavigation.GetIsTabStop(checkbox), Is.False); checkbox.IsChecked = false; Assert.That(vm.CanConfirm, Is.False); Assert.That(((BalloonButton)popup.FindName("ImportAction")).IsEnabled, Is.False); popup.HandleKey(System.Windows.Input.Key.Enter); Assert.That(accepted, Is.Null); checkbox.IsChecked = true; popup.HandleKey(System.Windows.Input.Key.Enter); Assert.That(accepted, Is.True); popup.HandleKey(System.Windows.Input.Key.Escape); Assert.That(accepted, Is.True); }
         finally { popup.ReleaseOwner(); UiTestPump.Run(vm.DeactivateAsync()); popup.Close(); }
     }
     private static IEnumerable<DependencyObject> Children(DependencyObject parent) { yield return parent; for (var i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(parent); i++) foreach (var child in Children(System.Windows.Media.VisualTreeHelper.GetChild(parent, i))) yield return child; }
