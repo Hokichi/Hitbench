@@ -33,6 +33,7 @@
             <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
             <Setter Property="Template" Value="{StaticResource OHsSampleImportItemTemplate}"/>
             <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="4"/>
             <Style.Triggers>
                 <Trigger Property="IsSelected" Value="True">
                     <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Control}"/>
