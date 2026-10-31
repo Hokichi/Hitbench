@@ -9,6 +9,39 @@ namespace Hitbench.Test.Presentation;
 
 public class WorkstationTrackTests
 {
+    [Test]
+    public async Task NewTrackNamesShareSequenceAcrossSampleAndPianoTracks()
+    {
+        var vm = await WorkstationSampleConfigurationTests.CreateAsync();
+        try
+        {
+            vm.AddSampleTrackCommand.Execute(null);
+            vm.AddPianoTrackCommand.Execute(null);
+            vm.AddSampleTrackCommand.Execute(null);
+            Assert.That(vm.Tracks.Select(t => t.Name), Is.EqualTo(new[] { "New Track", "New Track (1)", "New Track (2)" }));
+        }
+        finally { await vm.DeactivateAsync(); }
+    }
+
+    [TestCase("New Track (7)", "New Track (8)")]
+    [TestCase("new track (2147483647)", "New Track (2147483648)")]
+    public async Task NewTrackNamesAdvancePastExistingSuffixes(string occupied, string expected)
+    {
+        var first = new Track { Name = "new track" };
+        var other = new InstrumentalTrack { Name = occupied };
+        var saved = new Track { Name = "" };
+        var vm = await WorkstationSampleConfigurationTests.CreateAsync(first, other, saved);
+        try
+        {
+            vm.AddSampleTrackCommand.Execute(null);
+            Assert.That(vm.Tracks.Last().Name, Is.EqualTo(expected));
+            Assert.That(first.Name, Is.EqualTo("new track"));
+            Assert.That(other.Name, Is.EqualTo(occupied));
+            Assert.That(saved.Name, Is.Empty);
+        }
+        finally { await vm.DeactivateAsync(); }
+    }
+
     [TestCase(false)]
     [TestCase(true)]
     public async Task TrackGainReachesTwoHundredAndPersists(bool instrumental)

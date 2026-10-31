@@ -27,7 +27,7 @@ public partial class WorkstationPageVM
 
     private void AddSampleTrackCore(string fileName)
     {
-        var track = new Track { SelectedSampleFileName = fileName };
+        var track = new Track { Name = GetNewTrackName(), SelectedSampleFileName = fileName };
         Project!.Tracks.Add(track);
         tracks.Add(track);
         SelectedTrack = track;
@@ -39,8 +39,22 @@ public partial class WorkstationPageVM
     private void AddPianoTrack()
     {
         if (!CanAddInstrumentalTrack) return;
-        var track=new InstrumentalTrack();
+        var track=new InstrumentalTrack { Name = GetNewTrackName() };
         Project!.Tracks.Add(track); tracks.Add(track); SelectedTrack=track; NotifyTrackPresentation(); NotifyTrackAuditionState(); QueueSave();
+    }
+
+    private string GetNewTrackName()
+    {
+        const string name = "New Track";
+        var names = tracks.Select(track => track.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (!names.Contains(name)) return name;
+        var suffix = System.Numerics.BigInteger.Zero;
+        foreach (var existing in names)
+            if (existing.StartsWith(name + " (", StringComparison.OrdinalIgnoreCase) && existing.EndsWith(')') &&
+                System.Numerics.BigInteger.TryParse(existing.AsSpan(name.Length + 2, existing.Length - name.Length - 3),
+                    System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var value))
+                suffix = System.Numerics.BigInteger.Max(suffix, value);
+        return name + " (" + (suffix + 1).ToString(System.Globalization.CultureInfo.InvariantCulture) + ")";
     }
 
     [RelayCommand]
