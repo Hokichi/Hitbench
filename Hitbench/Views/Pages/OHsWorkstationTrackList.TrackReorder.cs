@@ -20,6 +20,7 @@ public partial class OHsWorkstationTrackList
     private ProjectData? trackDragProject;
     private int trackDragGeneration;
     private int trackOrderRevision;
+    private int trackGestureRevision;
     private Point trackPointerStart;
     private bool trackPointerCaptured;
     private Point trackPointerLast;
@@ -32,7 +33,7 @@ public partial class OHsWorkstationTrackList
     private double trackPreviewWidth;
     private OHsWorkstationTrackRow? trackPreviewRow;
     private readonly HashSet<ListBoxItem> trackDragContainers = [];
-    private (double Extent, string Name, bool Collapsed, bool Muted, bool Solo, int Volume, string? Sample, double Width, double Offset) trackImageState;
+    private (double Extent, string Name, bool Collapsed, bool Muted, bool Solo, int Volume, string? Sample, double Width, double Offset, string? Color) trackImageState;
     private static readonly DependencyProperty TrackDragThemeBrushProperty = DependencyProperty.Register(
         "TrackDragThemeBrush", typeof(Brush), typeof(OHsWorkstationTrackList),
         new PropertyMetadata(null, (d, _) => ((OHsWorkstationTrackList)d).RefreshTrackDragPresentation(true)));
@@ -179,6 +180,7 @@ public partial class OHsWorkstationTrackList
 
     internal bool CompleteTrackPointer(Point point)
     {
+        var gesture = trackGestureRevision;
         try
         {
             if (!IsTrackDragActive || !IsTrackSessionCurrent()) return false;
@@ -193,7 +195,7 @@ public partial class OHsWorkstationTrackList
             if (index is null || index == owner.Tracks.IndexOf(source)) return false;
             // Releasing native capture can synchronously invoke user code. Validate again afterwards.
             CancelTrackPointer();
-            if (!ReferenceEquals(owner, viewModel) || !ReferenceEquals(project, owner.Project) || generation != owner.LoadGeneration ||
+            if (trackGestureRevision != gesture + 1 || !ReferenceEquals(owner, viewModel) || !ReferenceEquals(project, owner.Project) || generation != owner.LoadGeneration ||
                 revision != trackOrderRevision || !CanReorderTrack(source)) return false;
             return owner.MoveTrack(source, index.Value);
         }
@@ -202,11 +204,12 @@ public partial class OHsWorkstationTrackList
             System.Diagnostics.Trace.TraceError("Track drop failed: {0}", error);
             return false;
         }
-        finally { CancelTrackPointer(); }
+        finally { if (trackGestureRevision == gesture) CancelTrackPointer(); }
     }
 
     internal void CancelTrackPointer()
     {
+        trackGestureRevision++;
         var release = trackPointerCaptured;
         trackPointerCaptured = false; IsTrackDragActive = false; DraggedTrack = null; TrackInsertionSlot = null;
         trackDragOwner = null; trackDragProject = null; trackWheelRemainder = 0;
@@ -214,7 +217,9 @@ public partial class OHsWorkstationTrackList
         SystemParameters.StaticPropertyChanged -= OnTrackDragSettingsChanged;
         foreach (var container in trackDragContainers.ToArray()) DetachTrackDragContainer(container);
         if (trackDragAdorner is not null) trackDragLayer?.Remove(trackDragAdorner);
-        trackDragAdorner = null; trackDragLayer = null; trackDragImage = null; trackPreviewRow = null;
+        trackDragAdorner = null; trackDragLayer = null; trackDragImage = null;
+        if (trackPreviewRow is { } preview) { preview.Track = null; preview.ViewModel = null; }
+        trackPreviewRow = null;
         if (!release) return;
         if (ReleaseTrackPointer is { } substitute) substitute();
         else if (IsMouseCaptured) ReleaseMouseCapture();
@@ -225,7 +230,11 @@ public partial class OHsWorkstationTrackList
     {
         if (e.PropertyName != nameof(SystemParameters.HighContrast)) return;
         if (Dispatcher.CheckAccess()) RefreshTrackDragPresentation(true);
-        else Dispatcher.BeginInvoke(() => RefreshTrackDragPresentation(true));
+        else
+        {
+            var gesture = trackGestureRevision;
+            Dispatcher.BeginInvoke(() => { if (gesture == trackGestureRevision) RefreshTrackDragPresentation(true); });
+        }
     }
 
     private Rect GetTrackDragViewport()
@@ -244,11 +253,12 @@ public partial class OHsWorkstationTrackList
         if (!IsTrackSessionCurrent()) { CancelTrackPointer(); return; }
         if (!TrackList.IsArrangeValid) return;
         refreshingTrackDrag = true;
+        var gesture = trackGestureRevision;
         try
         {
             var source = DraggedTrack!;
             var state = (viewModel.GetTrackExtent(source), source.Name, source.IsCollapsed, source.IsTrackMuted,
-                source.IsTrackSoloed, source.Volume, source.SelectedSampleFileName, TimelineContentWidth, TimelineHorizontalOffset);
+                source.IsTrackSoloed, source.Volume, source.SelectedSampleFileName, TimelineContentWidth, TimelineHorizontalOffset, source.Color);
             var rows = RealizedRows(TrackList).Select(row => (Row: row, Container: FindAncestor<ListBoxItem>(row)))
                 .Where(pair => pair.Container is not null && pair.Row.IsArrangeValid)
                 .Select(pair => (pair.Row, Container: pair.Container!, Index: TrackList.ItemContainerGenerator.IndexFromContainer(pair.Container!),
@@ -258,12 +268,18 @@ public partial class OHsWorkstationTrackList
             {
                 var sourceRow = RealizedRows(TrackList).FirstOrDefault(row => ReferenceEquals(row.Track, source));
                 if (sourceRow is not null && !OHsTrackDragPresentation.GetIsSource(FindAncestor<ListBoxItem>(sourceRow)!))
-                    trackPreviewWidth = sourceRow.ActualWidth;
-                if (sourceRow is null)
                 {
-                    trackPreviewRow ??= new OHsWorkstationTrackRow { ViewModel = viewModel, Track = source, DataContext = source };
-                    sourceRow = trackPreviewRow;
+                    trackPreviewWidth = sourceRow.ActualWidth;
+                    if (trackPreviewRow is not null) trackPreviewRow.UseTouchTargets = sourceRow.UseTouchTargets;
                 }
+                trackPreviewRow ??= new OHsWorkstationTrackRow { IsTrackDragPreview = true, ViewModel = viewModel, Track = source, DataContext = source };
+                if (sourceRow is not null) trackPreviewRow.UseTouchTargets = sourceRow.UseTouchTargets;
+                sourceRow = trackPreviewRow;
+                OHsTrackDragPresentation.SetIsSource(sourceRow, false);
+                Hitbench.Resources.Helpers.KeyboardNavigationPolicy.SetSuppressTabNavigation(sourceRow, true);
+                sourceRow.TrackSideColumnWidth = TrackSideColumnWidth;
+                sourceRow.Language = Language;
+                if (!double.IsFinite(trackPreviewWidth) || trackPreviewWidth <= 0) { CancelTrackPointer(); return; }
                 sourceRow.FlowDirection = FlowDirection;
                 sourceRow.TimelineContentWidth = TimelineContentWidth;
                 sourceRow.TimelineViewportWidth = TrackViewportWidth;
@@ -272,7 +288,9 @@ public partial class OHsWorkstationTrackList
                 sourceRow.Measure(new Size(trackPreviewWidth, sourceRow.CurrentTrackExtent));
                 sourceRow.Arrange(new Rect(0, 0, trackPreviewWidth, sourceRow.CurrentTrackExtent));
                 sourceRow.UpdateLayout();
-                trackDragImage = CaptureTrackPreview is { } substitute ? substitute(sourceRow) : CaptureTrackRowImage(sourceRow);
+                var capturedImage = CaptureTrackPreview is { } substitute ? substitute(sourceRow) : CaptureTrackRowImage(sourceRow);
+                if (gesture != trackGestureRevision) return;
+                trackDragImage = capturedImage;
                 if (!IsTrackDragActive || !IsTrackSessionCurrent()) { CancelTrackPointer(); return; }
                 if (trackDragImage is null) { CancelTrackPointer(); return; }
                 // The public row extent owns collapse/expanded sizing; image pixels do not.
@@ -317,7 +335,7 @@ public partial class OHsWorkstationTrackList
         catch (Exception error)
         {
             System.Diagnostics.Trace.TraceError("Track preview failed: {0}", error);
-            CancelTrackPointer();
+            if (gesture == trackGestureRevision) CancelTrackPointer();
         }
         finally { refreshingTrackDrag = false; }
     }

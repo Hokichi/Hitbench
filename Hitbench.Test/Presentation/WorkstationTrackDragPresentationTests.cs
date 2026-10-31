@@ -10,6 +10,25 @@ namespace Hitbench.Test.Presentation;
 public sealed class WorkstationTrackDragPresentationTests
 {
     [Test]
+    public void CaptureUsesDetachedRowWithoutRearrangingLiveSource()
+    {
+        using var context = new WorkstationTrackDragTestContext();
+        var live = context.Row(1);
+        var extent = context.Vm.GetTrackExtent(live.Track!);
+        context.Owner.CaptureTrackPreview = preview =>
+        {
+            Assert.That(preview, Is.Not.SameAs(live));
+            Assert.That(System.Windows.Media.VisualTreeHelper.GetParent(preview), Is.Null);
+            Assert.That(preview.Track, Is.SameAs(live.Track));
+            Assert.That(preview.IsArrangeValid, Is.True);
+            Assert.That(context.Vm.GetTrackExtent(live.Track!), Is.EqualTo(extent));
+            return context.Preview;
+        };
+        context.Start(1);
+        Assert.That(context.Owner.IsTrackDragActive, Is.True);
+    }
+
+    [Test]
     public void SourceSpaceClosesWithExactlyOneExplicitInsertionGap()
     {
         using var context = new WorkstationTrackDragTestContext();

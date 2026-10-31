@@ -27,6 +27,23 @@ public sealed class WorkstationTrackDragTests
     }
 
     [Test]
+    public void ReleaseReentrancyCannotCommitOrCancelReplacementGesture()
+    {
+        using var context = new WorkstationTrackDragTestContext();
+        context.Start();
+        var replacement = context.Vm.Tracks[1];
+        context.Owner.ReleaseTrackPointer = () =>
+        {
+            context.View.UpdateLayout();
+            var row = context.Row(1);
+            Assert.That(context.Owner.BeginTrackPointer(row, context.PointOn(row)), Is.True);
+        };
+        Assert.That(context.Owner.CompleteTrackPointer(context.PointOn(context.Row(3))), Is.False);
+        Assert.That(context.Owner.DraggedTrack, Is.SameAs(replacement));
+        Assert.That(context.Saves.Writes, Is.Zero);
+    }
+
+    [Test]
     public void DrawModeCannotArmTrackDrag()
     {
         using var context = new WorkstationTrackDragTestContext();

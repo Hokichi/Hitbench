@@ -12,6 +12,27 @@ namespace Hitbench.Test.Presentation;
 public sealed class WorkstationTrackDragScrollingTests
 {
     [Test]
+    public void NoOpDropRestoresScrollOwnedLayout()
+    {
+        using var context = new WorkstationTrackDragTestContext(120);
+        var track = context.Vm.Tracks[2];
+        context.Start(2);
+        Assert.That(context.Owner.CompleteTrackPointer(context.PointOn(context.Row(2))), Is.False);
+        context.View.UpdateLayout();
+        var row = context.Row(2);
+        var scroll = WorkstationTrackDragTestContext.Descendants<ScrollViewer>(context.List).First();
+        var before = row.TranslatePoint(new Point(), context.Owner).Y;
+        var offset = scroll.VerticalOffset;
+        scroll.ScrollToVerticalOffset(offset + 20); context.View.UpdateLayout();
+        Assert.That(row.TranslatePoint(new Point(), context.Owner).Y,
+            Is.EqualTo(before - (scroll.VerticalOffset - offset)).Within(0.01));
+        context.Owner.TimelineHorizontalOffset = 25; context.Owner.RefreshViewport(); context.View.UpdateLayout();
+        Assert.That(row.TimelineHorizontalOffset, Is.EqualTo(25));
+        Assert.That(row.Track, Is.SameAs(track));
+        Assert.That(context.Saves.Writes, Is.Zero);
+    }
+
+    [Test]
     public void WheelDragSurvivesSourceRecyclingAndDropsAtDistantTrack()
     {
         using var context = new WorkstationTrackDragTestContext(120);

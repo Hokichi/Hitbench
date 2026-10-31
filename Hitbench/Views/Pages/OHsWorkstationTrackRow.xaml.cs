@@ -32,8 +32,8 @@ public partial class OHsWorkstationTrackRow : UserControl
         PreviewMouseRightButtonUp += (_, e) => { if (TryOpenTrackMenu(e.OriginalSource as DependencyObject)) e.Handled = true; };
         PreviewKeyDown += (_, e) => { if ((e.Key == Key.Apps || e.Key == Key.F10 && Keyboard.Modifiers == ModifierKeys.Shift) && TryOpenTrackMenu(e.OriginalSource as DependencyObject)) e.Handled = true; };
         ((ObjectDataProvider)Resources["OHsWorkstationTrackRowSource"]).ObjectInstance = this;
-        Loaded += (_, _) => { UseTouchTargets = Tablet.TabletDevices.Cast<TabletDevice>().Any(device => device.Type == TabletDeviceType.Touch); Subscribe(); RefreshPresentation(); if (FindVisualChild<StackPanel>(this, "TrackLeftControls") is { } controls) UpdateTrackHeightMinimum(controls); };
-        Unloaded += (_, _) => { InvalidateSampleConfiguration(); if (Track is {} track) ViewModel?.CancelTrackRename(track); DetachActionMenu(); Unsubscribe(); };
+        Loaded += (_, _) => { if (IsTrackDragPreview) return; UseTouchTargets = Tablet.TabletDevices.Cast<TabletDevice>().Any(device => device.Type == TabletDeviceType.Touch); Subscribe(); RefreshPresentation(); if (FindVisualChild<StackPanel>(this, "TrackLeftControls") is { } controls) UpdateTrackHeightMinimum(controls); };
+        Unloaded += (_, _) => { if (IsTrackDragPreview) return; InvalidateSampleConfiguration(); if (Track is {} track) ViewModel?.CancelTrackRename(track); DetachActionMenu(); Unsubscribe(); };
     }
     public static readonly DependencyProperty UseTouchTargetsProperty = DependencyProperty.Register(nameof(UseTouchTargets), typeof(bool), typeof(OHsWorkstationTrackRow), new PropertyMetadata(false));
     public bool UseTouchTargets { get => (bool)GetValue(UseTouchTargetsProperty); set => SetValue(UseTouchTargetsProperty, value); }
@@ -54,8 +54,10 @@ public partial class OHsWorkstationTrackRow : UserControl
     public Track? Track { get => (Track?)GetValue(TrackProperty); set => SetValue(TrackProperty, value); }
     public static readonly DependencyProperty ViewModelProperty = DependencyProperty.Register(nameof(ViewModel), typeof(WorkstationPageVM), typeof(OHsWorkstationTrackRow), new PropertyMetadata(null, OnOwnerChanged));
     public WorkstationPageVM? ViewModel { get => (WorkstationPageVM?)GetValue(ViewModelProperty); set => SetValue(ViewModelProperty, value); }
+    internal bool IsTrackDragPreview { get; init; }
     private void Subscribe()
     {
+        if (IsTrackDragPreview) return;
         if (ReferenceEquals(subscribedViewModel, ViewModel)) return;
         Unsubscribe();
         subscribedViewModel = ViewModel;
@@ -103,7 +105,7 @@ public partial class OHsWorkstationTrackRow : UserControl
             var wasRenaming = IsRenaming;
             IsRenaming = ReferenceEquals(viewModel.RenamingTrack, current);
             SetCurrentValue(TrackNameDraftProperty, IsRenaming ? viewModel.TrackNameDraft : current.Name);
-            if (IsRenaming && !wasRenaming)
+            if (!IsTrackDragPreview && IsRenaming && !wasRenaming)
                 Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background, () =>
                 {
                     if (IsRenaming && ReferenceEquals(Track, current)) FocusTrackNameEditor();
@@ -268,7 +270,7 @@ public partial class OHsWorkstationTrackRow : UserControl
 
     private void UpdateTrackHeightMinimum(object sender)
     {
-        if (viewModel is null || sender is not StackPanel stack) return;
+        if (IsTrackDragPreview || viewModel is null || sender is not StackPanel stack) return;
         var row=FindAncestor<Grid>(stack);
         if(row is null)return;
         var left = FindVisualChild<StackPanel>(row, "TrackLeftControls");
@@ -317,7 +319,7 @@ public partial class OHsWorkstationTrackRow : UserControl
     {
         var row = (OHsWorkstationTrackRow)d;
         row.InvalidateSampleConfiguration();
-        if (e.OldValue is Track old) row.ViewModel?.CancelTrackRename(old);
+        if (!row.IsTrackDragPreview && e.OldValue is Track old) row.ViewModel?.CancelTrackRename(old);
         row.DetachActionMenu();
         row.RefreshPresentation();
         row.AttachActionMenu();
@@ -326,7 +328,7 @@ public partial class OHsWorkstationTrackRow : UserControl
     {
         var row = (OHsWorkstationTrackRow)d;
         row.InvalidateSampleConfiguration();
-        if (e.OldValue is WorkstationPageVM old && row.Track is {} track) old.CancelTrackRename(track);
+        if (!row.IsTrackDragPreview && e.OldValue is WorkstationPageVM old && row.Track is {} track) old.CancelTrackRename(track);
         row.DetachActionMenu(); row.Subscribe(); row.RefreshPresentation(); row.AttachActionMenu();
     }
     private void OnActionMenuLoaded(object sender, RoutedEventArgs e) => AttachActionMenu();
@@ -336,7 +338,7 @@ public partial class OHsWorkstationTrackRow : UserControl
     }
     private void AttachActionMenu()
     {
-        if (Track is null || ViewModel is null || FindVisualChild<BalloonComboBox>(this) is not {} trigger || trigger.ContextMenu is not null) return;
+        if (IsTrackDragPreview || Track is null || ViewModel is null || FindVisualChild<BalloonComboBox>(this) is not {} trigger || trigger.ContextMenu is not null) return;
         var menu = (ContextMenu)FindResource("OHsWorkstationTrackActionMenu");
         menu.Resources = Resources;
         menu.DataContext = Track;
