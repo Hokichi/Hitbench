@@ -1,5 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Automation;
+using CommunityToolkit.Mvvm.Input;
 using Hitbench.Resources.CustomControls;
 using Hitbench.Resources.Helpers;
 using Hitbench.ViewModels.Popups;
@@ -9,6 +11,70 @@ namespace Hitbench.Test.Presentation;
 [Apartment(ApartmentState.STA), NonParallelizable]
 public sealed class OHsSampleDropImportPopupIntegrationTests
 {
+    [TestCase("Dark", FlowDirection.LeftToRight)]
+    [TestCase("Light", FlowDirection.LeftToRight)]
+    [TestCase("Dark", FlowDirection.RightToLeft)]
+    [TestCase("Light", FlowDirection.RightToLeft)]
+    public void ImportRowsUseNeutralOwnerContractAndPreviewOnly(string theme, FlowDirection flow)
+    {
+        var preview = new StubSamplePreviewService();
+        var vm = new OHsSampleDropImportPopupVM(["C:/a.wav"], new StubSampleBrowserService(), preview, new ImmediateUiScheduler());
+        WithPopup(vm, (popup, view) =>
+        {
+            var list = (ListBox)popup.FindName("FileList");
+            var item = (ListBoxItem)list.ItemContainerGenerator.ContainerFromIndex(0);
+            UiControlContract.AssertStyle<ListBoxItem>(item, "OHsSampleImportItemStyle");
+            UiControlContract.AssertTemplate(item, "OHsSampleImportItemTemplate");
+            Assert.That(item.Style.BasedOn, Is.SameAs(item.FindResource("PlainListBoxItemStyle")));
+            var row = Children(item).OfType<OHsSampleRow>().Single();
+            UiControlContract.AssertStyle<OHsSampleRow>(row, "BaseControlStyle");
+            var checkbox = Children(item).OfType<CheckBox>().Single();
+            UiControlContract.AssertStyle<CheckBox>(checkbox, "OHsSampleImportChoiceStyle");
+            Assert.That(checkbox.Style.BasedOn, Is.SameAs(checkbox.FindResource("RegularCheckBoxStyle")));
+            UiControlContract.AssertTemplate(checkbox, "RegularCheckBoxTemplate");
+            var play = Children(item).OfType<BalloonButton>().Single();
+            UiControlContract.AssertStyle<BalloonButton>(play, "OHsSampleRowPlayStyle");
+            Assert.That(play.Style.BasedOn, Is.SameAs(play.FindResource("OHsBalloonNeutralActionStyle")));
+            Assert.That(play.Command, Is.SameAs(vm.PlayCommand));
+            Assert.That(play.CommandParameter, Is.SameAs(vm.Entries[0]));
+            Assert.That(Children(item).OfType<BalloonComboBox>(), Is.Empty);
+            Assert.That(Children(item).OfType<TextBox>(), Is.Empty);
+            Assert.That(Children(item).OfType<FrameworkElement>().Any(element => element.ContextMenu is not null), Is.False);
+            Assert.That(Children(item).OfType<Control>().All(control => !control.IsTabStop), Is.True);
+            UiTestPump.Run(((IAsyncRelayCommand)play.Command).ExecuteAsync(play.CommandParameter));
+            Assert.That(preview.PlayedPaths, Is.EqualTo(new[] { "C:/a.wav" }));
+        }, theme, flow);
+    }
+
+    [Test]
+    public void EqualAndLongNamesExposeDistinctPaths()
+    {
+        var paths = new[] { $"C:/{new string('a', 100)}/hit.wav", $"C:/{new string('b', 100)}/hit.wav" };
+        var preview = new StubSamplePreviewService();
+        var vm = new OHsSampleDropImportPopupVM(paths, new StubSampleBrowserService(), preview, new ImmediateUiScheduler());
+        WithPopup(vm, (popup, view) =>
+        {
+            var list = (ListBox)popup.FindName("FileList");
+            for (var i = 0; i < paths.Length; i++)
+            {
+                var item = (ListBoxItem)list.ItemContainerGenerator.ContainerFromIndex(i);
+                var row = Children(item).OfType<OHsSampleRow>().Single();
+                var checkbox = Children(item).OfType<CheckBox>().Single();
+                Assert.That(row.FileName, Is.EqualTo("hit.wav"));
+                Assert.That(row.FileToolTip, Is.EqualTo(paths[i]));
+                Assert.That(AutomationProperties.GetName(row), Is.EqualTo(paths[i]));
+                Assert.That(AutomationProperties.GetName(checkbox), Is.EqualTo(paths[i]));
+                Assert.That(checkbox.ToolTip, Is.EqualTo(paths[i]));
+                var play = Children(row).OfType<BalloonButton>().Single();
+                UiTestPump.Run(((IAsyncRelayCommand)play.Command).ExecuteAsync(play.CommandParameter));
+            }
+            var first = (ListBoxItem)list.ItemContainerGenerator.ContainerFromIndex(0);
+            Children(first).OfType<CheckBox>().Single().IsChecked = false;
+            Assert.That(vm.GetCheckedPaths(), Is.EqualTo(new[] { paths[1] }));
+            Assert.That(preview.PlayedPaths, Is.EqualTo(paths));
+        });
+    }
+
     [TestCase("Dark", false)]
     [TestCase("Light", false)]
     [TestCase("Dark", true)]
@@ -86,5 +152,36 @@ public sealed class OHsSampleDropImportPopupIntegrationTests
         try { var list = (ListBox)popup.FindName("FileList"); var container = (ListBoxItem)list.ItemContainerGenerator.ContainerFromIndex(0); var checkbox = Children(container).OfType<CheckBox>().Single(); Assert.That(checkbox.Style.BasedOn, Is.SameAs(popup.FindResource("RegularCheckBoxStyle"))); Assert.That(System.Windows.Input.KeyboardNavigation.GetIsTabStop(checkbox), Is.False); checkbox.IsChecked = false; Assert.That(vm.CanConfirm, Is.False); Assert.That(((BalloonButton)popup.FindName("ImportAction")).IsEnabled, Is.False); popup.HandleKey(System.Windows.Input.Key.Enter); Assert.That(accepted, Is.Null); checkbox.IsChecked = true; popup.HandleKey(System.Windows.Input.Key.Enter); Assert.That(accepted, Is.True); popup.HandleKey(System.Windows.Input.Key.Escape); Assert.That(accepted, Is.True); }
         finally { popup.ReleaseOwner(); UiTestPump.Run(vm.DeactivateAsync()); popup.Close(); }
     }
+    private static void WithPopup(OHsSampleDropImportPopupVM vm, Action<OHsSampleDropImportPopup, InMemoryView> check,
+        string theme = "Dark", FlowDirection flow = FlowDirection.LeftToRight)
+    {
+        new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
+        var app = Application.Current;
+        var dictionaries = app.Resources.MergedDictionaries.ToArray();
+        OHsSampleDropImportPopup? popup = null;
+        try
+        {
+            app.Resources.MergedDictionaries[0] = new ResourceDictionary
+            {
+                Source = new Uri($"/Hitbench;component/Resources/Themes/{theme}.xaml", UriKind.Relative)
+            };
+            UiTestPump.Run(vm.InitializeAsync(default));
+            popup = new OHsSampleDropImportPopup(vm, _ => { }) { Width = 700, Height = 500, FlowDirection = flow };
+            KeyboardNavigationPolicy.SetSuppressTabNavigation(popup, true);
+            // InMemoryView detaches content from the Window; preserve its consumer resource scope.
+            ((FrameworkElement)popup.Content).Resources.MergedDictionaries.Add(popup.Resources);
+            using var view = new InMemoryView(popup, scheduleLayout: false);
+            check(popup, view);
+        }
+        finally
+        {
+            popup?.ReleaseOwner();
+            UiTestPump.Run(vm.DeactivateAsync());
+            popup?.Close();
+            app.Resources.MergedDictionaries.Clear();
+            foreach (var dictionary in dictionaries) app.Resources.MergedDictionaries.Add(dictionary);
+        }
+    }
+
     private static IEnumerable<DependencyObject> Children(DependencyObject parent) { yield return parent; for (var i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(parent); i++) foreach (var child in Children(System.Windows.Media.VisualTreeHelper.GetChild(parent, i))) yield return child; }
 }
