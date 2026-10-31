@@ -37,6 +37,15 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
+        <Style x:Key="OHsSampleRowActionsStyle" TargetType="ContentPresenter" BasedOn="{StaticResource BaseContentPresenterStyle}">
+            <Setter Property="Content" Value="{Binding DataContext, RelativeSource={RelativeSource AncestorType=c:OHsSampleRow}, Mode=OneWay}"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding ActionsTemplate, RelativeSource={RelativeSource AncestorType=c:OHsSampleRow}, Mode=OneWay}" Value="{x:Null}">
+                    <Setter Property="Content" Value="{x:Null}"/>
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
         <Style x:Key="OHsSampleRowWaveformBacking" TargetType="Border" BasedOn="{StaticResource BaseBorderStyle}">
             <Setter Property="Background" Value="{DynamicResource Brush.Background.Surface}"/>
             <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Waveform.Unplayed}"/>
@@ -78,7 +87,7 @@
                 <c:WaveformView Height="32" Data="{Binding Waveform, RelativeSource={RelativeSource AncestorType=c:OHsSampleRow}, Mode=OneWay}" ShowPlaybackMarker="False" CenterWaveform="True" WaveformBrush="{Binding Path=(TextElement.Foreground), RelativeSource={RelativeSource AncestorType=Border}, Mode=OneWay}" IsHitTestVisible="False"/>
             </Border>
             <c:BalloonButton x:Name="PlayAction" Grid.Row="1" Grid.Column="1" Style="{StaticResource OHsSampleRowPlayStyle}" Command="{Binding PlayCommand, RelativeSource={RelativeSource AncestorType=c:OHsSampleRow}, Mode=OneWay}" CommandParameter="{Binding PlayCommandParameter, RelativeSource={RelativeSource AncestorType=c:OHsSampleRow}, Mode=OneWay}" AutomationProperties.Name="{Binding FileName, RelativeSource={RelativeSource AncestorType=c:OHsSampleRow}, Mode=OneWay, StringFormat=Play or pause {0}}" ToolTip="{Binding FileName, RelativeSource={RelativeSource AncestorType=c:OHsSampleRow}, Mode=OneWay, StringFormat=Play or pause {0}}"/>
-            <ContentPresenter Grid.Row="1" Grid.Column="2" Content="{Binding DataContext, RelativeSource={RelativeSource AncestorType=c:OHsSampleRow}, Mode=OneWay}" ContentTemplate="{Binding ActionsTemplate, RelativeSource={RelativeSource AncestorType=c:OHsSampleRow}, Mode=OneWay}" Style="{StaticResource BaseContentPresenterStyle}"/>
+            <ContentPresenter Grid.Row="1" Grid.Column="2" ContentTemplate="{Binding ActionsTemplate, RelativeSource={RelativeSource AncestorType=c:OHsSampleRow}, Mode=OneWay}" Style="{StaticResource OHsSampleRowActionsStyle}"/>
         </Grid>
     </Border>
 </UserControl>
