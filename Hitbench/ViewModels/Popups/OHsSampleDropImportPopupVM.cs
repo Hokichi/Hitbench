@@ -20,6 +20,25 @@ public sealed partial class OHsSampleDropImportPopupVM : ObservableObject
     private readonly List<Task> monitors = [];
     private int previewGeneration;
     private bool closed;
+    private Task? deactivation;
+    public bool? SelectionAccepted { get; private set; }
+    public IReadOnlyList<string> SelectedPaths { get; private set; } = Array.Empty<string>();
+    public bool TryCompleteSelection(bool accepted)
+    {
+        if (SelectionAccepted.HasValue || closed || (accepted && !CanConfirm)) return false;
+        SelectedPaths = accepted ? GetCheckedPaths() : Array.Empty<string>();
+        SelectionAccepted = accepted;
+        RequestCancellation();
+        return true;
+    }
+    public void RequestCancellation()
+    {
+        if (closed) return;
+        closed = true; ++previewGeneration;
+        foreach (var entry in Entries) { entry.IsPlaying = false; entry.PropertyChanged -= OnEntryChanged; }
+        lifetime.Cancel();
+        OnPropertyChanged(nameof(CanConfirm)); PlayCommand.NotifyCanExecuteChanged();
+    }
     public ObservableCollection<OHsDroppedSampleEntry> Entries { get; }
     public bool CanConfirm => !closed && Entries.Any(e => e.IsChecked);
     public OHsSampleDropImportPopupVM(IReadOnlyList<string> paths, ISampleBrowserService browser, ISamplePreviewService preview, IUiScheduler scheduler, PlaybackVolumeSettings? playbackVolumes = null)
@@ -39,9 +58,10 @@ public sealed partial class OHsSampleDropImportPopupVM : ObservableObject
     }
     private async Task ReadAsync(OHsDroppedSampleEntry entry)
     {
+        var token = lifetime.Token;
         var entered = false;
-        try { await reads.WaitAsync(lifetime.Token); entered = true; var data = await browser.ReadWaveformAsync(entry.SourcePath, lifetime.Token); await scheduler.InvokeAsync(() => { if (!closed && !lifetime.IsCancellationRequested) entry.Waveform = data; }, lifetime.Token); }
-        catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
+        try { await reads.WaitAsync(token); entered = true; var data = await browser.ReadWaveformAsync(entry.SourcePath, token); await scheduler.InvokeAsync(() => { if (!closed && !token.IsCancellationRequested) entry.Waveform = data; }, token); }
+        catch (OperationCanceledException) when (token.IsCancellationRequested) { }
         catch (Exception e) { System.Diagnostics.Trace.TraceWarning("Dropped sample waveform unavailable: {0}", e.Message); }
         finally { if (entered) reads.Release(); }
     }
@@ -56,27 +76,53 @@ public sealed partial class OHsSampleDropImportPopupVM : ObservableObject
     }
     private async Task ChangePreviewAsync(Task previous, OHsDroppedSampleEntry entry, bool play, int generation)
     {
+        var token = lifetime.Token;
         try
         {
             await previous; await preview.StopAsync(CancellationToken.None); if (closed || generation != previewGeneration || !play) return;
-            await preview.PlayAsync(entry.SourcePath, volumes?.ApplicationVolume ?? 100, lifetime.Token);
+            await preview.PlayAsync(entry.SourcePath, volumes?.ApplicationVolume ?? 100, token);
             if (closed || generation != previewGeneration) { await preview.StopAsync(CancellationToken.None); return; }
             monitors.Add(MonitorAsync(entry, generation));
         }
-        catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
+        catch (OperationCanceledException) when (token.IsCancellationRequested) { }
         catch (Exception e) { await scheduler.InvokeAsync(() => { if (!closed && generation == previewGeneration) entry.IsPlaying = false; }, CancellationToken.None); System.Diagnostics.Trace.TraceWarning("Dropped sample preview failed: {0}", e.Message); }
     }
     private async Task MonitorAsync(OHsDroppedSampleEntry entry, int generation)
     {
-        try { while (!closed && generation == previewGeneration) { await Task.Delay(50, lifetime.Token); var state = await preview.GetSnapshotAsync(lifetime.Token); await scheduler.InvokeAsync(() => { if (!closed && generation == previewGeneration) entry.IsPlaying = state.IsPlaying; }, lifetime.Token); if (!state.IsPlaying) return; } }
-        catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
+        var token = lifetime.Token;
+        try { while (!closed && generation == previewGeneration) { await Task.Delay(50, token); var state = await preview.GetSnapshotAsync(token); await scheduler.InvokeAsync(() => { if (!closed && generation == previewGeneration) entry.IsPlaying = state.IsPlaying; }, token); if (!state.IsPlaying) return; } }
+        catch (OperationCanceledException) when (token.IsCancellationRequested) { }
         catch (Exception e) { System.Diagnostics.Trace.TraceWarning("Dropped sample preview monitor failed: {0}", e.Message); }
     }
-    public async Task DeactivateAsync()
+    public Task DeactivateAsync()
     {
-        if (closed) return; closed = true; ++previewGeneration; lifetime.Cancel(); OnPropertyChanged(nameof(CanConfirm)); PlayCommand.NotifyCanExecuteChanged();
-        foreach (var entry in Entries) entry.PropertyChanged -= OnEntryChanged;
-        await Task.WhenAll(waveforms.Values); await playback; await Task.WhenAll(monitors);
-        try { await preview.StopAsync(CancellationToken.None); } finally { await preview.DisposeAsync(); if (browser is IDisposable disposable) disposable.Dispose(); reads.Dispose(); lifetime.Dispose(); }
+        if (deactivation is not null) return deactivation;
+        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        deactivation = completion.Task;
+        _ = CompleteAsync();
+        return deactivation;
+        async Task CompleteAsync()
+        {
+            try { await DeactivateCoreAsync(); completion.SetResult(); }
+            catch (Exception error) { completion.SetException(error); }
+        }
+    }
+    private async Task DeactivateCoreAsync()
+    {
+        Exception? failure = null;
+        void Record(Exception error)
+        {
+            failure ??= error;
+            System.Diagnostics.Trace.TraceWarning("Dropped sample cleanup failed: {0}", error);
+        }
+        try { RequestCancellation(); } catch (Exception error) { Record(error); }
+        try { await Task.WhenAll(waveforms.Values); } catch (Exception error) { Record(error); }
+        try { await playback; } catch (Exception error) { Record(error); }
+        try { await Task.WhenAll(monitors); } catch (Exception error) { Record(error); }
+        try { await preview.StopAsync(CancellationToken.None); } catch (Exception error) { Record(error); }
+        try { await preview.DisposeAsync(); } catch (Exception error) { Record(error); }
+        try { if (browser is IDisposable disposable) disposable.Dispose(); } catch (Exception error) { Record(error); }
+        reads.Dispose(); lifetime.Dispose();
+        if (failure is not null) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw();
     }
 }

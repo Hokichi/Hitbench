@@ -3,7 +3,7 @@ using Hitbench.Services.FileSystem;
 
 namespace Hitbench.Test.Presentation;
 
-public sealed class StubSampleBrowserService : ISampleBrowserService
+public class StubSampleBrowserService : ISampleBrowserService
 {
     public string RootPath { get; } = Path.Combine(Path.GetTempPath(), "SampleBrowserTests");
     public Dictionary<string, IReadOnlyList<SampleBrowserEntry>> Entries { get; } = new(StringComparer.OrdinalIgnoreCase);

@@ -4,6 +4,113 @@ namespace Hitbench.Test.Presentation;
 public sealed class OHsSampleDropImportPopupVMTests
 {
     [Test]
+    public async Task ReentrantDeactivateUsesThePublishedCleanupTask()
+    {
+        var preview = new StubSamplePreviewService();
+        var vm = new OHsSampleDropImportPopupVM(new[] { "a.wav" }, new StubSampleBrowserService(), preview, new ImmediateUiScheduler());
+        await vm.InitializeAsync(default);
+        Task? nested = null;
+        vm.PropertyChanged += (_, args) => { if (args.PropertyName == nameof(vm.CanConfirm)) nested = vm.DeactivateAsync(); };
+        var close = vm.DeactivateAsync(); await close;
+        Assert.That(nested, Is.SameAs(close));
+        Assert.That(preview.DisposeCalls, Is.EqualTo(1));
+    }
+    [Test]
+    public async Task WaveformQueueCancelsWithoutLateMutation()
+    {
+        var gate = new TaskCompletionSource<Hitbench.Core.Entities.WaveformData>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var calls = 0;
+        var vm = new OHsSampleDropImportPopupVM(new[] { "a.wav", "b.ogg", "c.mp3" }, new StubSampleBrowserService { Waveform = (_, _) => { calls++; return gate.Task; } }, new StubSamplePreviewService(), new ImmediateUiScheduler());
+        await vm.InitializeAsync(default);
+        var reads = vm.Entries.Select(vm.LoadWaveformAsync).ToArray();
+        Assert.That(calls, Is.EqualTo(2));
+        var close = vm.DeactivateAsync();
+        gate.TrySetResult(new(TimeSpan.FromSeconds(1), new float[] { .5f }));
+        await close; await Task.WhenAll(reads);
+        Assert.That(calls, Is.EqualTo(2));
+        Assert.That(vm.Entries.All(e => e.Waveform is null && e.IsChecked), Is.True);
+    }
+
+    [Test]
+    public async Task PreviewAndReadFailuresPreserveCheckedEntries()
+    {
+        var vm = new OHsSampleDropImportPopupVM(new[] { "a.wav" }, new StubSampleBrowserService { Waveform = (_, _) => throw new IOException("read failed") }, new StubSamplePreviewService { Play = _ => throw new IOException("play failed") }, new ImmediateUiScheduler());
+        await vm.InitializeAsync(default);
+        await vm.LoadWaveformAsync(vm.Entries[0]); await vm.PlayCommand.ExecuteAsync(vm.Entries[0]);
+        Assert.That(vm.Entries, Has.Count.EqualTo(1));
+        Assert.That(vm.Entries[0].IsChecked, Is.True);
+        Assert.That(vm.Entries[0].IsPlaying, Is.False);
+        await vm.DeactivateAsync();
+    }
+    [TestCase(true)]
+    [TestCase(false)]
+    public async Task FirstSelectionOutcomeFreezesCheckedPaths(bool accept)
+    {
+        var vm = new OHsSampleDropImportPopupVM(new[] { "a.wav", "b.ogg" }, new StubSampleBrowserService(), new StubSamplePreviewService(), new ImmediateUiScheduler());
+        await vm.InitializeAsync(default);
+        vm.Entries[1].IsChecked = false;
+        Assert.That(vm.TryCompleteSelection(accept), Is.True);
+        vm.Entries[0].IsChecked = false; vm.Entries[1].IsChecked = true;
+        Assert.That(vm.TryCompleteSelection(!accept), Is.False);
+        Assert.That(vm.SelectionAccepted, Is.EqualTo(accept));
+        Assert.That(vm.SelectedPaths, Is.EqualTo(accept ? new[] { "a.wav" } : Array.Empty<string>()));
+        Assert.That(vm.PlayCommand.CanExecute(vm.Entries[0]), Is.False);
+        await vm.DeactivateAsync();
+        Assert.That(vm.SelectedPaths, Is.EqualTo(accept ? new[] { "a.wav" } : Array.Empty<string>()));
+    }
+
+    [Test]
+    public async Task EmptySelectionCannotCompleteAsAccepted()
+    {
+        var vm = new OHsSampleDropImportPopupVM(new[] { "a.wav" }, new StubSampleBrowserService(), new StubSamplePreviewService(), new ImmediateUiScheduler());
+        await vm.InitializeAsync(default); vm.Entries[0].IsChecked = false;
+        Assert.That(vm.TryCompleteSelection(true), Is.False);
+        Assert.That(vm.SelectionAccepted, Is.Null);
+        Assert.That(vm.TryCompleteSelection(false), Is.True);
+        await vm.DeactivateAsync();
+    }
+    [Test]
+    public async Task ConcurrentDeactivateAwaitsOneCleanup()
+    {
+        var gate = new TaskCompletionSource<Hitbench.Core.Entities.WaveformData>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var preview = new StubSamplePreviewService();
+        var vm = new OHsSampleDropImportPopupVM(new[] { "a.wav" }, new StubSampleBrowserService { Waveform = (_, _) => gate.Task }, preview, new ImmediateUiScheduler());
+        await vm.InitializeAsync(default);
+        var read = vm.LoadWaveformAsync(vm.Entries[0]);
+        var first = vm.DeactivateAsync();
+        var second = vm.DeactivateAsync();
+        try { Assert.That(second, Is.SameAs(first)); Assert.That(second.IsCompleted, Is.False); }
+        finally { gate.TrySetResult(new(TimeSpan.FromSeconds(1), new float[] { .5f })); await first; await second; await read; }
+        Assert.That(preview.DisposeCalls, Is.EqualTo(1));
+    }
+
+    [Test]
+    public async Task CleanupFailureStillReleasesRemainingResources()
+    {
+        var error = new IOException("preview dispose failed");
+        var browser = new DisposableSampleBrowserService();
+        var vm = new OHsSampleDropImportPopupVM(new[] { "a.wav" }, browser, new StubSamplePreviewService { Dispose = () => Task.FromException(error) }, new ImmediateUiScheduler());
+        await vm.InitializeAsync(default);
+        Assert.That(Assert.ThrowsAsync<IOException>(() => vm.DeactivateAsync()), Is.SameAs(error));
+        Assert.That(browser.DisposeCalls, Is.EqualTo(1));
+    }
+
+    [Test]
+    public async Task CancelDuringPreviewStartStopsLatePlayback()
+    {
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var preview = new StubSamplePreviewService { IgnorePlayCancellation = true, Play = _ => { entered.TrySetResult(); return gate.Task; } };
+        var vm = new OHsSampleDropImportPopupVM(new[] { "a.wav" }, new StubSampleBrowserService(), preview, new ImmediateUiScheduler());
+        await vm.InitializeAsync(default);
+        var play = vm.PlayCommand.ExecuteAsync(vm.Entries[0]); await entered.Task;
+        var close = vm.DeactivateAsync();
+        try { Assert.That(vm.Entries[0].IsPlaying, Is.False); Assert.That(close.IsCompleted, Is.False); }
+        finally { gate.TrySetResult(); await close; await play; }
+        Assert.That(preview.Playing, Is.False);
+        Assert.That(preview.DisposeCalls, Is.EqualTo(1));
+    }
+    [Test]
     public async Task CheckedSelectionAndExternalPreviewAreOwned()
     {
         var preview = new StubSamplePreviewService();
