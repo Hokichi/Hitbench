@@ -126,6 +126,7 @@ public partial class OHsWorkstationTrackList
         if (!leftButtonPressed || !double.IsFinite(point.X) || !double.IsFinite(point.Y) || !IsTrackSessionCurrent())
         { CancelTrackPointer(); return; }
         trackPointerLast = point;
+        var gesture = trackGestureRevision;
         try
         {
             if (!IsTrackDragActive)
@@ -133,8 +134,19 @@ public partial class OHsWorkstationTrackList
                 if (!OHsTrackDragGeometry.CrossedThreshold(trackPointerStart, point,
                     SystemParameters.MinimumHorizontalDragDistance, SystemParameters.MinimumVerticalDragDistance)) return;
                 acquiringTrackPointer = true;
-                try { trackPointerCaptured = CaptureTrackPointer?.Invoke() ?? CaptureMouse(); }
+                bool captured;
+                try { captured = CaptureTrackPointer?.Invoke() ?? CaptureMouse(); }
                 finally { acquiringTrackPointer = false; }
+                if (gesture != trackGestureRevision)
+                {
+                    if (captured)
+                    {
+                        if (ReleaseTrackPointer is { } release) release();
+                        else if (IsMouseCaptured) ReleaseMouseCapture();
+                    }
+                    return;
+                }
+                trackPointerCaptured = captured;
                 if (!trackPointerCaptured || !IsTrackSessionCurrent()) { CancelTrackPointer(); return; }
                 IsTrackDragActive = true;
                 trackDragLayer = AdornerLayer.GetAdornerLayer(TrackList);
@@ -150,7 +162,7 @@ public partial class OHsWorkstationTrackList
         catch (Exception error)
         {
             System.Diagnostics.Trace.TraceError("Track drag failed: {0}", error);
-            CancelTrackPointer();
+            if (gesture == trackGestureRevision) CancelTrackPointer();
         }
     }
 

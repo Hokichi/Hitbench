@@ -70,11 +70,11 @@ public class OHsSampleTrackNameTests
             track.Color="#123456";row.RefreshPresentation();
             Assert.That(((SolidColorBrush)row.TrackBrush!).Color,Is.EqualTo(Color.FromRgb(0x12,0x34,0x56)));
             track.Color=null;row.RefreshPresentation();
-            Assert.That(row.TrackBrush,Is.SameAs(row.FindResource("Brush.Track.1")));
+            Assert.That(row.TrackBrush,Is.SameAs(row.FindResource("Brush.Track.Default")));
             row.Track=new InstrumentalTrack{Color="#ABCDEF"};row.RefreshPresentation();
-            Assert.That(row.TrackBrush,Is.Not.SameAs(row.FindResource("Brush.Track.1")));
+            Assert.That(row.TrackBrush,Is.Not.SameAs(row.FindResource("Brush.Track.Default")));
             row.Track.Color=null;row.RefreshPresentation();
-            Assert.That(row.TrackBrush,Is.SameAs(row.FindResource("Brush.Track.1")));
+            Assert.That(row.TrackBrush,Is.SameAs(row.FindResource("Brush.Track.Default")));
         }finally{UiTestPump.Run(vm.DeactivateAsync());}
     }
     private static TextBlock? Find(DependencyObject root)

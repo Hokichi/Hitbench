@@ -10,6 +10,25 @@ namespace Hitbench.Test.Presentation;
 public class WorkstationTrackTests
 {
     [Test]
+    public async Task CreationAfterRemovalDoesNotRecolorExistingTracks()
+    {
+        var saved = new Track { Name = "Saved", Color = "#123456" };
+        var vm = await WorkstationSampleConfigurationTests.CreateAsync(saved);
+        try
+        {
+            vm.AddSampleTrackCommand.Execute(null);
+            var added = vm.Tracks.Last();
+            vm.AddPianoTrackCommand.Execute(null);
+            await vm.RemoveTrackCommand.ExecuteAsync(added);
+            vm.AddSampleTrackCommand.Execute(null);
+            Assert.That(vm.Tracks[0], Is.SameAs(saved));
+            Assert.That(saved.Color, Is.EqualTo("#123456"));
+            Assert.That(vm.Tracks.Skip(1).Select(track => track.Color), Is.All.Null);
+        }
+        finally { await vm.DeactivateAsync(); }
+    }
+
+    [Test]
     public async Task NewTrackNamesShareSequenceAcrossSampleAndPianoTracks()
     {
         var vm = await WorkstationSampleConfigurationTests.CreateAsync();
@@ -18,6 +37,7 @@ public class WorkstationTrackTests
             vm.AddSampleTrackCommand.Execute(null);
             vm.AddPianoTrackCommand.Execute(null);
             vm.AddSampleTrackCommand.Execute(null);
+            Assert.That(vm.Tracks.Select(t => t.Color), Is.All.Null);
             Assert.That(vm.Tracks.Select(t => t.Name), Is.EqualTo(new[] { "New Track", "New Track (1)", "New Track (2)" }));
         }
         finally { await vm.DeactivateAsync(); }

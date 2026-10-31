@@ -2,6 +2,7 @@ using Hitbench.Services.ProjectFiles;
 namespace Hitbench.Test.Services;
 public class TrackColorCompatibilityTests
 {
+    [TestCase("{\"Kind\":\"Instrumental\"}", null)] [TestCase("{\"Color\":\"#FFFFFF\"}", "#FFFFFF")] [TestCase("{\"Color\":\"#000000\"}", "#000000")]
     [TestCase("{}", null)] [TestCase("{\"Color\":null}", null)] [TestCase("{\"color\":\"#aB12ef\"}", "#AB12EF")]
     public void LoadsLegacyAndNormalizes(string track, string? expected)
     {

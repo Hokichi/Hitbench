@@ -39,13 +39,13 @@ public sealed class FollowupContractTests
     {
         var roll = new Hitbench.Resources.CustomControls.PianoRollView();
         var original = new System.Windows.Media.SolidColorBrush();
-        roll.Resources["Brush.Track.1"] = original;
+        roll.Resources["Brush.Track.Default"] = original;
         roll.TrackColor = "#123456";
         Assert.That(roll.MarkerBrush, Is.Not.SameAs(original));
         roll.TrackColor = null;
         Assert.That(roll.MarkerBrush, Is.SameAs(original));
         var replacement = new System.Windows.Media.SolidColorBrush();
-        roll.Resources["Brush.Track.1"] = replacement;
+        roll.Resources["Brush.Track.Default"] = replacement;
         Assert.That(roll.MarkerBrush, Is.SameAs(replacement));
     }
     [Test]

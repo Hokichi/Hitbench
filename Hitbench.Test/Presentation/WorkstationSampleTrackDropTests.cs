@@ -14,6 +14,7 @@ public sealed class WorkstationSampleTrackDropTests
         var data = new OHsSampleTrackDragData(vm.SampleManagementContext!, "b.ogg");
         Assert.That(vm.TryAddSampleTrack(data), Is.True); Assert.That(vm.Tracks.Single().SelectedSampleFileName, Is.EqualTo("b.ogg")); Assert.That(vm.Tracks.Single().Samples, Is.Empty);
         Assert.That(vm.Tracks.Single().Name, Is.EqualTo("New Track"));
+        Assert.That(vm.Tracks.Single().Color, Is.Null);
         Assert.That(vm.TryAddSampleTrack(data with { Context = data.Context with { SessionId = Guid.NewGuid() } }), Is.False);
         await vm.DeactivateAsync();
     }

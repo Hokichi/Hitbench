@@ -7,7 +7,7 @@ public sealed class WorkstationTrackReorderTests
     [Test]
     public async Task ReorderRetainsNodesSelectionAndHistoryAndRejectsStaleIdentity()
     {
-        var a = new Track { SelectedSampleFileName = "hit.wav", Name = "A" };
+        var a = new Track { SelectedSampleFileName = "hit.wav", Name = "A", Color = "#123456" };
         var b = new InstrumentalTrack { Name = "B", IsCollapsed = true, Notes = [new InstrumentalNote { Key = "C3", Timestamp = 125 }] };
         var saves = new DelayedProjectFileService(); saves.Release();
         var vm = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [a,b], Offsets = [0], BPMs = [120] })) }, new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), projectFiles: saves);
@@ -21,6 +21,7 @@ public sealed class WorkstationTrackReorderTests
             var consistent = true;
             vm.Tracks.CollectionChanged += (_, _) => consistent &= vm.Project!.Tracks.SequenceEqual(vm.Tracks);
             Assert.That(vm.MoveTrack(a, 1), Is.True);
+            Assert.That(a.Color, Is.EqualTo("#123456")); Assert.That(b.Color, Is.Null);
             Assert.That(consistent, Is.True); Assert.That(vm.SelectedTrack, Is.SameAs(a));
             Assert.That(b.Notes.Single(), Is.SameAs(note)); Assert.That(b.IsCollapsed, Is.True);
             Assert.That(vm.SelectedSamples.Single(), Is.SameAs(sample));
