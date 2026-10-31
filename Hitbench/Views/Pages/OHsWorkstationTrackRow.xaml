@@ -529,7 +529,7 @@
                     <ComboBox x:Name="TrackSampleFileSelector" Margin="0,0,0,8" AutomationProperties.Name="Track sample"
                         ItemTemplate="{StaticResource OHsWorkstationSampleConfigurationFileTemplate}"
                         DataContextChanged="OnTrackControlDataContextChanged" Loaded="OnSampleSelectorLoaded" SelectionChanged="OnSampleSelectionChanged"
-                        IsEnabled="{Binding ViewModel.CanImportSample, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}"
+                        IsEnabled="{Binding ViewModel.CanSelectTrackSample, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}"
                         ItemsSource="{Binding ViewModel.SampleFiles, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}"
                         Style="{StaticResource OHsWorkstationTrackMetadataComboBoxStyle}"
                         ToolTip="{Binding SelectedItem, RelativeSource={RelativeSource Self}, Mode=OneWay}" />

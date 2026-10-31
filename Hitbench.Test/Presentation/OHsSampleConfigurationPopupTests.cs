@@ -1,4 +1,5 @@
 using System.Windows;
+using CommunityToolkit.Mvvm.Messaging;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Input;
@@ -13,6 +14,46 @@ namespace Hitbench.Test.Presentation;
 [Apartment(ApartmentState.STA), NonParallelizable]
 public sealed class OHsSampleConfigurationPopupTests
 {
+    [Test]
+    public void ManagerOpenKeepsSampleSelectionEnabledAndRefreshesAvailableFiles()
+    {
+        var track = new Track { SelectedSampleFileName = "a.wav", Samples = [new() { FileName = "a.wav", Timestamp = 100 }] };
+        var messenger = new CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger();
+        var entered = new TaskCompletionSource();
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(
+            new WorkstationSource("map", "song", new ProjectData { Tracks = [track], Offsets = [0], BPMs = [120] })) },
+            new Hitbench.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(),
+            sampleFiles: new StubSampleFileService(["a.wav", "b.wav"]), sampleDialog: new StubSampleFileDialogService([]), messenger: messenger,
+            sampleManagementDialog: new StubSampleManagementDialogService { Present = (_, token) =>
+                { entered.TrySetResult(); return Task.Delay(Timeout.Infinite, token); } });
+        UiTestPump.Run(vm.LoadAsync("project.json", default)); vm.AcknowledgePresentationReady(vm.LoadGeneration);
+        var row = new OHsWorkstationTrackRow { Track = track, ViewModel = vm, PresentSampleConfiguration = (_, _) => { } };
+        using var view = new InMemoryView(new Window { Content = row, Width = 900, Height = 200 });
+        try
+        {
+            vm.ManageSamplesCommand.Execute(null); UiTestPump.Run(entered.Task);
+            Assert.That(vm.CanImportSample, Is.False);
+            row.OpenSampleConfiguration();
+            var selector = (ComboBox)row.FindName("TrackSampleFileSelector");
+            Assert.That(selector.IsEnabled, Is.True);
+            selector.SelectedItem = "b.wav";
+            Assert.That(track.SelectedSampleFileName, Is.EqualTo("b.wav"));
+            Assert.That(track.Samples[0].FileName, Is.EqualTo("b.wav"));
+            messenger.Send(new Hitbench.Resources.Messages.ProjectSamplesChangedMessage(vm.SampleManagementContext!, ["a.wav"], null, null));
+            view.UpdateLayout();
+            Assert.That(selector.Items.Cast<string>(), Is.EqualTo(new[] { "a.wav" }));
+            vm.SelectSample(track, "b.wav");
+            Assert.That(track.SelectedSampleFileName, Is.EqualTo("b.wav"));
+            selector.SelectedItem = "a.wav";
+            Assert.That(track.SelectedSampleFileName, Is.EqualTo("a.wav"));
+            vm.IsReturning = true; view.UpdateLayout();
+            Assert.That(selector.IsEnabled, Is.False);
+            vm.SelectSample(track, "b.wav");
+            Assert.That(track.SelectedSampleFileName, Is.EqualTo("a.wav"));
+        }
+        finally { row.CloseSampleConfiguration(false); UiTestPump.Run(vm.DeactivateAsync()); }
+    }
+
     [SetUp] public void Setup() => new VolumeWheelTests().SetUp();
 
     private static (WorkstationPageVM Vm, OHsWorkstationTrackRow Row, InMemoryView View) Create(Track track)

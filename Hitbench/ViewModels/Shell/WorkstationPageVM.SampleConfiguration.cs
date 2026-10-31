@@ -9,6 +9,8 @@ public partial class WorkstationPageVM
     private Guid? sampleConfigurationOwner;
     public bool IsSampleConfigurationOpen => sampleConfigurationOwner is not null;
     public bool CanCreateSampleNodes => CanPlaceSamples && IsAdditionMode && !IsSampleConfigurationOpen;
+    public bool CanSelectTrackSample => !folderRenamesActive && !instrumentBusy && !IsNodeEditBusy &&
+        CanEditTracks && !importBusy && !removalBusy;
 
     public Guid? BeginSampleConfiguration(Track track)
     {
@@ -39,5 +41,6 @@ public partial class WorkstationPageVM
     {
         base.OnPropertyChanged(e);
         if (e.PropertyName == nameof(CanPlaceSamples)) OnPropertyChanged(nameof(CanCreateSampleNodes));
+        if (e.PropertyName == nameof(CanImportSample)) OnPropertyChanged(nameof(CanSelectTrackSample));
     }
 }

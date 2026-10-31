@@ -116,7 +116,7 @@ public partial class WorkstationPageVM
     public void SelectSample(Track track, string fileName)
     {
         if (track is InstrumentalTrack) return;
-        if (!CanEditTracks || !tracks.Contains(track) || string.IsNullOrWhiteSpace(fileName) ||
+        if (!CanSelectTrackSample || !tracks.Contains(track) || string.IsNullOrWhiteSpace(fileName) ||
             sampleFiles is not null && !sampleTrackFiles.Any(name => string.Equals(name, fileName, StringComparison.OrdinalIgnoreCase))) return;
         if (string.Equals(track.SelectedSampleFileName, fileName, StringComparison.OrdinalIgnoreCase)) return;
         track.SelectedSampleFileName = sampleTrackFiles.FirstOrDefault(name =>
