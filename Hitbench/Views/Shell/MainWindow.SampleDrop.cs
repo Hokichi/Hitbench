@@ -14,12 +14,21 @@ public partial class MainWindow
     }
     private async void OnSampleFileDrop(object sender, DragEventArgs e)
     {
-        if (!e.Data.GetDataPresent(DataFormats.FileDrop, false)) return; e.Handled = true; e.Effects = DragDropEffects.None;
-        try { await HandleSampleFileDropAsync(e.Data); } catch (Exception error) { reportError(error.Message); }
+        try
+        {
+            if (!e.Data.GetDataPresent(DataFormats.FileDrop, false)) return;
+            e.Handled = true; e.Effects = DragDropEffects.None;
+            await HandleSampleFileDropAsync(e.Data);
+        }
+        catch (Exception error) { reportError(error.Message); }
     }
     internal async Task HandleSampleFileDropAsync(IDataObject data)
     {
-        if (!CanReceiveFileDrop || data.GetData(DataFormats.FileDrop, false) is not string[] paths) return;
-        if (PageHost.Content is WorkstationPage { DataContext: WorkstationPageVM vm }) await vm.ImportDroppedSamplesAsync(paths);
+        try
+        {
+            if (!CanReceiveFileDrop || !data.GetDataPresent(DataFormats.FileDrop, false) || data.GetData(DataFormats.FileDrop, false) is not string[] paths) return;
+            if (PageHost.Content is WorkstationPage { DataContext: WorkstationPageVM vm }) await vm.ImportDroppedSamplesAsync(paths);
+        }
+        catch (Exception error) { reportError(error.Message); }
     }
 }

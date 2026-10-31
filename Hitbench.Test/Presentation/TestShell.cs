@@ -11,9 +11,9 @@ public static class TestShell
     public static MainWindow Create(HomePage page, IMessenger messenger, Func<WorkstationPage> createWorkstation,
         HomePageVM viewModel, IAppSettingsService settings, Action<WindowState>? requestWindowState = null,
         Action? startDrag = null, Action<Rect>? moveRestoredWindow = null, Func<bool>? isLeftButtonPressed = null,
-        Func<HomePage>? createHome = null) =>
+        Func<HomePage>? createHome = null, Action<string>? reportError = null) =>
         new(page, messenger, createWorkstation, viewModel, settings,
-            error => throw new AssertionException($"Unexpected shell error: {error}"),
+            reportError ?? (error => throw new AssertionException($"Unexpected shell error: {error}")),
             requestWindowState ?? (_ => throw new AssertionException("Unexpected native window-state request.")),
             _ => new Size(1920, 1080), startDrag: startDrag ?? (() => throw new AssertionException("Unexpected native drag.")),
             moveRestoredWindow: moveRestoredWindow ?? (_ => throw new AssertionException("Unexpected native move.")),
