@@ -269,8 +269,10 @@ public partial class WorkstationPageVM
         }).ToArray();
         var valid = (copy || dragDelta != 0 || entries.Where((entry, i) => !ReferenceEquals(entry.Track, destinations[i])).Any()) &&
             entries.All(entry => ValidNodeTimestamp(entry.NextTimestamp));
+        var completeOverlap = entries.Select((entry, i) => ReferenceEquals(entry.Track, destinations[i]) &&
+            entry.NextTimestamp == entry.PreviousTimestamp).All(unchanged => unchanged);
         CancelNodeDrag();
-        if (!valid) return false;
+        if (!valid || (copy && completeOverlap)) return false;
         var destinationFiles = destinations.Select(track => sampleTrackFiles.FirstOrDefault(file =>
             string.Equals(file, track.SelectedSampleFileName, StringComparison.OrdinalIgnoreCase))).ToArray();
         if (destinationFiles.Any(file => file is null))

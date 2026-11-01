@@ -38,6 +38,58 @@ public class WorkstationNodeFormationTests
     [TearDown]
     public async Task Cleanup() { await vm.DeactivateAsync(); audio.Dispose(); }
 
+    [TestCase(false, false, false, 0d)]
+    [TestCase(false, true, true, 0d)]
+    [TestCase(false, true, false, 1d)]
+    [TestCase(true, false, false, 0d)]
+    [TestCase(true, true, true, 0d)]
+    [TestCase(true, true, false, 1d)]
+    public async Task ExactOverlapCopyCancelsSilently(bool group, bool explicitDestination, bool previewAway, double finalDelta)
+    {
+        vm.SelectedSubdivisionIndex = 3;
+        vm.SetNodeSelection(group ? [a, b] : [a]);
+        vm.BeginNodeDrag(tracks[0], a);
+        var target = explicitDestination ? tracks[0] : null;
+        if (previewAway) vm.PreviewNodeDrag(250, target);
+        Assert.That(vm.PreviewNodeDrag(finalDelta, target), Is.True);
+        Assert.That(vm.NodePreviewTimestamps.All(pair => pair.Key.Timestamp == pair.Value), Is.True);
+        vm.SetNodeDragCopy(true);
+        var selection = vm.SelectedSamples.ToArray(); var error = vm.ErrorMessage;
+        Assert.That(await vm.CommitNodeDragAsync(), Is.False);
+        Assert.That(dialogs.Collisions, Is.Zero);
+        Assert.That(vm.ErrorMessage, Is.EqualTo(error));
+        AssertOriginalFormation();
+        Assert.That(vm.SelectedSamples, Is.EquivalentTo(selection));
+        Assert.That(vm.NodePreviewTimestamps, Is.Empty);
+        Assert.That(vm.NodePreviewByTrack, Is.Empty);
+        Assert.That(vm.IsNodeDragActive, Is.False);
+        Assert.That(vm.IsNodeDragCopy, Is.False);
+        Assert.That(vm.DragDestinationTrack, Is.Null);
+    }
+
+    [Test]
+    public async Task SameTimestampCopyToDifferentTrackIsNotNoOp()
+    {
+        vm.SetNodeSelection([a]); vm.BeginNodeDrag(tracks[0], a);
+        vm.PreviewNodeDrag(0, tracks[1]); vm.SetNodeDragCopy(true);
+        Assert.That(await vm.CommitNodeDragAsync(), Is.True);
+        Assert.That(tracks[1].Samples.Single(), Is.Not.SameAs(a));
+        Assert.That(tracks[1].Samples.Single().Timestamp, Is.EqualTo(1000));
+        Assert.That(tracks[0].Samples.Single(), Is.SameAs(a));
+        Assert.That(dialogs.Collisions, Is.Zero);
+    }
+
+    [Test]
+    public async Task NormalizedPartialOverlapStillCollides()
+    {
+        vm.SelectedSubdivisionIndex = 3; a.Timestamp = 1001;
+        vm.BeginNodeDrag(tracks[3], b); vm.PreviewNodeDrag(0, tracks[3]); vm.SetNodeDragCopy(true);
+        Assert.That(await vm.CommitNodeDragAsync(), Is.False);
+        Assert.That(dialogs.Collisions, Is.EqualTo(1));
+        Assert.That(a.Timestamp, Is.EqualTo(1001)); Assert.That(b.Timestamp, Is.EqualTo(1500));
+        Assert.That(tracks.Sum(t => t.Samples.Count), Is.EqualTo(2));
+    }
+
     [TestCase(false)]
     [TestCase(true)]
     public async Task CopyDragPreservesOriginalsAndRecordsOnePlacementBatch(bool acrossTracks)
@@ -88,6 +140,7 @@ public class WorkstationNodeFormationTests
         if (reason == "invalid") vm.PreviewNodeDrag(250, tracks[0]);
         var before = tracks.Select(t => t.Samples.ToArray()).ToArray();
         Assert.That(await vm.CommitNodeDragAsync(), Is.False);
+        Assert.That(dialogs.Collisions, Is.EqualTo(reason is "original" or "occupied" ? 1 : 0));
         for (var i = 0; i < tracks.Length; i++) Assert.That(tracks[i].Samples, Is.EqualTo(before[i]));
         Assert.That(vm.CanUndo, Is.False); Assert.That(vm.IsNodeDragActive, Is.False);
         Assert.That(vm.IsNodeDragCopy, Is.False);
@@ -111,9 +164,10 @@ public class WorkstationNodeFormationTests
     public async Task CopyCollisionCannotMutateAfterLifecycleChange(bool deactivate)
     {
         var pending = new TaskCompletionSource(); dialogs.Collision = token => pending.Task.WaitAsync(token);
-        vm.BeginNodeDrag(tracks[3], b); vm.PreviewNodeDrag(0, tracks[3]); vm.SetNodeDragCopy(true);
+        vm.SetNodeSelection([a]); vm.BeginNodeDrag(tracks[0], a); vm.PreviewNodeDrag(500, tracks[3]); vm.SetNodeDragCopy(true);
         var operation = vm.CommitNodeDragAsync();
         Assert.That(vm.IsNodeEditBusy, Is.True);
+        Assert.That(dialogs.Collisions, Is.EqualTo(1));
         if (deactivate) await vm.DeactivateAsync();
         else { await vm.LoadAsync("other.json", default); vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true; }
         pending.TrySetResult(); Assert.That(await operation, Is.False);
@@ -317,3 +371,5 @@ public class WorkstationNodeFormationTests
         Assert.That(new[] { a.FileName, b.FileName }, Is.EqualTo(new[] { "t1.wav", "t4.wav" }));
     }
 }
+
+
