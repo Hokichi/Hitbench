@@ -9,6 +9,14 @@ using Hitbench.ViewModels.Popups;
 using Hitbench.ViewModels.Shell.HomePage;
 using Hitbench.Views.Pages;
 using Hitbench.Views.Popups;
+using Hitbench.Core.Entities;
+using Hitbench.Services;
+using Hitbench.Services.Dialogs;
+using Hitbench.ViewModels.Shell;
+using System.Windows.Input;
+using System.Windows.Automation;
+using System.Windows.Automation.Peers;
+using System.Windows.Automation.Provider;
 
 namespace Hitbench.Test.Presentation;
 
@@ -74,6 +82,150 @@ public sealed class WorkstationDrawerCoexistenceTests
     {
         var task = shell.PresentSampleManagerAsync(samples, lifetime.Token, transition ?? ((_, _) => Task.CompletedTask));
         presentations.Add(task); view.UpdateLayout(); return task;
+    }
+
+    private (WorkstationPageVM Owner, InstrumentalTrack Track, Task PianoOpened, Task ManagerOpened) UseCoordinatedDrawers(string importOutcome = "accept")
+    {
+        UiTestPump.Run(page.DeactivateAsync()); UiTestPump.Run(arrangement.DeactivateAsync()); UiTestPump.Run(manager.DeactivateAsync());
+        var messenger = new WeakReferenceMessenger();
+        var track = new InstrumentalTrack { KeyFiles = new() { ["C4"] = "piano.wav" }, Notes = [new() { Key = "C4", Timestamp = 125 }] };
+        IReadOnlyList<string> names = ["piano.wav"];
+        var files = new StubSampleFileService(names)
+        {
+            List = (_, _) => Task.FromResult(names),
+            Rename = (_, _, stem, _) => { names = [stem + ".wav"]; return Task.FromResult(stem + ".wav"); },
+            Import = (_, _, _) => importOutcome == "failure" ? Task.FromException<string>(new IOException("copy failed")) :
+                Task.FromResult(AddImported())
+        };
+        string AddImported() { names = [.. names, "new.wav"]; return "new.wav"; }
+        var picker = new StubSampleFileDialogService(importOutcome == "cancel" ? [] : new[] { "new.wav" });
+        var pianoOpened = new TaskCompletionSource(); var managerOpened = new TaskCompletionSource();
+        var service = new SampleManagementDialogService(() => shell, shell.Dispatcher,
+            () => throw new AssertionException("Native picker unexpectedly created"),
+            (context, _, _) => new(context, files, new(files), picker, new StubSampleRemovalDialogService(), messenger,
+                new ImmediateUiScheduler(), new StubSamplePreviewService()),
+            async (vm, token) =>
+            {
+                manager = vm; samples = new(vm);
+                var showing = shell.PresentSampleManagerAsync(samples, token, (_, _) => Task.CompletedTask);
+                managerOpened.TrySetResult(); await showing;
+            }, (_, _) => shell.RequestSampleManagerCloseAsync(samples));
+        var dialogs = new StubInstrumentalTrackDialogService { Arrangement = async (data, token) =>
+        {
+            var vm = new InstrumentalArrangementDrawerVM(data, messenger, new ImmediateUiScheduler());
+            arrangement = vm; await vm.InitializeAsync(token); piano = new(vm);
+            try
+            {
+                var showing = shell.PresentDrawerAsync(piano, token, (_, _) => Task.CompletedTask, true);
+                pianoOpened.TrySetResult(); await showing;
+            }
+            finally { await vm.DeactivateAsync(); }
+        } };
+        var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song",
+            new ProjectData { Tracks = [track], Offsets = [0], BPMs = [120], ControlPoints = [new()] })) },
+            new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), files, picker,
+            messenger: messenger, sampleManagementDialog: service, instrumentDialogs: dialogs);
+        page = new(owner);
+        ((ContentControl)shell.FindName("PageHost")).Content = page;
+        UiTestPump.Run(owner.LoadAsync("project.json", default)); owner.AcknowledgePresentationReady(owner.LoadGeneration); view.UpdateLayout();
+        return (owner, track, pianoOpened.Task, managerOpened.Task);
+    }
+
+    [TestCase(false)] [TestCase(true)]
+    public void LauncherAndAuthoritativeSampleRefreshPreserveLiveArrangement(bool expanded)
+    {
+        var (owner, track, pianoOpened, managerOpened) = UseCoordinatedDrawers();
+        var editing = owner.ViewArrangementCommand.ExecuteAsync(track); UiTestPump.Run(pianoOpened);
+        if (expanded) page.TogglePianoRollExpansion(false);
+        arrangement.SetNoteSelection([arrangement.Notes.Single().Id], arrangement.Notes.Single().Id);
+        var selected = arrangement.SelectedNoteIds.ToArray();
+        var samePiano = piano; var sameArrangement = arrangement;
+        var roll = (PianoRollView)piano.FindName("PianoRoll"); roll.VerticalOffset = 500;
+        var pitch = roll.VerticalOffset;
+        var button = (BalloonButton)page.Toolbar.FindName("ManageSamplesButton");
+        Assert.That(shell.HandleWindowKeyDown(true, Key.F2, ModifierKeys.None, false, roll), Is.True);
+        UiTestPump.Run(managerOpened); view.UpdateLayout();
+        Assert.That(owner.ManageSamplesCommand.CanExecute(null), Is.True);
+        Assert.That(AutomationProperties.GetItemStatus(button), Is.EqualTo("Open"));
+        Assert.That(button.ButtonIcon, Is.SameAs(button.FindResource("Close")));
+        Assert.That(shell.HandleWindowKeyDown(true, Key.Space, ModifierKeys.None, false, samples), Is.False);
+        var follow = owner.ScrollWithMarker;
+        Assert.That(shell.HandleWindowKeyDown(true, Key.F, ModifierKeys.None, false, roll), Is.True);
+        Assert.That(owner.ScrollWithMarker, Is.EqualTo(!follow));
+        foreach (var control in WorkstationControlTree.Descendants(page).OfType<Control>())
+            Assert.That(control.IsTabStop, Is.False, control.GetType().Name);
+        UiTestPump.Run(manager.EditCommand.ExecuteAsync(manager.Entries.Single())); manager.DraftStem = "renamed";
+        UiTestPump.Run(manager.CommitRenameCommand.ExecuteAsync(null));
+        Assert.That(track.KeyFiles["C4"], Is.EqualTo("renamed.wav"));
+        Assert.That(arrangement.SelectedNoteIds, Is.EqualTo(selected)); Assert.That(arrangement.Notes, Has.Count.EqualTo(1));
+        Assert.That(shell.HandleWindowKeyDown(true, Key.F2, ModifierKeys.None, false, roll), Is.True);
+        UiTestPump.Run(shell.DrawerInputCompletion);
+        UiTestPump.Run(Dispatcher.CurrentDispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle).Task);
+        Assert.That(owner.IsSamplesOpen, Is.False); Assert.That(editing.IsCompleted, Is.False);
+        Assert.That(AutomationProperties.GetItemStatus(button), Is.EqualTo("Closed"));
+        Assert.That(button.ButtonIcon, Is.SameAs(button.FindResource("MusicNote")));
+        Assert.That(piano, Is.SameAs(samePiano)); Assert.That(arrangement, Is.SameAs(sameArrangement));
+        Assert.That(roll.VerticalOffset, Is.EqualTo(pitch)); Assert.That(page.IsPianoRollExpanded, Is.EqualTo(expanded));
+        UiTestPump.Run(owner.SettleWorkstationDrawersAsync()); UiTestPump.Run(editing); UiTestPump.Run(owner.FlushSavesAsync());
+    }
+
+    [TestCase("accept")] [TestCase("cancel")] [TestCase("failure")]
+    public void ManagerImportReleasesBusyStateWithoutCancellingExpandedPiano(string outcome)
+    {
+        var (owner, track, pianoOpened, managerOpened) = UseCoordinatedDrawers(outcome);
+        var editing = owner.ViewArrangementCommand.ExecuteAsync(track); UiTestPump.Run(pianoOpened);
+        page.TogglePianoRollExpansion(false);
+        UiTestPump.Run(owner.ManageSamplesCommand.ExecuteAsync(null)); UiTestPump.Run(managerOpened);
+        var samePiano = piano;
+        UiTestPump.Run(manager.AddNewSampleCommand.ExecuteAsync(null));
+        Assert.That(manager.CanClose, Is.True); Assert.That(manager.IsBusy, Is.False);
+        Assert.That(owner.CanImportDroppedSamples, Is.False);
+        Assert.That(editing.IsCompleted, Is.False); Assert.That(piano, Is.SameAs(samePiano));
+        Assert.That(page.IsPianoRollExpanded, Is.True); Assert.That(arrangement.CanEdit, Is.True);
+        Assert.That(owner.SampleFiles.Contains("new.wav"), Is.EqualTo(outcome == "accept"));
+        if (outcome == "failure") Assert.That(manager.ErrorMessage, Does.Contain("copy failed"));
+        UiTestPump.Run(owner.SettleWorkstationDrawersAsync()); UiTestPump.Run(editing);
+    }
+
+    [Test]
+    public void EscapeCancelsSamplesRenameBeforeClosingAndRespectsModalFocus()
+    {
+        var editing = ShowPiano(); var managing = ShowSamples();
+        Assert.That(shell.ShouldRestoreDrawerFocus(false, true), Is.True);
+        Assert.That(shell.ShouldRestoreDrawerFocus(false, false), Is.False);
+        Assert.That(shell.ShouldRestoreDrawerFocus(true, true), Is.False);
+        shell.ShowPopupOverlay();
+        Assert.That(shell.ShouldRestoreDrawerFocus(false, true), Is.False);
+        Assert.That(shell.RequestSampleManagerCloseAsync(samples).Result, Is.False);
+        shell.HidePopupOverlay();
+        UiTestPump.Run(manager.EditCommand.ExecuteAsync(manager.Entries.Single()));
+        manager.DraftStem = "unfinished";
+        Assert.That(shell.HandleWindowKeyDown(true, Key.Escape, ModifierKeys.None, false, samples), Is.False);
+        Assert.That(samples.HandleEscape(), Is.True);
+        Assert.That(manager.ActiveEdit, Is.Null);
+        Assert.That(managing.IsCompleted, Is.False);
+        Assert.That(editing.IsCompleted, Is.False);
+        samples.HandleEscape(); UiTestPump.Run(managing);
+        Assert.That(editing.IsCompleted, Is.False);
+    }
+
+    [Test]
+    public void SamplesLauncherSupportsAutomationInvocation()
+    {
+        var (owner, _, _, managerOpened) = UseCoordinatedDrawers();
+        var button = (BalloonButton)page.Toolbar.FindName("ManageSamplesButton");
+        var peer = UIElementAutomationPeer.CreatePeerForElement(button);
+        Assert.That(peer, Is.Not.Null);
+        var provider = peer!.GetPattern(PatternInterface.Invoke) as IInvokeProvider;
+        Assert.That(provider, Is.Not.Null);
+        provider!.Invoke(); UiTestPump.Run(managerOpened);
+        Assert.That(owner.IsSamplesOpen, Is.True);
+        provider.Invoke();
+        UiTestPump.Run(Dispatcher.CurrentDispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle).Task);
+        Assert.That(owner.IsSamplesOpen, Is.False);
+        button.IsEnabled = false;
+        Assert.That(() => provider.Invoke(), Throws.TypeOf<ElementNotEnabledException>());
+        UiTestPump.Run(owner.SettleWorkstationDrawersAsync());
     }
 
     [TestCase(false, false)] [TestCase(true, false)] [TestCase(true, true)]

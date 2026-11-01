@@ -35,6 +35,7 @@ public sealed class ManageSampleHeaderTests
         UiControlContract.AssertStyle<BalloonButton>(button, "OHsWorkstationSamplesActionStyle");
         Assert.That(button.Style.BasedOn, Is.SameAs(button.FindResource("OHsBalloonDefaultActionStyle")));
         Assert.That(button.IsTabStop, Is.False);
+        Assert.That(System.Windows.Automation.AutomationProperties.GetItemStatus(button), Is.EqualTo("Closed"));
         var trigger = (BalloonComboBox)page.Toolbar.FindName("AddMenuButton");
         // This unloaded DI page is disabled; supply the native placement boundary without opening its menu.
         trigger.ContextMenu.PlacementTarget = trigger;

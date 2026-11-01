@@ -82,11 +82,27 @@
             x:Key="OHsWorkstationSamplesActionStyle"
             BasedOn="{StaticResource OHsBalloonDefaultActionStyle}"
             TargetType="customControls:BalloonButton">
+            <Setter Property="ButtonIcon" Value="{StaticResource MusicNote}" />
+            <Setter Property="ButtonText" Value="Samples" />
+            <Setter Property="ToolTip" Value="Manage samples" />
+            <Setter Property="AutomationProperties.ItemStatus" Value="Closed" />
             <Setter Property="ShouldShowText" Value="False" />
             <Setter Property="IsTabStop" Value="True" />
             <Setter Property="helpers:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
             <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
             <Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="True" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsSamplesOpen, Mode=OneWay}" Value="True">
+                    <Setter Property="ButtonIcon" Value="{StaticResource Close}" />
+                    <Setter Property="ButtonText" Value="Close samples" />
+                    <Setter Property="ToolTip" Value="Close samples" />
+                    <Setter Property="AutomationProperties.ItemStatus" Value="Open" />
+                    <Setter Property="DefaultBackground" Value="{DynamicResource Brush.BalloonButton.Background.Destructive}" />
+                    <Setter Property="HoveredBackground" Value="{DynamicResource Brush.BalloonButton.Background.Destructive.Hovered}" />
+                    <Setter Property="PressedBackground" Value="{DynamicResource Brush.BalloonButton.Background.Destructive.Pressed}" />
+                    <Setter Property="Foreground" Value="{DynamicResource Brush.BalloonButton.Foreground.Destructive}" />
+                </DataTrigger>
+            </Style.Triggers>
         </Style>
         <Style
             x:Key="OHsWorkstationAddActionStyle"
@@ -301,11 +317,8 @@
                             Grid.Column="2"
                             HorizontalAlignment="Stretch"
                             AutomationProperties.Name="Samples"
-                            ButtonIcon="{StaticResource MusicNote}"
-                            ButtonText="Samples"
                             Command="{Binding ManageSamplesCommand, Mode=OneWay}"
-                            Style="{StaticResource OHsWorkstationSamplesActionStyle}"
-                            ToolTip="Manage samples" />
+                            Style="{StaticResource OHsWorkstationSamplesActionStyle}" />
                     </Grid>
                     <Border Style="{StaticResource OHsWorkstationCompactSeparatorStyle}" />
                     <pages:OHsWorkstationFooter IsCompactLayout="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationToolbar}, Mode=OneWay}" x:Name="FooterControls" VerticalAlignment="Center" />

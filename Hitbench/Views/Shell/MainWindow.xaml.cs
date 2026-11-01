@@ -265,7 +265,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
             await settlingShellDrawers;
             if (PageHost.Content is WorkstationPage workstation)
             {
-                await workstation.SettleInstrumentalEditorAsync();
+                await workstation.SettleWorkstationDrawersAsync();
                 await DrawerInputCompletion;
                 await workstation.FlushSavesAsync();
                 await workstation.DeactivateAsync();

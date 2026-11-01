@@ -219,6 +219,7 @@ public partial class WorkstationPage : UserControl
 
     public Task FlushSavesAsync() => viewModel.FlushSavesAsync();
     public Task SettleInstrumentalEditorAsync() => viewModel.SettleInstrumentalEditorAsync();
+    public Task SettleWorkstationDrawersAsync() => viewModel.SettleWorkstationDrawersAsync();
     public bool HasPendingSaves => viewModel.HasPendingSaves;
 
     public async Task<bool> PrepareToReturnAsync(CancellationToken token)

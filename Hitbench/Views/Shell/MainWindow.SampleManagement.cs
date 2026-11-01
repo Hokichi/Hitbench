@@ -34,7 +34,8 @@ public partial class MainWindow
     internal bool ShouldRestoreDrawerFocus(bool presentationCanceled, bool focusInsideDrawer) =>
         ShouldRestoreDrawerFocus(IsSampleManagerVisible ? sampleDrawerPresentation : InstrumentalDrawerPresentation, presentationCanceled, focusInsideDrawer);
     private bool ShouldRestoreDrawerFocus(OHsShellDrawerPresentation state, bool presentationCanceled, bool focusInsideDrawer) =>
-        !presentationCanceled && !IsPopupOverlayVisible && ((!state.IsBottom && state.DockedPage is null) || focusInsideDrawer);
+        !presentationCanceled && !closed && !closeRequested && !IsAudioBusy && !IsPopupOverlayVisible &&
+        ((!state.IsBottom && state.DockedPage is null) || focusInsideDrawer);
 
     private void SetDrawerPhase(OHsShellDrawerPresentation state, OHsSampleDrawerPhase phase)
     {
@@ -87,8 +88,9 @@ public partial class MainWindow
     {
         if (token.IsCancellationRequested || closed) return;
         state.ClearFocusRestore?.Invoke();
-        var invoker = Keyboard.FocusedElement as FrameworkElement ??
-            (PageHost.Content as WorkstationPage)?.Toolbar.FindName("ManageSamplesButton") as FrameworkElement;
+        var invoker = !bottomNonModal
+            ? (PageHost.Content as WorkstationPage)?.Toolbar.FindName("ManageSamplesButton") as FrameworkElement ?? Keyboard.FocusedElement as FrameworkElement
+            : Keyboard.FocusedElement as FrameworkElement;
         using var presentation = CancellationTokenSource.CreateLinkedTokenSource(token, lifetime.Token);
         using var entranceCancellation = CancellationTokenSource.CreateLinkedTokenSource(presentation.Token);
         var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -129,7 +131,7 @@ public partial class MainWindow
         }
         void OnLoaded(object sender, RoutedEventArgs args)
         {
-            if (state.Phase != OHsSampleDrawerPhase.Closing) drawer.FocusInitialAction();
+            if (state.Phase != OHsSampleDrawerPhase.Closing && !IsPopupOverlayVisible && !closeRequested && !closed) drawer.FocusInitialAction();
         }
         var workstation = PageHost.Content as WorkstationPage;
         Panel? motionParent = null;
@@ -304,8 +306,10 @@ public partial class MainWindow
     }
     private void RestoreSampleManagerFocus(OHsShellDrawerPresentation state, FrameworkElement invoker, bool bottomNonModal, UserControl drawer)
     {
-        bool FocusStillOwned() => !bottomNonModal || Keyboard.FocusedElement is null || ReferenceEquals(Keyboard.FocusedElement, this) ||
-            IsDrawerOrigin(Keyboard.FocusedElement as DependencyObject, drawer);
+        var focusPage = PageHost.Content;
+        bool FocusStillOwned() => !closed && !closeRequested && !IsAudioBusy && !IsPopupOverlayVisible && ReferenceEquals(PageHost.Content, focusPage) &&
+            (!bottomNonModal || Keyboard.FocusedElement is null || ReferenceEquals(Keyboard.FocusedElement, this) ||
+            IsDrawerOrigin(Keyboard.FocusedElement as DependencyObject, drawer));
         if (!FocusStillOwned()) return;
         if (!invoker.IsVisible) return;
         if (invoker.IsEnabled) { invoker.Focus(); return; }
