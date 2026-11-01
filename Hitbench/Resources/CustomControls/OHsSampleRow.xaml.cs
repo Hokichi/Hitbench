@@ -5,6 +5,8 @@ namespace Hitbench.Resources.CustomControls;
 
 public partial class OHsSampleRow : UserControl
 {
+    public static readonly DependencyProperty IsDragSourceProperty = DependencyProperty.Register(nameof(IsDragSource), typeof(bool), typeof(OHsSampleRow), new PropertyMetadata(false));
+    public bool IsDragSource { get => (bool)GetValue(IsDragSourceProperty); set => SetValue(IsDragSourceProperty, value); }
     public static readonly DependencyProperty FileNameProperty = DependencyProperty.Register(nameof(FileName), typeof(string), typeof(OHsSampleRow), new PropertyMetadata(string.Empty));
     public string FileName { get => (string)GetValue(FileNameProperty); set => SetValue(FileNameProperty, value); }
     public static readonly DependencyProperty FileToolTipProperty = DependencyProperty.Register(nameof(FileToolTip), typeof(object), typeof(OHsSampleRow), new PropertyMetadata(null));

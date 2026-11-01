@@ -6,6 +6,13 @@
     xmlns:h="clr-namespace:Hitbench.Resources.Helpers"
     Style="{StaticResource BaseControlStyle}">
     <UserControl.Resources>
+        <Style x:Key="OHsManageSamplesDragSourceStyle" TargetType="c:OHsSampleRow" BasedOn="{StaticResource BaseControlStyle}"><Style.Triggers><Trigger Property="IsDragSource" Value="True"><Setter Property="Opacity" Value="0.9"/></Trigger></Style.Triggers></Style>
+        <Style x:Key="OHsManageSamplesDragTagSurfaceStyle" TargetType="Border" BasedOn="{StaticResource OHsPopupSurfaceBorderStyle}">
+            <Setter Property="CornerRadius" Value="{StaticResource Radius.Control}"/><Setter Property="Padding" Value="8"/><Setter Property="BorderThickness" Value="1"/><Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Default}"/>
+            <Style.Triggers><DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast),Mode=OneWay}" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}"/></DataTrigger></Style.Triggers>
+        </Style>
+        <Style x:Key="OHsManageSamplesDragTagNameStyle" TargetType="TextBlock" BasedOn="{StaticResource BodyTextStyle}"><Setter Property="FontSize" Value="{StaticResource FontSize.Caption}"/><Setter Property="TextWrapping" Value="NoWrap"/><Setter Property="TextTrimming" Value="CharacterEllipsis"/></Style>
+        <DataTemplate x:Key="OHsManageSamplesDragTagTemplate"><Border Style="{StaticResource OHsManageSamplesDragTagSurfaceStyle}"><TextBlock Style="{StaticResource OHsManageSamplesDragTagNameStyle}" Text="{Binding SampleName,Mode=OneWay}"/></Border></DataTemplate>
         <ObjectDataProvider x:Key="OHsManageSamplesOwner" />
         <Style x:Key="OHsManageSamplesPrimaryActionStyle" TargetType="c:BalloonButton" BasedOn="{StaticResource OHsBalloonDefaultActionStyle}">
             <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
@@ -111,7 +118,7 @@
                         <c:BalloonButton Command="{Binding DataContext.CommitRenameCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}, Mode=OneWay}"
                             Style="{StaticResource OHsManageSamplesConfirmRenameStyle}" />
                     </Grid></DataTemplate>
-<DataTemplate x:Key="OHsManageSamplesRowTemplate"><c:OHsSampleRow FileName="{Binding FileName, Mode=OneWay}" FileToolTip="{Binding FileName, Mode=OneWay}" Waveform="{Binding Waveform, Mode=OneWay}" IsPlaying="{Binding IsPlaying, Mode=OneWay}" IsEditing="{Binding IsEditing, Mode=OneWay}" IsEnabled="{Binding IsInteractionEnabled, Mode=OneWay}" PlayCommand="{Binding DataContext.PlayCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}, Mode=OneWay}" PlayCommandParameter="{Binding Mode=OneWay}" NameEditorTemplate="{StaticResource OHsManageSamplesEditorTemplate}" ActionsTemplate="{StaticResource OHsManageSamplesActionsTemplate}" WaveformRequested="OnSharedWaveformRequested"/></DataTemplate>
+<DataTemplate x:Key="OHsManageSamplesRowTemplate"><c:OHsSampleRow Style="{StaticResource OHsManageSamplesDragSourceStyle}" FileName="{Binding FileName, Mode=OneWay}" FileToolTip="{Binding FileName, Mode=OneWay}" Waveform="{Binding Waveform, Mode=OneWay}" IsPlaying="{Binding IsPlaying, Mode=OneWay}" IsEditing="{Binding IsEditing, Mode=OneWay}" IsEnabled="{Binding IsInteractionEnabled, Mode=OneWay}" PlayCommand="{Binding DataContext.PlayCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}, Mode=OneWay}" PlayCommandParameter="{Binding Mode=OneWay}" NameEditorTemplate="{StaticResource OHsManageSamplesEditorTemplate}" ActionsTemplate="{StaticResource OHsManageSamplesActionsTemplate}" WaveformRequested="OnSharedWaveformRequested"/></DataTemplate>
 
         <Style x:Key="OHsManageSamplesSurfaceStyle" TargetType="Border" BasedOn="{StaticResource CardBorderStyle}" />
     </UserControl.Resources>
