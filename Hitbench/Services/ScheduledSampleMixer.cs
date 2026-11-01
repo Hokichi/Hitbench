@@ -135,8 +135,21 @@ public sealed class ScheduledSampleMixer : ISampleProvider, IDisposable
                 var length = checked((int)((regionEnd - overlap) * 2));
                 var target = checked((int)((overlap - start) * 2));
                 var input = item.Audio.Samples.Slice(checked((int)((overlap - item.StartFrame) * 2)), length);
-                var gain = item.Gain * volume.Samples * controlPoints.GetGain(overlap);
-                for (var i = 0; i < length; i++) output[target + i] += Finite(input[i]) * gain;
+                var segmentIndex = controlPoints.FindSegment(overlap);
+                var segment = segmentIndex < 0 ? null : controlPoints.Segments[segmentIndex];
+                var baseGain = item.Gain * volume.Samples;
+                if (segment is not { IsRamp: true } || segment.StartVolume == segment.EndVolume)
+                {
+                    var gain = baseGain * (segment is null ? 1 : (float)segment.EvaluateGain(overlap));
+                    for (var i = 0; i < length; i++) output[target + i] += Finite(input[i]) * gain;
+                }
+                else
+                    for (var i = 0; i < length; i += 2)
+                    {
+                        var gain = baseGain * (float)segment.EvaluateGain(overlap + i / 2);
+                        output[target + i] += Finite(input[i]) * gain;
+                        output[target + i + 1] += Finite(input[i + 1]) * gain;
+                    }
                 overlap = regionEnd;
             }
         }
