@@ -11,6 +11,9 @@ namespace Hitbench.Views.Pages;
 public sealed class OHsControlPointLanePanel : VirtualizingPanel
 {
     private IReadOnlyList<OHsControlPointExtent> extents = [];
+    internal Guid? PreviewVolumePointId { get; set; }
+    internal int? PreviewVolume { get; set; }
+    private IReadOnlyDictionary<Guid, OHsControlPointCurveProjection> curves = new Dictionary<Guid, OHsControlPointCurveProjection>();
     internal Guid? PinnedPointId { get; set; }
     internal Guid? PreviewPointId { get; set; }
     internal double PreviewLeft { get; set; }
@@ -29,6 +32,9 @@ public sealed class OHsControlPointLanePanel : VirtualizingPanel
         var points = owner.Items.Cast<ControlPointSnapshot>().ToArray();
         if (PreviewPointId is { } id && ContentWidth > 0 && double.IsFinite(PreviewLeft))
             points = points.Select(p => p.Id == id ? p with { Timestamp = (int)Math.Clamp(Math.Round(PreviewLeft / ContentWidth * DurationMilliseconds), 0, int.MaxValue) } : p).ToArray();
+        if (PreviewVolumePointId is { } volumeId && PreviewVolume is { } volume)
+            points = points.Select(p => p.Id == volumeId ? p with { Volume = volume } : p).ToArray();
+        curves = OHsControlPointLayout.GetCurveProjections(points, DurationMilliseconds).ToDictionary(p => p.PointId);
         var byId = OHsControlPointLayout.GetExtents(points, DurationMilliseconds, ContentWidth).ToDictionary(e => e.Id);
         extents = points.Where(p => byId.ContainsKey(p.Id)).Select(p => byId[p.Id]).ToArray();
         return extents;
@@ -84,6 +90,7 @@ public sealed class OHsControlPointLanePanel : VirtualizingPanel
             child.Arrange(new(left, 0, width, finalSize.Height));
             if (OHsControlPointLane.FindChild<OHsControlPointZone>(child) is { } zone)
             {
+                zone.Curve = curves.GetValueOrDefault(extent.Id);
                 var visibleLeft = Math.Clamp(-left, 0, width);
                 var visibleRight = Math.Clamp(ViewportWidth - left, visibleLeft, width);
                 zone.SetVisibleLabelRange(zone.FlowDirection == FlowDirection.RightToLeft ? width - visibleRight : visibleLeft, visibleRight - visibleLeft);

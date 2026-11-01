@@ -41,6 +41,7 @@ public partial class OHsControlPointLane
         }
         PreviewVolume = OHsControlPointLayout.GetDraggedVolume(originalVolume, startPointerY, pointerY, volumeHeight);
         if (volumeInvoker is { } zone) { zone.PreviewVolume = PreviewVolume; zone.IsVolumeDragging = true; }
+        if (panel is not null) { panel.PreviewVolumePointId = id; panel.PreviewVolume = PreviewVolume; panel.InvalidateGeometry(); }
     }
 
     internal bool CompleteVolumeDrag()
@@ -62,6 +63,7 @@ public partial class OHsControlPointLane
         volumeDragPointId = null; volumeContext = null; IsVolumePreviewActive = false; PreviewVolume = null;
         if (volumeInvoker is { } zone) { zone.PreviewVolume = null; zone.IsVolumeDragging = false; }
         volumeInvoker = null;
+        if (panel is not null) { panel.PreviewVolumePointId = null; panel.PreviewVolume = null; panel.InvalidateGeometry(); }
         if (wasActive) { if (ReleasePointer is not null) ReleasePointer(); else if (IsMouseCaptured) ReleaseMouseCapture(); }
     }
 

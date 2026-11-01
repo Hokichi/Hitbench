@@ -4,6 +4,39 @@ namespace Hitbench.Resources.Helpers;
 
 public static class OHsControlPointLayout
 {
+    public static IReadOnlyList<OHsControlPointCurveProjection> GetCurveProjections(
+        IReadOnlyList<ControlPointSnapshot> points, double durationMilliseconds,
+        double clipStartMilliseconds = 0, double? clipEndMilliseconds = null)
+    {
+        var clipEnd = Math.Min(durationMilliseconds, clipEndMilliseconds ?? durationMilliseconds);
+        if (!double.IsFinite(durationMilliseconds) || !double.IsFinite(clipStartMilliseconds) ||
+            !double.IsFinite(clipEnd) || durationMilliseconds <= 0 || clipEnd <= clipStartMilliseconds) return [];
+        var sorted = points.OrderBy(p => p.Timestamp).ToArray();
+        var timeline = new Services.ControlPointVolumeTimeline(sorted.Select(p =>
+            new Core.Entities.ControlPointVolumeSnapshot(p.Timestamp, p.Volume, p.IsDisabled, p.IsRamp)).ToArray());
+        var result = new List<OHsControlPointCurveProjection>();
+        for (var i = 0; i < sorted.Length; i++)
+        {
+            var point = sorted[i];
+            var start = Math.Max(Math.Max(0, clipStartMilliseconds), point.Timestamp);
+            var end = Math.Min(clipEnd, i + 1 < sorted.Length ? sorted[i + 1].Timestamp : durationMilliseconds);
+            if (end <= start) continue;
+            var segment = timeline.Segments.LastOrDefault(p => p.StartTimestamp <= start);
+            double Value(double time) => segment is null ? 100 : !segment.IsRamp || segment.EndTimestamp is not { } finish
+                ? segment.StartVolume : segment.StartVolume + (segment.EndVolume - segment.StartVolume) *
+                    Math.Clamp((time - segment.StartTimestamp) / (finish - (double)segment.StartTimestamp), 0, 1);
+            double? connector = null;
+            if (start == point.Timestamp && i > 0 && !point.IsDisabled)
+            {
+                var previous = timeline.Segments.LastOrDefault(p => p.StartTimestamp < point.Timestamp);
+                var left = previous is null ? 100 : previous.IsRamp ? previous.EndVolume : previous.StartVolume;
+                if (left != Value(start)) connector = left;
+            }
+            result.Add(new(point.Id, start, end, Value(start), Value(end), connector));
+        }
+        return result.AsReadOnly();
+    }
+
     public static double? GetPlaybackMarkerX(double positionMilliseconds, double durationMilliseconds,
         double contentWidth, double horizontalOffset, double viewportWidth)
     {

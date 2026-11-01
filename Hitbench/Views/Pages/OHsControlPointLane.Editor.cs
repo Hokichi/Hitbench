@@ -25,6 +25,7 @@ public partial class OHsControlPointLane
             BringPointIntoView(id) is not { } tag) return false;
         if (IsEditorOpen) DismissEditor(false);
         editingPointId = id; editorInvoker = tag; tag.IsEditing = true;
+        Hitbench.Resources.Helpers.KeyboardNavigationPolicy.BindSuppressionScope(ValueEditor, this);
         ValueEditor.FlowDirection = FlowDirection;
         ValueEditor.SetPointCommand = SetPointCommand; ValueEditor.Context = state.Context; ValueEditor.Point = point;
         IsEditorOpen = true; editorAwaitingPlacement = true;

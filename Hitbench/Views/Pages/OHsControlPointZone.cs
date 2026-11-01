@@ -9,8 +9,20 @@ namespace Hitbench.Views.Pages;
 /// <summary>A temporal zone retaining native button invocation and view-only volume preview.</summary>
 public sealed class OHsControlPointZone : Button
 {
+    public static readonly DependencyProperty CurveProperty = DependencyProperty.Register(nameof(Curve), typeof(OHsControlPointCurveProjection), typeof(OHsControlPointZone),
+        new PropertyMetadata(null, (d, _) => ((OHsControlPointZone)d).RefreshText()));
+    public OHsControlPointCurveProjection? Curve { get => (OHsControlPointCurveProjection?)GetValue(CurveProperty); set => SetValue(CurveProperty, value); }
+    private static readonly DependencyPropertyKey FillGeometryPropertyKey = DependencyProperty.RegisterReadOnly(nameof(FillGeometry), typeof(System.Windows.Media.Geometry), typeof(OHsControlPointZone), new PropertyMetadata(null));
+    public static readonly DependencyProperty FillGeometryProperty = FillGeometryPropertyKey.DependencyProperty;
+    public System.Windows.Media.Geometry? FillGeometry => (System.Windows.Media.Geometry?)GetValue(FillGeometryProperty);
+    private static readonly DependencyPropertyKey EndLineOffsetPropertyKey = DependencyProperty.RegisterReadOnly(nameof(EndLineOffset), typeof(double), typeof(OHsControlPointZone), new PropertyMetadata(0d));
+    public static readonly DependencyProperty EndLineOffsetProperty = EndLineOffsetPropertyKey.DependencyProperty;
+    public double EndLineOffset => (double)GetValue(EndLineOffsetProperty);
+    private static readonly DependencyPropertyKey ConnectorStartOffsetPropertyKey = DependencyProperty.RegisterReadOnly(nameof(ConnectorStartOffset), typeof(double), typeof(OHsControlPointZone), new PropertyMetadata(0d));
+    public static readonly DependencyProperty ConnectorStartOffsetProperty = ConnectorStartOffsetPropertyKey.DependencyProperty;
+    public double ConnectorStartOffset => (double)GetValue(ConnectorStartOffsetProperty);
     public static readonly DependencyProperty PointProperty = DependencyProperty.Register(nameof(Point), typeof(ControlPointSnapshot), typeof(OHsControlPointZone),
-        new PropertyMetadata(null, (d, _) => { var zone = (OHsControlPointZone)d; zone.PreviewVolume = null; zone.IsVolumeDragging = false; zone.RefreshText(); }));
+        new PropertyMetadata(null, (d, _) => { var zone = (OHsControlPointZone)d; zone.Curve = null; zone.PreviewVolume = null; zone.IsVolumeDragging = false; zone.RefreshText(); }));
     public static readonly DependencyProperty PreviewVolumeProperty = DependencyProperty.Register(nameof(PreviewVolume), typeof(int?), typeof(OHsControlPointZone),
         new PropertyMetadata(null, (d, _) => ((OHsControlPointZone)d).RefreshText()));
     public static readonly DependencyProperty IsVolumeDraggingProperty = DependencyProperty.Register(nameof(IsVolumeDragging), typeof(bool), typeof(OHsControlPointZone));
@@ -51,11 +63,25 @@ public sealed class OHsControlPointZone : Button
         var text = Point is { } point ? string.Format(CultureInfo.CurrentCulture, "{0} · {1}%", point.Sampleset, volume) : "";
         SetValue(LabelPropertyKey, text);
         var height = Math.Max(0, ActualHeight);
-        var fill = height * Math.Clamp(volume, 0, 100) / 100;
+        double Y(double value) => height * (1 - Math.Clamp(value, 0, 100) / 100);
+        var startY = Y(Curve?.StartVolume ?? volume);
+        var endY = Y(Curve?.EndVolume ?? volume);
+        SetValue(EndLineOffsetPropertyKey, endY);
+        SetValue(ConnectorStartOffsetPropertyKey, Y(Curve?.ConnectorFromVolume ?? Curve?.StartVolume ?? volume));
+        var shape = new System.Windows.Media.StreamGeometry();
+        using (var drawing = shape.Open())
+        {
+            drawing.BeginFigure(new Point(0, startY), true, true);
+            drawing.LineTo(new Point(ActualWidth, endY), true, false);
+            drawing.LineTo(new Point(ActualWidth, height), true, false);
+            drawing.LineTo(new Point(0, height), true, false);
+        }
+        shape.Freeze(); SetValue(FillGeometryPropertyKey, shape);
+        var fill = height - startY;
         SetValue(FillHeightPropertyKey, fill);
         SetValue(VolumeLineOffsetPropertyKey, Math.Clamp(height - fill, 0, Math.Max(0, height - 1)));
         AutomationProperties.SetName(this, Point is { } current ? string.Format(CultureInfo.CurrentCulture,
-            "{0}, control point at {1} milliseconds, {2}", text, current.Timestamp, current.IsDisabled ? "disabled" : "enabled") : "Control point");
+            "{0}, control point at {1} milliseconds, {2}", text, current.Timestamp, (current.IsDisabled ? "disabled" : "enabled") + (current.IsRamp ? ", ramp" : ", fixed")) : "Control point");
         AutomationProperties.SetHelpText(this, Point?.IsOffsetAnchor == true
             ? "Click to edit. Drag vertically to change volume. Up/Down adjusts volume."
             : "Click to edit. Drag vertically to change volume; drag the left or right boundary horizontally to move timing. Up/Down adjusts volume; Alt+Left/Right adjusts timing.");

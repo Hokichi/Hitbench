@@ -10,10 +10,12 @@
    <Border Style="{StaticResource BaseBorderStyle}" BorderBrush="{DynamicResource Brush.Border.Subtle}" BorderThickness="1,0,0,0" Background="Transparent" ClipToBounds="True">
     <Grid Style="{StaticResource BaseGridStyle}" Background="Transparent">
      <Grid x:Name="ZoneGraphics" Style="{StaticResource BaseGridStyle}" IsHitTestVisible="False">
-      <Rectangle x:Name="ZoneFill" Fill="{TemplateBinding Background}" Height="{Binding FillHeight, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}" VerticalAlignment="Bottom" Opacity="0.24" />
-      <Line x:Name="VolumeLine" X1="0" X2="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}" Y1="0" Y2="0" Stroke="{TemplateBinding BorderBrush}" StrokeThickness="2" VerticalAlignment="Top">
-       <Line.RenderTransform><TranslateTransform Y="{Binding VolumeLineOffset, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}" /></Line.RenderTransform>
-      </Line>
+      <Path x:Name="ZoneFill" Fill="{TemplateBinding Background}" Data="{Binding FillGeometry, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}" Opacity="0.24" />
+      <Line x:Name="VolumeLine" X1="0" X2="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}"
+       Y1="{Binding VolumeLineOffset, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}" Y2="{Binding EndLineOffset, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}"
+       Stroke="{DynamicResource Brush.Text.Primary}" StrokeThickness="2" />
+      <Line x:Name="ZoneConnector" X1="0" X2="0" Y1="{Binding ConnectorStartOffset, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}"
+       Y2="{Binding VolumeLineOffset, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}" Stroke="{DynamicResource Brush.Text.Primary}" StrokeThickness="2" />
      </Grid>
      <TextBlock Text="{Binding Label, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}" Foreground="{TemplateBinding Foreground}"
        FontFamily="{TemplateBinding FontFamily}" FontWeight="{TemplateBinding FontWeight}" FontStyle="{TemplateBinding FontStyle}" FontSize="{TemplateBinding FontSize}" TextTrimming="CharacterEllipsis" VerticalAlignment="Top" HorizontalAlignment="Left"
@@ -30,11 +32,11 @@
     <Trigger Property="IsVolumeDragging" Value="True"><Setter TargetName="ZoneFill" Property="Opacity" Value="0.44" /><Setter TargetName="VolumeLine" Property="StrokeThickness" Value="3" /></Trigger>
     <Trigger Property="IsEditing" Value="True"><Setter TargetName="EditingCue" Property="Visibility" Value="Visible" /></Trigger>
     <DataTrigger Binding="{Binding Point.IsDisabled, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}" Value="True">
-     <Setter TargetName="ZoneGraphics" Property="Opacity" Value="0.4" /><Setter TargetName="VolumeLine" Property="StrokeDashArray" Value="4,3" />
+     <Setter TargetName="ZoneFill" Property="Opacity" Value="0.096" /><Setter TargetName="VolumeLine" Property="StrokeDashArray" Value="4,3" />
     </DataTrigger>
-    <Trigger Property="IsInvalid" Value="True"><Setter TargetName="VolumeLine" Property="StrokeThickness" Value="3" /><Setter TargetName="VolumeLine" Property="StrokeDashArray" Value="1,1" /></Trigger>
+    <Trigger Property="IsInvalid" Value="True"><Setter TargetName="VolumeLine" Property="Stroke" Value="{DynamicResource Brush.Danger}" /><Setter TargetName="ZoneConnector" Property="Stroke" Value="{DynamicResource Brush.Danger}" /><Setter TargetName="ZoneFill" Property="Opacity" Value="0" /><Setter TargetName="VolumeLine" Property="StrokeThickness" Value="3" /><Setter TargetName="VolumeLine" Property="StrokeDashArray" Value="1,1" /></Trigger>
     <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
-     <Setter TargetName="ZoneGraphics" Property="Opacity" Value="1" />
+     <Setter TargetName="ZoneGraphics" Property="Opacity" Value="1" /><Setter TargetName="VolumeLine" Property="Stroke" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" /><Setter TargetName="ZoneConnector" Property="Stroke" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
     </DataTrigger>
    </ControlTemplate.Triggers>
   </ControlTemplate>
@@ -86,6 +88,7 @@
    <MenuItem Header="{Binding DisableMenuHeader, Mode=OneWay}" Style="{StaticResource OHsActionMenuItemStyle}" Command="{Binding SetPointDisabledCommand, Mode=OneWay}" CommandParameter="{Binding MenuDisableRequest, Mode=OneWay}" AutomationProperties.Name="{Binding DisableMenuHeader, Mode=OneWay}" />
    <MenuItem Header="Add" Style="{StaticResource OHsActionMenuItemStyle}" Command="{Binding SplitPointCommand, Mode=OneWay}" CommandParameter="{Binding MenuSplitRequest, Mode=OneWay}" AutomationProperties.Name="Add control point at playback marker" />
    <MenuItem Header="Delete" Style="{StaticResource OHsDestructiveActionMenuItemStyle}" Command="{Binding DeletePointCommand, Mode=OneWay}" CommandParameter="{Binding MenuDeleteRequest, Mode=OneWay}" AutomationProperties.Name="Delete control point" />
+   <MenuItem Header="{Binding ModeMenuHeader, Mode=OneWay}" Style="{StaticResource OHsActionMenuItemStyle}" Command="{Binding SetPointCommand, Mode=OneWay}" CommandParameter="{Binding MenuModeRequest, Mode=OneWay}" AutomationProperties.Name="{Binding ModeMenuHeader, Mode=OneWay}" />
   </ContextMenu>
   <Style x:Key="OHsControlPointPlayheadHostStyle" TargetType="Grid" BasedOn="{StaticResource BaseGridStyle}">
    <Setter Property="Width" Value="3.5" /><Setter Property="HorizontalAlignment" Value="Left" />

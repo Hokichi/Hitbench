@@ -14,6 +14,12 @@ namespace Hitbench.Views.Pages;
 
 public partial class OHsControlPointLane
 {
+    private static readonly DependencyPropertyKey ModeMenuHeaderPropertyKey = DependencyProperty.RegisterReadOnly(nameof(ModeMenuHeader), typeof(string), typeof(OHsControlPointLane), new PropertyMetadata("Change to ramp"));
+    public static readonly DependencyProperty ModeMenuHeaderProperty = ModeMenuHeaderPropertyKey.DependencyProperty;
+    public string ModeMenuHeader => (string)GetValue(ModeMenuHeaderProperty);
+    private static readonly DependencyPropertyKey MenuModeRequestPropertyKey = DependencyProperty.RegisterReadOnly(nameof(MenuModeRequest), typeof(SetControlPointRequestedMessage), typeof(OHsControlPointLane), new PropertyMetadata(null));
+    public static readonly DependencyProperty MenuModeRequestProperty = MenuModeRequestPropertyKey.DependencyProperty;
+    public SetControlPointRequestedMessage? MenuModeRequest => (SetControlPointRequestedMessage?)GetValue(MenuModeRequestProperty);
     private static DependencyProperty RegisterCommand(string name) => DependencyProperty.Register(name, typeof(ICommand), typeof(OHsControlPointLane));
     public static readonly DependencyProperty AddCommandProperty = RegisterCommand(nameof(AddCommand));
     public static readonly DependencyProperty CommitAddCommandProperty = RegisterCommand(nameof(CommitAddCommand));
@@ -318,6 +324,8 @@ public partial class OHsControlPointLane
         if (tag?.Point is { } point && State is { } state)
         {
             ZoneMenu.DataContext = this;
+            SetValue(ModeMenuHeaderPropertyKey, point.IsRamp ? "Change to fixed" : "Change to ramp");
+            SetValue(MenuModeRequestPropertyKey, new SetControlPointRequestedMessage(state.Context, point.Id, null, null, state.Revision, !point.IsRamp));
             SetValue(MenuDisableRequestPropertyKey, new SetControlPointDisabledRequestedMessage(state.Context, point.Id, state.Revision, !point.IsDisabled));
             SetValue(MenuSplitRequestPropertyKey, new SplitControlPointRequestedMessage(state.Context, point.Id, state.Revision));
             SetValue(MenuDeleteRequestPropertyKey, new DeleteControlPointRequestedMessage(state.Context, point.Id));
@@ -338,6 +346,7 @@ public partial class OHsControlPointLane
     }
     private void ClearMenuRequests()
     {
+        SetValue(MenuModeRequestPropertyKey, null);
         SetValue(MenuDisableRequestPropertyKey, null); SetValue(MenuSplitRequestPropertyKey, null);
         SetValue(MenuDeleteRequestPropertyKey, null);
         menuPointId = null; menuContext = null;
