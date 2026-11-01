@@ -12,13 +12,57 @@ public partial class WorkstationPageVM
     private CancellationTokenSource? managerCancellation;
     private Task sampleChangeNotifications = Task.CompletedTask;
     private bool managingSamples;
+    private bool samplesRequestedOpen;
+    private long sampleManagerRequestGeneration;
+    private Task sampleManagerTransitions = Task.CompletedTask;
+    private Task<bool>? sampleManagerClosing;
+    public bool IsSamplesOpen => managingSamples;
     public bool CanManageSamples => CanRequestDrawer && sampleFiles is not null && sampleDialog is not null && projectPath is not null && sampleManagementDialog is not null;
     public TrackSampleAvailability GetSampleAvailability(Track track) => track.SelectedSampleFileName is null
         ? TrackSampleAvailability.Unselected : sampleFiles is null || sampleTrackFiles.Any(n => string.Equals(n, track.SelectedSampleFileName, StringComparison.OrdinalIgnoreCase))
             ? TrackSampleAvailability.Available : TrackSampleAvailability.Missing;
     public bool CanEditTrackGrid(Track track) => track is not InstrumentalTrack && tracks.Contains(track) && (sampleFiles is null || GetSampleAvailability(track) == TrackSampleAvailability.Available);
     [RelayCommand(CanExecute = nameof(CanManageSamples))]
-    private Task ManageSamplesAsync() => CanManageSamples ? RequestWorkstationDrawerAsync(OHsWorkstationDrawerKind.Samples) : Task.CompletedTask;
+    private Task ManageSamplesAsync()
+    {
+        if (!CanManageSamples) return Task.CompletedTask;
+        samplesRequestedOpen = !samplesRequestedOpen;
+        var request = ++sampleManagerRequestGeneration;
+        sampleManagerTransitions = TransitionSampleManagerAsync(sampleManagerTransitions, request, sampleSession);
+        return Task.CompletedTask;
+    }
+
+    private async Task TransitionSampleManagerAsync(Task previous, long request, Guid session)
+    {
+        try
+        {
+            await previous;
+            if (request != sampleManagerRequestGeneration || session != sampleSession || !CanRequestDrawer) return;
+            if (!samplesRequestedOpen)
+            {
+                if (!await CloseSampleManagerAsync(loadCancellation?.Token ?? default) && request == sampleManagerRequestGeneration)
+                    samplesRequestedOpen = managingSamples;
+                return;
+            }
+            if (sampleManagerClosing is { } closing) await closing;
+            if (request != sampleManagerRequestGeneration || session != sampleSession || !CanRequestDrawer) return;
+            if (managingSamples) return;
+            if (mappingTransportOwner is not null) await SettleInstrumentalEditorAsync();
+            await DrainProjectSaveQueueAsync();
+            if (request != sampleManagerRequestGeneration || session != sampleSession || !CanRequestDrawer) return;
+            await SettleInstrumentalFoldersAsync();
+            if (request != sampleManagerRequestGeneration || session != sampleSession || !CanRequestDrawer || projectPath is null) return;
+            if (activeManager is not null) await activeManager;
+            managerCancellation?.Dispose();
+            sampleManagerClosing = null;
+            managerCancellation = CancellationTokenSource.CreateLinkedTokenSource(loadCancellation?.Token ?? default);
+            managingSamples = true;
+            OnPropertyChanged(nameof(IsSamplesOpen)); NotifyEditingState();
+            activeManager = ManageSamplesCoreAsync(new(projectPath, Project?.BeatmapPath, session), managerCancellation.Token, request);
+        }
+        catch (OperationCanceledException) when (settlingDrawers || loadCancellation?.IsCancellationRequested == true || managerCancellation?.IsCancellationRequested == true) { }
+        catch (Exception error) { ErrorMessage = error.Message; if (request == sampleManagerRequestGeneration) samplesRequestedOpen = managingSamples; }
+    }
     private async Task ManageSamplesCoreAsync(SampleManagementContext context, CancellationToken token, long request)
     {
         try
@@ -27,13 +71,38 @@ public partial class WorkstationPageVM
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { }
         catch (Exception error) { ErrorMessage = error.Message; }
-        finally { managingSamples = false; if (request == drawerRequestGeneration && requestedDrawerKind == OHsWorkstationDrawerKind.Samples) requestedDrawerKind = null; NotifyEditingState(); }
+        finally
+        {
+            managingSamples = false;
+            if (request == sampleManagerRequestGeneration) samplesRequestedOpen = false;
+            OnPropertyChanged(nameof(IsSamplesOpen)); NotifyEditingState();
+        }
+    }
+    private Task<bool> CloseSampleManagerAsync(CancellationToken token) =>
+        sampleManagerClosing is { IsCompleted: false } closing ? closing : sampleManagerClosing = CloseSampleManagerCoreAsync(token);
+
+    private async Task<bool> CloseSampleManagerCoreAsync(CancellationToken token)
+    {
+        if (activeManager is not { } manager) return true;
+        using var closing = CancellationTokenSource.CreateLinkedTokenSource(token, managerCancellation?.Token ?? default);
+        if (!manager.IsCompleted && !await sampleManagementDialog!.TryCloseAsync(new(projectPath!, Project?.BeatmapPath, sampleSession), closing.Token)) return false;
+        await manager;
+        await sampleChangeNotifications;
+        return true;
     }
     private async Task SettleSampleManagerAsync()
     {
+        ++sampleManagerRequestGeneration;
+        samplesRequestedOpen = false;
         managerCancellation?.Cancel();
+        await sampleManagerTransitions;
+        if (sampleManagerClosing is { } closing)
+        { try { await closing; } catch (OperationCanceledException) when (managerCancellation?.IsCancellationRequested == true) { } }
         if (activeManager is not null) await activeManager;
         await sampleChangeNotifications;
+        activeManager = null;
+        managerCancellation?.Dispose(); managerCancellation = null;
+        sampleManagerClosing = null;
     }
     private void ReceiveSampleChange(ProjectSamplesChangedMessage change) =>
         sampleChangeNotifications = ApplySampleChangeAsync(sampleChangeNotifications, change);

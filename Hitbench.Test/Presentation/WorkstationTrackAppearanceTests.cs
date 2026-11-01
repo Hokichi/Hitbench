@@ -124,7 +124,7 @@ public class WorkstationTrackAppearanceTests
             await entered.Task.WaitAsync(TimeSpan.FromSeconds(2));
             vm.BeginTrackRenameCommand.Execute(track); vm.TrackNameDraft = "Soft Piano";
             try { await vm.CommitTrackRenameAsync(track).WaitAsync(TimeSpan.FromSeconds(2)); }
-            finally { await vm.SettleInstrumentalEditorAsync(); }
+            finally { await vm.SettleWorkstationDrawersAsync(); }
             await drawer;
             await vm.ChangeTrackColorCommand.ExecuteAsync(track);
             Assert.That(track.KeyFiles["C3"], Is.EqualTo("Soft Piano/C3.wav"));

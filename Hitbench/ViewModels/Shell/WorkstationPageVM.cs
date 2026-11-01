@@ -122,10 +122,9 @@ public partial class WorkstationPageVM(
         if (reloadingSamples && token != reloadSamplesCancellation?.Token) reloadSamplesCancellation?.Cancel();
         await SettleControlPointsAsync();
         controlPointIds.Clear();
-        await SettleInstrumentalEditorAsync();
+        await SettleWorkstationDrawersAsync();
         CommitPendingZoom();
         await DrainProjectSaveQueueAsync();
-        await SettleSampleManagerAsync();
         await SettleInstrumentalFoldersAsync();
         sampleSession = Guid.NewGuid();
         ClearInstrumentalHistories(); instrumentIds.Clear(); instrumentNoteIds.Clear(); instrumentEventIds.Clear(); instrumentRevision=0;
@@ -159,8 +158,7 @@ public partial class WorkstationPageVM(
         await SettleExportAsync();
         reloadSamplesCancellation?.Cancel();
         await SettleControlPointsAsync();
-        await SettleInstrumentalEditorAsync();
-        await SettleSampleManagerAsync();
+        await SettleWorkstationDrawersAsync();
         await SettleInstrumentalFoldersAsync();
         deactivated = true; ClearInstrumentalHistories();
         ResetNodeEditing();
@@ -343,8 +341,7 @@ public partial class WorkstationPageVM(
         await SettleControlPointsAsync();
         reloadSamplesCancellation?.Cancel();
         if (activeSampleReload is not null) await activeSampleReload;
-        await SettleInstrumentalEditorAsync();
-        await SettleSampleManagerAsync();
+        await SettleWorkstationDrawersAsync();
         await SettleInstrumentalFoldersAsync();
         IsReturning = true;
         var prepared = false;

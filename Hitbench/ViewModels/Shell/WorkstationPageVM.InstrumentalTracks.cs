@@ -72,8 +72,7 @@ public partial class WorkstationPageVM
         {
             if (requestedDrawerKind == OHsWorkstationDrawerKind.Arrangement && CanOpenInstrumentalEditor && ActiveInstrument(m.Context) is not null)
             {
-                mappingReturnContext = m.Context;
-                messenger.Send(new OHsInstrumentalKeysMappingAcceptedMessage(m.Context));
+                mappingHandoff = PrepareKeysMappingHandoffAsync(m.Context, drawerRequestGeneration, sampleSession);
             }
         });
         messenger.Register<OHsInstrumentalTimelineEditRequestedMessage>(this, (_, m) => ReceiveInstrumentTimelineEdit(m));
@@ -110,6 +109,8 @@ public partial class WorkstationPageVM
     private InstrumentalTrack? requestedDrawerTrack;
     private long drawerRequestGeneration;
     private Task drawerTransitions = Task.CompletedTask;
+    private Task mappingHandoff = Task.CompletedTask;
+    private bool settlingInstrumentalEditor;
     private InstrumentalTrackContext? mappingTransportOwner;
     private InstrumentalTrackContext? mappingReturnContext;
     private bool settlingDrawers;
@@ -121,14 +122,14 @@ public partial class WorkstationPageVM
 
     private Task RequestWorkstationDrawerAsync(OHsWorkstationDrawerKind kind, InstrumentalTrack? track = null)
     {
-        if (!CanRequestDrawer || projectPath is null || kind != OHsWorkstationDrawerKind.Samples && (track is null || !tracks.Contains(track))) return Task.CompletedTask;
+        if (!CanRequestDrawer || settlingInstrumentalEditor || projectPath is null || track is null || !tracks.Contains(track)) return Task.CompletedTask;
         // An explicit menu/drawer request replaces any pending arrangement round trip, including a same-drawer request.
         mappingReturnContext = null;
         if (requestedDrawerKind == kind && ReferenceEquals(requestedDrawerTrack, track)) return Task.CompletedTask;
         var request = ++drawerRequestGeneration;
         var session = sampleSession;
         requestedDrawerKind = kind; requestedDrawerTrack = track;
-        instrumentCancellation?.Cancel(); managerCancellation?.Cancel();
+        if (kind != OHsWorkstationDrawerKind.KeysMapping) instrumentCancellation?.Cancel();
         Task ownedLifetime = Task.CompletedTask;
         var transition = TransitionDrawerAsync(drawerTransitions, request, session, kind, track, task => ownedLifetime = task);
         drawerTransitions = transition;
@@ -140,20 +141,34 @@ public partial class WorkstationPageVM
         try
         {
             await previous;
+            if (request != drawerRequestGeneration || session != sampleSession || !CanRequestDrawer) return;
+            if (kind == OHsWorkstationDrawerKind.KeysMapping)
+            {
+                samplesRequestedOpen = false;
+                var sampleRequest = ++sampleManagerRequestGeneration;
+                if (!await CloseSampleManagerAsync(loadCancellation?.Token ?? default))
+                {
+                    if (request == drawerRequestGeneration)
+                    {
+                        requestedDrawerKind = activeInstrumentContext is null ? null : OHsWorkstationDrawerKind.Arrangement;
+                        requestedDrawerTrack = activeInstrumentContext is { } active ? ActiveInstrument(active) : null;
+                        samplesRequestedOpen = managingSamples;
+                    }
+                    return;
+                }
+                if (sampleRequest != sampleManagerRequestGeneration)
+                {
+                    if (request == drawerRequestGeneration && activeInstrumentContext is { } active)
+                    { requestedDrawerKind = OHsWorkstationDrawerKind.Arrangement; requestedDrawerTrack = ActiveInstrument(active); }
+                    return;
+                }
+            }
+            if (request != drawerRequestGeneration || session != sampleSession || !CanRequestDrawer) return;
             await SettlePresentedDrawerAsync();
             await DrainProjectSaveQueueAsync();
             if (request != drawerRequestGeneration || session != sampleSession || !CanRequestDrawer) return;
             await SettleInstrumentalFoldersAsync();
             if (request != drawerRequestGeneration || session != sampleSession || !CanRequestDrawer || projectPath is null) return;
-            if (kind == OHsWorkstationDrawerKind.Samples)
-            {
-                if (sampleManagementDialog is null) return;
-                managingSamples = true; NotifyEditingState();
-                managerCancellation = CancellationTokenSource.CreateLinkedTokenSource(loadCancellation?.Token ?? default);
-                activeManager = ManageSamplesCoreAsync(new(projectPath, Project?.BeatmapPath, sampleSession), managerCancellation.Token, request);
-                ownLifetime(activeManager);
-                return;
-            }
             if (track is null || !tracks.Contains(track) || kind == OHsWorkstationDrawerKind.Arrangement && track.KeyFiles.Count == 0) return;
             instrumentBusy = true;
             instrumentCancellation = CancellationTokenSource.CreateLinkedTokenSource(loadCancellation?.Token ?? default);
@@ -168,7 +183,7 @@ public partial class WorkstationPageVM
         catch (Exception error) { ErrorMessage = error.Message; }
         finally
         {
-            if (request == drawerRequestGeneration && !instrumentBusy && !managingSamples)
+            if (request == drawerRequestGeneration && !instrumentBusy)
             { requestedDrawerKind = null; requestedDrawerTrack = null; }
         }
     }
@@ -176,7 +191,7 @@ public partial class WorkstationPageVM
     {
         try
         {
-            while (!token.IsCancellationRequested && request == drawerRequestGeneration && ActiveInstrument(context) == track)
+            while (!token.IsCancellationRequested && ActiveInstrument(context) == track)
             {
                 if (arrangement)
                 {
@@ -193,12 +208,12 @@ public partial class WorkstationPageVM
                 // Coordinator serializes an already-entered Play ahead of Pause. Cancellation prevents a queued Play from entering later.
                 await playback.PauseAsync(token); RefreshPlayback();
                 token.ThrowIfCancellationRequested();
-                if (request != drawerRequestGeneration) return;
+                if (ActiveInstrument(context) != track) return;
                 await instrumentDialogs!.ShowKeysMappingAsync(InstrumentSnapshot(track, context), token);
                 await DrainProjectSaveQueueAsync();
                 if (mappingTransportOwner == context) mappingTransportOwner = null;
                 NotifyInstrumentState(); PublishInstrumentTimeline();
-                if (mappingReturnContext != context || token.IsCancellationRequested || request != drawerRequestGeneration || !CanViewArrangement(track)) return;
+                if (mappingReturnContext != context || token.IsCancellationRequested || !CanViewArrangement(track)) return;
                 mappingReturnContext = null;
                 arrangement = true;
             }
@@ -213,30 +228,52 @@ public partial class WorkstationPageVM
             if (activeInstrumentContext == context)
             {
                 activeInstrumentContext = null; instrumentBusy = false;
-                if (request == drawerRequestGeneration) { requestedDrawerKind = null; requestedDrawerTrack = null; }
+                if (request == drawerRequestGeneration || ReferenceEquals(requestedDrawerTrack, track))
+                { requestedDrawerKind = null; requestedDrawerTrack = null; }
                 NotifyInstrumentState();
             }
         }
     }
     private async Task SettlePresentedDrawerAsync()
     {
-        instrumentCancellation?.Cancel(); managerCancellation?.Cancel();
+        instrumentCancellation?.Cancel();
         if (instrumentWorkflow is { } editor) await editor;
-        if (activeManager is { } manager) await manager;
         await instrumentTimelineNotifications;
-        if (instrumentBusy || managingSamples) await DrainProjectSaveQueueAsync();
-        instrumentWorkflow = null; activeManager = null;
+        instrumentWorkflow = null;
         instrumentCancellation?.Dispose(); instrumentCancellation = null;
-        managerCancellation?.Dispose(); managerCancellation = null;
     }
     public async Task SettleInstrumentalEditorAsync()
     {
-        settlingDrawers = true;
+        settlingInstrumentalEditor = true;
         mappingReturnContext = null;
         ++drawerRequestGeneration; requestedDrawerKind = null; requestedDrawerTrack = null;
-        instrumentCancellation?.Cancel(); managerCancellation?.Cancel();
-        try { await drawerTransitions; await SettlePresentedDrawerAsync(); }
+        instrumentCancellation?.Cancel();
+        try { await drawerTransitions; await mappingHandoff; await SettlePresentedDrawerAsync(); }
+        finally { settlingInstrumentalEditor = false; }
+    }
+    public async Task SettleWorkstationDrawersAsync()
+    {
+        settlingDrawers = true;
+        managerCancellation?.Cancel(); instrumentCancellation?.Cancel();
+        try { await Task.WhenAll(SettleInstrumentalEditorAsync(), SettleSampleManagerAsync()); }
         finally { settlingDrawers = false; }
+    }
+    private async Task PrepareKeysMappingHandoffAsync(InstrumentalTrackContext context, long request, Guid session)
+    {
+        try
+        {
+            samplesRequestedOpen = false;
+            var sampleRequest = ++sampleManagerRequestGeneration;
+            if (!await CloseSampleManagerAsync(instrumentCancellation?.Token ?? default))
+            { if (sampleRequest == sampleManagerRequestGeneration) samplesRequestedOpen = managingSamples; return; }
+            await DrainProjectSaveQueueAsync();
+            if (settlingDrawers || settlingInstrumentalEditor || request != drawerRequestGeneration || session != sampleSession ||
+                sampleRequest != sampleManagerRequestGeneration || !CanOpenInstrumentalEditor || ActiveInstrument(context) is null) return;
+            mappingReturnContext = context;
+            messenger?.Send(new OHsInstrumentalKeysMappingAcceptedMessage(context));
+        }
+        catch (OperationCanceledException) when (instrumentCancellation?.IsCancellationRequested == true || settlingDrawers) { }
+        catch (Exception error) { ErrorMessage = error.Message; }
     }
     private async Task DrainProjectSaveQueueAsync()
     { await sampleChangeNotifications; await AwaitProjectSavesAsync(); if (lastSaveError is not null) throw new IOException("Could not save project.", lastSaveError); }
