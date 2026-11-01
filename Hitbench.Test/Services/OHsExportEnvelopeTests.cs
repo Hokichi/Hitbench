@@ -6,6 +6,19 @@ namespace Hitbench.Test.Services;
 public class OHsExportEnvelopeTests
 {
     [Test]
+    public void MixtureRetainsEachComponentsEnvelopeAndFullDuration()
+    {
+        var timeline = new ControlPointVolumeTimeline([new(0, 0, IsRamp: true), new(1000, 100)]);
+        using var a = DecodedAudio.CopyFrom(Enumerable.Repeat(.4f, 88200).ToArray());
+        using var b = DecodedAudio.CopyFrom(Enumerable.Repeat(.2f, 44100).ToArray());
+        var asset = OHsExportAsset.CreateShaped([new("a.wav", 100, OHsExportEnvelope.Create(timeline, 0, 44100)),
+            new("b.wav", 100, OHsExportEnvelope.Create(timeline, 22050, 22050))]);
+        using var output = OHsExportAudio.Render(asset, file => file == "a.wav" ? a : b, default);
+        Assert.That(output.FrameCount, Is.EqualTo(44100));
+        Assert.That(output.Samples[22050], Is.EqualTo(.25f).Within(1e-6));
+        Assert.That(output.Samples[66150], Is.EqualTo(.3f).Within(1e-6));
+    }
+    [Test]
     public void SourceMultiplicityAndEquivalentScalarHaveSameRecipe()
     {
         var curve = OHsExportEnvelope.Create(new([new(0, 10, IsRamp: true), new(1000, 50)]), 0, 44100);

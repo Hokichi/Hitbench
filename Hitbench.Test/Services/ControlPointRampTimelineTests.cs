@@ -7,6 +7,14 @@ namespace Hitbench.Test.Services;
 public class ControlPointRampTimelineTests
 {
     [Test]
+    public void CollapsedFrameIntervalSelectsLaterEndpointWithoutDivision()
+    {
+        var segment = new ControlPointVolumeSegment(0, 1, 0, 0, 0, 100, true);
+        Assert.That(segment.EvaluateGain(0), Is.EqualTo(1));
+        var curve = new ControlPointVolumeTimeline([new(int.MinValue, 0, IsRamp: true), new(int.MaxValue, 100)]);
+        Assert.That(curve.GetGain(0), Is.EqualTo(.5f).Within(1e-6));
+    }
+    [Test]
     public void RisingRampUsesPointOwnedEndpoints()
     {
         var curve = new ControlPointVolumeTimeline([new(0, 10), new(1000, 10, IsRamp: true), new(3000, 50)]);

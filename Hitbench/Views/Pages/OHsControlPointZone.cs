@@ -11,7 +11,7 @@ public sealed class OHsControlPointZone : Button
 {
     public static readonly DependencyProperty CurveProperty = DependencyProperty.Register(nameof(Curve), typeof(OHsControlPointCurveProjection), typeof(OHsControlPointZone),
         new PropertyMetadata(null, (d, _) => ((OHsControlPointZone)d).RefreshText()));
-    public OHsControlPointCurveProjection? Curve { get => (OHsControlPointCurveProjection?)GetValue(CurveProperty); set => SetValue(CurveProperty, value); }
+    public OHsControlPointCurveProjection? Curve { get => (OHsControlPointCurveProjection?)GetValue(CurveProperty); set { if (!Equals(Curve, value)) SetValue(CurveProperty, value); } }
     private static readonly DependencyPropertyKey FillGeometryPropertyKey = DependencyProperty.RegisterReadOnly(nameof(FillGeometry), typeof(System.Windows.Media.Geometry), typeof(OHsControlPointZone), new PropertyMetadata(null));
     public static readonly DependencyProperty FillGeometryProperty = FillGeometryPropertyKey.DependencyProperty;
     public System.Windows.Media.Geometry? FillGeometry => (System.Windows.Media.Geometry?)GetValue(FillGeometryProperty);
@@ -79,7 +79,7 @@ public sealed class OHsControlPointZone : Button
         shape.Freeze(); SetValue(FillGeometryPropertyKey, shape);
         var fill = height - startY;
         SetValue(FillHeightPropertyKey, fill);
-        SetValue(VolumeLineOffsetPropertyKey, Math.Clamp(height - fill, 0, Math.Max(0, height - 1)));
+        SetValue(VolumeLineOffsetPropertyKey, startY);
         AutomationProperties.SetName(this, Point is { } current ? string.Format(CultureInfo.CurrentCulture,
             "{0}, control point at {1} milliseconds, {2}", text, current.Timestamp, (current.IsDisabled ? "disabled" : "enabled") + (current.IsRamp ? ", ramp" : ", fixed")) : "Control point");
         AutomationProperties.SetHelpText(this, Point?.IsOffsetAnchor == true

@@ -15,20 +15,22 @@ public static class OHsControlPointLayout
         var timeline = new Services.ControlPointVolumeTimeline(sorted.Select(p =>
             new Core.Entities.ControlPointVolumeSnapshot(p.Timestamp, p.Volume, p.IsDisabled, p.IsRamp)).ToArray());
         var result = new List<OHsControlPointCurveProjection>();
+        var segmentIndex = -1;
         for (var i = 0; i < sorted.Length; i++)
         {
             var point = sorted[i];
             var start = Math.Max(Math.Max(0, clipStartMilliseconds), point.Timestamp);
             var end = Math.Min(clipEnd, i + 1 < sorted.Length ? sorted[i + 1].Timestamp : durationMilliseconds);
             if (end <= start) continue;
-            var segment = timeline.Segments.LastOrDefault(p => p.StartTimestamp <= start);
+            while (segmentIndex + 1 < timeline.Segments.Count && timeline.Segments[segmentIndex + 1].StartTimestamp <= start) segmentIndex++;
+            var segment = segmentIndex < 0 ? null : timeline.Segments[segmentIndex];
             double Value(double time) => segment is null ? 100 : !segment.IsRamp || segment.EndTimestamp is not { } finish
                 ? segment.StartVolume : segment.StartVolume + (segment.EndVolume - segment.StartVolume) *
                     Math.Clamp((time - segment.StartTimestamp) / (finish - (double)segment.StartTimestamp), 0, 1);
             double? connector = null;
             if (start == point.Timestamp && i > 0 && !point.IsDisabled)
             {
-                var previous = timeline.Segments.LastOrDefault(p => p.StartTimestamp < point.Timestamp);
+                var previous = segmentIndex > 0 ? timeline.Segments[segmentIndex - 1] : null;
                 var left = previous is null ? 100 : previous.IsRamp ? previous.EndVolume : previous.StartVolume;
                 if (left != Value(start)) connector = left;
             }

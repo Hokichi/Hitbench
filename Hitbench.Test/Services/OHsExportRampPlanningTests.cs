@@ -8,6 +8,15 @@ namespace Hitbench.Test.Services;
 public class OHsExportRampPlanningTests
 {
     [Test]
+    public void LongFixedRunUsesBoundedSearchStack()
+    {
+        using var audio = DecodedAudio.CopyFrom(new[] { .2f, .2f });
+        var input = Input([new(0, 40)], Enumerable.Range(0, 5000).Select(i => i * 20).ToArray());
+        var plan = OHsExportPlanner.Plan(input, default, resolve: _ => audio);
+        Assert.That(plan.Circles, Has.Count.EqualTo(5000));
+        Assert.That((plan.AudioFileCount, plan.AdditionalPointCount), Is.EqualTo((1, 0)));
+    }
+    [Test]
     public void FixedRegionsKeepOneSourceRecipeWithNativeGainReuse()
     {
         using var audio = DecodedAudio.CopyFrom(Enumerable.Repeat(.2f, 882).ToArray());

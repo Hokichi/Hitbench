@@ -2,6 +2,20 @@ using System.Globalization;
 namespace Hitbench.Test.Services;
 public static class OHsExportPlaybackOracle
 {
+    public static float[] Render(string osuText, Func<string, Hitbench.Services.DecodedAudio> resolveOutput, long frameCount)
+    {
+        var output = new double[checked((int)(frameCount * 2))];
+        foreach (var hit in Resolve(osuText))
+        {
+            var set = new[] { "normal", "soft", "drum" }[hit.Set - 1];
+            var suffix = hit.Index == 1 ? "" : hit.Index.ToString(CultureInfo.InvariantCulture);
+            using var audio = resolveOutput($"{set}-hit{hit.Type}{suffix}.wav");
+            var start = checked((long)Math.Round(hit.Timestamp * 44.1m, MidpointRounding.AwayFromZero));
+            for (var i = 0; i < audio.Samples.Length && start * 2 + i < output.Length; i++)
+                output[checked((int)(start * 2 + i))] += audio.Samples[i] * hit.Volume / 100d;
+        }
+        return output.Select(v => (float)Math.Clamp(v, -1, 1)).ToArray();
+    }
     public static IReadOnlyList<(int Timestamp, int Set, string Type, int Index, int Volume)> Resolve(string osuText)
     {
         var timing = new List<(decimal Time, int Set, int Index, int Volume)>();
