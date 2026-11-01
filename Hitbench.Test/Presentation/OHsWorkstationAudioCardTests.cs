@@ -315,6 +315,7 @@ public sealed class OHsWorkstationAudioCardTests
         var track = new InstrumentalTrack { KeyFiles = new() { ["C4"] = "piano.wav" } };
         var audio = new StubWorkstationAudioService();
         var pianoOpened = new TaskCompletionSource(); var mappingOpened = new TaskCompletionSource();
+        var samplesOpened = new TaskCompletionSource();
         var sampleRequests = 0;
         var dialogs = new StubInstrumentalTrackDialogService
         {
@@ -326,7 +327,7 @@ public sealed class OHsWorkstationAudioCardTests
             new MarkerPlaybackCoordinator(audio, Task.Delay), new ImmediateUiScheduler(),
             new StubSampleFileService([]), new StubSampleFileDialogService(Array.Empty<string>()), messenger: new WeakReferenceMessenger(),
             instrumentDialogs: dialogs, sampleManagementDialog: new StubSampleManagementDialogService
-                { Present = (_, _) => { sampleRequests++; return Task.CompletedTask; } });
+                { Present = (_, _) => { sampleRequests++; samplesOpened.TrySetResult(); return Task.CompletedTask; } });
         var card = new OHsWorkstationToolbar { DataContext = vm };
         using var view = new InMemoryView(new Window { Content = card, Width = 900, Height = 300 }, processFrames: false, scheduleLayout: false);
         try
@@ -342,6 +343,7 @@ public sealed class OHsWorkstationAudioCardTests
             var samples = (BalloonButton)card.FindName("ManageSamplesButton");
             Assert.That(samples.Command, Is.SameAs(vm.ManageSamplesCommand));
             UiTestPump.Run(vm.ManageSamplesCommand.ExecuteAsync(null));
+            UiTestPump.Run(samplesOpened.Task.WaitAsync(TimeSpan.FromSeconds(3)));
             UiTestPump.Run(Task.WhenAll(piano, mapping));
             Assert.That(sampleRequests, Is.EqualTo(1));
             AssertTransport(card, vm, true);
