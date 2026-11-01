@@ -33,7 +33,18 @@ public partial class WorkstationPageVM
             var requests = folderNamesPending.ToArray(); folderNamesPending.Clear();
             foreach (var (track, name) in requests)
             {
-                if (!tracks.Contains(track) || Project is null || projectPath is null) continue;
+                await RenameInstrumentFolderAsync(track, name);
+            }
+        }
+        folderDelay?.Dispose(); folderDelay = null;
+        folderRenamesActive = false;
+        NotifyInstrumentState();
+    }
+
+    private async Task<bool> RenameInstrumentFolderAsync(InstrumentalTrack track, string name, Hitbench.Resources.DataModels.OHsTrackAppearanceResult? appearance = null, Func<bool>? cancelled = null)
+    {
+                if (!tracks.Contains(track) || Project is null || projectPath is null) return false;
+                var applied = false;
                 var project = Project; var path = projectPath; var generation = loadGeneration;
                 try
                 {
@@ -42,7 +53,7 @@ public partial class WorkstationPageVM
                     var renamed = await sampleFiles!.RenameFolderAsync(path, old, name, reserved, CancellationToken.None);
                     await uiScheduler.InvokeAsync(() =>
                     {
-                        if (deactivated || generation != loadGeneration || !ReferenceEquals(project, Project) || !tracks.Contains(track)) return;
+                        if (cancelled?.Invoke() == true || deactivated || generation != loadGeneration || !ReferenceEquals(project, Project) || !tracks.Contains(track)) return;
                         string Rewrite(string file) => file.StartsWith(old + "/", StringComparison.OrdinalIgnoreCase) ? renamed + file[old.Length..] : file;
                         foreach (var item in tracks)
                         {
@@ -53,6 +64,9 @@ public partial class WorkstationPageVM
                         }
                         history.RenameSampleFolder(old, renamed);
                         track.Name = name; track.FolderName = renamed;
+                        if (appearance is not null) track.Color = appearance.Color;
+                        applied = true;
+                        NotifyTrackPresentation();
                         RefreshAvailableSamples(availableSamples.Select(Rewrite).ToArray(), false);
                         samplesRevision++; OnPropertyChanged(nameof(SamplesRevision));
                         instrumentRevision++; PublishInstrumentSnapshot(); QueueSave(); QueuePlaybackUpdate();
@@ -60,11 +74,7 @@ public partial class WorkstationPageVM
                 }
                 catch (Exception error) { await uiScheduler.InvokeAsync(() =>
                 { if (!deactivated && generation == loadGeneration && ReferenceEquals(project, Project)) ErrorMessage = "Could not rename instrumental folder: " + error.Message; }, CancellationToken.None); }
-            }
-        }
-        folderDelay?.Dispose(); folderDelay = null;
-        folderRenamesActive = false;
-        NotifyInstrumentState();
+                return applied;
     }
 
     public async Task SettleInstrumentalFoldersAsync()

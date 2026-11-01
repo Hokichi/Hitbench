@@ -5,6 +5,31 @@ using Hitbench.ViewModels.Shell;
 namespace Hitbench.Test.Presentation;
 public class WorkstationTrackAppearanceTests
 {
+    [TestCase(false)][TestCase(true)]
+    public async Task CombinedSaveWaitsForSuccessfulFolderRename(bool fails)
+    {
+        var track = new InstrumentalTrack { Name = "Piano", Color = null, FolderName = "Piano" };
+        var gate = new TaskCompletionSource<string>();
+        var entered = new TaskCompletionSource();
+        var files = new StubSampleFileService([]) { FolderRename = (_, _, _, _, _) => { entered.SetResult(); return gate.Task; } };
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [track], Offsets = [0], BPMs = [120] })) },
+            new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), sampleFiles: files,
+            trackAppearanceDialog: new StubOHsTrackAppearanceDialogService { Request = (request, _) => {
+                Assert.That(request.Name, Is.EqualTo("Piano"));
+                return Task.FromResult<OHsTrackAppearanceResult?>(new("#abcdef") { Name = "Soft" }); } });
+        try
+        {
+            await vm.LoadAsync("project.json", default); vm.AcknowledgePresentationReady(vm.LoadGeneration);
+            var edit = vm.ChangeTrackColorCommand.ExecuteAsync(track);
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(2));
+            Assert.That(track.Name, Is.EqualTo("Piano")); Assert.That(track.Color, Is.Null);
+            if (fails) gate.SetException(new IOException("move failed")); else gate.SetResult("Soft");
+            await edit;
+            Assert.That(track.Name, Is.EqualTo(fails ? "Piano" : "Soft"));
+            Assert.That(track.Color, Is.EqualTo(fails ? null : "#ABCDEF"));
+        }
+        finally { gate.TrySetResult("Soft"); await vm.DeactivateAsync(); }
+    }
     [Test]
     public async Task ColorSaveNeverChangesTrackName()
     {
