@@ -122,6 +122,50 @@ public class WorkstationNodeInteractionTests
         finally { UiTestPump.Run(editor.Page.DeactivateAsync()); }
     }
 
+    [TestCase(false)]
+    [TestCase(true)]
+    public void ExactOverlapControlDragCleansUpAndNextGestureWorks(bool releaseControl)
+    {
+        var dialogs = new StubNodePasteDialogService();
+        var editor = CreateEditor(nodeDialogs: dialogs); using var view = editor.View;
+        try
+        {
+            var grid = Descendants<BeatGridView>(editor.Page).First();
+            grid.ContentWidth = 1000; grid.ViewportWidth = 500; grid.HorizontalOffset = 0;
+            var y = grid.ActualHeight / 2;
+            Assert.That(editor.Page.BeginNodePointer(grid, new Point(100, y), new Point(), ModifierKeys.Control), Is.True);
+            var moved = new Point(SystemParameters.MinimumHorizontalDragDistance + 1, 0);
+            editor.Page.UpdateNodePointer(moved, grid, new Point(125, y), ModifierKeys.Control);
+            Assert.That(editor.Vm.IsNodeDragActive, Is.True);
+            editor.Page.UpdateNodePointer(moved, grid, new Point(100, y), ModifierKeys.Control);
+            if (releaseControl) editor.Page.TrackListComponent.UpdateNodeDragModifiers(ModifierKeys.None);
+            var drop = editor.Page.CompleteNodePointerAsync(); UiTestPump.Run(drop);
+            Assert.That(drop.Result, Is.False); Assert.That(dialogs.Collisions, Is.Zero);
+            Assert.That(editor.Vm.Tracks[0].Samples.Single(), Is.SameAs(editor.Node));
+            Assert.That((editor.Node.Timestamp, editor.Node.FileName), Is.EqualTo((1000, "a.wav")));
+            Assert.That(editor.Vm.SelectedSamples.Single(), Is.SameAs(editor.Node));
+            Assert.That(editor.Vm.IsNodeDragActive, Is.False); Assert.That(editor.Vm.IsNodeDragCopy, Is.False);
+            Assert.That(editor.Vm.DragDestinationTrack, Is.Null);
+            Assert.That(editor.Vm.NodePreviewTimestamps, Is.Empty); Assert.That(editor.Vm.NodePreviewByTrack, Is.Empty);
+            Assert.That(grid.DragPreviewTimestamps, Is.Null); Assert.That(grid.PressedSample, Is.Null);
+            Assert.That(grid.SuppressPlacementFeedback, Is.False);
+            var list = (ListBox)editor.Page.TrackListComponent.FindName("TrackList");
+            Assert.That(AdornerLayer.GetAdornerLayer(list)!.GetAdorners(list), Is.Null);
+            Assert.That(editor.Page.TrackListComponent.IsMouseCaptured, Is.False);
+            Descendants<ScrollViewer>(list).First().ScrollToVerticalOffset(1);
+            view.UpdateLayout();
+            Assert.That(grid.DragPreviewTimestamps, Is.Null); Assert.That(editor.Vm.IsNodeDragActive, Is.False);
+            grid.ContentWidth = 1000; grid.ViewportWidth = 500; grid.HorizontalOffset = 0;
+            Assert.That(editor.Page.BeginNodePointer(grid, new Point(100, y), new Point(), ModifierKeys.Control), Is.True);
+            editor.Page.UpdateNodePointer(moved, grid, new Point(125, y), ModifierKeys.Control);
+            var next = editor.Page.CompleteNodePointerAsync(); UiTestPump.Run(next);
+            Assert.That(next.Result, Is.True);
+            var copy = editor.Vm.Tracks[0].Samples.Single(n => n.Timestamp == 1250);
+            Assert.That(copy, Is.Not.SameAs(editor.Node)); Assert.That(dialogs.Collisions, Is.Zero);
+        }
+        finally { UiTestPump.Run(editor.Page.DeactivateAsync()); }
+    }
+
     [TestCase(false, false)]
     [TestCase(false, true)]
     [TestCase(true, false)]
@@ -666,13 +710,13 @@ public class WorkstationNodeInteractionTests
         Assert.That(list.Style, Is.SameAs(page.FindResource("BaseListBoxStyle")));
     }
 
-    private static (WorkstationPage Page, WorkstationPageVM Vm, Sample Node, InMemoryView View) CreateEditor(int trackCount = 2, int bpm = 120, int offset = 0)
+    private static (WorkstationPage Page, WorkstationPageVM Vm, Sample Node, InMemoryView View) CreateEditor(int trackCount = 2, int bpm = 120, int offset = 0, StubNodePasteDialogService? nodeDialogs = null)
     {
         var node = new Sample { Timestamp = 1000, FileName = "a.wav" };
         var data = new ProjectData { Offsets = [offset], BPMs = [bpm], Tracks = [new Track { SelectedSampleFileName = "a.wav", Samples = [node] }, new Track { SelectedSampleFileName = "b.wav" }] };
         data.Tracks.AddRange(Enumerable.Range(2, trackCount - 2).Select(_ => new Track { SelectedSampleFileName = "b.wav" }));
         var vm = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav", data)) },
-            new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), new StubSampleFileService(["a.wav", "b.wav"]), nodePasteDialog: new StubNodePasteDialogService());
+            new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), new StubSampleFileService(["a.wav", "b.wav"]), nodePasteDialog: nodeDialogs ?? new StubNodePasteDialogService());
         var page = new WorkstationPage(vm); page.SetProjectPath("project.json");
         var host = new Window { Content = page, Width = 1100, Height = 800 };
         var view = new InMemoryView(host); UiTestPump.Run(page.LoadCompletion); vm.IsAdditionMode = true; view.UpdateLayout();
