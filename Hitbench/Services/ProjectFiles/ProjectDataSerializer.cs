@@ -201,6 +201,9 @@ public static class ProjectDataSerializer
             var volume = Member(point, nameof(ControlPoint.Volume));
             var sampleset = Member(point, nameof(ControlPoint.Sampleset));
             var disabled = Member(point, nameof(ControlPoint.IsDisabled));
+            var ramp = Member(point, nameof(ControlPoint.IsRamp));
+            if (ramp is not null && ramp.Type != JTokenType.Boolean)
+                throw new InvalidDataException("Control point IsRamp must be a boolean.");
             if (disabled is not null && disabled.Type != JTokenType.Boolean)
                 throw new InvalidDataException("Control point IsDisabled must be a boolean.");
             var isNegativeOffset = time?.Type == JTokenType.Integer && int.TryParse(time.ToString(Formatting.None),

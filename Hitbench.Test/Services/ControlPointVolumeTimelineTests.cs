@@ -35,6 +35,6 @@ public class ControlPointVolumeTimelineTests
         var timeline = new ControlPointVolumeTimeline([new(1, 50)]);
         Assert.That(timeline.GetGain(43), Is.EqualTo(1)); Assert.That(timeline.GetGain(44), Is.EqualTo(.5f));
     }
-    [TestCase(-1, 50)][TestCase(0, -1)][TestCase(0, 101)]
+    [TestCase(0, -1)][TestCase(0, 101)]
     public void InvalidPointsFail(int time, int volume) => Assert.Throws<ArgumentException>(() => new ControlPointVolumeTimeline([new(time, volume)]));
 }

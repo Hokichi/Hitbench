@@ -9,4 +9,5 @@ public class ControlPoint
     public int Volume { get; set; } = 100;
     public string Sampleset { get; set; } = "Normal";
     public bool IsDisabled { get; set; }
+    public bool IsRamp { get; set; }
 }
