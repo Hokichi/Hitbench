@@ -36,7 +36,7 @@ public class WorkstationShellVolumeTests
         page.DetachDrawerHost(motion);
         Assert.That(slot.Children, Is.Empty);
         page.AttachDrawerHost(motion, mapping ? OHsWorkstationDrawerKind.KeysMapping : OHsWorkstationDrawerKind.Arrangement);
-        page.SettleDrawerHostAnimation(true);
+        page.SettleDrawerHostAnimation(motion, true);
         view.Root.Measure(new Size(900, 600));
         view.Root.Arrange(new Rect(0, 0, 900, 600));
         view.Root.UpdateLayout();

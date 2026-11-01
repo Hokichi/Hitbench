@@ -185,7 +185,7 @@ public partial class MainWindow
             {
                 if (!presentation.IsCancellationRequested && SampleManagerPhase == OHsSampleDrawerPhase.Opening)
                 {
-                    dockedDrawerPage?.SettleDrawerHostAnimation(true);
+                    dockedDrawerPage?.SettleDrawerHostAnimation(SampleManagerMotionHost, true);
                     SetSampleManagerPhase(OHsSampleDrawerPhase.Open);
                 }
             });

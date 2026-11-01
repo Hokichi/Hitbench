@@ -48,7 +48,7 @@ public partial class WorkstationPage : UserControl
     }
     private void OnTrackViewportChanged(object? sender, EventArgs e)
     {
-        if (drawerHost is null || drawerKind == Hitbench.Resources.DataModels.OHsWorkstationDrawerKind.Samples)
+        if (bottomDrawerHost is null)
             TrackScrollBarGutter = TrackListComponent.TrackScrollBarGutter;
         readinessCandidate = null;
     }
@@ -100,6 +100,8 @@ public partial class WorkstationPage : UserControl
         if (deactivationStarted) return LoadCompletion;
         CancelNodePointer();
         ResetPianoRollExpansion();
+        if (sideDrawerHost is { } sideHost) ClearDrawerHostAnimation(sideHost);
+        if (bottomDrawerHost is { } bottomHost) ClearDrawerHostAnimation(bottomHost);
         Timeline.Reset();
         deactivationStarted = true;
         SystemParameters.StaticPropertyChanged -= OnLoadingSystemChanged;

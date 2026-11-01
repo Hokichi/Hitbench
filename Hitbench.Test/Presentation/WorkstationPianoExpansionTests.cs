@@ -8,6 +8,49 @@ namespace Hitbench.Test.Presentation;
 [Apartment(ApartmentState.STA), NonParallelizable]
 public sealed class WorkstationPianoExpansionTests
 {
+    [TestCase(false, FlowDirection.LeftToRight)] [TestCase(true, FlowDirection.LeftToRight)]
+    [TestCase(false, FlowDirection.RightToLeft)] [TestCase(true, FlowDirection.RightToLeft)]
+    public void SamplesAttachmentNeverResetsExpansionOrItsSavedTrackOffset(bool duringMotion, FlowDirection direction)
+    {
+        new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
+        var page = WorkstationTestPage.Create(); page.FlowDirection = direction;
+        var vm = (Hitbench.ViewModels.Shell.WorkstationPageVM)page.DataContext;
+        for (var i = 0; i < 80; i++) vm.Tracks.Add(new Hitbench.Core.Entities.Track { Name = $"Track {i}" });
+        var tracks = (OHsWorkstationTrackList)page.FindName("TrackListComponent");
+        var piano = new Grid(); var samples = new Grid();
+        using var view = new InMemoryView(new Window { Content = page, Width = 1200, Height = 800 });
+        try
+        {
+            page.AttachDrawerHost(piano, OHsWorkstationDrawerKind.Arrangement);
+            page.SettleDrawerHostAnimation(piano, true); view.UpdateLayout();
+            tracks.RestoreVerticalOffset(120); view.UpdateLayout();
+            var offset = tracks.CaptureVerticalOffset(); Assert.That(offset, Is.GreaterThan(0));
+            page.TogglePianoRollExpansion(duringMotion);
+            if (duringMotion) page.SeekPianoRollExpansion(TimeSpan.FromMilliseconds(90));
+            var progress = page.PianoRollExpansionProgress;
+            page.AttachDrawerHost(samples, OHsWorkstationDrawerKind.Samples);
+            page.SettleDrawerHostAnimation(samples, true); view.UpdateLayout();
+            Assert.That(page.IsPianoRollExpanded, Is.True);
+            Assert.That(page.PianoRollExpansionProgress, Is.EqualTo(progress));
+            Assert.That(((Grid)page.FindName("BottomDrawerSlot")).Children[0], Is.SameAs(piano));
+            page.DetachDrawerHost(samples); view.UpdateLayout();
+            Assert.That(page.PianoRollExpansionProgress, Is.EqualTo(progress));
+            page.SettlePianoRollExpansion();
+            Assert.That(((Border)page.FindName("TracksCard")).Visibility, Is.EqualTo(Visibility.Collapsed));
+            page.AttachDrawerHost(samples, OHsWorkstationDrawerKind.Samples);
+            page.SettleDrawerHostAnimation(samples, true);
+            page.TogglePianoRollExpansion(false);
+            UiTestPump.Run(page.Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle).Task);
+            view.UpdateLayout();
+            Assert.That(tracks.CaptureVerticalOffset(), Is.EqualTo(offset));
+            Assert.That(((Grid)page.FindName("RightDrawerSlot")).Children[0], Is.SameAs(samples));
+            page.TogglePianoRollExpansion(false); page.DetachDrawerHost(piano); view.UpdateLayout();
+            Assert.That(tracks.CaptureVerticalOffset(), Is.EqualTo(offset));
+            Assert.That(((Grid)page.FindName("RightDrawerSlot")).Children[0], Is.SameAs(samples));
+        }
+        finally { page.DetachDrawerHost(samples); page.DetachDrawerHost(piano); UiTestPump.Run(page.DeactivateAsync()); }
+    }
+
     [Test]
     public void ExpansionInterpolatesAndReversesBeforeCollapsingTracks()
     {
@@ -18,7 +61,7 @@ public sealed class WorkstationPianoExpansionTests
         {
             UiTestPump.Layout(page, 1200, 800);
             page.AttachDrawerHost(host, OHsWorkstationDrawerKind.Arrangement);
-            page.SettleDrawerHostAnimation(true);
+            page.SettleDrawerHostAnimation(host, true);
             page.TogglePianoRollExpansion(true);
             page.SeekPianoRollExpansion(TimeSpan.FromMilliseconds(90));
             var progress = page.PianoRollExpansionProgress;
@@ -64,7 +107,7 @@ public sealed class WorkstationPianoExpansionTests
             var offset = tracks.CaptureVerticalOffset();
             Assert.That(offset, Is.GreaterThan(0));
             page.AttachDrawerHost(host, OHsWorkstationDrawerKind.Arrangement);
-            page.SettleDrawerHostAnimation(true);
+            page.SettleDrawerHostAnimation(host, true);
             page.TogglePianoRollExpansion(duringMotion);
             if (duringMotion) page.SeekPianoRollExpansion(TimeSpan.FromMilliseconds(90));
             view.UpdateLayout();
@@ -73,7 +116,7 @@ public sealed class WorkstationPianoExpansionTests
             if (replaceImmediately)
             {
                 page.AttachDrawerHost(host, OHsWorkstationDrawerKind.Samples);
-                page.SettleDrawerHostAnimation(true);
+                page.SettleDrawerHostAnimation(host, true);
             }
             UiTestPump.Run(page.Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle).Task);
             view.UpdateLayout();
@@ -95,7 +138,7 @@ public sealed class WorkstationPianoExpansionTests
         try
         {
             page.AttachDrawerHost(host, OHsWorkstationDrawerKind.Arrangement);
-            page.SettleDrawerHostAnimation(true);
+            page.SettleDrawerHostAnimation(host, true);
             view.UpdateLayout();
             tracks.RestoreVerticalOffset(120);
             view.UpdateLayout();
@@ -167,7 +210,7 @@ public sealed class WorkstationPianoExpansionTests
         {
             UiTestPump.Layout(page, 1200, 800);
             page.AttachDrawerHost(host, OHsWorkstationDrawerKind.Arrangement);
-            page.SettleDrawerHostAnimation(true);
+            page.SettleDrawerHostAnimation(host, true);
             page.TogglePianoRollExpansion(false);
             Assert.That(page.IsPianoRollExpanded, Is.True);
             Assert.That(card.Visibility, Is.EqualTo(Visibility.Collapsed));

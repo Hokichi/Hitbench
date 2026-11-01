@@ -48,7 +48,7 @@ public sealed class OHsWorkstationToolbarTests
             UiTestPump.Layout(page, width, 800);
             Assert.That(play.IsEnabled, Is.True);
             page.AttachDrawerHost(host, Hitbench.Resources.DataModels.OHsWorkstationDrawerKind.Samples);
-            page.SettleDrawerHostAnimation(true);
+            page.SettleDrawerHostAnimation(host, true);
             UiTestPump.Layout(page, width, 800);
             Assert.That(play.Command, Is.SameAs(vm.PlayPauseCommand));
             Assert.That(play.IsEnabled, Is.True);
