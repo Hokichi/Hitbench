@@ -363,6 +363,93 @@ public class WorkstationNodeFormationTests
         Assert.That(vm.SamplesRevision, Is.EqualTo(revision));
     }
 
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task ExactOverlapCopyPreservesRedoAndSideEffects(bool followMarker)
+    {
+        Assert.That(vm.PlaceSample(tracks[0], 500), Is.True);
+        var undone = tracks[0].Samples.Single(n => n.Timestamp == 500);
+        vm.UndoCommand.Execute(null); vm.SetNodeSelection([a, b]);
+        await vm.FlushSavesAsync(); await vm.FlushPlaybackUpdatesAsync();
+        vm.BeginNodeDrag(tracks[0], a); vm.PreviewNodeDrag(0, tracks[0]); vm.SetNodeDragCopy(true);
+        vm.ScrollWithMarker = followMarker;
+        var revision = vm.SamplesRevision; var writes = saves.Writes; var updates = audio.SampleUpdates.Count;
+        var error = vm.ErrorMessage; var publications = 0;
+        System.ComponentModel.PropertyChangedEventHandler changed = (_, e) => { if (e.PropertyName == nameof(vm.SamplesRevision)) publications++; };
+        vm.PropertyChanged += changed;
+        try
+        {
+            Assert.That(await vm.CommitNodeDragAsync(), Is.False);
+            await vm.FlushSavesAsync(); await vm.FlushPlaybackUpdatesAsync();
+            AssertOriginalFormation();
+            Assert.That(vm.SelectedSamples, Is.EquivalentTo(new[] { a, b }));
+            Assert.That(vm.ErrorMessage, Is.EqualTo(error));
+            Assert.That(vm.CanUndo, Is.False); Assert.That(vm.CanRedo, Is.True);
+            Assert.That(vm.ScrollWithMarker, Is.EqualTo(followMarker));
+            Assert.That(vm.SamplesRevision, Is.EqualTo(revision));
+            Assert.That(saves.Writes, Is.EqualTo(writes));
+            Assert.That(audio.SampleUpdates, Has.Count.EqualTo(updates));
+            Assert.That(dialogs.Collisions, Is.Zero);
+            Assert.That(publications, Is.Zero);
+        }
+        finally
+        {
+            vm.PropertyChanged -= changed;
+        }
+        vm.RedoCommand.Execute(null); Assert.That(tracks[0].Samples.Contains(undone), Is.True);
+        vm.UndoCommand.Execute(null); AssertOriginalFormation();
+    }
+
+    [Test]
+    public async Task ExactOverlapCopyIgnoresUnavailableDestinationFile()
+    {
+        vm.BeginNodeDrag(tracks[0], a); vm.PreviewNodeDrag(0, tracks[0]); vm.SetNodeDragCopy(true);
+        vm.SampleFiles.Remove("t1.wav");
+        var error = vm.ErrorMessage; var revision = vm.SamplesRevision;
+        var writes = saves.Writes; var updates = audio.SampleUpdates.Count;
+        Assert.That(await vm.CommitNodeDragAsync(), Is.False);
+        await vm.FlushSavesAsync(); await vm.FlushPlaybackUpdatesAsync();
+        AssertOriginalFormation();
+        Assert.That(vm.SelectedSamples, Is.EquivalentTo(new[] { a, b }));
+        Assert.That(vm.CanUndo, Is.False); Assert.That(vm.CanRedo, Is.False);
+        Assert.That(vm.ErrorMessage, Is.EqualTo(error)); Assert.That(dialogs.Collisions, Is.Zero);
+        Assert.That(vm.SamplesRevision, Is.EqualTo(revision)); Assert.That(saves.Writes, Is.EqualTo(writes));
+        Assert.That(audio.SampleUpdates, Has.Count.EqualTo(updates));
+    }
+
+    [TestCase("membership")]
+    [TestCase("timestamp")]
+    [TestCase("reorder")]
+    [TestCase("reload")]
+    [TestCase("deactivate")]
+    [TestCase("invalid")]
+    public async Task StaleExactOverlapCopyCancelsSafely(string reason)
+    {
+        vm.BeginNodeDrag(tracks[0], a); vm.PreviewNodeDrag(0, tracks[0]); vm.SetNodeDragCopy(true);
+        switch (reason)
+        {
+            case "membership": tracks[0].Samples.Remove(a); break;
+            case "timestamp": a.Timestamp = 999; break;
+            case "reorder": vm.Tracks.Move(1, 2); break;
+            case "reload": await vm.LoadAsync("other.json", default); vm.AcknowledgePresentationReady(vm.LoadGeneration); break;
+            case "deactivate": await vm.DeactivateAsync(); break;
+            case "invalid": vm.PreviewNodeDrag(double.NaN); break;
+        }
+        await vm.FlushSavesAsync(); await vm.FlushPlaybackUpdatesAsync();
+        var contents = tracks.Select(t => t.Samples.ToArray()).ToArray();
+        var revision = vm.SamplesRevision; var writes = saves.Writes; var updates = audio.SampleUpdates.Count;
+        var error = vm.ErrorMessage;
+        Assert.That(await vm.CommitNodeDragAsync(), Is.False);
+        await vm.FlushSavesAsync(); await vm.FlushPlaybackUpdatesAsync();
+        for (var i = 0; i < tracks.Length; i++) Assert.That(tracks[i].Samples, Is.EqualTo(contents[i]));
+        Assert.That(a.Timestamp, Is.EqualTo(reason == "timestamp" ? 999 : 1000));
+        Assert.That(vm.ErrorMessage, Is.EqualTo(error)); Assert.That(dialogs.Collisions, Is.Zero);
+        Assert.That(vm.NodePreviewTimestamps, Is.Empty); Assert.That(vm.NodePreviewByTrack, Is.Empty);
+        Assert.That(vm.IsNodeDragActive, Is.False); Assert.That(vm.IsNodeDragCopy, Is.False);
+        Assert.That(vm.SamplesRevision, Is.EqualTo(revision)); Assert.That(saves.Writes, Is.EqualTo(writes));
+        Assert.That(audio.SampleUpdates, Has.Count.EqualTo(updates));
+    }
+
     private void AssertOriginalFormation()
     {
         Assert.That(tracks[0].Samples.Single(), Is.SameAs(a));
@@ -371,5 +458,3 @@ public class WorkstationNodeFormationTests
         Assert.That(new[] { a.FileName, b.FileName }, Is.EqualTo(new[] { "t1.wav", "t4.wav" }));
     }
 }
-
-
