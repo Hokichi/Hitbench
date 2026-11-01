@@ -57,6 +57,8 @@ public partial class ManageSamplesDrawer
     }
     private void RefreshSampleSource(OHsSampleRow row)
     {
+        // UserControl root supplies a local default; apply this owner's named variation after realization.
+        row.SetCurrentValue(StyleProperty, (Style)FindResource("OHsManageSamplesDragSourceStyle"));
         if (sampleFeedback is not null && ReferenceEquals(row.DataContext,activeSampleEntry)) { row.IsDragSource=true; markedSampleRows.Add(row); }
         else { row.ClearValue(OHsSampleRow.IsDragSourceProperty); markedSampleRows.Remove(row); }
     }

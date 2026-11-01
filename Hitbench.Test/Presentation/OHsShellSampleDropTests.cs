@@ -18,6 +18,8 @@ public sealed class OHsShellSampleDropTests
   var vm=new WorkstationPageVM(new StubWorkstationSourceService(),new MarkerPlaybackCoordinator(new StubWorkstationAudioService(),MarkerPlaybackCoordinator.DelayAsync),new ImmediateUiScheduler(),new StubSampleFileService(new[]{"a.wav"}),new StubSampleFileDialogService(Array.Empty<string>()),messenger:messenger,sampleDropDialog:picker);
   var errors = new List<string>();
   var page=new WorkstationPage(vm);var window=TestShell.Create(new HomePage(homeVm),messenger,()=>page,homeVm,settings, reportError: errors.Add);
+  Assert.That(window.Content,Is.TypeOf<System.Windows.Documents.AdornerDecorator>());
+  Assert.That(((System.Windows.Documents.AdornerDecorator)window.Content).Child,Is.SameAs(window.FindName("ShellRoot")));
   var previousContext = SynchronizationContext.Current;
   SynchronizationContext.SetSynchronizationContext(new System.Windows.Threading.DispatcherSynchronizationContext(window.Dispatcher));
   try {UiTestPump.Run(vm.LoadAsync("project.json",default));vm.AcknowledgePresentationReady(vm.LoadGeneration);((ContentControl)window.FindName("PageHost")).Content=page;

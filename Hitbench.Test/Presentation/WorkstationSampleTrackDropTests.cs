@@ -16,6 +16,9 @@ public sealed class WorkstationSampleTrackDropTests
         Assert.That(vm.Tracks.Single().Name, Is.EqualTo("New Track"));
         Assert.That(vm.Tracks.Single().Color, Is.Null);
         Assert.That(vm.TryAddSampleTrack(data with { Context = data.Context with { SessionId = Guid.NewGuid() } }), Is.False);
+        Assert.That(vm.TryAddSampleTrack(data with { FileName = "missing.wav" }), Is.False);
+        Assert.That(vm.TryAddSampleTrack(data with { Context = data.Context with { ProjectPath = "other.json" } }), Is.False);
+        Assert.That(vm.Tracks.Count, Is.EqualTo(1));
         await vm.DeactivateAsync();
     }
 }
