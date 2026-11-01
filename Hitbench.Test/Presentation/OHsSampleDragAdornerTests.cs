@@ -10,6 +10,9 @@ public sealed class OHsSampleDragAdornerTests
   var viewport = new Rect(0,0,200,100);
   Assert.That(OHsSampleDragAdorner.PlaceTag(new(40,30),viewport,new(60,20),8,FlowDirection.LeftToRight),Is.EqualTo(new Rect(48,38,60,20)));
   Assert.That(OHsSampleDragAdorner.PlaceTag(new(190,90),viewport,new(60,20),8,FlowDirection.LeftToRight),Is.EqualTo(new Rect(140,62,60,20)));
+  Assert.That(OHsSampleDragAdorner.PlaceTag(new(40,30),viewport,new(60,20),8,FlowDirection.RightToLeft),Is.EqualTo(new Rect(0,38,60,20)));
+  Assert.That(OHsSampleDragAdorner.PlaceTag(new(double.NaN,30),viewport,new(60,20),8,FlowDirection.LeftToRight),Is.EqualTo(Rect.Empty));
+  Assert.That(OHsSampleDragAdorner.PlaceTag(new(40,30),new Rect(0,0,50,40),new(60,60),8,FlowDirection.LeftToRight),Is.EqualTo(Rect.Empty));
   Assert.That(OHsSampleDragAdorner.PlaceTag(new(201,30),viewport,new(60,20),8,FlowDirection.LeftToRight),Is.EqualTo(Rect.Empty));
  }
 }

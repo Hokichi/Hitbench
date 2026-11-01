@@ -24,6 +24,7 @@ public sealed class OHsSampleDragAdorner : Adorner
     }
     public void Update(Point? pointer, Rect viewport)
     {
+        if (CursorPosition == pointer && this.viewport == viewport) return;
         CursorPosition = pointer; this.viewport = viewport;
         Clip = new RectangleGeometry(viewport);
         InvalidateMeasure();

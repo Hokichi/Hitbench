@@ -271,6 +271,7 @@
     <Window.Style>
         <StaticResource ResourceKey="MainWindowStyle" />
     </Window.Style>
+    <AdornerDecorator>
     <Border
         x:Name="ShellRoot"
         MouseLeftButtonDown="OnBackgroundMouseLeftButtonDown"
@@ -370,4 +371,5 @@
             </Border>
         </Grid>
     </Border>
+    </AdornerDecorator>
 </Window>
