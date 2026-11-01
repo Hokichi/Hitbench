@@ -88,6 +88,20 @@ public sealed class BalloonMenuTests
     }
 
     [Test]
+    public void PointerReentryPreservesKeyboardOptionFocus()
+    {
+        var menu = BalloonMenuPresentationTests.Create(3);
+        try
+        {
+            menu.OpenMenu(true);
+            menu.PressKey(Key.End, menu.Options[0]);
+            menu.Enter();
+            Assert.That(menu.ActiveOption, Is.SameAs(menu.Options[2]));
+        }
+        finally { BalloonMenuPresentationTests.Unload(menu); }
+    }
+
+    [Test]
     public void EmptyAndAllDisabledMenusHaveIntentionalActivation()
     {
         var menu = BalloonMenuPresentationTests.Create(0);

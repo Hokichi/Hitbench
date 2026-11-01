@@ -36,13 +36,12 @@ public sealed class ManageSampleHeaderTests
         Assert.That(button.Style.BasedOn, Is.SameAs(button.FindResource("OHsBalloonDefaultActionStyle")));
         Assert.That(button.IsTabStop, Is.False);
         Assert.That(System.Windows.Automation.AutomationProperties.GetItemStatus(button), Is.EqualTo("Closed"));
-        var trigger = (BalloonComboBox)page.Toolbar.FindName("AddMenuButton");
+        var trigger = (BalloonMenu)page.Toolbar.FindName("AddMenuButton");
         // This unloaded DI page is disabled; supply the native placement boundary without opening its menu.
-        trigger.ContextMenu.PlacementTarget = trigger;
-        UiTestPump.Layout(trigger.ContextMenu, 320, 200);
+        WorkstationActionMenus.Prepare(trigger);
         UiTestPump.Run(trigger.Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle).Task);
-        Assert.That(((System.Windows.Controls.MenuItem)trigger.ContextMenu.Items[0]).Command, Is.SameAs(vm.AddSampleTrackCommand));
-        Assert.That(((System.Windows.Controls.MenuItem)trigger.ContextMenu.Items[1]).Command, Is.SameAs(vm.AddPianoTrackCommand));
+        Assert.That(trigger.Options[0].Command, Is.SameAs(vm.AddSampleTrackCommand));
+        Assert.That(trigger.Options[1].Command, Is.SameAs(vm.AddPianoTrackCommand));
         UiTestPump.Run(page.DeactivateAsync());
         host.Close();
     }

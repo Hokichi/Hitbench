@@ -31,14 +31,14 @@ public class WorkstationTrackControlsTests
             UiTestPump.Run(vm.LoadAsync("project.json", default)); vm.AcknowledgePresentationReady(vm.LoadGeneration);
             var card = new OHsWorkstationToolbar { DataContext = vm, FlowDirection = direction };
             using var view = new InMemoryView(new Window { Content = card, Width = 700, Height = 400 });
-            var add = (Hitbench.Resources.CustomControls.BalloonComboBox)card.FindName("AddMenuButton");
+            var add = (Hitbench.Resources.CustomControls.BalloonMenu)card.FindName("AddMenuButton");
             var samples = (Hitbench.Resources.CustomControls.BalloonButton)card.FindName("ManageSamplesButton");
-            UiControlContract.AssertStyle<Hitbench.Resources.CustomControls.BalloonComboBox>(add, "OHsWorkstationAddActionStyle");
+            UiControlContract.AssertStyle<Hitbench.Resources.CustomControls.BalloonMenu>(add, "OHsWorkstationAddActionStyle");
             UiControlContract.AssertStyle<Hitbench.Resources.CustomControls.BalloonButton>(samples, "OHsWorkstationSamplesActionStyle");
             Assert.That(System.Windows.Automation.AutomationProperties.GetName(add), Is.EqualTo("Add"));
             Assert.That(samples.Command, Is.SameAs(vm.ManageSamplesCommand));
-            UiTestPump.Layout(add.ContextMenu, 320, 200);
-            var sampleTrack = (System.Windows.Controls.MenuItem)add.ContextMenu.Items[0];
+            WorkstationActionMenus.Prepare(add);
+            var sampleTrack = add.Options[0];
             Assert.That(sampleTrack.Command, Is.SameAs(vm.AddSampleTrackCommand));
             sampleTrack.Command.Execute(null);
             Assert.That(vm.Tracks, Has.Count.EqualTo(1));

@@ -30,19 +30,19 @@ public sealed class OHsWorkstationAudioCardTests
         try
         {
             UiTestPump.Layout(card, 900, 300);
-            var actions = (BalloonComboBox)card.FindName("ProjectActionsButton");
+            var actions = (BalloonMenu)card.FindName("ProjectActionsButton");
             actions.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
-            UiTestPump.Layout(actions.ContextMenu, 320, 300);
+            WorkstationActionMenus.Prepare(actions);
             Assert.That(actions.Visibility, Is.EqualTo(Visibility.Visible));
-            Assert.That(actions.ContextMenu.Items.Cast<MenuItem>().Select(i => i.Command), Is.EqualTo(new System.Windows.Input.ICommand[]
+            Assert.That(actions.Options.Select(i => i.Command), Is.EqualTo(new System.Windows.Input.ICommand[]
             { vm.ResnapAllSamplesCommand, vm.ReloadSamplesCommand, vm.ToggleTracksCollapsedCommand, vm.ExportCommand }));
-            var open = card.FindName("OpenFoldersButton") as BalloonComboBox;
+            var open = card.FindName("OpenFoldersButton") as BalloonMenu;
             Assert.That(open, Is.Not.Null);
             open!.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
-            UiTestPump.Layout(open.ContextMenu, 320, 200);
-            Assert.That(open.ContextMenu.Items.Cast<MenuItem>().Select(i => i.Command), Is.EqualTo(new System.Windows.Input.ICommand[]
+            WorkstationActionMenus.Prepare(open);
+            Assert.That(open.Options.Select(i => i.Command), Is.EqualTo(new System.Windows.Input.ICommand[]
             { vm.OpenBeatmapFolderCommand, vm.OpenProjectFolderCommand }));
-            Assert.That(open.ContextMenu.Items.Cast<MenuItem>().All(i => ReferenceEquals(i.Icon, card.FindResource("Folder"))), Is.True);
+            Assert.That(open.Options.Select(i => AutomationProperties.GetName(i)), Is.EqualTo(new[] { "Open beatmap folder", "Open project folder" }));
         }
         finally { UiTestPump.Run(page.DeactivateAsync()); }
     }
@@ -58,30 +58,23 @@ public sealed class OHsWorkstationAudioCardTests
         try
         {
             UiTestPump.Layout(card, 640, 300);
-            var trigger = card.FindName("ProjectActionsButton") as BalloonComboBox;
+            var trigger = card.FindName("ProjectActionsButton") as BalloonMenu;
             Assert.That(trigger, Is.Not.Null);
             Assert.That(trigger!.Visibility, Is.EqualTo(Visibility.Visible));
-            var menu = trigger!.ContextMenu;
+            var menu = trigger!;
             trigger.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
-            UiTestPump.Layout(menu, 320, 300);
-            var commands = menu.Items.Cast<MenuItem>().Select(item => item.Command).ToArray();
+            WorkstationActionMenus.Prepare(menu);
+            var commands = menu.Options.Select(item => item.Command).ToArray();
             Assert.That(commands, Is.EquivalentTo(new System.Windows.Input.ICommand[]
             {
                 vm.ResnapAllSamplesCommand, vm.ReloadSamplesCommand, vm.ToggleTracksCollapsedCommand, vm.ExportCommand
             }));
-            Assert.That(menu.Items.Cast<MenuItem>().All(item => !item.IsEnabled), Is.True);
-            // Borrow the real resource through the existing native-presentation substitute.
-            trigger.ContextMenu = null;
-            var owner = new StubBalloonComboBox { DataContext = vm, ContextMenu = menu };
-            owner.SetBinding(UIElement.IsEnabledProperty, new Binding(nameof(trigger.IsEnabled)) { Source = trigger, Mode = BindingMode.OneWay });
-            owner.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
-            owner.Activate();
-            Assert.That(owner.IsDropDownOpen, Is.True);
-
+            Assert.That(menu.Options.All(item => !item.IsEnabled), Is.True);
+            WorkstationActionMenus.Open(menu);
+            Assert.That(menu.IsExpanded, Is.True);
             card.IsShortLayout = false;
-            Assert.That(owner.IsDropDownOpen, Is.True);
-            Assert.That(owner.IsMenuOwnerActive, Is.True);
-            owner.RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent));
+            Assert.That(menu.IsExpanded, Is.True);
+            menu.RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent));
         }
         finally { UiTestPump.Run(page.DeactivateAsync()); }
     }
@@ -95,7 +88,7 @@ public sealed class OHsWorkstationAudioCardTests
         new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
         var card = new OHsWorkstationToolbar { IsShortLayout = shortLayout };
         UiTestPump.Layout(card, 900, 300);
-        var trigger = (BalloonComboBox)card.FindName("ProjectActionsButton");
+        var trigger = (BalloonMenu)card.FindName("ProjectActionsButton");
         Assert.That(trigger.IsEnabled, Is.EqualTo(expected));
         Assert.That(trigger.Visibility, Is.EqualTo(expected ? Visibility.Visible : Visibility.Collapsed));
 
@@ -114,13 +107,14 @@ public sealed class OHsWorkstationAudioCardTests
             var card = new OHsWorkstationToolbar { DataContext = vm };
             UiTestPump.Layout(card, 900, 300);
             var button = WorkstationActionMenus.Find(card, vm.ExportCommand);
-            UiControlContract.AssertStyle<MenuItem>(button, "OHsIconActionMenuItemStyle");
-            Assert.That(button.Icon, Is.SameAs(card.FindResource("Export")));
+            UiControlContract.AssertStyle<BalloonMenuOption>(button, typeof(BalloonMenuOption));
             Assert.That(AutomationProperties.GetName(button), Is.EqualTo("Export"));
             Assert.That(button.Command, Is.SameAs(vm.ExportCommand)); Assert.That(button.IsEnabled, Is.False);
             UiTestPump.Run(vm.LoadAsync("project.json", default)); vm.AcknowledgePresentationReady(vm.LoadGeneration);
             UiTestPump.Layout(card, 900, 300); Assert.That(button.IsEnabled, Is.True);
-            UiTestPump.Run(vm.ExportCommand.ExecuteAsync(null)); Assert.That(dialogs.Calls, Is.EqualTo(1));
+            WorkstationActionMenus.Invoke(button);
+            UiTestPump.Run(vm.ExportCommand.ExecutionTask ?? Task.CompletedTask);
+            Assert.That(dialogs.Calls, Is.EqualTo(1));
         }
         finally { UiTestPump.Run(vm.DeactivateAsync()); }
     }
@@ -131,10 +125,10 @@ public sealed class OHsWorkstationAudioCardTests
         var vm = (WorkstationPageVM)WorkstationTestPage.Create().DataContext;
         var card = new OHsWorkstationToolbar { DataContext = vm };
         UiTestPump.Layout(card, 900, 250);
-        var add = (BalloonComboBox)card.FindName("AddMenuButton");
+        var add = (BalloonMenu)card.FindName("AddMenuButton");
         add.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
-        UiTestPump.Layout(add.ContextMenu, 320, 200);
-        Assert.That(add.ContextMenu.Items.Cast<MenuItem>().SingleOrDefault(item => item.Command == vm.AddControlPointCommand), Is.Null);
+        WorkstationActionMenus.Prepare(add);
+        Assert.That(add.Options.SingleOrDefault(item => item.Command == vm.AddControlPointCommand), Is.Null);
 
         UiTestPump.Run(vm.DeactivateAsync());
     }
@@ -205,18 +199,18 @@ public sealed class OHsWorkstationAudioCardTests
         try
         {
             UiTestPump.Layout(card, 900, 300);
-            var trigger = card.FindName("AddMenuButton") as BalloonComboBox;
+            var trigger = card.FindName("AddMenuButton") as BalloonMenu;
             Assert.That(trigger, Is.Not.Null);
             trigger!.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
-            UiTestPump.Layout(trigger.ContextMenu, 320, 200);
+            WorkstationActionMenus.Prepare(trigger);
             Drain();
-            var items = trigger.ContextMenu.Items.Cast<MenuItem>().ToArray();
-            Assert.That(items.Select(item => item.Header), Is.EqualTo(new[] { "Sample Track", "Instrumental Track" }));
+            var items = trigger.Options.ToArray();
+            Assert.That(items.Select(item => item.ButtonText), Is.EqualTo(new[] { "Sample Track", "Instrumental Track" }));
             Assert.That(items.Select(item => item.Command), Is.EqualTo(new System.Windows.Input.ICommand[]
                 { vm.AddSampleTrackCommand, vm.AddPianoTrackCommand }));
-            UiControlContract.AssertStyle<BalloonComboBox>(trigger, "OHsWorkstationAddActionStyle");
-            Assert.That(trigger.Style.BasedOn, Is.SameAs(trigger.FindResource("BaseBalloonComboBoxStyle")));
-            foreach (var item in items.Take(2)) UiControlContract.AssertStyle<MenuItem>(item, "OHsActionMenuItemStyle");
+            UiControlContract.AssertStyle<BalloonMenu>(trigger, "OHsWorkstationAddActionStyle");
+            Assert.That(trigger.Style.BasedOn, Is.SameAs(trigger.FindResource("BaseBalloonMenuStyle")));
+            foreach (var item in items.Take(2)) UiControlContract.AssertStyle<BalloonMenuOption>(item, typeof(BalloonMenuOption));
 
             Assert.That(items.All(item => !item.IsEnabled), Is.True);
             UiTestPump.Run(vm.LoadAsync("project.json", default));
@@ -237,35 +231,30 @@ public sealed class OHsWorkstationAudioCardTests
     {
         new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
         var card = new OHsWorkstationToolbar();
-        var trigger = card.FindName("AddMenuButton") as BalloonComboBox;
-        Assert.That(trigger, Is.Not.Null);
-        var menu = trigger!.ContextMenu;
-        trigger.ContextMenu = null;
+        UiTestPump.Layout(card, 900, 200);
+        var menu = (BalloonMenu)card.FindName("AddMenuButton");
         var oldCalls = 0; var currentCalls = 0;
         var oldCommand = new RelayCommand(() => oldCalls++);
         var currentCommand = new RelayCommand(() => currentCalls++);
-        var stub = new StubBalloonComboBox { ContextMenu = menu, DataContext = new
-            { AddSampleTrackCommand = oldCommand, AddPianoTrackCommand = oldCommand, AddControlPointCommand = oldCommand } };
-        stub.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
-        UiTestPump.Layout(menu, 320, 200);
+        menu.DataContext = new { AddSampleTrackCommand = oldCommand, AddPianoTrackCommand = oldCommand };
+        WorkstationActionMenus.Prepare(menu);
         try
         {
-            stub.Activate();
-            var item = (MenuItem)menu.Items[0];
-            var provider = (IInvokeProvider)new MenuItemAutomationPeer(item).GetPattern(PatternInterface.Invoke);
-            provider.Invoke(); Drain();
+            var item = menu.Options[0];
+            WorkstationActionMenus.Invoke(item);
             Assert.That(oldCalls, Is.EqualTo(1));
-            stub.DataContext = new { AddSampleTrackCommand = currentCommand, AddPianoTrackCommand = currentCommand, AddControlPointCommand = currentCommand };
+            menu.DataContext = new { AddSampleTrackCommand = currentCommand, AddPianoTrackCommand = currentCommand };
             Drain();
             Assert.That(item.Command, Is.SameAs(currentCommand));
-            stub.Activate(); provider.Invoke(); Drain();
+            WorkstationActionMenus.Invoke(item);
             Assert.That(oldCalls, Is.EqualTo(1)); Assert.That(currentCalls, Is.EqualTo(1));
-            stub.RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent));
-            Drain();
-            Assert.Throws<ElementNotEnabledException>(() => provider.Invoke());
-            Assert.That(menu.IsOpen, Is.False);
+            var provider = (IInvokeProvider)UIElementAutomationPeer.CreatePeerForElement(item)!.GetPattern(PatternInterface.Invoke);
+            menu.RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent));
+            provider.Invoke(); Drain();
+            Assert.That(currentCalls, Is.EqualTo(1));
+            Assert.That(menu.IsExpanded, Is.False);
         }
-        finally { stub.RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent)); }
+        finally { menu.RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent)); }
     }
 
     [Test]
@@ -401,11 +390,11 @@ public sealed class OHsWorkstationAudioCardTests
         var vm = (WorkstationPageVM)WorkstationTestPage.Create().DataContext;
         var owner = new OHsWorkstationToolbar { DataContext = vm };
         UiTestPump.Layout(owner, 900, 250);
-        var trigger = owner.FindName("AddMenuButton") as BalloonComboBox;
+        var trigger = owner.FindName("AddMenuButton") as BalloonMenu;
         Assert.That(trigger, Is.Not.Null);
         trigger!.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
         Drain();
-        var action = (MenuItem)trigger.ContextMenu.Items[0];
+        var action = trigger.Options[0];
         Assert.That(action.Command, Is.SameAs(vm.AddSampleTrackCommand));
         Assert.That(owner.Footer.DataContext, Is.SameAs(vm));
         UiTestPump.Run(vm.DeactivateAsync());

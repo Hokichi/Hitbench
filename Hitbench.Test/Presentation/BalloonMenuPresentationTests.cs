@@ -45,6 +45,23 @@ public sealed class BalloonMenuPresentationTests
         finally { Unload(menu); }
     }
 
+    [TestCase(FlowDirection.LeftToRight, -4d)]
+    [TestCase(FlowDirection.RightToLeft, -124d)]
+    public void PlacementCompensatesNativeFlowMirroring(FlowDirection targetFlow, double expectedX)
+    {
+        var menu = Create();
+        try
+        {
+            var offset = menu.CalculatePopupOffset(new Rect(20, 30, 40, 40), 160, 24, targetFlow);
+            Assert.That(offset, Is.EqualTo(new Point(expectedX, 6)));
+            // WPF aligns the child's opposite edge when target/child flow differs.
+            var nativeLeft = targetFlow == FlowDirection.LeftToRight ? offset.X : 500 - offset.X - 208;
+            var expectedAnchor = targetFlow == FlowDirection.LeftToRight ? 20 : 440;
+            Assert.That(nativeLeft + 24, Is.EqualTo(expectedAnchor));
+        }
+        finally { Unload(menu); }
+    }
+
     [Test]
     public void HoverOwnershipCrossesPopupSeam()
     {
@@ -94,6 +111,7 @@ public sealed class BalloonMenuPresentationTests
             menu.Animate = true;
             menu.Enter();
             menu.ApplyRevealProgress(0, menu.PresentationGeneration);
+            Assert.That(menu.IsOptionRevealed(menu.Options[0]), Is.False, "The collapsed endpoint has no visible options.");
             Assert.That(menu.IsOptionRevealed(menu.Options[^1]), Is.False);
             Assert.That(menu.Options[^1].IsHitTestVisible, Is.False);
             Assert.That(menu.IsHitTestVisible, Is.False);
@@ -161,6 +179,20 @@ public sealed class BalloonMenuPresentationTests
             Assert.Throws<InvalidOperationException>(() => menu.OpenMenu(false));
             Assert.That(menu.IsExpanded, Is.False);
             Assert.That(menu.IsHitTestVisible, Is.True);
+        }
+        finally { Unload(menu); }
+    }
+
+    [Test]
+    public void MissingRenderedBoundsDoNotPresentNativePopup()
+    {
+        var menu = Create();
+        try
+        {
+            menu.Bounds = Rect.Empty;
+            Assert.That(menu.OpenMenu(false), Is.False);
+            Assert.That(menu.IsExpanded, Is.False);
+            Assert.That(menu.PresentationRequests, Is.Empty);
         }
         finally { Unload(menu); }
     }

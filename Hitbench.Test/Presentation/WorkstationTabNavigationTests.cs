@@ -181,6 +181,42 @@ public sealed class WorkstationTabNavigationTests
             Assert.That(KeyboardNavigation.GetIsTabStop(element), Is.False, element.GetType().Name);
     }
 
+    [Test]
+    public void BalloonMenuPopupFollowsLiveOwnerSuppressionAndFlowWithoutOpening()
+    {
+        var root = new Grid { Resources = Application.Current.Resources };
+        KeyboardNavigationPolicy.SetSuppressTabNavigation(root, true);
+        var menu = new BalloonMenu { ButtonIcon = root.FindResource("BarsSolid"), ButtonText = "Actions" };
+        var option = new BalloonMenuOption { ButtonIcon = root.FindResource("Folder"), ButtonText = "Open", IsTabStop = true };
+        KeyboardNavigationPolicy.SetAllowTabNavigation(option, true);
+        menu.Options.Add(option);
+        root.Children.Add(menu);
+        UiTestPump.Layout(root, 300, 100);
+        WorkstationActionMenus.Prepare(menu);
+        try
+        {
+            var popup = (Popup)menu.Template.FindName("PART_StatePopup", menu);
+            var items = (ItemsControl)menu.Template.FindName("PART_StateItems", menu);
+            Assert.That(popup.IsOpen, Is.False);
+            AssertNoTabStops(popup.Child);
+            Assert.That(option.IsTabStop, Is.False);
+            KeyboardNavigationPolicy.SetSuppressTabNavigation(root, false);
+            Assert.That(option.IsTabStop, Is.True);
+            KeyboardNavigationPolicy.SetSuppressTabNavigation(root, true);
+            var added = new BalloonMenuOption { ButtonIcon = root.FindResource("Folder"), ButtonText = "Another", IsTabStop = true };
+            KeyboardNavigationPolicy.SetAllowTabNavigation(added, true);
+            menu.Options.Add(added);
+            WorkstationActionMenus.Prepare(menu);
+            Assert.That(added.IsTabStop, Is.False);
+            menu.FlowDirection = FlowDirection.RightToLeft;
+            Assert.That(items.FlowDirection, Is.EqualTo(FlowDirection.RightToLeft));
+            AssertNoTabStops(popup.Child);
+            menu.OnApplyTemplate();
+            Assert.That(BindingOperations.IsDataBound(items, FrameworkElement.FlowDirectionProperty), Is.False);
+        }
+        finally { menu.RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent)); }
+    }
+
     private static IEnumerable<DependencyObject> Descendants(DependencyObject root)
     {
         yield return root;

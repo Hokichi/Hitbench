@@ -85,25 +85,18 @@ public class WorkstationPageIntegrationTests
         using var view = new InMemoryView(new Window { Content = page, Width = 1100, Height = 800, FlowDirection = direction });
         try
         {
-            var add = (BalloonComboBox)page.Toolbar.FindName("AddMenuButton");
+            var add = (BalloonMenu)page.Toolbar.FindName("AddMenuButton");
             var samples = (BalloonButton)page.Toolbar.FindName("ManageSamplesButton");
             Assert.That(AutomationProperties.GetName(add), Is.EqualTo("Add"));
             Assert.That(AutomationProperties.GetName(samples), Is.EqualTo("Samples"));
             Assert.That((add.ButtonText, samples.ButtonText), Is.EqualTo(("Add", "Samples")));
-            Assert.That(add.ButtonIcon, Is.SameAs(add.FindResource("PlusSolid")));
             var owner = (WorkstationPageVM)page.DataContext;
             Assert.That(samples.Command, Is.SameAs(owner.ManageSamplesCommand));
-            // Supply the native popup's inherited context without opening its window.
-            add.ContextMenu.DataContext = owner;
-            foreach (var item in add.ContextMenu.Items.OfType<MenuItem>())
-            {
-                item.DataContext = owner;
-                item.GetBindingExpression(MenuItem.CommandProperty)!.UpdateTarget();
-            }
+            WorkstationActionMenus.Prepare(add);
             UiTestPump.Run(page.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle).Task);
-            Assert.That(add.ContextMenu.Items.OfType<MenuItem>().Select(item => item.Command),
+            Assert.That(add.Options.Select(item => item.Command),
                 Is.EqualTo(new System.Windows.Input.ICommand[] { owner.AddSampleTrackCommand, owner.AddPianoTrackCommand }));
-            UiControlContract.AssertStyle<BalloonComboBox>(add, "OHsWorkstationAddActionStyle");
+            UiControlContract.AssertStyle<BalloonMenu>(add, "OHsWorkstationAddActionStyle");
             UiControlContract.AssertStyle<BalloonButton>(samples, "OHsWorkstationSamplesActionStyle");
         }
         finally { UiTestPump.Run(page.DeactivateAsync()); }
@@ -1604,7 +1597,7 @@ public class WorkstationPageIntegrationTests
             }));
             UiTestPump.Run(page.LoadCompletion);
             view.UpdateLayout();
-            UiControlContract.AssertStyle<MenuItem>(button, "OHsIconActionMenuItemStyle");
+            UiControlContract.AssertStyle<BalloonMenuOption>(button, typeof(BalloonMenuOption));
             Assert.That(button.Command, Is.SameAs(vm.ResnapAllSamplesCommand));
             Assert.That(button.IsEnabled, Is.True);
             Assert.That(AutomationProperties.GetName(button), Is.EqualTo("Resnap all samples and control points"));

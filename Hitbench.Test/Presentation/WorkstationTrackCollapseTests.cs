@@ -275,11 +275,11 @@ public class WorkstationTrackCollapseTests
         var (page, vm, view) = Create(direction);
         using (view)
         {
-            var trigger = (BalloonComboBox)page.Toolbar.FindName("AddMenuButton");
-            UiTestPump.Layout(trigger.ContextMenu, 320, 200);
+            var trigger = (BalloonMenu)page.Toolbar.FindName("AddMenuButton");
+            WorkstationActionMenus.Prepare(trigger);
             UiTestPump.Run(trigger.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle).Task);
-            var sample = (MenuItem)trigger.ContextMenu.Items[0];
-            var instrument = (MenuItem)trigger.ContextMenu.Items[1];
+            var sample = trigger.Options[0];
+            var instrument = trigger.Options[1];
             var toggle = WorkstationActionMenus.Find(page.Toolbar, vm.ToggleTracksCollapsedCommand);
             var refresh = WorkstationActionMenus.Find(page.Toolbar, vm.ReloadSamplesCommand);
             var resnap = WorkstationActionMenus.Find(page.Toolbar, vm.ResnapAllSamplesCommand);
@@ -289,22 +289,22 @@ public class WorkstationTrackCollapseTests
             Assert.That(AutomationProperties.GetName(resnap), Is.EqualTo("Resnap all samples and control points"));
             foreach (var action in new[] { refresh, resnap })
             {
-                UiControlContract.AssertStyle<MenuItem>(action, "OHsIconActionMenuItemStyle");
+                UiControlContract.AssertStyle<BalloonMenuOption>(action, typeof(BalloonMenuOption));
                 Assert.That(action.IsEnabled, Is.EqualTo(action.Command!.CanExecute(null)));
                 Assert.That(action.IsTabStop, Is.False);
                 Assert.That(action.Focusable, Is.True);
             }
             Assert.That(sample, Is.Not.Null, "Audio card needs sample creation action");
-            UiControlContract.AssertStyle<MenuItem>(sample, "OHsActionMenuItemStyle");
-            UiControlContract.AssertStyle<MenuItem>(instrument, "OHsActionMenuItemStyle");
-            UiControlContract.AssertStyle<MenuItem>(toggle, "OHsWorkstationCollapseMenuItemStyle");
+            UiControlContract.AssertStyle<BalloonMenuOption>(sample, typeof(BalloonMenuOption));
+            UiControlContract.AssertStyle<BalloonMenuOption>(instrument, typeof(BalloonMenuOption));
+            UiControlContract.AssertStyle<BalloonMenuOption>(toggle, "OHsWorkstationCollapseOptionStyle");
             Assert.Multiple(() =>
             {
                 Assert.That(sample.Command, Is.SameAs(vm.AddSampleTrackCommand));
                 Assert.That(instrument.Command, Is.SameAs(vm.AddPianoTrackCommand));
                 Assert.That(toggle.Command, Is.SameAs(vm.ToggleTracksCollapsedCommand));
-                Assert.That(sample.Header, Is.EqualTo("Sample Track"));
-                Assert.That(instrument.Header, Is.EqualTo("Instrumental Track"));
+                Assert.That(sample.ButtonText, Is.EqualTo("Sample Track"));
+                Assert.That(instrument.ButtonText, Is.EqualTo("Instrumental Track"));
                 Assert.That(AutomationProperties.GetName(toggle), Is.EqualTo("Collapse all tracks"));
             });
             foreach (var action in new Control[] { sample, instrument, toggle })
@@ -433,9 +433,9 @@ public class WorkstationTrackCollapseTests
         {
             var list = (ListBox)((Hitbench.Views.Pages.OHsWorkstationTrackList)page.FindName("TrackListComponent")).FindName("TrackList");
             vm.ToggleTracksCollapsedCommand.Execute(null);
-            var menu = ((BalloonComboBox)page.Toolbar.FindName("AddMenuButton")).ContextMenu;
-            UiTestPump.Layout(menu, 320, 200);
-            InvokeMenuItem((MenuItem)menu.Items[0]);
+            var menu = (BalloonMenu)page.Toolbar.FindName("AddMenuButton");
+            WorkstationActionMenus.Prepare(menu);
+            WorkstationActionMenus.Invoke(menu.Options[0]);
             list.ScrollIntoView(vm.Tracks.Last());
             view.UpdateLayout();
             Assert.That(vm.Tracks, Has.Count.EqualTo(81));
@@ -482,6 +482,8 @@ public class WorkstationTrackCollapseTests
             UiTestPump.Run(page.DeactivateAsync());
         }
     }
+
+    private static void InvokeMenuItem(BalloonMenuOption item) => WorkstationActionMenus.Invoke(item);
 
     private static void InvokeMenuItem(MenuItem item)
     {

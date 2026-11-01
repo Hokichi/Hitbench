@@ -30,7 +30,7 @@ public class WorkstationSampleReloadIntegrationTests
         files.List = (_, _) => Task.FromException<IReadOnlyList<string>>(new IOException("listing failed"));
         UiTestPump.Run(vm.ReloadSamplesCommand.ExecuteAsync(null)); view.UpdateLayout();
         Assert.That(vm.LoadPhase, Is.EqualTo(ProjectLoadPhase.Ready));
-        Assert.That(WorkstationActionMenus.Find(page.Toolbar, vm.ReloadSamplesCommand), Is.TypeOf<MenuItem>());
+        Assert.That(WorkstationActionMenus.Find(page.Toolbar, vm.ReloadSamplesCommand), Is.TypeOf<BalloonMenuOption>());
         Assert.That(WorkstationActionMenus.Find(page.Toolbar, vm.ReloadSamplesCommand).IsEnabled, Is.True);
         Assert.That(((ScrollViewer)(page.Timeline).FindName("WaveformScrollViewer")).IsEnabled, Is.True);
         files.List = (_, _) => Task.FromResult<IReadOnlyList<string>>(["new.wav"]);
@@ -61,11 +61,11 @@ public class WorkstationSampleReloadIntegrationTests
         UiTestPump.Run(page.LoadCompletion);
         vm.IsAdditionMode = true; view.UpdateLayout();
         var action = WorkstationActionMenus.Find(page.Toolbar, vm.ReloadSamplesCommand);
-        Assert.That(action, Is.TypeOf<MenuItem>());
+        Assert.That(action, Is.TypeOf<BalloonMenuOption>());
         var button = action;
         Assert.That(button.IsTabStop, Is.False);
-        UiControlContract.AssertStyle<MenuItem>(button, "OHsIconActionMenuItemStyle");
-        Assert.That(button.Style, Is.SameAs(button.FindResource("OHsIconActionMenuItemStyle")));
+        UiControlContract.AssertStyle<BalloonMenuOption>(button, typeof(BalloonMenuOption));
+        Assert.That(button.Style, Is.SameAs(button.FindResource(typeof(BalloonMenuOption))));
         Assert.That(button.FocusVisualStyle, Is.SameAs(button.FindResource("OHsSampleManagerKeyboardFocusStyle")));
         Assert.That(button.Command, Is.SameAs(vm.ReloadSamplesCommand)); Assert.That(button.IsEnabled, Is.True);
         Assert.That(AutomationProperties.GetName(button), Is.EqualTo("Refresh samples"));
@@ -83,7 +83,7 @@ public class WorkstationSampleReloadIntegrationTests
         Assert.That(saves.LatestJson, Does.Contain("name edited before refresh"));
         Assert.That(vm.Tracks.Single().Name, Is.EqualTo("name edited before refresh"));
         Assert.That(vm.CanPlay, Is.True); Assert.That(button.IsEnabled, Is.True);
-        Assert.That(button.Header, Is.EqualTo("Refresh samples"));
+        Assert.That(button.ButtonText, Is.EqualTo("Refresh samples"));
         Assert.That(button.ToolTip, Is.EqualTo("Refresh project samples (F5)"));
         Assert.That(page.HandlePlaybackKey(Key.F5, ModifierKeys.None, true, page), Is.True);
         Assert.That(calls, Is.EqualTo(1));

@@ -97,6 +97,7 @@ public partial class WorkstationPage : UserControl
 
     public Task DeactivateAsync()
     {
+        Toolbar.CloseMenus();
         if (deactivationStarted) return LoadCompletion;
         CancelNodePointer();
         ResetPianoRollExpansion();

@@ -1,4 +1,6 @@
 using System.Windows.Controls;
+using System.Windows;
+using System.Windows.Automation;
 using Hitbench.Resources.CustomControls;
 using Hitbench.Views.Pages;
 
@@ -7,6 +9,34 @@ namespace Hitbench.Test.Presentation;
 [Apartment(ApartmentState.STA), NonParallelizable]
 public sealed class OHsWorkstationToolbarTests
 {
+    [Test]
+    public void OpenFolderOptionsDispatchExistingCommandsWithoutLaunchingProcesses()
+    {
+        new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
+        var launcher = new StubDirectoryLauncher();
+        var project = new Hitbench.Core.Entities.ProjectData { BeatmapPath = Path.GetFullPath("beatmap") };
+        var source = new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(
+            new Hitbench.Core.Entities.WorkstationSource("map.osu", "audio.wav", project)) };
+        var vm = new Hitbench.ViewModels.Shell.WorkstationPageVM(source,
+            new Hitbench.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay),
+            new ImmediateUiScheduler(), directoryLauncher: launcher);
+        var toolbar = new OHsWorkstationToolbar { DataContext = vm };
+        try
+        {
+            UiTestPump.Run(vm.LoadAsync(Path.GetFullPath("project/project.json"), default));
+            vm.AcknowledgePresentationReady(vm.LoadGeneration);
+            UiTestPump.Layout(toolbar, 900, 100);
+            var menu = (BalloonMenu)toolbar.FindName("OpenFoldersButton");
+            WorkstationActionMenus.Prepare(menu);
+            WorkstationActionMenus.Invoke(menu.Options[0]);
+            UiTestPump.Run(vm.OpenBeatmapFolderCommand.ExecutionTask ?? Task.CompletedTask);
+            WorkstationActionMenus.Invoke(menu.Options[1]);
+            UiTestPump.Run(vm.OpenProjectFolderCommand.ExecutionTask ?? Task.CompletedTask);
+            Assert.That(launcher.Directories, Is.EqualTo(new[] { project.BeatmapPath, Path.GetFullPath("project") }));
+        }
+        finally { toolbar.CloseMenus(); UiTestPump.Run(vm.DeactivateAsync()); }
+    }
+
     [Test]
     public void ToolbarMenusKeepOwnerBindingsAndAssignedMenuStyle()
     {
@@ -18,13 +48,18 @@ public sealed class OHsWorkstationToolbarTests
             UiTestPump.Layout(page, 1200, 800);
             foreach (var name in new[] { "ProjectActionsButton", "OpenFoldersButton", "AddMenuButton" })
             {
-                var trigger = (BalloonComboBox)page.Toolbar.FindName(name);
-                trigger.ContextMenu.PlacementTarget = trigger;
-                UiTestPump.Layout(trigger.ContextMenu, 320, 300);
-                Assert.That(trigger.ContextMenu, Is.TypeOf<ContextMenu>());
-                Assert.That(trigger.ContextMenu.Style, Is.SameAs(trigger.FindResource("OHsWorkstationToolbarMenuStyle")));
-                Assert.That(trigger.ContextMenu.Style.BasedOn, Is.SameAs(trigger.FindResource("OHsActionContextMenuStyle")));
-                Assert.That(trigger.ContextMenu.DataContext, Is.SameAs(vm));
+                var trigger = (BalloonMenu)page.Toolbar.FindName(name);
+                WorkstationActionMenus.Prepare(trigger);
+                UiControlContract.AssertTemplate(trigger, "BalloonControlTemplate");
+                Assert.That(trigger.Style.BasedOn, Is.SameAs(trigger.FindResource(name == "OpenFoldersButton" ?
+                    "OHsWorkstationProjectActionsStyle" : "BaseBalloonMenuStyle")));
+                foreach (var option in trigger.Options)
+                {
+                    Assert.That(option, Is.TypeOf<BalloonMenuOption>());
+                    Assert.That(option.DataContext, Is.SameAs(vm));
+                    Assert.That(AutomationProperties.GetName(option), Is.Not.Empty);
+                    Assert.That(option.ShouldShowText, Is.False);
+                }
             }
         }
         finally { UiTestPump.Run(page.DeactivateAsync()); }
@@ -64,8 +99,74 @@ public sealed class OHsWorkstationToolbarTests
     {
         new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
         var toolbar = new OHsWorkstationToolbar();
-        var add = (BalloonComboBox)toolbar.FindName("AddMenuButton");
-        Assert.That(add.ContextMenu.Items.OfType<MenuItem>().Select(item => item.Header),
+        var add = (BalloonMenu)toolbar.FindName("AddMenuButton");
+        Assert.That(add.Options.Select(item => item.ButtonText),
             Is.EqualTo(new[] { "Sample Track", "Instrumental Track" }));
+    }
+
+    [Test]
+    public void OnlyOneToolbarMenuOwnsPresentation()
+    {
+        new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
+        var toolbar = new OHsWorkstationToolbar();
+        UiTestPump.Layout(toolbar, 900, 100);
+        BalloonMenu? previous = null;
+        try
+        {
+            foreach (var name in new[] { "ProjectActionsButton", "OpenFoldersButton", "AddMenuButton" })
+            {
+                var menu = (BalloonMenu)toolbar.FindName(name);
+                WorkstationActionMenus.Open(menu);
+                Assert.That(menu.IsExpanded, Is.True);
+                if (previous is not null) Assert.That(previous.IsExpanded, Is.False);
+                previous = menu;
+            }
+            toolbar.CloseMenus();
+            Assert.That(previous!.IsExpanded, Is.False);
+        }
+        finally { toolbar.CloseMenus(); }
+    }
+
+    [TestCase("disable")] [TestCase("unload")] [TestCase("owner")] [TestCase("deactivate")]
+    public void ToolbarTeardownClosesBeforeNavigation(string action)
+    {
+        new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
+        var page = WorkstationTestPage.Create();
+        try
+        {
+            UiTestPump.Layout(page, 900, 600);
+            var menu = (BalloonMenu)page.Toolbar.FindName("ProjectActionsButton");
+            WorkstationActionMenus.Open(menu);
+            if (action == "disable") page.Toolbar.IsEnabled = false;
+            else if (action == "unload") page.Toolbar.RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent));
+            else if (action == "owner") page.Toolbar.DataContext = new object();
+            else { var completion = page.DeactivateAsync(); Assert.That(menu.IsExpanded, Is.False); UiTestPump.Run(completion); }
+            Assert.That(menu.IsExpanded, Is.False);
+        }
+        finally { UiTestPump.Run(page.DeactivateAsync()); }
+    }
+
+    [TestCase(640, FlowDirection.LeftToRight)] [TestCase(1200, FlowDirection.LeftToRight)]
+    [TestCase(640, FlowDirection.RightToLeft)] [TestCase(1200, FlowDirection.RightToLeft)]
+    public void RevealPreservesToolbarMeasuredContract(int width, FlowDirection direction)
+    {
+        new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
+        var toolbar = new OHsWorkstationToolbar { FlowDirection = direction };
+        UiTestPump.Layout(toolbar, width, 100);
+        var before = toolbar.DesiredSize;
+        try
+        {
+            foreach (var name in new[] { "ProjectActionsButton", "OpenFoldersButton", "AddMenuButton" })
+            {
+                var menu = (BalloonMenu)toolbar.FindName(name);
+                var slot = menu.RenderSize;
+                WorkstationActionMenus.Open(menu);
+                UiTestPump.Layout(toolbar, width, 100);
+                Assert.That(toolbar.DesiredSize, Is.EqualTo(before));
+                Assert.That(menu.RenderSize, Is.EqualTo(slot));
+                menu.CloseMenu();
+            }
+        }
+        finally { toolbar.CloseMenus(); }
     }
 }
