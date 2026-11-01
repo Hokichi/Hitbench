@@ -13,7 +13,7 @@ public partial class MainWindow
 {
     private TaskCompletionSource? sampleManagerCompletion;
     private CancellationTokenSource? sampleManagerCancellation;
-    private Func<Task>? closeSampleManager;
+    private Func<Task<bool>>? closeSampleManager;
     private Action? clearSampleFocusRestore;
     private WorkstationPage? dockedDrawerPage;
     private Task sampleManagerPresentation = Task.CompletedTask;
@@ -49,11 +49,11 @@ public partial class MainWindow
         catch (Exception error) { System.Diagnostics.Trace.TraceError("Sample drawer close failed: {0}", error); DismissSampleManager(drawer); }
     }
 
-    internal Task RequestSampleManagerCloseAsync(UserControl drawer)
+    internal Task<bool> RequestSampleManagerCloseAsync(UserControl drawer)
     {
-        if (!ReferenceEquals(SampleManagerHost.Content, drawer) || IsPopupOverlayVisible) return Task.CompletedTask;
-        if (SampleManagerPhase != OHsSampleDrawerPhase.Closing && (drawer is not IOHsShellDrawer lifecycle || !lifecycle.CanDismiss || !lifecycle.TryPrepareClose())) return Task.CompletedTask;
-        return closeSampleManager?.Invoke() ?? Task.CompletedTask;
+        if (!ReferenceEquals(SampleManagerHost.Content, drawer) || IsPopupOverlayVisible) return Task.FromResult(false);
+        if (SampleManagerPhase != OHsSampleDrawerPhase.Closing && (drawer is not IOHsShellDrawer lifecycle || !lifecycle.CanDismiss || !lifecycle.TryPrepareClose())) return Task.FromResult(false);
+        return closeSampleManager?.Invoke() ?? Task.FromResult(false);
     }
 
     internal Task PresentSampleManagerAsync(ManageSamplesDrawer drawer, CancellationToken token,
@@ -82,9 +82,9 @@ public partial class MainWindow
         sampleManagerCancellation = presentation;
         var animate = transition ?? AnimateSampleManagerAsync;
         Task entrance = Task.CompletedTask;
-        Task closing = Task.CompletedTask;
+        Task<bool> closing = Task.FromResult(false);
         var ownedFocusBeforeClose = false;
-        Task CloseNormally()
+        Task<bool> CloseNormally()
         {
             if (SampleManagerPhase == OHsSampleDrawerPhase.Closing) return closing;
             ownedFocusBeforeClose = drawer.IsKeyboardFocusWithin;
@@ -93,18 +93,19 @@ public partial class MainWindow
             entranceCancellation.Cancel();
             return closing = FinishCloseAsync();
         }
-        async Task FinishCloseAsync()
+        async Task<bool> FinishCloseAsync()
         {
             try
             {
                 try { await entrance; }
                 catch (OperationCanceledException) when (entranceCancellation.IsCancellationRequested) { }
-                if (presentation.IsCancellationRequested) return;
+                if (presentation.IsCancellationRequested) return false;
                 await AwaitSampleManagerTransitionAsync(animate, false, presentation.Token);
             }
             catch (OperationCanceledException) when (presentation.IsCancellationRequested) { }
             catch (Exception error) { System.Diagnostics.Trace.TraceError("Sample drawer exit failed: {0}", error); }
             finally { completion.TrySetResult(); }
+            return true;
         }
         closeSampleManager = CloseNormally;
         async void OnCloseRequested(object? sender, EventArgs args)

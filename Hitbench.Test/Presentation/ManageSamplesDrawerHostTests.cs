@@ -12,6 +12,41 @@ namespace Hitbench.Test.Presentation;
 [Apartment(ApartmentState.STA)] [NonParallelizable]
 public sealed class ManageSamplesDrawerHostTests
 {
+    [TestCase("rename")]
+    [TestCase("reservation")]
+    [TestCase("modal")]
+    public void CloseRequestPreservesGatedManager(string gate)
+    {
+        new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
+        using var services = App.CreateServices(); var shell = services.GetRequiredService<MainWindow>();
+        var files = new StubSampleFileService(["hit.wav"]);
+        var messenger = new WeakReferenceMessenger();
+        var vm = new ManageSamplesPopupVM(new("project.json", null, Guid.NewGuid()), files, new(files),
+            new StubSampleFileDialogService([]), new StubSampleRemovalDialogService(), messenger, new ImmediateUiScheduler());
+        var drawer = new ManageSamplesDrawer(vm);
+        Task? showing = null;
+        try
+        {
+            UiTestPump.Run(vm.InitializeAsync(default));
+            showing = shell.PresentSampleManagerAsync(drawer, default, (_, _) => Task.CompletedTask);
+            if (gate == "rename") { UiTestPump.Run(vm.EditCommand.ExecuteAsync(vm.Entries.Single())); vm.DraftStem = "kick"; }
+            if (gate == "reservation") UiTestPump.Run(messenger.Send(new Hitbench.Resources.Messages.OHsPrepareSampleDropImportMessage(vm.Context)).Response);
+            if (gate == "modal") shell.ShowPopupOverlay();
+            var closing = shell.RequestSampleManagerCloseAsync(drawer); UiTestPump.Run(closing);
+            Assert.That(closing.Result, Is.False);
+            Assert.That(showing.IsCompleted, Is.False);
+            Assert.That(((ContentControl)shell.FindName("SampleManagerHost")).Content, Is.SameAs(drawer));
+            if (gate == "rename") Assert.That(vm.DraftStem, Is.EqualTo("kick"));
+            if (gate == "reservation") Assert.That(vm.CanClose, Is.False);
+        }
+        finally
+        {
+            shell.HidePopupOverlay(); shell.DismissSampleManager(drawer);
+            if (showing is not null) UiTestPump.Run(showing);
+            UiTestPump.Run(vm.DeactivateAsync()); shell.Close();
+        }
+    }
+
     [Test]
     public void IdleBackdropClickClosesWithoutClickThrough()
     {
