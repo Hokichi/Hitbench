@@ -650,5 +650,21 @@
             </MultiDataTrigger>
         </Style.Triggers>
     </Style>
+    <Style x:Key="BaseBalloonMenuStyle" TargetType="c:BalloonMenu" BasedOn="{StaticResource OHsBalloonNavInfoActionStyle}">
+        <Setter Property="ToolTip" Value="{Binding ButtonText, RelativeSource={RelativeSource Self}, Mode=OneWay}" />
+        <Setter Property="AutomationProperties.Name" Value="{Binding ButtonText, RelativeSource={RelativeSource Self}, Mode=OneWay}" />
+        <Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="True" />
+        <Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
+        <Setter Property="IsTabStop" Value="True" />
+    </Style>
+    <Style TargetType="c:BalloonMenu" BasedOn="{StaticResource BaseBalloonMenuStyle}" />
+    <Style x:Key="BaseBalloonMenuOptionStyle" TargetType="c:BalloonMenuOption" BasedOn="{StaticResource OHsBalloonNeutralActionStyle}">
+        <Setter Property="ToolTip" Value="{Binding ButtonText, RelativeSource={RelativeSource Self}, Mode=OneWay}" />
+        <Setter Property="AutomationProperties.Name" Value="{Binding ButtonText, RelativeSource={RelativeSource Self}, Mode=OneWay}" />
+        <Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="True" />
+        <Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
+        <Setter Property="IsTabStop" Value="True" />
+    </Style>
+    <Style TargetType="c:BalloonMenuOption" BasedOn="{StaticResource BaseBalloonMenuOptionStyle}" />
 </ResourceDictionary>
 

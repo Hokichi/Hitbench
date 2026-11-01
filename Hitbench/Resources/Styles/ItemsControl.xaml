@@ -28,4 +28,8 @@
         <StackPanel Orientation="Horizontal" />
     </ItemsPanelTemplate>
 
+    <Style x:Key="BalloonMenuItemsStyle" TargetType="ItemsControl" BasedOn="{StaticResource BaseItemsControlStyle}">
+        <Setter Property="ItemsPanel" Value="{StaticResource HorizontalStackItemsPanelTemplate}" />
+        <Setter Property="ItemTemplate" Value="{x:Null}" />
+    </Style>
 </ResourceDictionary>
