@@ -1,52 +1,25 @@
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Input;
-using Hitbench.Core.Entities;
-
 namespace Hitbench.Views.Pages;
-
 public partial class OHsWorkstationTrackRow
 {
-    internal bool BeginNameEdit()
+    private void OnTrackIdentityPointerDown(object sender, MouseButtonEventArgs e)
     {
-        if (Track is not { } track || ViewModel?.BeginTrackRenameCommand.CanExecute(track) != true) return false;
-        ViewModel.BeginTrackRenameCommand.Execute(track);
-        return IsRenaming;
+        if (Track is { } track && ViewModel is { } owner) owner.SelectedTrack = track;
     }
-
-    private void FocusTrackNameEditor()
+    internal async Task<bool> EditTrackAppearanceAsync()
     {
-        if (FindVisualChild<TextBox>(this, "TrackNameInput") is not { } input) return;
-        input.Focus(); input.SelectAll();
-    }
-
-    private void OnTrackNameMouseDown(object sender, MouseButtonEventArgs e)
-    {
-        if (e.ClickCount == 2 && BeginNameEdit()) e.Handled = true;
-    }
-
-    internal async Task<bool> HandleTrackNameKeyAsync(Key key)
-    {
-        if (key is not (Key.Enter or Key.Escape) || Track is not { } track || ViewModel is not { } owner ||
-            !ReferenceEquals(owner.RenamingTrack, track)) return false;
-        if (key == Key.Escape) owner.CancelTrackRename(track);
-        else await owner.CommitTrackRenameAsync(track);
-        if (ReferenceEquals(Track, track) && ReferenceEquals(ViewModel, owner)) GetRemovalFocusTarget()?.Focus();
+        if (IsTrackDragPreview || Track is not { } track || ViewModel is not { } owner || !owner.ChangeTrackColorCommand.CanExecute(track)) return false;
+        owner.SelectedTrack = track;
+        await owner.ChangeTrackColorCommand.ExecuteAsync(track);
+        if (ReferenceEquals(Track, track) && ReferenceEquals(ViewModel, owner))
+            FindVisualChild<Resources.CustomControls.OHsTrackIdentityButton>(this)?.Focus();
         return true;
     }
-
-    private async void OnTrackNameKeyDown(object sender, KeyEventArgs e)
+    private async void OnTrackIdentityClick(object sender, RoutedEventArgs e)
     {
-        if (e.Key is not (Key.Enter or Key.Escape)) return;
         e.Handled = true;
-        try { await HandleTrackNameKeyAsync(e.Key); }
+        try { await EditTrackAppearanceAsync(); }
         catch (Exception error) { if (ViewModel is { } owner) owner.ErrorMessage = error.Message; }
-    }
-
-    private async void OnTrackNameLostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
-    {
-        if (sender is not TextBox { DataContext: Track track } || !ReferenceEquals(Track, track) || ViewModel is not { } owner) return;
-        try { await owner.CommitTrackRenameAsync(track); }
-        catch (Exception error) { owner.ErrorMessage = error.Message; }
     }
 }

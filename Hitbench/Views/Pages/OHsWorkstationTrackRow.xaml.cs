@@ -33,7 +33,7 @@ public partial class OHsWorkstationTrackRow : UserControl
         PreviewKeyDown += (_, e) => { if ((e.Key == Key.Apps || e.Key == Key.F10 && Keyboard.Modifiers == ModifierKeys.Shift) && TryOpenTrackMenu(e.OriginalSource as DependencyObject)) e.Handled = true; };
         ((ObjectDataProvider)Resources["OHsWorkstationTrackRowSource"]).ObjectInstance = this;
         Loaded += (_, _) => { if (IsTrackDragPreview) return; UseTouchTargets = Tablet.TabletDevices.Cast<TabletDevice>().Any(device => device.Type == TabletDeviceType.Touch); Subscribe(); RefreshPresentation(); if (FindVisualChild<StackPanel>(this, "TrackLeftControls") is { } controls) UpdateTrackHeightMinimum(controls); };
-        Unloaded += (_, _) => { if (IsTrackDragPreview) return; InvalidateSampleConfiguration(); if (Track is {} track) ViewModel?.CancelTrackRename(track); DetachActionMenu(); Unsubscribe(); };
+        Unloaded += (_, _) => { if (IsTrackDragPreview) return; InvalidateSampleConfiguration(); if (Track is {} track) { ViewModel?.CancelTrackRename(track); ViewModel?.CancelTrackAppearance(track); } DetachActionMenu(); Unsubscribe(); };
     }
     public static readonly DependencyProperty UseTouchTargetsProperty = DependencyProperty.Register(nameof(UseTouchTargets), typeof(bool), typeof(OHsWorkstationTrackRow), new PropertyMetadata(false));
     public bool UseTouchTargets { get => (bool)GetValue(UseTouchTargetsProperty); set => SetValue(UseTouchTargetsProperty, value); }
@@ -102,14 +102,8 @@ public partial class OHsWorkstationTrackRow : UserControl
             if (!IsTrackCollapsed && current.IsCollapsed && HasExpandedControlFocus(Keyboard.FocusedElement as DependencyObject ?? FocusManager.GetFocusedElement(FocusManager.GetFocusScope(this)) as DependencyObject)) FindVisualChild<BalloonComboBox>(this)?.Focus();
             IsTrackCollapsed = current.IsCollapsed; CurrentTrackExtent = viewModel.GetTrackExtent(current);
             IsTrackMuted = current.IsTrackMuted; IsTrackSoloed = current.IsTrackSoloed;
-            var wasRenaming = IsRenaming;
             IsRenaming = ReferenceEquals(viewModel.RenamingTrack, current);
             SetCurrentValue(TrackNameDraftProperty, IsRenaming ? viewModel.TrackNameDraft : current.Name);
-            if (!IsTrackDragPreview && IsRenaming && !wasRenaming)
-                Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background, () =>
-                {
-                    if (IsRenaming && ReferenceEquals(Track, current)) FocusTrackNameEditor();
-                });
         }
         RefreshSampleSelectors(this);
         RefreshSampleConfigurationSelectors();
@@ -320,6 +314,7 @@ public partial class OHsWorkstationTrackRow : UserControl
         var row = (OHsWorkstationTrackRow)d;
         row.InvalidateSampleConfiguration();
         if (!row.IsTrackDragPreview && e.OldValue is Track old) row.ViewModel?.CancelTrackRename(old);
+        if (!row.IsTrackDragPreview && e.OldValue is Track previous) row.ViewModel?.CancelTrackAppearance(previous);
         row.DetachActionMenu();
         row.RefreshPresentation();
         row.AttachActionMenu();
@@ -329,6 +324,7 @@ public partial class OHsWorkstationTrackRow : UserControl
         var row = (OHsWorkstationTrackRow)d;
         row.InvalidateSampleConfiguration();
         if (!row.IsTrackDragPreview && e.OldValue is WorkstationPageVM old && row.Track is {} track) old.CancelTrackRename(track);
+        if (!row.IsTrackDragPreview && e.OldValue is WorkstationPageVM previousOwner && row.Track is { } previousTrack) previousOwner.CancelTrackAppearance(previousTrack);
         row.DetachActionMenu(); row.Subscribe(); row.RefreshPresentation(); row.AttachActionMenu();
     }
     private void OnActionMenuLoaded(object sender, RoutedEventArgs e) => AttachActionMenu();

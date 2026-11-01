@@ -287,7 +287,7 @@ public sealed class WorkstationTrackDragTests
         context.Owner.CancelTrackPointer();
         foreach (var input in WorkstationTrackDragTestContext.Descendants<DependencyObject>(row).Where(x =>
             x is ButtonBase or TextBoxBase or Selector or Slider or BalloonButton or BeatGridView))
-            Assert.That(context.Owner.BeginTrackPointer(input, point), Is.False, input.GetType().Name);
+            Assert.That(context.Owner.BeginTrackPointer(input, point), Is.EqualTo(input is Hitbench.Resources.CustomControls.OHsTrackIdentityButton), input.GetType().Name);
         Assert.That(context.Owner.BeginTrackPointer(null, point), Is.False);
         context.Owner.IsVolumeOverlayOpen = true;
         Assert.That(context.Owner.BeginTrackPointer(row, point), Is.False);
@@ -306,7 +306,7 @@ public sealed class WorkstationTrackDragTests
         var input = new TextBox();
         WorkstationTrackDragTestContext.Descendants<StackPanel>(row).Single(panel => panel.Name == "TrackLeftControls").Children.Add(input); context.View.UpdateLayout();
         input.IsEnabled = false;
-        Assert.That(context.Owner.BeginTrackPointer(input, point), Is.False);
+        Assert.That(context.Owner.BeginTrackPointer(input, point), Is.EqualTo(input is Hitbench.Resources.CustomControls.OHsTrackIdentityButton));
         var grid = row.SampleTimeline!;
         Assert.That(context.Owner.BeginTrackPointer(row, grid.TranslatePoint(new Point(1, 1), context.Owner)), Is.False);
     }

@@ -9,47 +9,15 @@ namespace Hitbench.Test.Presentation;
 [Apartment(ApartmentState.STA),NonParallelizable]
 public class OHsSampleTrackNameTests
 {
-    [TestCase(false)]
-    [TestCase(true)]
-    public void NameEditorCommitsCancelsAndRecycles(bool instrumental)
+    [TestCase(1, false)][TestCase(2, true)]
+    public void IdentityPointerActivationRequiresDoubleClick(int count, bool invokes)
     {
-        new VolumeWheelTests().SetUp();
-        Track track = instrumental ? new InstrumentalTrack { Name = "Old" } : new Track { Name = "Old" };
-        var loading = WorkstationSampleConfigurationTests.CreateAsync(track); UiTestPump.Run(loading);
-        var vm = loading.GetAwaiter().GetResult();
-        var row = new OHsWorkstationTrackRow { Track = track, ViewModel = vm };
-        using var view = new InMemoryView(new Window { Content = row, Width = 900, Height = 300 });
-        try
-        {
-            Assert.That(row.BeginNameEdit(), Is.True);
-            var input = FindInput(row)!;
-            UiControlContract.AssertStyle<TextBox>(input, "OHsWorkstationTrackNameEditorStyle");
-            input.Text = "Kick";
-            UiTestPump.Run(row.HandleTrackNameKeyAsync(System.Windows.Input.Key.Enter));
-            Assert.That(track.Name, Is.EqualTo("Kick"));
-            row.BeginNameEdit(); input.Text = "Snare";
-            input.RaiseEvent(new System.Windows.Input.KeyboardFocusChangedEventArgs(System.Windows.Input.Keyboard.PrimaryDevice, 0, input, null)
-                { RoutedEvent = System.Windows.Input.Keyboard.LostKeyboardFocusEvent });
-            Assert.That(track.Name, Is.EqualTo("Snare"));
-            row.BeginNameEdit(); input.Text = "Discard";
-            UiTestPump.Run(row.HandleTrackNameKeyAsync(System.Windows.Input.Key.Escape));
-            input.RaiseEvent(new System.Windows.Input.KeyboardFocusChangedEventArgs(System.Windows.Input.Keyboard.PrimaryDevice, 0, input, null)
-                { RoutedEvent = System.Windows.Input.Keyboard.LostKeyboardFocusEvent });
-            Assert.That(track.Name, Is.EqualTo("Snare"));
-            row.BeginNameEdit(); input.Text = "Recycled"; row.Track = new Track { Name = "Other" };
-            Assert.That(vm.RenamingTrack, Is.Null);
-            Assert.That(track.Name, Is.EqualTo("Snare"));
-            Assert.That(Find(row)!.Text, Is.EqualTo("Other"));
-        }
-        finally { UiTestPump.Run(vm.DeactivateAsync()); }
-    }
-
-    private static TextBox? FindInput(DependencyObject root)
-    {
-        if (root is TextBox { Name: "TrackNameInput" } input) return input;
-        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
-            if (FindInput(VisualTreeHelper.GetChild(root, i)) is { } found) return found;
-        return null;
+        var action = new Hitbench.Resources.CustomControls.OHsTrackIdentityButton();
+        var calls = 0; action.Click += (_, _) => calls++;
+        Assert.That(action.HandlePointerActivation(count), Is.EqualTo(invokes));
+        Assert.That(calls, Is.EqualTo(invokes ? 1 : 0));
+        action.IsEnabled = false;
+        Assert.That(action.HandlePointerActivation(2), Is.False);
     }
 
     [TestCase(false, false)]

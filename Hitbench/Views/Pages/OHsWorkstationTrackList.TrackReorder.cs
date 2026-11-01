@@ -59,6 +59,7 @@ public partial class OHsWorkstationTrackList
 
     private void OnTrackPointerDown(object sender, MouseButtonEventArgs e)
     {
+        if (e.ClickCount == 2) { CancelTrackPointer(); return; }
         if (!e.Handled) BeginTrackPointer(e.OriginalSource as DependencyObject, e.GetPosition(this));
     }
     private void OnTrackPointerMove(object sender, MouseEventArgs e)
@@ -102,6 +103,7 @@ public partial class OHsWorkstationTrackList
         {
             if (current is OHsWorkstationTrackRow found) { row = found; break; }
             if (current is ListBoxItem container) { row = FindVisualChild<OHsWorkstationTrackRow>(container); break; }
+            if (current is OHsTrackIdentityButton) continue;
             if (current is ButtonBase or BalloonButton or TextBoxBase or PasswordBox or Selector or RangeBase or Thumb or
                 MenuItem or BeatGridView or WaveformView or PianoRollView) return false;
         }

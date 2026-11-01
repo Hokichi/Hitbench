@@ -10,12 +10,11 @@
             x:Key="OHsKeysUnmappedOverlayBrush"
             Opacity="0.35"
             Color="{DynamicResource Color.Shadow}" />
-        <SolidColorBrush x:Key="OHsKeysSelectedOverlayBrush" Color="{DynamicResource Color.Text.Primary}" />
         <Style
             x:Key="OHsKeysSelectedOverlayStyle"
             BasedOn="{StaticResource BaseBorderStyle}"
             TargetType="Border">
-            <Setter Property="Background" Value="{StaticResource OHsKeysSelectedOverlayBrush}" />
+            <Setter Property="Background" Value="{StaticResource OHsInteractionHighlightBrush}" />
             <Setter Property="Opacity" Value="0.25" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding ThemeService.IsLightTheme, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay, FallbackValue=False}" Value="True">
