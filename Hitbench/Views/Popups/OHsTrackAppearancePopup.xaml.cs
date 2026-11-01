@@ -13,6 +13,13 @@ public partial class OHsTrackAppearancePopup : BasePopup
     private readonly OHsTrackAppearancePopupVM viewModel;
     private readonly Action<bool> complete;
     private readonly Func<Window, Size> getWorkArea;
+    private bool completed;
+    private void Complete(bool accepted)
+    {
+        if (completed) return;
+        completed = true;
+        complete(accepted);
+    }
     private bool updatingSize;
     private bool watchingWorkArea;
 
@@ -48,7 +55,8 @@ public partial class OHsTrackAppearancePopup : BasePopup
             watchingWorkArea = true;
         }
         RefreshWorkArea();
-        ColorInput.Focus();
+        NameInput.Focus();
+        NameInput.SelectAll();
     }
 
     private void OnWorkAreaChanged(object? sender, PropertyChangedEventArgs e) => RefreshWorkArea();
@@ -76,13 +84,13 @@ public partial class OHsTrackAppearancePopup : BasePopup
     {
         if (key == Key.Escape)
         {
-            if (!viewModel.IsDirty) complete(false);
+            if (!viewModel.IsDirty) Complete(false);
             return true;
         }
         if (key == Key.Enter)
         {
-            if (DependencyObjectTree.IsDescendantOf(originalSource, CancelAction)) complete(false);
-            else if (viewModel.CanSave) complete(true);
+            if (DependencyObjectTree.IsDescendantOf(originalSource, CancelAction)) Complete(false);
+            else if (viewModel.CanSave) Complete(true);
             return true;
         }
         return false;
@@ -98,7 +106,7 @@ public partial class OHsTrackAppearancePopup : BasePopup
         base.OnPreviewKeyDown(e);
     }
 
-    protected override void OnCloseButtonClick() { if (!viewModel.IsDirty) complete(false); }
-    private void OnCancel(object sender, RoutedEventArgs e) => complete(false);
-    private void OnSave(object sender, RoutedEventArgs e) { if (viewModel.CanSave) complete(true); }
+    protected override void OnCloseButtonClick() { if (!viewModel.IsDirty) Complete(false); }
+    private void OnCancel(object sender, RoutedEventArgs e) => Complete(false);
+    private void OnSave(object sender, RoutedEventArgs e) { if (viewModel.CanSave) Complete(true); }
 }

@@ -161,8 +161,11 @@ public class OHsTrackAppearancePopupIntegrationTests
         var popup=new OHsTrackAppearancePopup(vm,v=>accepted=v);
         using var view=new InMemoryView(popup,scheduleLayout:false);
         popup.HandleKey(Key.Escape);Assert.That(accepted,Is.False);
-        accepted=null;vm.Color="#ABCDEF";
-        var cancel = Descendants(view.Root).OfType<BalloonButton>().Single(button =>
+        accepted=null;
+        popup=new OHsTrackAppearancePopup(vm,v=>accepted=v);
+        using var secondView=new InMemoryView(popup,scheduleLayout:false);
+        vm.Color="#ABCDEF";
+        var cancel = Descendants(secondView.Root).OfType<BalloonButton>().Single(button =>
             System.Windows.Automation.AutomationProperties.GetName(button) == "Cancel");
         cancel.RaiseEvent(new System.Windows.RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
         Assert.That(accepted,Is.False);
@@ -174,7 +177,11 @@ public class OHsTrackAppearancePopupIntegrationTests
         var popup=new OHsTrackAppearancePopup(vm,v=>accepted=v);
         using var view=new InMemoryView(popup,scheduleLayout:false);
         var picker=(OHsColorPicker)popup.FindName("ColorInput");
-        Assert.That(popup.FindName("NameInput"), Is.Null);
+        view.Root.Resources.MergedDictionaries.Add(popup.Resources);
+        var name = (TextBox)popup.FindName("NameInput");
+        UiControlContract.AssertStyle<TextBox>(name, "OHsTrackAppearanceNameInputStyle");
+        name.Text = "Edited";
+        Assert.That(vm.Name, Is.EqualTo("Edited"));
         Assert.That(picker.Style,Is.SameAs(popup.FindResource("OHsTrackAppearanceColorPickerStyle")));
         picker.SelectedColor="#ABCDEF"; view.UpdateLayout(); Assert.That(vm.Color,Is.EqualTo("#ABCDEF"));
         picker.RaiseEvent(new KeyboardFocusChangedEventArgs(Keyboard.PrimaryDevice, 0, picker, null) { RoutedEvent = Keyboard.LostKeyboardFocusEvent });
