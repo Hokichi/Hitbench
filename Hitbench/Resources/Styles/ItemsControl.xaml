@@ -29,6 +29,8 @@
     </ItemsPanelTemplate>
 
     <Style x:Key="BalloonMenuItemsStyle" TargetType="ItemsControl" BasedOn="{StaticResource BaseItemsControlStyle}">
+        <!-- Keep the action hit targets inside the popup's outer stroke. -->
+        <Setter Property="Margin" Value="-1" />
         <Setter Property="ItemsPanel" Value="{StaticResource HorizontalStackItemsPanelTemplate}" />
         <Setter Property="ItemTemplate" Value="{x:Null}" />
     </Style>
