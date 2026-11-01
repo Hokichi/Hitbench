@@ -63,13 +63,13 @@ public class ControlPointsBottomHostTests
         Show(bottom);
         Assert.That(shell.IsBottomDrawer, Is.EqualTo(bottom));
         Assert.That(shell.IsBlockingDrawerVisible, Is.False);
-        Assert.That(shell.IsSampleManagerVisible, Is.True);
+        Assert.That(shell.IsAnyDrawerVisible, Is.True);
         var content = (FrameworkElement)shell.FindName("SampleManagerAppContent");
         var backdrop = (Border)shell.FindName("SampleManagerBackdrop");
         Assert.That(content.IsEnabled, Is.True);
         Assert.That(backdrop.Visibility, Is.EqualTo(Visibility.Collapsed));
         Assert.That(backdrop.IsHitTestVisible, Is.False);
-        UiControlContract.AssertStyle<ContentControl>((ContentControl)shell.FindName("SampleManagerHost"), "OHsMainWindowShellDrawerHostStyle");
+        UiControlContract.AssertStyle<ContentControl>((ContentControl)shell.FindName(bottom ? "InstrumentalDrawerHost" : "SampleManagerHost"), "OHsMainWindowShellDrawerHostStyle");
     }
 
     [TestCase(FlowDirection.LeftToRight)]
@@ -161,10 +161,10 @@ public class ControlPointsBottomHostTests
         var exit = new TaskCompletionSource();
         Show(bottom, (opening, token) => opening ? Task.CompletedTask : exit.Task.WaitAsync(token));
         var close = shell.RequestSampleManagerCloseAsync(drawer); Drain();
-        Assert.That(shell.SampleManagerPhase, Is.EqualTo(OHsSampleDrawerPhase.Closing));
+        Assert.That(bottom ? shell.InstrumentalDrawerPresentation.Phase : shell.SampleManagerPhase, Is.EqualTo(OHsSampleDrawerPhase.Closing));
         Assert.That(shell.IsBottomDrawer, Is.EqualTo(bottom)); Assert.That(drawer.IsEnabled, Is.False);
         exit.SetResult(); UiTestPump.Run(close); UiTestPump.Run(showing);
-        Assert.That(shell.IsSampleManagerVisible, Is.False); Assert.That(shell.IsBlockingDrawerVisible, Is.False);
+        Assert.That(shell.IsAnyDrawerVisible, Is.False); Assert.That(shell.IsBlockingDrawerVisible, Is.False);
         Assert.That(shell.IsBottomDrawer, Is.False);
         Show(!bottom);
         Assert.That(shell.IsBottomDrawer, Is.EqualTo(!bottom));
@@ -174,14 +174,15 @@ public class ControlPointsBottomHostTests
     [TestCase(true)][TestCase(false)]
     public void CancellationBoundsIgnoredEntranceAndLateCompletionCannotResetNewMode(bool bottom)
     {
-        var presenter = (ContentControl)shell.FindName("SampleManagerHost");
+        var presenter = (ContentControl)shell.FindName(bottom ? "InstrumentalDrawerHost" : "SampleManagerHost");
         var late = new TaskCompletionSource(); Show(bottom, (_, _) => late.Task);
         cancellation.Cancel(); UiTestPump.Run(showing);
-        Assert.That(shell.IsSampleManagerVisible, Is.False);
+        Assert.That(shell.IsAnyDrawerVisible, Is.False);
         cancellation.Dispose(); cancellation = new();
         Show(!bottom); late.SetResult(); Drain();
-        Assert.That(shell.FindName("SampleManagerHost"), Is.SameAs(presenter));
-        Assert.That(presenter.Content, Is.SameAs(drawer));
+        Assert.That(shell.FindName(bottom ? "InstrumentalDrawerHost" : "SampleManagerHost"), Is.SameAs(presenter));
+        Assert.That(presenter.Content, Is.Null);
+        Assert.That(((ContentControl)shell.FindName(bottom ? "SampleManagerHost" : "InstrumentalDrawerHost")).Content, Is.SameAs(drawer));
         Assert.That(shell.IsBottomDrawer, Is.EqualTo(!bottom)); Assert.That(showing.IsCompleted, Is.False);
         Assert.That(shell.RunSampleManagerAnimationAsync(true, false, default).IsCompletedSuccessfully, Is.True);
         Assert.That(shell.RunSampleManagerAnimationAsync(false, false, default).IsCompletedSuccessfully, Is.True);
@@ -205,13 +206,12 @@ public class ControlPointsBottomHostTests
     [Test]
     public void BottomSideBottomReusesPresenterAndBindings()
     {
-        var presenter = (ContentControl)shell.FindName("SampleManagerHost");
         var context = new object();
         drawer.DataContext = context;
         foreach (var bottom in new[] { true, false, true })
         {
             Show(bottom);
-            Assert.That(shell.FindName("SampleManagerHost"), Is.SameAs(presenter));
+            var presenter = (ContentControl)shell.FindName(bottom ? "InstrumentalDrawerHost" : "SampleManagerHost");
             Assert.That(presenter.Content, Is.SameAs(drawer));
             Assert.That(drawer.DataContext, Is.SameAs(context));
             Assert.That(shell.IsBottomDrawer, Is.EqualTo(bottom));

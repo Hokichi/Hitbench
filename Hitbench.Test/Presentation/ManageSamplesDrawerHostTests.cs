@@ -178,6 +178,7 @@ public sealed class ManageSamplesDrawerHostTests
     {
         new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
         using var services = App.CreateServices(); var shell = services.GetRequiredService<MainWindow>();
+        using var view = new InMemoryView(shell);
         var vm = CreateManager(); var drawer = new ManageSamplesDrawer(vm);
         try
         {

@@ -89,10 +89,10 @@ public class WorkstationShellVolumeTests
     [TestCase(true)]
     public void BottomDrawerNavigationReleasesPresentation(bool mapping) => WithDrawer(mapping, (shell, page, _, view) =>
     {
-        var presenter = (ContentControl)shell.FindName("SampleManagerHost");
+        var presenter = (ContentControl)shell.FindName("InstrumentalDrawerHost");
         UiTestPump.Run(shell.ReturnHomeAsync());
         view.UpdateLayout();
-        Assert.That(shell.IsSampleManagerVisible, Is.False);
+        Assert.That(shell.IsAnyDrawerVisible, Is.False);
         Assert.That(shell.IsBottomDrawer, Is.False);
         Assert.That(presenter.Content, Is.Null);
         Assert.That(page.LoadCompletion.IsCompletedSuccessfully, Is.True);
@@ -103,26 +103,26 @@ public class WorkstationShellVolumeTests
     [TestCase(true)]
     public void BottomDrawerAnimationSettlesWithPresentation(bool mapping) => WithDrawer(mapping, (shell, page, _, _) =>
     {
-        var entrance = shell.RunSampleManagerAnimationAsync(true, true, default);
+        var entrance = shell.RunDrawerAnimationAsync(shell.InstrumentalDrawerPresentation, true, true, default);
         Assert.That(entrance.IsCompleted, Is.False);
         Assert.That(page.HasAnimatedProperties, Is.True);
-        shell.SettleSampleManagerAnimation();
+        shell.SettleDrawerAnimation(shell.InstrumentalDrawerPresentation);
         UiTestPump.Run(entrance);
         Assert.That(page.HasAnimatedProperties, Is.False);
 
         using var cancellation = new CancellationTokenSource();
-        var interrupted = shell.RunSampleManagerAnimationAsync(true, true, cancellation.Token);
+        var interrupted = shell.RunDrawerAnimationAsync(shell.InstrumentalDrawerPresentation, true, true, cancellation.Token);
         cancellation.Cancel();
         Assert.That(() => UiTestPump.Run(interrupted), Throws.InstanceOf<OperationCanceledException>());
         Assert.That(page.HasAnimatedProperties, Is.False);
-        var exit = shell.RunSampleManagerAnimationAsync(false, true, default);
+        var exit = shell.RunDrawerAnimationAsync(shell.InstrumentalDrawerPresentation, false, true, default);
         Assert.That(page.HasAnimatedProperties, Is.True);
-        shell.SettleSampleManagerAnimation();
+        shell.SettleDrawerAnimation(shell.InstrumentalDrawerPresentation);
         UiTestPump.Run(exit);
         Assert.That(page.HasAnimatedProperties, Is.False);
         foreach (var opening in new[] { true, false })
         {
-            var immediate = shell.RunSampleManagerAnimationAsync(opening, false, default);
+            var immediate = shell.RunDrawerAnimationAsync(shell.InstrumentalDrawerPresentation, opening, false, default);
             Assert.That(immediate.IsCompletedSuccessfully, Is.True);
             Assert.That(page.HasAnimatedProperties, Is.False);
         }
@@ -190,13 +190,13 @@ public class WorkstationShellVolumeTests
             foreach (var key in new[] { Key.Space, Key.Delete, Key.F2, Key.Enter })
                 Assert.That(shell.HandleWindowKeyDown(true, key, ModifierKeys.None, false, drawer), Is.True);
             Assert.That(vm.IsPlaying, Is.False);
-            Assert.That(((ContentControl)shell.FindName("SampleManagerHost")).Content, Is.SameAs(drawer));
+            Assert.That(((ContentControl)shell.FindName("InstrumentalDrawerHost")).Content, Is.SameAs(drawer));
             if (drawer.DataContext is InstrumentalArrangementDrawerVM piano) Assert.That(piano.Notes, Is.Empty);
             if (drawer.DataContext is KeysMappingDrawerVM keys) Assert.That(keys.Rows.Any(row => row.IsMapped), Is.False);
         }
         Assert.That(shell.HandleWindowKeyDown(true, Key.Escape, ModifierKeys.None, false, drawer), Is.True);
         Assert.That(page.IsVolumeOverlayOpen, Is.False);
-        Assert.That(shell.IsSampleManagerVisible, Is.True);
+        Assert.That(shell.IsAnyDrawerVisible, Is.True);
     });
 
     [Test]

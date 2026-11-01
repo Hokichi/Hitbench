@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using Hitbench.Views.Shell;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
@@ -7,50 +8,46 @@ namespace Hitbench;
 
 public partial class MainWindow
 {
-    private readonly TranslateTransform sampleManagerTranslation = new();
-    private TaskCompletionSource? sampleManagerAnimationCompletion;
-    private bool sampleManagerAnimationOpening;
+    internal Task RunSampleManagerAnimationAsync(bool opening, bool animationsEnabled, CancellationToken token) =>
+        RunDrawerAnimationAsync(sampleDrawerPresentation, opening, animationsEnabled, token);
 
-    private Task AnimateSampleManagerAsync(bool opening, CancellationToken token) =>
-        RunSampleManagerAnimationAsync(opening, SystemParameters.ClientAreaAnimation, token);
-
-    internal Task RunSampleManagerAnimationAsync(bool opening, bool animationsEnabled, CancellationToken token)
+    internal Task RunDrawerAnimationAsync(OHsShellDrawerPresentation state, bool opening, bool animationsEnabled, CancellationToken token)
     {
         if (token.IsCancellationRequested) return Task.FromCanceled(token);
-        sampleManagerAnimationCompletion?.TrySetCanceled();
-        ClearSampleManagerAnimationClocks();
-        SampleManagerMotionHost.RenderTransform = sampleManagerTranslation;
+        state.AnimationCompletion?.TrySetCanceled();
+        ClearDrawerAnimationClocks(state);
+        state.MotionHost.RenderTransform = state.Translation;
         if (!animationsEnabled)
         {
-            sampleManagerAnimationCompletion = null;
-            ApplySampleManagerAnimationEnd(opening);
+            state.AnimationCompletion = null;
+            ApplyDrawerAnimationEnd(state, opening);
             return Task.CompletedTask;
         }
         if (opening)
         {
-            sampleManagerTranslation.X = IsBottomDrawer ? 0 : 24;
-            sampleManagerTranslation.Y = IsBottomDrawer ? 24 : 0;
-            SampleManagerHost.Opacity = 0;
-            SampleManagerBackdrop.Opacity = 0;
+            state.Translation.X = state.IsBottom ? 0 : 24;
+            state.Translation.Y = state.IsBottom ? 24 : 0;
+            state.Host.Opacity = 0;
+            if (!state.IsBottom) SampleManagerBackdrop.Opacity = 0;
         }
         var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        sampleManagerAnimationCompletion = completion;
-        sampleManagerAnimationOpening = opening;
+        state.AnimationCompletion = completion;
+        state.AnimationOpening = opening;
         var easing = new CubicEase { EasingMode = opening ? EasingMode.EaseOut : EasingMode.EaseIn };
         var duration = TimeSpan.FromMilliseconds(180);
-        var axis = IsBottomDrawer ? TranslateTransform.YProperty : TranslateTransform.XProperty;
-        var movement = new DoubleAnimation(IsBottomDrawer ? sampleManagerTranslation.Y : sampleManagerTranslation.X, opening ? 0 : 24, duration) { EasingFunction = easing };
-        var fade = new DoubleAnimation(SampleManagerHost.Opacity, opening ? 1 : 0, duration) { EasingFunction = easing };
+        var axis = state.IsBottom ? TranslateTransform.YProperty : TranslateTransform.XProperty;
+        var movement = new DoubleAnimation(state.IsBottom ? state.Translation.Y : state.Translation.X, opening ? 0 : 24, duration) { EasingFunction = easing };
+        var fade = new DoubleAnimation(state.Host.Opacity, opening ? 1 : 0, duration) { EasingFunction = easing };
         var backdropFade = new DoubleAnimation(SampleManagerBackdrop.Opacity, opening ? 1 : 0, duration) { EasingFunction = easing };
-        dockedDrawerPage?.BeginDrawerHostAnimation(SampleManagerMotionHost, opening, movement.Duration, easing);
+        state.DockedPage?.BeginDrawerHostAnimation(state.MotionHost, opening, movement.Duration, easing);
         void OnCompleted(object? sender, EventArgs args)
         {
-            if (ReferenceEquals(sampleManagerAnimationCompletion, completion)) SettleSampleManagerAnimation();
+            if (ReferenceEquals(state.AnimationCompletion, completion)) SettleDrawerAnimation(state);
         }
         movement.Completed += OnCompleted;
-        sampleManagerTranslation.BeginAnimation(axis, movement);
-        SampleManagerHost.BeginAnimation(OpacityProperty, fade);
-        SampleManagerBackdrop.BeginAnimation(OpacityProperty, backdropFade);
+        state.Translation.BeginAnimation(axis, movement);
+        state.Host.BeginAnimation(OpacityProperty, fade);
+        if (!state.IsBottom) SampleManagerBackdrop.BeginAnimation(OpacityProperty, backdropFade);
         return FinishAsync();
 
         async Task FinishAsync()
@@ -62,61 +59,63 @@ public partial class MainWindow
                 await Dispatcher.InvokeAsync(() =>
                 {
                     movement.Completed -= OnCompleted;
-                    if (!ReferenceEquals(sampleManagerAnimationCompletion, completion)) return;
-                    ClearSampleManagerAnimationClocks();
-                    if (completion.Task.IsCompletedSuccessfully) ApplySampleManagerAnimationEnd(opening);
-                    sampleManagerAnimationCompletion = null;
+                    if (!ReferenceEquals(state.AnimationCompletion, completion)) return;
+                    ClearDrawerAnimationClocks(state);
+                    if (completion.Task.IsCompletedSuccessfully) ApplyDrawerAnimationEnd(state, opening);
+                    state.AnimationCompletion = null;
                 });
             }
         }
     }
 
-    internal void SettleSampleManagerAnimation()
+    internal void SettleSampleManagerAnimation() => SettleDrawerAnimation(sampleDrawerPresentation);
+
+    internal void SettleDrawerAnimation(OHsShellDrawerPresentation state)
     {
-        if (sampleManagerAnimationCompletion is not { } completion) return;
-        ClearSampleManagerAnimationClocks();
-        ApplySampleManagerAnimationEnd(sampleManagerAnimationOpening);
+        if (state.AnimationCompletion is not { } completion) return;
+        ClearDrawerAnimationClocks(state);
+        ApplyDrawerAnimationEnd(state, state.AnimationOpening);
         completion.TrySetResult();
     }
 
-    private void ClearSampleManagerAnimationClocks()
+    private void ClearDrawerAnimationClocks(OHsShellDrawerPresentation state)
     {
-        dockedDrawerPage?.ClearDrawerHostAnimation(SampleManagerMotionHost);
-        var shift = sampleManagerTranslation.X;
-        var verticalShift = sampleManagerTranslation.Y;
-        var opacity = SampleManagerHost.Opacity;
+        state.DockedPage?.ClearDrawerHostAnimation(state.MotionHost);
+        var shift = state.Translation.X;
+        var verticalShift = state.Translation.Y;
+        var opacity = state.Host.Opacity;
         var backdropOpacity = SampleManagerBackdrop.Opacity;
-        sampleManagerTranslation.BeginAnimation(TranslateTransform.XProperty, null);
-        sampleManagerTranslation.BeginAnimation(TranslateTransform.YProperty, null);
-        SampleManagerHost.BeginAnimation(OpacityProperty, null);
-        SampleManagerBackdrop.BeginAnimation(OpacityProperty, null);
-        sampleManagerTranslation.X = shift;
-        sampleManagerTranslation.Y = verticalShift;
-        SampleManagerHost.Opacity = opacity;
-        SampleManagerBackdrop.Opacity = backdropOpacity;
+        state.Translation.BeginAnimation(TranslateTransform.XProperty, null);
+        state.Translation.BeginAnimation(TranslateTransform.YProperty, null);
+        state.Host.BeginAnimation(OpacityProperty, null);
+        if (!state.IsBottom) SampleManagerBackdrop.BeginAnimation(OpacityProperty, null);
+        state.Translation.X = shift;
+        state.Translation.Y = verticalShift;
+        state.Host.Opacity = opacity;
+        if (!state.IsBottom) SampleManagerBackdrop.Opacity = backdropOpacity;
     }
 
-    private void ApplySampleManagerAnimationEnd(bool opening)
+    private void ApplyDrawerAnimationEnd(OHsShellDrawerPresentation state, bool opening)
     {
-        dockedDrawerPage?.SettleDrawerHostAnimation(SampleManagerMotionHost, opening);
-        sampleManagerTranslation.X = IsBottomDrawer ? 0 : opening ? 0 : 24;
-        sampleManagerTranslation.Y = IsBottomDrawer && !opening ? 24 : 0;
-        SampleManagerHost.Opacity = opening ? 1 : 0;
-        SampleManagerBackdrop.Opacity = opening ? 1 : 0;
+        state.DockedPage?.SettleDrawerHostAnimation(state.MotionHost, opening);
+        state.Translation.X = state.IsBottom ? 0 : opening ? 0 : 24;
+        state.Translation.Y = state.IsBottom && !opening ? 24 : 0;
+        state.Host.Opacity = opening ? 1 : 0;
+        if (!state.IsBottom) SampleManagerBackdrop.Opacity = opening ? 1 : 0;
     }
 
-    private void ResetSampleManagerAnimation()
+    private void ResetDrawerAnimation(OHsShellDrawerPresentation state)
     {
-        sampleManagerAnimationCompletion?.TrySetCanceled();
-        sampleManagerAnimationCompletion = null;
-        ClearSampleManagerAnimationClocks();
-        ApplySampleManagerAnimationEnd(true);
+        state.AnimationCompletion?.TrySetCanceled();
+        state.AnimationCompletion = null;
+        ClearDrawerAnimationClocks(state);
+        ApplyDrawerAnimationEnd(state, true);
     }
 
     private async void OnSampleManagerAnimationSettingChanged(object? sender, PropertyChangedEventArgs args)
     {
         if (args.PropertyName != nameof(SystemParameters.ClientAreaAnimation) || SystemParameters.ClientAreaAnimation || Dispatcher.HasShutdownStarted) return;
-        try { await Dispatcher.InvokeAsync(SettleSampleManagerAnimation); }
+        try { await Dispatcher.InvokeAsync(() => { SettleDrawerAnimation(sampleDrawerPresentation); SettleDrawerAnimation(InstrumentalDrawerPresentation); }); }
         catch (OperationCanceledException) { }
         catch (Exception error) { System.Diagnostics.Trace.TraceError("Drawer animation setting update failed: {0}", error); }
     }

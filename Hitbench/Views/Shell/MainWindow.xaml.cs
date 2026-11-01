@@ -166,6 +166,8 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
         this.getWorkArea = getWorkArea ?? WindowWorkArea.GetClientSize;
         ThemeService = themeService ?? new OHsThemeService(Application.Current?.Resources ?? new ResourceDictionary(), settings, new UiScheduler(Dispatcher));
         InitializeComponent();
+        sampleDrawerPresentation = new(SampleManagerHost, SampleManagerMotionHost);
+        InstrumentalDrawerPresentation = new(InstrumentalDrawerHost, InstrumentalDrawerMotionHost);
         ShellHeader.SetBinding(Hitbench.Views.Shell.OHsShellHeader.CanGoBackProperty,
             new System.Windows.Data.Binding("Content.DataContext.CanGoBack")
             { Source = PageHost, Mode = System.Windows.Data.BindingMode.OneWay });
@@ -223,12 +225,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
         try
         {
             if (!await workstation.PrepareToReturnAsync(lifetime.Token) || closed || closeRequested) return;
-            if (ReferenceEquals(dockedDrawerPage, workstation) && SampleManagerHost.Content is UserControl drawer)
-            {
-                var presentation = sampleManagerPresentation;
-                DismissSampleManager(drawer);
-                await presentation;
-            }
+            await SettleShellDrawersAsync(workstation);
             next = createHome();
             await workstation.DeactivateAsync();
             if (closed || closeRequested) { next.Deactivate(); return; }
@@ -261,10 +258,11 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
     internal async Task<bool> PrepareProjectForCloseAsync()
     {
         closeRequested = true;
-        if (SampleManagerHost.Content is System.Windows.Controls.UserControl drawer) DismissSampleManager(drawer);
+        var settlingShellDrawers = SettleShellDrawersAsync();
         try
         {
             await returnHome;
+            await settlingShellDrawers;
             if (PageHost.Content is WorkstationPage workstation)
             {
                 await workstation.SettleInstrumentalEditorAsync();
@@ -378,7 +376,8 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
     protected override void OnClosed(EventArgs e)
     {
         SetHeaderPresentationSource(null);
-        clearSampleFocusRestore?.Invoke();
+        sampleDrawerPresentation.ClearFocusRestore?.Invoke();
+        InstrumentalDrawerPresentation.ClearFocusRestore?.Invoke();
         CancelBackgroundDrag();
         ComponentDispatcher.EnterThreadModal -= OnEnterThreadModal;
         ShellRoot.MouseMove -= OnBackgroundMouseMove;
@@ -670,14 +669,14 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
         DependencyObject? origin)
     {
         if (!isActive || IsPopupOverlayVisible || IsAudioBusy || IsBlockingDrawerVisible || PageHost.Content is not WorkstationPage workstationPage) return false;
-        if (key == Key.V && modifiers == ModifierKeys.Alt && SampleManagerHost.Content is OHsInstrumentalArrangementDrawer activePiano)
+        if (key == Key.V && modifiers == ModifierKeys.Alt && InstrumentalDrawerHost.Content is OHsInstrumentalArrangementDrawer activePiano)
             activePiano.TryPrepareClose();
         if (workstationPage.HandleVolumeShortcut(key, modifiers, origin) || workstationPage.IsVolumeOverlayOpen) return true;
         if (IsDrawerOrigin(origin))
         {
-            if (SampleManagerHost.Content is OHsInstrumentalArrangementDrawer piano)
+            if (InstrumentalDrawerHost.Content is OHsInstrumentalArrangementDrawer piano && IsDrawerOrigin(origin, piano))
                 return HandleInstrumentalDrawerKey(piano, workstationPage, key, modifiers, isRepeat, origin);
-            if (SampleManagerHost.Content is OHsKeysMappingDrawer && key == Key.F2 && modifiers == ModifierKeys.None && !OHsInstrumentalArrangementDrawer.IsTextInput(origin) && workstationPage.DataContext is WorkstationPageVM vm)
+            if (InstrumentalDrawerHost.Content is OHsKeysMappingDrawer keys && IsDrawerOrigin(origin, keys) && key == Key.F2 && modifiers == ModifierKeys.None && !OHsInstrumentalArrangementDrawer.IsTextInput(origin) && workstationPage.DataContext is WorkstationPageVM vm)
             { if (!isRepeat && vm.ManageSamplesCommand.CanExecute(null)) DrawerInputCompletion = ObserveDrawerInputAsync(vm.ManageSamplesCommand.ExecuteAsync(null)); return true; }
             return false;
         }
@@ -722,7 +721,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
         if (!isActive || IsPopupOverlayVisible || IsAudioBusy || IsBlockingDrawerVisible || PageHost.Content is not WorkstationPage workstationPage) { (PageHost.Content as WorkstationPage)?.Timeline.ResetWheel(); return false; }
         if (modifiers == ModifierKeys.Alt || workstationPage.IsVolumeOverlayOpen)
         {
-            if (!workstationPage.IsVolumeOverlayOpen && SampleManagerHost.Content is OHsInstrumentalArrangementDrawer activePiano)
+            if (!workstationPage.IsVolumeOverlayOpen && InstrumentalDrawerHost.Content is OHsInstrumentalArrangementDrawer activePiano)
                 activePiano.TryPrepareClose();
             return workstationPage.HandleContextWheel(modifiers, delta, origin);
         }

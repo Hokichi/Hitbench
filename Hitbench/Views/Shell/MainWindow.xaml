@@ -176,7 +176,7 @@
             <Setter Property="ClipToBounds" Value="True" />
             <Setter Property="Visibility" Value="Collapsed" />
             <Style.Triggers>
-                <DataTrigger Binding="{Binding IsSampleManagerVisible, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}" Value="True">
+                <DataTrigger Binding="{Binding IsAnyDrawerVisible, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}" Value="True">
                     <Setter Property="Visibility" Value="Visible" />
                 </DataTrigger>
             </Style.Triggers>
@@ -323,6 +323,20 @@
                             Grid.RowSpan="2"
                             MouseLeftButtonDown="OnSampleManagerBackdropClick"
                             Style="{StaticResource OHsMainWindowSampleManagerBackdropStyle}" />
+                        <Grid
+                            x:Name="InstrumentalDrawerMotionHost"
+                            Grid.Row="1"
+                            FlowDirection="LeftToRight"
+                            Style="{StaticResource BaseGridStyle}">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <ContentControl
+                                x:Name="InstrumentalDrawerHost"
+                                FlowDirection="{Binding FlowDirection, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}"
+                                Style="{StaticResource OHsMainWindowShellDrawerHostStyle}" />
+                        </Grid>
                         <Grid
                             x:Name="SampleManagerMotionHost"
                             Grid.Row="1"
