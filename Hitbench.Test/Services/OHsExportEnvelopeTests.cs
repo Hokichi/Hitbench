@@ -6,6 +6,13 @@ namespace Hitbench.Test.Services;
 public class OHsExportEnvelopeTests
 {
     [Test]
+    public void SourceMultiplicityAndEquivalentScalarHaveSameRecipe()
+    {
+        var curve = OHsExportEnvelope.Create(new([new(0, 10, IsRamp: true), new(1000, 50)]), 0, 44100);
+        Assert.That(OHsExportAsset.CreateShaped([new("a.wav", 100, curve), new("a.wav", 100, curve)]).Id,
+            Is.EqualTo(OHsExportAsset.CreateShaped([new("a.wav", 200, curve)]).Id));
+    }
+    [Test]
     public void TranslationAndCollinearBoundariesShareCanonicalRecipe()
     {
         var a = new ControlPointVolumeTimeline([new(0, 10, IsRamp: true), new(2000, 50)]);

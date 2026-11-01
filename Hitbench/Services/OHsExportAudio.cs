@@ -5,7 +5,7 @@ using Hitbench.Resources.DataModels;
 using Hitbench.Services.FileSystem;
 namespace Hitbench.Services;
 
-public static class OHsExportAudio
+public static partial class OHsExportAudio
 {
     public static DecodedAudio Render(OHsExportAsset asset, Func<string, DecodedAudio> resolve, CancellationToken token, AudioMemoryBudget? budget = null)
     {

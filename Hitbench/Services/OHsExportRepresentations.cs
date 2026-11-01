@@ -11,6 +11,62 @@ public static class OHsExportRepresentations
         if (!Sets.Contains(slot.Sampleset) || !Enum.IsDefined(slot.Type) || index is < 1 or > 999 || extension is not (".ogg" or ".wav" or ".mp3")) throw new ArgumentException("Invalid export slot filename.");
         return $"{slot.Sampleset.ToLowerInvariant()}-hit{slot.Type.ToString().ToLowerInvariant()}{(index == 1 ? "" : index.ToString(System.Globalization.CultureInfo.InvariantCulture))}{extension}";
     }
+    internal static IReadOnlyList<OHsExportRepresentation> Shape(IReadOnlyList<OHsExportRepresentation> raw,
+        int timestamp, ControlPointVolumeTimeline timeline, Func<string, DecodedAudio> resolve,
+        IDictionary<string, OHsExportAsset> assets, CancellationToken token)
+    {
+        var choices = new List<OHsExportRepresentation>();
+        var unique = new HashSet<string>(StringComparer.Ordinal);
+        var cache = new Dictionary<(string Id, int Native), OHsExportAsset?>();
+        var linear = new Dictionary<string, bool>(StringComparer.Ordinal);
+        foreach (var original in raw)
+            for (var native = 100; native >= 0; native--)
+            {
+                token.ThrowIfCancellationRequested();
+                var slots = new Dictionary<OHsExportSlot, OHsExportAsset>();
+                foreach (var pair in original.Slots)
+                {
+                    if (!cache.TryGetValue((pair.Value.Id, native), out var shaped))
+                    {
+                        var sources = pair.Value.Sources.Select(s => new OHsExportSource(s.FileName, s.GainPercent,
+                            OHsExportEnvelope.Create(timeline, ControlPointVolumeTimeline.ToFrame(timestamp), resolve(s.FileName).FrameCount))).ToArray();
+                        if (!linear.ContainsKey(pair.Value.Id)) linear[pair.Value.Id] = Equivalent(sources, 99);
+                        var silent = sources.All(s => s.GainPercent == 0 || s.Envelope!.Segments.All(e => e.StartNumerator.IsZero && e.SlopeNumerator.IsZero));
+                        if (native == 0) shaped = silent ? OHsExportAsset.Create([], assets) : null;
+                        else
+                        {
+                            var candidate = OHsExportAsset.CreateShaped(sources.Select(s => s with { Envelope = s.Envelope!.Scale(100, native) }), assets);
+                            shaped = Equivalent(sources, native) ? candidate : null;
+                        }
+                        cache[(pair.Value.Id, native)] = shaped;
+                    }
+                    if (shaped is null) break;
+                    slots.Add(pair.Key, shaped);
+                }
+                if (slots.Count != original.Slots.Count) continue;
+                var key = native + ":" + string.Join('|', slots.OrderBy(p => p.Key.Sampleset).ThenBy(p => p.Key.Type).Select(p => p.Key + ":" + p.Value.Id));
+                if (unique.Add(key)) choices.Add(new(original.NormalSet, original.AdditionSet, original.HitSound, slots, original.MergeCount, original.MixedComponentCount, native, original.Slots.Values.All(a => linear[a.Id])));
+            }
+        return choices.AsReadOnly();
+
+        bool Equivalent(OHsExportSource[] sources, int native)
+        {
+            if (native == 100 || sources.Length == 0) return true;
+            var audio = sources.Select(s => resolve(s.FileName)).ToArray();
+            var count = audio.Max(a => a.Samples.Length);
+            for (var i = 0; i < count; i++)
+            {
+                if ((i & 8191) == 0) token.ThrowIfCancellationRequested();
+                double sum = 0;
+                for (var j = 0; j < sources.Length; j++)
+                    if (i < audio[j].Samples.Length) sum += audio[j].Samples[i] * sources[j].GainPercent / 100d * sources[j].Envelope!.GetGain(i / 2);
+                var reference = Math.Clamp(sum, -1, 1);
+                var factored = Math.Clamp(sum * 100 / native, -1, 1) * native / 100;
+                if (Math.Abs(reference - factored) > 1e-7) return false;
+            }
+            return true;
+        }
+    }
     public static IReadOnlyList<OHsExportRepresentation> Build(IReadOnlyList<OHsExportVoice> voices, CancellationToken token, IDictionary<string, OHsExportAsset>? assets = null)
     {
         token.ThrowIfCancellationRequested();

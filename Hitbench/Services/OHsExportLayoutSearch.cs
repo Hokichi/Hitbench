@@ -5,7 +5,7 @@ using Hitbench.Resources.DataModels;
 
 namespace Hitbench.Services;
 
-internal sealed class OHsExportLayoutSearch
+internal sealed partial class OHsExportLayoutSearch
 {
     private const string IndexRangeError = "The selected custom sample index range cannot represent this arrangement.";
     private static readonly string[] Sets = ["Normal", "Soft", "Drum"];

@@ -39,14 +39,10 @@ public sealed class OHsExportService(OHsExportPublisher? publisher = null, Func<
             fingerprints[path] = OHsExportPublisher.HashFile(path);
             sourcePaths.Add(path);
         }
-        progress?.Report(new(10, "Preparing sample combinations"));
-        var plan = OHsExportPlanner.Plan(input, token, progress);
-        var generated = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { [difficultyName] = "difficulty" };
-        foreach (var bank in plan.Banks)
-            foreach (var slot in bank.Value)
-                generated.Add(OHsExportRepresentations.FileName(slot.Key, bank.Key, slot.Value.Sources.Count > 1 ? request.Options.MixedFormat : request.Options.SingleFormat), "sample");
-        if (request.Options.Destination == OHsExportDestination.Beatmap) OHsExportPublisher.ValidateBeatmapDestination(request.BeatmapPath, generated, token);
-        progress?.Report(new(25, "Decoding samples"));
+        if (request.Options.Destination == OHsExportDestination.Beatmap)
+            OHsExportPublisher.ValidateBeatmapDestination(request.BeatmapPath,
+                new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { [difficultyName] = "difficulty" }, token);
+        progress?.Report(new(10, "Decoding samples"));
         var decoded = new Dictionary<string, DecodedAudio>(StringComparer.OrdinalIgnoreCase);
         try
         {
@@ -62,8 +58,14 @@ public sealed class OHsExportService(OHsExportPublisher? publisher = null, Func<
                     decoded.Add(path, audio);
                 }
                 catch { audio.Dispose(); throw; }
-                progress?.Report(new(25 + 15d * decoded.Count / sourcePaths.Count, "Decoding samples"));
+                progress?.Report(new(10 + 15d * decoded.Count / sourcePaths.Count, "Decoding samples"));
             }
+            var plan = OHsExportPlanner.Plan(input, token, progress, file => decoded[SamplePaths.Resolve(request.ProjectPath, file)]);
+            var generated = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { [difficultyName] = "difficulty" };
+            foreach (var bank in plan.Banks)
+                foreach (var slot in bank.Value)
+                    generated.Add(OHsExportRepresentations.FileName(slot.Key, bank.Key, slot.Value.Sources.Count > 1 ? request.Options.MixedFormat : request.Options.SingleFormat), "sample");
+            if (request.Options.Destination == OHsExportDestination.Beatmap) OHsExportPublisher.ValidateBeatmapDestination(request.BeatmapPath, generated, token);
             progress?.Report(new(40, "Generating samples"));
             async Task BuildAsync(string stage, CancellationToken cancellation)
             {

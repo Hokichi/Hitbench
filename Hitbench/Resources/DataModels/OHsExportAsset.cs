@@ -27,7 +27,7 @@ public sealed record OHsExportAsset
         }).Where(s => s.GainPercent != 0).GroupBy(s => (Path: s.FileName.ToUpperInvariant(), Envelope: s.Envelope?.Key ?? ""))
             .Select(g => g.First() with { GainPercent = checked(g.Sum(s => s.GainPercent)) }).OrderBy(s => s.FileName, StringComparer.OrdinalIgnoreCase).ThenBy(s => s.Envelope?.Key, StringComparer.Ordinal).ToArray();
         if (components.All(s => s.Envelope is null)) return Create(components.Select(s => (s.FileName, s.GainPercent)), cache);
-        var canonical = string.Join("|", components.Select(s => FormattableString.Invariant($"{s.FileName.ToUpperInvariant().Length}:{s.FileName.ToUpperInvariant()}:{s.GainPercent}:{s.Envelope?.Key}")));
+        var canonical = string.Join("|", components.Select(s => FormattableString.Invariant($"{s.FileName.ToUpperInvariant().Length}:{s.FileName.ToUpperInvariant()}:{(s.Envelope is null ? "C:" + s.GainPercent.ToString(System.Globalization.CultureInfo.InvariantCulture) + "/100" : s.Envelope.Scale(s.GainPercent, 100).Key)}")));
         if (cache is not null && cache.TryGetValue(canonical, out var existing)) return existing;
         var asset = new OHsExportAsset(Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(canonical))), components);
         if (cache is not null) cache[canonical] = asset;

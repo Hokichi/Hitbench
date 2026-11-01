@@ -73,6 +73,6 @@ public static class OHsExportInputFactory
                 }
             else foreach (var sample in track.Samples) { token.ThrowIfCancellationRequested(); Add(sample.Timestamp, sample.FileName); }
         }
-        return new(options, beatmap, voices, required.OrderBy(p => p.Timestamp).ThenBy(p => p.Kind).ToArray());
+        return new(options, beatmap, voices, required.OrderBy(p => p.Timestamp).ThenBy(p => p.Kind).ToArray(), project.ControlPoints.Select(p => new ControlPointVolumeSnapshot(p.Timestamp, p.Volume, p.IsDisabled, p.IsRamp)).ToArray());
     }
 }
