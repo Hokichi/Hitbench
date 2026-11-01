@@ -322,8 +322,9 @@ public class WorkstationPageIntegrationTests
         var solo = FindVisualChildren<ToggleButton>(page).Single(control => control.Name == "TrackSoloToggle" && ReferenceEquals(control.DataContext, a));
         Assert.That(mute.GetType(), Is.EqualTo(typeof(ToggleButton)));
         Assert.That(mute.IsTabStop, Is.False);
-        Assert.That(mute.Style, Is.SameAs(mute.FindResource("OHsWorkstationTrackToggleStyle")));
-        Assert.That(mute.Style.BasedOn, Is.SameAs(page.FindResource("BaseToggleButtonStyle")));
+        UiControlContract.AssertStyle<System.Windows.Controls.Primitives.ToggleButton>(mute, "OHsWorkstationExpandedToggleStyle");
+        Assert.That(mute.Style.BasedOn, Is.SameAs(mute.FindResource("OHsWorkstationTrackToggleStyle")));
+        Assert.That(mute.Style.BasedOn.BasedOn, Is.SameAs(page.FindResource("BaseToggleButtonStyle")));
         Assert.That(mute.Template, Is.SameAs(page.FindResource("OHsWorkstationTrackToggleTemplate")));
         Assert.That(mute.IsChecked, Is.True); Assert.That(solo.IsChecked, Is.True);
         var remove = FindRemovalAction(page, a);

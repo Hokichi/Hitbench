@@ -306,7 +306,7 @@ public sealed class WorkstationTrackDragTests
         var input = new TextBox();
         WorkstationTrackDragTestContext.Descendants<StackPanel>(row).Single(panel => panel.Name == "TrackLeftControls").Children.Add(input); context.View.UpdateLayout();
         input.IsEnabled = false;
-        Assert.That(context.Owner.BeginTrackPointer(input, point), Is.EqualTo(input is Hitbench.Resources.CustomControls.OHsTrackIdentityButton));
+        Assert.That(context.Owner.BeginTrackPointer(input, point), Is.False);
         var grid = row.SampleTimeline!;
         Assert.That(context.Owner.BeginTrackPointer(row, grid.TranslatePoint(new Point(1, 1), context.Owner)), Is.False);
     }

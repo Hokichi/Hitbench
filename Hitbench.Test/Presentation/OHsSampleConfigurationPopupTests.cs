@@ -66,13 +66,15 @@ public sealed class OHsSampleConfigurationPopupTests
 
     [TestCase(false)]
     [TestCase(true)]
-    public void MenuOffersConfigOnlyForSampleTracks(bool instrumental)
+    public void DirectActionOffersConfigOnlyForSampleTracks(bool instrumental)
     {
         var (vm, row, view) = Create(instrumental ? new InstrumentalTrack() : new Track());
         using (view) try
         {
             var menu = Descendants(row).OfType<Hitbench.Resources.CustomControls.BalloonComboBox>().Single().ContextMenu;
-            Assert.That(menu.Items.OfType<MenuItem>().Any(item => Equals(item.Header, "Config Sample") && item.Visibility == Visibility.Visible), Is.EqualTo(!instrumental));
+            Assert.That(menu.Items.OfType<MenuItem>().Any(item => Equals(item.Header, "Config Sample")), Is.False);
+            var action = Descendants(row).OfType<Hitbench.Resources.CustomControls.BalloonButton>().Single(button => button.ButtonText == "Config Sample");
+            Assert.That(action.Visibility == Visibility.Visible, Is.EqualTo(!instrumental));
         }
         finally { UiTestPump.Run(vm.DeactivateAsync()); }
     }
@@ -112,8 +114,8 @@ public sealed class OHsSampleConfigurationPopupTests
         using (view) try
         {
             var menu = Descendants(row).OfType<Hitbench.Resources.CustomControls.BalloonComboBox>().Single().ContextMenu;
-            var config = menu.Items.OfType<MenuItem>().Single(item => Equals(item.Header, "Config Sample"));
-            config.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent, config));
+            var config = Descendants(row).OfType<Hitbench.Resources.CustomControls.BalloonButton>().Single(button => button.ButtonText == "Config Sample");
+            config.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent, config));
             Assert.That(row.IsSampleConfigurationOpen, Is.False, "Native menu must finish closing before popup presentation.");
             row.Track = new Track();
             UiTestPump.Run(row.Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle).Task);

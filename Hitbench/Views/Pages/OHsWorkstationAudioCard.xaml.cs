@@ -8,7 +8,7 @@ namespace Hitbench.Views.Pages;
 public partial class OHsWorkstationAudioCard : UserControl
 {
     public static readonly DependencyProperty TrackSideColumnWidthProperty = DependencyProperty.Register(
-        nameof(TrackSideColumnWidth), typeof(GridLength), typeof(OHsWorkstationAudioCard), new PropertyMetadata(new GridLength(180)));
+        nameof(TrackSideColumnWidth), typeof(GridLength), typeof(OHsWorkstationAudioCard), new PropertyMetadata(new GridLength(240)));
     public GridLength TrackSideColumnWidth { get => (GridLength)GetValue(TrackSideColumnWidthProperty); set => SetValue(TrackSideColumnWidthProperty, value); }
 
     public static readonly DependencyProperty IsCompactLayoutProperty = DependencyProperty.Register(

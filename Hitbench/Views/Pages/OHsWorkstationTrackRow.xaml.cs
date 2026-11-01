@@ -16,7 +16,7 @@ namespace Hitbench.Views.Pages;
 public partial class OHsWorkstationTrackRow : UserControl
 {
     public static readonly DependencyProperty TrackSideColumnWidthProperty = DependencyProperty.Register(
-        nameof(TrackSideColumnWidth), typeof(GridLength), typeof(OHsWorkstationTrackRow), new PropertyMetadata(new GridLength(180)));
+        nameof(TrackSideColumnWidth), typeof(GridLength), typeof(OHsWorkstationTrackRow), new PropertyMetadata(new GridLength(240)));
     public GridLength TrackSideColumnWidth { get => (GridLength)GetValue(TrackSideColumnWidthProperty); set => SetValue(TrackSideColumnWidthProperty, value); }
 
     private WorkstationPageVM viewModel => ViewModel!;
@@ -117,7 +117,7 @@ public partial class OHsWorkstationTrackRow : UserControl
         for (var current = origin; current is not null; current = current is Visual or System.Windows.Media.Media3D.Visual3D ? VisualTreeHelper.GetParent(current) : LogicalTreeHelper.GetParent(current))
         {
             if (ReferenceEquals(current, this)) return expanded;
-            if (current is FrameworkElement { Name: "TrackLeftExpandedControls" }) expanded = true;
+            if (current is FrameworkElement { Name: "VolumeSlider" or "TrackMuteToggle" or "TrackSoloToggle" or "ConfigSampleAction" }) expanded = true;
         }
         return false;
     }

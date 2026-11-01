@@ -15,7 +15,7 @@ public partial class WorkstationPage
     public bool IsShortLayout => (bool)GetValue(IsShortLayoutProperty);
 
     private static readonly DependencyPropertyKey TrackSideColumnWidthPropertyKey = DependencyProperty.RegisterReadOnly(
-        nameof(TrackSideColumnWidth), typeof(GridLength), typeof(WorkstationPage), new PropertyMetadata(new GridLength(180)));
+        nameof(TrackSideColumnWidth), typeof(GridLength), typeof(WorkstationPage), new PropertyMetadata(new GridLength(240)));
     public static readonly DependencyProperty TrackSideColumnWidthProperty = TrackSideColumnWidthPropertyKey.DependencyProperty;
     public GridLength TrackSideColumnWidth => (GridLength)GetValue(TrackSideColumnWidthProperty);
 
@@ -25,7 +25,7 @@ public partial class WorkstationPage
         {
             var compact = availableSize.Width < 960;
             SetValue(IsCompactLayoutPropertyKey, compact);
-            SetValue(TrackSideColumnWidthPropertyKey, new GridLength(compact ? 144 : 180));
+            SetValue(TrackSideColumnWidthPropertyKey, new GridLength(240));
         }
         if (double.IsFinite(availableSize.Height) && availableSize.Height > 0)
             SetValue(IsShortLayoutPropertyKey, availableSize.Height < 480);

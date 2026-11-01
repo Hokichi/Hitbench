@@ -10,6 +10,29 @@ namespace Hitbench.Test.Presentation;
 public sealed class OHsWorkstationTrackRowTests
 {
     [Test]
+    public void RecycledIdentityCannotCommitPreviousTrackDraft()
+    {
+        new VolumeWheelTests().SetUp();
+        var gate = new TaskCompletionSource<Hitbench.Resources.DataModels.OHsTrackAppearanceResult?>();
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(),
+            new Hitbench.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(),
+            trackAppearanceDialog: new StubOHsTrackAppearanceDialogService { Request = (_, _) => gate.Task });
+        UiTestPump.Run(vm.LoadAsync("project.json", default)); vm.AcknowledgePresentationReady(vm.LoadGeneration);
+        vm.AddPianoTrackCommand.Execute(null); vm.AddPianoTrackCommand.Execute(null);
+        var original = vm.Tracks[0]; var name = original.Name;
+        var row = new OHsWorkstationTrackRow { Track = original, ViewModel = vm };
+        using var view = new InMemoryView(new Window { Content = row, Width = 900, Height = 300 });
+        try
+        {
+            var edit = row.EditTrackAppearanceAsync();
+            row.Track = vm.Tracks[1]; view.UpdateLayout();
+            gate.SetResult(new("#ABCDEF") { Name = "Stale" }); UiTestPump.Run(edit);
+            Assert.That(original.Name, Is.EqualTo(name)); Assert.That(original.Color, Is.Null);
+        }
+        finally { gate.TrySetResult(null); UiTestPump.Run(vm.DeactivateAsync()); }
+    }
+
+    [Test]
     public void TrackIdentityFollowsReorderedAndRecycledContainers()
     {
         new VolumeWheelTests().SetUp();
@@ -95,18 +118,15 @@ public sealed class OHsWorkstationTrackRowTests
         try
         {
             var trigger = (Hitbench.Resources.CustomControls.BalloonComboBox)row.GetRemovalFocusTarget()!;
-            var action = trigger.ContextMenu!.Items.OfType<MenuItem>().Single(item => Equals(item.Header, "Change Color"));
-            Assert.That(action.Command, Is.SameAs(vm.ChangeTrackColorCommand));
-            Assert.That(action.CommandParameter, Is.SameAs(track));
-            var command = (CommunityToolkit.Mvvm.Input.IAsyncRelayCommand)action.Command;
-            UiTestPump.Run(command.ExecuteAsync(action.CommandParameter));
+            Assert.That(trigger.ContextMenu!.Items.OfType<MenuItem>().Any(item => Equals(item.Header, "Change Color") || Equals(item.Header, "Rename")), Is.False);
+            UiTestPump.Run(row.EditTrackAppearanceAsync());
             Assert.That(track.Name, Is.EqualTo("Original"));
             result = new("#123456");
-            UiTestPump.Run(command.ExecuteAsync(action.CommandParameter)); view.UpdateLayout();
+            UiTestPump.Run(row.EditTrackAppearanceAsync()); view.UpdateLayout();
             Assert.That(FindNameText(row)!.Text, Is.EqualTo("Original"));
             Assert.That(track.Color, Is.EqualTo("#123456"));
             result = null;
-            UiTestPump.Run(command.ExecuteAsync(action.CommandParameter));
+            UiTestPump.Run(row.EditTrackAppearanceAsync());
             Assert.That(track.Name, Is.EqualTo("Original"));
             Assert.That(track.Color, Is.EqualTo("#123456"));
             Assert.That(requested, Is.EqualTo(new string?[] { null, null, "#123456" }));

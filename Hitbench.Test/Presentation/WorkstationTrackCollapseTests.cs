@@ -238,7 +238,7 @@ public class WorkstationTrackCollapseTests
         foreach (var row in rows)
         {
             var track = (Track)row.DataContext;
-            var groups = Descendants<StackPanel>(row).Where(x => x.Name is "TrackLeftExpandedControls" or "TrackRightExpandedControls").ToArray();
+            var groups = Descendants<FrameworkElement>(row).Where(x => x.Name is "VolumeSlider" or "TrackMuteToggle" or "TrackSoloToggle").ToArray();
             Assert.That(groups, Is.Not.Empty);
             Assert.That(groups.Select(x => x.Visibility), Is.All.EqualTo(track.IsCollapsed ? Visibility.Collapsed : Visibility.Visible), track.Name);
             if (track is InstrumentalTrack)
@@ -361,8 +361,9 @@ public class WorkstationTrackCollapseTests
             var grid = Descendants<BeatGridView>(page).Single();
             var secondary = new FrameworkElement[] { Find<ValueSlider>(page, "VolumeSlider"),
                 Find<ToggleButton>(page, "TrackMuteToggle"), Find<ToggleButton>(page, "TrackSoloToggle") };
-            UiControlContract.AssertStyle<ValueSlider>(secondary[0], "OHsWorkstationCompactVolumeStyle");
-            Assert.That(secondary[0].Style.BasedOn, Is.SameAs(secondary[0].FindResource("BaseValueSliderStyle")));
+            UiControlContract.AssertStyle<ValueSlider>(secondary[0], "OHsWorkstationExpandedVolumeStyle");
+            Assert.That(secondary[0].Style.BasedOn, Is.SameAs(secondary[0].FindResource("OHsWorkstationCompactVolumeStyle")));
+            Assert.That(secondary[0].Style.BasedOn.BasedOn, Is.SameAs(secondary[0].FindResource("BaseValueSliderStyle")));
             for (var cycle = 0; cycle < 2; cycle++)
             {
                 vm.ToggleTracksCollapsedCommand.Execute(null);

@@ -26,7 +26,7 @@ public partial class OHsWorkstationTrackRow
         if (Track is not { } track || ViewModel is not { } owner || owner.BeginSampleConfiguration(track) is not { } token) return false;
         configurationOwner = owner; configurationToken = token; IsSampleConfigurationOpen = true;
         RefreshSampleConfigurationSelectors();
-        var invoker = FindVisualChild<StackPanel>(this, "TrackLeftControls");
+        var invoker = FindVisualChild<Resources.CustomControls.BalloonButton>(this, "ConfigSampleAction");
         configurationWindow = Window.GetWindow(this);
         if (configurationWindow is not null) configurationWindow.Deactivated += OnConfigurationWindowDeactivated;
         try
@@ -59,7 +59,7 @@ public partial class OHsWorkstationTrackRow
         if (restoreFocus)
         {
             CompleteSampleConfigurationDismissal();
-            FindVisualChild<Resources.CustomControls.BalloonComboBox>(this)?.Focus();
+            (FindVisualChild<Resources.CustomControls.BalloonButton>(this, "ConfigSampleAction") as UIElement ?? GetRemovalFocusTarget() as UIElement)?.Focus();
         }
         else if (configurationToken is not null && PresentSampleConfiguration is null && !awaitingConfigurationInput)
         {
