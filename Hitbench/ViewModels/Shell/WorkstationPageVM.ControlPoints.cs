@@ -56,7 +56,7 @@ public partial class WorkstationPageVM
         var canAdd = CanOpenControlPoints;
         SetProperty(ref controlPointsState, new ControlPointsSnapshot(context,
             Project!.ControlPoints.OrderBy(p => p.Timestamp).Select(p =>
-                new ControlPointSnapshot(ControlPointId(p), p.Timestamp, p.Volume, p.Sampleset, p.IsDisabled, Project.IsOffsetControlPoint(p))).ToArray(),
+                new ControlPointSnapshot(ControlPointId(p), p.Timestamp, p.Volume, p.Sampleset, p.IsDisabled, Project.IsOffsetControlPoint(p), p.IsRamp)).ToArray(),
             ++controlPointsVersion, canAdd, canAdd ? null : "Adding control points requires an active project, valid BPM timing, and a song duration.",
             pendingProjectWrites > 0, SaveError, controlPointsRevision, CanEditControlPoints), nameof(ControlPointsState));
         NotifyControlPointCommands();
@@ -65,7 +65,7 @@ public partial class WorkstationPageVM
     private void PublishControlPointTimeline()
     {
         audioService.SetControlPoints(Project?.ControlPoints
-            .OrderBy(p => p.Timestamp).Select(p => new ControlPointVolumeSnapshot(Math.Max(0, p.Timestamp), p.Volume, p.IsDisabled)).ToArray() ?? []);
+            .OrderBy(p => p.Timestamp).Select(p => new ControlPointVolumeSnapshot(p.Timestamp, p.Volume, p.IsDisabled, p.IsRamp)).ToArray() ?? []);
         RefreshControlPointTimestamps();
     }
 
@@ -166,7 +166,7 @@ public partial class WorkstationPageVM
     }
 
     private bool CanSetControlPoint(SetControlPointRequestedMessage? request) =>
-        request is not null && (request.ExpectedRevision is null || request.ExpectedRevision == controlPointsRevision) &&
+        request is not null && (request.IsRamp is null || request.ExpectedRevision == controlPointsRevision) && (request.ExpectedRevision is null || request.ExpectedRevision == controlPointsRevision) &&
         FindControlPoint(request.Context, request.PointId) is not null;
 
     [RelayCommand(CanExecute = nameof(CanSetControlPoint))]
@@ -185,10 +185,12 @@ public partial class WorkstationPageVM
         }
         var volumeChanged = request.Volume is { } nextVolume && nextVolume != point.Volume;
         var samplesetChanged = request.Sampleset is { } nextSampleset && nextSampleset != point.Sampleset;
-        if (!volumeChanged && !samplesetChanged) return;
+        var modeChanged = request.IsRamp is { } mode && mode != point.IsRamp;
+        if (!volumeChanged && !samplesetChanged && !modeChanged) return;
         if (volumeChanged) point.Volume = (int)request.Volume!.Value;
         if (samplesetChanged) point.Sampleset = request.Sampleset!;
-        FinishControlPointMutation(volumeChanged);
+        if (modeChanged) point.IsRamp = request.IsRamp!.Value;
+        FinishControlPointMutation(volumeChanged || modeChanged);
     }
 
     private void NotifyControlPointCommands()
@@ -236,7 +238,8 @@ public partial class WorkstationPageVM
     {
         if (!CanSplitControlPoint(request) || FindControlPoint(request!.Context, request.PointId) is not { } source ||
             GetControlPointSplitTimestamp(request.PointId) is not { } timestamp) return;
-        var point = new ControlPoint { Timestamp = timestamp, Volume = source.Volume, Sampleset = source.Sampleset, IsDisabled = source.IsDisabled };
+        var curve = new ControlPointVolumeTimeline(Project!.ControlPoints.Select(p => new ControlPointVolumeSnapshot(p.Timestamp, p.Volume, p.IsDisabled, p.IsRamp)).ToArray());
+        var point = new ControlPoint { Timestamp = timestamp, Volume = source.IsDisabled ? source.Volume : (int)Math.Round(curve.GetVolumeAtTimestamp(timestamp), MidpointRounding.AwayFromZero), Sampleset = source.Sampleset, IsDisabled = source.IsDisabled, IsRamp = source.IsRamp };
         controlPointIds[point] = Guid.NewGuid();
         Project!.ControlPoints.Add(point);
         FinishControlPointMutation(true);
