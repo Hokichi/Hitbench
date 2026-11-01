@@ -19,6 +19,8 @@ public class KeysMappingDrawerIntegrationTests
         var creation = OHsKeysMappingTestContext.CreateAsync(); UiTestPump.Run(creation);
         var c = creation.GetAwaiter().GetResult();
         var drawer = new OHsKeysMappingDrawer(c.VM);
+        var rowResources = new Hitbench.Views.Pages.OHsWorkstationTrackRow();
+        Assert.That(rowResources.FindResource("OHsInteractionHighlightBrush"), Is.SameAs(drawer.FindResource("OHsInteractionHighlightBrush")));
         var host = new Window { Content = drawer, Width = 800, Height = 500, FlowDirection = flow };
         using var view = new InMemoryView(host);
         try

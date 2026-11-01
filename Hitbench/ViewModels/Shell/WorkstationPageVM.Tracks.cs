@@ -260,7 +260,7 @@ public partial class WorkstationPageVM
     [ObservableProperty] private Track? renamingTrack;
     [ObservableProperty] private string trackNameDraft = string.Empty;
     [ObservableProperty] private bool isTrackRenamePending;
-    private bool CanBeginTrackRename(Track? track) => CanPlaceSamples && track is not null && tracks.Contains(track) && !IsTrackRenamePending && (RenamingTrack is null || ReferenceEquals(RenamingTrack, track));
+    private bool CanBeginTrackRename(Track? track) => CanPlaceSamples && !trackAppearancePending && track is not null && tracks.Contains(track) && !IsTrackRenamePending && (RenamingTrack is null || ReferenceEquals(RenamingTrack, track));
     [RelayCommand(CanExecute = nameof(CanBeginTrackRename))]
     private void BeginTrackRename(Track track)
     {

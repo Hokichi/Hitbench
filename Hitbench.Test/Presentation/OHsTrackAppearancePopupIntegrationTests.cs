@@ -8,6 +8,23 @@ namespace Hitbench.Test.Presentation;
 public class OHsTrackAppearancePopupIntegrationTests
 {
     [Test]
+    public void SaveCompletesCombinedDraftOnlyOnce()
+    {
+        new VolumeWheelTests().SetUp();
+        var vm = new OHsTrackAppearancePopupVM(new(null, 0) { Name = "Old" }, "#FFFFFF");
+        var completions = 0;
+        var popup = new OHsTrackAppearancePopup(vm, accepted => { Assert.That(accepted, Is.True); completions++; });
+        using var view = new InMemoryView(popup, scheduleLayout: false);
+        ((TextBox)popup.FindName("NameInput")).Text = "New";
+        popup.HandleKey(Key.Escape);
+        Assert.That(completions, Is.Zero);
+        popup.HandleKey(Key.Enter); popup.HandleKey(Key.Enter);
+        Assert.That(completions, Is.EqualTo(1));
+        Assert.That(vm.CreateResult().Name, Is.EqualTo("New"));
+        Assert.That(vm.CreateResult().Color, Is.Null);
+    }
+
+    [Test]
     public void AppearanceActionsOptIntoTabNavigation()
     {
         new VolumeWheelTests().SetUp();

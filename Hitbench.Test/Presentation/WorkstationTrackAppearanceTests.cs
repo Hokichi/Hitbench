@@ -5,6 +5,32 @@ using Hitbench.ViewModels.Shell;
 namespace Hitbench.Test.Presentation;
 public class WorkstationTrackAppearanceTests
 {
+    [TestCase(false, null, true)][TestCase(true, null, true)]
+    [TestCase(false, "#abcdef", true)][TestCase(true, "#abcdef", true)]
+    [TestCase(false, null, false)][TestCase(true, null, false)]
+    public async Task CombinedMetadataSavePublishesCoherentPayload(bool instrumental, string? color, bool changed)
+    {
+        Track track = instrumental ? new InstrumentalTrack { Name = "Old" } : new Track { Name = "Old" };
+        var expectedName = changed ? "New" : "Old";
+        var writes = 0;
+        var files = new StubProjectFileService((_, _, _) => Task.FromResult("unused")) { Save = (_, json, _) => {
+            var saved = Hitbench.Services.ProjectFiles.ProjectDataSerializer.Deserialize(json).Tracks[0];
+            Assert.That(saved.Name, Is.EqualTo(expectedName));
+            Assert.That(saved.Color, Is.EqualTo(color?.ToUpperInvariant()));
+            writes++; return Task.CompletedTask; } };
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [track], Offsets = [0], BPMs = [120], ControlPoints = [new()] })) },
+            new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), projectFiles: files,
+            trackAppearanceDialog: new StubOHsTrackAppearanceDialogService { Request = (_, _) => Task.FromResult<OHsTrackAppearanceResult?>(new(color) { Name = expectedName }) });
+        try
+        {
+            await vm.LoadAsync("project.json", default); vm.AcknowledgePresentationReady(vm.LoadGeneration);
+            await vm.ChangeTrackColorCommand.ExecuteAsync(track); await vm.FlushSavesAsync();
+            Assert.That(track.Name, Is.EqualTo(expectedName)); Assert.That(track.Color, Is.EqualTo(color?.ToUpperInvariant()));
+            Assert.That(writes, Is.EqualTo(changed ? 1 : 0));
+        }
+        finally { await vm.DeactivateAsync(); }
+    }
+
     [TestCase(false)][TestCase(true)]
     public async Task CombinedSaveWaitsForSuccessfulFolderRename(bool fails)
     {
