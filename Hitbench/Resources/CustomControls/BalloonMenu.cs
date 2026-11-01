@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Windows.Automation.Peers;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -55,6 +56,11 @@ public class BalloonMenu : BalloonButton
     public event EventHandler? Collapsed;
     internal double RevealProgress => (double)GetValue(RevealProgressProperty);
     internal long PresentationGeneration { get; private set; }
+    internal BalloonMenuOption? ActiveOption { get; private set; }
+    protected virtual bool OwnsKeyboardFocus => IsKeyboardFocusWithin || surface?.IsKeyboardFocusWithin == true;
+    protected virtual bool FocusMenuElement(UIElement target) => target.Focus();
+
+    protected override AutomationPeer OnCreateAutomationPeer() => new BalloonMenuAutomationPeer(this);
 
     // All native presentation goes through this replaceable boundary, including teardown.
     internal Action<Popup, bool> PresentPopup { get; set; } =
@@ -104,6 +110,7 @@ public class BalloonMenu : BalloonButton
         popup.Closed += OnPopupClosed;
         surface.MouseEnter += OnPopupEnter;
         surface.MouseLeave += OnPopupLeave;
+        surface.LostKeyboardFocus += OnMenuLostFocus;
         AdoptOptions();
     }
 
@@ -150,6 +157,11 @@ public class BalloonMenu : BalloonButton
                 PresentPopup(popup, true);
             }
             AnimateReveal(1);
+            if (this.keyboardOwned)
+            {
+                ApplyRevealProgress(1, PresentationGeneration);
+                FocusOption(Options.FirstOrDefault(option => option.IsEnabled));
+            }
             return true;
         }
         catch
@@ -267,7 +279,7 @@ public class BalloonMenu : BalloonButton
         pendingLeave = Dispatcher.BeginInvoke(DispatcherPriority.Input, () =>
         {
             pendingLeave = null;
-            if (!IsExpanded || generation != PresentationGeneration || IsPointerWithinMenu() || keyboardOwned) return;
+            if (!IsExpanded || generation != PresentationGeneration || IsPointerWithinMenu() || keyboardOwned && OwnsKeyboardFocus) return;
             targetOpen = false;
             PresentationGeneration++;
             AnimateReveal(0);
@@ -285,7 +297,82 @@ public class BalloonMenu : BalloonButton
         DetachPresentationEvents();
         var wasOpen = IsExpanded;
         SetExpanded(false);
+        ActiveOption = null;
         if (wasOpen && popup is not null) PresentPopup(popup, false);
+        if (wasOpen && restoreFocus && attached && IsEnabled) FocusMenuElement(this);
+    }
+
+    protected override void OnClick() => OpenMenu(true);
+
+    protected override void OnKeyDown(KeyEventArgs e)
+    {
+        if (e.Key is Key.Enter or Key.Space or Key.Down)
+        {
+            if (!e.IsRepeat) OpenMenu(true);
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Escape && IsExpanded) { CloseMenu(true); e.Handled = true; }
+        else base.OnKeyDown(e);
+    }
+
+    protected override void OnKeyUp(KeyEventArgs e)
+    {
+        if (e.Key == Key.Space) e.Handled = true;
+        else base.OnKeyUp(e);
+    }
+
+    internal bool HandleOptionKey(BalloonMenuOption option, Key key)
+    {
+        if (!IsExpanded || !ReferenceEquals(option.MenuOwner, this)) return false;
+        if (key == Key.Escape) { CloseMenu(true); return true; }
+        if (key is not (Key.Left or Key.Right or Key.Home or Key.End)) return false;
+        keyboardOwned = true;
+        var eligible = Options.Where(candidate => candidate.IsEnabled).ToArray();
+        if (eligible.Length == 0) { FocusOption(null); return true; }
+        var index = Array.IndexOf(eligible, option);
+        var forward = (key == Key.Right) == (FlowDirection == FlowDirection.LeftToRight);
+        var next = key == Key.Home ? 0 : key == Key.End ? eligible.Length - 1 :
+            (Math.Max(0, index) + (forward ? 1 : -1) + eligible.Length) % eligible.Length;
+        FocusOption(eligible[next]);
+        return true;
+    }
+
+    private void FocusOption(BalloonMenuOption? option)
+    {
+        ActiveOption = option;
+        var target = (UIElement?)option ?? this;
+        if (FocusMenuElement(target)) return;
+        var generation = PresentationGeneration;
+        Dispatcher.BeginInvoke(DispatcherPriority.Input, () =>
+        {
+            if (IsExpanded && generation == PresentationGeneration && keyboardOwned) FocusMenuElement(target);
+        });
+    }
+
+    internal bool CanInvokeOption(BalloonMenuOption option) => attached && IsEnabled &&
+        Options.Contains(option) && IsOptionRevealed(option) && option.IsEnabled &&
+        (option.Command is RoutedCommand routed ? routed.CanExecute(option.CommandParameter, option.CommandTarget ?? option) :
+            option.Command?.CanExecute(option.CommandParameter) != false);
+
+    internal void PrepareOptionInvocation(BalloonMenuOption option)
+    {
+        if (ReferenceEquals(option.MenuOwner, this)) CloseMenu();
+    }
+
+    protected override void OnLostKeyboardFocus(KeyboardFocusChangedEventArgs e)
+    {
+        base.OnLostKeyboardFocus(e);
+        QueueFocusCheck();
+    }
+
+    private void OnMenuLostFocus(object sender, KeyboardFocusChangedEventArgs e) => QueueFocusCheck();
+    private void QueueFocusCheck()
+    {
+        var generation = PresentationGeneration;
+        Dispatcher.BeginInvoke(DispatcherPriority.Input, () =>
+        {
+            if (IsExpanded && generation == PresentationGeneration && !OwnsKeyboardFocus) CloseMenu();
+        });
     }
 
     private void OnPopupClosed(object? sender, EventArgs e) { if (IsExpanded) CloseMenu(); }
@@ -348,6 +435,7 @@ public class BalloonMenu : BalloonButton
         {
             surface.MouseEnter -= OnPopupEnter;
             surface.MouseLeave -= OnPopupLeave;
+            surface.LostKeyboardFocus -= OnMenuLostFocus;
             BindingOperations.ClearBinding(surface, DataContextProperty);
             BindingOperations.ClearBinding(surface, IsEnabledProperty);
             KeyboardNavigationPolicy.BindSuppressionScope(surface, null);
@@ -370,6 +458,7 @@ public class BalloonMenu : BalloonButton
         if (IsExpanded == expanded) return;
         SetValue(IsExpandedPropertyKey, expanded);
         CoerceValue(IsHitTestVisibleProperty);
+        (UIElementAutomationPeer.FromElement(this) as BalloonMenuAutomationPeer)?.NotifyExpandedChanged(!expanded, expanded);
         if (expanded) Expanded?.Invoke(this, EventArgs.Empty);
         else Collapsed?.Invoke(this, EventArgs.Empty);
     }
