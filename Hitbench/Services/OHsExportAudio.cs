@@ -10,7 +10,7 @@ public static class OHsExportAudio
     public static DecodedAudio Render(OHsExportAsset asset, Func<string, DecodedAudio> resolve, CancellationToken token, AudioMemoryBudget? budget = null)
     {
         token.ThrowIfCancellationRequested();
-        var inputs = asset.Sources.Select(s => (Audio: resolve(s.FileName), Gain: s.GainPercent / 100f)).ToArray();
+        var inputs = asset.Components.Select(s => (Audio: resolve(s.FileName), Gain: s.GainPercent / 100f, s.Envelope)).ToArray();
         budget ??= inputs.Select(input => input.Audio.Budget).FirstOrDefault(value => value is not null) ?? new();
         foreach (var input in inputs) input.Audio.AttachBudget(budget);
         var sampleCount = inputs.Length == 0 ? 882 : checked(inputs.Max(s => s.Audio.FrameCount) * 2);
@@ -24,7 +24,7 @@ public static class OHsExportAudio
                     if ((i & 8191) == 0) token.ThrowIfCancellationRequested();
                     var value = input.Audio.Samples[i];
                     if (!float.IsFinite(value) || input.Gain < 0) throw new InvalidDataException("Sample PCM/gain is invalid.");
-                    sum[i] += value * input.Gain;
+                    sum[i] += value * input.Gain * (float)(input.Envelope?.GetGain(i / 2) ?? 1);
                 }
             if (sum.Length == 0 || sum.Any(v => !float.IsFinite(v)))
                 throw new InvalidDataException($"Exported sample contains invalid PCM: {string.Join(", ", asset.Sources.Select(s => $"{s.FileName} ({s.GainPercent}%)"))}.");
@@ -70,11 +70,11 @@ public static class OHsExportAudio
                     var output = Path.Combine(stagingDirectory, OHsExportRepresentations.FileName(slot.Key, bank.Key, extension));
                     if (encoded.TryGetValue((asset.Id, extension), out var existing)) { File.Copy(existing, output); ReportOutput(); continue; }
                     var single = asset.Sources.Count == 1 ? asset.Sources[0] : default;
-                    using var rendered = asset.Sources.Count == 1 && single.GainPercent == 100 ? null : Render(asset, Resolve, token, budget);
+                    using var rendered = asset.Sources.Count == 1 && single.GainPercent == 100 && asset.Components[0].Envelope is null ? null : Render(asset, Resolve, token, budget);
                     var pcm = rendered ?? Resolve(single.FileName);
                     ValidatePcm(pcm);
                     var source = asset.Sources.Count == 1 ? SamplePaths.Resolve(projectPath, single.FileName) : null;
-                    if (single.GainPercent == 100 && source is not null && MatchesEncoding(source, extension))
+                    if (single.GainPercent == 100 && asset.Components[0].Envelope is null && source is not null && MatchesEncoding(source, extension))
                     {
                         await using var input = File.OpenRead(source); await using var destination = File.Create(output);
                         await input.CopyToAsync(destination, token);
