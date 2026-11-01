@@ -170,6 +170,23 @@ public sealed class BalloonMenuPresentationTests
     }
 
     [Test]
+    public void NativeCloseCompletionCannotCloseNewSession()
+    {
+        var menu = Create();
+        try
+        {
+            menu.OpenMenu(false);
+            var old = menu.PresentationGeneration;
+            menu.CloseMenu(); menu.OpenMenu(false);
+            menu.CompleteNativeClose(old);
+            Assert.That(menu.IsExpanded, Is.True);
+            menu.CompleteNativeClose(menu.PresentationGeneration);
+            Assert.That(menu.IsExpanded, Is.False);
+        }
+        finally { Unload(menu); }
+    }
+
+    [Test]
     public void PresentationFailureRestoresLauncher()
     {
         var menu = Create();

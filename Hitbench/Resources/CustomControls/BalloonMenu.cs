@@ -395,7 +395,17 @@ public class BalloonMenu : BalloonButton
         });
     }
 
-    private void OnPopupClosed(object? sender, EventArgs e) { if (IsExpanded) CloseMenu(); }
+    private void OnPopupClosed(object? sender, EventArgs e)
+    {
+        if (!ReferenceEquals(sender, popup) || !IsExpanded) return;
+        var generation = PresentationGeneration;
+        Dispatcher.BeginInvoke(DispatcherPriority.Input, () => CompleteNativeClose(generation));
+    }
+
+    internal void CompleteNativeClose(long generation)
+    {
+        if (generation == PresentationGeneration && IsExpanded && popup?.IsOpen != true) CloseMenu();
+    }
     private void AttachPresentationEvents()
     {
         ownerWindow = Window.GetWindow(this);
