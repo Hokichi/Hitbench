@@ -124,8 +124,6 @@
             <Setter Property="HorizontalAlignment" Value="Left" />
             <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="CornerRadius" Value="{StaticResource Radius.Node}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Text.Primary}" />
-            <Setter Property="BorderThickness" Value="1" />
             <Setter Property="IsHitTestVisible" Value="False" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
@@ -170,10 +168,10 @@
             BasedOn="{StaticResource BaseContentPresenterStyle}"
             TargetType="ContentPresenter">
             <Setter Property="ContentTemplate" Value="{StaticResource OHsWorkstationSampleTrackNameTemplate}" />
-            <Setter Property="Grid.ColumnSpan" Value="7" />
+            <Setter Property="Grid.ColumnSpan" Value="5" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsTrackCollapsed, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}" Value="True">
-                    <Setter Property="Grid.ColumnSpan" Value="6" />
+                    <Setter Property="Grid.ColumnSpan" Value="5" />
                 </DataTrigger>
             </Style.Triggers>
         </Style>
@@ -216,14 +214,9 @@
             BasedOn="{StaticResource BaseBalloonComboBoxStyle}"
             TargetType="customControls:BalloonComboBox">
             <Setter Property="ButtonIcon" Value="{StaticResource BarsSolid}" />
-            <Setter Property="Grid.Row" Value="2" />
-            <Setter Property="Grid.Column" Value="4" />
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding IsTrackCollapsed, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}" Value="True">
-                    <Setter Property="Grid.Row" Value="0" />
-                    <Setter Property="Grid.Column" Value="6" />
-                </DataTrigger>
-            </Style.Triggers>
+            <Setter Property="Grid.Row" Value="0" />
+            <Setter Property="Grid.Column" Value="6" />
+            <Setter Property="HorizontalAlignment" Value="Right" />
         </Style>
         <Style
             x:Key="OHsWorkstationTrackMenuItemStyle"
@@ -394,13 +387,13 @@
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="40" />
-                        <ColumnDefinition Width="12" />
-                        <ColumnDefinition Width="40" />
-                        <ColumnDefinition Width="12" />
-                        <ColumnDefinition Width="40" />
-                        <ColumnDefinition Width="12" />
                         <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="0" />
+                        <ColumnDefinition Width="0" />
+                        <ColumnDefinition Width="0" />
+                        <ColumnDefinition Width="40" SharedSizeGroup="OHsAuditionMute" />
+                        <ColumnDefinition Width="4" />
+                        <ColumnDefinition Width="40" SharedSizeGroup="OHsAuditionSolo" />
                     </Grid.ColumnDefinitions>
                     <ContentPresenter Content="{Binding Mode=OneWay}" Style="{StaticResource OHsWorkstationNameHostStyle}" />
                     <customControls:ValueSlider
@@ -430,7 +423,7 @@
                     <ToggleButton
                         x:Name="TrackMuteToggle"
                         Grid.Row="2"
-                        Grid.Column="0"
+                        Grid.Column="4"
                         AutomationProperties.Name="Mute track"
                         Checked="OnTrackAuditionChanged"
                         Content="M"
@@ -443,7 +436,7 @@
                     <ToggleButton
                         x:Name="TrackSoloToggle"
                         Grid.Row="2"
-                        Grid.Column="2"
+                        Grid.Column="6"
                         AutomationProperties.Name="Solo track"
                         Checked="OnTrackAuditionChanged"
                         Content="S"
@@ -461,7 +454,7 @@
                     <customControls:BalloonButton
                         x:Name="ConfigSampleAction"
                         Grid.Row="2"
-                        Grid.Column="6"
+                        Grid.Column="0"
                         HorizontalAlignment="Left"
                         AutomationProperties.Name="Config Sample"
                         ButtonIcon="{StaticResource Cog}"

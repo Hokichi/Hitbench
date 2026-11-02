@@ -131,8 +131,9 @@
                     </Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="OHsAuditionMute" />
+                        <ColumnDefinition Width="4" />
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="OHsAuditionSolo" />
                     </Grid.ColumnDefinitions>
                     <StackPanel
                         Margin="0,0,8,0"
@@ -165,8 +166,7 @@
                         Unchecked="OnAggregateToggleChanged" />
                     <ToggleButton
                         x:Name="ClearTrackSolosToggle"
-                        Grid.Column="2"
-                        Margin="4,0,0,0"
+                        Grid.Column="3"
                         VerticalAlignment="Center"
                         AutomationProperties.Name="Clear all track solos"
                         Checked="OnAggregateToggleChanged"
@@ -179,7 +179,7 @@
                         Unchecked="OnAggregateToggleChanged" />
                     <Grid
                         Grid.Row="1"
-                        Grid.ColumnSpan="3"
+                        Grid.ColumnSpan="4"
                         Margin="0,8,0,0"
                         Style="{StaticResource BaseGridStyle}">
                         <Grid.ColumnDefinitions>
