@@ -65,9 +65,6 @@
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="IsEnabled" Value="{Binding ViewModel.CanEditTracks, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}" />
             <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource Brush.Background.Hover}" />
-                </Trigger>
                 <Trigger Property="IsEnabled" Value="False">
                     <Setter Property="Cursor" Value="Arrow" />
                     <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Disabled}" />
@@ -90,6 +87,16 @@
             TargetType="customControls:OHsTrackIdentityButton">
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Padding" Value="4" />
+            <Setter Property="Background" Value="Transparent" />
+            <Style.Triggers>
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="False" />
+                        <Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource Self}, Mode=OneWay}" Value="True" />
+                    </MultiDataTrigger.Conditions>
+                    <Setter Property="Background" Value="Transparent" />
+                </MultiDataTrigger>
+            </Style.Triggers>
         </Style>
         <Style
             x:Key="OHsWorkstationTrackTagOverlayStyle"
@@ -100,9 +107,6 @@
             <Setter Property="IsHitTestVisible" Value="False" />
             <Setter Property="CornerRadius" Value="{StaticResource Radius.Node}" />
             <Style.Triggers>
-                <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Grid}, Mode=OneWay}" Value="True">
-                    <Setter Property="Opacity" Value="0.5" />
-                </DataTrigger>
                 <DataTrigger Binding="{Binding IsKeyboardFocusWithin, RelativeSource={RelativeSource AncestorType=customControls:OHsTrackIdentityButton}, Mode=OneWay}" Value="True">
                     <Setter Property="Opacity" Value="0.5" />
                 </DataTrigger>
@@ -131,49 +135,84 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
+        <Style x:Key="OHsWorkstationTrackIdentityContainerStyle" TargetType="Border" BasedOn="{StaticResource BaseBorderStyle}">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="CornerRadius" Value="{StaticResource Radius.Control}" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource Brush.Background.Hover}" />
+                </Trigger>
+                <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource Brush.Background.Hover}" />
+                </Trigger>
+                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style
+            x:Key="OHsWorkstationTrackActionsStyle"
+            BasedOn="{StaticResource BaseBalloonComboBoxStyle}"
+            TargetType="customControls:BalloonComboBox">
+            <Setter Property="ButtonIcon" Value="{StaticResource DotsThreeOutlineVerticalFill}" />
+            <Setter Property="DefaultBackground" Value="{DynamicResource Brush.BalloonButton.Background.Neutral}" />
+            <Setter Property="HoveredBackground" Value="{DynamicResource Brush.BalloonButton.Background.Neutral}" />
+            <Setter Property="PressedBackground" Value="{DynamicResource Brush.BalloonButton.Background.Neutral.Pressed}" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.BalloonButton.Foreground.Neutral}" />
+            <Setter Property="StrokeThickness" Value="0" />
+            <Setter Property="HorizontalAlignment" Value="Right" />
+        </Style>
         <DataTemplate x:Key="OHsWorkstationSampleTrackNameTemplate">
-            <customControls:OHsTrackIdentityButton
-                AutomationProperties.HelpText="{Binding TrackNameDraft, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}"
-                AutomationProperties.Name="Change track name and color"
-                Click="OnTrackIdentityClick"
-                IsEnabled="{Binding ViewModel.CanEditTracks, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}"
-                PreviewMouseLeftButtonDown="OnTrackIdentityPointerDown"
-                Style="{StaticResource OHsWorkstationTrackIdentityActionStyle}"
-                ToolTip="{Binding TrackNameDraft, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}">
+            <Border Style="{StaticResource OHsWorkstationTrackIdentityContainerStyle}">
                 <Grid Style="{StaticResource BaseGridStyle}">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <Grid
-                        Width="10"
-                        Height="24"
-                        VerticalAlignment="Center"
-                        Background="Transparent"
-                        Style="{StaticResource BaseGridStyle}">
-                        <Border Background="{Binding TrackBrush, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}" Style="{StaticResource OHsWorkstationTrackColorSwatchStyle}" />
-                        <Border Style="{StaticResource OHsWorkstationTrackTagOverlayStyle}" />
-                    </Grid>
-                    <TextBlock
-                        x:Name="SampleTrackName"
-                        Grid.Column="1"
-                        Margin="8,0,0,0"
-                        Style="{StaticResource OHsWorkstationSampleTrackNameStyle}"
-                        Text="{Binding TrackNameDraft, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}" />
+                    <customControls:OHsTrackIdentityButton
+                        AutomationProperties.HelpText="{Binding TrackNameDraft, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}"
+                        AutomationProperties.Name="Change track name and color"
+                        Click="OnTrackIdentityClick"
+                        IsEnabled="{Binding ViewModel.CanEditTracks, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}"
+                        PreviewMouseLeftButtonDown="OnTrackIdentityPointerDown"
+                        Style="{StaticResource OHsWorkstationTrackIdentityActionStyle}"
+                        ToolTip="{Binding TrackNameDraft, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}">
+                        <Grid Style="{StaticResource BaseGridStyle}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid
+                                Width="10"
+                                Height="24"
+                                VerticalAlignment="Center"
+                                Background="Transparent"
+                                Style="{StaticResource BaseGridStyle}">
+                                <Border Background="{Binding TrackBrush, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}" Style="{StaticResource OHsWorkstationTrackColorSwatchStyle}" />
+                                <Border Style="{StaticResource OHsWorkstationTrackTagOverlayStyle}" />
+                            </Grid>
+                            <TextBlock
+                                x:Name="SampleTrackName"
+                                Grid.Column="1"
+                                Margin="8,0,0,0"
+                                Style="{StaticResource OHsWorkstationSampleTrackNameStyle}"
+                                Text="{Binding TrackNameDraft, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}" />
+                        </Grid>
+                    </customControls:OHsTrackIdentityButton>
+                    <customControls:BalloonComboBox Grid.Column="1"
+                        AutomationProperties.Name="Track actions"
+                        Loaded="OnActionMenuLoaded"
+                        Style="{StaticResource OHsWorkstationTrackActionsStyle}"
+                        ToolTip="Track actions" />
                 </Grid>
-            </customControls:OHsTrackIdentityButton>
+            </Border>
         </DataTemplate>
         <Style
             x:Key="OHsWorkstationNameHostStyle"
             BasedOn="{StaticResource BaseContentPresenterStyle}"
             TargetType="ContentPresenter">
             <Setter Property="ContentTemplate" Value="{StaticResource OHsWorkstationSampleTrackNameTemplate}" />
-            <Setter Property="Grid.ColumnSpan" Value="5" />
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding IsTrackCollapsed, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}" Value="True">
-                    <Setter Property="Grid.ColumnSpan" Value="5" />
-                </DataTrigger>
-            </Style.Triggers>
+            <Setter Property="Grid.ColumnSpan" Value="7" />
         </Style>
         <Style
             x:Key="OHsWorkstationTrackMetadataComboBoxStyle"
@@ -208,15 +247,6 @@
                     <Setter Property="Opacity" Value="1" />
                 </DataTrigger>
             </Style.Triggers>
-        </Style>
-        <Style
-            x:Key="OHsWorkstationTrackActionsStyle"
-            BasedOn="{StaticResource BaseBalloonComboBoxStyle}"
-            TargetType="customControls:BalloonComboBox">
-            <Setter Property="ButtonIcon" Value="{StaticResource BarsSolid}" />
-            <Setter Property="Grid.Row" Value="0" />
-            <Setter Property="Grid.Column" Value="6" />
-            <Setter Property="HorizontalAlignment" Value="Right" />
         </Style>
         <Style
             x:Key="OHsWorkstationTrackMenuItemStyle"
@@ -446,11 +476,6 @@
                         Style="{StaticResource OHsWorkstationExpandedToggleStyle}"
                         ToolTip="Solo track"
                         Unchecked="OnTrackAuditionChanged" />
-                    <customControls:BalloonComboBox
-                        AutomationProperties.Name="Track actions"
-                        Loaded="OnActionMenuLoaded"
-                        Style="{StaticResource OHsWorkstationTrackActionsStyle}"
-                        ToolTip="Track actions" />
                     <customControls:BalloonButton
                         x:Name="ConfigSampleAction"
                         Grid.Row="2"
