@@ -266,10 +266,10 @@ public class WorkstationPageIntegrationTests
         var tracks = Enumerable.Range(0, 100).Select(i => new Track { Name = i.ToString(), IsTrackMuted = i == 99,
             IsTrackSoloed = i == 99 }).ToList();
         var source = new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(
-            new WorkstationSource("map.osu", "audio.wav", new ProjectData { Tracks = tracks, Offsets = [0], BPMs = [120] })) };
+            new WorkstationSource("map.osu", "audio.wav", new ProjectData { Tracks = tracks, Offsets = [0], BPMs = [120], ControlPoints = [new() { Timestamp = 0 }] })) };
         var saves = new DelayedProjectFileService(); saves.Release();
         var vm = new WorkstationPageVM(source, new Hitbench.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay),
-            new ImmediateUiScheduler(), projectFiles: saves);
+            new ImmediateUiScheduler(), projectFiles: saves, saveDelay: (_, _) => Task.CompletedTask);
         var page = new WorkstationPage(vm); page.SetProjectPath("project.json");
         using var view = new InMemoryView(new Window { Content = page, Width = 600, Height = 600 });
         UiTestPump.Run(page.LoadCompletion);
