@@ -170,13 +170,17 @@ public class OHsExportSearchBudgetTests
     {
         using var audio = DecodedAudio.CopyFrom(Enumerable.Repeat(nonlinear ? .999f : .2f, 4000).ToArray());
         var input = OHsExportRampPlanningTests.Input([new(0, nonlinear ? 80 : 10, IsRamp: true), new(1000, nonlinear ? 100 : 80)], [100, 120]);
-        if (nonlinear) input = new(input.Options, input.Beatmap, input.Voices.Concat(input.Voices).ToArray(), input.RequiredPoints, input.ControlPoints);
         using var budget = new CancellationTokenSource();
         var progress = new InlineProgress<OHsExportProgress>(p => { if (p.Phase.Contains("files")) budget.Cancel(); });
         var plan = OHsExportPlanner.Plan(input, default, progress, _ => audio, budget.Token);
         Assert.That(plan.Circles.Select(c => c.Timestamp), Is.EqualTo(new[] { 100, 120 }));
         Assert.That(plan.Banks.Keys.All(i => i is >= 1 and <= 999), Is.True);
         Assert.That(OHsExportAudio.IsPlaybackEquivalent(input, plan, _ => audio, default), Is.True);
+        if (nonlinear)
+        {
+            var pcm = OHsExportPlaybackOracle.Render(OHsExportBeatmapWriter.Write(input, plan), _ => audio.Retain(), 8000);
+            Assert.That(pcm[6000 * 2], Is.EqualTo(1), "The loud overlapping hits still exercise global clipping.");
+        }
         Assert.That(OHsExportPlanner.Plan(input, default, resolve: _ => audio).Circles.Count, Is.EqualTo(2));
     }
 

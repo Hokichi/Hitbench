@@ -6,7 +6,7 @@ namespace Hitbench.Services;
 internal sealed partial class OHsExportLayoutSearch
 {
     internal static OHsExportPlan FindTimeline((int Time, IReadOnlyList<OHsExportRepresentation> Choices)[] groups,
-        OHsExportTimingPoint[] required, int start, CancellationToken token, IProgress<OHsExportProgress>? progress, Func<OHsExportPlan, CancellationToken, bool>? accept = null, int[]? preferredVolumes = null, CancellationToken budgetCancellation = default)
+        OHsExportTimingPoint[] required, int start, CancellationToken token, IProgress<OHsExportProgress>? progress, Func<OHsExportPlan, CancellationToken, bool>? accept = null, Func<decimal, int>? timingVolume = null, CancellationToken budgetCancellation = default)
     {
         using var deadline = new CancellationTokenSource(SearchBudget);
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(token, deadline.Token, budgetCancellation);
@@ -35,20 +35,19 @@ internal sealed partial class OHsExportLayoutSearch
             var selected = new (int Bank, OHsExportRepresentation Choice)[groups.Length];
             var memo = new Dictionary<string, (int Rows, string Prefix)>(StringComparer.Ordinal);
             string? bestKey = null;
-            var bestDistance = int.MaxValue;
             var hasLayout = false;
             var freeSwitch = Enumerable.Range(0, groups.Length).Select(i => i > 0 && required.Any(p =>
             {
                 token.ThrowIfCancellationRequested();
                 return p.Timestamp > (decimal)groups[i - 1].Time + 5 && p.Timestamp <= (decimal)groups[i].Time + 5;
             })).ToArray();
-            var ordered = new Dictionary<(IReadOnlyList<OHsExportRepresentation> Choices, int Preferred), OHsExportRepresentation[]>();
+            var ordered = new Dictionary<IReadOnlyList<OHsExportRepresentation>, OHsExportRepresentation[]>();
             var choices = groups.Select((g, i) =>
             {
                 token.ThrowIfCancellationRequested();
-                var key = (g.Choices, preferredVolumes?[i] ?? 100);
+                var key = g.Choices;
                 if (!ordered.TryGetValue(key, out var result))
-                    ordered[key] = result = g.Choices.OrderBy(c => c.Slots.Count).ThenBy(c => Math.Abs(c.NativeVolume - key.Item2))
+                    ordered[key] = result = g.Choices.OrderBy(c => c.Slots.Count)
                         .ThenBy(c => SlotKey(c.Slots), StringComparer.Ordinal).ThenBy(ChoiceKey, StringComparer.Ordinal).ToArray();
                 return result;
             }).ToArray();
@@ -59,13 +58,11 @@ internal sealed partial class OHsExportLayoutSearch
             int Bound(int files) => files + requirements.GroupBy(r => r.Slot).Sum(slot => slot.Max(r =>
                 Math.Max(0, r.Count - banks.Count(b => b.TryGetValue(r.Slot, out var asset) && r.Ids.Contains(asset.Id)))));
             var forced = new int[groups.Length + 1];
-            var distanceSuffix = new int[groups.Length + 1];
             for (var n = groups.Length - 1; n >= 0; n--)
             {
                 token.ThrowIfCancellationRequested();
-                distanceSuffix[n] = distanceSuffix[n + 1] + choices[n].Min(c => Math.Abs(c.NativeVolume - (preferredVolumes?[n] ?? 100)));
                 forced[n] = forced[n + 1] + (n > 0 && !freeSwitch[n] && !choices[n - 1].Any(a => choices[n].Any(b =>
-                    a.NativeVolume == b.NativeVolume && Compatible(a.Slots, b.Slots))) ? 1 : 0);
+                    Compatible(a.Slots, b.Slots))) ? 1 : 0);
             }
             var lastProgress = System.Diagnostics.Stopwatch.GetTimestamp();
             void CheckSearch()
@@ -81,7 +78,7 @@ internal sealed partial class OHsExportLayoutSearch
             // Seed a complete candidate before spending the remaining budget on alternatives.
             for (var i = 0; i < groups.Length; i++)
             {
-                var options = Options(i).OrderBy(o => o.Added).ThenBy(o => SwitchCost(i, o.Bank, o.Choice)).ToArray();
+                var options = Options(i).OrderBy(o => o.Added).ThenBy(o => SwitchCost(i, o.Bank)).ToArray();
                 if (options.Length == 0) break;
                 Apply(options[0]); selected[i] = (options[0].Bank, options[0].Choice);
                 if (i == groups.Length - 1) Save();
@@ -102,7 +99,7 @@ internal sealed partial class OHsExportLayoutSearch
                     }
                     stack.Push(frame with { Next = frame.Next + 1 });
                     var option = frame.Options[frame.Next];
-                    var rows = frame.Rows + SwitchCost(frame.Index, option.Bank, option.Choice);
+                    var rows = frame.Rows + SwitchCost(frame.Index, option.Bank);
                     var isNew = option.Bank == banks.Count;
                     var previous = isNew ? null : new Dictionary<OHsExportSlot, OHsExportAsset>(banks[option.Bank]);
                     Apply(option); selected[frame.Index] = (option.Bank, option.Choice);
@@ -122,11 +119,11 @@ internal sealed partial class OHsExportLayoutSearch
             string ChoiceKey(OHsExportRepresentation c)
             {
                 token.ThrowIfCancellationRequested();
-                return c.NativeVolume + ":" + SlotKey(c.Slots);
+                return SlotKey(c.Slots);
             }
             string BanksKey() => string.Join(';', banks.Select(b => string.Join('|', b.OrderBy(p => p.Key.Sampleset).ThenBy(p => p.Key.Type).Select(p => p.Key + ":" + p.Value.Id))));
-            int SwitchCost(int i, int bank, OHsExportRepresentation choice) => i == 0 ? (required.Length == 0 ? 1 : 0)
-                : freeSwitch[i] || selected[i - 1].Bank == bank && selected[i - 1].Choice.NativeVolume == choice.NativeVolume ? 0 : 1;
+            int SwitchCost(int i, int bank) => i == 0 ? (required.Length == 0 ? 1 : 0)
+                : freeSwitch[i] || selected[i - 1].Bank == bank ? 0 : 1;
             IEnumerable<(int Bank, OHsExportRepresentation Choice, int Added)> Options(int i)
             {
                 // With linear audio, delay a paid switch inside an identical run until it is needed.
@@ -148,16 +145,15 @@ internal sealed partial class OHsExportLayoutSearch
             }
             void Save()
             {
-                var plan = OHsExportPlanner.BuildSelectedTimeline(groups, selected, banks.Select(b => (IReadOnlyDictionary<OHsExportSlot, OHsExportAsset>)b).ToArray(), required, start, token);
+                var plan = OHsExportPlanner.BuildSelectedTimeline(groups, selected, banks.Select(b => (IReadOnlyDictionary<OHsExportSlot, OHsExportAsset>)b).ToArray(), required, start, token, timingVolume);
                 hasLayout = true;
-                var distance = selected.Select((s, i) => Math.Abs(s.Choice.NativeVolume - (preferredVolumes?[i] ?? 100))).Sum();
-                var key = distance.ToString("D10", System.Globalization.CultureInfo.InvariantCulture) + ":" + BanksKey() + ":" + string.Join('|', selected.Select(s => s.Bank + ":" + ChoiceKey(s.Choice)));
+                var key = BanksKey() + ":" + string.Join('|', selected.Select(s => s.Bank + ":" + ChoiceKey(s.Choice)));
                 if (best is null || plan.AudioFileCount < best.AudioFileCount || plan.AudioFileCount == best.AudioFileCount &&
                     (plan.AdditionalPointCount < best.AdditionalPointCount || plan.AdditionalPointCount == best.AdditionalPointCount && string.CompareOrdinal(key, bestKey) < 0))
                 {
                     if (accept is not null && !accept(plan, token)) return;
                     CheckSearch();
-                    best = plan; bestKey = key; bestDistance = distance;
+                    best = plan; bestKey = key;
                     progress?.Report(new(35, $"Optimizing sample reuse ({plan.AudioFileCount} files)"));
                 }
             }
@@ -175,7 +171,7 @@ internal sealed partial class OHsExportLayoutSearch
                 }
                 if (stable.Count == 0) return false;
                 var prefix = string.Join(';', stable) + ";";
-                var incumbent = bestKey![(bestKey!.IndexOf(':') + 1)..];
+                var incumbent = bestKey!;
                 return string.CompareOrdinal(prefix, incumbent[..Math.Min(prefix.Length, incumbent.Length)]) > 0;
             }
             bool Visit(ref int i, int files, int rows, out (int Bank, OHsExportRepresentation Choice, int Added)[] options)
@@ -187,20 +183,18 @@ internal sealed partial class OHsExportLayoutSearch
                 if (best is not null && (bound > best.AudioFileCount || bound == best.AudioFileCount && rowBound > best.AdditionalPointCount)) return false;
                 while (accept is null && i > 0 && i < groups.Length && repeated[i] && !freeSwitch[i])
                 { CheckSearch(); selected[i] = selected[i - 1]; i++; }
-                var distance = selected.Take(i).Select((s, n) => Math.Abs(s.Choice.NativeVolume - (preferredVolumes?[n] ?? 100))).Sum();
-                if (best is not null && bound == best.AudioFileCount && rowBound == best.AdditionalPointCount && distance + distanceSuffix[i] > bestDistance) return false;
                 if (best is not null && bound == best.AudioFileCount && rowBound == best.AdditionalPointCount &&
-                    distance + distanceSuffix[i] == bestDistance && ImmutablePrefixIsWorse(i)) return false;
+                    ImmutablePrefixIsWorse(i)) return false;
                 if (i == groups.Length) { Save(); return false; }
                 if (accept is null)
                 {
-                    var key = i + ":" + BanksKey() + ":" + (i == 0 ? "" : selected[0].Choice.NativeVolume + ":" + selected[i - 1].Bank + ":" + selected[i - 1].Choice.NativeVolume);
-                    var prefix = distance.ToString("D10", System.Globalization.CultureInfo.InvariantCulture) + ":" + string.Join('|', selected.Take(i).Select(s => s.Bank + ":" + ChoiceKey(s.Choice)));
+                    var key = i + ":" + BanksKey() + ":" + (i == 0 ? "" : selected[i - 1].Bank.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                    var prefix = string.Join('|', selected.Take(i).Select(s => s.Bank + ":" + ChoiceKey(s.Choice)));
                     if (memo.TryGetValue(key, out var prior) && (prior.Rows < rows || prior.Rows == rows && string.CompareOrdinal(prior.Prefix, prefix) <= 0)) return false;
                     memo[key] = (rows, prefix);
                 }
                 var current = i;
-                options = Options(i).OrderBy(o => o.Added).ThenBy(o => SwitchCost(current, o.Bank, o.Choice)).ToArray();
+                options = Options(i).OrderBy(o => o.Added).ThenBy(o => SwitchCost(current, o.Bank)).ToArray();
                 return options.Length > 0;
             }
         }

@@ -11,63 +11,6 @@ public static class OHsExportRepresentations
         if (!Sets.Contains(slot.Sampleset) || !Enum.IsDefined(slot.Type) || index is < 1 or > 999 || extension is not (".ogg" or ".wav" or ".mp3")) throw new ArgumentException("Invalid export slot filename.");
         return $"{slot.Sampleset.ToLowerInvariant()}-hit{slot.Type.ToString().ToLowerInvariant()}{(index == 1 ? "" : index.ToString(System.Globalization.CultureInfo.InvariantCulture))}{extension}";
     }
-    internal static IReadOnlyList<OHsExportRepresentation> Shape(IReadOnlyList<OHsExportRepresentation> raw,
-        int timestamp, ControlPointVolumeTimeline timeline, Func<string, DecodedAudio> resolve,
-        IDictionary<string, OHsExportAsset> assets, CancellationToken token)
-    {
-        var choices = new List<OHsExportRepresentation>();
-        var unique = new HashSet<string>(StringComparer.Ordinal);
-        var cache = new Dictionary<(string Id, int Native), OHsExportAsset?>();
-        var prepared = new Dictionary<string, (OHsExportSource[] Sources, bool Silent, double Peak)>(StringComparer.Ordinal);
-        foreach (var original in raw)
-            for (var native = 100; native >= 0; native--)
-            {
-                token.ThrowIfCancellationRequested();
-                var slots = new Dictionary<OHsExportSlot, OHsExportAsset>();
-                foreach (var pair in original.Slots)
-                {
-                    if (!cache.TryGetValue((pair.Value.Id, native), out var shaped))
-                    {
-                        if (!prepared.TryGetValue(pair.Value.Id, out var mixture))
-                        {
-                            var audio = pair.Value.Sources.Select(s => resolve(s.FileName)).ToArray();
-                            var sources = pair.Value.Sources.Select((s, i) => new OHsExportSource(s.FileName, s.GainPercent,
-                                OHsExportEnvelope.Create(timeline, ControlPointVolumeTimeline.ToFrame(timestamp), audio[i].FrameCount))).ToArray();
-                            var silent = sources.All(s => s.GainPercent == 0 || s.Envelope!.Segments.All(e => e.StartNumerator.IsZero && e.SlopeNumerator.IsZero));
-                            double peak = 0;
-                            var count = audio.Select(a => a.Samples.Length).DefaultIfEmpty().Max();
-                            token.ThrowIfCancellationRequested();
-                            for (var i = 0; i < count; i++)
-                            {
-                                if ((i & 8191) == 0) token.ThrowIfCancellationRequested();
-                                double sum = 0;
-                                for (var j = 0; j < sources.Length; j++)
-                                    if (i < audio[j].Samples.Length) sum += audio[j].Samples[i] * sources[j].GainPercent / 100d * sources[j].Envelope!.GetGain(i / 2);
-                                peak = Math.Max(peak, Math.Abs(sum));
-                            }
-                            prepared[pair.Value.Id] = mixture = (sources, silent, peak);
-                        }
-                        if (native == 0) shaped = mixture.Silent ? OHsExportAsset.Create([], assets) : null;
-                        else shaped = Equivalent(mixture.Peak, native)
-                            ? OHsExportAsset.CreateShaped(mixture.Sources.Select(s => s with { Envelope = s.Envelope!.Scale(100, native) }), assets)
-                            : null;
-                        cache[(pair.Value.Id, native)] = shaped;
-                    }
-                    if (shaped is null) break;
-                    slots.Add(pair.Key, shaped);
-                }
-                if (slots.Count != original.Slots.Count) continue;
-                var key = native + ":" + string.Join('|', slots.OrderBy(p => p.Key.Sampleset).ThenBy(p => p.Key.Type).Select(p => p.Key + ":" + p.Value.Id));
-                if (unique.Add(key)) choices.Add(new(original.NormalSet, original.AdditionSet, original.HitSound, slots, original.MergeCount, original.MixedComponentCount, native, original.Slots.Values.All(a => Equivalent(prepared[a.Id].Peak, 99))));
-            }
-        return choices.AsReadOnly();
-
-        static bool Equivalent(double peak, int native)
-        {
-            // Clipping error grows with absolute mixture amplitude; one peak covers every PCM sample.
-            return native == 100 || Math.Abs(Math.Clamp(peak, -1, 1) - Math.Clamp(peak * 100 / native, -1, 1) * native / 100) <= 1e-7;
-        }
-    }
     public static IReadOnlyList<OHsExportRepresentation> Build(IReadOnlyList<OHsExportVoice> voices, CancellationToken token, IDictionary<string, OHsExportAsset>? assets = null)
     {
         token.ThrowIfCancellationRequested();

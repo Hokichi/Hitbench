@@ -21,8 +21,8 @@ public class OHsExportTimelineScalingTests
         var clock = System.Diagnostics.Stopwatch.StartNew();
         var plan = OHsExportPlanner.Plan(input, cancel.Token, resolve: _ => audio);
         TestContext.Out.WriteLine($"{count}, clap={clap}: {clock.Elapsed.TotalMilliseconds:F0}ms");
-        Assert.That(plan.AudioFileCount, Is.EqualTo(count * (clap ? 2 : 1)));
-        Assert.That(plan.AdditionalPointCount, Is.EqualTo(count - 1));
+        Assert.That(plan.AudioFileCount, Is.EqualTo(clap ? count * 2 : 1));
+        Assert.That(plan.AdditionalPointCount, Is.EqualTo(clap ? count - 1 : 0));
         Assert.That(OHsExportAudio.IsPlaybackEquivalent(input, plan, _ => audio, cancel.Token), Is.True);
     }
 
@@ -31,17 +31,17 @@ public class OHsExportTimelineScalingTests
     {
         var groups = Enumerable.Range(0, count).Select(i => (Time: 100 + i * 100,
             Choices: (IReadOnlyList<OHsExportRepresentation>)new[] { 49, 51 }.Select(v => new OHsExportRepresentation("Normal", "Normal", 1,
-                new Dictionary<OHsExportSlot, OHsExportAsset> { [new("Normal", SampleType.Normal)] = OHsExportAsset.Create([($"s{i}.wav", 100 - v)]) }, 0, 0, v, true)).ToArray())).ToArray();
+                new Dictionary<OHsExportSlot, OHsExportAsset> { [new("Normal", SampleType.Normal)] = OHsExportAsset.Create([($"s{i}.wav", 100 - v)]) }, 0, 0)).ToArray())).ToArray();
         using var cancel = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         int calls = 0;
         var required = new[] { new OHsExportTimingPoint(0, "500", 4, 1, 1, 100, 0, OHsExportTimingKind.SourceRed) };
-        var plan = OHsExportLayoutSearch.FindTimeline(groups, required, 1, cancel.Token, null, (_, _) => { calls++; return true; }, Enumerable.Repeat(50, count).ToArray());
+        var plan = OHsExportLayoutSearch.FindTimeline(groups, required, 1, cancel.Token, null, (_, _) => { calls++; return true; });
         Assert.That((plan.AudioFileCount, plan.AdditionalPointCount), Is.EqualTo((count, count - 1)));
         Assert.That(calls, Is.LessThanOrEqualTo(2 * count + 1));
         for (var i = 0; i < count; i++)
             Assert.That(plan.Banks[i + 1].Values.Single().Id, Is.EqualTo(groups[i].Choices.Select(c => c.Slots.Values.Single().Id).Order(StringComparer.Ordinal).First()));
         var reversed = groups.Select(g => (g.Time, (IReadOnlyList<OHsExportRepresentation>)g.Choices.Reverse().ToArray())).ToArray();
-        var retry = OHsExportLayoutSearch.FindTimeline(reversed, required, 1, cancel.Token, null, preferredVolumes: Enumerable.Repeat(50, count).ToArray());
+        var retry = OHsExportLayoutSearch.FindTimeline(reversed, required, 1, cancel.Token, null);
         Assert.That(retry.Banks.Values.Select(b => b.Values.Single().Id), Is.EqualTo(plan.Banks.Values.Select(b => b.Values.Single().Id)));
         TestContext.Out.WriteLine($"{count} tied events: {calls} validations");
     }
@@ -64,11 +64,11 @@ public class OHsExportTimelineScalingTests
     public void RejectedCandidateDoesNotBecomeIncumbent()
     {
         var choices = new[] { 50, 100 }.Select(v => new OHsExportRepresentation("Normal", "Normal", 1,
-            new Dictionary<OHsExportSlot, OHsExportAsset> { [new("Normal", SampleType.Normal)] = OHsExportAsset.Create([("a.wav", v)]) }, 0, 0, v)).ToArray();
+            new Dictionary<OHsExportSlot, OHsExportAsset> { [new("Normal", SampleType.Normal)] = OHsExportAsset.Create([("a.wav", v)]) }, 0, 0)).ToArray();
         var calls = 0;
-        var plan = OHsExportLayoutSearch.FindTimeline([(100, choices)], [], 1, default, null, (p, _) => { calls++; return p.TimingPoints[0].Volume != 100; });
+        var plan = OHsExportLayoutSearch.FindTimeline([(100, choices)], [], 1, default, null, (p, _) => { calls++; return p.Banks.Values.Single().Values.Single().Sources.Single().GainPercent == 50; });
         Assert.That(calls, Is.GreaterThan(1));
-        Assert.That(plan.TimingPoints[0].Volume, Is.EqualTo(50));
+        Assert.That(plan.Banks.Values.Single().Values.Single().Sources.Single().GainPercent, Is.EqualTo(50));
     }
 
     [Test]

@@ -8,7 +8,7 @@ namespace Hitbench.Test.Services;
 public class OHsExportRampPlanningTests
 {
     [Test]
-    public void AutomationSilentNormalIsReusedAsRequiredSupport()
+    public void ZeroControlVolumeDoesNotReplaceAudibleNormalWithSilentSupport()
     {
         using var audio = DecodedAudio.CopyFrom(new[] { .2f, .2f });
         var baseline = Input([new(0, 0), new(1000, 100)], []);
@@ -16,7 +16,7 @@ public class OHsExportRampPlanningTests
             [new(0, "a.wav", 100, "Normal", SampleType.Normal, 0), new(1100, "b.wav", 100, "Soft", SampleType.Clap, 1)],
             baseline.RequiredPoints, baseline.ControlPoints);
         var plan = OHsExportPlanner.Plan(input, default, resolve: _ => audio);
-        Assert.That(plan.AudioFileCount, Is.EqualTo(2));
+        Assert.That(plan.AudioFileCount, Is.EqualTo(3));
         Assert.That(plan.Banks.Keys, Is.EqualTo(new[] { 999 }));
     }
     [Test]
@@ -43,21 +43,20 @@ public class OHsExportRampPlanningTests
     }
 
     [Test]
-    public void SilentStartAudibleTailDoesNotSelectZeroNativeFactor()
+    public void RampStartUsesRoundedLookupVolumeWithoutShapingTail()
     {
         using var audio = DecodedAudio.CopyFrom(Enumerable.Repeat(.2f, 88200).ToArray());
         var input = Input([new(0, 0, IsRamp: true), new(1000, 100)], [0]);
         var plan = OHsExportPlanner.Plan(input, default, resolve: _ => audio);
         var hit = OHsExportPlaybackOracle.Resolve(OHsExportBeatmapWriter.Write(input, plan)).Single();
-        Assert.That(hit.Volume, Is.GreaterThan(0));
+        Assert.That(hit.Volume, Is.EqualTo(1));
         using var rendered = OHsExportAudio.Render(plan.Banks.Values.Single().Values.Single(), _ => audio, default);
-        Assert.That(rendered.Samples[44100] * hit.Volume / 100, Is.EqualTo(.1f).Within(1e-6));
+        Assert.That(rendered.Samples[44100] * hit.Volume / 100, Is.EqualTo(.002f).Within(1e-6));
     }
 
     internal static OHsExportInput Input(ControlPointVolumeSnapshot[] controls, int[] times)
     {
-        var map = OHsExportBeatmap.Parse("[TimingPoints]\n0,500,4,1,1,100,1,0\n");
-        return new(new("Hitsounds", 1, ".wav", ".wav", false), map,
-            times.Select(t => new OHsExportVoice(t, "a.wav", 100, "Normal", SampleType.Normal, 0)).ToArray(), map.TimingPoints, controls);
+        return OHsExportControlPointSeparationTests.Input(controls.Select(p => new ControlPoint
+            { Timestamp = p.Timestamp, Volume = p.Volume, IsDisabled = p.IsDisabled, IsRamp = p.IsRamp }).ToArray(), times);
     }
 }

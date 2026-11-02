@@ -55,9 +55,9 @@ public class OHsExportServiceTests
         for (var frame = 0; frame < 44100; frame++)
         {
             double expected = 0;
-            foreach (var (time, value) in new[] { (100, .2), (200, .1), (300, .3), (400, .1), (600, .05), (620, .05) })
+            foreach (var (time, value, gain) in new[] { (100, .2, .4), (200, .1, .4), (300, .3, .4), (400, .1, .4), (600, .05, .33), (620, .05, .35) })
                 if (frame >= time * 441 / 10 && frame < time * 441 / 10 + 4410)
-                    expected += value * (frame < 22050 ? .4 : .2 + .6 * (frame - 22050) / 22050);
+                    expected += value * gain;
             Assert.That(rendered[frame * 2], Is.EqualTo(expected).Within(8d / 32768), $"frame {frame}");
             Assert.That(rendered[frame * 2 + 1], Is.EqualTo(expected).Within(8d / 32768), $"right frame {frame}");
         }
@@ -284,7 +284,10 @@ public class OHsExportServiceTests
         var options = new OHsExportOptions("Hitsounds", 1, ".wav", ".ogg", false, destination);
         var json = ProjectDataSerializer.Serialize(project);
         var input = OHsExportInputFactory.Create(project, OHsExportBeatmap.Parse(sourceText), options, default);
-        var plan = OHsExportPlanner.Plan(input, default);
+        var decoded = values.Keys.ToDictionary(file => file, file => AudioDecoder.Decode(Path.Combine(root, "Samples", file), default));
+        OHsExportPlan plan;
+        try { plan = OHsExportPlanner.Plan(input, default, resolve: file => decoded[file]); }
+        finally { foreach (var audio in decoded.Values) audio.Dispose(); }
         var request = new OHsExportRequest(Guid.NewGuid(), folder.ProjectPath, source, "missing-song.wav", json, options);
         var output = await new OHsExportService().ExportAsync(request, default);
         var actualSampleNames = Directory.GetFiles(output, "*.wav").Select(Path.GetFileName).ToArray();
