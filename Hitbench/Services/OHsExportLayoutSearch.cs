@@ -5,7 +5,7 @@ using Hitbench.Resources.DataModels;
 
 namespace Hitbench.Services;
 
-internal sealed partial class OHsExportLayoutSearch
+internal sealed class OHsExportLayoutSearch
 {
     private const string IndexRangeError = "The selected custom sample index range cannot represent this arrangement.";
     private static readonly string[] Sets = ["Normal", "Soft", "Drum"];
@@ -85,7 +85,7 @@ internal sealed partial class OHsExportLayoutSearch
     {
         token.ThrowIfCancellationRequested();
         if (capacity is < 1 or > 999) throw new ArgumentOutOfRangeException(nameof(capacity));
-        progress?.Report(new(25, "Optimizing sample reuse"));
+        progress?.Report(new(35, "Optimizing sample reuse"));
         token.ThrowIfCancellationRequested();
         var search = new OHsExportLayoutSearch(recipes, capacity, token, progress);
         if (search.minimumBanks > capacity) throw new InvalidOperationException(IndexRangeError);
@@ -125,7 +125,7 @@ internal sealed partial class OHsExportLayoutSearch
 
     private void Report()
     {
-        progress?.Report(new(25, best is null ? "Optimizing sample reuse" : $"Optimizing sample reuse ({bestFiles} files)"));
+        progress?.Report(new(35, best is null ? "Optimizing sample reuse" : $"Optimizing sample reuse ({bestFiles} files)"));
         lastReport = Stopwatch.GetTimestamp();
         token.ThrowIfCancellationRequested();
     }

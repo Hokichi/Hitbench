@@ -32,7 +32,7 @@ public static partial class OHsExportPlanner
         return BuildSelectedTimeline(groups, selected, order.Select(b => layout[b]).ToArray(), required, start, token, timingVolume);
     }
 
-    internal static OHsExportPlan BuildSelectedTimeline(
+    private static OHsExportPlan BuildSelectedTimeline(
         (int Time, IReadOnlyList<OHsExportRepresentation> Choices)[] groups,
         (int Bank, OHsExportRepresentation Choice)[] selected,
         IReadOnlyList<IReadOnlyDictionary<OHsExportSlot, OHsExportAsset>> layout,

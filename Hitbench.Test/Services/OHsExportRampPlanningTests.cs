@@ -15,7 +15,7 @@ public class OHsExportRampPlanningTests
         var input = new OHsExportInput(baseline.Options with { StartingIndex = 999 }, baseline.Beatmap,
             [new(0, "a.wav", 100, "Normal", SampleType.Normal, 0), new(1100, "b.wav", 100, "Soft", SampleType.Clap, 1)],
             baseline.RequiredPoints, baseline.ControlPoints);
-        var plan = OHsExportPlanner.Plan(input, default, resolve: _ => audio);
+        var plan = OHsExportPlanner.Plan(input, default);
         Assert.That(plan.AudioFileCount, Is.EqualTo(3));
         Assert.That(plan.Banks.Keys, Is.EqualTo(new[] { 999 }));
     }
@@ -24,7 +24,7 @@ public class OHsExportRampPlanningTests
     {
         using var audio = DecodedAudio.CopyFrom(new[] { .2f, .2f });
         var input = Input([new(0, 40)], Enumerable.Range(0, 5000).Select(i => i * 20).ToArray());
-        var plan = OHsExportPlanner.Plan(input, default, resolve: _ => audio);
+        var plan = OHsExportPlanner.Plan(input, default);
         Assert.That(plan.Circles, Has.Count.EqualTo(5000));
         Assert.That((plan.AudioFileCount, plan.AdditionalPointCount), Is.EqualTo((1, 0)));
     }
@@ -33,7 +33,7 @@ public class OHsExportRampPlanningTests
     {
         using var audio = DecodedAudio.CopyFrom(Enumerable.Repeat(.2f, 882).ToArray());
         var input = Input([new(0, 10), new(1000, 50)], [100, 1100]);
-        var plan = OHsExportPlanner.Plan(input, default, resolve: _ => audio);
+        var plan = OHsExportPlanner.Plan(input, default);
         Assert.That(plan.AudioFileCount, Is.EqualTo(1));
         var rows = OHsExportPlaybackOracle.Resolve(OHsExportBeatmapWriter.Write(input, plan));
         var native = rows.Select(r => r.Volume).ToArray();
@@ -47,7 +47,7 @@ public class OHsExportRampPlanningTests
     {
         using var audio = DecodedAudio.CopyFrom(Enumerable.Repeat(.2f, 88200).ToArray());
         var input = Input([new(0, 0, IsRamp: true), new(1000, 100)], [0]);
-        var plan = OHsExportPlanner.Plan(input, default, resolve: _ => audio);
+        var plan = OHsExportPlanner.Plan(input, default);
         var hit = OHsExportPlaybackOracle.Resolve(OHsExportBeatmapWriter.Write(input, plan)).Single();
         Assert.That(hit.Volume, Is.EqualTo(1));
         using var rendered = OHsExportAudio.Render(plan.Banks.Values.Single().Values.Single(), _ => audio, default);

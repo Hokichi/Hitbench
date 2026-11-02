@@ -60,7 +60,7 @@ public sealed class OHsExportService(OHsExportPublisher? publisher = null, Func<
                 catch { audio.Dispose(); throw; }
                 progress?.Report(new(10 + 15d * decoded.Count / sourcePaths.Count, "Decoding samples"));
             }
-            var plan = OHsExportPlanner.Plan(input, token, progress, file => decoded[SamplePaths.Resolve(request.ProjectPath, file)]);
+            var plan = OHsExportPlanner.Plan(input, token, progress);
             var generated = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { [difficultyName] = "difficulty" };
             foreach (var bank in plan.Banks)
                 foreach (var slot in bank.Value)

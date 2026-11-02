@@ -86,25 +86,30 @@ public class OHsExportRampTests
     {
         using var audio = DecodedAudio.CopyFrom(Enumerable.Repeat(.2f, 44100).ToArray());
         var input = OHsExportRampPlanningTests.Input([new(100, 10, IsRamp: true), new(1100, 50), new(2100, 10, IsRamp: true), new(3100, 50)], [100, 2100]);
-        Assert.That(OHsExportPlanner.Plan(input, default, resolve: _ => audio).AudioFileCount, Is.EqualTo(1));
+        Assert.That(OHsExportPlanner.Plan(input, default).AudioFileCount, Is.EqualTo(1));
         var altered = new OHsExportInput(input.Options, input.Beatmap, input.Voices, input.RequiredPoints,
             [new(100, 10, IsRamp: true), new(1100, 50), new(2100, 10, IsRamp: true), new(3100, 90)]);
-        Assert.That(OHsExportPlanner.Plan(altered, default, resolve: _ => audio).AudioFileCount, Is.EqualTo(1));
+        Assert.That(OHsExportPlanner.Plan(altered, default).AudioFileCount, Is.EqualTo(1));
     }
 
     [Test]
-    public void UnrepresentableCancellationRejectsBeforePublication()
+    public void OppositeSignTailsRetainPerFileClipping()
     {
         using var positive = DecodedAudio.CopyFrom(Enumerable.Repeat(.8f, 400).ToArray());
         using var negative = DecodedAudio.CopyFrom(Enumerable.Repeat(-.8f, 200).ToArray());
         var input = OHsExportRampPlanningTests.Input([], []);
         input = new(input.Options, input.Beatmap,
             [new(0, "positive.wav", 200, "Normal", SampleType.Normal, 0), new(2, "negative.wav", 100, "Normal", SampleType.Normal, 1)], input.RequiredPoints);
-        Assert.Throws<InvalidDataException>(() => OHsExportPlanner.Plan(input, default, resolve: name => name == "positive.wav" ? positive : negative));
+        var plan = OHsExportPlanner.Plan(input, default);
+        var pcm = OHsExportPlaybackOracle.Render(OHsExportBeatmapWriter.Write(input, plan), name =>
+            OHsExportAudio.Render(plan.Banks.SelectMany(b => b.Value.Select(s => (Name: OHsExportRepresentations.FileName(s.Key, b.Key, ".wav"), Asset: s.Value))).Single(p => p.Name == name).Asset,
+                file => file == "positive.wav" ? positive : negative, default), 250);
+        Assert.That(pcm[90 * 2], Is.EqualTo(.2f).Within(1e-6));
+        Assert.That(pcm[199 * 2], Is.EqualTo(1));
     }
 
     [Test]
-    public async Task RejectedClippingPreservesPublishedFilesAndManifest()
+    public async Task ClippingPublishesAndAllowsRetry()
     {
         using var folder = new TestProjectFolder();
         var root = Path.GetDirectoryName(folder.ProjectPath)!;
@@ -117,15 +122,16 @@ public class OHsExportRampTests
         var request = new OHsExportRequest(Guid.NewGuid(), folder.ProjectPath, map, "unused.wav", ProjectDataSerializer.Serialize(new ProjectData()), new("Hitsounds", 1, ".wav", ".wav", false));
         var exporter = new OHsExportService();
         var output = await exporter.ExportAsync(request, default);
-        var prior = Directory.GetFiles(output).ToDictionary(p => p, File.ReadAllBytes);
-        var manifestPath = Path.Combine(root, ".osuhitsounder-export.json");
-        var manifest = await File.ReadAllBytesAsync(manifestPath);
         var project = new ProjectData { Tracks =
             [new() { Volume = 200, SampleType = SampleType.Normal, Samples = [new() { FileName = "positive.wav", Timestamp = 0 }] },
              new() { SampleType = SampleType.Normal, Samples = [new() { FileName = "negative.wav", Timestamp = 2 }] }] };
-        Assert.ThrowsAsync<InvalidDataException>(() => exporter.ExportAsync(request with { ProjectJson = ProjectDataSerializer.Serialize(project) }, default));
-        foreach (var pair in prior) Assert.That(await File.ReadAllBytesAsync(pair.Key), Is.EqualTo(pair.Value));
-        Assert.That(await File.ReadAllBytesAsync(manifestPath), Is.EqualTo(manifest));
+        var clippingRequest = request with { ProjectJson = ProjectDataSerializer.Serialize(project) };
+        await exporter.ExportAsync(clippingRequest, default);
+        var published = await File.ReadAllTextAsync(Path.Combine(output, "Song [Hitsounds].osu"));
+        var pcm = OHsExportPlaybackOracle.Render(published, name => AudioDecoder.Decode(Path.Combine(output, name), default), 250);
+        Assert.That(pcm[90 * 2], Is.EqualTo(.2f).Within(4d / 32768));
+        await exporter.ExportAsync(clippingRequest, default);
+        Assert.That(await File.ReadAllTextAsync(Path.Combine(output, "Song [Hitsounds].osu")), Is.EqualTo(published));
         Assert.That(Directory.GetDirectories(root, ".Export-staging-*"), Is.Empty);
     }
 }

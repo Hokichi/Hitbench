@@ -6,6 +6,26 @@ namespace Hitbench.Test.Services;
 
 public class OHsExportLayoutSearchTests
 {
+    [TestCase(1), TestCase(2)]
+    public void AlternativeSlotsMatchIndependentFileMinimum(int capacity)
+    {
+        var random = new Random(19);
+        for (var fixture = 0; fixture < 100; fixture++)
+        {
+            var recipes = Enumerable.Range(0, 4).Select(i =>
+                (IReadOnlyList<OHsExportRepresentation>)new[] { SampleType.Normal, SampleType.Clap }.Select(type =>
+                    new OHsExportRepresentation("Normal", "Normal", 1,
+                        type == SampleType.Normal
+                            ? new Dictionary<OHsExportSlot, OHsExportAsset> { [new("Normal", type)] = OHsExportAsset.Create([($"{random.Next(3)}.wav", 100)]) }
+                            : new Dictionary<OHsExportSlot, OHsExportAsset> { [new("Soft", SampleType.Normal)] = OHsExportAsset.Create([]), [new("Normal", type)] = OHsExportAsset.Create([($"{random.Next(3)}.wav", 100)]) }, 0, 0)).ToArray()).ToArray();
+            var maps = recipes.Select(r => (IReadOnlyList<IReadOnlyDictionary<OHsExportSlot, string>>)r.Select(c =>
+                (IReadOnlyDictionary<OHsExportSlot, string>)c.Slots.ToDictionary(p => p.Key, p => p.Value.Id)).ToArray()).ToArray();
+            var minimum = OHsExportBruteForceOracle.MinimumAudioFiles(maps, capacity);
+            if (minimum is null) Assert.Throws<InvalidOperationException>(() => OHsExportLayoutSearch.Find(recipes, capacity, default));
+            else Assert.That(OHsExportLayoutSearch.Find(recipes, capacity, default).Sum(b => b.Count), Is.EqualTo(minimum.Value));
+        }
+    }
+
     private static OHsExportVoice Voice(string file, string set = "Normal", SampleType type = SampleType.Normal, int gain = 100)
         => new(100, file, gain, set, type, 0);
 
@@ -106,7 +126,7 @@ public class OHsExportLayoutSearchTests
         var recipes = Recipes([Voice("a.wav")]);
         Assert.Throws<OperationCanceledException>(() => OHsExportLayoutSearch.Find(recipes, 1, cancellation.Token, progress));
         Assert.That(reports, Is.Not.Empty);
-        Assert.That(reports.All(p => p.Percent == 25 && p.Phase.Contains("Optimiz", StringComparison.OrdinalIgnoreCase)), Is.True);
+        Assert.That(reports.All(p => p.Percent == 35 && p.Phase.Contains("Optimiz", StringComparison.OrdinalIgnoreCase)), Is.True);
         Assert.That(OHsExportLayoutSearch.Find(recipes, 1, default).Sum(b => b.Count), Is.EqualTo(1));
     }
 

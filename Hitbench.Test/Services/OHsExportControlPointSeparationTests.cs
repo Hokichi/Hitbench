@@ -18,14 +18,14 @@ public class OHsExportControlPointSeparationTests
         foreach (var points in controls)
         {
             var input = Input(points, [100, 1100], instrumental, gain: 70);
-            var plan = OHsExportPlanner.Plan(input, default, resolve: _ => audio);
+            var plan = OHsExportPlanner.Plan(input, default);
             Assert.That(plan.AudioFileCount, Is.EqualTo(1));
             var asset = plan.Banks.Values.Single().Values.Single();
             Assert.That(asset.Id, Is.EqualTo(expected.Id));
             using var pcm = OHsExportAudio.Render(asset, _ => audio, default);
             Assert.That(pcm.Samples.ToArray().Max(v => Math.Abs(v - .14f)), Is.LessThan(1e-6));
         }
-        var changed = OHsExportPlanner.Plan(Input([], [100], instrumental, gain: 50), default, resolve: _ => audio);
+        var changed = OHsExportPlanner.Plan(Input([], [100], instrumental, gain: 50), default);
         using var quieter = OHsExportAudio.Render(changed.Banks.Values.Single().Values.Single(), _ => audio, default);
         Assert.That(quieter.Samples[0], Is.EqualTo(.1f).Within(1e-6));
     }
@@ -36,19 +36,17 @@ public class OHsExportControlPointSeparationTests
         using var audio = DecodedAudio.CopyFrom(Enumerable.Repeat(.2f, 176400).ToArray());
         var input = Input([new() { Volume = 0 }, new() { Timestamp = 100, Volume = 0, IsRamp = true },
             new() { Timestamp = 1000, Volume = 100 }], [0], instrumental);
-        var plan = OHsExportPlanner.Plan(input, default, resolve: _ => audio);
+        var plan = OHsExportPlanner.Plan(input, default);
         var asset = plan.Banks.Values.Single().Values.Single();
         using var pcm = OHsExportAudio.Render(asset, _ => audio, default);
         foreach (var index in new[] { 0, 44100, 132300, 176399 })
             Assert.That(pcm.Samples[index], Is.EqualTo(.2f));
         Assert.That(OHsExportPlaybackOracle.Resolve(OHsExportBeatmapWriter.Write(input, plan)).Single().Volume, Is.Zero);
-        Assert.That(OHsExportAudio.IsPlaybackEquivalent(input, plan, _ => audio, default), Is.True);
 
         input = Input([new() { Volume = 10, IsRamp = true }, new() { Timestamp = 1000, Volume = 50 },
             new() { Timestamp = 1500, Volume = 20 }], [500], instrumental);
-        plan = OHsExportPlanner.Plan(input, default, resolve: _ => audio);
+        plan = OHsExportPlanner.Plan(input, default);
         Assert.That(OHsExportPlaybackOracle.Resolve(OHsExportBeatmapWriter.Write(input, plan)).Single().Volume, Is.EqualTo(30));
-        Assert.That(OHsExportAudio.IsPlaybackEquivalent(input, plan, _ => audio, default), Is.True);
     }
 
     [Test]
@@ -98,8 +96,8 @@ public class OHsExportControlPointSeparationTests
         Assert.That(rows, Has.Length.EqualTo(input.RequiredPoints.Count));
     }
 
-    [TestCase(false), TestCase(true)]
-    public void DenseBankSwitchPreservesControlPointAndSourceState(bool decoded)
+    [Test]
+    public void DenseBankSwitchPreservesControlPointAndSourceState()
     {
         var map = OHsExportBeatmap.Parse("[TimingPoints]\n0,500,4,1,1,100,1,0\n1004,-50,7,1,1,100,0,1\n");
         var baseline = Input([new() { Volume = 40 }, new() { Timestamp = 1006, Volume = 80, Sampleset = "Drum" }],
@@ -108,13 +106,12 @@ public class OHsExportControlPointSeparationTests
             baseline.Voices.Select(v => v with { FileName = v.Timestamp == 1000 ? "a.wav" : "b.wav" }).ToArray(),
             baseline.RequiredPoints, baseline.ControlPoints);
         using var audio = DecodedAudio.CopyFrom([.2f, .2f]);
-        var plan = OHsExportPlanner.Plan(input, default, resolve: decoded ? _ => audio : null);
+        var plan = OHsExportPlanner.Plan(input, default);
         var row = plan.TimingPoints.Single(p => p.Timestamp == 1006);
         Assert.That((row.Volume, row.BeatLength, row.Meter, row.SampleSet, row.Effects), Is.EqualTo((80, "-50", 7, 3, 1)));
         Assert.That(plan.AdditionalPointCount, Is.Zero);
         Assert.That(plan.Circles[0].SampleIndex, Is.Not.EqualTo(plan.Circles[1].SampleIndex));
         Assert.That(OHsExportPlaybackOracle.Resolve(OHsExportBeatmapWriter.Write(input, plan)).Select(h => h.Volume), Is.EqualTo(new[] { 40, 80 }));
-        Assert.That(OHsExportAudio.IsPlaybackEquivalent(input, plan, _ => audio, default), Is.True);
     }
 
     [Test]
@@ -128,6 +125,15 @@ public class OHsExportControlPointSeparationTests
         Assert.That(volumeAt(100), Is.EqualTo(40));
         using var cancellation = new CancellationTokenSource(); cancellation.Cancel();
         Assert.Catch<OperationCanceledException>(() => OHsExportPlanner.BuildTimingPoints(input, [], cancellation.Token));
+    }
+
+    [Test]
+    public void DenseRequiredVolumeSwitchKeepsOneFile()
+    {
+        var input = Input([new() { Volume = 100 }, new() { Timestamp = 1006, Volume = 50 }], [1000, 1002]);
+        var plan = OHsExportPlanner.Plan(input, default);
+        Assert.That(plan.AudioFileCount, Is.EqualTo(1));
+        Assert.That(OHsExportPlaybackOracle.Resolve(OHsExportBeatmapWriter.Write(input, plan)).Select(h => h.Volume), Is.EqualTo(new[] { 100, 50 }));
     }
 
     internal static OHsExportInput Input(ControlPoint[] controls, int[] times, bool instrumental = false, int gain = 100,

@@ -4,7 +4,7 @@ namespace Hitbench.Services;
 
 public static partial class OHsExportPlanner
 {
-    public static OHsExportPlan Plan(OHsExportInput input, CancellationToken token, IProgress<OHsExportProgress>? progress = null, Func<string, DecodedAudio>? resolve = null)
+    public static OHsExportPlan Plan(OHsExportInput input, CancellationToken token, IProgress<OHsExportProgress>? progress = null)
     {
         token.ThrowIfCancellationRequested(); input.Options.Validate();
         var assets = new Dictionary<string, OHsExportAsset>(StringComparer.Ordinal);
@@ -33,18 +33,13 @@ public static partial class OHsExportPlanner
                     choices = Array.AsReadOnly(choices.Where(c => c.NormalSet == support).ToArray());
                 recipes[key] = choices;
             }
-            progress?.Report(new((resolve is null ? 10 : 25) + (resolve is null ? 15d : 10d) * ++prepared / timestamps.Count, "Preparing sample combinations"));
+            progress?.Report(new(25 + 10d * ++prepared / timestamps.Count, "Preparing sample combinations"));
             return (Time: g[0].Timestamp, Choices: choices);
         }).ToArray();
-        var required = BuildTimingPoints(input, groups.Select(g => g.Time).ToArray(), token);
         var start = input.Options.StartingIndex;
-        if (groups.Length == 0) return new([], required.Select(p => p with { SampleIndex = start }).ToArray(), new Dictionary<int, IReadOnlyDictionary<OHsExportSlot, OHsExportAsset>>(), 0);
-        var volumeAt = CreateTimingVolumeResolver(input);
-        if (resolve is null)
-            return BuildTimeline(groups, required, start,
-                OHsExportLayoutSearch.Find(recipes.Values.ToArray(), 1000 - start, token, progress), token, volumeAt);
-        var clippingFree = OHsExportAudio.CanMixWithoutClipping(recipes.Values.SelectMany(r => r).SelectMany(c => c.Slots.Values), resolve, token);
-        return OHsExportLayoutSearch.FindTimeline(groups, required, start, token, progress,
-            clippingFree ? null : (plan, searchToken) => OHsExportAudio.IsPlaybackEquivalent(input, plan, resolve, searchToken), volumeAt);
+        if (groups.Length == 0) return new([], BuildTimingPoints(input, [], token).Select(p => p with { SampleIndex = start }).ToArray(), new Dictionary<int, IReadOnlyDictionary<OHsExportSlot, OHsExportAsset>>(), 0);
+        var layout = OHsExportLayoutSearch.Find(recipes.Values.ToArray(), 1000 - start, token, progress);
+        var required = BuildTimingPoints(input, groups.Select(g => g.Time).ToArray(), token);
+        return BuildTimeline(groups, required, start, layout, token, CreateTimingVolumeResolver(input));
     }
 }
