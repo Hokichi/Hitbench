@@ -10,7 +10,6 @@ public sealed class BalloonMenuAdorner : Adorner
     private readonly VisualCollection children;
     private Size extent;
     private double inset;
-    private FlowDirection direction;
 
     public BalloonMenuAdorner(BalloonMenu owner, FrameworkElement child) : base(owner)
     {
@@ -24,13 +23,12 @@ public sealed class BalloonMenuAdorner : Adorner
         AddLogicalChild(child);
     }
 
-    internal void UpdatePresentation(double width, double height, double inset, FlowDirection direction)
+    internal void UpdatePresentation(double width, double height, double inset)
     {
         var next = new Size(width + inset * 2, height + inset * 2);
-        if (extent == next && this.inset == inset && this.direction == direction) return;
+        if (extent == next && this.inset == inset) return;
         extent = next;
         this.inset = inset;
-        this.direction = direction;
         InvalidateMeasure();
     }
 
@@ -43,7 +41,7 @@ public sealed class BalloonMenuAdorner : Adorner
     }
     protected override Size ArrangeOverride(Size finalSize)
     {
-        var x = direction == FlowDirection.LeftToRight ? -inset : AdornedElement.RenderSize.Width - extent.Width + inset;
+        var x = AdornedElement.RenderSize.Width - extent.Width + inset;
         child.Arrange(new Rect(new Point(x, -inset), extent));
         return finalSize;
     }

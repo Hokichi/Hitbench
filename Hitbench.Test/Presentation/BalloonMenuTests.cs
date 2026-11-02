@@ -31,7 +31,7 @@ public sealed class BalloonMenuTests
         finally { BalloonMenuPresentationTests.Unload(menu); }
     }
 
-    [TestCase(FlowDirection.LeftToRight, Key.Right)]
+    [TestCase(FlowDirection.LeftToRight, Key.Left)]
     [TestCase(FlowDirection.RightToLeft, Key.Left)]
     public void ArrowHomeEndRespectFlowAndSkipDisabled(FlowDirection direction, Key next)
     {

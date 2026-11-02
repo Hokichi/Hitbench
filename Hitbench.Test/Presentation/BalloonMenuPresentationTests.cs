@@ -49,7 +49,7 @@ public sealed class BalloonMenuPresentationTests
 
     [TestCase(FlowDirection.LeftToRight)]
     [TestCase(FlowDirection.RightToLeft)]
-    public void RevealKeepsPhysicalAnchor(FlowDirection direction)
+    public void RevealExpandsLeftFromPhysicalAnchor(FlowDirection direction)
     {
         var menu = Create();
         try
@@ -57,8 +57,40 @@ public sealed class BalloonMenuPresentationTests
             menu.FlowDirection = direction;
             var bounds = new Rect(20, 30, 40, 40);
             Assert.That(menu.CalculateRevealBounds(bounds, 160, 0), Is.EqualTo(bounds));
-            Assert.That(menu.CalculateRevealBounds(bounds, 160, .5), Is.EqualTo(new Rect(20, 30, 100, 40)));
-            Assert.That(menu.CalculateRevealBounds(bounds, 160, 1), Is.EqualTo(new Rect(20, 30, 160, 40)));
+            Assert.That(menu.CalculateRevealBounds(bounds, 160, .5), Is.EqualTo(new Rect(-40, 30, 100, 40)));
+            Assert.That(menu.CalculateRevealBounds(bounds, 160, 1), Is.EqualTo(new Rect(-100, 30, 160, 40)));
+        }
+        finally { Unload(menu); }
+    }
+
+    [TestCase(FlowDirection.LeftToRight)]
+    [TestCase(FlowDirection.RightToLeft)]
+    public void PartialLeftRevealOnlyEnablesLeadingOption(FlowDirection direction)
+    {
+        var menu = Create();
+        try
+        {
+            menu.FlowDirection = direction;
+            menu.Animate = true;
+            menu.Enter();
+            menu.ApplyRevealProgress(.1, menu.PresentationGeneration);
+            Assert.That(menu.IsOptionRevealed(menu.Options[0]), Is.True);
+            Assert.That(menu.IsOptionRevealed(menu.Options[^1]), Is.False);
+            Assert.That(menu.Options[^1].IsHitTestVisible, Is.False);
+        }
+        finally { Unload(menu); }
+    }
+
+    [TestCase(FlowDirection.LeftToRight)]
+    [TestCase(FlowDirection.RightToLeft)]
+    public void LeftwardLayoutPreservesOptionContentDirection(FlowDirection ownerDirection)
+    {
+        var menu = Create();
+        try
+        {
+            menu.FlowDirection = ownerDirection;
+            menu.OpenMenu(true);
+            Assert.That(menu.Options.All(option => option.FlowDirection == FlowDirection.LeftToRight), Is.True);
         }
         finally { Unload(menu); }
     }

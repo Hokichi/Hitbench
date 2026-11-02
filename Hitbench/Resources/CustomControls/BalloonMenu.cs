@@ -102,7 +102,7 @@ public class BalloonMenu : BalloonButton
         items.SetResourceReference(ItemsControl.ItemsPanelProperty, "HorizontalStackItemsPanelTemplate");
         items.SetValue(ItemsControl.ItemTemplateProperty, null);
         BindOwner(surface, DataContextProperty, nameof(DataContext));
-        BindOwner(items, FlowDirectionProperty, nameof(FlowDirection));
+        items.FlowDirection = FlowDirection.RightToLeft;
         BindOwner(surface, IsEnabledProperty, nameof(IsEnabled));
         KeyboardNavigationPolicy.BindSuppressionScope(surface, this);
 
@@ -126,7 +126,12 @@ public class BalloonMenu : BalloonButton
         if (items is null || !attached) return;
         if (Options.Distinct().Count() != Options.Count || Options.Any(option => option.MenuOwner is { } owner && owner != this))
             throw new InvalidOperationException("A balloon menu option may belong to only one active menu.");
-        foreach (var option in Options) option.MenuOwner = this;
+        foreach (var option in Options)
+        {
+            option.MenuOwner = this;
+            // Order options right-to-left without mirroring their icon/content coordinates.
+            option.SetCurrentValue(FlowDirectionProperty, FlowDirection.LeftToRight);
+        }
         adoptedOptions = [.. Options];
         items.ItemsSource = Options;
         // Materialize the finite controls even while closed, so their commands,
@@ -207,14 +212,15 @@ public class BalloonMenu : BalloonButton
         surface.Height = anchor.Height;
         surface.Measure(new Size(expandedWidth, anchor.Height));
         surface.Arrange(new Rect(0, 0, expandedWidth, anchor.Height));
-        adorner?.UpdatePresentation(expandedWidth, anchor.Height, outset, FlowDirection);
+        adorner?.UpdatePresentation(expandedWidth, anchor.Height, outset);
         UpdateReveal();
     }
 
-    internal Rect CalculateRevealBounds(Rect launcherBounds, double finalWidth, double progress) =>
-        new(launcherBounds.X, launcherBounds.Y,
-            launcherBounds.Width + (Math.Max(launcherBounds.Width, finalWidth) - launcherBounds.Width) * Math.Clamp(progress, 0, 1),
-            launcherBounds.Height);
+    internal Rect CalculateRevealBounds(Rect launcherBounds, double finalWidth, double progress)
+    {
+        var width = launcherBounds.Width + (Math.Max(launcherBounds.Width, finalWidth) - launcherBounds.Width) * Math.Clamp(progress, 0, 1);
+        return new Rect(launcherBounds.Right - width, launcherBounds.Y, width, launcherBounds.Height);
+    }
 
     internal void ApplyRevealProgress(double progress, long generation)
     {
@@ -229,7 +235,7 @@ public class BalloonMenu : BalloonButton
         var reveal = CalculateRevealBounds(anchor, expandedWidth, RevealProgress);
         if (!option.IsArrangeValid || option.RenderSize.Width <= 0) return false;
         var bounds = option.TransformToVisual(surface).TransformBounds(new Rect(option.RenderSize));
-        var left = FlowDirection == FlowDirection.LeftToRight ? 0 : expandedWidth - reveal.Width;
+        var left = expandedWidth - reveal.Width;
         return bounds.Left >= left && bounds.Right <= left + reveal.Width && bounds.Top >= 0 && bounds.Bottom <= reveal.Height;
     }
 
@@ -239,7 +245,7 @@ public class BalloonMenu : BalloonButton
         {
             var reveal = CalculateRevealBounds(anchor, expandedWidth, RevealProgress);
             // Clip the surface, not its sibling AdornerLayer, so focus is never clipped.
-            surface.Clip = new RectangleGeometry(new Rect(FlowDirection == FlowDirection.LeftToRight ? 0 : expandedWidth - reveal.Width, 0, reveal.Width, reveal.Height));
+            surface.Clip = new RectangleGeometry(new Rect(expandedWidth - reveal.Width, 0, reveal.Width, reveal.Height));
             surface.Opacity = 1;
         }
         if (icon is not null) icon.Opacity = IsExpanded ? 0 : 1;
@@ -351,7 +357,7 @@ public class BalloonMenu : BalloonButton
         var eligible = Options.Where(candidate => candidate.IsEnabled).ToArray();
         if (eligible.Length == 0) { FocusOption(null); return true; }
         var index = Array.IndexOf(eligible, option);
-        var forward = (key == Key.Right) == (FlowDirection == FlowDirection.LeftToRight);
+        var forward = key == Key.Left;
         var next = key == Key.Home ? 0 : key == Key.End ? eligible.Length - 1 :
             (Math.Max(0, index) + (forward ? 1 : -1) + eligible.Length) % eligible.Length;
         FocusOption(eligible[next]);
