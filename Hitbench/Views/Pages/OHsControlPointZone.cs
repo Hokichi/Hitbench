@@ -15,6 +15,9 @@ public sealed class OHsControlPointZone : Button
     private static readonly DependencyPropertyKey FillGeometryPropertyKey = DependencyProperty.RegisterReadOnly(nameof(FillGeometry), typeof(System.Windows.Media.Geometry), typeof(OHsControlPointZone), new PropertyMetadata(null));
     public static readonly DependencyProperty FillGeometryProperty = FillGeometryPropertyKey.DependencyProperty;
     public System.Windows.Media.Geometry? FillGeometry => (System.Windows.Media.Geometry?)GetValue(FillGeometryProperty);
+    private static readonly DependencyPropertyKey OutlineGeometryPropertyKey = DependencyProperty.RegisterReadOnly(nameof(OutlineGeometry), typeof(System.Windows.Media.Geometry), typeof(OHsControlPointZone), new PropertyMetadata(null));
+    public static readonly DependencyProperty OutlineGeometryProperty = OutlineGeometryPropertyKey.DependencyProperty;
+    public System.Windows.Media.Geometry? OutlineGeometry => (System.Windows.Media.Geometry?)GetValue(OutlineGeometryProperty);
     private static readonly DependencyPropertyKey EndLineOffsetPropertyKey = DependencyProperty.RegisterReadOnly(nameof(EndLineOffset), typeof(double), typeof(OHsControlPointZone), new PropertyMetadata(0d));
     public static readonly DependencyProperty EndLineOffsetProperty = EndLineOffsetPropertyKey.DependencyProperty;
     public double EndLineOffset => (double)GetValue(EndLineOffsetProperty);
@@ -77,6 +80,15 @@ public sealed class OHsControlPointZone : Button
             drawing.LineTo(new Point(0, height), true, false);
         }
         shape.Freeze(); SetValue(FillGeometryPropertyKey, shape);
+        var outline = new System.Windows.Media.StreamGeometry();
+        using (var drawing = outline.Open())
+        {
+            drawing.BeginFigure(new Point(0, Y(Curve?.ConnectorFromVolume ?? Curve?.StartVolume ?? volume)), false, false);
+            drawing.LineTo(new Point(0, startY), true, true);
+            drawing.LineTo(new Point(ActualWidth, endY), true, true);
+        }
+        outline.Freeze();
+        SetValue(OutlineGeometryPropertyKey, outline);
         var fill = height - startY;
         SetValue(FillHeightPropertyKey, fill);
         SetValue(VolumeLineOffsetPropertyKey, startY);
