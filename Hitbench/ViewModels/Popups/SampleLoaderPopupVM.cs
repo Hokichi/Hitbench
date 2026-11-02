@@ -200,6 +200,7 @@ public sealed partial class SampleLoaderPopupVM(ISampleBrowserService browser, I
                 {
                     var entry = selectedSamples.FirstOrDefault(x => SamePath(x.FullPath, child.FullPath)) ?? child;
                     entry.IsAlreadyInProject = IsImportedPath(entry.FullPath);
+                    if (!entry.IsDirectory) entry.IsMetadataLoading = true;
                     Entries.Add(entry); Observe(entry);
                 }
                 rangeAnchor = null;
