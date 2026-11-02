@@ -46,7 +46,8 @@ public static partial class OHsExportPlanner
         if (resolve is null)
             return BuildTimeline(groups, required, start,
                 OHsExportLayoutSearch.Find(recipes.Values.ToArray(), 1000 - start, token, progress, budgetCancellation), token, volumeAt);
+        var clippingFree = OHsExportAudio.CanMixWithoutClipping(recipes.Values.SelectMany(r => r).SelectMany(c => c.Slots.Values), resolve, token);
         return OHsExportLayoutSearch.FindTimeline(groups, required, start, token, progress,
-            (plan, searchToken) => OHsExportAudio.IsPlaybackEquivalent(input, plan, resolve, searchToken), volumeAt, budgetCancellation);
+            clippingFree ? null : (plan, searchToken) => OHsExportAudio.IsPlaybackEquivalent(input, plan, resolve, searchToken), volumeAt, budgetCancellation);
     }
 }

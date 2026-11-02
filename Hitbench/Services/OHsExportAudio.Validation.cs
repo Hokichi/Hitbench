@@ -1,3 +1,4 @@
+using System.IO;
 using Hitbench.Core.Enums;
 using Hitbench.Resources.DataModels;
 
@@ -5,6 +6,45 @@ namespace Hitbench.Services;
 
 public static partial class OHsExportAudio
 {
+    internal static bool CanMixWithoutClipping(IEnumerable<OHsExportAsset> assets, Func<string, DecodedAudio> resolve, CancellationToken token)
+    {
+        token.ThrowIfCancellationRequested();
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var asset in assets)
+        {
+            token.ThrowIfCancellationRequested();
+            if (!seen.Add(asset.Id)) continue;
+            var sources = asset.Sources.Select(source =>
+            {
+                token.ThrowIfCancellationRequested();
+                if (source.GainPercent < 0) throw new InvalidDataException("Sample PCM/gain is invalid.");
+                var audio = resolve(source.FileName);
+                token.ThrowIfCancellationRequested();
+                if (audio.Samples.Length == 0) throw new InvalidDataException("Invalid export PCM.");
+                return (Audio: audio, Count: audio.Samples.Length, Gain: source.GainPercent / 100f, ExactGain: source.GainPercent / 100d);
+            }).ToArray();
+            var count = sources.Select(s => s.Count).DefaultIfEmpty().Max();
+            for (var i = 0; i < count; i++)
+            {
+                if ((i & 4095) == 0) token.ThrowIfCancellationRequested();
+                float rendered = 0;
+                double reference = 0;
+                foreach (var source in sources)
+                {
+                    if (i >= source.Count) continue;
+                    var value = source.Audio.Samples[i];
+                    if (!float.IsFinite(value)) throw new InvalidDataException("Sample PCM/gain is invalid.");
+                    rendered += value * source.Gain;
+                    reference += value * source.ExactGain;
+                }
+                if (!float.IsFinite(rendered) || !double.IsFinite(reference)) throw new InvalidDataException("Sample PCM/gain is invalid.");
+                if (Math.Abs(rendered) > 1 || Math.Abs(reference) > 1) return false;
+            }
+        }
+        token.ThrowIfCancellationRequested();
+        return true;
+    }
+
     internal static bool IsPlaybackEquivalent(OHsExportInput input, OHsExportPlan plan, Func<string, DecodedAudio> resolve, CancellationToken token)
     {
         token.ThrowIfCancellationRequested();

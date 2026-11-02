@@ -6,6 +6,40 @@ namespace Hitbench.Test.Services;
 
 public class OHsExportSearchBudgetTests
 {
+    [Test]
+    public void ClippingRecipeStillRequiresExactAcceptance()
+    {
+        using var audio = DecodedAudio.CopyFrom(Enumerable.Repeat(.8f, 4000).ToArray());
+        var baseline = OHsExportRampPlanningTests.Input([], [0, 20]);
+        var input = new OHsExportInput(baseline.Options, baseline.Beatmap,
+            baseline.Voices.Concat(baseline.Voices).ToArray(), baseline.RequiredPoints);
+        using var budget = new CancellationTokenSource();
+        var resolves = 0;
+        Assert.Throws<TimeoutException>(() => OHsExportPlanner.Plan(input, default, null, _ =>
+        {
+            if (++resolves == 2) budget.Cancel();
+            return audio;
+        }, budget.Token));
+        Assert.That(resolves, Is.EqualTo(2));
+        var retry = OHsExportPlanner.Plan(input, default, resolve: _ => audio);
+        Assert.That(retry.Banks.Values.Single().Values.Single().Sources.Single().GainPercent, Is.EqualTo(200));
+        Assert.That(OHsExportAudio.IsPlaybackEquivalent(input, retry, _ => audio, default), Is.True);
+    }
+
+    [Test]
+    public void PlannerCancellationDuringClippingProofUsesCallerToken()
+    {
+        using var audio = DecodedAudio.CopyFrom([.2f, .2f]);
+        using var caller = new CancellationTokenSource();
+        var input = OHsExportRampPlanningTests.Input([], [0]);
+        var error = Assert.Catch<OperationCanceledException>(() => OHsExportPlanner.Plan(input, caller.Token, resolve: _ =>
+        {
+            caller.Cancel(); return audio;
+        }));
+        Assert.That(error.CancellationToken, Is.EqualTo(caller.Token));
+        Assert.That(audio.FrameCount, Is.EqualTo(1));
+    }
+
     private static IReadOnlyList<IReadOnlyList<OHsExportRepresentation>> Recipes() => new[] { "a.wav", "b.wav" }
         .Select(file => OHsExportRepresentations.Build([new(100, file, 100, "Normal", SampleType.Normal, 0)], default)).ToArray();
 
