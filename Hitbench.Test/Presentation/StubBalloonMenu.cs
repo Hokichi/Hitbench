@@ -13,7 +13,7 @@ public sealed class StubBalloonMenu : BalloonMenu
     public List<UIElement> FocusRequests { get; } = [];
     public List<bool> PresentationRequests { get; } = [];
 
-    public StubBalloonMenu() => PresentPopup = (_, open) => PresentationRequests.Add(open);
+    public StubBalloonMenu() => PresentPresentation = (_, open) => PresentationRequests.Add(open);
     protected override Rect CaptureLauncherBounds() => Bounds;
     protected override bool IsPointerWithinMenu() => PointerInside;
     protected override bool ClientAreaAnimationEnabled => Animate;

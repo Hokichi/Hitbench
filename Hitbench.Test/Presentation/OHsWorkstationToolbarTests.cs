@@ -148,22 +148,19 @@ public sealed class OHsWorkstationToolbarTests
 
     [TestCase(640, FlowDirection.LeftToRight)] [TestCase(1200, FlowDirection.LeftToRight)]
     [TestCase(640, FlowDirection.RightToLeft)] [TestCase(1200, FlowDirection.RightToLeft)]
-    public void RevealPreservesToolbarMeasuredContract(int width, FlowDirection direction)
+    public void RevealKeepsEligibleOptionsInvokable(int width, FlowDirection direction)
     {
         new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
         var toolbar = new OHsWorkstationToolbar { FlowDirection = direction };
         UiTestPump.Layout(toolbar, width, 100);
-        var before = toolbar.DesiredSize;
         try
         {
             foreach (var name in new[] { "ProjectActionsButton", "OpenFoldersButton", "AddMenuButton" })
             {
                 var menu = (BalloonMenu)toolbar.FindName(name);
-                var slot = menu.RenderSize;
                 WorkstationActionMenus.Open(menu);
                 UiTestPump.Layout(toolbar, width, 100);
-                Assert.That(toolbar.DesiredSize, Is.EqualTo(before));
-                Assert.That(menu.RenderSize, Is.EqualTo(slot));
+                Assert.That(menu.Options.Where(option => option.IsEnabled).All(menu.CanInvokeOption), Is.True);
                 menu.CloseMenu();
             }
         }

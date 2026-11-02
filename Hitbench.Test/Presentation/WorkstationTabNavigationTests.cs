@@ -198,7 +198,7 @@ public sealed class WorkstationTabNavigationTests
             var popup = (Popup)menu.Template.FindName("PART_StatePopup", menu);
             var items = (ItemsControl)menu.Template.FindName("PART_StateItems", menu);
             Assert.That(popup.IsOpen, Is.False);
-            AssertNoTabStops(popup.Child);
+            AssertNoTabStops(menu.PresentationRoot!);
             Assert.That(option.IsTabStop, Is.False);
             KeyboardNavigationPolicy.SetSuppressTabNavigation(root, false);
             Assert.That(option.IsTabStop, Is.True);
@@ -210,7 +210,7 @@ public sealed class WorkstationTabNavigationTests
             Assert.That(added.IsTabStop, Is.False);
             menu.FlowDirection = FlowDirection.RightToLeft;
             Assert.That(items.FlowDirection, Is.EqualTo(FlowDirection.RightToLeft));
-            AssertNoTabStops(popup.Child);
+            AssertNoTabStops(menu.PresentationRoot!);
             menu.OnApplyTemplate();
             Assert.That(BindingOperations.IsDataBound(items, FrameworkElement.FlowDirectionProperty), Is.False);
         }

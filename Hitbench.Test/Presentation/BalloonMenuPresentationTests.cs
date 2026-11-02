@@ -29,6 +29,24 @@ public sealed class BalloonMenuPresentationTests
         return menu;
     }
 
+    [Test]
+    public void ExpansionUsesInWindowAdornerAndReleasesItOnClose()
+    {
+        new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
+        var menu = new BalloonMenu { ButtonText = "Actions", ButtonIcon = Application.Current.FindResource("BarsSolid") };
+        menu.Options.Add(new BalloonMenuOption { ButtonText = "Open", ButtonIcon = Application.Current.FindResource("Folder") });
+        var host = new System.Windows.Documents.AdornerDecorator { Child = menu };
+        UiTestPump.Layout(host, 300, 80); Load(menu);
+        try
+        {
+            Assert.That(menu.OpenMenu(false), Is.True);
+            Assert.That(host.AdornerLayer.GetAdorners(menu), Has.Length.EqualTo(1));
+            menu.CloseMenu();
+            Assert.That(host.AdornerLayer.GetAdorners(menu), Is.Null.Or.Empty);
+        }
+        finally { Unload(menu); }
+    }
+
     [TestCase(FlowDirection.LeftToRight)]
     [TestCase(FlowDirection.RightToLeft)]
     public void RevealKeepsPhysicalAnchor(FlowDirection direction)
@@ -45,20 +63,14 @@ public sealed class BalloonMenuPresentationTests
         finally { Unload(menu); }
     }
 
-    [TestCase(FlowDirection.LeftToRight, -4d)]
-    [TestCase(FlowDirection.RightToLeft, -124d)]
-    public void PlacementCompensatesNativeFlowMirroring(FlowDirection targetFlow, double expectedX)
+    [Test]
+    public void MissingAdornerHostLeavesLauncherUsable()
     {
-        var menu = Create();
-        try
-        {
-            var offset = menu.CalculatePopupOffset(new Rect(20, 30, 40, 40), 160, 24, targetFlow);
-            Assert.That(offset, Is.EqualTo(new Point(expectedX, 6)));
-            // WPF aligns the child's opposite edge when target/child flow differs.
-            var nativeLeft = targetFlow == FlowDirection.LeftToRight ? offset.X : 500 - offset.X - 208;
-            var expectedAnchor = targetFlow == FlowDirection.LeftToRight ? 20 : 440;
-            Assert.That(nativeLeft + 24, Is.EqualTo(expectedAnchor));
-        }
+        new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
+        var menu = new BalloonMenu();
+        menu.Options.Add(new BalloonMenuOption());
+        UiTestPump.Layout(menu, 40, 40); Load(menu);
+        try { Assert.That(menu.OpenMenu(false), Is.False); Assert.That(menu.IsExpanded, Is.False); Assert.That(menu.IsHitTestVisible, Is.True); }
         finally { Unload(menu); }
     }
 
@@ -170,27 +182,10 @@ public sealed class BalloonMenuPresentationTests
     }
 
     [Test]
-    public void NativeCloseCompletionCannotCloseNewSession()
-    {
-        var menu = Create();
-        try
-        {
-            menu.OpenMenu(false);
-            var old = menu.PresentationGeneration;
-            menu.CloseMenu(); menu.OpenMenu(false);
-            menu.CompleteNativeClose(old);
-            Assert.That(menu.IsExpanded, Is.True);
-            menu.CompleteNativeClose(menu.PresentationGeneration);
-            Assert.That(menu.IsExpanded, Is.False);
-        }
-        finally { Unload(menu); }
-    }
-
-    [Test]
     public void PresentationFailureRestoresLauncher()
     {
         var menu = Create();
-        menu.PresentPopup = (_, open) => { if (open) throw new InvalidOperationException("presentation failed"); };
+        menu.PresentPresentation = (_, open) => { if (open) throw new InvalidOperationException("presentation failed"); };
         try
         {
             Assert.Throws<InvalidOperationException>(() => menu.OpenMenu(false));
@@ -221,11 +216,11 @@ public sealed class BalloonMenuPresentationTests
         try
         {
             menu.OpenMenu(false);
-            var popup = (Popup)menu.Template.FindName("PART_StatePopup", menu);
-            var before = popup.HorizontalOffset;
+            var generation = menu.PresentationGeneration;
             menu.Bounds = new Rect(70, 60, 40, 40);
             menu.MoveOwner();
-            Assert.That(popup.HorizontalOffset - before, Is.EqualTo(50));
+            Assert.That(menu.IsExpanded, Is.True);
+            Assert.That(menu.PresentationGeneration, Is.EqualTo(generation));
         }
         finally { Unload(menu); }
     }

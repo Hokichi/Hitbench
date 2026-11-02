@@ -33,6 +33,8 @@ public class BalloonMenu : BalloonButton
     private FrameworkElement? icon;
     private AdornerDecorator? popupRoot;
     private Grid? popupFrame;
+    private BalloonMenuAdorner? adorner;
+    private AdornerLayer? presentationLayer;
     private Window? ownerWindow;
     private BalloonMenuOption[] adoptedOptions = [];
     private Rect anchor;
@@ -55,6 +57,7 @@ public class BalloonMenu : BalloonButton
     public bool IsExpanded => (bool)GetValue(IsExpandedProperty);
     public event EventHandler? Expanded;
     public event EventHandler? Collapsed;
+    internal FrameworkElement? PresentationRoot => popupFrame;
     internal double RevealProgress => (double)GetValue(RevealProgressProperty);
     internal long PresentationGeneration { get; private set; }
     internal BalloonMenuOption? ActiveOption { get; private set; }
@@ -63,9 +66,8 @@ public class BalloonMenu : BalloonButton
 
     protected override AutomationPeer OnCreateAutomationPeer() => new BalloonMenuAutomationPeer(this);
 
-    // All native presentation goes through this replaceable boundary, including teardown.
-    internal Action<Popup, bool> PresentPopup { get; set; } =
-        static (popup, open) => popup.SetCurrentValue(Popup.IsOpenProperty, open);
+    // Optional substitution for isolated behavior tests; production uses the adorner layer.
+    internal Action<FrameworkElement, bool>? PresentPresentation { get; set; }
 
     public BalloonMenu()
     {
@@ -109,14 +111,7 @@ public class BalloonMenu : BalloonButton
         popupRoot = new AdornerDecorator { Child = surface, Margin = new Thickness(outset), FlowDirection = FlowDirection.LeftToRight };
         popupFrame = new Grid { FlowDirection = FlowDirection.LeftToRight };
         popupFrame.Children.Add(popupRoot);
-        popup.Child = popupFrame;
-        popup.SetCurrentValue(FlowDirectionProperty, FlowDirection.LeftToRight);
-        popup.SetCurrentValue(Popup.HorizontalOffsetProperty, 0d);
-        popup.SetCurrentValue(Popup.VerticalOffsetProperty, 0d);
-        popup.SetCurrentValue(Popup.PlacementProperty, PlacementMode.Relative);
-        // Pointer ownership is handled across both regions, without native capture.
-        popup.SetCurrentValue(Popup.StaysOpenProperty, true);
-        popup.Closed += OnPopupClosed;
+        adorner = new BalloonMenuAdorner(this, popupFrame);
         surface.MouseEnter += OnPopupEnter;
         surface.MouseLeave += OnPopupLeave;
         surface.LostKeyboardFocus += OnMenuLostFocus;
@@ -169,7 +164,10 @@ public class BalloonMenu : BalloonButton
             if (!wasOpen)
             {
                 AttachPresentationEvents();
-                PresentPopup(popup, true);
+                presentationLayer = AdornerLayer.GetAdornerLayer(this);
+                if (PresentPresentation is null && presentationLayer is null) { CloseMenu(); return false; }
+                if (presentationLayer is not null && adorner is not null) presentationLayer.Add(adorner);
+                PresentPresentation?.Invoke(surface!, true);
             }
             AnimateReveal(1);
             if (keyboardOwned)
@@ -198,17 +196,18 @@ public class BalloonMenu : BalloonButton
         RefreshPopupBackground();
         anchor = CaptureLauncherBounds();
         if (anchor.IsEmpty || anchor.Width <= 0 || anchor.Height <= 0) { CloseMenu(); return; }
+        foreach (var option in Options) option.SetCurrentValue(ButtonSizeProperty, anchor.Height);
+        if (Options.Count > 0) Options[0].SetCurrentValue(WidthProperty, anchor.Width);
         items.Measure(new Size(double.PositiveInfinity, anchor.Height));
         expandedWidth = Math.Max(anchor.Width, items.DesiredSize.Width + surface.BorderThickness.Left + surface.BorderThickness.Right);
+        surface.CornerRadius = new CornerRadius(CornerRadius);
+        surface.BorderThickness = new Thickness(StrokeThickness);
+        surface.BorderBrush = StrokeBrush;
         surface.Width = expandedWidth;
         surface.Height = anchor.Height;
-        var target = PresentationSource.FromVisual(this)?.RootVisual as UIElement ?? this;
-        popup.SetCurrentValue(Popup.PlacementTargetProperty, target);
-        var offset = CalculatePopupOffset(anchor, expandedWidth, outset, (FlowDirection)target.GetValue(FlowDirectionProperty));
-        popup.SetCurrentValue(Popup.HorizontalOffsetProperty, offset.X);
-        popup.SetCurrentValue(Popup.VerticalOffsetProperty, offset.Y);
         surface.Measure(new Size(expandedWidth, anchor.Height));
         surface.Arrange(new Rect(0, 0, expandedWidth, anchor.Height));
+        adorner?.UpdatePresentation(expandedWidth, anchor.Height, outset, FlowDirection);
         UpdateReveal();
     }
 
@@ -216,10 +215,6 @@ public class BalloonMenu : BalloonButton
         new(launcherBounds.X, launcherBounds.Y,
             launcherBounds.Width + (Math.Max(launcherBounds.Width, finalWidth) - launcherBounds.Width) * Math.Clamp(progress, 0, 1),
             launcherBounds.Height);
-
-    internal Point CalculatePopupOffset(Rect launcherBounds, double finalWidth, double clearance, FlowDirection targetFlow) =>
-        new(targetFlow == FlowDirection.LeftToRight ? launcherBounds.Left - clearance : launcherBounds.Right - finalWidth - clearance,
-            launcherBounds.Top - clearance);
 
     internal void ApplyRevealProgress(double progress, long generation)
     {
@@ -234,7 +229,8 @@ public class BalloonMenu : BalloonButton
         var reveal = CalculateRevealBounds(anchor, expandedWidth, RevealProgress);
         if (!option.IsArrangeValid || option.RenderSize.Width <= 0) return false;
         var bounds = option.TransformToVisual(surface).TransformBounds(new Rect(option.RenderSize));
-        return bounds.Left >= 0 && bounds.Right <= reveal.Width && bounds.Top >= 0 && bounds.Bottom <= reveal.Height;
+        var left = FlowDirection == FlowDirection.LeftToRight ? 0 : expandedWidth - reveal.Width;
+        return bounds.Left >= left && bounds.Right <= left + reveal.Width && bounds.Top >= 0 && bounds.Bottom <= reveal.Height;
     }
 
     private void UpdateReveal()
@@ -243,10 +239,11 @@ public class BalloonMenu : BalloonButton
         {
             var reveal = CalculateRevealBounds(anchor, expandedWidth, RevealProgress);
             // Clip the surface, not its sibling AdornerLayer, so focus is never clipped.
-            surface.Clip = new RectangleGeometry(new Rect(0, 0, reveal.Width, reveal.Height));
-            surface.Opacity = RevealProgress;
+            surface.Clip = new RectangleGeometry(new Rect(FlowDirection == FlowDirection.LeftToRight ? 0 : expandedWidth - reveal.Width, 0, reveal.Width, reveal.Height));
+            surface.Opacity = 1;
         }
-        if (icon is not null) icon.Opacity = 1 - RevealProgress;
+        if (icon is not null) icon.Opacity = IsExpanded ? 0 : 1;
+        if (GetTemplateChild("PART_Shape") is UIElement shape) shape.Opacity = IsExpanded ? 0 : 1;
         foreach (var option in adoptedOptions) option.CoerceValue(IsHitTestVisibleProperty);
     }
 
@@ -315,10 +312,14 @@ public class BalloonMenu : BalloonButton
         keyboardOwned = false;
         ApplyRevealProgress(0, PresentationGeneration);
         DetachPresentationEvents();
+        if (adorner is not null) presentationLayer?.Remove(adorner);
+        presentationLayer = null;
         var wasOpen = IsExpanded;
         SetExpanded(false);
+        if (icon is not null) icon.Opacity = 1;
+        if (GetTemplateChild("PART_Shape") is UIElement shape) shape.Opacity = 1;
         ActiveOption = null;
-        if (wasOpen && popup is not null) PresentPopup(popup, false);
+        if (wasOpen && popup is not null) PresentPresentation?.Invoke(surface!, false);
         if (wasOpen && restoreFocus && attached && IsEnabled) FocusMenuElement(this);
     }
 
@@ -395,17 +396,6 @@ public class BalloonMenu : BalloonButton
         });
     }
 
-    private void OnPopupClosed(object? sender, EventArgs e)
-    {
-        if (!ReferenceEquals(sender, popup) || !IsExpanded) return;
-        var generation = PresentationGeneration;
-        Dispatcher.BeginInvoke(DispatcherPriority.Input, () => CompleteNativeClose(generation));
-    }
-
-    internal void CompleteNativeClose(long generation)
-    {
-        if (generation == PresentationGeneration && IsExpanded && popup?.IsOpen != true) CloseMenu();
-    }
     private void AttachPresentationEvents()
     {
         ownerWindow = Window.GetWindow(this);
@@ -437,21 +427,13 @@ public class BalloonMenu : BalloonButton
     }
 
     private void OnOwnerMoved(object? sender, EventArgs e) => RefreshPlacement();
-    private void OnOwnerWindowMoved(object? sender, EventArgs e) { RefreshPlacement(); RefreshNativePlacement(); }
+    private void OnOwnerWindowMoved(object? sender, EventArgs e) { RefreshPlacement(); }
     protected override void OnDpiChanged(DpiScale oldDpi, DpiScale newDpi)
     {
         base.OnDpiChanged(oldDpi, newDpi);
         RefreshPlacement();
-        RefreshNativePlacement();
     }
 
-    private void RefreshNativePlacement()
-    {
-        if (!IsExpanded || popup is null) return;
-        // Relative placement treats both forms as the target origin. Changing
-        // the equivalent rectangle asks WPF to reposition after native movement.
-        popup.SetCurrentValue(Popup.PlacementRectangleProperty, popup.PlacementRectangle.IsEmpty ? new Rect() : Rect.Empty);
-    }
     private void OnOwnerDeactivated(object? sender, EventArgs e) => CloseMenu();
     private void OnSourceChanged(object sender, SourceChangedEventArgs e) => CloseMenu();
     private void OnSystemSettingsChanged(object? sender, PropertyChangedEventArgs e)
@@ -471,8 +453,12 @@ public class BalloonMenu : BalloonButton
         }
     }
 
-    private void RefreshPopupBackground() => surface?.SetResourceReference(Border.BackgroundProperty,
-        SystemParameters.HighContrast ? SystemColors.WindowBrushKey : "Brush.Background.Popup");
+    private void RefreshPopupBackground()
+    {
+        if (surface is null) return;
+        if (SystemParameters.HighContrast) surface.SetResourceReference(Border.BackgroundProperty, SystemColors.WindowBrushKey);
+        else surface.Background = HoveredBackground ?? DefaultBackground;
+    }
 
     private void OnPreProcessInput(object sender, PreProcessInputEventArgs e)
     {
@@ -484,7 +470,6 @@ public class BalloonMenu : BalloonButton
     {
         CloseMenu();
         ReleaseOptions();
-        if (popup is not null) popup.Closed -= OnPopupClosed;
         if (surface is not null)
         {
             surface.MouseEnter -= OnPopupEnter;
@@ -504,6 +489,7 @@ public class BalloonMenu : BalloonButton
         popup = null;
         popupRoot = null;
         popupFrame = null;
+        adorner = null;
         surface = null;
         items = null;
         icon = null;

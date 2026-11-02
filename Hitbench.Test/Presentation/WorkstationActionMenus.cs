@@ -17,7 +17,7 @@ internal static class WorkstationActionMenus
 
     internal static void Prepare(BalloonMenu menu)
     {
-        menu.PresentPopup = (_, _) => { };
+        menu.PresentPresentation = (_, _) => { };
         menu.ApplyTemplate();
         menu.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
         UiTestPump.Run(menu.Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle).Task);

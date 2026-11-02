@@ -51,10 +51,10 @@
         </Style.Triggers>
     </Style>
     <Thickness x:Key="BalloonMenuPopupInset">0</Thickness>
-    <Style x:Key="BalloonMenuPopupSurfaceStyle" TargetType="Border" BasedOn="{StaticResource OHsPopupSurfaceBorderStyle}">
+    <Style x:Key="BalloonMenuPopupSurfaceStyle" TargetType="Border" BasedOn="{StaticResource BaseBorderStyle}">
         <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Default}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="Effect" Value="{DynamicResource Effect.Shadow.Menu}" />
+
         <Style.Triggers>
             <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
                 <Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
