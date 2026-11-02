@@ -7,6 +7,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Media.Effects;
 using System.Windows.Threading;
 using Hitbench.Resources.Helpers;
+using Hitbench.Services.Ui;
 
 namespace Hitbench.Resources.CustomControls;
 
@@ -202,82 +203,35 @@ public class BasePopup : Window, IPopupHost
         if (e.PreviousSize.Width <= 0 || e.PreviousSize.Height <= 0)
             return;
 
-        RecenterAnimated(e.PreviousSize, e.NewSize);
+        RecenterForSizeChange(e.PreviousSize, e.NewSize, PopupPlacement.GetOwnerBounds(this), SystemParameters.ClientAreaAnimation);
     }
 
-    private void RecenterAnimated(Size previousSize, Size newSize)
+    internal void RecenterForSizeChange(Size previousSize, Size newSize, Rect? ownerBounds, bool animate)
     {
-        var (targetLeft, targetTop) = TryGetOwnerCenteredPosition() ??
-                                      GetCenterPreservingPosition(previousSize, newSize);
+        var visible = new Point(Left, Top);
+        var committed = new Point((double)GetAnimationBaseValue(LeftProperty), (double)GetAnimationBaseValue(TopProperty));
+        var target = PopupPlacement.GetCenteredPosition(ownerBounds, committed, previousSize, newSize);
 
-        if (double.IsNaN(targetLeft) || double.IsInfinity(targetLeft) ||
-            double.IsNaN(targetTop) || double.IsInfinity(targetTop))
+        if (!double.IsFinite(target.X) || !double.IsFinite(target.Y))
             return;
-
-        var leftDelta = Math.Abs(targetLeft - Left);
-        var topDelta = Math.Abs(targetTop - Top);
-
-        if (leftDelta < RecenterDeltaTolerance && topDelta < RecenterDeltaTolerance)
-            return;
-
-        if (!SystemParameters.ClientAreaAnimation)
-        {
-            BeginAnimation(LeftProperty, null);
-            BeginAnimation(TopProperty, null);
-            Left = targetLeft;
-            Top = targetTop;
-            return;
-        }
 
         var easing = new CubicEase { EasingMode = EasingMode.EaseOut };
         var duration = TimeSpan.FromMilliseconds(PopupAnimDuration);
+        Move(LeftProperty, visible.X, target.X);
+        Move(TopProperty, visible.Y, target.Y);
 
-        if (leftDelta >= RecenterDeltaTolerance)
+        void Move(DependencyProperty property, double from, double to)
         {
-            BeginAnimation(LeftProperty, new DoubleAnimation
-            {
-                To = targetLeft,
-                Duration = duration,
-                EasingFunction = easing
-            });
+            BeginAnimation(property, null);
+            // Commit the destination so interrupted animations and later resizes share one stable center.
+            SetValue(property, to);
+            if (animate && double.IsFinite(from) && Math.Abs(to - from) >= RecenterDeltaTolerance)
+                BeginAnimation(property, new DoubleAnimation(from, to, duration)
+                {
+                    EasingFunction = easing,
+                    FillBehavior = FillBehavior.Stop
+                });
         }
-
-        if (topDelta >= RecenterDeltaTolerance)
-        {
-            BeginAnimation(TopProperty, new DoubleAnimation
-            {
-                To = targetTop,
-                Duration = duration,
-                EasingFunction = easing
-            });
-        }
-    }
-
-    private (double Left, double Top)? TryGetOwnerCenteredPosition()
-    {
-        if (Owner is null || !Owner.IsVisible)
-            return null;
-
-        var ownerWidth = Owner.ActualWidth > 0 ? Owner.ActualWidth : Owner.Width;
-        var ownerHeight = Owner.ActualHeight > 0 ? Owner.ActualHeight : Owner.Height;
-
-        if (double.IsNaN(ownerWidth) || double.IsNaN(ownerHeight) ||
-            double.IsInfinity(ownerWidth) || double.IsInfinity(ownerHeight))
-            return null;
-
-        var centeredLeft = Owner.Left + ((ownerWidth - ActualWidth) / 2d);
-        var centeredTop = Owner.Top + ((ownerHeight - ActualHeight) / 2d);
-        return (centeredLeft, centeredTop);
-    }
-
-    private (double Left, double Top) GetCenterPreservingPosition(Size previousSize, Size newSize)
-    {
-        var deltaWidth = newSize.Width - previousSize.Width;
-        var deltaHeight = newSize.Height - previousSize.Height;
-
-        var centeredLeft = Left - (deltaWidth / 2d);
-        var centeredTop = Top - (deltaHeight / 2d);
-        return (centeredLeft, centeredTop);
     }
 
     protected override void OnClosing(CancelEventArgs e)
