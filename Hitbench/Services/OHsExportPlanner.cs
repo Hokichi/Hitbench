@@ -5,9 +5,6 @@ namespace Hitbench.Services;
 public static partial class OHsExportPlanner
 {
     public static OHsExportPlan Plan(OHsExportInput input, CancellationToken token, IProgress<OHsExportProgress>? progress = null, Func<string, DecodedAudio>? resolve = null)
-        => Plan(input, token, progress, resolve, default);
-
-    internal static OHsExportPlan Plan(OHsExportInput input, CancellationToken token, IProgress<OHsExportProgress>? progress, Func<string, DecodedAudio>? resolve, CancellationToken budgetCancellation)
     {
         token.ThrowIfCancellationRequested(); input.Options.Validate();
         var assets = new Dictionary<string, OHsExportAsset>(StringComparer.Ordinal);
@@ -45,9 +42,9 @@ public static partial class OHsExportPlanner
         var volumeAt = CreateTimingVolumeResolver(input);
         if (resolve is null)
             return BuildTimeline(groups, required, start,
-                OHsExportLayoutSearch.Find(recipes.Values.ToArray(), 1000 - start, token, progress, budgetCancellation), token, volumeAt);
+                OHsExportLayoutSearch.Find(recipes.Values.ToArray(), 1000 - start, token, progress), token, volumeAt);
         var clippingFree = OHsExportAudio.CanMixWithoutClipping(recipes.Values.SelectMany(r => r).SelectMany(c => c.Slots.Values), resolve, token);
         return OHsExportLayoutSearch.FindTimeline(groups, required, start, token, progress,
-            clippingFree ? null : (plan, searchToken) => OHsExportAudio.IsPlaybackEquivalent(input, plan, resolve, searchToken), volumeAt, budgetCancellation);
+            clippingFree ? null : (plan, searchToken) => OHsExportAudio.IsPlaybackEquivalent(input, plan, resolve, searchToken), volumeAt);
     }
 }

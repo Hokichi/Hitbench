@@ -8,8 +8,6 @@ namespace Hitbench.Services;
 internal sealed partial class OHsExportLayoutSearch
 {
     private const string IndexRangeError = "The selected custom sample index range cannot represent this arrangement.";
-    // Budget exhaustion returns the best complete candidate, without proving the global minimum.
-    private static readonly TimeSpan SearchBudget = TimeSpan.FromSeconds(5);
     private static readonly string[] Sets = ["Normal", "Soft", "Drum"];
     private readonly int[][][] recipes;
     private readonly OHsExportAsset[] assets;
@@ -83,32 +81,18 @@ internal sealed partial class OHsExportLayoutSearch
 
     internal static IReadOnlyList<IReadOnlyDictionary<OHsExportSlot, OHsExportAsset>> Find(
         IReadOnlyList<IReadOnlyList<OHsExportRepresentation>> recipes, int capacity, CancellationToken token,
-        IProgress<OHsExportProgress>? progress = null, CancellationToken budgetCancellation = default)
+        IProgress<OHsExportProgress>? progress = null)
     {
-        using var deadline = new CancellationTokenSource(SearchBudget);
-        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(token, deadline.Token, budgetCancellation);
-        var searchToken = cancellation.Token;
         token.ThrowIfCancellationRequested();
         if (capacity is < 1 or > 999) throw new ArgumentOutOfRangeException(nameof(capacity));
-        OHsExportLayoutSearch? search = null;
-        try
-        {
-            searchToken.ThrowIfCancellationRequested();
-            progress?.Report(new(25, "Optimizing sample reuse"));
-            searchToken.ThrowIfCancellationRequested();
-            search = new OHsExportLayoutSearch(recipes, capacity, searchToken, progress);
-            if (search.minimumBanks > capacity) throw new InvalidOperationException(IndexRangeError);
-            search.Seed();
-            search.Search();
-            searchToken.ThrowIfCancellationRequested();
-        }
-        catch (OperationCanceledException error) when (error.CancellationToken == searchToken && searchToken.IsCancellationRequested)
-        {
-            token.ThrowIfCancellationRequested();
-            if (!deadline.IsCancellationRequested && !budgetCancellation.IsCancellationRequested) throw;
-            if (search?.best is null) throw new TimeoutException();
-        }
-        var result = search!.Snapshot();
+        progress?.Report(new(25, "Optimizing sample reuse"));
+        token.ThrowIfCancellationRequested();
+        var search = new OHsExportLayoutSearch(recipes, capacity, token, progress);
+        if (search.minimumBanks > capacity) throw new InvalidOperationException(IndexRangeError);
+        search.Seed();
+        search.Search();
+        token.ThrowIfCancellationRequested();
+        var result = search.Snapshot();
         token.ThrowIfCancellationRequested();
         return result;
     }

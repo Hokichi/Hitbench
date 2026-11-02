@@ -6,26 +6,13 @@ namespace Hitbench.Services;
 internal sealed partial class OHsExportLayoutSearch
 {
     internal static OHsExportPlan FindTimeline((int Time, IReadOnlyList<OHsExportRepresentation> Choices)[] groups,
-        OHsExportTimingPoint[] required, int start, CancellationToken token, IProgress<OHsExportProgress>? progress, Func<OHsExportPlan, CancellationToken, bool>? accept = null, Func<decimal, int>? timingVolume = null, CancellationToken budgetCancellation = default)
+        OHsExportTimingPoint[] required, int start, CancellationToken token, IProgress<OHsExportProgress>? progress, Func<OHsExportPlan, CancellationToken, bool>? accept = null, Func<decimal, int>? timingVolume = null)
     {
-        using var deadline = new CancellationTokenSource(SearchBudget);
-        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(token, deadline.Token, budgetCancellation);
-        var callerToken = token;
-        token = cancellation.Token;
         OHsExportPlan? best = null;
-        callerToken.ThrowIfCancellationRequested();
-        try
-        {
-            var result = Search();
-            callerToken.ThrowIfCancellationRequested();
-            return result;
-        }
-        catch (OperationCanceledException error) when (error.CancellationToken == token && token.IsCancellationRequested)
-        {
-            callerToken.ThrowIfCancellationRequested();
-            if (!deadline.IsCancellationRequested && !budgetCancellation.IsCancellationRequested) throw;
-            return best ?? throw new TimeoutException();
-        }
+        token.ThrowIfCancellationRequested();
+        var result = Search();
+        token.ThrowIfCancellationRequested();
+        return result;
 
         OHsExportPlan Search()
         {
@@ -75,7 +62,7 @@ internal sealed partial class OHsExportLayoutSearch
                     token.ThrowIfCancellationRequested();
                 }
             }
-            // Seed a complete candidate before spending the remaining budget on alternatives.
+            // Seed a complete candidate before exploring alternatives.
             for (var i = 0; i < groups.Length; i++)
             {
                 var options = Options(i).OrderBy(o => o.Added).ThenBy(o => SwitchCost(i, o.Bank)).ToArray();

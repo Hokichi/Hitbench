@@ -10,7 +10,7 @@ namespace Hitbench.Test.Services;
 public class OHsExportServiceTests
 {
     [Test]
-    public async Task SearchDeadlinePublishesAcceptedRampPlanAndAllowsRetry()
+    public async Task SlowSearchCompletesOptimizationPublishesRampPlanAndAllowsRetry()
     {
         using var folder = new TestProjectFolder();
         var root = Path.GetDirectoryName(folder.ProjectPath)!;
@@ -40,7 +40,7 @@ public class OHsExportServiceTests
             phases.Add(p.Phase);
             if (waited || !p.Phase.Contains("files")) return;
             waited = true;
-            Thread.Sleep(5200); // Exercise the production five-second timer once, after an accepted seed.
+            Thread.Sleep(5200); // Optimization must continue after a slow accepted seed.
         });
         var request = new OHsExportRequest(Guid.NewGuid(), folder.ProjectPath, source, "unused.wav", json, new("Hitsounds", 1, ".wav", ".wav", false));
         var exporter = new OHsExportService();
@@ -50,7 +50,9 @@ public class OHsExportServiceTests
         var text = await File.ReadAllTextAsync(Path.Combine(output, "Song [Hitsounds].osu"));
         var hits = OHsExportPlaybackOracle.Resolve(text);
         Assert.That(hits.Select(h => h.Timestamp).Distinct(), Is.EqualTo(new[] { 100, 200, 300, 400, 600, 620 }));
-        Assert.That(hits.Where(h => h.Type == "normal").Take(4).Select(h => h.Index), Is.EqualTo(new[] { 1, 1, 2, 1 }), "Deadline must retain the accepted seed rather than resume exact optimization.");
+        var indices = hits.Where(h => h.Type == "normal").Take(4).Select(h => h.Index).ToArray();
+        Assert.That(indices.Zip(indices.Skip(1)).Count(pair => pair.First != pair.Second), Is.EqualTo(1),
+            "Completed optimization must improve the seed's two bank transitions.");
         var rendered = OHsExportPlaybackOracle.Render(text, name => AudioDecoder.Decode(Path.Combine(output, name), default), 44100);
         for (var frame = 0; frame < 44100; frame++)
         {
@@ -64,6 +66,7 @@ public class OHsExportServiceTests
         foreach (var original in originals) Assert.That(await File.ReadAllBytesAsync(original.Key), Is.EqualTo(original.Value));
         Assert.That(Directory.GetDirectories(root, ".Export-staging-*"), Is.Empty);
         await exporter.ExportAsync(request, default);
+        Assert.That(await File.ReadAllTextAsync(Path.Combine(output, "Song [Hitsounds].osu")), Is.EqualTo(text));
         Assert.That(Directory.GetDirectories(root, ".Export-staging-*"), Is.Empty);
     }
 
