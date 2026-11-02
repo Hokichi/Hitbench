@@ -10,8 +10,12 @@ internal sealed partial class OHsExportLayoutSearch
     private static List<(OHsExportSlot Slot, HashSet<string> Ids, int Count)> BuildTimelineRequirements(
         OHsExportRepresentation[][] choices, CancellationToken token)
     {
-        var maps = choices.Distinct().Select(group => group[0].Slots.Keys.Where(k => group.All(c => c.Slots.ContainsKey(k)))
-            .ToDictionary(k => k, k => group.Select(c => c.Slots[k].Id).ToHashSet(StringComparer.Ordinal))).ToArray();
+        var maps = choices.Distinct().Select(group =>
+        {
+            token.ThrowIfCancellationRequested();
+            return group[0].Slots.Keys.Where(k => group.All(c => { token.ThrowIfCancellationRequested(); return c.Slots.ContainsKey(k); }))
+                .ToDictionary(k => k, k => group.Select(c => c.Slots[k].Id).ToHashSet(StringComparer.Ordinal));
+        }).ToArray();
         var result = new List<(OHsExportSlot Slot, HashSet<string> Ids, int Count)>();
         foreach (var slot in maps.SelectMany(m => m.Keys).Distinct())
         {
@@ -21,7 +25,7 @@ internal sealed partial class OHsExportLayoutSearch
             foreach (var map in eligible)
             {
                 token.ThrowIfCancellationRequested();
-                if (clique.All(other => map.Any(p => other.TryGetValue(p.Key, out var ids) && !ids.Overlaps(p.Value)))) clique.Add(map);
+                if (clique.All(other => { token.ThrowIfCancellationRequested(); return map.Any(p => other.TryGetValue(p.Key, out var ids) && !ids.Overlaps(p.Value)); })) clique.Add(map);
             }
             result.Add((slot, clique.SelectMany(m => m[slot]).ToHashSet(StringComparer.Ordinal), clique.Count));
             // Disjoint alternative sets also give a bound independent of other mandatory slots.

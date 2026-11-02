@@ -29,61 +29,83 @@ public sealed class BalloonMenuPresentationTests
         return menu;
     }
 
+    [TestCase(FlowDirection.LeftToRight, 40, 8, 1)]
+    [TestCase(FlowDirection.RightToLeft, 40, 8, 1)]
+    [TestCase(FlowDirection.LeftToRight, 64, 12, 1.5)]
+    [TestCase(FlowDirection.RightToLeft, 64, 12, 1.5)]
+    public void PopupPlacementKeepsSurfaceOverLauncher(FlowDirection direction, double cell, double inset, double scale)
+    {
+        var menu = Create();
+        try
+        {
+            menu.FlowDirection = direction;
+            var popup = (Popup)menu.Template.FindName("PART_MenuPopup", menu);
+            Assert.That(popup.Placement, Is.EqualTo(PlacementMode.Custom));
+            Assert.That(popup.CustomPopupPlacementCallback, Is.Not.Null);
+            var popupSize = new Size((cell + 2 * inset) * scale, (4 * cell + 2 * inset) * scale);
+            var placement = popup.CustomPopupPlacementCallback!(popupSize,
+                new Size(cell * scale, cell * scale), new Point(-inset, -inset)).Single();
+            // WPF transforms the target's offset before adding the callback's point.
+            var anchorX = direction == FlowDirection.LeftToRight ? -inset * scale : (cell + inset) * scale;
+            Assert.That(anchorX + placement.Point.X + inset * scale, Is.EqualTo(0).Within(.001));
+            Assert.That(-inset * scale + placement.Point.Y + inset * scale, Is.EqualTo(0).Within(.001));
+        }
+        finally { Unload(menu); }
+    }
+
     [Test]
-    public void ExpansionUsesInWindowAdornerAndReleasesItOnClose()
+    public void PopupRequestsOpenAndCloseWithoutNativePresentation()
+    {
+        var menu = Create();
+        try
+        {
+            menu.OpenMenu(true); menu.OpenMenu(true);
+            Assert.That(menu.PopupRequests, Is.EqualTo(new[] { true }));
+            var popup = (Popup)menu.Template.FindName("PART_MenuPopup", menu);
+            Assert.That(popup.IsOpen, Is.False);
+            menu.NotifyPopupClosed();
+            Assert.That(menu.IsExpanded, Is.False);
+            Assert.That(menu.PopupRequests, Is.EqualTo(new[] { true, false }));
+            menu.OpenMenu(true);
+            menu.Options[0].RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent));
+            menu.CloseMenu(); menu.OpenMenu(true);
+            Assert.That(menu.CanInvokeOption(menu.Options[0]), Is.True);
+        }
+        finally { Unload(menu); }
+    }
+
+    [Test]
+    public void PopupOpeningFailureRestoresLauncher()
+    {
+        var menu = Create();
+        menu.PresentPopup = open => { if (open) throw new InvalidOperationException("native failure"); };
+        try
+        {
+            Assert.Throws<InvalidOperationException>(() => menu.OpenMenu(true));
+            Assert.That(menu.IsExpanded, Is.False);
+            Assert.That(menu.Options.Any(menu.CanInvokeOption), Is.False);
+            Assert.That(menu.IsHitTestVisible, Is.True);
+        }
+        finally { Unload(menu); }
+    }
+
+    [Test]
+    public void ExpansionWorksWithoutAdornerHost()
     {
         new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
-        var menu = new BalloonMenu { ButtonText = "Actions", ButtonIcon = Application.Current.FindResource("BarsSolid") };
+        var menu = new BalloonMenu { PresentPopup = _ => { }, ButtonText = "Actions", ButtonIcon = Application.Current.FindResource("BarsSolid") };
         menu.Options.Add(new BalloonMenuOption { ButtonText = "Open", ButtonIcon = Application.Current.FindResource("Folder") });
-        var host = new System.Windows.Documents.AdornerDecorator { Child = menu };
+        var host = new Grid { Resources = Application.Current.Resources };
+        host.Children.Add(menu);
         UiTestPump.Layout(host, 300, 80); Load(menu);
-        try
-        {
-            Assert.That(menu.OpenMenu(false), Is.True);
-            Assert.That(host.AdornerLayer.GetAdorners(menu), Has.Length.EqualTo(1));
-            menu.CloseMenu();
-            Assert.That(host.AdornerLayer.GetAdorners(menu), Is.Null.Or.Empty);
-        }
+        try { Assert.That(menu.OpenMenu(true), Is.True); Assert.That(menu.CanInvokeOption(menu.Options[0]), Is.True); }
         finally { Unload(menu); }
     }
 
-    [TestCase(FlowDirection.LeftToRight)]
-    [TestCase(FlowDirection.RightToLeft)]
-    public void RevealExpandsLeftFromPhysicalAnchor(FlowDirection direction)
-    {
-        var menu = Create();
-        try
-        {
-            menu.FlowDirection = direction;
-            var bounds = new Rect(20, 30, 40, 40);
-            Assert.That(menu.CalculateRevealBounds(bounds, 160, 0), Is.EqualTo(bounds));
-            Assert.That(menu.CalculateRevealBounds(bounds, 160, .5), Is.EqualTo(new Rect(-40, 30, 100, 40)));
-            Assert.That(menu.CalculateRevealBounds(bounds, 160, 1), Is.EqualTo(new Rect(-100, 30, 160, 40)));
-        }
-        finally { Unload(menu); }
-    }
 
     [TestCase(FlowDirection.LeftToRight)]
     [TestCase(FlowDirection.RightToLeft)]
-    public void PartialLeftRevealOnlyEnablesLeadingOption(FlowDirection direction)
-    {
-        var menu = Create();
-        try
-        {
-            menu.FlowDirection = direction;
-            menu.Animate = true;
-            menu.Enter();
-            menu.ApplyRevealProgress(.1, menu.PresentationGeneration);
-            Assert.That(menu.IsOptionRevealed(menu.Options[0]), Is.True);
-            Assert.That(menu.IsOptionRevealed(menu.Options[^1]), Is.False);
-            Assert.That(menu.Options[^1].IsHitTestVisible, Is.False);
-        }
-        finally { Unload(menu); }
-    }
-
-    [TestCase(FlowDirection.LeftToRight)]
-    [TestCase(FlowDirection.RightToLeft)]
-    public void LeftwardLayoutPreservesOptionContentDirection(FlowDirection ownerDirection)
+    public void VerticalLayoutPreservesOptionContentDirection(FlowDirection ownerDirection)
     {
         var menu = Create();
         try
@@ -95,19 +117,9 @@ public sealed class BalloonMenuPresentationTests
         finally { Unload(menu); }
     }
 
-    [Test]
-    public void MissingAdornerHostLeavesLauncherUsable()
-    {
-        new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
-        var menu = new BalloonMenu();
-        menu.Options.Add(new BalloonMenuOption());
-        UiTestPump.Layout(menu, 40, 40); Load(menu);
-        try { Assert.That(menu.OpenMenu(false), Is.False); Assert.That(menu.IsExpanded, Is.False); Assert.That(menu.IsHitTestVisible, Is.True); }
-        finally { Unload(menu); }
-    }
 
     [Test]
-    public void HoverOwnershipCrossesPopupSeam()
+    public void HoverOwnershipIncludesOptionRegion()
     {
         var menu = Create();
         try
@@ -146,6 +158,89 @@ public sealed class BalloonMenuPresentationTests
         finally { Unload(menu); }
     }
 
+    [TestCase(0)] [TestCase(.1)] [TestCase(.5)] [TestCase(.9)]
+    public void OptionsStayInactiveUntilRevealCompletes(double progress)
+    {
+        var menu = Create();
+        try
+        {
+            menu.Animate = true; menu.Enter();
+            menu.ApplyRevealProgress(progress, menu.PresentationGeneration);
+            foreach (var option in menu.Options)
+            {
+                Assert.That(option.IsHitTestVisible, Is.False);
+                Assert.That(option.Focusable, Is.False);
+                Assert.That(menu.CanInvokeOption(option), Is.False);
+            }
+            menu.ApplyRevealProgress(1, menu.PresentationGeneration);
+            Assert.That(menu.Options.All(menu.CanInvokeOption), Is.True);
+        }
+        finally { Unload(menu); }
+    }
+
+    [TestCase(1, 48)] [TestCase(4, 48)] [TestCase(4, 32)]
+    public void PopupLeavesFollowingControlInPlace(int count, double size)
+    {
+        var menu = Create(count); var parent = (Grid)menu.Parent;
+        parent.Children.Remove(menu);
+        var host = new StackPanel { Orientation = Orientation.Vertical };
+        menu.ButtonSize = size;
+        var next = new Border { Height = 50 };
+        host.Children.Add(menu); host.Children.Add(next);
+        UiTestPump.Layout(host, 800, 800);
+        var before = next.TranslatePoint(new Point(), host).Y;
+        menu.OpenMenu(true); UiTestPump.Layout(host, 800, 800);
+        Assert.That(next.TranslatePoint(new Point(), host).Y - before, Is.EqualTo(0).Within(.01));
+        menu.CloseMenu(); UiTestPump.Layout(host, 800, 800);
+        Assert.That(next.TranslatePoint(new Point(), host).Y, Is.EqualTo(before).Within(.01));
+        Unload(menu);
+    }
+
+    [Test]
+    public void RepeatedOpenDoesNotRestartActiveTransition()
+    {
+        var menu = Create();
+        try
+        {
+            menu.Animate = true; menu.Enter(); menu.ApplyRevealProgress(.5, menu.PresentationGeneration);
+            var generation = menu.PresentationGeneration;
+            menu.Enter();
+            Assert.That(menu.PresentationGeneration, Is.EqualTo(generation));
+            Assert.That(menu.RevealProgress, Is.EqualTo(.5));
+        }
+        finally { Unload(menu); }
+    }
+
+    [Test]
+    public void ClosingRejectsQueuedOptionInvocation()
+    {
+        var menu = Create(); var calls = 0;
+        try
+        {
+            menu.Options[0].Command = new CommunityToolkit.Mvvm.Input.RelayCommand(() => calls++);
+            menu.OpenMenu(true);
+            var peer = System.Windows.Automation.Peers.UIElementAutomationPeer.CreatePeerForElement(menu.Options[0])!;
+            ((System.Windows.Automation.Provider.IInvokeProvider)peer.GetPattern(System.Windows.Automation.Peers.PatternInterface.Invoke)).Invoke();
+            menu.CloseMenu(); Drain();
+            Assert.That(calls, Is.Zero);
+        }
+        finally { Unload(menu); }
+    }
+
+    [TestCase(true)] [TestCase(false)]
+    public void ExpandedHandlerCanDisableOrCloseOwnerWithoutLeavingActiveOptions(bool disable)
+    {
+        var menu = Create();
+        menu.Expanded += (_, _) => { if (disable) menu.IsEnabled = false; else menu.CloseMenu(); };
+        try
+        {
+            Assert.That(menu.OpenMenu(true), Is.False);
+            Assert.That(menu.IsExpanded, Is.False);
+            Assert.That(menu.Options.Any(menu.CanInvokeOption), Is.False);
+        }
+        finally { Unload(menu); }
+    }
+
     [Test]
     public void InvisibleOptionsCannotReceiveInput()
     {
@@ -158,7 +253,7 @@ public sealed class BalloonMenuPresentationTests
             Assert.That(menu.IsOptionRevealed(menu.Options[0]), Is.False, "The collapsed endpoint has no visible options.");
             Assert.That(menu.IsOptionRevealed(menu.Options[^1]), Is.False);
             Assert.That(menu.Options[^1].IsHitTestVisible, Is.False);
-            Assert.That(menu.IsHitTestVisible, Is.False);
+            Assert.That(menu.IsHitTestVisible, Is.True);
             menu.ApplyRevealProgress(1, menu.PresentationGeneration);
             Assert.That(menu.IsOptionRevealed(menu.Options[^1]), Is.True);
             Assert.That(menu.Options[^1].IsHitTestVisible, Is.True);
@@ -217,7 +312,7 @@ public sealed class BalloonMenuPresentationTests
     public void PresentationFailureRestoresLauncher()
     {
         var menu = Create();
-        menu.PresentPresentation = (_, open) => { if (open) throw new InvalidOperationException("presentation failed"); };
+        menu.Expanded += (_, _) => throw new InvalidOperationException("presentation failed");
         try
         {
             Assert.Throws<InvalidOperationException>(() => menu.OpenMenu(false));
@@ -227,32 +322,19 @@ public sealed class BalloonMenuPresentationTests
         finally { Unload(menu); }
     }
 
-    [Test]
-    public void MissingRenderedBoundsDoNotPresentNativePopup()
-    {
-        var menu = Create();
-        try
-        {
-            menu.Bounds = Rect.Empty;
-            Assert.That(menu.OpenMenu(false), Is.False);
-            Assert.That(menu.IsExpanded, Is.False);
-            Assert.That(menu.PresentationRequests, Is.Empty);
-        }
-        finally { Unload(menu); }
-    }
 
     [Test]
-    public void OwnerMovementRecomputesPlacement()
+    public void OwnerResizeDismissesActiveSession()
     {
         var menu = Create();
         try
         {
             menu.OpenMenu(false);
             var generation = menu.PresentationGeneration;
-            menu.Bounds = new Rect(70, 60, 40, 40);
-            menu.MoveOwner();
-            Assert.That(menu.IsExpanded, Is.True);
-            Assert.That(menu.PresentationGeneration, Is.EqualTo(generation));
+            menu.ButtonSize = 48;
+            UiTestPump.Layout((FrameworkElement)menu.Parent, 400, 100);
+            Assert.That(menu.IsExpanded, Is.False);
+            Assert.That(menu.PresentationGeneration, Is.GreaterThan(generation));
         }
         finally { Unload(menu); }
     }

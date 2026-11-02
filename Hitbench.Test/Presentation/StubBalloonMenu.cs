@@ -6,22 +6,20 @@ namespace Hitbench.Test.Presentation;
 
 public sealed class StubBalloonMenu : BalloonMenu
 {
-    public Rect Bounds { get; set; } = new(20, 30, 40, 40);
     public bool PointerInside { get; set; }
     public bool Animate { get; set; }
     public bool FocusInside { get; set; } = true;
     public List<UIElement> FocusRequests { get; } = [];
     public List<bool> PresentationRequests { get; } = [];
 
-    public StubBalloonMenu() => PresentPresentation = (_, open) => PresentationRequests.Add(open);
-    protected override Rect CaptureLauncherBounds() => Bounds;
+    public List<bool> PopupRequests { get; } = [];
+    public StubBalloonMenu() { PresentPopup = PopupRequests.Add; Expanded += (_, _) => PresentationRequests.Add(true); Collapsed += (_, _) => PresentationRequests.Add(false); }
     protected override bool IsPointerWithinMenu() => PointerInside;
     protected override bool ClientAreaAnimationEnabled => Animate;
     protected override bool OwnsKeyboardFocus => FocusInside;
     protected override bool FocusMenuElement(UIElement target) { FocusRequests.Add(target); FocusInside = true; return true; }
     public void Enter() => OnMouseEnter(new MouseEventArgs(Mouse.PrimaryDevice, 0));
     public void Leave() => OnMouseLeave(new MouseEventArgs(Mouse.PrimaryDevice, 0));
-    public void MoveOwner() => RefreshPlacement();
     public void PressKey(Key key, UIElement? target = null)
     {
         using var source = new InMemoryPresentationSource();

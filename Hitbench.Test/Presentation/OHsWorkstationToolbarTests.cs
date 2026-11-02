@@ -9,6 +9,58 @@ namespace Hitbench.Test.Presentation;
 [Apartment(ApartmentState.STA), NonParallelizable]
 public sealed class OHsWorkstationToolbarTests
 {
+    [TestCase(640, FlowDirection.LeftToRight)] [TestCase(1200, FlowDirection.RightToLeft)]
+    public void PopupKeepsToolbarAndContentInPlace(double width, FlowDirection direction)
+    {
+        new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
+        var toolbar = new OHsWorkstationToolbar { FlowDirection = direction };
+        var menu = (BalloonMenu)toolbar.FindName("ProjectActionsButton");
+        menu.ButtonSize = 44;
+        var host = new Grid();
+        host.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        host.RowDefinitions.Add(new RowDefinition());
+        var content = new Border(); Grid.SetRow(content, 1);
+        host.Children.Add(toolbar); host.Children.Add(content);
+        WorkstationActionMenus.Prepare(menu);
+        UiTestPump.Layout(host, width, 800);
+        var before = content.TranslatePoint(new Point(), host).Y;
+        var menuWidth = menu.ActualWidth;
+        var headerHeight = toolbar.ActualHeight;
+        try
+        {
+            WorkstationActionMenus.Open(menu); UiTestPump.Layout(host, width, 800);
+            var growth = toolbar.ActualHeight - headerHeight;
+            Assert.That(growth, Is.EqualTo(0).Within(.01));
+            Assert.That(content.TranslatePoint(new Point(), host).Y - before,
+                Is.EqualTo(growth).Within(.01));
+            Assert.That(menu.ActualWidth, Is.EqualTo(menuWidth).Within(.01));
+            menu.CloseMenu(); UiTestPump.Layout(host, width, 800);
+            Assert.That(content.TranslatePoint(new Point(), host).Y, Is.EqualTo(before).Within(.01));
+        }
+        finally { toolbar.CloseMenus(); }
+    }
+
+    [TestCase(640)] [TestCase(1200)]
+    public void MenuExpansionKeepsToolbarRowDecisionStable(double width)
+    {
+        new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
+        var toolbar = new OHsWorkstationToolbar();
+        UiTestPump.Layout(toolbar, width, 200);
+        var wrapped = toolbar.AreActionsWrapped;
+        try
+        {
+            foreach (var name in new[] { "ProjectActionsButton", "OpenFoldersButton", "AddMenuButton" })
+            {
+                var menu = (BalloonMenu)toolbar.FindName(name);
+                WorkstationActionMenus.Open(menu); UiTestPump.Layout(toolbar, width, 200);
+                Assert.That(toolbar.AreActionsWrapped, Is.EqualTo(wrapped));
+                menu.CloseMenu(); UiTestPump.Layout(toolbar, width, 200);
+                Assert.That(toolbar.AreActionsWrapped, Is.EqualTo(wrapped));
+            }
+        }
+        finally { toolbar.CloseMenus(); }
+    }
+
     [Test]
     public void OpenFolderOptionsDispatchExistingCommandsWithoutLaunchingProcesses()
     {
@@ -50,7 +102,7 @@ public sealed class OHsWorkstationToolbarTests
             {
                 var trigger = (BalloonMenu)page.Toolbar.FindName(name);
                 WorkstationActionMenus.Prepare(trigger);
-                UiControlContract.AssertTemplate(trigger, "BalloonControlTemplate");
+                UiControlContract.AssertTemplate(trigger, "BalloonMenuControlTemplate");
                 Assert.That(trigger.Style.BasedOn, Is.SameAs(trigger.FindResource(name == "OpenFoldersButton" ?
                     "OHsWorkstationProjectActionsStyle" : "BaseBalloonMenuStyle")));
                 foreach (var option in trigger.Options)

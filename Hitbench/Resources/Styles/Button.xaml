@@ -284,6 +284,95 @@
             </Popup>
         </Grid>
     </ControlTemplate>
+    <Thickness x:Key="BalloonMenuPopupOutset" Left="{StaticResource Space.2}" Top="{StaticResource Space.2}"
+               Right="{StaticResource Space.2}" Bottom="{StaticResource Space.2}" />
+    <ControlTemplate
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Key="BalloonMenuControlTemplate"
+        TargetType="{x:Type c:BalloonMenu}">
+        <Grid Background="Transparent"
+              Width="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}"
+              Height="{Binding ActualHeight, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}">
+            <Canvas IsHitTestVisible="False">
+                <!--  Shared action shape.  -->
+                <Path
+                    x:Name="PART_Shape"
+                    Fill="{TemplateBinding DefaultBackground}"
+                    Stroke="{TemplateBinding StrokeBrush}"
+                    StrokeThickness="{TemplateBinding StrokeThickness}" />
+                <!--  Compatibility shape part; the control owns pressed fill.  -->
+                <Path
+                    x:Name="PART_Overlay"
+                    Fill="{DynamicResource Brush.Overlay}"
+                    IsHitTestVisible="False"
+                    Opacity="0" />
+            </Canvas>
+            <!--  Content area follows the public padding contract.  -->
+            <Grid
+                x:Name="PART_ContentHost"
+                Margin="{TemplateBinding Padding}"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                ClipToBounds="True">
+                <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition x:Name="PART_ContentGap" Width="0" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid
+                        x:Name="PART_IconSlot"
+                        Width="{TemplateBinding IconSize}"
+                        VerticalAlignment="Center">
+                        <Path
+                            x:Name="PART_Icon"
+                            Width="{TemplateBinding IconSize}"
+                            Height="{TemplateBinding IconSize}"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            IsHitTestVisible="False"
+                            Stretch="Uniform">
+                            <Path.Fill>
+                                <TemplateBinding Property="Foreground" />
+                            </Path.Fill>
+                        </Path>
+                    </Grid>
+                    <Border
+                        x:Name="PART_TextContent"
+                        Grid.Column="2"
+                        ClipToBounds="True">
+                        <TextBlock
+                            x:Name="PART_ButtonText"
+                            VerticalAlignment="Center"
+                            FontFamily="{TemplateBinding FontFamily}"
+                            FontWeight="{TemplateBinding FontWeight}"
+                            FontStyle="{TemplateBinding FontStyle}"
+                            FontSize="{TemplateBinding FontSize}"
+                            Text="{TemplateBinding ButtonText}"
+                            TextTrimming="CharacterEllipsis"
+                            TextWrapping="NoWrap">
+                            <TextBlock.Foreground>
+                                <TemplateBinding Property="Foreground" />
+                            </TextBlock.Foreground>
+                        </TextBlock>
+                    </Border>
+                </Grid>
+            </Grid>
+            <Popup x:Name="PART_MenuPopup" Placement="Custom" AllowsTransparency="True"
+                   PlacementTarget="{Binding RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}"
+                   PopupAnimation="None" StaysOpen="True" HorizontalOffset="-8" VerticalOffset="-8">
+                <Grid Background="Transparent">
+                    <AdornerDecorator Margin="{StaticResource BalloonMenuPopupOutset}">
+                        <Border x:Name="PART_MenuSurface" Style="{StaticResource BaseBorderStyle}" ClipToBounds="True">
+                            <ItemsControl x:Name="PART_MenuItems" VerticalAlignment="Top"
+                                          Style="{StaticResource BalloonMenuItemsStyle}" />
+                        </Border>
+                    </AdornerDecorator>
+                </Grid>
+            </Popup>
+        </Grid>
+    </ControlTemplate>
     <Style
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         BasedOn="{StaticResource BaseBalloonControlStyle}"
@@ -651,6 +740,9 @@
         </Style.Triggers>
     </Style>
     <Style x:Key="BaseBalloonMenuStyle" TargetType="c:BalloonMenu" BasedOn="{StaticResource OHsBalloonNavInfoActionStyle}">
+        <Setter Property="Height" Value="{Binding ButtonSize, RelativeSource={RelativeSource Self}, Mode=OneWay}" />
+        <Setter Property="VerticalAlignment" Value="Top" />
+        <Setter Property="Template" Value="{StaticResource BalloonMenuControlTemplate}" />
         <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
         <Setter Property="ToolTip" Value="{Binding ButtonText, RelativeSource={RelativeSource Self}, Mode=OneWay}" />
         <Setter Property="AutomationProperties.Name" Value="{Binding ButtonText, RelativeSource={RelativeSource Self}, Mode=OneWay}" />

@@ -54,7 +54,7 @@ public sealed class SharedUiResourceIntegrationTests
         Assert.That(group.SelectedValue, Is.EqualTo("first"));
     }
     [TestCase(typeof(BalloonButton), "BalloonControlTemplate")]
-    [TestCase(typeof(BalloonMenu), "BalloonControlTemplate")]
+    [TestCase(typeof(BalloonMenu), "BalloonMenuControlTemplate")]
     [TestCase(typeof(BalloonMenuOption), "BalloonControlTemplate")]
     [TestCase(typeof(BalloonCheckBox), "BalloonControlTemplate")]
     [TestCase(typeof(NumericUpDown), "NumericUpDownTemplate")]

@@ -31,8 +31,8 @@ public sealed class BalloonMenuTests
         finally { BalloonMenuPresentationTests.Unload(menu); }
     }
 
-    [TestCase(FlowDirection.LeftToRight, Key.Left)]
-    [TestCase(FlowDirection.RightToLeft, Key.Left)]
+    [TestCase(FlowDirection.LeftToRight, Key.Down)]
+    [TestCase(FlowDirection.RightToLeft, Key.Down)]
     public void ArrowHomeEndRespectFlowAndSkipDisabled(FlowDirection direction, Key next)
     {
         var menu = BalloonMenuPresentationTests.Create();
@@ -47,6 +47,10 @@ public sealed class BalloonMenuTests
             Assert.That(menu.ActiveOption, Is.SameAs(menu.Options[3]));
             menu.PressKey(next, menu.Options[3]);
             Assert.That(menu.ActiveOption, Is.SameAs(menu.Options[0]));
+            var generation = menu.PresentationGeneration;
+            menu.PressKey(Key.Up, menu.Options[0]);
+            Assert.That(menu.ActiveOption, Is.SameAs(menu.Options[3]));
+            Assert.That(menu.PresentationGeneration, Is.EqualTo(generation));
             menu.PressKey(Key.Home, menu.Options[3]);
             Assert.That(menu.ActiveOption, Is.SameAs(menu.Options[0]));
         }
@@ -312,6 +316,6 @@ public sealed class BalloonMenuTests
         UiTestPump.Layout(host, 100, 100);
         Assert.That(control.Style, Is.SameAs(control.FindResource(type)));
         Assert.That(control.Style.BasedOn, Is.SameAs(control.FindResource(baseKey)));
-        UiControlContract.AssertTemplate(control, "BalloonControlTemplate");
+        UiControlContract.AssertTemplate(control, control is BalloonMenu ? "BalloonMenuControlTemplate" : "BalloonControlTemplate");
     }
 }

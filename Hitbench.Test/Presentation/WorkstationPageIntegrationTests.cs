@@ -1601,6 +1601,8 @@ public class WorkstationPageIntegrationTests
             Assert.That(button.Command, Is.SameAs(vm.ResnapAllSamplesCommand));
             Assert.That(button.IsEnabled, Is.True);
             Assert.That(AutomationProperties.GetName(button), Is.EqualTo("Resnap all samples and control points"));
+            Assert.That(button.Focusable, Is.False);
+            WorkstationActionMenus.Open(button.MenuOwner!);
             Assert.That(button.Focusable, Is.True);
             Assert.That(button.IsTabStop, Is.False);
             Assert.That(button.FocusVisualStyle, Is.SameAs(page.FindResource("OHsSampleManagerKeyboardFocusStyle")));

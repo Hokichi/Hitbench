@@ -35,7 +35,7 @@ public class OHsExportTimelineScalingTests
         using var cancel = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         int calls = 0;
         var required = new[] { new OHsExportTimingPoint(0, "500", 4, 1, 1, 100, 0, OHsExportTimingKind.SourceRed) };
-        var plan = OHsExportLayoutSearch.FindTimeline(groups, required, 1, cancel.Token, null, _ => { calls++; return true; }, Enumerable.Repeat(50, count).ToArray());
+        var plan = OHsExportLayoutSearch.FindTimeline(groups, required, 1, cancel.Token, null, (_, _) => { calls++; return true; }, Enumerable.Repeat(50, count).ToArray());
         Assert.That((plan.AudioFileCount, plan.AdditionalPointCount), Is.EqualTo((count, count - 1)));
         Assert.That(calls, Is.LessThanOrEqualTo(2 * count + 1));
         for (var i = 0; i < count; i++)
@@ -55,7 +55,7 @@ public class OHsExportTimelineScalingTests
         var reports = 0;
         var progress = new InlineProgress<OHsExportProgress>(_ => { reports++; cancel.Cancel(); });
         Assert.Catch<OperationCanceledException>(() => OHsExportLayoutSearch.FindTimeline(groups, [], 1, cancel.Token, progress,
-            _ => { Thread.Sleep(300); return true; }));
+            (_, _) => { Thread.Sleep(300); return true; }));
         Assert.That(reports, Is.GreaterThan(0));
         Assert.That(OHsExportLayoutSearch.FindTimeline(groups, [], 1, default, null).AudioFileCount, Is.EqualTo(1));
     }
@@ -66,7 +66,7 @@ public class OHsExportTimelineScalingTests
         var choices = new[] { 50, 100 }.Select(v => new OHsExportRepresentation("Normal", "Normal", 1,
             new Dictionary<OHsExportSlot, OHsExportAsset> { [new("Normal", SampleType.Normal)] = OHsExportAsset.Create([("a.wav", v)]) }, 0, 0, v)).ToArray();
         var calls = 0;
-        var plan = OHsExportLayoutSearch.FindTimeline([(100, choices)], [], 1, default, null, p => { calls++; return p.TimingPoints[0].Volume != 100; });
+        var plan = OHsExportLayoutSearch.FindTimeline([(100, choices)], [], 1, default, null, (p, _) => { calls++; return p.TimingPoints[0].Volume != 100; });
         Assert.That(calls, Is.GreaterThan(1));
         Assert.That(plan.TimingPoints[0].Volume, Is.EqualTo(50));
     }

@@ -14,6 +14,7 @@ public partial class OHsWorkstationToolbar : UserControl
     public OHsWorkstationToolbar()
     {
         InitializeComponent();
+        LayoutUpdated += (_, _) => UpdateToolbarLayout();
         SizeChanged += (_, e) => SetValue(IsCompactLayoutPropertyKey, e.NewSize.Width < 960);
         foreach (var menu in new[] { ProjectActionsButton, OpenFoldersButton, AddMenuButton })
         {
@@ -24,6 +25,20 @@ public partial class OHsWorkstationToolbar : UserControl
         IsEnabledChanged += (_, _) => { if (!IsEnabled) CloseMenus(); };
         DataContextChanged += (_, _) => CloseMenus();
     }
+    internal bool AreActionsWrapped { get; private set; }
+    private void UpdateToolbarLayout()
+    {
+        if (ToolbarLayoutRoot.ActualWidth <= 0) return;
+        var wrapped = TransportGroup.DesiredSize.Width + ActionGroup.DesiredSize.Width +
+            (double)FindResource("Space.2") > ToolbarLayoutRoot.ActualWidth;
+        if (wrapped == AreActionsWrapped) return;
+        AreActionsWrapped = wrapped;
+        Grid.SetRow(ActionGroup, wrapped ? 1 : 0);
+        Grid.SetColumn(ActionGroup, wrapped ? 0 : 2);
+        Grid.SetColumnSpan(ActionGroup, wrapped ? 3 : 1);
+        Grid.SetColumnSpan(TransportGroup, wrapped ? 3 : 1);
+    }
+
     private void OnMenuExpanded(object? sender, EventArgs e)
     {
         if (sender is not BalloonMenu menu || ReferenceEquals(activeMenu, menu)) return;

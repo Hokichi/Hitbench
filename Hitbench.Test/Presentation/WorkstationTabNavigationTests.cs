@@ -182,7 +182,7 @@ public sealed class WorkstationTabNavigationTests
     }
 
     [Test]
-    public void BalloonMenuPopupFollowsLiveOwnerSuppressionAndFlowWithoutOpening()
+    public void BalloonMenuPopupOptionsFollowLiveOwnerSuppression()
     {
         var root = new Grid { Resources = Application.Current.Resources };
         KeyboardNavigationPolicy.SetSuppressTabNavigation(root, true);
@@ -195,9 +195,7 @@ public sealed class WorkstationTabNavigationTests
         WorkstationActionMenus.Prepare(menu);
         try
         {
-            var popup = (Popup)menu.Template.FindName("PART_StatePopup", menu);
-            var items = (ItemsControl)menu.Template.FindName("PART_StateItems", menu);
-            Assert.That(popup.IsOpen, Is.False);
+            var items = (ItemsControl)menu.Template.FindName("PART_MenuItems", menu);
             AssertNoTabStops(menu.PresentationRoot!);
             Assert.That(option.IsTabStop, Is.False);
             KeyboardNavigationPolicy.SetSuppressTabNavigation(root, false);

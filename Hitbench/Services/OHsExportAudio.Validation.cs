@@ -7,11 +7,13 @@ public static partial class OHsExportAudio
 {
     internal static bool IsPlaybackEquivalent(OHsExportInput input, OHsExportPlan plan, Func<string, DecodedAudio> resolve, CancellationToken token)
     {
+        token.ThrowIfCancellationRequested();
         var timeline = new ControlPointVolumeTimeline(input.ControlPoints);
         var reference = new List<(long Start, long End, DecodedAudio Audio, double Gain)>();
         int? groupTime = null;
         foreach (var voice in input.Voices.OrderBy(v => v.Timestamp))
         {
+            token.ThrowIfCancellationRequested();
             if (groupTime is null || (long)voice.Timestamp - groupTime.Value > 1) groupTime = voice.Timestamp;
             var audio = resolve(voice.FileName);
             var start = ControlPointVolumeTimeline.ToFrame(groupTime.Value);
@@ -39,6 +41,7 @@ public static partial class OHsExportAudio
         var boundaries = reference.SelectMany(v => new[] { v.Start, v.End }).Concat(exported.SelectMany(v => new[] { v.Start, v.End })).Distinct().Order().ToArray();
         for (var b = 0; b + 1 < boundaries.Length; b++)
         {
+            token.ThrowIfCancellationRequested();
             var originals = reference.Where(v => v.Start <= boundaries[b] && v.End > boundaries[b]).ToArray();
             var outputs = exported.Where(v => v.Start <= boundaries[b] && v.End > boundaries[b]).ToArray();
             if (originals.Length == 0 && outputs.Length == 0) continue;

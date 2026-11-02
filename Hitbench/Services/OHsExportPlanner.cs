@@ -5,6 +5,9 @@ namespace Hitbench.Services;
 public static partial class OHsExportPlanner
 {
     public static OHsExportPlan Plan(OHsExportInput input, CancellationToken token, IProgress<OHsExportProgress>? progress = null, Func<string, DecodedAudio>? resolve = null)
+        => Plan(input, token, progress, resolve, default);
+
+    internal static OHsExportPlan Plan(OHsExportInput input, CancellationToken token, IProgress<OHsExportProgress>? progress, Func<string, DecodedAudio>? resolve, CancellationToken budgetCancellation)
     {
         token.ThrowIfCancellationRequested(); input.Options.Validate();
         var assets = new Dictionary<string, OHsExportAsset>(StringComparer.Ordinal);
@@ -57,8 +60,8 @@ public static partial class OHsExportPlanner
         var start = input.Options.StartingIndex;
         if (groups.Length == 0) return new([], required.Select(p => p with { SampleIndex = start }).ToArray(), new Dictionary<int, IReadOnlyDictionary<OHsExportSlot, OHsExportAsset>>(), 0);
         if (resolve is not null) return OHsExportLayoutSearch.FindTimeline(groups, required, start, token, progress,
-            groups.All(g => g.Choices.All(c => c.IsLinear)) ? null : plan => OHsExportAudio.IsPlaybackEquivalent(input, plan, resolve, token),
-            groups.Select(g => (int)Math.Round(timeline.GetVolumeAtTimestamp(g.Time), MidpointRounding.AwayFromZero)).ToArray());
+            groups.All(g => g.Choices.All(c => c.IsLinear)) ? null : (plan, searchToken) => OHsExportAudio.IsPlaybackEquivalent(input, plan, resolve, searchToken),
+            groups.Select(g => (int)Math.Round(timeline.GetVolumeAtTimestamp(g.Time), MidpointRounding.AwayFromZero)).ToArray(), budgetCancellation);
         if (input.ControlPoints.Count > 0)
         {
             var fixedGroups = groups.Select(g =>
@@ -68,9 +71,9 @@ public static partial class OHsExportPlanner
                     c.NormalSet, c.AdditionSet, c.HitSound, c.Slots, c.MergeCount, c.MixedComponentCount, volume)).ToArray());
             }).ToArray();
             return OHsExportLayoutSearch.FindTimeline(fixedGroups, required, start, token, progress,
-                preferredVolumes: fixedGroups.Select(g => g.Choices[0].NativeVolume).ToArray());
+                preferredVolumes: fixedGroups.Select(g => g.Choices[0].NativeVolume).ToArray(), budgetCancellation: budgetCancellation);
         }
-        var layout = OHsExportLayoutSearch.Find(recipes.Values.ToArray(), 1000 - start, token, progress);
+        var layout = OHsExportLayoutSearch.Find(recipes.Values.ToArray(), 1000 - start, token, progress, budgetCancellation);
         return BuildTimeline(groups, required, start, layout, token);
     }
 }

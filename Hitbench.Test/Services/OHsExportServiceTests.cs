@@ -10,6 +10,64 @@ namespace Hitbench.Test.Services;
 public class OHsExportServiceTests
 {
     [Test]
+    public async Task SearchDeadlinePublishesAcceptedRampPlanAndAllowsRetry()
+    {
+        using var folder = new TestProjectFolder();
+        var root = Path.GetDirectoryName(folder.ProjectPath)!;
+        var source = Path.Combine(root, "Song [Original].osu");
+        await File.WriteAllTextAsync(source, "[TimingPoints]\n0,500,4,1,1,100,1,0\n");
+        foreach (var (file, value) in new[] { ("a.wav", .2f), ("b.wav", .1f), ("c.wav", .3f), ("r.wav", .05f) })
+        {
+            using var pcm = DecodedAudio.CopyFrom(Enumerable.Repeat(value, 8820).ToArray());
+            await OHsExportAudio.WriteFileAsync(Path.Combine(root, "Samples", file), pcm, default);
+        }
+        var project = new ProjectData
+        {
+            Tracks =
+            [
+                new() { Addition = "Normal", SampleType = SampleType.Normal, Samples = [new() { FileName = "a.wav", Timestamp = 100 }, new() { FileName = "c.wav", Timestamp = 300 }, new() { FileName = "r.wav", Timestamp = 600 }, new() { FileName = "r.wav", Timestamp = 620 }] },
+                new() { Addition = "Normal", SampleType = SampleType.Whistle, Samples = [new() { FileName = "b.wav", Timestamp = 200 }, new() { FileName = "b.wav", Timestamp = 400 }] }
+            ],
+            ControlPoints = [new() { Timestamp = 0, Volume = 40 }, new() { Timestamp = 500, Volume = 20, IsRamp = true }, new() { Timestamp = 1000, Volume = 80 }]
+        };
+        var json = ProjectDataSerializer.Serialize(project);
+        await File.WriteAllTextAsync(folder.ProjectPath, json);
+        var originals = Directory.GetFiles(root, "*", SearchOption.AllDirectories).ToDictionary(p => p, File.ReadAllBytes);
+        var phases = new List<string>();
+        var waited = false;
+        var progress = new InlineProgress<OHsExportProgress>(p =>
+        {
+            phases.Add(p.Phase);
+            if (waited || !p.Phase.Contains("files")) return;
+            waited = true;
+            Thread.Sleep(5200); // Exercise the production five-second timer once, after an accepted seed.
+        });
+        var request = new OHsExportRequest(Guid.NewGuid(), folder.ProjectPath, source, "unused.wav", json, new("Hitsounds", 1, ".wav", ".wav", false));
+        var exporter = new OHsExportService();
+        var output = await exporter.ExportAsync(request, default, progress);
+        Assert.That(waited, Is.True);
+        Assert.That(phases, Does.Contain("Generating samples").And.Contain("Export complete"));
+        var text = await File.ReadAllTextAsync(Path.Combine(output, "Song [Hitsounds].osu"));
+        var hits = OHsExportPlaybackOracle.Resolve(text);
+        Assert.That(hits.Select(h => h.Timestamp).Distinct(), Is.EqualTo(new[] { 100, 200, 300, 400, 600, 620 }));
+        Assert.That(hits.Where(h => h.Type == "normal").Take(4).Select(h => h.Index), Is.EqualTo(new[] { 1, 1, 2, 1 }), "Deadline must retain the accepted seed rather than resume exact optimization.");
+        var rendered = OHsExportPlaybackOracle.Render(text, name => AudioDecoder.Decode(Path.Combine(output, name), default), 44100);
+        for (var frame = 0; frame < 44100; frame++)
+        {
+            double expected = 0;
+            foreach (var (time, value) in new[] { (100, .2), (200, .1), (300, .3), (400, .1), (600, .05), (620, .05) })
+                if (frame >= time * 441 / 10 && frame < time * 441 / 10 + 4410)
+                    expected += value * (frame < 22050 ? .4 : .2 + .6 * (frame - 22050) / 22050);
+            Assert.That(rendered[frame * 2], Is.EqualTo(expected).Within(8d / 32768), $"frame {frame}");
+            Assert.That(rendered[frame * 2 + 1], Is.EqualTo(expected).Within(8d / 32768), $"right frame {frame}");
+        }
+        foreach (var original in originals) Assert.That(await File.ReadAllBytesAsync(original.Key), Is.EqualTo(original.Value));
+        Assert.That(Directory.GetDirectories(root, ".Export-staging-*"), Is.Empty);
+        await exporter.ExportAsync(request, default);
+        Assert.That(Directory.GetDirectories(root, ".Export-staging-*"), Is.Empty);
+    }
+
+    [Test]
     public async Task FirstAlphabeticalBeatmapSuppliesFilenameAndTimingWithFixedTemplate()
     {
         using var folder = new TestProjectFolder();

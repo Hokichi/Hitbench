@@ -82,6 +82,7 @@
             x:Key="OHsWorkstationSamplesActionStyle"
             BasedOn="{StaticResource OHsBalloonDefaultActionStyle}"
             TargetType="customControls:BalloonButton">
+            <Setter Property="VerticalAlignment" Value="Top" />
             <Setter Property="ButtonIcon" Value="{StaticResource MusicNote}" />
             <Setter Property="ButtonText" Value="Samples" />
             <Setter Property="ToolTip" Value="Manage samples" />
@@ -126,6 +127,8 @@
         </Style>
 
         <Style x:Key="OHsWorkstationCompactSeparatorStyle" TargetType="Border" BasedOn="{StaticResource OHsWorkstationToolbarSeparatorStyle}">
+            <Setter Property="VerticalAlignment" Value="Top" />
+            <Setter Property="Height" Value="{StaticResource Size.Control.Compact}" />
             <Style.Triggers><DataTrigger Binding="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationToolbar}, Mode=OneWay}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers>
         </Style>
         <Style x:Key="OHsWorkstationStopStyle" TargetType="customControls:BalloonButton" BasedOn="{StaticResource OHsWorkstationTransportButtonStyle}">
@@ -143,9 +146,10 @@
         </Style>
     </UserControl.Resources>
         <Border Style="{StaticResource OHsWorkstationHeaderCardStyle}">
-            <Grid>
+            <Grid x:Name="ToolbarLayoutRoot">
+                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                 <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*" MinWidth="8"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <StackPanel x:Name="TransportGroup" Orientation="Horizontal" VerticalAlignment="Top">
                     <StackPanel Orientation="Horizontal">
                         <customControls:BalloonButton
                             x:Name="PlayPauseButton"
@@ -202,10 +206,10 @@
                         </customControls:SegmentedToggleOption>
                     </customControls:SegmentedToggleGroup>
                 </StackPanel>
-                <StackPanel Orientation="Horizontal"
+                <StackPanel x:Name="ActionGroup" Orientation="Horizontal"
                     Grid.Column="2"
                     HorizontalAlignment="Right"
-                    VerticalAlignment="Center">
+                    VerticalAlignment="Top">
                     <customControls:BalloonMenu
                         x:Name="ProjectActionsButton"
                         AutomationProperties.Name="Project actions"
@@ -238,11 +242,11 @@
                             Command="{Binding OpenProjectFolderCommand, Mode=OneWay}" />
                     </customControls:BalloonMenu>
                     <Border Style="{StaticResource OHsWorkstationCompactSeparatorStyle}" />
-                    <Grid Grid.IsSharedSizeScope="True" Style="{StaticResource BaseGridStyle}">
+                    <Grid Style="{StaticResource BaseGridStyle}" VerticalAlignment="Top">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" SharedSizeGroup="OHsWorkstationAddSamplesWidth" />
+                            <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="8" />
-                            <ColumnDefinition Width="Auto" SharedSizeGroup="OHsWorkstationAddSamplesWidth" />
+                            <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <customControls:BalloonMenu
                             x:Name="AddMenuButton"
@@ -268,7 +272,7 @@
                             Style="{StaticResource OHsWorkstationSamplesActionStyle}" />
                     </Grid>
                     <Border Style="{StaticResource OHsWorkstationCompactSeparatorStyle}" />
-                    <pages:OHsWorkstationFooter IsCompactLayout="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationToolbar}, Mode=OneWay}" x:Name="FooterControls" VerticalAlignment="Center" />
+                    <pages:OHsWorkstationFooter IsCompactLayout="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationToolbar}, Mode=OneWay}" x:Name="FooterControls" VerticalAlignment="Top" />
                 </StackPanel>
             </Grid>
         </Border>

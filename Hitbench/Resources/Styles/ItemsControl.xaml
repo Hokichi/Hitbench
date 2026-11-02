@@ -28,10 +28,12 @@
         <StackPanel Orientation="Horizontal" />
     </ItemsPanelTemplate>
 
+    <ItemsPanelTemplate x:Key="VerticalStackItemsPanelTemplate">
+        <StackPanel Orientation="Vertical" />
+    </ItemsPanelTemplate>
+
     <Style x:Key="BalloonMenuItemsStyle" TargetType="ItemsControl" BasedOn="{StaticResource BaseItemsControlStyle}">
-        <!-- Keep the action hit targets inside the popup's outer stroke. -->
-        <Setter Property="Margin" Value="-1" />
-        <Setter Property="ItemsPanel" Value="{StaticResource HorizontalStackItemsPanelTemplate}" />
+        <Setter Property="ItemsPanel" Value="{StaticResource VerticalStackItemsPanelTemplate}" />
         <Setter Property="ItemTemplate" Value="{x:Null}" />
     </Style>
 </ResourceDictionary>

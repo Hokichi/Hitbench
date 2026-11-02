@@ -8,6 +8,8 @@ namespace Hitbench.Services;
 internal sealed partial class OHsExportLayoutSearch
 {
     private const string IndexRangeError = "The selected custom sample index range cannot represent this arrangement.";
+    // Budget exhaustion returns the best complete candidate, without proving the global minimum.
+    private static readonly TimeSpan SearchBudget = TimeSpan.FromSeconds(5);
     private static readonly string[] Sets = ["Normal", "Soft", "Drum"];
     private readonly int[][][] recipes;
     private readonly OHsExportAsset[] assets;
@@ -28,7 +30,7 @@ internal sealed partial class OHsExportLayoutSearch
         CancellationToken token, IProgress<OHsExportProgress>? progress)
     {
         this.capacity = capacity; this.token = token; this.progress = progress;
-        assets = input.SelectMany(r => r).SelectMany(c => c.Slots.Values).DistinctBy(a => a.Id)
+        assets = input.SelectMany(r => { Check(); return r; }).SelectMany(c => c.Slots.Values).DistinctBy(a => a.Id)
             .OrderBy(a => a.Id, StringComparer.Ordinal).ToArray();
         var ids = assets.Select((a, i) => (a.Id, Index: i + 1)).ToDictionary(p => p.Id, p => p.Index, StringComparer.Ordinal);
         var distinct = new SortedDictionary<string, int[][]>(StringComparer.Ordinal);
@@ -37,6 +39,7 @@ internal sealed partial class OHsExportLayoutSearch
             Check();
             var choices = recipe.Select(c =>
             {
+                Check();
                 var map = new int[12];
                 foreach (var pair in c.Slots) map[Array.IndexOf(Sets, pair.Key.Sampleset) * 4 + (int)pair.Key.Type] = ids[pair.Value.Id];
                 return map;
@@ -80,18 +83,34 @@ internal sealed partial class OHsExportLayoutSearch
 
     internal static IReadOnlyList<IReadOnlyDictionary<OHsExportSlot, OHsExportAsset>> Find(
         IReadOnlyList<IReadOnlyList<OHsExportRepresentation>> recipes, int capacity, CancellationToken token,
-        IProgress<OHsExportProgress>? progress = null)
+        IProgress<OHsExportProgress>? progress = null, CancellationToken budgetCancellation = default)
     {
+        using var deadline = new CancellationTokenSource(SearchBudget);
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(token, deadline.Token, budgetCancellation);
+        var searchToken = cancellation.Token;
         token.ThrowIfCancellationRequested();
         if (capacity is < 1 or > 999) throw new ArgumentOutOfRangeException(nameof(capacity));
-        progress?.Report(new(25, "Optimizing sample reuse"));
+        OHsExportLayoutSearch? search = null;
+        try
+        {
+            searchToken.ThrowIfCancellationRequested();
+            progress?.Report(new(25, "Optimizing sample reuse"));
+            searchToken.ThrowIfCancellationRequested();
+            search = new OHsExportLayoutSearch(recipes, capacity, searchToken, progress);
+            if (search.minimumBanks > capacity) throw new InvalidOperationException(IndexRangeError);
+            search.Seed();
+            search.Search();
+            searchToken.ThrowIfCancellationRequested();
+        }
+        catch (OperationCanceledException error) when (error.CancellationToken == searchToken && searchToken.IsCancellationRequested)
+        {
+            token.ThrowIfCancellationRequested();
+            if (!deadline.IsCancellationRequested && !budgetCancellation.IsCancellationRequested) throw;
+            if (search?.best is null) throw new TimeoutException();
+        }
+        var result = search!.Snapshot();
         token.ThrowIfCancellationRequested();
-        var search = new OHsExportLayoutSearch(recipes, capacity, token, progress);
-        if (search.minimumBanks > capacity) throw new InvalidOperationException(IndexRangeError);
-        search.Seed();
-        search.Search();
-        token.ThrowIfCancellationRequested();
-        return search.Snapshot();
+        return result;
     }
 
     private static int Count(int[] map) => map.Count(id => id != 0);
@@ -161,6 +180,7 @@ internal sealed partial class OHsExportLayoutSearch
                 Check();
                 for (var b = 0; b < banks.Count; b++)
                 {
+                    Check();
                     var added = Added(banks[b], map);
                     if (added >= 0) options.Add((b, map, added));
                 }
