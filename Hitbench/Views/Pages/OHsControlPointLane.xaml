@@ -9,7 +9,7 @@
   <ControlTemplate x:Key="OHsControlPointZoneTemplate" TargetType="p:OHsControlPointZone">
    <Border Style="{StaticResource BaseBorderStyle}" BorderBrush="{DynamicResource Brush.Border.Subtle}" BorderThickness="1,0,0,0" Background="Transparent" ClipToBounds="True">
     <Grid Style="{StaticResource BaseGridStyle}" Background="Transparent">
-     <Grid x:Name="ZoneGraphics" Style="{StaticResource BaseGridStyle}" IsHitTestVisible="False">
+     <Grid x:Name="ZoneGraphics" Style="{StaticResource BaseGridStyle}" IsHitTestVisible="False" FlowDirection="LeftToRight">
       <Path x:Name="ZoneFill" Fill="{TemplateBinding Background}" Data="{Binding FillGeometry, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}" Opacity="0.24" />
       <Line x:Name="VolumeLine" X1="0" X2="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}"
        Y1="{Binding VolumeLineOffset, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}" Y2="{Binding EndLineOffset, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}"

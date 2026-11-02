@@ -8,6 +8,18 @@ namespace Hitbench.Test.Services;
 public class OHsExportRampPlanningTests
 {
     [Test]
+    public void AutomationSilentNormalIsReusedAsRequiredSupport()
+    {
+        using var audio = DecodedAudio.CopyFrom(new[] { .2f, .2f });
+        var baseline = Input([new(0, 0), new(1000, 100)], []);
+        var input = new OHsExportInput(baseline.Options with { StartingIndex = 999 }, baseline.Beatmap,
+            [new(0, "a.wav", 100, "Normal", SampleType.Normal, 0), new(1100, "b.wav", 100, "Soft", SampleType.Clap, 1)],
+            baseline.RequiredPoints, baseline.ControlPoints);
+        var plan = OHsExportPlanner.Plan(input, default, resolve: _ => audio);
+        Assert.That(plan.AudioFileCount, Is.EqualTo(2));
+        Assert.That(plan.Banks.Keys, Is.EqualTo(new[] { 999 }));
+    }
+    [Test]
     public void LongFixedRunUsesBoundedSearchStack()
     {
         using var audio = DecodedAudio.CopyFrom(new[] { .2f, .2f });

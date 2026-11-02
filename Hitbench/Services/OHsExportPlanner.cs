@@ -10,10 +10,6 @@ public static partial class OHsExportPlanner
         var assets = new Dictionary<string, OHsExportAsset>(StringComparer.Ordinal);
         var recipes = new Dictionary<string, IReadOnlyList<OHsExportRepresentation>>(StringComparer.Ordinal);
         var normals = input.Voices.Where(v => v.Type == SampleType.Normal).ToArray();
-        // Silence can use one globally free family without displacing an authored normal.
-        // Keep every alternative when authored silence can already be reused.
-        var support = normals.Any(v => v.GainPercent == 0) ? null :
-            new[] { "Normal", "Soft", "Drum" }.FirstOrDefault(set => normals.All(v => v.Sampleset != set));
         var timestamps = new List<List<OHsExportVoice>>();
         foreach (var voice in input.Voices.OrderBy(v => v.Timestamp))
         {
@@ -23,6 +19,14 @@ public static partial class OHsExportPlanner
             timestamps[^1].Add(voice);
         }
         var timeline = new ControlPointVolumeTimeline(input.ControlPoints);
+        // Automation-induced silence can reuse the same physical normal slot as explicit zero gain.
+        var authoredSilence = normals.Any(v => v.GainPercent == 0) || resolve is not null && timestamps.Any(group =>
+            timeline.GetGain(ControlPointVolumeTimeline.ToFrame(group[0].Timestamp)) == 0 && group.Any(v =>
+                v.Type == SampleType.Normal && OHsExportEnvelope.Create(timeline,
+                    ControlPointVolumeTimeline.ToFrame(group[0].Timestamp), resolve(v.FileName).FrameCount).Segments
+                    .All(segment => segment.StartNumerator.IsZero && segment.SlopeNumerator.IsZero)));
+        var support = authoredSilence ? null : new[] { "Normal", "Soft", "Drum" }
+            .FirstOrDefault(set => normals.All(v => v.Sampleset != set));
         var shapedRecipes = new Dictionary<string, IReadOnlyList<OHsExportRepresentation>>(StringComparer.Ordinal);
         var prepared = 0;
         var groups = timestamps.Select(g =>
