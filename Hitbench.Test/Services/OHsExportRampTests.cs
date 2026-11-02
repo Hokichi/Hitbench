@@ -33,6 +33,36 @@ public class OHsExportRampTests
     }
 
     [Test]
+    public async Task MultipleRampHitsPublishLosslessExportWithinBudget()
+    {
+        using var folder = new TestProjectFolder();
+        var root = Path.GetDirectoryName(folder.ProjectPath)!;
+        var source = Path.Combine(root, "Song [Original].osu");
+        await File.WriteAllTextAsync(source, "[TimingPoints]\n0,500,4,1,1,100,1,0\n");
+        using var audio = DecodedAudio.CopyFrom(Enumerable.Repeat(.1f, 17640).ToArray());
+        await OHsExportAudio.WriteFileAsync(Path.Combine(root, "Samples", "a.wav"), audio, default);
+        var project = new ProjectData { ControlPoints = [new() { Volume = 10, IsRamp = true }, new() { Timestamp = 2000, Volume = 80 }],
+            Tracks = [new() { SampleType = SampleType.Normal, Samples = Enumerable.Range(0, 12).Select(i => new Hitbench.Core.Entities.Sample { FileName = "a.wav", Timestamp = 100 + i * 100 }).ToList() }] };
+        var request = new OHsExportRequest(Guid.NewGuid(), folder.ProjectPath, source, "unused.wav", ProjectDataSerializer.Serialize(project), new("Hitsounds", 1, ".wav", ".wav", false));
+        Directory.CreateDirectory(Path.Combine(root, "Export"));
+        await File.WriteAllTextAsync(Path.Combine(root, "Export", "keep.txt"), "keep");
+        using var cancel = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+        var output = await new OHsExportService().ExportAsync(request, cancel.Token);
+        var text = await File.ReadAllTextAsync(Path.Combine(output, "Song [Hitsounds].osu"));
+        var pcm = OHsExportPlaybackOracle.Render(text, name => AudioDecoder.Decode(Path.Combine(output, name), cancel.Token), 66150);
+        foreach (var ms in new[] { 150, 250, 650, 1150, 1250, 1350 })
+        {
+            var active = Enumerable.Range(0, 12).Count(i => ms >= 100 + i * 100 && ms < 300 + i * 100);
+            var expected = active * .1 * (.1 + .7 * ms / 2000);
+            var frame = ms * 44100 / 1000;
+            Assert.That(pcm[frame * 2], Is.EqualTo(expected).Within(.0001));
+            Assert.That(pcm[frame * 2 + 1], Is.EqualTo(expected).Within(.0001));
+        }
+        Assert.That(await File.ReadAllTextAsync(Path.Combine(output, "keep.txt")), Is.EqualTo("keep"));
+        Assert.That(Directory.GetFiles(output, "*hit*.wav"), Has.Length.EqualTo(12));
+    }
+
+    [Test]
     public void EqualRelativeRampsReusePhysicalFileAndDifferentSlopesDoNot()
     {
         using var audio = DecodedAudio.CopyFrom(Enumerable.Repeat(.2f, 44100).ToArray());
