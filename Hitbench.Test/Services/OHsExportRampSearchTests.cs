@@ -17,18 +17,18 @@ public class OHsExportRampSearchTests
         Assert.That((plan.AudioFileCount, plan.AdditionalPointCount), Is.EqualTo((3, 1)));
     }
 
-    [Test]
-    public void TinyAssignmentsAgreeWithIndependentExhaustiveCost()
+    [TestCase(998), TestCase(999)]
+    public void TinyAssignmentsAgreeWithIndependentExhaustiveCost(int start)
     {
         var random = new Random(19);
-        for (var fixture = 0; fixture < 16; fixture++)
+        for (var fixture = 0; fixture < 100; fixture++)
         {
             var groups = Enumerable.Range(0, 4).Select(i => (Time: 100 + i * 100,
-                Choices: (IReadOnlyList<OHsExportRepresentation>)new[] { Choice($"{random.Next(3)}.wav", SampleType.Normal, random.Next(2) == 0 ? 50 : 100) })).ToArray();
-            var oracle = MinimumCost(groups, 2);
+                Choices: (IReadOnlyList<OHsExportRepresentation>)new[] { Choice($"{random.Next(3)}.wav", SampleType.Normal, random.Next(2) == 0 ? 50 : 100), Choice($"{random.Next(3)}.wav", SampleType.Clap, random.Next(2) == 0 ? 50 : 100) })).ToArray();
+            var oracle = MinimumCost(groups, 1000 - start);
             if (oracle is null) continue;
-            var plan = OHsExportLayoutSearch.FindTimeline(groups, Required(), 998, default, null);
-            Assert.That((plan.AudioFileCount, plan.AdditionalPointCount), Is.EqualTo(oracle.Value));
+            var plan = OHsExportLayoutSearch.FindTimeline(groups, Required(), start, default, null);
+            Assert.That((plan.AudioFileCount, plan.AdditionalPointCount, groups.Sum(g => 100 - plan.TimingPoints.Last(p => p.Timestamp <= g.Time + 5).Volume)), Is.EqualTo(oracle.Value));
         }
     }
 
@@ -45,18 +45,18 @@ public class OHsExportRampSearchTests
     private static OHsExportRepresentation Choice(string file, SampleType type, int volume = 100) => new("Normal", "Normal", 1,
         new Dictionary<OHsExportSlot, OHsExportAsset> { [new("Normal", type)] = OHsExportAsset.Create([(file, 100)]) }, 0, 0, volume);
 
-    private static (int Files, int Rows)? MinimumCost((int Time, IReadOnlyList<OHsExportRepresentation> Choices)[] groups, int capacity)
+    private static (int Files, int Rows, int Distance)? MinimumCost((int Time, IReadOnlyList<OHsExportRepresentation> Choices)[] groups, int capacity)
     {
-        (int Files, int Rows)? best = null;
+        (int Files, int Rows, int Distance)? best = null;
         var banks = new Dictionary<OHsExportSlot, string>[capacity];
         for (var i = 0; i < capacity; i++) banks[i] = new();
-        Visit(0, -1, 100, 0);
+        Visit(0, -1, 100, 0, 0);
         return best;
-        void Visit(int index, int previousBank, int previousVolume, int rows)
+        void Visit(int index, int previousBank, int previousVolume, int rows, int distance)
         {
             if (index == groups.Length)
             {
-                var cost = (Files: banks.Sum(b => b.Count), Rows: rows);
+                var cost = (Files: banks.Sum(b => b.Count), Rows: rows, Distance: distance);
                 if (best is null || cost.CompareTo(best.Value) < 0) best = cost;
                 return;
             }
@@ -66,7 +66,7 @@ public class OHsExportRampSearchTests
                     if (choice.Slots.Any(p => banks[bank].TryGetValue(p.Key, out var id) && id != p.Value.Id)) continue;
                     var old = new Dictionary<OHsExportSlot, string>(banks[bank]);
                     foreach (var pair in choice.Slots) banks[bank][pair.Key] = pair.Value.Id;
-                    Visit(index + 1, bank, choice.NativeVolume, rows + (index > 0 && (previousBank != bank || previousVolume != choice.NativeVolume) ? 1 : 0));
+                    Visit(index + 1, bank, choice.NativeVolume, rows + (index > 0 && (previousBank != bank || previousVolume != choice.NativeVolume) ? 1 : 0), distance + 100 - choice.NativeVolume);
                     banks[bank] = old;
                 }
         }
