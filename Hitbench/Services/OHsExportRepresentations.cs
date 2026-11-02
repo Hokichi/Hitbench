@@ -18,7 +18,7 @@ public static class OHsExportRepresentations
         var choices = new List<OHsExportRepresentation>();
         var unique = new HashSet<string>(StringComparer.Ordinal);
         var cache = new Dictionary<(string Id, int Native), OHsExportAsset?>();
-        var linear = new Dictionary<string, bool>(StringComparer.Ordinal);
+        var prepared = new Dictionary<string, (OHsExportSource[] Sources, bool Silent, double Peak)>(StringComparer.Ordinal);
         foreach (var original in raw)
             for (var native = 100; native >= 0; native--)
             {
@@ -28,16 +28,29 @@ public static class OHsExportRepresentations
                 {
                     if (!cache.TryGetValue((pair.Value.Id, native), out var shaped))
                     {
-                        var sources = pair.Value.Sources.Select(s => new OHsExportSource(s.FileName, s.GainPercent,
-                            OHsExportEnvelope.Create(timeline, ControlPointVolumeTimeline.ToFrame(timestamp), resolve(s.FileName).FrameCount))).ToArray();
-                        if (!linear.ContainsKey(pair.Value.Id)) linear[pair.Value.Id] = Equivalent(sources, 99);
-                        var silent = sources.All(s => s.GainPercent == 0 || s.Envelope!.Segments.All(e => e.StartNumerator.IsZero && e.SlopeNumerator.IsZero));
-                        if (native == 0) shaped = silent ? OHsExportAsset.Create([], assets) : null;
-                        else
+                        if (!prepared.TryGetValue(pair.Value.Id, out var mixture))
                         {
-                            var candidate = OHsExportAsset.CreateShaped(sources.Select(s => s with { Envelope = s.Envelope!.Scale(100, native) }), assets);
-                            shaped = Equivalent(sources, native) ? candidate : null;
+                            var audio = pair.Value.Sources.Select(s => resolve(s.FileName)).ToArray();
+                            var sources = pair.Value.Sources.Select((s, i) => new OHsExportSource(s.FileName, s.GainPercent,
+                                OHsExportEnvelope.Create(timeline, ControlPointVolumeTimeline.ToFrame(timestamp), audio[i].FrameCount))).ToArray();
+                            var silent = sources.All(s => s.GainPercent == 0 || s.Envelope!.Segments.All(e => e.StartNumerator.IsZero && e.SlopeNumerator.IsZero));
+                            double peak = 0;
+                            var count = audio.Select(a => a.Samples.Length).DefaultIfEmpty().Max();
+                            token.ThrowIfCancellationRequested();
+                            for (var i = 0; i < count; i++)
+                            {
+                                if ((i & 8191) == 0) token.ThrowIfCancellationRequested();
+                                double sum = 0;
+                                for (var j = 0; j < sources.Length; j++)
+                                    if (i < audio[j].Samples.Length) sum += audio[j].Samples[i] * sources[j].GainPercent / 100d * sources[j].Envelope!.GetGain(i / 2);
+                                peak = Math.Max(peak, Math.Abs(sum));
+                            }
+                            prepared[pair.Value.Id] = mixture = (sources, silent, peak);
                         }
+                        if (native == 0) shaped = mixture.Silent ? OHsExportAsset.Create([], assets) : null;
+                        else shaped = Equivalent(mixture.Peak, native)
+                            ? OHsExportAsset.CreateShaped(mixture.Sources.Select(s => s with { Envelope = s.Envelope!.Scale(100, native) }), assets)
+                            : null;
                         cache[(pair.Value.Id, native)] = shaped;
                     }
                     if (shaped is null) break;
@@ -45,26 +58,14 @@ public static class OHsExportRepresentations
                 }
                 if (slots.Count != original.Slots.Count) continue;
                 var key = native + ":" + string.Join('|', slots.OrderBy(p => p.Key.Sampleset).ThenBy(p => p.Key.Type).Select(p => p.Key + ":" + p.Value.Id));
-                if (unique.Add(key)) choices.Add(new(original.NormalSet, original.AdditionSet, original.HitSound, slots, original.MergeCount, original.MixedComponentCount, native, original.Slots.Values.All(a => linear[a.Id])));
+                if (unique.Add(key)) choices.Add(new(original.NormalSet, original.AdditionSet, original.HitSound, slots, original.MergeCount, original.MixedComponentCount, native, original.Slots.Values.All(a => Equivalent(prepared[a.Id].Peak, 99))));
             }
         return choices.AsReadOnly();
 
-        bool Equivalent(OHsExportSource[] sources, int native)
+        static bool Equivalent(double peak, int native)
         {
-            if (native == 100 || sources.Length == 0) return true;
-            var audio = sources.Select(s => resolve(s.FileName)).ToArray();
-            var count = audio.Max(a => a.Samples.Length);
-            for (var i = 0; i < count; i++)
-            {
-                if ((i & 8191) == 0) token.ThrowIfCancellationRequested();
-                double sum = 0;
-                for (var j = 0; j < sources.Length; j++)
-                    if (i < audio[j].Samples.Length) sum += audio[j].Samples[i] * sources[j].GainPercent / 100d * sources[j].Envelope!.GetGain(i / 2);
-                var reference = Math.Clamp(sum, -1, 1);
-                var factored = Math.Clamp(sum * 100 / native, -1, 1) * native / 100;
-                if (Math.Abs(reference - factored) > 1e-7) return false;
-            }
-            return true;
+            // Clipping error grows with absolute mixture amplitude; one peak covers every PCM sample.
+            return native == 100 || Math.Abs(Math.Clamp(peak, -1, 1) - Math.Clamp(peak * 100 / native, -1, 1) * native / 100) <= 1e-7;
         }
     }
     public static IReadOnlyList<OHsExportRepresentation> Build(IReadOnlyList<OHsExportVoice> voices, CancellationToken token, IDictionary<string, OHsExportAsset>? assets = null)
