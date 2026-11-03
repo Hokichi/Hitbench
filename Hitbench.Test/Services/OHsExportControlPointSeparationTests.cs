@@ -58,6 +58,7 @@ public class OHsExportControlPointSeparationTests
         Assert.That(volumeAt(112.5m), Is.EqualTo(15));
         Assert.That(volumeAt(505m), Is.EqualTo(30));
         var rows = OHsExportPlanner.BuildTimingPoints(input, [100, 101, 500], default);
+        Assert.That(rows.Where(p => p.Kind == OHsExportTimingKind.BankSwitch).Select(p => p.Timestamp), Is.EqualTo(new[] { 100m, 500m }));
         Assert.That(new[] { 105m, 505m }.Select(t => rows.Last(p => p.Timestamp <= t).Volume), Is.EqualTo(new[] { 14, 30 }));
         Assert.That(rows.Where(p => p.Kind == OHsExportTimingKind.ProjectControl).Select(p => p.Timestamp), Is.EqualTo(new decimal[] { 0, 1000 }));
         Assert.That(rows.Any(p => p.Timestamp == 106), Is.False, "Equal rounded ramp volumes reuse the preceding row.");
@@ -134,6 +135,74 @@ public class OHsExportControlPointSeparationTests
         var plan = OHsExportPlanner.Plan(input, default);
         Assert.That(plan.AudioFileCount, Is.EqualTo(1));
         Assert.That(OHsExportPlaybackOracle.Resolve(OHsExportBeatmapWriter.Write(input, plan)).Select(h => h.Volume), Is.EqualTo(new[] { 100, 50 }));
+    }
+
+    [TestCase(false), TestCase(true)]
+    public void SpacedRampRowsAlignWithoutChangingLookupGain(bool falling)
+    {
+        var input = Input([new() { Volume = falling ? 100 : 0, IsRamp = true }, new() { Timestamp = 100, Volume = falling ? 0 : 100 }], [0, 10, 50]);
+        var plan = OHsExportPlanner.Plan(input, default);
+        Assert.That(plan.TimingPoints.Where(p => p.Kind == OHsExportTimingKind.BankSwitch).Select(p => p.Timestamp), Is.EqualTo(new[] { 0m, 10m, 50m }));
+        Assert.That(OHsExportPlaybackOracle.Resolve(OHsExportBeatmapWriter.Write(input, plan)).Select(h => h.Volume),
+            Is.EqualTo(falling ? new[] { 95, 85, 45 } : new[] { 5, 15, 55 }));
+    }
+
+    [TestCase(2), TestCase(5), TestCase(6)]
+    public void RampAlignmentRespectsInclusiveEarlierLookup(int gap)
+    {
+        var input = Input([new() { Volume = 0, IsRamp = true }, new() { Timestamp = 100, Volume = 100 }], [10, 10 + gap]);
+        var plan = OHsExportPlanner.Plan(input, default);
+        Assert.That(plan.TimingPoints.Where(p => p.Kind == OHsExportTimingKind.BankSwitch).Select(p => p.Timestamp),
+            Is.EqualTo(new[] { 10m, gap <= 5 ? 15m + gap : 10m + gap }));
+        Assert.That(OHsExportPlaybackOracle.Resolve(OHsExportBeatmapWriter.Write(input, plan)).Select(h => h.Volume), Is.EqualTo(new[] { 15, 15 + gap }));
+    }
+
+    [Test]
+    public void EarlierHitWithoutNewRowStillProtectsItsLookup()
+    {
+        var input = Input([new() { Timestamp = 9, Volume = 1, IsRamp = true }, new() { Timestamp = 1000, Volume = 100 }], [9, 11]);
+        var plan = OHsExportPlanner.Plan(input, default);
+        Assert.That(plan.TimingPoints.Single(p => p.Kind == OHsExportTimingKind.BankSwitch).Timestamp, Is.EqualTo(16m));
+        Assert.That(OHsExportPlaybackOracle.Resolve(OHsExportBeatmapWriter.Write(input, plan)).Select(h => h.Volume), Is.EqualTo(new[] { 1, 2 }));
+    }
+
+    [TestCase(0), TestCase(3), TestCase(5), TestCase(6)]
+    public void RampAlignmentDoesNotAnticipateSourceTiming(int offset)
+    {
+        var boundary = 100 + offset;
+        var map = OHsExportBeatmap.Parse($"[TimingPoints]\n0,500,4,1,1,100,1,0\n{boundary},-50,7,1,1,100,0,1\n");
+        var input = Input([new() { Volume = 0, IsRamp = true }, new() { Timestamp = 1000, Volume = 100 }], [100], map: map);
+        var plan = OHsExportPlanner.Plan(input, default);
+        var row = plan.TimingPoints.SingleOrDefault(p => p.Kind == OHsExportTimingKind.BankSwitch);
+        if (offset == 5) Assert.That(row, Is.Null, "The authored row already supplies the lookup volume.");
+        else
+        {
+            Assert.That(row!.Timestamp, Is.EqualTo(offset == 3 ? 105m : 100m));
+            Assert.That((row.BeatLength, row.Effects), Is.EqualTo(offset <= 5 ? ("-50", 1) : ("-100", 0)));
+        }
+        Assert.That(plan.TimingPoints.Single(p => p.Kind == OHsExportTimingKind.SourceState).Timestamp, Is.EqualTo(boundary));
+        Assert.That(OHsExportPlaybackOracle.Resolve(OHsExportBeatmapWriter.Write(input, plan)).Single().Volume, Is.EqualTo(11));
+    }
+
+    [TestCase(2), TestCase(100)]
+    public void AlignedRampRowsPreserveBankChanges(int gap)
+    {
+        var baseline = Input([new() { Volume = 0, IsRamp = true }, new() { Timestamp = 1000, Volume = 100 }], [100, 100 + gap]);
+        var input = new OHsExportInput(baseline.Options, baseline.Beatmap, baseline.Voices.Select((v, i) => v with { FileName = i == 0 ? "a.wav" : "b.wav" }).ToArray(), baseline.RequiredPoints, baseline.ControlPoints);
+        var plan = OHsExportPlanner.Plan(input, default);
+        var hits = OHsExportPlaybackOracle.Resolve(OHsExportBeatmapWriter.Write(input, plan));
+        Assert.That(hits.Select(h => h.Index), Is.EqualTo(plan.Circles.Select(c => c.SampleIndex)));
+        Assert.That(hits.Select(h => h.Volume), Is.EqualTo(gap == 2 ? new[] { 11, 11 } : new[] { 11, 21 }));
+        Assert.That(hits.Select(h => plan.Banks[h.Index].Values.Single().Sources.Single().FileName), Is.EqualTo(new[] { "a.wav", "b.wav" }));
+    }
+
+    [Test]
+    public void RampNearMaximumTimestampAlignsWithoutOverflow()
+    {
+        var input = Input([new() { Timestamp = int.MaxValue - 100, Volume = 0, IsRamp = true }, new() { Timestamp = int.MaxValue, Volume = 100 }], [int.MaxValue - 10]);
+        var plan = OHsExportPlanner.Plan(input, default);
+        Assert.That(plan.TimingPoints.Single(p => p.Kind == OHsExportTimingKind.BankSwitch).Timestamp, Is.EqualTo((decimal)int.MaxValue - 10));
+        Assert.That(OHsExportPlaybackOracle.Resolve(OHsExportBeatmapWriter.Write(input, plan)).Single().Volume, Is.EqualTo(95));
     }
 
     internal static OHsExportInput Input(ControlPoint[] controls, int[] times, bool instrumental = false, int gain = 100,

@@ -35,16 +35,22 @@ public static partial class OHsExportPlanner
         }).ToArray();
         var rows = required.ToList();
         var index = 0;
+        decimal? previousLookup = null;
         OHsExportTimingPoint? preceding = null;
-        foreach (var time in groupTimes.Distinct().Order().Select(t => (decimal)t + 5))
+        foreach (var hit in groupTimes.Distinct().Order())
         {
             token.ThrowIfCancellationRequested();
+            var time = (decimal)hit + 5;
+            var canAlign = previousLookup is null || hit > previousLookup;
+            previousLookup = time;
             while (index < required.Length && required[index].Timestamp <= time) preceding = required[index++];
             // The timeline builder owns the initial fallback anchor and counts it as an added row.
             if (preceding is null) continue;
             var volume = volumeAt(time);
             if (volume == preceding.Volume) continue;
-            preceding = new(time, preceding.Kind == OHsExportTimingKind.SourceRed ? "-100" : preceding.BeatLength,
+            // Keep overlapping lookups and intervening authored timing changes at their original times.
+            var timestamp = canAlign && (index == 0 || required[index - 1].Timestamp <= hit) ? hit : time;
+            preceding = new(timestamp, preceding.Kind == OHsExportTimingKind.SourceRed ? "-100" : preceding.BeatLength,
                 preceding.Meter, preceding.SampleSet, input.Options.StartingIndex, volume,
                 preceding.Effects, OHsExportTimingKind.BankSwitch);
             rows.Add(preceding);

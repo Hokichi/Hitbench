@@ -69,6 +69,9 @@ public class OHsExportRampTests
         var pcm = OHsExportPlaybackOracle.Render(text, name => AudioDecoder.Decode(Path.Combine(output, name), cancel.Token), 66150);
         int[] volumes = [14, 17, 21, 24, 28, 31, 35, 38, 42, 45, 49, 52];
         Assert.That(OHsExportPlaybackOracle.Resolve(text).Select(h => h.Volume), Is.EqualTo(volumes));
+        var published = OHsExportBeatmap.Parse(text);
+        Assert.That(published.TimingPoints.Where(p => p.Timestamp > 0 && p.Timestamp < 2000).Select(p => p.Timestamp),
+            Is.EqualTo(Enumerable.Range(0, 12).Select(i => 100m + i * 100)));
         foreach (var ms in new[] { 150, 250, 650, 1150, 1250, 1350 })
         {
             var expected = Enumerable.Range(0, 12).Where(i => ms >= 100 + i * 100 && ms < 300 + i * 100)
