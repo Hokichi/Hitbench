@@ -10,7 +10,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <AssemblyMetadata Include="OHsReleaseVersion" Value="$(OHsReleaseVersion)" />
+    <AssemblyMetadata Include="OHsSourceCommit" Value="$(SourceRevisionId)" />
     <EmbeddedResource Include="Resources\OHsExportTemplate.osu" LogicalName="Hitbench.Resources.OHsExportTemplate.osu" />
+    <EmbeddedResource Include="Resources\Update-Hitbench.ps1" LogicalName="Hitbench.UpdateHelper" />
     <Resource Include="Resources\logo.ico;Resources\logo.png;Resources\logo-light.ico;Resources\logo-light.png" />
     <Resource Include="Resources\LoadingSpinnerD.json;Resources\LoadingSpinnerL.json" />
   </ItemGroup>

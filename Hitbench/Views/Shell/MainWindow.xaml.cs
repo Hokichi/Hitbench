@@ -371,10 +371,13 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
     {
         base.OnPropertyChanged(e);
         if (e.Property == WindowStateProperty) CancelBackgroundDrag();
+        if (e.Property == IsAudioBusyProperty || e.Property == IsPopupOverlayVisibleProperty || e.Property == IsBlockingDrawerVisibleProperty) RefreshUpdateInteraction();
     }
 
     protected override void OnClosed(EventArgs e)
     {
+        AcceptUpdateClose();
+        StopUpdates();
         SetHeaderPresentationSource(null);
         sampleDrawerPresentation.ClearFocusRestore?.Invoke();
         InstrumentalDrawerPresentation.ClearFocusRestore?.Invoke();
@@ -413,6 +416,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
     {
         base.OnClosing(e);
         if (e.Cancel || closingAfterSave ||
+            updateClosePrepared ||
             (!placementDirty && placementSave.IsCompleted && returnHome.IsCompleted &&
              (PageHost.Content is not WorkstationPage workstationPage || !workstationPage.HasPendingSaves))) return;
         e.Cancel = true;
@@ -757,6 +761,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
 
     private void OnStateChanged(object? sender, PropertyChangedEventArgs e)
     {
+        RefreshUpdateInteraction();
         if (viewModel.IsInteractionBlocked) CancelBackgroundDrag();
         if (e.PropertyName != nameof(HomePageVM.IsInteractionBlocked) || closed) return;
         if (viewModel.IsInteractionBlocked)

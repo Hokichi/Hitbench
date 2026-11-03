@@ -7,6 +7,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: hitbench-publish
+  cancel-in-progress: false
+
 jobs:
   publish:
     runs-on: windows-latest
@@ -23,16 +27,11 @@ jobs:
         env:
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
-          $subject = ($env:COMMIT_MESSAGE -split '\r?\n', 2)[0]
-          $prefix = 'Last commit for build '
-          if (-not $subject.StartsWith($prefix, [StringComparison]::Ordinal)) { exit 0 }
-          $version = $subject.Substring($prefix.Length)
-          if ($version -cnotmatch '\A[A-Za-z0-9][A-Za-z0-9._-]*\z') {
-            throw 'Build version must start with a letter or digit and contain only letters, digits, dots, underscores, or hyphens.'
-          }
-          git check-ref-format "refs/tags/$version"
-          if ($LASTEXITCODE -ne 0) { throw 'Build version is not a valid Git tag.' }
-          "version=$version" >> $env:GITHUB_OUTPUT
+          $build = & ./.github/scripts/Get-HitbenchBuildVersion.ps1 -Subject $env:COMMIT_MESSAGE
+          if (-not $build) { exit 0 }
+          "version=$($build.Version)" >> $env:GITHUB_OUTPUT
+          "numeric=$($build.NumericVersion)" >> $env:GITHUB_OUTPUT
+          "description=$($build.Description)" >> $env:GITHUB_OUTPUT
 
       - name: Reject existing tags and releases
         id: available
@@ -59,18 +58,20 @@ jobs:
         if: steps.version.outputs.version != ''
         env:
           BUILD_VERSION: ${{ steps.version.outputs.version }}
+          NUMERIC_VERSION: ${{ steps.version.outputs.numeric }}
         run: |
           $publishDir = Join-Path $env:RUNNER_TEMP 'hitbench-publish'
-          dotnet publish Hitbench/Hitbench.csproj -c Release -r win-x64 --self-contained true -o $publishDir
+          dotnet publish Hitbench/Hitbench.csproj -c Release -r win-x64 --self-contained true -o $publishDir "-p:OHsReleaseVersion=$env:BUILD_VERSION" "-p:VersionPrefix=$env:NUMERIC_VERSION" "-p:SourceRevisionId=$env:GITHUB_SHA"
           if ($LASTEXITCODE -ne 0) { throw 'Self-contained publish failed.' }
           $archive = Join-Path $env:RUNNER_TEMP "Hitbench-$env:BUILD_VERSION-win-x64.zip"
-          Compress-Archive -Path "$publishDir/*" -DestinationPath $archive
+          & ./.github/scripts/New-HitbenchReleasePackage.ps1 -PublishDirectory $publishDir -Version $env:BUILD_VERSION -Commit $env:GITHUB_SHA -DestinationZip $archive
 
       - name: Create tag and GitHub Release
         id: release
         if: steps.version.outputs.version != ''
         env:
           BUILD_VERSION: ${{ steps.version.outputs.version }}
+          DESCRIPTION_TAG: ${{ steps.version.outputs.description }}
           GH_TOKEN: ${{ github.token }}
         run: |
           $archive = Join-Path $env:RUNNER_TEMP "Hitbench-$env:BUILD_VERSION-win-x64.zip"
@@ -80,3 +81,4 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Unable to push release tag; it may already exist.' }
           gh release create $env:BUILD_VERSION $archive --verify-tag --target $env:GITHUB_SHA --title $env:BUILD_VERSION --generate-notes
           if ($LASTEXITCODE -ne 0) { throw 'Unable to create GitHub Release.' }
+          & ./.github/scripts/Set-HitbenchDescriptionTag.ps1 -Description $env:DESCRIPTION_TAG -Commit $env:GITHUB_SHA

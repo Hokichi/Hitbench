@@ -120,40 +120,14 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
-        <ControlTemplate x:Key="OHsExportProgressTemplate" TargetType="ProgressBar">
-            <Border
-                Background="{TemplateBinding Background}"
-                BorderBrush="{TemplateBinding BorderBrush}"
-                BorderThickness="{TemplateBinding BorderThickness}"
-                Style="{StaticResource BaseBorderStyle}">
-                <Grid x:Name="PART_Track" Style="{StaticResource BaseGridStyle}">
-                    <Border
-                        x:Name="PART_Indicator"
-                        HorizontalAlignment="Left"
-                        Background="{TemplateBinding Foreground}"
-                        Style="{StaticResource BaseBorderStyle}" />
-                </Grid>
-            </Border>
-        </ControlTemplate>
         <Style
             x:Key="OHsExportProgressStyle"
-            BasedOn="{StaticResource BaseProgressBarStyle}"
+            BasedOn="{StaticResource OHsDeterminateProgressStyle}"
             TargetType="ProgressBar">
-            <Setter Property="Template" Value="{StaticResource OHsExportProgressTemplate}" />
-            <Setter Property="Height" Value="{StaticResource Space.2}" />
-            <Setter Property="Background" Value="{DynamicResource Brush.Background.Deepened}" />
-            <Setter Property="Foreground" Value="{DynamicResource Brush.Navy}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Control}" />
-            <Setter Property="BorderThickness" Value="1" />
             <Setter Property="Visibility" Value="Collapsed" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsBusy, Mode=OneWay}" Value="True">
                     <Setter Property="Visibility" Value="Visible" />
-                </DataTrigger>
-                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
-                    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
-                    <Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
                 </DataTrigger>
             </Style.Triggers>
         </Style>

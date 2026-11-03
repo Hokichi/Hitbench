@@ -293,6 +293,7 @@
                                     <Border x:Name="HeaderVolumeBlurHost" Style="{StaticResource BaseBorderStyle}">
                                         <shell:OHsShellHeader
                                             x:Name="ShellHeader"
+                                            DownloadUpdateRequested="OnDownloadUpdateRequested"
                                             CloseRequested="OnCloseClick"
                                             GoBackRequested="OnGoBackClick"
                                             IsLightTheme="{Binding ThemeService.IsLightTheme, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}"

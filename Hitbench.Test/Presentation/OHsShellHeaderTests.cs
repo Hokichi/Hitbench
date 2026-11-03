@@ -8,6 +8,34 @@ namespace Hitbench.Test.Presentation;
 [Apartment(ApartmentState.STA), NonParallelizable]
 public sealed class OHsShellHeaderTests
 {
+    [Test]
+    public void DownloadAvailabilityAndRequestUseIndependentHeaderContract()
+    {
+        new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
+        var header = new OHsShellHeader();
+        var group = (FrameworkElement)header.FindName("UpdateActions");
+        var button = (BalloonButton)header.FindName("DownloadUpdateButton");
+        Assert.That(group.Visibility, Is.EqualTo(Visibility.Collapsed));
+        header.IsUpdateAvailable = true;
+        header.CanDownloadUpdate = true;
+        Assert.That(group.Visibility, Is.EqualTo(Visibility.Visible));
+        Assert.That(button.ShouldShowText, Is.False);
+        Assert.That(AutomationProperties.GetName(button), Is.EqualTo("Download update"));
+        Hitbench.Resources.Helpers.KeyboardNavigationPolicy.SetSuppressTabNavigation(header, true);
+        Assert.That(button.IsTabStop, Is.False);
+        Assert.That(button.ButtonIcon, Is.SameAs(header.FindResource("Download")));
+        UiControlContract.AssertStyle<BalloonButton>(button, "OHsShellHeaderUpdateActionStyle");
+        var requests = 0;
+        header.DownloadUpdateRequested += (_, _) => requests++;
+        button.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+        Assert.That(requests, Is.EqualTo(1));
+        header.IsWorkstationVisible = true;
+        header.IsWorkstationVisible = false;
+        Assert.That(group.Visibility, Is.EqualTo(Visibility.Visible));
+        header.IsUpdateAvailable = false;
+        Assert.That(group.Visibility, Is.EqualTo(Visibility.Collapsed));
+    }
+
     [TestCase("GoBackButton", 0)]
     [TestCase("MinimizeButton", 1)]
     [TestCase("MaximizeRestoreButton", 2)]

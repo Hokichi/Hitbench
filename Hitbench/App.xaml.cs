@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Reflection;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.DependencyInjection;
 using Hitbench.Services.FileSystem;
@@ -85,6 +86,21 @@ public partial class App : Application
         registrations.AddSingleton<Func<HomePage>>(provider => () => provider.GetRequiredService<HomePage>());
         registrations.AddSingleton(provider => new OHsThemeService(Current.Resources, provider.GetRequiredService<IAppSettingsService>(), provider.GetRequiredService<IUiScheduler>()));
         registrations.AddSingleton<MainWindow>();
+        registrations.AddSingleton(_ => new System.Net.Http.HttpClient { Timeout = Timeout.InfiniteTimeSpan });
+        registrations.AddSingleton<IOHsUpdateService>(provider =>
+        {
+            var metadata = typeof(App).Assembly.GetCustomAttributes<System.Reflection.AssemblyMetadataAttribute>().ToDictionary(item => item.Key, item => item.Value);
+            return new OHsUpdateService(provider.GetRequiredService<System.Net.Http.HttpClient>(), AppContext.BaseDirectory, System.IO.Path.GetTempPath(),
+                metadata.GetValueOrDefault("OHsReleaseVersion"), metadata.GetValueOrDefault("OHsSourceCommit"));
+        });
+        registrations.AddSingleton(_ => new OHsUpdateHandoff(AppContext.BaseDirectory));
+        registrations.AddSingleton<IOHsUpdateDialogService>(provider => new OHsUpdateDialogService(() => Current.MainWindow, Current.Dispatcher,
+            release => new OHsUpdatePopupVM(release, provider.GetRequiredService<IOHsUpdateService>())));
+        registrations.AddSingleton<IOHsUpdateRestartService>(provider => new OHsUpdateRestartService(provider.GetRequiredService<OHsUpdateHandoff>(),
+            token => Current.Dispatcher.InvokeAsync(() => ((MainWindow)Current.MainWindow).PrepareForUpdateCloseAsync(token)).Task.Unwrap(),
+            (commit, token) => Current.Dispatcher.InvokeAsync(() => ((MainWindow)Current.MainWindow).RequestUpdateCloseAsync(commit, token)).Task.Unwrap(),
+            () => Current.Dispatcher.Invoke(() => ((MainWindow)Current.MainWindow).CancelUpdateClose())));
+        registrations.AddSingleton<OHsUpdateVM>();
         return registrations.BuildServiceProvider(new ServiceProviderOptions
         {
             ValidateOnBuild = true,
@@ -107,8 +123,10 @@ public partial class App : Application
             activeShell = window;
             window.ApplySettings(settings);
             MainWindow = window;
+            window.InitializeUpdates(services.GetRequiredService<OHsUpdateVM>());
             window.Closed += (_, _) => Shutdown();
             window.Show();
+            window.StartUpdateCheck();
             activationGate!.MarkReady();
             await window.LoadAsync();
             if (!window.IsVisible)

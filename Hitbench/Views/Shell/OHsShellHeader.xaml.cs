@@ -8,6 +8,15 @@ namespace Hitbench.Views.Shell;
 public partial class OHsShellHeader : UserControl
 {
     public OHsShellHeader() { InitializeComponent(); UpdateState(); }
+    public static readonly DependencyProperty IsUpdateAvailableProperty = DependencyProperty.Register(nameof(IsUpdateAvailable), typeof(bool), typeof(OHsShellHeader), new PropertyMetadata(false, (d, _) => ((OHsShellHeader)d).UpdateState()));
+    public bool IsUpdateAvailable { get => (bool)GetValue(IsUpdateAvailableProperty); set => SetValue(IsUpdateAvailableProperty, value); }
+    public static readonly DependencyProperty CanDownloadUpdateProperty = DependencyProperty.Register(nameof(CanDownloadUpdate), typeof(bool), typeof(OHsShellHeader), new PropertyMetadata(false));
+    public bool CanDownloadUpdate { get => (bool)GetValue(CanDownloadUpdateProperty); set => SetValue(CanDownloadUpdateProperty, value); }
+    public static readonly DependencyProperty DownloadUpdateToolTipProperty = DependencyProperty.Register(nameof(DownloadUpdateToolTip), typeof(string), typeof(OHsShellHeader), new PropertyMetadata("Download update"));
+    public string DownloadUpdateToolTip { get => (string)GetValue(DownloadUpdateToolTipProperty); set => SetValue(DownloadUpdateToolTipProperty, value); }
+    public static readonly RoutedEvent DownloadUpdateRequestedEvent = EventManager.RegisterRoutedEvent(nameof(DownloadUpdateRequested), RoutingStrategy.Bubble, typeof(RoutedEventHandler), typeof(OHsShellHeader));
+    public event RoutedEventHandler DownloadUpdateRequested { add => AddHandler(DownloadUpdateRequestedEvent, value); remove => RemoveHandler(DownloadUpdateRequestedEvent, value); }
+    private void OnDownloadUpdateClick(object sender, RoutedEventArgs e) => RaiseEvent(new RoutedEventArgs(DownloadUpdateRequestedEvent, this));
     public static readonly DependencyProperty IsWorkstationVisibleProperty = DependencyProperty.Register(nameof(IsWorkstationVisible), typeof(bool), typeof(OHsShellHeader), new PropertyMetadata(false, (d, _) => ((OHsShellHeader)d).UpdateState()));
     public bool IsWorkstationVisible { get => (bool)GetValue(IsWorkstationVisibleProperty); set => SetValue(IsWorkstationVisibleProperty, value); }
     public static readonly DependencyProperty CanGoBackProperty = DependencyProperty.Register(nameof(CanGoBack), typeof(bool), typeof(OHsShellHeader), new PropertyMetadata(false, (d, _) => ((OHsShellHeader)d).UpdateState()));
@@ -35,6 +44,7 @@ public partial class OHsShellHeader : UserControl
     {
         if (!IsInitialized) return;
         WorkstationActions.Visibility = IsWorkstationVisible ? Visibility.Visible : Visibility.Collapsed;
+        UpdateActions.Visibility = IsUpdateAvailable ? Visibility.Visible : Visibility.Collapsed;
         var label = IsMaximized ? "Restore" : "Maximize";
         MaximizeRestoreButton.ButtonText = label;
         MaximizeRestoreButton.ButtonIcon = (Geometry)FindResource(IsMaximized ? "CompressAlt" : "ExpandAlt");
