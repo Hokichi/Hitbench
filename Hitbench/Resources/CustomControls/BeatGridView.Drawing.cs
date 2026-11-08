@@ -16,8 +16,10 @@ public sealed partial class BeatGridView
         var nodeBorder = new Pen(highContrast ? SystemColors.WindowTextBrush :
             TryFindResource("Brush.Border.Default") as Brush ?? marker, 1);
         var selectedBorder = new Pen(selectionCue, 2);
+        context.PushOpacity(highContrast ? 1 : 0.5);
         BeatGridDrawing.Draw(context, this, Offsets, Bpms, Subdivision, Duration.TotalMilliseconds,
             ContentWidth, HorizontalOffset, ViewportWidth, ActualHeight, false);
+        context.Pop();
         var visible = SamplesInRange(0, Math.Min(ActualWidth, ViewportWidth));
         for (var layer = 0; layer < 2; layer++)
         {
