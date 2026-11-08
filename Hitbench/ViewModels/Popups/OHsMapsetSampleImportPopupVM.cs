@@ -11,9 +11,9 @@ public sealed class OHsMapsetSampleImportPopupVM : ObservableObject
     public bool CanConfirm => !closed && Entries.Any(e => e.IsChecked);
     public bool? SelectionAccepted { get; private set; }
     public IReadOnlyList<string> SelectedPaths { get; private set; } = [];
-    public OHsMapsetSampleImportPopupVM(IReadOnlyList<string> paths)
+    public OHsMapsetSampleImportPopupVM(IReadOnlyList<string> paths, IReadOnlyCollection<string>? duplicatePaths = null)
     {
-        Entries = Array.AsReadOnly(paths.Select(p => new OHsMapsetSampleEntry(p)).ToArray());
+        Entries = Array.AsReadOnly(paths.Select(p => new OHsMapsetSampleEntry(p, duplicatePaths?.Contains(p, StringComparer.OrdinalIgnoreCase) == true)).ToArray());
         foreach (var entry in Entries) entry.PropertyChanged += OnChanged;
     }
     private void OnChanged(object? sender, PropertyChangedEventArgs e) { if (e.PropertyName == nameof(OHsMapsetSampleEntry.IsChecked)) OnPropertyChanged(nameof(CanConfirm)); }

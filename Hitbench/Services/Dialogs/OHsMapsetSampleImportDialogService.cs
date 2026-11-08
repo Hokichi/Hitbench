@@ -6,11 +6,11 @@ namespace Hitbench.Services.Dialogs;
 public sealed class OHsMapsetSampleImportDialogService(Func<Window?> getOwner, Dispatcher dispatcher,
     Func<OHsMapsetSampleImportPopupVM, CancellationToken, Task<bool>>? present = null) : IOHsMapsetSampleImportDialogService
 {
-    public async Task<IReadOnlyList<string>> SelectAsync(IReadOnlyList<string> paths, CancellationToken token) =>
+    public async Task<IReadOnlyList<string>> SelectAsync(IReadOnlyList<string> paths, CancellationToken token, IReadOnlyCollection<string>? duplicatePaths = null) =>
         await dispatcher.InvokeAsync(async () =>
         {
             token.ThrowIfCancellationRequested();
-            var vm = new OHsMapsetSampleImportPopupVM(paths);
+            var vm = new OHsMapsetSampleImportPopupVM(paths, duplicatePaths);
             OHsMapsetSampleImportPopup? popup = null;
             try
             {

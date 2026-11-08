@@ -6,7 +6,7 @@ namespace Hitbench.Test.Services;
 public sealed class OHsMapsetSampleImportTests
 {
     [Test]
-    public async Task SelectionCopiesOnlyCheckedFilesAndRepeatedImportPreservesOriginalCopy()
+    public async Task SelectionCopiesOnlyCheckedFilesAndSelectedDuplicateReplacesOriginalCopy()
     {
         var root = Directory.CreateTempSubdirectory("Hitbench-mapset-import-");
         try
@@ -26,8 +26,8 @@ public sealed class OHsMapsetSampleImportTests
             Assert.That(first.ImportedFiles, Is.EqualTo(new[] { "Mapset/drum-hitnormal9.wav" }));
             await File.WriteAllTextAsync(source, "changed");
             var second = await service.ImportAsync(path, mapset.FullName, default);
-            Assert.That(second.ImportedFiles, Is.Empty);
-            Assert.That(await File.ReadAllTextAsync(Path.Combine(project.FullName, "Samples", "Mapset", "drum-hitnormal9.wav")), Is.EqualTo("original"));
+            Assert.That(second.ImportedFiles, Is.EqualTo(first.ImportedFiles));
+            Assert.That(await File.ReadAllTextAsync(Path.Combine(project.FullName, "Samples", "Mapset", "drum-hitnormal9.wav")), Is.EqualTo("changed"));
             Assert.That(Directory.GetFiles(Path.Combine(project.FullName, "Samples", "Mapset")), Has.Length.EqualTo(1));
         }
         finally { root.Delete(true); }

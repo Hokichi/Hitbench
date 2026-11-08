@@ -4,7 +4,8 @@ namespace Hitbench.Test.Presentation;
 
 public sealed class StubOHsMapsetSampleImportDialogService : IOHsMapsetSampleImportDialogService
 {
+    public IReadOnlyCollection<string> DuplicatePaths { get; private set; } = [];
     public Func<IReadOnlyList<string>, CancellationToken, Task<IReadOnlyList<string>>> Select { get; set; } =
         (paths, _) => Task.FromResult(paths);
-    public Task<IReadOnlyList<string>> SelectAsync(IReadOnlyList<string> paths, CancellationToken token) => Select(paths, token);
+    public Task<IReadOnlyList<string>> SelectAsync(IReadOnlyList<string> paths, CancellationToken token, IReadOnlyCollection<string>? duplicatePaths = null) { DuplicatePaths = duplicatePaths ?? []; return Select(paths, token); }
 }

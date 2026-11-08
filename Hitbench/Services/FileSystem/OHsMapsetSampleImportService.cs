@@ -8,11 +8,13 @@ public sealed class OHsMapsetSampleImportService(ISampleFileService files, IOHsM
     {
         var offered = await OHsMapsetSamples.FindAsync(mapsetDirectory, token);
         if (offered.Count == 0) return new([], [], false);
-        var selected = await dialogs.SelectAsync(offered, token);
+        var existing = (await files.ListAsync(projectPath, token)).Where(OHsMapsetSamples.IsMapsetSamplePath)
+            .Select(p => Path.GetFileName(p.Replace('\\', '/'))).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var duplicates = offered.Where(p => existing.Contains(Path.GetFileName(p))).ToArray();
+        var selected = await dialogs.SelectAsync(offered, token, duplicates);
         token.ThrowIfCancellationRequested();
         var sources = selected.Where(p => offered.Contains(p, StringComparer.OrdinalIgnoreCase)).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
         if (sources.Length == 0) return new([], [], false);
-        var existing = (await files.ListAsync(projectPath, token)).ToHashSet(StringComparer.OrdinalIgnoreCase);
         List<string> imported = []; List<string> failures = [];
         foreach (var source in sources)
         {
@@ -22,9 +24,9 @@ public sealed class OHsMapsetSampleImportService(ISampleFileService files, IOHsM
                 SamplePaths.RejectLinkedPath(source);
                 if (!File.Exists(source)) throw new FileNotFoundException("Sample no longer exists.", source);
                 var target = OHsMapsetSamples.FolderName + "/" + Path.GetFileName(source);
-                if (existing.Contains(target)) continue;
-                var name = await files.ImportAsync(projectPath, source, token, OHsMapsetSamples.FolderName, skipExisting: true);
-                imported.Add(name); existing.Add(name);
+                var overwrite = duplicates.Contains(source, StringComparer.OrdinalIgnoreCase);
+                var name = await files.ImportAsync(projectPath, source, token, OHsMapsetSamples.FolderName, skipExisting: !overwrite, overwriteExisting: overwrite);
+                imported.Add(name);
             }
             catch (OperationCanceledException) when (token.IsCancellationRequested) { break; }
             catch (Exception error) { failures.Add($"{Path.GetFileName(source)}: {error.Message}"); }

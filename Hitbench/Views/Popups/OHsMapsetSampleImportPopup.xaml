@@ -7,12 +7,23 @@
    <Setter Property="MinHeight" Value="{StaticResource Size.Control.Primary}"/>
    <Setter Property="IsTabStop" Value="True"/>
    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+   <Style.Triggers><DataTrigger Binding="{Binding IsDuplicate, Mode=OneWay}" Value="True"><Setter Property="AutomationProperties.ItemStatus" Value="Duplicated"/></DataTrigger></Style.Triggers>
+  </Style>
+  <Style x:Key="OHsMapsetImportDuplicateTextStyle" TargetType="TextBlock" BasedOn="{StaticResource BodyTextStyle}">
+   <Setter Property="FontSize" Value="{StaticResource FontSize.Caption}"/>
+   <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}"/>
+   <Setter Property="Visibility" Value="Collapsed"/>
+   <Style.Triggers><DataTrigger Binding="{Binding IsDuplicate, Mode=OneWay}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers>
   </Style>
   <DataTemplate x:Key="OHsMapsetImportFilenameTemplate">
-   <TextBlock Style="{StaticResource BodyTextStyle}" Text="{Binding Mode=OneWay}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"/>
+   <Grid Style="{StaticResource BaseGridStyle}">
+    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+    <TextBlock Style="{StaticResource BodyTextStyle}" Text="{Binding FileName, Mode=OneWay}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"/>
+    <TextBlock Grid.Column="1" Margin="8,0,0,0" Text="Duplicated" Style="{StaticResource OHsMapsetImportDuplicateTextStyle}"/>
+   </Grid>
   </DataTemplate>
   <DataTemplate x:Key="OHsMapsetImportEntryTemplate">
-   <CheckBox Style="{StaticResource OHsMapsetImportCheckStyle}" Content="{Binding FileName,Mode=OneWay}"
+   <CheckBox Style="{StaticResource OHsMapsetImportCheckStyle}" Content="{Binding Mode=OneWay}"
     ContentTemplate="{StaticResource OHsMapsetImportFilenameTemplate}" IsChecked="{Binding IsChecked,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
     AutomationProperties.Name="{Binding FileName,Mode=OneWay}" ToolTip="{Binding SourcePath,Mode=OneWay}" ToolTipService.ShowsToolTipOnKeyboardFocus="True"/>
   </DataTemplate>

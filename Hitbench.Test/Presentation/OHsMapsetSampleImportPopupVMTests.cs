@@ -4,6 +4,17 @@ namespace Hitbench.Test.Presentation;
 public sealed class OHsMapsetSampleImportPopupVMTests
 {
     [Test]
+    public void DuplicatesStartUncheckedAndCanBeReselected()
+    {
+        var vm = new OHsMapsetSampleImportPopupVM(["drum-hitclap.wav"], ["DRUM-hitclap.wav"]);
+        Assert.That(vm.Entries.Single().IsDuplicate, Is.True);
+        Assert.That(vm.CanConfirm, Is.False);
+        vm.Entries.Single().IsChecked = true;
+        Assert.That(vm.CanConfirm, Is.True);
+        Assert.That(vm.TryCompleteSelection(true), Is.True);
+        Assert.That(vm.SelectedPaths, Is.EqualTo(new[] { "drum-hitclap.wav" }));
+    }
+    [Test]
     public void SelectionIsCheckedByDefaultAndCompletesOnce()
     {
         var vm = new OHsMapsetSampleImportPopupVM(["drum-hitnormal9.wav", "soft-hitclap.wav"]);
