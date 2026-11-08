@@ -46,9 +46,13 @@ public sealed class OHsExportService(OHsExportPublisher? publisher = null, Func<
         var (sourceText, sourceEncoding) = DecodeBeatmap(await File.ReadAllBytesAsync(mapPath, token));
         var map = OHsExportBeatmap.Parse(sourceText);
         var project = ProjectDataSerializer.Deserialize(request.ProjectJson);
-        var input = OHsExportInputFactory.Create(project, map, request.Options, token);
+        var cache = SamplePaths.ResolveFolder(request.ProjectPath, OHsDefaultSamples.FolderName);
+        var defaults = project.AllowDefaults && Directory.Exists(cache) ? Directory.EnumerateFiles(cache).Select(path => SamplePaths.Relative(request.ProjectPath, path)).ToArray() : [];
+        var input = OHsExportInputFactory.Create(project, map, request.Options, token, defaults, request.DurationMilliseconds ?? double.PositiveInfinity);
+        progress?.Report(new(5, "Optimizing sample reuse"));
+        var plan = OHsExportPlanner.Plan(input, token, progress);
         var sourcePaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var file in input.Voices.Select(v => v.FileName).Distinct(StringComparer.OrdinalIgnoreCase))
+        foreach (var file in plan.Banks.Values.SelectMany(bank => bank.Values).SelectMany(asset => asset.Sources).Select(source => source.FileName).Concat(input.Voices.Where(v => !v.IsDefault).Select(v => v.FileName)).Distinct(StringComparer.OrdinalIgnoreCase))
         {
             token.ThrowIfCancellationRequested(); var path = ValidateSource(SamplePaths.Resolve(request.ProjectPath, file));
             fingerprints[path] = OHsExportPublisher.HashFile(path);
@@ -57,7 +61,7 @@ public sealed class OHsExportService(OHsExportPublisher? publisher = null, Func<
         if (request.Options.Destination == OHsExportDestination.Beatmap)
             OHsExportPublisher.ValidateBeatmapDestination(request.BeatmapPath,
                 new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { [difficultyName] = "difficulty" }, token);
-        progress?.Report(new(10, "Decoding samples"));
+        progress?.Report(new(35, "Decoding samples"));
         var decoded = new Dictionary<string, DecodedAudio>(StringComparer.OrdinalIgnoreCase);
         try
         {
@@ -73,9 +77,9 @@ public sealed class OHsExportService(OHsExportPublisher? publisher = null, Func<
                     decoded.Add(path, audio);
                 }
                 catch { audio.Dispose(); throw; }
-                progress?.Report(new(10 + 15d * decoded.Count / sourcePaths.Count, "Decoding samples"));
+                progress?.Report(new(35 + 5d * decoded.Count / sourcePaths.Count, "Decoding samples"));
             }
-            var plan = OHsExportPlanner.Plan(input, token, progress);
+
             var generated = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { [difficultyName] = "difficulty" };
             foreach (var bank in plan.Banks)
                 foreach (var slot in bank.Value)

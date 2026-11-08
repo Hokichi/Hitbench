@@ -36,9 +36,9 @@ public static class OHsExportBeatmapWriter
         {
             var normal = Array.IndexOf(ControlPoint.SamplesetOptions.ToArray(), c.NormalSet) + 1;
             var addition = Array.IndexOf(ControlPoint.SamplesetOptions.ToArray(), c.AdditionSet) + 1;
-            if (normal == 0 || addition == 0 || !plan.Banks.TryGetValue(c.SampleIndex, out var bank) ||
-                !bank.ContainsKey(new(c.NormalSet, Core.Enums.SampleType.Normal))) throw new InvalidDataException("Unresolved export circle.");
-            return FormattableString.Invariant($"256,192,{c.Timestamp},5,{c.HitSound},{normal}:{addition}:0:0:");
+            if (normal == 0 || addition == 0 || c.Volume is < 0 or > 100 || c.SampleIndex < 0 || c.SampleIndex != 0 && (!plan.Banks.TryGetValue(c.SampleIndex, out var bank) ||
+                !bank.ContainsKey(new(c.NormalSet, Core.Enums.SampleType.Normal)))) throw new InvalidDataException("Unresolved export circle.");
+            return FormattableString.Invariant($"256,192,{c.Timestamp},5,{c.HitSound},{normal}:{addition}:0:{c.Volume}:");
         });
         string Rows(IEnumerable<string> rows) => string.Concat(rows.Select(row => row + newline));
         template = ReplaceSection(template, "TimingPoints", _ => Rows(timing) + newline, newline);

@@ -14,6 +14,8 @@ public static partial class OHsExportPlanner
         for (var i = 0; i < groups.Length; i++)
         {
             token.ThrowIfCancellationRequested();
+            if (groups[i].Choices.FirstOrDefault(c => c.IsNative) is { } native)
+            { selected[i] = (-1, native); continue; }
             var found = false;
             for (var bank = 0; bank < layout.Count; bank++)
             {
@@ -25,10 +27,10 @@ public static partial class OHsExportPlanner
             if (!found) throw new InvalidOperationException("The sample layout cannot represent an export event.");
         }
         // Number the first played bank first, so native fallback uses the requested starting index.
-        var order = Enumerable.Range(0, layout.Count).OrderBy(b => b == selected[0].Bank ? -1 : b).ToArray();
+        var order = Enumerable.Range(0, layout.Count).OrderBy(b => b == selected.FirstOrDefault(s => s.Bank >= 0).Bank ? -1 : b).ToArray();
         var indices = new int[layout.Count];
         for (var i = 0; i < order.Length; i++) indices[order[i]] = i;
-        for (var i = 0; i < selected.Length; i++) selected[i].Bank = indices[selected[i].Bank];
+        for (var i = 0; i < selected.Length; i++) if (selected[i].Bank >= 0) selected[i].Bank = indices[selected[i].Bank];
         return BuildSelectedTimeline(groups, selected, order.Select(b => layout[b]).ToArray(), required, start, token, timingVolume);
     }
 
@@ -38,6 +40,8 @@ public static partial class OHsExportPlanner
         IReadOnlyList<IReadOnlyDictionary<OHsExportSlot, OHsExportAsset>> layout,
         OHsExportTimingPoint[] required, int start, CancellationToken token, Func<decimal, int>? timingVolume = null)
     {
+        int PhysicalBank(int i) => selected[i].Choice.IsNative ? 0 : selected[i].Bank + start;
+        var initialBank = PhysicalBank(0);
         var rows = required.ToList();
         var switches = new List<(decimal Time, int Bank)>();
         var added = 0;
@@ -52,7 +56,7 @@ public static partial class OHsExportPlanner
             var preceding = requiredIndex == 0 ? null : required[requiredIndex - 1];
             var opportunity = preceding is not null && preceding.Timestamp > lower ? preceding : null;
             var time = opportunity?.Timestamp ?? (groups[i].Time > lower ? groups[i].Time : upper);
-            switches.Add((time, selected[i].Bank + start));
+            switches.Add((time, PhysicalBank(i)));
             if (opportunity is null)
             {
                 rows.Add(new(time, preceding is null || preceding.Kind == OHsExportTimingKind.SourceRed ? "-100" : preceding.BeatLength,
@@ -62,7 +66,7 @@ public static partial class OHsExportPlanner
             }
         }
         var scheduled = new List<OHsExportTimingPoint>();
-        var change = 0; var bank = start;
+        var change = 0; var bank = initialBank;
         foreach (var row in rows.OrderBy(p => p.Timestamp).ThenBy(p => p.Kind))
         {
             token.ThrowIfCancellationRequested();
@@ -73,13 +77,13 @@ public static partial class OHsExportPlanner
         var first = scheduled.FirstOrDefault();
         var firstVolume = timingVolume?.Invoke((decimal)groups[0].Time + 5) ?? 100;
         if (first is null || first.Timestamp > (decimal)groups[0].Time + 5 &&
-            (first.SampleIndex != start || first.SampleSet != 1 || first.Volume != firstVolume))
+            (first.SampleIndex != initialBank || first.SampleSet != 1 || first.Volume != firstVolume))
         {
-            scheduled.Insert(0, new(groups[0].Time, "-100", 4, 1, start, firstVolume, 0, OHsExportTimingKind.BankSwitch));
+            scheduled.Insert(0, new(groups[0].Time, "-100", 4, 1, initialBank, firstVolume, 0, OHsExportTimingKind.BankSwitch));
             added++;
         }
         var circles = groups.Select((g, i) => new OHsExportCircle(g.Time, selected[i].Choice.NormalSet,
-            selected[i].Choice.AdditionSet, selected[i].Choice.HitSound, selected[i].Bank + start)).ToArray();
+            selected[i].Choice.AdditionSet, selected[i].Choice.HitSound, PhysicalBank(i), selected[i].Choice.Volume)).ToArray();
         return new(circles, scheduled, layout.Select((b, i) => (b, i)).ToDictionary(p => p.i + start, p => p.b), added);
     }
 }

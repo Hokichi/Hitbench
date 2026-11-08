@@ -20,11 +20,14 @@ public static partial class OHsExportPlanner
                 timestamps.Add([]);
             timestamps[^1].Add(voice);
         }
+        var timingVolume = CreateTimingVolumeResolver(input);
         var prepared = 0;
         var groups = timestamps.Select(g =>
         {
             token.ThrowIfCancellationRequested();
             var voices = g.ToArray();
+            var native = OHsExportRepresentations.TryBuildNative(voices, timingVolume((decimal)g[0].Timestamp + 5));
+            if (native is not null) return (Time: g[0].Timestamp, Choices: (IReadOnlyList<OHsExportRepresentation>)Array.AsReadOnly(new[] { native }));
             var key = string.Join('|', voices.Select(v => $"{v.Sampleset}:{v.Type}:{v.GainPercent}:{v.FileName.Length}:{v.FileName.ToUpperInvariant()}").Order(StringComparer.Ordinal));
             if (!recipes.TryGetValue(key, out var choices))
             {
@@ -38,7 +41,7 @@ public static partial class OHsExportPlanner
         }).ToArray();
         var start = input.Options.StartingIndex;
         if (groups.Length == 0) return new([], BuildTimingPoints(input, [], token).Select(p => p with { SampleIndex = start }).ToArray(), new Dictionary<int, IReadOnlyDictionary<OHsExportSlot, OHsExportAsset>>(), 0);
-        var layout = OHsExportLayoutSearch.Find(recipes.Values.ToArray(), 1000 - start, token, progress);
+        var layout = recipes.Count == 0 ? Array.Empty<IReadOnlyDictionary<OHsExportSlot, OHsExportAsset>>() : OHsExportLayoutSearch.Find(recipes.Values.ToArray(), 1000 - start, token, progress);
         var required = BuildTimingPoints(input, groups.Select(g => g.Time).ToArray(), token);
         return BuildTimeline(groups, required, start, layout, token, CreateTimingVolumeResolver(input));
     }
