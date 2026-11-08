@@ -7,6 +7,20 @@ namespace Hitbench.Test.Services;
 
 public class OHsAudioOperationProgressTests
 {
+    [Test]
+    public async Task ImmediateProgressStartsBeforeFastWorkAndEndsOnce()
+    {
+        var messenger = new WeakReferenceMessenger();
+        var messages = new List<OHsAudioBusyChangedMessage>();
+        messenger.Register<OHsAudioBusyChangedMessage>(messages, (_, m) => messages.Add(m));
+        var progress = new OHsAudioOperationProgress(messenger, new ImmediateUiScheduler(), (_, _) => Task.CompletedTask);
+        await progress.RunAsync("Loading default samples", _ =>
+        {
+            Assert.That(messages.Single().IsBusy, Is.True);
+            return Task.CompletedTask;
+        }, default, showImmediately: true);
+        Assert.That(messages.Select(m => m.IsBusy), Is.EqualTo(new[] { true, false }));
+    }
     [TestCase(false)]
     [TestCase(true)]
     public async Task NestedFailureOrCancellationLeavesIndependentOperationsUsable(bool cancel)

@@ -10,13 +10,14 @@ public sealed class OHsAudioOperationProgress(IMessenger messenger, Func<IUiSche
     public OHsAudioOperationProgress(IMessenger messenger, IUiScheduler scheduler, Func<TimeSpan, CancellationToken, Task>? delay = null)
         : this(messenger, () => scheduler, delay) { }
 
-    public Task RunAsync(string phase, Func<CancellationToken, Task> operation, CancellationToken token) =>
-        RunAsync(phase, async t => { await operation(t).ConfigureAwait(false); return true; }, token);
+    public Task RunAsync(string phase, Func<CancellationToken, Task> operation, CancellationToken token, bool showImmediately = false) =>
+        RunAsync(phase, async t => { await operation(t).ConfigureAwait(false); return true; }, token, showImmediately);
 
-    public async Task<T> RunAsync<T>(string phase, Func<CancellationToken, Task<T>> operation, CancellationToken token)
+    public async Task<T> RunAsync<T>(string phase, Func<CancellationToken, Task<T>> operation, CancellationToken token, bool showImmediately = false)
     {
         token.ThrowIfCancellationRequested();
         if (nested.Value) return await operation(token).ConfigureAwait(false);
+        if (showImmediately) return await RunVisibleAsync(phase, operation, token).ConfigureAwait(false);
         nested.Value = true;
         using var timerCancellation = CancellationTokenSource.CreateLinkedTokenSource(token);
         var id = Guid.NewGuid();
@@ -47,6 +48,24 @@ public sealed class OHsAudioOperationProgress(IMessenger messenger, Func<IUiSche
             if (visible)
                 await getScheduler().InvokeAsync(() => messenger.Send(new OHsAudioBusyChangedMessage(id, false, phase)),
                     CancellationToken.None).ConfigureAwait(false);
+        }
+    }
+
+    private async Task<T> RunVisibleAsync<T>(string phase, Func<CancellationToken, Task<T>> operation, CancellationToken token)
+    {
+        nested.Value = true;
+        var id = Guid.NewGuid();
+        try
+        {
+            await getScheduler().InvokeAsync(() => messenger.Send(new OHsAudioBusyChangedMessage(id, true, phase)), token).ConfigureAwait(false);
+            var minimum = (delay ?? Task.Delay)(TimeSpan.FromMilliseconds(150), token);
+            try { return await operation(token).ConfigureAwait(false); }
+            finally { await minimum.ConfigureAwait(false); }
+        }
+        finally
+        {
+            nested.Value = false;
+            await getScheduler().InvokeAsync(() => messenger.Send(new OHsAudioBusyChangedMessage(id, false, phase)), CancellationToken.None).ConfigureAwait(false);
         }
     }
 }
