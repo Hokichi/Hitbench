@@ -12,7 +12,7 @@ public sealed partial class ManageSamplesPopupVM
 
     public Task LoadWaveformAsync(SampleManagementEntry entry)
     {
-        if (deactivated || waveformReader is null || !Entries.Contains(entry) || entry.Waveform is not null) return Task.CompletedTask;
+        if (deactivated || waveformReader is null || !IsKnownRow(entry) || entry.Waveform is not null) return Task.CompletedTask;
         if (waveformLoads.TryGetValue(entry, out var pending)) return pending;
         var cancellation = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);
         waveformTokens[entry] = cancellation;
@@ -30,7 +30,7 @@ public sealed partial class ManageSamplesPopupVM
             var result = await waveformReader!.ReadWaveformAsync(SamplePaths.Resolve(Context.ProjectPath, name), cancellation.Token);
             await scheduler.InvokeAsync(() =>
             {
-                if (!deactivated && !cancellation.IsCancellationRequested && Entries.Contains(entry) && entry.FileName == name &&
+                if (!deactivated && !cancellation.IsCancellationRequested && IsKnownRow(entry) && entry.FileName == name &&
                     waveformTokens.TryGetValue(entry, out var current) && ReferenceEquals(current, cancellation)) entry.Waveform = result;
             }, cancellation.Token);
         }
