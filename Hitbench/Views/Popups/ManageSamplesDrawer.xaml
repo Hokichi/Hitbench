@@ -13,6 +13,7 @@
         </Style>
         <Style x:Key="OHsManageSamplesDragTagNameStyle" TargetType="TextBlock" BasedOn="{StaticResource BodyTextStyle}"><Setter Property="FontSize" Value="{StaticResource FontSize.Caption}"/><Setter Property="TextWrapping" Value="NoWrap"/><Setter Property="TextTrimming" Value="CharacterEllipsis"/></Style>
         <DataTemplate x:Key="OHsManageSamplesDragTagTemplate"><Border Style="{StaticResource OHsManageSamplesDragTagSurfaceStyle}"><TextBlock Style="{StaticResource OHsManageSamplesDragTagNameStyle}" Text="{Binding SampleName,Mode=OneWay}"/></Border></DataTemplate>
+        <DataTemplate x:Key="OHsManageSamplesSkinRowTemplate"><c:OHsSampleRow Style="{StaticResource BaseControlStyle}" FileName="{Binding FileName, Mode=OneWay}" FileToolTip="{Binding FileName, Mode=OneWay}" Waveform="{Binding Waveform, Mode=OneWay}" IsPlaying="{Binding IsPlaying, Mode=OneWay}" IsEnabled="{Binding IsInteractionEnabled, Mode=OneWay}" PlayCommand="{Binding DataContext.PlayCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}, Mode=OneWay}" PlayCommandParameter="{Binding Mode=OneWay}" WaveformRequested="OnSharedWaveformRequested"/></DataTemplate>
         <ObjectDataProvider x:Key="OHsManageSamplesOwner" />
         <Style x:Key="OHsManageSamplesPrimaryActionStyle" TargetType="c:BalloonButton" BasedOn="{StaticResource OHsBalloonDefaultActionStyle}">
             <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
@@ -155,15 +156,18 @@
                     ToolTipService.ShowsToolTipOnKeyboardFocus="True" />
             </Grid>
             <Grid Grid.Row="1" Style="{StaticResource BaseGridStyle}">
-                <ItemsControl
-                    x:Name="SampleRows"
-                    ItemTemplate="{StaticResource OHsManageSamplesRowTemplate}"
-                    ItemsPanel="{StaticResource OHsVirtualizedDrawerItemsPanel}"
-                    ItemsSource="{Binding Entries, Mode=OneWay}"
-                    Style="{StaticResource BaseItemsControlStyle}"
-                    Template="{StaticResource OHsVirtualizedDrawerItemsTemplate}"
-                    VirtualizingPanel.IsVirtualizing="True"
-                    VirtualizingPanel.VirtualizationMode="Recycling" />
+                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition x:Name="SkinSectionRow" Height="*"/><RowDefinition x:Name="ProjectSectionRow" Height="*"/></Grid.RowDefinitions>
+                <CheckBox x:Name="AllowDefaultsCheckBox" Content="Allow skin's defaults" AutomationProperties.Name="Allow skin's defaults"
+                          Style="{StaticResource RegularCheckBoxStyle}" Margin="0,0,0,8" MinHeight="40"
+                          IsEnabled="{Binding CanChangeAllowDefaults, Mode=OneWay}" IsChecked="{Binding AllowDefaults, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                <Expander x:Name="SkinDefaultsExpander" Grid.Row="1" Header="Skin Defaults" IsExpanded="True" Style="{StaticResource {x:Type Expander}}"
+                          Expanded="OnSampleSectionChanged" Collapsed="OnSampleSectionChanged" AutomationProperties.Name="Skin Defaults">
+                    <ItemsControl x:Name="SkinDefaultRows" ItemsSource="{Binding SkinDefaultEntries, Mode=OneWay}" ItemTemplate="{StaticResource OHsManageSamplesSkinRowTemplate}" Style="{StaticResource OHsVirtualizedDrawerItemsStyle}"/>
+                </Expander>
+                <Expander x:Name="ProjectSamplesExpander" Grid.Row="2" Header="Project Samples" IsExpanded="True" Style="{StaticResource {x:Type Expander}}"
+                          Expanded="OnSampleSectionChanged" Collapsed="OnSampleSectionChanged" AutomationProperties.Name="Project Samples">
+                    <ItemsControl x:Name="SampleRows" ItemsSource="{Binding Entries, Mode=OneWay}" ItemTemplate="{StaticResource OHsManageSamplesRowTemplate}" Style="{StaticResource OHsVirtualizedDrawerItemsStyle}"/>
+                </Expander>
             </Grid>
             <Grid
                 Grid.Row="3"
