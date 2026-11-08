@@ -16,6 +16,13 @@ public sealed class SampleManagementDialogService(Func<Window?> getOwner, Dispat
     private ManageSamplesPopupVM? activeManager;
     private CancellationTokenSource? initializing;
     private Func<CancellationToken, Task<bool>>? closePresentation;
+    public async Task PrepareSkinDefaultsRefreshAsync(SampleManagementContext context, CancellationToken token) =>
+        await dispatcher.InvokeAsync(async () =>
+        {
+            token.ThrowIfCancellationRequested();
+            if (activeManager is { } manager && manager.Context.ProjectPath == context.ProjectPath && manager.Context.SessionId == context.SessionId)
+                await manager.PrepareSkinDefaultsRefreshAsync(token);
+        }).Task.Unwrap();
     internal SampleManagementDialogService(Func<Window?> getOwner, Dispatcher dispatcher, Func<SampleLoaderPopupVM> createLoader,
         Func<SampleManagementContext, ISampleFileDialogService, ISampleRemovalDialogService, ManageSamplesPopupVM> createManager,
         Func<ManageSamplesPopupVM, CancellationToken, Task> present,

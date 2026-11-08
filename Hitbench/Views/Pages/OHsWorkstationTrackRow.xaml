@@ -398,7 +398,7 @@
             x:Key="OHsWorkstationConfigSampleActionStyle"
             BasedOn="{StaticResource OHsBalloonSurfaceActionStyle}"
             TargetType="customControls:BalloonButton">
-            <Setter Property="IsEnabled" Value="{Binding CanOperateTrack, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}" />
+            <Setter Property="IsEnabled" Value="{Binding ViewModel.CanEditTracks, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsTrackCollapsed, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}" Value="True">
                     <Setter Property="Visibility" Value="Collapsed" />

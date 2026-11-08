@@ -8,6 +8,14 @@ namespace Hitbench.Test.Services;
 public class OHsDefaultSamplesTests
 {
     [Test]
+    public void LastDisabledDuplicateDoesNotLeaveEarlierDuplicateActive()
+    {
+        var track = new Track { UsesDefaultSample = true };
+        var project = new ProjectData { AllowDefaults = true, ControlPoints = [new() { Timestamp = 0 }, new() { Timestamp = 100, Sampleset = "Soft" }, new() { Timestamp = 100, Sampleset = "Drum", IsDisabled = true }] };
+        Assert.That(OHsDefaultSamples.GetSampleset(project, track, 105), Is.EqualTo("Normal"));
+        Assert.That(OHsDefaultSamples.IsAvailable(project, track, new[] { "SkinDefault/normal-hitnormal.wav" }), Is.True);
+    }
+    [Test]
     public void SkinStateRoundTripsAndRejectsWrongTypes()
     {
         var project = new ProjectData { AllowDefaults = true, CurrentSkin = "My Skin", Tracks = [new Track { UsesDefaultSample = true }] };

@@ -1,5 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
+using Hitbench.Resources.CustomControls;
 using Hitbench.Core.Entities;
 using Hitbench.Resources.DataModels;
 using Hitbench.Views.Pages;
@@ -20,7 +22,10 @@ public class OHsDefaultTrackIntegrationTests
         try
         {
             var row = new OHsWorkstationTrackRow { Track = track, ViewModel = vm, PresentSampleConfiguration = (_, _) => { } };
-            UiTestPump.Layout(row, 900, 200); Assert.That(row.OpenSampleConfiguration(), Is.True);
+            UiTestPump.Layout(row, 900, 200);
+            Assert.That(Descendants<BalloonButton>(row).Single(button => button.Name == "ConfigSampleAction").IsEnabled, Is.True);
+            Assert.That(row.CanOperateTrack, Is.False);
+            Assert.That(row.OpenSampleConfiguration(), Is.True);
             var selector = (ComboBox)row.FindName("TrackSampleFileSelector");
             Assert.That(((OHsTrackSampleChoice)selector.Items[0]).IsDefault, Is.True);
             Assert.That(selector.SelectedIndex, Is.Zero);
@@ -30,5 +35,12 @@ public class OHsDefaultTrackIntegrationTests
             row.CloseSampleConfiguration(false);
         }
         finally { UiTestPump.Run(vm.DeactivateAsync()); }
+    }
+
+    private static IEnumerable<T> Descendants<T>(DependencyObject parent) where T : DependencyObject
+    {
+        if (parent is T match) yield return match;
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+            foreach (var child in Descendants<T>(VisualTreeHelper.GetChild(parent, i))) yield return child;
     }
 }

@@ -345,6 +345,7 @@ public sealed class WorkstationSampleManagementTests
             await vm.LoadAsync("project.json", default); vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true; await vm.FlushPlaybackUpdatesAsync();
             audio.PrepareSamplesAsync = token => { preparing.TrySetResult(); return prepared.Task.WaitAsync(token); };
             vm.AddSampleTrackCommand.Execute(null);
+        { if (vm.SampleFiles.FirstOrDefault() is { } selectedFile) vm.SelectSample(vm.Tracks.Last(), selectedFile); }
             Assert.That(vm.PlaceSample(vm.Tracks.Single(), 0), Is.True);
             await preparing.Task.WaitAsync(TimeSpan.FromSeconds(3));
             var playing = vm.PlayPauseCommand.ExecuteAsync(null);
@@ -377,7 +378,8 @@ public sealed class WorkstationSampleManagementTests
         var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), MarkerPlaybackCoordinator.DelayAsync),
             new ImmediateUiScheduler(), files, new StubSampleFileDialogService(Array.Empty<string>()), projectFiles:saves, messenger: messenger, sampleManagementDialog: manager);
         await vm.LoadAsync("project.json", default); vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;
-        vm.AddSampleTrackCommand.Execute(null); var track = vm.Tracks.Single(); vm.PlaceSample(track, 0); var node = track.Samples.Single();
+        vm.AddSampleTrackCommand.Execute(null);
+        { if (vm.SampleFiles.FirstOrDefault() is { } selectedFile) vm.SelectSample(vm.Tracks.Last(), selectedFile); } var track = vm.Tracks.Single(); vm.PlaceSample(track, 0); var node = track.Samples.Single();
         var renamed = new TaskCompletionSource();
         manager.Present = (context, _) => { messenger.Send(new ProjectSamplesChangedMessage(context, ["kick.wav", "replacement.wav"], "hit.wav", "kick.wav")); renamed.TrySetResult(); return Task.CompletedTask; };
         await vm.ManageSamplesCommand.ExecuteAsync(null);

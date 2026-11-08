@@ -7,8 +7,8 @@ public partial class WorkstationPageVM
 {
     private readonly NodeHistoryManager history = new();
 
-    public bool CanUndo => CanPlaceSamples && history.CanUndo;
-    public bool CanRedo => CanPlaceSamples && history.CanRedo;
+    public bool CanUndo => CanPlaceSamples && history.CanUndoForTracks(tracks.Where(CanInteractWithTrack).ToArray());
+    public bool CanRedo => CanPlaceSamples && history.CanRedoForTracks(tracks.Where(CanInteractWithTrack).ToArray());
 
     [RelayCommand(CanExecute = nameof(CanUndo))]
     private void Undo()

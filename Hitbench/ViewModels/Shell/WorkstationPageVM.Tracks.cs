@@ -124,8 +124,6 @@ public partial class WorkstationPageVM
             string.Equals(name, fileName, StringComparison.OrdinalIgnoreCase)) ?? fileName;
         foreach (var sample in track.Samples) sample.FileName = track.SelectedSampleFileName;
         RefreshDefaultTrackState();
-        samplesRevision++;
-        OnPropertyChanged(nameof(SamplesRevision));
         QueuePlaybackUpdate();
         QueueSave();
     }
@@ -181,7 +179,7 @@ public partial class WorkstationPageVM
         if (track is InstrumentalTrack) return;
         if (!CanEditTracks || !tracks.Contains(track) || !Enum.IsDefined(value) || track.SampleType == value) return;
         track.SampleType = value;
-        RefreshDefaultTrackState(); QueuePlaybackUpdate(); QueueSave();
+        RefreshDefaultTrackState(); if (track.UsesDefaultSample) QueuePlaybackUpdate(); QueueSave();
     }
 
     public void SetTrackAddition(Track track, string value)
@@ -189,7 +187,7 @@ public partial class WorkstationPageVM
         if (track is InstrumentalTrack) return;
         if (!CanEditTracks || !tracks.Contains(track) || !Track.AdditionOptions.Contains(value) || track.Addition == value) return;
         track.Addition = value;
-        RefreshDefaultTrackState(); QueuePlaybackUpdate(); QueueSave();
+        RefreshDefaultTrackState(); if (track.UsesDefaultSample) QueuePlaybackUpdate(); QueueSave();
     }
 
     public void SetTrackVolume(Track track, int volume)

@@ -7,6 +7,10 @@ public sealed class NodeHistoryManager
     private readonly Stack<IReadOnlyList<NodeHistoryEntry>> undo = new();
     private readonly Stack<IReadOnlyList<NodeHistoryEntry>> redo = new();
 
+    public bool CanUndoForTracks(IReadOnlyCollection<Track> tracks) => CanReplay(undo, tracks);
+    public bool CanRedoForTracks(IReadOnlyCollection<Track> tracks) => CanReplay(redo, tracks);
+    private static bool CanReplay(Stack<IReadOnlyList<NodeHistoryEntry>> source, IReadOnlyCollection<Track> tracks)
+        => source.TryPeek(out var batch) && batch.All(e => tracks.Contains(e.Track) && (e.DestinationTrack is null || tracks.Contains(e.DestinationTrack)));
     public bool CanUndo => undo.Count > 0;
     public bool CanRedo => redo.Count > 0;
     internal long RewrittenEntryCount { get; private set; }

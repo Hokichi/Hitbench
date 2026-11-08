@@ -116,7 +116,7 @@ public class WorkstationSampleReloadIntegrationTests
             Assert.That(tracks.Select(t => t.SelectedSampleFileName), Is.All.EqualTo("hit.wav"));
             files.List = (_, _) => Task.FromResult<IReadOnlyList<string>>(["hit.wav"]);
             UiTestPump.Run(vm.ReloadSamplesCommand.ExecuteAsync(null)); view.UpdateLayout();
-            Assert.That(Descendants(list).OfType<ComboBox>().Where(c => c.Name == "TrackSampleFileSelector").Select(c => c.SelectedItem),
+            Assert.That(Descendants(list).OfType<ComboBox>().Where(c => c.Name == "TrackSampleFileSelector").Select(c => ((Hitbench.Resources.DataModels.OHsTrackSampleChoice)c.SelectedItem).FileName),
                 Is.Not.Empty.And.All.EqualTo("hit.wav"));
             Assert.That(Descendants(list).OfType<Grid>().Where(grid => grid.Name == "TrackGridContent").Select(grid => grid.IsEnabled),
                 Is.Not.Empty.And.All.True);

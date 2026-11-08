@@ -17,10 +17,12 @@ public class WorkstationTrackTests
         try
         {
             vm.AddSampleTrackCommand.Execute(null);
+        { if (vm.SampleFiles.FirstOrDefault() is { } selectedFile) vm.SelectSample(vm.Tracks.Last(), selectedFile); }
             var added = vm.Tracks.Last();
             vm.AddPianoTrackCommand.Execute(null);
             await vm.RemoveTrackCommand.ExecuteAsync(added);
             vm.AddSampleTrackCommand.Execute(null);
+        { if (vm.SampleFiles.FirstOrDefault() is { } selectedFile) vm.SelectSample(vm.Tracks.Last(), selectedFile); }
             Assert.That(vm.Tracks[0], Is.SameAs(saved));
             Assert.That(saved.Color, Is.EqualTo("#123456"));
             Assert.That(vm.Tracks.Skip(1).Select(track => track.Color), Is.All.Null);
@@ -35,8 +37,10 @@ public class WorkstationTrackTests
         try
         {
             vm.AddSampleTrackCommand.Execute(null);
+        { if (vm.SampleFiles.FirstOrDefault() is { } selectedFile) vm.SelectSample(vm.Tracks.Last(), selectedFile); }
             vm.AddPianoTrackCommand.Execute(null);
             vm.AddSampleTrackCommand.Execute(null);
+        { if (vm.SampleFiles.FirstOrDefault() is { } selectedFile) vm.SelectSample(vm.Tracks.Last(), selectedFile); }
             Assert.That(vm.Tracks.Select(t => t.Color), Is.All.Null);
             Assert.That(vm.Tracks.Select(t => t.Name), Is.EqualTo(new[] { "New Track", "New Track (1)", "New Track (2)" }));
         }
@@ -54,6 +58,7 @@ public class WorkstationTrackTests
         try
         {
             vm.AddSampleTrackCommand.Execute(null);
+        { if (vm.SampleFiles.FirstOrDefault() is { } selectedFile) vm.SelectSample(vm.Tracks.Last(), selectedFile); }
             Assert.That(vm.Tracks.Last().Name, Is.EqualTo(expected));
             Assert.That(first.Name, Is.EqualTo("new track"));
             Assert.That(other.Name, Is.EqualTo(occupied));
@@ -217,8 +222,8 @@ public class WorkstationTrackTests
 
             await vm.LoadAsync(projectPath, CancellationToken.None);
             vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;
-            Assert.That(vm.CanAddTrack, Is.False);
-            Assert.That(vm.AddSampleTrackCommand.CanExecute(null), Is.False);
+            Assert.That(vm.CanAddTrack, Is.True);
+            Assert.That(vm.AddSampleTrackCommand.CanExecute(null), Is.True);
 
             Assert.That(await vm.ImportSamplesAsync(), Is.EqualTo(new[] { "kick.wav" }));
             await vm.FlushPlaybackUpdatesAsync();
@@ -228,6 +233,7 @@ public class WorkstationTrackTests
             Assert.That(vm.CanAddTrack, Is.True);
 
             vm.AddSampleTrackCommand.Execute(null);
+        { if (vm.SampleFiles.FirstOrDefault() is { } selectedFile) vm.SelectSample(vm.Tracks.Last(), selectedFile); }
             Assert.That(vm.Tracks.Single().SelectedSampleFileName, Is.EqualTo("kick.wav"));
             Assert.That(vm.Tracks.Single().Samples, Is.Empty);
             await vm.DeactivateAsync();
@@ -547,7 +553,9 @@ public class WorkstationTrackTests
         vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;
 
         vm.AddSampleTrackCommand.Execute(null);
+        { if (vm.SampleFiles.FirstOrDefault() is { } selectedFile) vm.SelectSample(vm.Tracks.Last(), selectedFile); }
         var track = vm.Tracks.Single();
+        var revisionBefore = vm.SamplesRevision;
         Assert.That(track.Samples, Is.Empty);
         Assert.That(track.SelectedSampleFileName, Is.EqualTo("a.wav"));
 
@@ -559,7 +567,7 @@ public class WorkstationTrackTests
 
         Assert.That(track.Samples.Select(sample => sample.FileName), Is.EqualTo(new[] { "b.wav" }));
         Assert.That(track.Samples.Select(sample => sample.Timestamp), Is.EqualTo(new[] { 126 }));
-        Assert.That(vm.SamplesRevision, Is.EqualTo(2));
+        Assert.That(vm.SamplesRevision, Is.EqualTo(revisionBefore + 2));
     }
 
     [Test]
@@ -625,14 +633,16 @@ public class WorkstationTrackTests
         await vm.LoadAsync("project.json", CancellationToken.None);
         vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;
         vm.AddSampleTrackCommand.Execute(null);
+        { if (vm.SampleFiles.FirstOrDefault() is { } selectedFile) vm.SelectSample(vm.Tracks.Last(), selectedFile); }
         var track = vm.Tracks.Single();
+        var revisionBefore = vm.SamplesRevision;
         Assert.That(vm.PlaceSample(track, 125), Is.True);
         var sample = track.Samples.Single();
 
         Assert.That(vm.RemoveSample(track, sample), Is.True);
 
         Assert.That(track.Samples, Is.Empty);
-        Assert.That(vm.SamplesRevision, Is.EqualTo(2));
+        Assert.That(vm.SamplesRevision, Is.EqualTo(revisionBefore + 2));
         Assert.That(vm.RemoveSample(track, sample), Is.False);
     }
 
@@ -652,10 +662,12 @@ public class WorkstationTrackTests
         await vm.LoadAsync("project.json", CancellationToken.None);
         vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;
         vm.AddSampleTrackCommand.Execute(null);
+        { if (vm.SampleFiles.FirstOrDefault() is { } selectedFile) vm.SelectSample(vm.Tracks.Last(), selectedFile); }
 
+        var revisionBefore = vm.SamplesRevision;
         Assert.That(vm.PlaceSample(vm.Tracks.Single(), timestamp), Is.False);
         Assert.That(vm.Tracks.Single().Samples, Is.Empty);
-        Assert.That(vm.SamplesRevision, Is.Zero);
+        Assert.That(vm.SamplesRevision, Is.EqualTo(revisionBefore));
     }
 
     [Test]
@@ -677,6 +689,7 @@ public class WorkstationTrackTests
             await vm.LoadAsync(projectPath, CancellationToken.None);
             vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;
             vm.AddSampleTrackCommand.Execute(null);
+        { if (vm.SampleFiles.FirstOrDefault() is { } selectedFile) vm.SelectSample(vm.Tracks.Last(), selectedFile); }
             var track = vm.Tracks.Single();
             Assert.That(track.SelectedSampleFileName, Is.EqualTo("a.wav"));
             Assert.That(track.Addition, Is.EqualTo("None"));
@@ -705,6 +718,7 @@ public class WorkstationTrackTests
         await vm.LoadAsync("project.json", CancellationToken.None);
         vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;
         vm.AddSampleTrackCommand.Execute(null);
+        { if (vm.SampleFiles.FirstOrDefault() is { } selectedFile) vm.SelectSample(vm.Tracks.Last(), selectedFile); }
         Assert.That(saves.FirstWriteStarted, Is.True);
         var track = vm.Tracks.Single();
         vm.SetTrackVolume(track, 80);
@@ -736,12 +750,12 @@ public class WorkstationTrackTests
     public async Task FailedSaveIsReportedAndRetryPersistsLatestState()
     {
         var saves = new FailOnceProjectFileService();
-        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new Hitbench.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)),
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [new Track { SelectedSampleFileName = "a.wav" }] })) }, new Hitbench.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), (duration, token) => Task.Delay(duration, token)),
             new ImmediateUiScheduler(), new StubSampleFileService(["a.wav"]), null, saves,
             new WeakReferenceMessenger(), saveDelay: (_, _) => Task.CompletedTask);
         await vm.LoadAsync("project.json", CancellationToken.None);
         vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;
-        vm.AddSampleTrackCommand.Execute(null);
+        vm.SetTrackVolume(vm.Tracks.Single(), 80);
         Assert.CatchAsync<IOException>(() => vm.FlushSavesAsync());
         Assert.That(vm.SaveError, Does.Contain("Disk full"));
         vm.SetTrackVolume(vm.Tracks.Single(), 60);

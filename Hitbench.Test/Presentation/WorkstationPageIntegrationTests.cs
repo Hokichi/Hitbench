@@ -710,6 +710,8 @@ public class WorkstationPageIntegrationTests
         vm.AddSampleTrackCommand.Execute(null);
         var first = vm.Tracks[0];
         var second = vm.Tracks[1];
+        vm.SelectSample(first, "a.wav");
+        vm.SelectSample(second, "a.wav");
         vm.SetTrackVolume(first, 20);
         vm.SetTrackVolume(second, 80);
         view.UpdateLayout();
@@ -749,14 +751,15 @@ public class WorkstationPageIntegrationTests
         vm.IsAdditionMode = true; view.UpdateLayout();
             vm.AddSampleTrackCommand.Execute(null);
             vm.AddSampleTrackCommand.Execute(null);
+            foreach (var track in vm.Tracks) vm.SelectSample(track, "a.wav");
             view.UpdateLayout();
             var list = (ItemsControl)((Hitbench.Views.Pages.OHsWorkstationTrackList)page.FindName("TrackListComponent")).FindName("TrackList");
             var otherCard = (FrameworkElement)list.ItemContainerGenerator.ContainerFromIndex(1)!;
             var selector = FindVisualChildren<ComboBox>(otherCard).Single(box => box.Name == "TrackSampleFileSelector");
-            Assert.That(selector.SelectedItem, Is.EqualTo("a.wav"));
+            Assert.That(((Hitbench.Resources.DataModels.OHsTrackSampleChoice)selector.SelectedItem).FileName, Is.EqualTo("a.wav"));
             UiTestPump.Run(vm.ImportSamplesAsync());
             view.UpdateLayout();
-            Assert.That(selector.SelectedItem, Is.EqualTo("a.wav"));
+            Assert.That(((Hitbench.Resources.DataModels.OHsTrackSampleChoice)selector.SelectedItem).FileName, Is.EqualTo("a.wav"));
             UiTestPump.Run(vm.FlushSavesAsync());
         }
         finally { Directory.Delete(root.FullName, true); }
@@ -817,8 +820,8 @@ public class WorkstationPageIntegrationTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(FindVisualChildren<ComboBox>(cards[0]).Single(box => box.Name == "TrackSampleFileSelector").SelectedItem, Is.EqualTo("Kick.wav"));
-            Assert.That(FindVisualChildren<ComboBox>(cards[1]).Single(box => box.Name == "TrackSampleFileSelector").SelectedItem, Is.EqualTo("Snare.wav"));
+            Assert.That(((Hitbench.Resources.DataModels.OHsTrackSampleChoice)FindVisualChildren<ComboBox>(cards[0]).Single(box => box.Name == "TrackSampleFileSelector").SelectedItem).FileName, Is.EqualTo("Kick.wav"));
+            Assert.That(((Hitbench.Resources.DataModels.OHsTrackSampleChoice)FindVisualChildren<ComboBox>(cards[1]).Single(box => box.Name == "TrackSampleFileSelector").SelectedItem).FileName, Is.EqualTo("Snare.wav"));
             foreach (var card in cards.Take(2))
                 Assert.That(FindVisualChildren<Grid>(card).Single(grid => grid.Name == "TrackGridContent").IsEnabled, Is.True);
             Assert.That(FindVisualChildren<ComboBox>(cards[2]).Single(box => box.Name == "TrackSampleFileSelector").SelectedItem, Is.Null);
@@ -893,6 +896,7 @@ public class WorkstationPageIntegrationTests
         UiTestPump.Run(page.LoadCompletion);
         vm.IsAdditionMode = true; view.UpdateLayout();
         vm.AddSampleTrackCommand.Execute(null);
+        vm.SelectSample(vm.Tracks.Single(), "kick.wav");
         view.UpdateLayout();
         var list = (ItemsControl)((Hitbench.Views.Pages.OHsWorkstationTrackList)page.FindName("TrackListComponent")).FindName("TrackList");
         var card = (FrameworkElement)list.ItemContainerGenerator.ContainerFromIndex(0)!;

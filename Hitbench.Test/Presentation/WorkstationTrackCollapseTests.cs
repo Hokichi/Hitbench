@@ -142,7 +142,8 @@ public class WorkstationTrackCollapseTests
             var editingRow = Descendants<OHsWorkstationTrackRow>(editedRow).Single();
             editingRow.PresentSampleConfiguration = (_, _) => { };
             editingRow.OpenSampleConfiguration();
-            Find<ComboBox>(editedRow, "TrackSampleFileSelector").SelectedItem = "snare.wav";
+            var selector = Find<ComboBox>(editedRow, "TrackSampleFileSelector");
+            selector.SelectedItem = selector.Items.Cast<Hitbench.Resources.DataModels.OHsTrackSampleChoice>().Single(choice => choice.FileName == "snare.wav");
             editingRow.CloseSampleConfiguration();
             Assert.That(edited.SelectedSampleFileName, Is.EqualTo("snare.wav"));
             Assert.That(edited.Samples[0].FileName, Is.EqualTo("snare.wav"));
@@ -165,8 +166,8 @@ public class WorkstationTrackCollapseTests
             {
                 otherVm.AddSampleTrackCommand.Execute(null);
                 Settle(otherPage, otherView);
-                Assert.That(Find<ComboBox>(otherPage, "TrackSampleFileSelector").Items.Cast<string>(), Is.EqualTo(new[] { "other.wav" }));
-                Assert.That(Find<ComboBox>(editedRow, "TrackSampleFileSelector").Items.Cast<string>(), Is.EqualTo(files));
+                Assert.That(Find<ComboBox>(otherPage, "TrackSampleFileSelector").Items.Cast<Hitbench.Resources.DataModels.OHsTrackSampleChoice>(), Is.EqualTo(otherVm.TrackSampleChoices));
+                Assert.That(Find<ComboBox>(editedRow, "TrackSampleFileSelector").Items.Cast<Hitbench.Resources.DataModels.OHsTrackSampleChoice>(), Is.EqualTo(vm.TrackSampleChoices));
             }
             finally { UiTestPump.Run(otherPage.DeactivateAsync()); }
         }
@@ -254,8 +255,8 @@ public class WorkstationTrackCollapseTests
             }
             var selector = Find<ComboBox>(row, "TrackSampleFileSelector");
             UiControlContract.AssertStyle<ComboBox>(selector, "OHsWorkstationTrackMetadataComboBoxStyle");
-            Assert.That(selector.Items.Cast<string>(), Is.EqualTo(vm.SampleFiles), track.Name);
-            var expected = vm.SampleFiles.FirstOrDefault(file => string.Equals(file, track.SelectedSampleFileName, StringComparison.OrdinalIgnoreCase));
+            Assert.That(selector.Items.Cast<Hitbench.Resources.DataModels.OHsTrackSampleChoice>(), Is.EqualTo(vm.TrackSampleChoices), track.Name);
+            var expected = vm.TrackSampleChoices.FirstOrDefault(choice => track.UsesDefaultSample ? choice.IsDefault : !choice.IsDefault && string.Equals(choice.FileName, track.SelectedSampleFileName, StringComparison.OrdinalIgnoreCase));
             Assert.That(selector.SelectedItem, Is.EqualTo(expected), track.Name);
             var grid = Descendants<BeatGridView>(row).Single();
             Assert.That(grid.Bpms, Is.SameAs(vm.Project!.BPMs), track.Name);
@@ -322,6 +323,7 @@ public class WorkstationTrackCollapseTests
             }
             InvokeMenuItem(sample);
             Assert.That(vm.Tracks, Has.Count.EqualTo(1));
+            vm.SelectSample(vm.Tracks.Single(), "kick.wav");
             InvokeMenuItem(instrument);
             Assert.That(vm.Tracks, Has.Count.EqualTo(2));
             InvokeMenuItem(toggle);
@@ -441,6 +443,7 @@ public class WorkstationTrackCollapseTests
             var menu = (BalloonMenu)page.Toolbar.FindName("AddMenuButton");
             WorkstationActionMenus.Prepare(menu);
             WorkstationActionMenus.Invoke(menu.Options[0]);
+            vm.SelectSample(vm.Tracks.Last(), "kick.wav");
             list.ScrollIntoView(vm.Tracks.Last());
             view.UpdateLayout();
             Assert.That(vm.Tracks, Has.Count.EqualTo(81));

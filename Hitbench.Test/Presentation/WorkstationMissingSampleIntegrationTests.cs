@@ -26,7 +26,7 @@ public sealed class WorkstationMissingSampleIntegrationTests
             var grid = Descendants(page).OfType<BeatGridView>().Single();
             var selector = WorkstationControlTree.Descendants(page).OfType<ComboBox>().Single(c => c.Name == "TrackSampleFileSelector");
             Assert.That(grid.IsEnabled, Is.False); Assert.That(selector.IsEnabled, Is.True);
-            selector.SelectedItem = "hit.wav"; view.UpdateLayout();
+            selector.SelectedItem = selector.Items.Cast<Hitbench.Resources.DataModels.OHsTrackSampleChoice>().Single(choice => choice.FileName == "hit.wav"); view.UpdateLayout();
             Assert.That(grid.IsEnabled, Is.True); Assert.That(track.Samples.Single().FileName, Is.EqualTo("hit.wav"));
         }
         finally { UiTestPump.Run(page.DeactivateAsync()); }

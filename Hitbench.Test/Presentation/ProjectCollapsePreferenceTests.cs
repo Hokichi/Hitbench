@@ -12,7 +12,7 @@ public class ProjectCollapsePreferenceTests
     [TestCase(false)]
     public async Task LoadRestoresCollapseWithoutSavingAndTogglePersists(bool collapsed)
     {
-        var project = ProjectDataSerializer.Deserialize("{\"IsCollapsed\":" + collapsed.ToString().ToLowerInvariant() + ",\"Tracks\":[{}],\"Offsets\":[0],\"BPMs\":[120]}");
+        var project = ProjectDataSerializer.Deserialize("{\"IsCollapsed\":" + collapsed.ToString().ToLowerInvariant() + ",\"Tracks\":[{\"SelectedSampleFileName\":\"hit.wav\"}],\"Offsets\":[0],\"BPMs\":[120]}");
         var source = new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", project)) };
         var saves = new DelayedProjectFileService(); saves.Release();
         using var audio = new StubWorkstationAudioService();

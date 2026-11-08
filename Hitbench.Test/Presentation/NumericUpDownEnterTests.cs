@@ -13,6 +13,20 @@ namespace Hitbench.Test.Presentation;
 public class NumericUpDownEnterTests
 {
     [Test]
+    public void EnterFlushesPendingLostFocusBinding()
+    {
+        new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
+        var sourceValue = new StubNumericValue();
+        var numeric = new NumericUpDown { Style = (Style)Application.Current.FindResource(typeof(NumericUpDown)) };
+        numeric.SetBinding(NumericUpDown.ValueProperty, new System.Windows.Data.Binding(nameof(StubNumericValue.Volume))
+        { Source = sourceValue, Mode = System.Windows.Data.BindingMode.TwoWay, UpdateSourceTrigger = System.Windows.Data.UpdateSourceTrigger.LostFocus });
+        UiTestPump.Layout(numeric, 200, 40);
+        ((TextBox)numeric.Template.FindName("PART_TextBox", numeric)).Text = "75";
+        using var source = new InMemoryPresentationSource();
+        numeric.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, source, 0, Key.Enter) { RoutedEvent = Keyboard.PreviewKeyDownEvent });
+        Assert.That(sourceValue.Volume, Is.EqualTo(75));
+    }
+    [Test]
     public void InvalidDecimalEnterDoesNotNotifyOwner()
     {
         new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();

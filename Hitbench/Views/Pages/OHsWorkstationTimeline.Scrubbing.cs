@@ -14,7 +14,7 @@ public partial class OHsWorkstationTimeline
     internal bool IsScrubAutoScrollActive => scrubTimer?.IsEnabled == true;
     private DispatcherTimer? scrubTimer;
     private double scrubPointer;
-    private long scrubTick;
+    private long scrubTick = Stopwatch.GetTimestamp();
 
     internal bool BeginScrub(double viewportX)
     {

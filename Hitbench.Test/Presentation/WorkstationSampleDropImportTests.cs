@@ -80,6 +80,7 @@ public sealed class WorkstationSampleDropImportTests
         try
         {
             await vm.LoadAsync("project.json", default); vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.AddSampleTrackCommand.Execute(null);
+            { if (vm.SampleFiles.FirstOrDefault() is { } selectedFile) vm.SelectSample(vm.Tracks.Last(), selectedFile); }
             audio.PrepareSamplesAsync = _ => progress.RunAsync("nested", _ => gate.Task, default);
             var import = vm.ImportDroppedSamplesAsync(new[] { a, b });
             await StubWorkstationAudioService.WaitUntilAsync(() => messages.Count > 0);

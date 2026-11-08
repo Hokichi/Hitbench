@@ -182,7 +182,11 @@ public partial class NumericUpDown : Control
 
         if (e.Key == Key.Enter)
         {
-            if (CommitInput()) RaiseEvent(new RoutedEventArgs(InputCommittedEvent, this));
+            if (CommitInput())
+            {
+                if (GetBindingExpression(ValueProperty) is { IsDirty: true } binding) binding.UpdateSource();
+                RaiseEvent(new RoutedEventArgs(InputCommittedEvent, this));
+            }
             e.Handled = true;
         }
     }

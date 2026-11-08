@@ -11,6 +11,13 @@ public sealed partial class ManageSamplesPopupVM
     private bool allowDefaults;
     private bool skinDefaultsBusy;
     private Task skinStateOperation = Task.CompletedTask;
+    private bool skinDefaultsRegistered;
+    public async Task PrepareSkinDefaultsRefreshAsync(CancellationToken token)
+    {
+        InvalidateWaveforms();
+        await StopPreviewAsync();
+        await Task.WhenAll(waveformOperations).WaitAsync(token);
+    }
     public bool CanChangeAllowDefaults => CanAct() && !skinDefaultsBusy;
     public bool AllowDefaults
     {
@@ -24,6 +31,8 @@ public sealed partial class ManageSamplesPopupVM
     }
     private void RegisterSkinDefaults()
     {
+        if (skinDefaultsRegistered) return;
+        skinDefaultsRegistered = true;
         messenger.Register<OHsSkinDefaultsStateChangedMessage>(this, (_, message) =>
         {
             if (!deactivated && SameContext(message.Context)) skinStateOperation = ApplySkinStateAsync(skinStateOperation, message);

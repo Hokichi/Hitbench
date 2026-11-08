@@ -33,7 +33,7 @@ public partial class WorkstationPageVM
     {
         OnPropertyChanged(nameof(TrackSampleChoices));
         samplesRevision++; OnPropertyChanged(nameof(SamplesRevision));
-        PruneNodeSelection(); NotifyNodeEditingState(); NotifyTrackCommands(); NotifyTrackAuditionState();
+        PruneNodeSelection(); NotifyNodeEditingState(); NotifyTrackCommands(); NotifyTrackAuditionState(); NotifyHistoryState();
     }
 
     private void RegisterSkinDefaultsMessages()
@@ -61,6 +61,8 @@ public partial class WorkstationPageVM
         try
         {
             await playback.PauseAsync(token);
+            if (sampleManagementDialog is not null)
+                await sampleManagementDialog.PrepareSkinDefaultsRefreshAsync(new(path, project.BeatmapPath, sampleSession), token);
             async Task Refresh(CancellationToken cancellation)
             {
                 var snapshot = skinDefaults is null ? new OHsSkinDefaultsSnapshot(project.CurrentSkin, skinDefaultFiles, false)

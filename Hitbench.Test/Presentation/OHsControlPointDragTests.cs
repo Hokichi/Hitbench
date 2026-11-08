@@ -26,7 +26,7 @@ public class OHsControlPointDragTests
             lane.BeginPointDrag(id, 0); lane.UpdatePointDrag(500);
             Assert.That(lane.IsDragPreviewActive, Is.False);
             Assert.That(lane.HitTestTimingBoundary(id, 0), Is.Null);
-            Assert.That(lane.GetZoneCursor(id, 0), Is.SameAs(Cursors.Hand));
+            Assert.That(lane.GetZoneCursor(id, 0), Is.SameAs(Cursors.SizeNS));
             lane.BeginZoneGesture(id, new Point(0, 100), 200);
             lane.UpdateZoneGesture(new Point(0, 50));
             Assert.That(lane.CompleteZoneGesture(), Is.True);

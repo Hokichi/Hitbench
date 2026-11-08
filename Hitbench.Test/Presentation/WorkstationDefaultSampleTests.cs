@@ -6,6 +6,22 @@ namespace Hitbench.Test.Presentation;
 public class WorkstationDefaultSampleTests
 {
     [Test]
+    public async Task DisabledDefaultCannotBeChangedByUndo()
+    {
+        var track = new Track { UsesDefaultSample = true };
+        var vm = WorkstationSkinDefaultsTests.Create(new ProjectData { AllowDefaults = true, Tracks = [track], Offsets = [0], BPMs = [120] },
+            new() { Refresh = (_, _, _, _, _) => Task.FromResult(new OHsSkinDefaultsSnapshot("skin", ["SkinDefault/normal-hitnormal.wav"], false)) });
+        try
+        {
+            await vm.LoadAsync("project.json", default); vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;
+            Assert.That(vm.PlaceSample(track, 125), Is.True);
+            await vm.SetAllowDefaultsAsync(false);
+            Assert.That(vm.UndoCommand.CanExecute(null), Is.False);
+            vm.UndoCommand.Execute(null); Assert.That(track.Samples, Has.Count.EqualTo(1));
+        }
+        finally { await vm.DeactivateAsync(); }
+    }
+    [Test]
     public async Task NewTrackStartsDefaultAndUnavailableSourceCanBeReconfigured()
     {
         var project = new ProjectData { Offsets = [0], BPMs = [120] };
