@@ -5,7 +5,8 @@ using System.IO;
 
 namespace Hitbench.Services.FileSystem;
 
-public sealed class OHsSkinDefaultsService(IAppSettingsService settings, string? userName = null) : IOHsSkinDefaultsService
+public sealed class OHsSkinDefaultsService(IAppSettingsService settings, string? userName = null,
+    Func<Stream, Stream, CancellationToken, Task>? copyBytes = null, Action<string, string>? moveDirectory = null) : IOHsSkinDefaultsService
 {
     private readonly SemaphoreSlim mutations = new(1, 1);
     private static readonly HashSet<string> Stems = ControlPoint.SamplesetOptions.SelectMany(set => Enum.GetValues<SampleType>()
@@ -45,14 +46,16 @@ public sealed class OHsSkinDefaultsService(IAppSettingsService settings, string?
                         token.ThrowIfCancellationRequested(); SamplePaths.RejectLinkedPath(file);
                         using var input = File.OpenRead(file);
                         using var output = File.Create(Path.Combine(stage, Path.GetFileName(file)));
-                        await input.CopyToAsync(output, token).ConfigureAwait(false);
+                        await (copyBytes is null ? input.CopyToAsync(output, token) : copyBytes(input, output, token)).ConfigureAwait(false);
                     }
                     token.ThrowIfCancellationRequested();
                     // No cancellation inside the directory exchange: either restore or publish one complete cache.
                     if (Directory.Exists(cache)) Directory.Move(cache, backup);
-                    try { Directory.Move(stage, cache); }
+                    try { (moveDirectory ?? Directory.Move)(stage, cache); }
                     catch { if (Directory.Exists(backup)) Directory.Move(backup, cache); throw; }
-                    if (Directory.Exists(backup)) Directory.Delete(backup, true);
+                    if (Directory.Exists(backup))
+                        try { Directory.Delete(backup, true); }
+                        catch (IOException error) { System.Diagnostics.Trace.TraceWarning("Retired skin cache cleanup: {0}", error.Message); }
                     return new OHsSkinDefaultsSnapshot(skin, List(), true);
                 }
                 finally { if (Directory.Exists(stage)) Directory.Delete(stage, true); }

@@ -6,6 +6,28 @@ namespace Hitbench.Test.Services;
 
 public class OHsSkinDefaultsServiceTests
 {
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task FailedOrCancelledExchangeRestoresCache(bool cancel)
+    {
+        var root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(Path.Combine(root, "Samples", "SkinDefault"));
+        Directory.CreateDirectory(Path.Combine(root, "Skins", "New"));
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(root, "Samples", "SkinDefault", "soft-hitclap.wav"), "old");
+            await File.WriteAllTextAsync(Path.Combine(root, "Skins", "New", "drum-hitclap.wav"), "new");
+            await File.WriteAllTextAsync(Path.Combine(root, "osu!.tester.cfg"), "Skin = New");
+            using var cancellation = new CancellationTokenSource();
+            var service = new OHsSkinDefaultsService(new StubAppSettingsService { Load = _ => Task.FromResult(new AppSettings { OsuPath = root }) }, "tester",
+                copyBytes: async (input, output, token) => { await input.CopyToAsync(output, token); if (cancel) cancellation.Cancel(); },
+                moveDirectory: (source, target) => { if (source.Contains(".skin-stage-")) throw new IOException("exchange failed"); Directory.Move(source, target); });
+            Assert.CatchAsync(async () => await service.RefreshAsync(Path.Combine(root, "project.json"), "Old", true, true, cancellation.Token));
+            Assert.That(await File.ReadAllTextAsync(Path.Combine(root, "Samples", "SkinDefault", "soft-hitclap.wav")), Is.EqualTo("old"));
+            Assert.That(Directory.EnumerateDirectories(Path.Combine(root, "Samples")).Count(), Is.EqualTo(1));
+        }
+        finally { Directory.Delete(root, true); }
+    }
     [Test]
     public async Task ChangedSkinReplacesCacheAndDisablingPreservesIt()
     {
