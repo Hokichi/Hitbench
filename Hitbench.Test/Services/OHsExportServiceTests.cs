@@ -68,7 +68,7 @@ public class OHsExportServiceTests
     }
 
     [Test]
-    public async Task FirstAlphabeticalBeatmapSuppliesFilenameAndTimingWithFixedTemplate()
+    public async Task FirstAlphabeticalBeatmapSuppliesOriginalDocumentFilenameAndTiming()
     {
         using var folder = new TestProjectFolder();
         var root = Path.GetDirectoryName(folder.ProjectPath)!;
@@ -82,8 +82,8 @@ public class OHsExportServiceTests
         var output = await new OHsExportService().ExportAsync(request, default);
         var text = await File.ReadAllTextAsync(Path.Combine(output, "Artist [Live] - Song (Mapper) [Hitsounds].osu"));
         var map = OHsExportBeatmap.Parse(text);
-        Assert.That(map.Sections["General"], Is.EqualTo(OHsExportBeatmap.Parse(OHsExportBeatmapWriterTests.Template()).Sections["General"]));
-        Assert.That(map.Sections["Metadata"], Is.EqualTo(OHsExportBeatmap.Parse(OHsExportBeatmapWriterTests.Template()).Sections["Metadata"]));
+        Assert.That(map.Sections["General"], Is.EqualTo(OHsExportBeatmap.Parse(await File.ReadAllTextAsync(first)).Sections["General"]));
+        Assert.That(map.Sections["Metadata"], Is.EqualTo(new[] { "Title:First", "Version:Hitsounds" }));
         Assert.That(map.TimingPoints[0].BeatLength, Is.EqualTo("500"));
         Assert.That(await File.ReadAllTextAsync(first), Is.EqualTo(original));
         Assert.That(await File.ReadAllTextAsync(later), Does.Contain("Title:Later"));
@@ -215,7 +215,7 @@ public class OHsExportServiceTests
         Assert.That(objects, Has.Length.EqualTo(500));
         Assert.That(objects.Select(o => (o[0], o[1])), Is.All.EqualTo(("256", "192")));
         Assert.That(objects.Select(o => o[2]).Distinct().Count(), Is.EqualTo(500));
-        Assert.That(parsed.Sections["General"], Is.EqualTo(OHsExportBeatmap.Parse(OHsExportBeatmapWriterTests.Template()).Sections["General"]));
+        Assert.That(parsed.Sections["General"], Is.EqualTo(OHsExportBeatmap.Parse(await File.ReadAllTextAsync(source)).Sections["General"]));
         var resolved = OHsExportPlaybackOracle.Resolve(text).Where(p => p.Type == "clap").ToArray();
         Assert.That(resolved.Select(p => p.Index), Is.All.EqualTo(firstIndex));
         Assert.That(resolved.Where(p => p.Timestamp < 4995).Select(p => p.Volume), Is.All.EqualTo(40));

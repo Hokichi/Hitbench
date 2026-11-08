@@ -5,10 +5,12 @@ namespace Hitbench.Resources.DataModels;
 
 public sealed class OHsExportBeatmap
 {
+    public string OriginalText { get; }
     public IReadOnlyDictionary<string, IReadOnlyList<string>> Sections { get; }
     public IReadOnlyList<OHsExportTimingPoint> TimingPoints { get; }
-    private OHsExportBeatmap(Dictionary<string, List<string>> sections, List<OHsExportTimingPoint> timing)
+    private OHsExportBeatmap(string text, Dictionary<string, List<string>> sections, List<OHsExportTimingPoint> timing)
     {
+        OriginalText = text;
         Sections = new ReadOnlyDictionary<string, IReadOnlyList<string>>(sections.ToDictionary(p => p.Key, p => (IReadOnlyList<string>)Array.AsReadOnly(p.Value.ToArray()), StringComparer.OrdinalIgnoreCase));
         TimingPoints = Array.AsReadOnly(timing.OrderBy(p => p.Timestamp).ThenBy(p => p.Kind).ToArray());
     }
@@ -41,6 +43,6 @@ public sealed class OHsExportBeatmap
             timing.Add(new(time, f[1].Trim(), meter, set, index, volume, effects, red == 1 ? OHsExportTimingKind.SourceRed : OHsExportTimingKind.SourceState));
         }
         if (timing.Count == 0 || !timing.Any(p => p.Kind == OHsExportTimingKind.SourceRed)) throw new InvalidDataException("Source difficulty has no timing definition.");
-        return new(sections, timing);
+        return new(text, sections, timing);
     }
 }

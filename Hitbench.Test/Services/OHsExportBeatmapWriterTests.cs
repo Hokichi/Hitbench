@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-using System.Text.RegularExpressions;
 using Hitbench.Core.Entities;
 using Hitbench.Core.Enums;
 using Hitbench.Resources.DataModels;
@@ -8,14 +6,34 @@ namespace Hitbench.Test.Services;
 
 public class OHsExportBeatmapWriterTests
 {
-    public static string Template()
+    [TestCase("\n", false), TestCase("\r\n", false)]
+    [TestCase("\n", true), TestCase("\r\n", true)]
+    public void PreservesSourceOutsideRequestedEdits(string newline, bool hasObjects)
     {
-        using var stream = typeof(OHsExportBeatmapWriter).Assembly.GetManifestResourceStream("Hitbench.Resources.OHsExportTemplate.osu")!;
-        using var reader = new StreamReader(stream);
-        return reader.ReadToEnd();
+        const string original = "osu file format v14\n[Metadata]\n  Version : Original \t\nTitle:音楽\n[Difficulty]\nHPDrainRate:7\nCircleSize:4\nOverallDifficulty:8.4\nApproachRate:9.6\nSliderMultiplier:2.3\n[TimingPoints]\n0,500,4,1,1,100,1,0\n\n[HitObjects]\nold\n[Unknown]\nVersion:Keep\n// 終わり";
+        var source = original.Replace("\n", newline);
+        var map = OHsExportBeatmap.Parse(source);
+        OHsExportVoice[] voices = hasObjects ? [new(100, "a.wav", 100, "Soft", SampleType.Clap, 0)] : [];
+        var input = new OHsExportInput(new("輸出 $1", 1, ".wav", ".wav", false), map, voices, map.TimingPoints);
+        var plan = OHsExportPlanner.Plan(input, default);
+        var actual = OHsExportBeatmapWriter.Write(input, plan);
+        var output = OHsExportBeatmap.Parse(actual);
+        // Generated rows are checked separately by the playback oracle tests.
+        var expectedOutside = source.Replace("Original", "輸出 $1").Replace("HPDrainRate:7", "HPDrainRate:3").Replace("CircleSize:4", "CircleSize:3").Replace("OverallDifficulty:8.4", "OverallDifficulty:5").Replace("ApproachRate:9.6", "ApproachRate:9.7");
+        string Outside(string text) => System.Text.RegularExpressions.Regex.Replace(text,
+            @"(?m)^(\[(?:TimingPoints|HitObjects)\]\r?\n)[\s\S]*?(?=^\[|\z)", "$1");
+        Assert.That(Outside(actual), Is.EqualTo(Outside(expectedOutside)));
+        Assert.That(output.Sections["HitObjects"].Count(l => !string.IsNullOrWhiteSpace(l)), Is.EqualTo(hasObjects ? 1 : 0));
     }
-    private static string OutsideBodies(string text) => Regex.Replace(text,
-        @"(?m)^(\[(?:TimingPoints|HitObjects)\]\r?\n)[\s\S]*?(?=^\[|\z)", "$1");
+
+    [Test]
+    public void AddsMissingRequiredSectionsAndKeysAndAcceptsObjectHeaderAtEof()
+    {
+        var map = OHsExportBeatmap.Parse("[TimingPoints]\n0,500,4,1,1,100,1,0\n[HitObjects]");
+        var input = new OHsExportInput(new("Hitsounds", 1, ".wav", ".wav", false), map, [], map.TimingPoints);
+        var actual = OHsExportBeatmapWriter.Write(input, OHsExportPlanner.Plan(input, default));
+        Assert.That(actual, Is.EqualTo("[TimingPoints]\n0,500,4,1,1,100,1,0\n\n[HitObjects]\n[Metadata]\nVersion:Hitsounds\n[Difficulty]\nHPDrainRate:3\nCircleSize:3\nOverallDifficulty:5\nApproachRate:9.7\n"));
+    }
 
     [TestCase(false), TestCase(true)]
     public void HitObjectSectionHasExactlyOneBlankLine(bool hasObjects)
@@ -24,18 +42,11 @@ public class OHsExportBeatmapWriterTests
         OHsExportVoice[] voices = hasObjects ? [new(100, "a.wav", 100, "Soft", SampleType.Clap, 0)] : [];
         var input = new OHsExportInput(new("Hitsounds", 1, ".wav", ".wav", false), map, voices, map.TimingPoints);
         var text = OHsExportBeatmapWriter.Write(input, OHsExportPlanner.Plan(input, default));
-        var lines = text.Split("\r\n");
+        var lines = text.Split("\n");
         var header = Array.IndexOf(lines, "[HitObjects]");
         Assert.That(header, Is.GreaterThan(1));
         Assert.That(lines[header - 1], Is.Empty);
         Assert.That(lines[header - 2], Is.Not.Empty);
-    }
-
-    [Test]
-    public void EmbeddedTemplateMatchesApprovedUpload()
-    {
-        using var stream = typeof(OHsExportBeatmapWriter).Assembly.GetManifestResourceStream("Hitbench.Resources.OHsExportTemplate.osu")!;
-        Assert.That(Convert.ToHexString(SHA256.HashData(stream)), Is.EqualTo("1EFAB718F4E706AAB6B79BE4A8DB29DAC6B3880AAD2634DCC04E759C94BE77C6"));
     }
 
     [TestCase(null)]
@@ -50,7 +61,10 @@ public class OHsExportBeatmapWriterTests
         var input = OHsExportInputFactory.Create(project, source, new("Different name", 1, ".wav", ".wav", false), default);
         var plan = OHsExportPlanner.Plan(input, default);
         var text = OHsExportBeatmapWriter.Write(input, plan);
-        Assert.That(OutsideBodies(text), Is.EqualTo(OutsideBodies(Template())));
+        Assert.That(text, Does.Contain("Version:Different name"));
+        Assert.That(text, Does.Contain("HPDrainRate:3\nCircleSize:3\nOverallDifficulty:5\nApproachRate:9.7"));
+        Assert.That(OHsExportBeatmap.Parse(text).Sections["General"], Is.EqualTo(source.Sections["General"]));
+        Assert.That(text, Does.Contain("Title:Unrelated"));
         var output = OHsExportBeatmap.Parse(text);
         var objects = output.Sections["HitObjects"].Where(l => !string.IsNullOrWhiteSpace(l)).Select(l => l.Split(',')).ToArray();
         Assert.That(objects.Select(o => o[3]), Is.All.EqualTo("5"));
@@ -59,7 +73,7 @@ public class OHsExportBeatmapWriterTests
         Assert.That(output.TimingPoints.Any(p => p.Timestamp == 50), Is.False);
         Assert.That(output.Sections["HitObjects"].Count(l => !string.IsNullOrWhiteSpace(l)), Is.EqualTo(1));
         Assert.That(OHsExportPlaybackOracle.Resolve(text).Single(p => p.Type == "clap"), Is.EqualTo((100, 2, "clap", 1, 40)));
-        Assert.That(text.Replace("\r\n", "").Contains('\n'), Is.False);
+        Assert.That(text.Contains('\r'), Is.False);
     }
 
     [Test]

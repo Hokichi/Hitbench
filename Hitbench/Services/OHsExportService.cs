@@ -1,4 +1,5 @@
 using System.IO;
+using System.Text;
 using Hitbench.Resources.DataModels;
 using Hitbench.Services.FileSystem;
 using Hitbench.Services.ProjectFiles;
@@ -6,6 +7,19 @@ namespace Hitbench.Services;
 
 public sealed class OHsExportService(OHsExportPublisher? publisher = null, Func<string, CancellationToken, DecodedAudio>? decode = null, AudioMemoryBudget? memoryBudget = null) : IOHsExportService
 {
+    private static (string Text, Encoding Encoding) DecodeBeatmap(byte[] bytes)
+    {
+        Encoding[] encodings = [new UTF32Encoding(false, true, true), new UTF32Encoding(true, true, true), new UTF8Encoding(true, true), new UnicodeEncoding(false, true, true), new UnicodeEncoding(true, true, true)];
+        foreach (var encoding in encodings)
+        {
+            var preamble = encoding.GetPreamble();
+            if (bytes.AsSpan().StartsWith(preamble))
+                return (encoding.GetString(bytes, preamble.Length, bytes.Length - preamble.Length), encoding);
+        }
+        var utf8 = new UTF8Encoding(false, true);
+        return (utf8.GetString(bytes), utf8);
+    }
+
     private readonly OHsExportPublisher publisher = publisher ?? new();
     private readonly AudioMemoryBudget memoryBudget = memoryBudget ?? new();
     public Task<string> ExportAsync(OHsExportRequest request, CancellationToken token, IProgress<OHsExportProgress>? progress = null) => Task.Run(async () =>
@@ -29,7 +43,8 @@ public sealed class OHsExportService(OHsExportPublisher? publisher = null, Func<
         var difficultyName = difficultyStem + Path.GetExtension(mapPath);
         var fingerprints = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         { [mapPath] = OHsExportPublisher.HashFile(mapPath) };
-        var map = OHsExportBeatmap.Parse(await File.ReadAllTextAsync(mapPath, token));
+        var (sourceText, sourceEncoding) = DecodeBeatmap(await File.ReadAllBytesAsync(mapPath, token));
+        var map = OHsExportBeatmap.Parse(sourceText);
         var project = ProjectDataSerializer.Deserialize(request.ProjectJson);
         var input = OHsExportInputFactory.Create(project, map, request.Options, token);
         var sourcePaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -70,7 +85,7 @@ public sealed class OHsExportService(OHsExportPublisher? publisher = null, Func<
             async Task BuildAsync(string stage, CancellationToken cancellation)
             {
                 await OHsExportAudio.WriteAsync(request.ProjectPath, stage, plan, request.Options, cancellation, (path, _) => decoded[path].Retain(), progress, memoryBudget);
-                await File.WriteAllTextAsync(Path.Combine(stage, difficultyName), OHsExportBeatmapWriter.Write(input, plan), cancellation);
+                await File.WriteAllTextAsync(Path.Combine(stage, difficultyName), OHsExportBeatmapWriter.Write(input, plan), sourceEncoding, cancellation);
                 foreach (var source in fingerprints)
                 {
                     cancellation.ThrowIfCancellationRequested(); ValidateSource(source.Key);
