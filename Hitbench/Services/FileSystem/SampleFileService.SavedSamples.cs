@@ -102,7 +102,7 @@ public sealed partial class SampleFileService
         finally { mutations.Release(); }
     }
 
-    private async Task<string> CopyUniqueAsync(string source, string folder, CancellationToken token, bool skipExisting = false)
+    private async Task<string> CopyUniqueAsync(string source, string folder, CancellationToken token, bool skipExisting = false, bool overwriteExisting = false)
     {
         token.ThrowIfCancellationRequested();
         SamplePaths.RejectLinkedPath(source);
@@ -122,9 +122,11 @@ public sealed partial class SampleFileService
                 var existing = Directory.EnumerateFileSystemEntries(folder).FirstOrDefault(path => string.Equals(path, candidate, StringComparison.OrdinalIgnoreCase));
                 if (existing is not null)
                 {
-                    if (!skipExisting) continue;
+                    if (!skipExisting && !overwriteExisting) continue;
                     SamplePaths.RejectLinkedPath(existing);
                     if (Directory.Exists(existing)) throw new IOException("Sample destination is a directory.");
+                    token.ThrowIfCancellationRequested();
+                    if (overwriteExisting) File.Move(temporary, existing, overwrite: true);
                     return existing;
                 }
                 try { File.Move(temporary, candidate); return candidate; }
