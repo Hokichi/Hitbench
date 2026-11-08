@@ -19,6 +19,12 @@ public static class ProjectDataSerializer
             nameof(ProjectData.WorkstationZoom), nameof(ProjectData.BeatmapPath), nameof(ProjectData.Tracks),
             nameof(ProjectData.ControlPoints), nameof(ProjectData.Offsets), nameof(ProjectData.BPMs),
             "Samples", "IsCollapsed");
+        var allowDefaults = Member(root, nameof(ProjectData.AllowDefaults));
+        if (allowDefaults is not null && allowDefaults.Type != JTokenType.Boolean)
+            throw new InvalidDataException("Project AllowDefaults must be a boolean.");
+        var currentSkin = Member(root, nameof(ProjectData.CurrentSkin));
+        if (currentSkin is not null && currentSkin.Type != JTokenType.String)
+            throw new InvalidDataException("Project CurrentSkin must be a string.");
         var pinned = Member(root, nameof(ProjectData.IsPinned));
         if (pinned is not null && pinned.Type != JTokenType.Boolean)
             throw new InvalidDataException("Project IsPinned must be a boolean.");
@@ -104,6 +110,14 @@ public static class ProjectDataSerializer
                     if (track.Properties().Any(member => string.Equals(member.Name, property, StringComparison.OrdinalIgnoreCase) &&
                         member.Value.Type != JTokenType.Boolean))
                         throw new InvalidDataException($"Track {property} must be a boolean.");
+                var usesDefault = Member(track, nameof(Track.UsesDefaultSample));
+                if (usesDefault is not null && usesDefault.Type != JTokenType.Boolean)
+                    throw new InvalidDataException("Track UsesDefaultSample must be a boolean.");
+                if (usesDefault is null)
+                    track[nameof(Track.UsesDefaultSample)] = kind?.Value<string>() != "Instrumental" &&
+                        string.IsNullOrEmpty(track["SelectedSampleFileName"]?.Value<string>()) &&
+                        !(track["Samples"] is JArray existingSamples && existingSamples.Count > 0);
+                if (kind?.Value<string>() == "Instrumental") track[nameof(Track.UsesDefaultSample)] = false;
                 if (track["Samples"] is null) continue;
                 if (track["Samples"] is not JArray samples || samples.Any(sample => sample is not JObject))
                     throw new InvalidDataException("Track Samples must be an array of objects.");

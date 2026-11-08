@@ -2,6 +2,7 @@ namespace Hitbench.Core.Entities;
 
 public class Track
 {
+    public bool UsesDefaultSample { get; set; }
     public static IReadOnlyList<string> AdditionOptions { get; } = Array.AsReadOnly(new[] { "None", "Normal", "Soft", "Drum" });
     public static IReadOnlyList<Hitbench.Core.Enums.SampleType> SampleTypeOptions { get; } = Array.AsReadOnly(Enum.GetValues<Hitbench.Core.Enums.SampleType>());
     public Hitbench.Core.Enums.SampleType SampleType { get; set; }

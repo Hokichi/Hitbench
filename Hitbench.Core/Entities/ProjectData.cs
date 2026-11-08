@@ -2,6 +2,8 @@ namespace Hitbench.Core.Entities;
 
 public class ProjectData
 {
+    public string CurrentSkin { get; set; } = string.Empty;
+    public bool AllowDefaults { get; set; }
     public bool IsPinned { get; set; }
     public DateTimeOffset LastChanged { get; set; }
     public int WorkstationZoom { get; set; } = 32;
