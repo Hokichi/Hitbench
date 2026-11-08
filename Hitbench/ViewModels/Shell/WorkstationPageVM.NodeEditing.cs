@@ -52,9 +52,9 @@ public partial class WorkstationPageVM
         IsNodeDragCopy = value;
         OnPropertyChanged(nameof(IsNodeDragCopy));
     }
-    public bool CanCopyNodes => CanPlaceSamples && selectedNodes.Count > 0;
+    public bool CanCopyNodes => CanPlaceSamples && SelectedNodeEntries(NodeHistoryOperation.Movement).Length > 0;
     public bool CanPasteNodes => CanPlaceSamples && copiedNodes.Length > 0 && SelectedTrack is { } track &&
-        CanEditTrackGrid(track) && sampleTrackFiles.Any(file => string.Equals(file, track.SelectedSampleFileName, StringComparison.OrdinalIgnoreCase));
+        CanEditTrackGrid(track) && NodeFileForTrack(track) is not null;
     public bool CanDeleteNodes => CanCopyNodes;
 
     public bool SelectNode(Track track, Sample sample, bool toggle)
@@ -92,7 +92,7 @@ public partial class WorkstationPageVM
         if (!deactivated && generation == loadGeneration) SetNodeSelectionCore(samples);
     }
 
-    private NodeHistoryEntry[] SelectedNodeEntries(NodeHistoryOperation operation) => tracks
+    private NodeHistoryEntry[] SelectedNodeEntries(NodeHistoryOperation operation) => tracks.Where(CanEditTrackGrid)
         .SelectMany(track => track.Samples.Select((sample, index) => new NodeHistoryEntry(track, sample, index, operation,
             sample.Timestamp, sample.Timestamp))).Where(entry => selectedNodes.Contains(entry.Sample)).ToArray();
 
@@ -138,7 +138,7 @@ public partial class WorkstationPageVM
     {
         var destination = SelectedTrack;
         if (destination is null || !CanEditTrackGrid(destination)) return false;
-        var fileName = sampleTrackFiles.FirstOrDefault(file => string.Equals(file, destination.SelectedSampleFileName, StringComparison.OrdinalIgnoreCase));
+        var fileName = NodeFileForTrack(destination);
         if (fileName is null) return false;
         var copied = copiedNodes.ToArray();
         var project = Project!; var path = projectPath!; var generation = loadGeneration;
@@ -273,8 +273,7 @@ public partial class WorkstationPageVM
             entry.NextTimestamp == entry.PreviousTimestamp).All(unchanged => unchanged);
         CancelNodeDrag();
         if (!valid || (copy && completeOverlap)) return false;
-        var destinationFiles = destinations.Select(track => sampleTrackFiles.FirstOrDefault(file =>
-            string.Equals(file, track.SelectedSampleFileName, StringComparison.OrdinalIgnoreCase))).ToArray();
+        var destinationFiles = destinations.Select(NodeFileForTrack).ToArray();
         if (destinationFiles.Any(file => file is null))
             return RejectPaste("The destination sample file is unavailable.");
         if (HasNodeCollisions(entries.Select((entry, i) => (destinations[i], entry.Sample, entry.NextTimestamp)), copy ? [] : entries.Select(entry => entry.Sample)))

@@ -13,6 +13,28 @@ public partial class WorkstationPageVM
     public IReadOnlyList<string> SkinDefaultFiles => skinDefaultFiles;
     public bool AllowDefaults => Project?.AllowDefaults == true;
     public bool IsRefreshingSkinDefaults { get; private set; }
+    public IReadOnlyList<OHsTrackSampleChoice> TrackSampleChoices => Array.AsReadOnly(new[] { new OHsTrackSampleChoice(null) }
+        .Concat(sampleTrackFiles.Select(file => new OHsTrackSampleChoice(file))).ToArray());
+    public bool IsDefaultSampleAvailable(Track track) => Project is { } project &&
+        Services.OHsDefaultSamples.IsAvailable(project, track, skinDefaultFiles, Waveform?.Duration.TotalMilliseconds ?? double.PositiveInfinity);
+    public bool CanInteractWithTrack(Track track) => tracks.Contains(track) && (!track.UsesDefaultSample || IsDefaultSampleAvailable(track));
+    private string? NodeFileForTrack(Track track) => track.UsesDefaultSample
+        ? IsDefaultSampleAvailable(track) ? string.Empty : null
+        : sampleTrackFiles.FirstOrDefault(file => string.Equals(file, track.SelectedSampleFileName, StringComparison.OrdinalIgnoreCase));
+    public bool SelectDefaultSample(Track track)
+    {
+        if (!CanSelectTrackSample || !tracks.Contains(track) || !IsDefaultSampleAvailable(track)) return false;
+        if (track.UsesDefaultSample) return true;
+        track.UsesDefaultSample = true; track.SelectedSampleFileName = null;
+        foreach (var sample in track.Samples) sample.FileName = string.Empty;
+        RefreshDefaultTrackState(); QueuePlaybackUpdate(); QueueSave(); return true;
+    }
+    private void RefreshDefaultTrackState()
+    {
+        OnPropertyChanged(nameof(TrackSampleChoices));
+        samplesRevision++; OnPropertyChanged(nameof(SamplesRevision));
+        PruneNodeSelection(); NotifyNodeEditingState(); NotifyTrackCommands(); NotifyTrackAuditionState();
+    }
 
     private void RegisterSkinDefaultsMessages()
     {
@@ -65,6 +87,7 @@ public partial class WorkstationPageVM
     {
         OnPropertyChanged(nameof(AllowDefaults)); OnPropertyChanged(nameof(SkinDefaultFiles)); OnPropertyChanged(nameof(IsRefreshingSkinDefaults));
         OnPropertyChanged(nameof(IsInteractionReady)); NotifyEditingState(); NotifyCommandState(); PublishSkinDefaultsState();
+        RefreshDefaultTrackState();
     }
     private async Task SettleSkinDefaultsAsync()
     {

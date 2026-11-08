@@ -67,6 +67,7 @@ public partial class WorkstationPageVM
         audioService.SetControlPoints(Project?.ControlPoints
             .OrderBy(p => p.Timestamp).Select(p => new ControlPointVolumeSnapshot(p.Timestamp, p.Volume, p.IsDisabled, p.IsRamp)).ToArray() ?? []);
         RefreshControlPointTimestamps();
+        if (Project?.Tracks.Any(t => t.UsesDefaultSample) == true) { RefreshDefaultTrackState(); QueuePlaybackUpdate(); }
     }
 
     private void RefreshControlPointTimestamps()

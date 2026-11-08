@@ -38,7 +38,7 @@ public static class OHsDefaultSamples
     public static bool IsAvailable(ProjectData project, Track track, IReadOnlyCollection<string> files,
         double durationMilliseconds = double.PositiveInfinity)
     {
-        if (!project.AllowDefaults || !track.UsesDefaultSample || track is InstrumentalTrack) return false;
+        if (!project.AllowDefaults || track is InstrumentalTrack) return false;
         var sets = new HashSet<string> { GetSampleset(project, track, 5) };
         if (track.Addition == "None")
             foreach (var point in project.ControlPoints.Where(p => !p.IsDisabled && p.Timestamp > 5 && p.Timestamp < durationMilliseconds)

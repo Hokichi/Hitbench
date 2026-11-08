@@ -19,7 +19,7 @@ public partial class WorkstationPageVM
     {
         if (!CanToggleTrackMutes) return;
         var value = !AreTracksMuted;
-        foreach (var track in tracks) track.IsTrackMuted = value;
+        foreach (var track in tracks.Where(CanInteractWithTrack)) track.IsTrackMuted = value;
         NotifyTrackAuditionChanged();
     }
     public bool HasMutedTracks => tracks.Any(track => track.IsTrackMuted);
@@ -31,7 +31,7 @@ public partial class WorkstationPageVM
     private void ClearTrackMutes()
     {
         if (!CanClearTrackMutes) return;
-        foreach (var track in tracks) track.IsTrackMuted = false;
+        foreach (var track in tracks.Where(CanInteractWithTrack)) track.IsTrackMuted = false;
         NotifyTrackAuditionChanged();
     }
 
@@ -39,7 +39,7 @@ public partial class WorkstationPageVM
     private void ClearTrackSolos()
     {
         if (!CanClearTrackSolos) return;
-        foreach (var track in tracks) track.IsTrackSoloed = false;
+        foreach (var track in tracks.Where(CanInteractWithTrack)) track.IsTrackSoloed = false;
         NotifyTrackAuditionChanged();
     }
 
@@ -54,14 +54,14 @@ public partial class WorkstationPageVM
 
     public void SetTrackMuted(Track track, bool value)
     {
-        if (!CanPlaceSamples || !tracks.Contains(track) || track.IsTrackMuted == value) return;
+        if (!CanPlaceSamples || !CanInteractWithTrack(track) || track.IsTrackMuted == value) return;
         track.IsTrackMuted = value;
         NotifyTrackAuditionChanged();
     }
 
     public void SetTrackSoloed(Track track, bool value)
     {
-        if (!CanPlaceSamples || !tracks.Contains(track) || track.IsTrackSoloed == value) return;
+        if (!CanPlaceSamples || !CanInteractWithTrack(track) || track.IsTrackSoloed == value) return;
         track.IsTrackSoloed = value;
         NotifyTrackAuditionChanged();
     }

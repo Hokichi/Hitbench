@@ -49,7 +49,7 @@ public partial class WorkstationPageVM
         try
         {
             var old = track.FolderName;
-            var reserved = tracks.OfType<InstrumentalTrack>().Where(t => t != track).Select(t => t.FolderName).ToArray();
+            var reserved = tracks.OfType<InstrumentalTrack>().Where(t => t != track).Select(t => t.FolderName).Append(Services.OHsDefaultSamples.FolderName).ToArray();
             var renamed = await sampleFiles!.RenameFolderAsync(path, old, name, reserved, CancellationToken.None);
             await uiScheduler.InvokeAsync(() =>
             {

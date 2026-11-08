@@ -12,7 +12,7 @@ public partial class WorkstationPageVM
     }
     private CancellationTokenSource? trackAppearanceCancellation;
     private Task? trackAppearanceTask;
-    private bool CanChangeTrackColor(Track? track)=>!trackAppearancePending && !IsTrackRenamePending && trackAppearanceDialog is not null && CanEditTracks && track is not null && tracks.Contains(track);
+    private bool CanChangeTrackColor(Track? track)=>!trackAppearancePending && !IsTrackRenamePending && trackAppearanceDialog is not null && CanEditTracks && track is not null && CanInteractWithTrack(track);
     [RelayCommand(CanExecute=nameof(CanChangeTrackColor))]
     private Task ChangeTrackColorAsync(Track track)
     {
@@ -27,7 +27,7 @@ public partial class WorkstationPageVM
         try
         {
             var result=await trackAppearanceDialog!.RequestAsync(new(track.Color,tracks.IndexOf(track)) { Name = track.Name },cancellation.Token);
-            if(cancellation.IsCancellationRequested || result is null || !CanEditTracks || deactivated || generation!=loadGeneration || !ReferenceEquals(project,Project) || !tracks.Contains(track))return;
+            if(cancellation.IsCancellationRequested || result is null || !CanEditTracks || deactivated || generation!=loadGeneration || !ReferenceEquals(project,Project) || !CanInteractWithTrack(track))return;
             string? color=null;
             if(result.Color is not null)
             {
@@ -42,7 +42,7 @@ public partial class WorkstationPageVM
                 await SettleSampleManagerAsync();
                 await SettleInstrumentalFoldersAsync();
                 await DrainProjectSaveQueueAsync();
-                if (cancellation.IsCancellationRequested || deactivated || generation != loadGeneration || !ReferenceEquals(project, Project) || !tracks.Contains(track)) return;
+                if (cancellation.IsCancellationRequested || deactivated || generation != loadGeneration || !ReferenceEquals(project, Project) || !CanInteractWithTrack(track)) return;
                 await RenameInstrumentFolderAsync(instrument, name, new(color) { Name = name }, () => cancellation.IsCancellationRequested);
                 return;
             }

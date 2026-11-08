@@ -22,12 +22,12 @@ public partial class WorkstationPageVM
     private void AddSampleTrack()
     {
         if (!CanAddTrack) return;
-        AddSampleTrackCore(sampleTrackFiles[0]);
+        AddSampleTrackCore(null);
     }
 
-    private void AddSampleTrackCore(string fileName)
+    private void AddSampleTrackCore(string? fileName)
     {
-        var track = new Track { Name = GetNewTrackName(), SelectedSampleFileName = fileName };
+        var track = new Track { Name = GetNewTrackName(), SelectedSampleFileName = fileName, UsesDefaultSample = fileName is null };
         Project!.Tracks.Add(track);
         tracks.Add(track);
         SelectedTrack = track;
@@ -60,7 +60,7 @@ public partial class WorkstationPageVM
     [RelayCommand]
     private Task RemoveTrackAsync(Track track)
     {
-        if (!CanRemoveTrack || !tracks.Contains(track)) return Task.CompletedTask;
+        if (!CanRemoveTrack || !CanInteractWithTrack(track)) return Task.CompletedTask;
         activeRemoval = RemoveTrackCoreAsync(track);
         return activeRemoval;
     }
@@ -118,11 +118,12 @@ public partial class WorkstationPageVM
         if (track is InstrumentalTrack) return;
         if (!CanSelectTrackSample || !tracks.Contains(track) || string.IsNullOrWhiteSpace(fileName) ||
             sampleFiles is not null && !sampleTrackFiles.Any(name => string.Equals(name, fileName, StringComparison.OrdinalIgnoreCase))) return;
-        if (string.Equals(track.SelectedSampleFileName, fileName, StringComparison.OrdinalIgnoreCase)) return;
+        if (!track.UsesDefaultSample && string.Equals(track.SelectedSampleFileName, fileName, StringComparison.OrdinalIgnoreCase)) return;
+        track.UsesDefaultSample = false;
         track.SelectedSampleFileName = sampleTrackFiles.FirstOrDefault(name =>
             string.Equals(name, fileName, StringComparison.OrdinalIgnoreCase)) ?? fileName;
         foreach (var sample in track.Samples) sample.FileName = track.SelectedSampleFileName;
-        NotifyNodeEditingState();
+        RefreshDefaultTrackState();
         samplesRevision++;
         OnPropertyChanged(nameof(SamplesRevision));
         QueuePlaybackUpdate();
@@ -138,8 +139,7 @@ public partial class WorkstationPageVM
         var existing = track.Samples.LastOrDefault(node => node.Timestamp == timestamp);
         if (existing is not null) return SelectNode(track, existing, false);
         if (!CanCreateSampleNodes) return false;
-        var fileName = sampleTrackFiles.FirstOrDefault(name =>
-            string.Equals(name, track.SelectedSampleFileName, StringComparison.OrdinalIgnoreCase));
+        var fileName = NodeFileForTrack(track);
         if (fileName is null) return false;
         var sample = new Sample
         {
@@ -166,7 +166,7 @@ public partial class WorkstationPageVM
 
     public void SetTrackName(Track track, string name)
     {
-        if (!CanEditTracks || !tracks.Contains(track)) return;
+        if (!CanEditTracks || !CanInteractWithTrack(track)) return;
         if (track is InstrumentalTrack instrument && instrument.FolderName.Length > 0 && sampleFiles is not null)
         { QueueInstrumentFolderRename(instrument, name); return; }
         if (string.Equals(track.Name, name, StringComparison.Ordinal)) return;
@@ -181,7 +181,7 @@ public partial class WorkstationPageVM
         if (track is InstrumentalTrack) return;
         if (!CanEditTracks || !tracks.Contains(track) || !Enum.IsDefined(value) || track.SampleType == value) return;
         track.SampleType = value;
-        QueueSave();
+        RefreshDefaultTrackState(); QueuePlaybackUpdate(); QueueSave();
     }
 
     public void SetTrackAddition(Track track, string value)
@@ -189,12 +189,12 @@ public partial class WorkstationPageVM
         if (track is InstrumentalTrack) return;
         if (!CanEditTracks || !tracks.Contains(track) || !Track.AdditionOptions.Contains(value) || track.Addition == value) return;
         track.Addition = value;
-        QueueSave();
+        RefreshDefaultTrackState(); QueuePlaybackUpdate(); QueueSave();
     }
 
     public void SetTrackVolume(Track track, int volume)
     {
-        if (!CanEditTracks || !tracks.Contains(track)) return;
+        if (!CanEditTracks || !CanInteractWithTrack(track)) return;
         var next = Math.Clamp(volume, 5, 200);
         if (track.Volume == next) return;
         track.Volume = next;
@@ -222,7 +222,7 @@ public partial class WorkstationPageVM
                 tracks.Clear();
                 foreach (var track in project.Tracks)
                 {
-                    if(track is not InstrumentalTrack) track.SelectedSampleFileName ??= track.Samples.FirstOrDefault()?.FileName;
+                    if(track is not InstrumentalTrack && !track.UsesDefaultSample) track.SelectedSampleFileName ??= track.Samples.FirstOrDefault()?.FileName;
                     tracks.Add(track);
                 }
                 NotifyTrackPresentation(); NotifyTrackAuditionState();
@@ -243,7 +243,7 @@ public partial class WorkstationPageVM
         AddSampleTrackCommand.NotifyCanExecuteChanged();
         AddPianoTrackCommand.NotifyCanExecuteChanged();
     }
-    private bool CanMoveTrack(Track? track) => CanPlaceSamples && !instrumentBusy && track is not null && tracks.Contains(track);
+    private bool CanMoveTrack(Track? track) => CanPlaceSamples && !instrumentBusy && track is not null && CanInteractWithTrack(track);
     private bool CanMoveTrackUp(Track? track) => CanMoveTrack(track) && tracks.IndexOf(track!) > 0;
     private bool CanMoveTrackDown(Track? track) => CanMoveTrack(track) && tracks.IndexOf(track!) < tracks.Count - 1;
     [RelayCommand(CanExecute = nameof(CanMoveTrackUp))]
@@ -260,7 +260,7 @@ public partial class WorkstationPageVM
     [ObservableProperty] private Track? renamingTrack;
     [ObservableProperty] private string trackNameDraft = string.Empty;
     [ObservableProperty] private bool isTrackRenamePending;
-    private bool CanBeginTrackRename(Track? track) => CanPlaceSamples && !trackAppearancePending && track is not null && tracks.Contains(track) && !IsTrackRenamePending && (RenamingTrack is null || ReferenceEquals(RenamingTrack, track));
+    private bool CanBeginTrackRename(Track? track) => CanPlaceSamples && !trackAppearancePending && track is not null && CanInteractWithTrack(track) && !IsTrackRenamePending && (RenamingTrack is null || ReferenceEquals(RenamingTrack, track));
     [RelayCommand(CanExecute = nameof(CanBeginTrackRename))]
     private void BeginTrackRename(Track track)
     {

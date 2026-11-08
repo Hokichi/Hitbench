@@ -31,7 +31,7 @@ public partial class WorkstationPageVM
     }
     public void SetTrackMinimumExtent(Track track, bool collapsed, double minimum)
     {
-        if (deactivated || !tracks.Contains(track) || !double.IsFinite(minimum) || minimum <= 0) return;
+        if (deactivated || !CanInteractWithTrack(track) || !double.IsFinite(minimum) || minimum <= 0) return;
         var old = trackExtents.GetValueOrDefault(track, (44,76));
         var next = collapsed ? (minimum, old.Expanded) : (old.Collapsed, minimum);
         if (old == next) return;
@@ -51,12 +51,12 @@ public partial class WorkstationPageVM
         if (!CanToggleTracksCollapsed) return;
         var value = !AreTracksCollapsed;
         OnPropertyChanging(nameof(AreTracksCollapsed));
-        foreach (var track in tracks) track.IsCollapsed = value;
+        foreach (var track in tracks.Where(CanInteractWithTrack)) track.IsCollapsed = value;
         NotifyTrackPresentation(); QueueSave();
     }
     [RelayCommand(CanExecute = nameof(CanCollapseTrack))]
     private void ToggleTrackCollapsed(Track track) => SetTrackCollapsed(track, !track.IsCollapsed);
-    private bool CanCollapseTrack(Track? track) => CanEditTracks && track is not null && tracks.Contains(track);
+    private bool CanCollapseTrack(Track? track) => CanEditTracks && track is not null && CanInteractWithTrack(track);
     public void SetTrackCollapsed(Track track, bool collapsed)
     {
         if (!CanCollapseTrack(track) || track.IsCollapsed == collapsed) return;

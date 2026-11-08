@@ -65,7 +65,7 @@ public partial class WorkstationPageVM(
     public bool CanEditTracks => Project is not null && IsInteractionReady;
     public bool CanImportSample => !folderRenamesActive && !instrumentBusy && !managingSamples && !IsNodeEditBusy && CanEditTracks && !importBusy && !removalBusy &&
         sampleFiles is not null && sampleDialog is not null && projectPath is not null;
-    public bool CanAddTrack => CanEditTracks && sampleTrackFiles.Count > 0;
+    public bool CanAddTrack => CanEditTracks;
     public bool CanRemoveTrack => !folderRenamesActive && !IsNodeEditBusy && CanEditTracks && !importBusy && !removalBusy && trackRemovalDialog is not null;
     public bool CanPlaceSamples => !folderRenamesActive && !IsNodeEditBusy && CanEditTracks && Waveform is not null && !importBusy && !removalBusy;
     public bool HasPendingSaves => IsExporting || playbackVolumes.HasPendingSaves || folderRenamesActive || instrumentBusy || managingSamples || IsNodeEditBusy || pendingZoom is not null || importBusy || removalBusy || !saveTail.IsCompleted || lastSaveError is not null;
@@ -441,7 +441,7 @@ public partial class WorkstationPageVM(
 
     private IReadOnlyList<SamplePlaybackEvent> CreatePlaybackEvents()
     {
-        var hasSolo = tracks.Any(track => track.IsTrackSoloed);
+        var hasSolo = tracks.Any(track => track.IsTrackSoloed && CanInteractWithTrack(track));
         var currentSamples = tracks.SelectMany(track => track.Samples).ToHashSet(ReferenceEqualityComparer.Instance);
         foreach (var removed in sampleEventIds.Keys.Where(sample => !currentSamples.Contains(sample)).ToArray())
             sampleEventIds.Remove(removed);
@@ -451,7 +451,7 @@ public partial class WorkstationPageVM(
         var alive = tracks.OfType<InstrumentalTrack>().SelectMany(t=>t.Notes).ToHashSet();
         foreach(var removed in instrumentNoteIds.Keys.Where(n=>!alive.Contains(n)).ToArray())
         { instrumentEventIds.Remove(instrumentNoteIds[removed]); instrumentNoteIds.Remove(removed); }
-        var availableLookup = sampleFiles is null ? null : availableSamples.Distinct(StringComparer.OrdinalIgnoreCase)
+        var availableLookup = sampleFiles is null ? null : availableSamples.Concat(skinDefaultFiles).Distinct(StringComparer.OrdinalIgnoreCase)
             .ToDictionary(f => f, f => f, StringComparer.OrdinalIgnoreCase);
         foreach(var instrument in tracks.OfType<InstrumentalTrack>())
         {
@@ -461,7 +461,7 @@ public partial class WorkstationPageVM(
         }
         foreach (var track in tracks)
         {
-            if (track.IsTrackMuted || hasSolo && !track.IsTrackSoloed) continue;
+            if (!CanInteractWithTrack(track) || track.IsTrackMuted || hasSolo && !track.IsTrackSoloed) continue;
             if (sampleFiles is not null && GetSampleAvailability(track) != Resources.DataModels.TrackSampleAvailability.Available) continue;
             foreach (var sample in track.Samples)
             {
@@ -470,7 +470,10 @@ public partial class WorkstationPageVM(
                 id = nextSampleEventId++;
                 sampleEventIds.Add(sample, id);
             }
-                events.Add(new SamplePlaybackEvent(id, sample.FileName, sample.Timestamp, track.Volume));
+                var file = track.UsesDefaultSample && Project is { } project
+                    ? Services.OHsDefaultSamples.Resolve(skinDefaultFiles, Services.OHsDefaultSamples.GetSampleset(project, track, (decimal)sample.Timestamp + 5), track.SampleType)
+                    : sample.FileName;
+                if (file is not null) events.Add(new SamplePlaybackEvent(id, file, sample.Timestamp, track.Volume));
             }
         }
         return events;
@@ -492,8 +495,9 @@ public partial class WorkstationPageVM(
         ReplaceSampleChoices(sampleTrackFiles, choices.Where(IsDirectSample).ToArray());
         if (initializeSelections)
             foreach (var track in tracks.Where(t=>t is not InstrumentalTrack))
-                track.SelectedSampleFileName ??= track.Samples.FirstOrDefault()?.FileName ?? sampleTrackFiles.FirstOrDefault();
+                if (!track.UsesDefaultSample) track.SelectedSampleFileName ??= track.Samples.FirstOrDefault()?.FileName ?? sampleTrackFiles.FirstOrDefault();
         OnPropertyChanged(nameof(SampleFiles));
+        OnPropertyChanged(nameof(TrackSampleChoices));
         OnPropertyChanged(nameof(CanAddTrack));
         AddSampleTrackCommand.NotifyCanExecuteChanged();
         AddPianoTrackCommand.NotifyCanExecuteChanged();
@@ -541,6 +545,7 @@ public partial class WorkstationPageVM(
             var source = await sourceService.LoadAsync(projectPath, token);
             var skinSnapshot = skinDefaults is null ? new OHsSkinDefaultsSnapshot(source.Project.CurrentSkin, [], false)
                 : await skinDefaults.RefreshAsync(projectPath, source.Project.CurrentSkin, source.Project.AllowDefaults, false, token);
+            var skinChanged = source.Project.CurrentSkin != skinSnapshot.SkinName;
             source.Project.CurrentSkin = skinSnapshot.SkinName;
             var addedOffsetControlPoint = source.Project.EnsureOffsetControlPoint();
             var waveform = await audioService.AnalyzeAsync(source.AudioPath, token);
@@ -599,7 +604,7 @@ public partial class WorkstationPageVM(
             await UpdatePlaybackAsync(projectPath, generation, token, skinSnapshot.WasReplaced);
             if (audioService.GetSnapshot().Error?.StartsWith("Unable to prepare audio:", StringComparison.Ordinal) == true)
                 await CommitAsync(generation, CancellationToken.None, () => Waveform = null);
-            if (addedOffsetControlPoint)
+            if (addedOffsetControlPoint || skinChanged)
                 await CommitAsync(generation, token, () => { if (Waveform is not null) QueueSave(isChange: false); });
 
         }

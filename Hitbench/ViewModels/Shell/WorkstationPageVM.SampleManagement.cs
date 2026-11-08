@@ -18,7 +18,7 @@ public partial class WorkstationPageVM
     private Task<bool>? sampleManagerClosing;
     public bool IsSamplesOpen => managingSamples;
     public bool CanManageSamples => CanRequestDrawer && sampleFiles is not null && sampleDialog is not null && projectPath is not null && sampleManagementDialog is not null;
-    public TrackSampleAvailability GetSampleAvailability(Track track) => track.SelectedSampleFileName is null
+    public TrackSampleAvailability GetSampleAvailability(Track track) => track.UsesDefaultSample ? IsDefaultSampleAvailable(track) ? TrackSampleAvailability.Available : TrackSampleAvailability.Missing : track.SelectedSampleFileName is null
         ? TrackSampleAvailability.Unselected : sampleFiles is null || sampleTrackFiles.Any(n => string.Equals(n, track.SelectedSampleFileName, StringComparison.OrdinalIgnoreCase))
             ? TrackSampleAvailability.Available : TrackSampleAvailability.Missing;
     public bool CanEditTrackGrid(Track track) => track is not InstrumentalTrack && tracks.Contains(track) && (sampleFiles is null || GetSampleAvailability(track) == TrackSampleAvailability.Available);
