@@ -8,7 +8,7 @@ namespace Hitbench.Services;
 
 public static class OHsExportInputFactory
 {
-    public static OHsExportInput Create(ProjectData project, OHsExportBeatmap beatmap, OHsExportOptions options, CancellationToken token)
+    public static OHsExportInput Create(ProjectData project, OHsExportBeatmap beatmap, OHsExportOptions options, CancellationToken token, IReadOnlyCollection<string>? skinDefaultFiles = null, double durationMilliseconds = double.PositiveInfinity)
     {
         options.Validate(); token.ThrowIfCancellationRequested();
         var controls = project.ControlPoints.GroupBy(p => p.Timestamp).Select(g => g.Last()).Where(p => !p.IsDisabled).OrderBy(p => p.Timestamp).ToArray();
@@ -51,18 +51,21 @@ public static class OHsExportInputFactory
         var controlTimes = controls.Select(p => (decimal)p.Timestamp).ToHashSet();
         required.RemoveAll(p => p.Kind == OHsExportTimingKind.SourceState && controlTimes.Contains(p.Timestamp));
         var voices = new List<OHsExportVoice>();
-        var solo = project.Tracks.Any(t => t.IsTrackSoloed);
+        skinDefaultFiles ??= Array.Empty<string>();
+        bool Usable(Track t) => !t.UsesDefaultSample || OHsDefaultSamples.IsAvailable(project, t, skinDefaultFiles, durationMilliseconds);
+        var solo = project.Tracks.Any(t => t.IsTrackSoloed && Usable(t));
         for (var order = 0; order < project.Tracks.Count; order++)
         {
             token.ThrowIfCancellationRequested(); var track = project.Tracks[order];
-            if (track.IsTrackMuted || solo && !track.IsTrackSoloed) continue;
+            if (!Usable(track) || track.IsTrackMuted || solo && !track.IsTrackSoloed) continue;
             if (track.Volume is < 0 or > 200 || !Enum.IsDefined(track.SampleType) || !Track.AdditionOptions.Contains(track.Addition))
                 throw new InvalidDataException("Invalid export track.");
             void Add(int time, string file)
             {
-                if (time < 0 || SamplePaths.GetRelativePathError(file) is not null) throw new InvalidDataException("Invalid export sample.");
+                if (time < 0 || !track.UsesDefaultSample && SamplePaths.GetRelativePathError(file) is not null) throw new InvalidDataException("Invalid export sample.");
                 var set = track.Addition == "None" ? ControlPoint.SamplesetOptions[State((decimal)time + 5).Set - 1] : track.Addition;
-                voices.Add(new(time, file.Replace('\\', '/'), track.Volume, set, track.SampleType, order));
+                if (track.UsesDefaultSample) file = OHsDefaultSamples.Resolve(skinDefaultFiles, set, track.SampleType) ?? throw new InvalidDataException("Default sample is unavailable.");
+                voices.Add(new(time, file.Replace('\\', '/'), track.Volume, set, track.SampleType, order, track.UsesDefaultSample));
             }
             if (track is InstrumentalTrack instrument)
                 foreach (var note in instrument.Notes)

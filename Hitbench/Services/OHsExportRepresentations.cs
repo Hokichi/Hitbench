@@ -3,7 +3,7 @@ using Hitbench.Core.Enums;
 using Hitbench.Resources.DataModels;
 namespace Hitbench.Services;
 
-public static class OHsExportRepresentations
+public static partial class OHsExportRepresentations
 {
     private static readonly string[] Sets = ["Normal", "Soft", "Drum"];
     public static string FileName(OHsExportSlot slot, int index, string extension)

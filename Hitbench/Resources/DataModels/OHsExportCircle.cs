@@ -1,2 +1,2 @@
 namespace Hitbench.Resources.DataModels;
-public sealed record OHsExportCircle(int Timestamp, string NormalSet, string AdditionSet, int HitSound, int SampleIndex);
+public sealed record OHsExportCircle(int Timestamp, string NormalSet, string AdditionSet, int HitSound, int SampleIndex, int Volume = 0);

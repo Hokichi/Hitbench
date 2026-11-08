@@ -37,7 +37,7 @@ public partial class WorkstationPageVM
             pendingPlayCancellation?.Cancel(); await playback.PauseAsync(token);
             token.ThrowIfCancellationRequested();
             var request = new OHsExportRequest(exportOperation, path, exportBeatmapPath!, exportAudioPath!,
-                ProjectDataSerializer.Serialize(project), new("Hitsounds", 1, ".ogg", ".ogg", false));
+                ProjectDataSerializer.Serialize(project), new("Hitsounds", 1, ".ogg", ".ogg", false), Waveform?.Duration.TotalMilliseconds);
             await exportDialog!.ShowAsync(request, token);
             Task pending; lock (notificationLock) pending = notifications;
             await pending;
