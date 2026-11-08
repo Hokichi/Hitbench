@@ -23,7 +23,8 @@ public sealed class ManageMapsetSamplesIntegrationTests
         {
             UiTestPump.Run(vm.InitializeAsync(default));using var view=new InMemoryView(host,scheduleLayout:false);
             var expander=(Expander)drawer.FindName("MapsetSamplesExpander");UiControlContract.AssertStyle<Expander>(expander,typeof(Expander));
-            var list=(ItemsControl)drawer.FindName("MapsetSampleRows");UiControlContract.AssertStyle<ItemsControl>(list,"OHsVirtualizedDrawerItemsStyle");
+            var list=(ItemsControl)drawer.FindName("MapsetSampleRows");UiControlContract.AssertStyle<ItemsControl>(list,"OHsManageSamplesItemsStyle");
+            Assert.That(list.Style.BasedOn, Is.SameAs(list.FindResource("OHsVirtualizedDrawerItemsStyle")));
             Assert.That(list.Items.Count,Is.EqualTo(500));Assert.That(list.ItemContainerGenerator.ContainerFromIndex(499),Is.Null);
             var row=Children(list).OfType<OHsSampleRow>().First();UiControlContract.AssertStyle<OHsSampleRow>(row,"OHsManageSamplesDragSourceStyle");
             Assert.That(row.FileName,Is.EqualTo(((Hitbench.Resources.DataModels.SampleManagementEntry)row.DataContext).DisplayFileName));

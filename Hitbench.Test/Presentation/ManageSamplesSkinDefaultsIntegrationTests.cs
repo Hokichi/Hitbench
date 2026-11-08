@@ -24,7 +24,8 @@ public class ManageSamplesSkinDefaultsIntegrationTests
             var skin = drawer.FindName("SkinDefaultsExpander") as Expander;
             var project = drawer.FindName("ProjectSamplesExpander") as Expander;
             Assert.That(skin, Is.Not.Null); Assert.That(project, Is.Not.Null);
-            UiControlContract.AssertStyle<Expander>(skin!, typeof(Expander));
+            UiControlContract.AssertStyle<Expander>(skin!, "OHsManageSamplesSkinExpanderStyle");
+            Assert.That(skin!.Style.BasedOn, Is.SameAs(skin.FindResource(typeof(Expander))));
             var checkbox = (CheckBox)drawer.FindName("AllowDefaultsCheckBox");
             UiControlContract.AssertStyle<CheckBox>(checkbox, "RegularCheckBoxStyle");
             Assert.That(checkbox.IsTabStop, Is.False);

@@ -6,6 +6,16 @@
     xmlns:h="clr-namespace:Hitbench.Resources.Helpers"
     Style="{StaticResource BaseControlStyle}">
     <UserControl.Resources>
+        <Style x:Key="OHsManageSamplesEmptyTextStyle" TargetType="TextBlock" BasedOn="{StaticResource BodyTextStyle}">
+            <Setter Property="Visibility" Value="Collapsed"/>
+            <Style.Triggers><DataTrigger Binding="{Binding HasItems, Mode=OneWay}" Value="False"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers>
+        </Style>
+        <Style x:Key="OHsManageSamplesItemsStyle" TargetType="ItemsControl" BasedOn="{StaticResource OHsVirtualizedDrawerItemsStyle}">
+            <Style.Triggers><Trigger Property="HasItems" Value="False"><Setter Property="Visibility" Value="Collapsed"/></Trigger></Style.Triggers>
+        </Style>
+        <Style x:Key="OHsManageSamplesSkinExpanderStyle" TargetType="Expander" BasedOn="{StaticResource {x:Type Expander}}">
+            <Style.Triggers><DataTrigger Binding="{Binding AllowDefaults, Mode=OneWay}" Value="False"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
+        </Style>
         <Style
             x:Key="OHsManageSamplesDragSourceStyle"
             BasedOn="{StaticResource BaseControlStyle}"
@@ -45,8 +55,8 @@
         </DataTemplate>
         <DataTemplate x:Key="OHsManageSamplesSkinRowTemplate">
             <c:OHsSampleRow
-                FileName="{Binding FileName, Mode=OneWay}"
-                FileToolTip="{Binding FileName, Mode=OneWay}"
+                FileName="{Binding DisplayFileName, Mode=OneWay}"
+                FileToolTip="{Binding DisplayFileName, Mode=OneWay}"
                 IsEnabled="{Binding IsInteractionEnabled, Mode=OneWay}"
                 IsPlaying="{Binding IsPlaying, Mode=OneWay}"
                 PlayCommand="{Binding DataContext.PlayCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}, Mode=OneWay}"
@@ -226,7 +236,7 @@
                 ActionsTemplate="{StaticResource OHsManageSamplesActionsTemplate}"
                 DataContextChanged="OnSampleDragRowChanged"
                 FileName="{Binding DisplayFileName, Mode=OneWay}"
-                FileToolTip="{Binding FileName, Mode=OneWay}"
+                FileToolTip="{Binding DisplayFileName, Mode=OneWay}"
                 IsEditing="{Binding IsEditing, Mode=OneWay}"
                 IsEnabled="{Binding IsInteractionEnabled, Mode=OneWay}"
                 IsPlaying="{Binding IsPlaying, Mode=OneWay}"
@@ -279,19 +289,24 @@
                     ToolTip="Close Manage Samples"
                     ToolTipService.ShowsToolTipOnKeyboardFocus="True" />
             </Grid>
-            <StackPanel Grid.Row="1" Style="{StaticResource BaseStackPanelStyle}">
+            <Grid Grid.Row="1" Style="{StaticResource BaseGridStyle}">
+                <Grid.RowDefinitions>
+                    <RowDefinition x:Name="SkinSamplesRegion" Height="Auto"/>
+                    <RowDefinition x:Name="MapsetSamplesRegion" Height="Auto"/>
+                    <RowDefinition x:Name="ProjectSamplesRegion" Height="Auto"/>
+                </Grid.RowDefinitions>
                 <Expander
                     x:Name="SkinDefaultsExpander"
                     Grid.Row="0"
                     AutomationProperties.Name="Skin Defaults"
                     Header="Skin Defaults"
                     IsExpanded="True"
-                    Style="{StaticResource {x:Type Expander}}">
-                    <ItemsControl
+                    Style="{StaticResource OHsManageSamplesSkinExpanderStyle}">
+                    <Grid Style="{StaticResource BaseGridStyle}"><ItemsControl
                         x:Name="SkinDefaultRows"
                         ItemTemplate="{StaticResource OHsManageSamplesSkinRowTemplate}"
                         ItemsSource="{Binding SkinDefaultEntries, Mode=OneWay}"
-                        Style="{StaticResource OHsVirtualizedDrawerItemsStyle}" />
+                        Style="{StaticResource OHsManageSamplesItemsStyle}" /><TextBlock Text="No samples found" DataContext="{Binding ElementName=SkinDefaultRows, Mode=OneWay}" Style="{StaticResource OHsManageSamplesEmptyTextStyle}"/></Grid>
                 </Expander>
                 <Expander
                     x:Name="MapsetSamplesExpander"
@@ -300,11 +315,11 @@
                     Header="Mapset Samples"
                     IsExpanded="True"
                     Style="{StaticResource {x:Type Expander}}">
-                    <ItemsControl
+                    <Grid Style="{StaticResource BaseGridStyle}"><ItemsControl
                         x:Name="MapsetSampleRows"
                         ItemTemplate="{StaticResource OHsManageSamplesRowTemplate}"
                         ItemsSource="{Binding MapsetEntries, Mode=OneWay}"
-                        Style="{StaticResource OHsVirtualizedDrawerItemsStyle}" />
+                        Style="{StaticResource OHsManageSamplesItemsStyle}" /><TextBlock Text="No samples found" DataContext="{Binding ElementName=MapsetSampleRows, Mode=OneWay}" Style="{StaticResource OHsManageSamplesEmptyTextStyle}"/></Grid>
                 </Expander>
                 <Expander
                     x:Name="ProjectSamplesExpander"
@@ -313,13 +328,13 @@
                     Header="Project Samples"
                     IsExpanded="True"
                     Style="{StaticResource {x:Type Expander}}">
-                    <ItemsControl
+                    <Grid Style="{StaticResource BaseGridStyle}"><ItemsControl
                         x:Name="SampleRows"
                         ItemTemplate="{StaticResource OHsManageSamplesRowTemplate}"
                         ItemsSource="{Binding Entries, Mode=OneWay}"
-                        Style="{StaticResource OHsVirtualizedDrawerItemsStyle}" />
+                        Style="{StaticResource OHsManageSamplesItemsStyle}" /><TextBlock Text="No samples found" DataContext="{Binding ElementName=SampleRows, Mode=OneWay}" Style="{StaticResource OHsManageSamplesEmptyTextStyle}"/></Grid>
                 </Expander>
-            </StackPanel>
+            </Grid>
             <Grid
                 Grid.Row="3"
                 Margin="0,16,0,0"
