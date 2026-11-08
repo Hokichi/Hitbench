@@ -40,7 +40,7 @@ public class OHsControlPointLaneTests
         Assert.That(lane.HitTestTimingBoundary(points[1].Id, 103), Is.EqualTo(points[2].Id));
         Assert.That(lane.HitTestTimingBoundary(points[1].Id, 102), Is.EqualTo(points[1].Id));
         Assert.That(lane.GetZoneCursor(points[1].Id, 101), Is.SameAs(System.Windows.Input.Cursors.SizeWE));
-        Assert.That(lane.GetZoneCursor(points[2].Id, 200), Is.SameAs(System.Windows.Input.Cursors.Hand));
+        Assert.That(lane.GetZoneCursor(points[2].Id, 200), Is.SameAs(System.Windows.Input.Cursors.SizeNS));
         lane.IsEnabled = false;
         Assert.That(lane.GetZoneCursor(points[1].Id, 101), Is.SameAs(System.Windows.Input.Cursors.Arrow));
     }

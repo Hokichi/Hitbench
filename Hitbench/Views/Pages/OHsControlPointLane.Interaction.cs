@@ -216,8 +216,8 @@ public partial class OHsControlPointLane
         return null;
     }
 
-    internal Cursor GetZoneCursor(Guid zoneId, double viewportX) => !IsMenuOwnerActive || !IsEnabled
-        ? Cursors.Arrow : HitTestTimingBoundary(zoneId, viewportX) is not null ? Cursors.SizeWE : Cursors.Hand;
+    internal Cursor GetZoneCursor(Guid zoneId, double viewportX) => !IsMenuOwnerActive || !IsEnabled || State?.CanEdit != true || !State.Points.Any(p => p.Id == zoneId)
+        ? Cursors.Arrow : HitTestTimingBoundary(zoneId, viewportX) is not null ? Cursors.SizeWE : Cursors.SizeNS;
 
     internal void BeginZoneGesture(Guid zoneId, Point pointer, double usableHeight)
     {
@@ -247,7 +247,7 @@ public partial class OHsControlPointLane
     {
         base.OnQueryCursor(e);
         if (dragPointId is not null || volumeDragPointId is not null)
-            e.Cursor = !IsMenuOwnerActive ? Cursors.Arrow : dragPointId is not null ? Cursors.SizeWE : Cursors.Hand;
+            e.Cursor = !IsMenuOwnerActive || !IsEnabled || State?.CanEdit != true ? Cursors.Arrow : dragPointId is not null ? Cursors.SizeWE : Cursors.SizeNS;
         else if (FindZone(e.OriginalSource as DependencyObject) is { Point: { } point })
             e.Cursor = GetZoneCursor(point.Id, Mouse.GetPosition(PointItems).X);
         else return;
