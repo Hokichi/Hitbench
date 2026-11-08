@@ -11,6 +11,10 @@ namespace Hitbench.Resources.CustomControls;
 [TemplatePart(Name = PartDownButton, Type = typeof(RepeatButton))]
 public partial class NumericUpDown : Control
 {
+    public static readonly RoutedEvent InputCommittedEvent = EventManager.RegisterRoutedEvent(
+        nameof(InputCommitted), RoutingStrategy.Bubble, typeof(RoutedEventHandler), typeof(NumericUpDown));
+    public event RoutedEventHandler InputCommitted
+    { add => AddHandler(InputCommittedEvent, value); remove => RemoveHandler(InputCommittedEvent, value); }
     private const string PartTextBox = "PART_TextBox";
     private const string PartUpButton = "PART_UpButton";
     private const string PartDownButton = "PART_DownButton";
@@ -178,7 +182,7 @@ public partial class NumericUpDown : Control
 
         if (e.Key == Key.Enter)
         {
-            CommitText();
+            if (CommitInput()) RaiseEvent(new RoutedEventArgs(InputCommittedEvent, this));
             e.Handled = true;
         }
     }
@@ -326,9 +330,13 @@ public partial class NumericUpDown : Control
             UpdateText(); return true;
         }
 
-        if (TryParseValueText(_textBox.Text ?? string.Empty, LowerLimit, UpperLimit, out var value))
-            SetCurrentValue(ValueProperty, value);
-
+        if (!TryParseValueText(_textBox.Text ?? string.Empty, LowerLimit, UpperLimit, out var value))
+        {
+            SetValue(HasInputErrorPropertyKey, true);
+            return false;
+        }
+        SetValue(InputErrorPropertyKey, null); SetValue(HasInputErrorPropertyKey, false);
+        SetCurrentValue(ValueProperty, value);
         UpdateText();
         return true;
     }

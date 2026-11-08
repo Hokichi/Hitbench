@@ -29,6 +29,7 @@ public partial class OHsControlPointEditor : UserControl
     public OHsControlPointEditor()
     {
         InitializeComponent();
+        VolumeInput.InputCommitted += (_, _) => CommitVolumeInput(volumeEdited);
         VolumeInput.AddHandler(ButtonBase.ClickEvent, new RoutedEventHandler(OnVolumeStep), true);
         VolumeInput.AddHandler(Keyboard.KeyDownEvent, new KeyEventHandler(OnVolumeKey), true);
         VolumeInput.AddHandler(Mouse.MouseWheelEvent, new MouseWheelEventHandler(OnVolumeWheel), true);
