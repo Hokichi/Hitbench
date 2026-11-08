@@ -30,12 +30,6 @@ public partial class ManageSamplesDrawer : UserControl,IOHsShellDrawer
     public bool CanDismiss => viewModel.CanClose;
     public bool TryPrepareClose() => CanDismiss;
 
-    private void OnSampleSectionChanged(object sender, RoutedEventArgs e)
-    {
-        if (SkinSectionRow is null || ProjectSectionRow is null || SkinDefaultsExpander is null || ProjectSamplesExpander is null) return;
-        SkinSectionRow.Height = SkinDefaultsExpander.IsExpanded ? new GridLength(1, GridUnitType.Star) : GridLength.Auto;
-        ProjectSectionRow.Height = ProjectSamplesExpander.IsExpanded ? new GridLength(1, GridUnitType.Star) : GridLength.Auto;
-    }
     private void OnCloseClick(object sender, RoutedEventArgs e)
     {
         if (viewModel.CanClose) CloseRequested?.Invoke(this, EventArgs.Empty);
