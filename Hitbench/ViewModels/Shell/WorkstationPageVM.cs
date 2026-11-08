@@ -34,7 +34,7 @@ public partial class WorkstationPageVM(
     TimeProvider? timeProvider = null,
     IOHsExportDialogService? exportDialog = null,
     IOHsExportDirectoryLauncher? directoryLauncher = null,
-    IOHsTrackAppearanceDialogService? trackAppearanceDialog = null, Func<TimeSpan, CancellationToken, Task>? saveDelay = null, IOHsSampleDropImportDialogService? sampleDropDialog = null, OHsAudioOperationProgress? audioOperationProgress = null) : ObservableObject
+    IOHsTrackAppearanceDialogService? trackAppearanceDialog = null, Func<TimeSpan, CancellationToken, Task>? saveDelay = null, IOHsSampleDropImportDialogService? sampleDropDialog = null, OHsAudioOperationProgress? audioOperationProgress = null, IOHsSkinDefaultsService? skinDefaults = null) : ObservableObject
 {
     private readonly IWorkstationAudioService audioService = playback.Audio;
     private bool subscribedToPlayback;
@@ -83,7 +83,7 @@ public partial class WorkstationPageVM(
     [ObservableProperty] private ProjectLoadPhase loadPhase = ProjectLoadPhase.PreparingData;
     public int LoadGeneration => loadGeneration;
     public bool IsLoading => LoadPhase is ProjectLoadPhase.PreparingData or ProjectLoadPhase.AwaitingPresentation;
-    public bool IsInteractionReady => LoadPhase == ProjectLoadPhase.Ready && !deactivated && !IsReturning && !reloadingSamples && !IsExporting;
+    public bool IsInteractionReady => LoadPhase == ProjectLoadPhase.Ready && !deactivated && !IsReturning && !reloadingSamples && !IsExporting && !IsRefreshingSkinDefaults;
     public bool CanGoBack => !deactivated && !IsReturning;
     public bool ShowStatusOverlay => IsLoading || IsSavingForReturn;
     public string StatusText => IsSavingForReturn ? "Saving..." : "Loading Project...";
@@ -112,6 +112,7 @@ public partial class WorkstationPageVM(
 
     public async Task LoadAsync(string projectPath, CancellationToken token)
     {
+        await SettleSkinDefaultsAsync();
         await CancelDroppedImportAsync();
         if (deactivated) return;
         IsAdditionMode = false;
@@ -151,6 +152,7 @@ public partial class WorkstationPageVM(
     private async Task DeactivateCoreAsync()
     {
         if (deactivated) return;
+        await SettleSkinDefaultsAsync();
         await CancelDroppedImportAsync();
         ResetSampleConfiguration();
         trackAppearanceCancellation?.Cancel();
@@ -291,6 +293,7 @@ public partial class WorkstationPageVM(
 
     public async Task FlushSavesAsync()
     {
+        await skinDefaultsOperation;
         await playbackVolumes.FlushAsync();
         if(instrumentWorkflow is { } workflow) await workflow;
         if (activeManager is not null) await activeManager;
@@ -536,6 +539,9 @@ public partial class WorkstationPageVM(
             if (!subscribedToPlayback) { playback.StateChanged += OnPlaybackStateChanged; subscribedToPlayback = true; }
             await playback.StopAsync(token);
             var source = await sourceService.LoadAsync(projectPath, token);
+            var skinSnapshot = skinDefaults is null ? new OHsSkinDefaultsSnapshot(source.Project.CurrentSkin, [], false)
+                : await skinDefaults.RefreshAsync(projectPath, source.Project.CurrentSkin, source.Project.AllowDefaults, false, token);
+            source.Project.CurrentSkin = skinSnapshot.SkinName;
             var addedOffsetControlPoint = source.Project.EnsureOffsetControlPoint();
             var waveform = await audioService.AnalyzeAsync(source.AudioPath, token);
             if(source.Project.Tracks.OfType<InstrumentalTrack>().SelectMany(t=>t.Notes).Any(n=>n.Timestamp>=waveform.Duration.TotalMilliseconds))
@@ -549,6 +555,7 @@ public partial class WorkstationPageVM(
                 audioService.SetSamplesVolume(SamplesVolume);
                 exportBeatmapPath = source.BeatmapPath; exportAudioPath = source.AudioPath;
                 Project = source.Project;
+                skinDefaultFiles = skinSnapshot.Files;
                 instrumentTiming = new(Project.Offsets, Project.BPMs);
                 latestRequestedLastChanged = Project.LastChanged;
                 InitializeControlPoints();
@@ -574,6 +581,7 @@ public partial class WorkstationPageVM(
                     messenger.Register<OHsExportResultMessage>(this, (_, result) => ReceiveExportResult(result));
                     RegisterInstrumentMessages();
                     RegisterKeyMappingMessages();
+                    RegisterSkinDefaultsMessages();
 
                 }
             });
@@ -588,7 +596,7 @@ public partial class WorkstationPageVM(
                     RefreshAvailableSamples(choices);
                 });
             }
-            await UpdatePlaybackAsync(projectPath, generation, token);
+            await UpdatePlaybackAsync(projectPath, generation, token, skinSnapshot.WasReplaced);
             if (audioService.GetSnapshot().Error?.StartsWith("Unable to prepare audio:", StringComparison.Ordinal) == true)
                 await CommitAsync(generation, CancellationToken.None, () => Waveform = null);
             if (addedOffsetControlPoint)
