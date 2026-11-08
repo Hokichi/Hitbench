@@ -38,7 +38,8 @@ public partial class OHsWorkstationTimeline : UserControl
     {
         InitializeComponent();
         ControlPointLane.HorizontalOffsetRequested += ScrollFromUser;
-        DataContextChanged += (_, e) => { ControlPointLane.ResetInteraction(); viewModel = e.NewValue as WorkstationPageVM ?? null!; };
+        Unloaded += (_, _) => EndScrub();
+        DataContextChanged += (_, e) => { EndScrub(); ControlPointLane.ResetInteraction(); viewModel = e.NewValue as WorkstationPageVM ?? null!; };
     }
     public event EventHandler? ViewportChanged;
     public Rect GetTimeViewportBounds(Visual relativeTo)
@@ -82,7 +83,7 @@ public partial class OHsWorkstationTimeline : UserControl
         scrollBar = null;
     }
     public void ResetWheel() { wheelMode = ModifierKeys.None; wheelRemainder = 0; }
-    public void Reset() { hasPendingZoomAnchor = false; ResetWheel(); ControlPointLane.ResetInteraction(); }
+    public void Reset() { EndScrub(); hasPendingZoomAnchor = false; ResetWheel(); ControlPointLane.ResetInteraction(); }
     public bool PreparePresentation()
     {
         var inset = WaveformScrollViewer.BorderThickness;
@@ -156,7 +157,7 @@ public partial class OHsWorkstationTimeline : UserControl
     private void OnWaveformMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         WaveformScrollViewer.Focus();
-        if (!WaveformDisplay.SeekAt(e.GetPosition(WaveformDisplay).X)) return;
+        if (!BeginScrub(ScrubPointer(e))) return;
         e.Handled = true;
     }
 
