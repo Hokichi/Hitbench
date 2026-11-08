@@ -266,7 +266,6 @@ public sealed class BalloonMenuTests
     }
 
     [TestCase(typeof(BalloonMenu))]
-    [TestCase(typeof(BalloonMenuOption))]
     public void TextCannotBeEnabled(Type type)
     {
         var control = (BalloonButton)Activator.CreateInstance(type)!;
@@ -288,6 +287,28 @@ public sealed class BalloonMenuTests
         Assert.That(control.ShouldShowText, Is.False);
         control.SetCurrentValue(BalloonControl.ShouldShowTextProperty, true);
         Assert.That(control.ShouldShowText, Is.False);
+    }
+
+    [Test]
+    public void OptionTextPersistsAndTracksBoundLabels()
+    {
+        var menu = BalloonMenuPresentationTests.Create(1);
+        try
+        {
+            var source = new BalloonButton { ButtonText = "Collapse all tracks" };
+            var option = menu.Options[0];
+            option.SetBinding(BalloonControl.ButtonTextProperty,
+                new Binding(nameof(BalloonControl.ButtonText)) { Source = source, Mode = BindingMode.OneWay });
+            Assert.That(option.ShouldShowText, Is.True);
+            menu.OpenMenu(true);
+            source.ButtonText = "Expand all tracks";
+            Assert.That(option.ButtonText, Is.EqualTo(source.ButtonText));
+            Assert.That(UIElementAutomationPeer.CreatePeerForElement(option)!.GetName(), Is.EqualTo(source.ButtonText));
+            menu.CloseMenu();
+            Assert.That(option.ShouldShowText, Is.True);
+            Assert.That(menu.ShouldShowText, Is.False);
+        }
+        finally { BalloonMenuPresentationTests.Unload(menu); }
     }
 
     [Test]

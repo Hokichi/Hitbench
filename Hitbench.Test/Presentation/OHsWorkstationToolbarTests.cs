@@ -110,7 +110,7 @@ public sealed class OHsWorkstationToolbarTests
                     Assert.That(option, Is.TypeOf<BalloonMenuOption>());
                     Assert.That(option.DataContext, Is.SameAs(vm));
                     Assert.That(AutomationProperties.GetName(option), Is.Not.Empty);
-                    Assert.That(option.ShouldShowText, Is.False);
+                    Assert.That(option.ShouldShowText, Is.True);
                 }
             }
         }

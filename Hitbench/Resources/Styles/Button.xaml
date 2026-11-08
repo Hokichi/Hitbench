@@ -6,6 +6,7 @@
     <ResourceDictionary.MergedDictionaries>
         <ResourceDictionary Source="Control.xaml" />
         <ResourceDictionary Source="CheckBox.xaml" />
+        <ResourceDictionary Source="ItemsControl.xaml" />
     </ResourceDictionary.MergedDictionaries>
     <Style
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -161,6 +162,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Key="BaseBalloonControlStyle"
         TargetType="{x:Type c:BalloonControl}">
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
         <Setter Property="OverridesDefaultStyle" Value="True" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="FocusVisualStyle" Value="{StaticResource DefaultFocusVisualStyle}" />
@@ -211,7 +213,7 @@
             <Grid
                 x:Name="PART_ContentHost"
                 Margin="{TemplateBinding Padding}"
-                HorizontalAlignment="Center"
+                HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                 VerticalAlignment="Center"
                 ClipToBounds="True">
                 <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
@@ -364,7 +366,9 @@
                    PopupAnimation="None" StaysOpen="True" HorizontalOffset="-8" VerticalOffset="-8">
                 <Grid Background="Transparent">
                     <AdornerDecorator Margin="{StaticResource BalloonMenuPopupOutset}">
-                        <Border x:Name="PART_MenuSurface" Style="{StaticResource BaseBorderStyle}" ClipToBounds="True">
+                        <Border x:Name="PART_MenuSurface" Style="{StaticResource BalloonMenuPopupBorderStyle}" ClipToBounds="True"
+                                RenderTransformOrigin="1,0">
+                            <Border.RenderTransform><ScaleTransform /></Border.RenderTransform>
                             <ItemsControl x:Name="PART_MenuItems" VerticalAlignment="Top"
                                           Style="{StaticResource BalloonMenuItemsStyle}" />
                         </Border>
@@ -752,6 +756,7 @@
     </Style>
     <Style TargetType="c:BalloonMenu" BasedOn="{StaticResource BaseBalloonMenuStyle}" />
     <Style x:Key="BaseBalloonMenuOptionStyle" TargetType="c:BalloonMenuOption" BasedOn="{StaticResource OHsBalloonNeutralActionStyle}">
+        <Setter Property="HorizontalContentAlignment" Value="Left" />
         <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
         <Setter Property="ToolTip" Value="{Binding ButtonText, RelativeSource={RelativeSource Self}, Mode=OneWay}" />
         <Setter Property="AutomationProperties.Name" Value="{Binding ButtonText, RelativeSource={RelativeSource Self}, Mode=OneWay}" />

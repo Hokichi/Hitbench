@@ -29,11 +29,13 @@ public sealed class BalloonMenuPresentationTests
         return menu;
     }
 
-    [TestCase(FlowDirection.LeftToRight, 40, 8, 1)]
-    [TestCase(FlowDirection.RightToLeft, 40, 8, 1)]
-    [TestCase(FlowDirection.LeftToRight, 64, 12, 1.5)]
-    [TestCase(FlowDirection.RightToLeft, 64, 12, 1.5)]
-    public void PopupPlacementKeepsSurfaceOverLauncher(FlowDirection direction, double cell, double inset, double scale)
+    [TestCase(FlowDirection.LeftToRight, 40, 8, 1, 3)]
+    [TestCase(FlowDirection.RightToLeft, 40, 8, 1, 3)]
+    [TestCase(FlowDirection.LeftToRight, 64, 12, 1.5, 3)]
+    [TestCase(FlowDirection.RightToLeft, 64, 12, 1.5, 3)]
+    [TestCase(FlowDirection.LeftToRight, 80, 6, 1, .75)]
+    [TestCase(FlowDirection.RightToLeft, 80, 6, 1, .75)]
+    public void PopupPlacementKeepsSurfaceTopRightOverLauncher(FlowDirection direction, double cell, double inset, double scale, double widthFactor)
     {
         var menu = Create();
         try
@@ -42,12 +44,12 @@ public sealed class BalloonMenuPresentationTests
             var popup = (Popup)menu.Template.FindName("PART_MenuPopup", menu);
             Assert.That(popup.Placement, Is.EqualTo(PlacementMode.Custom));
             Assert.That(popup.CustomPopupPlacementCallback, Is.Not.Null);
-            var popupSize = new Size((cell + 2 * inset) * scale, (4 * cell + 2 * inset) * scale);
+            var popupSize = new Size((widthFactor * cell + 2 * inset) * scale, (4 * cell + 2 * inset) * scale);
             var placement = popup.CustomPopupPlacementCallback!(popupSize,
-                new Size(cell * scale, cell * scale), new Point(-inset, -inset)).Single();
+                new Size(cell * scale, cell * scale), new Point(-inset * scale, -inset * scale)).Single();
             // WPF transforms the target's offset before adding the callback's point.
             var anchorX = direction == FlowDirection.LeftToRight ? -inset * scale : (cell + inset) * scale;
-            Assert.That(anchorX + placement.Point.X + inset * scale, Is.EqualTo(0).Within(.001));
+            Assert.That(anchorX + placement.Point.X + popupSize.Width - inset * scale, Is.EqualTo(cell * scale).Within(.001));
             Assert.That(-inset * scale + placement.Point.Y + inset * scale, Is.EqualTo(0).Within(.001));
         }
         finally { Unload(menu); }
@@ -112,11 +114,28 @@ public sealed class BalloonMenuPresentationTests
         {
             menu.FlowDirection = ownerDirection;
             menu.OpenMenu(true);
-            Assert.That(menu.Options.All(option => option.FlowDirection == FlowDirection.LeftToRight), Is.True);
+            Assert.That(menu.Options.All(option => option.FlowDirection == ownerDirection), Is.True);
         }
         finally { Unload(menu); }
     }
 
+
+    [Test]
+    public void ExplicitOptionDirectionSurvivesAdoptionAndReopening()
+    {
+        var menu = Create(1);
+        try
+        {
+            menu.FlowDirection = FlowDirection.RightToLeft;
+            menu.Options[0].FlowDirection = FlowDirection.LeftToRight;
+            menu.OpenMenu(true);
+            Assert.That(menu.Options[0].FlowDirection, Is.EqualTo(FlowDirection.LeftToRight));
+            menu.CloseMenu();
+            menu.OpenMenu(true);
+            Assert.That(menu.Options[0].FlowDirection, Is.EqualTo(FlowDirection.LeftToRight));
+        }
+        finally { Unload(menu); }
+    }
 
     [Test]
     public void HoverOwnershipIncludesOptionRegion()

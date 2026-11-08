@@ -16,7 +16,7 @@ public class BalloonMenuOption : BalloonButton
     static BalloonMenuOption()
     {
         DefaultStyleKeyProperty.OverrideMetadata(typeof(BalloonMenuOption), new FrameworkPropertyMetadata(typeof(BalloonMenuOption)));
-        ShouldShowTextProperty.OverrideMetadata(typeof(BalloonMenuOption), new FrameworkPropertyMetadata(false, null, (_, _) => false));
+        ShouldShowTextProperty.OverrideMetadata(typeof(BalloonMenuOption), new FrameworkPropertyMetadata(true));
         FocusableProperty.OverrideMetadata(typeof(BalloonMenuOption), new FrameworkPropertyMetadata(true, null,
             (d, value) => (bool)value && ((BalloonMenuOption)d).MenuOwner?.IsOptionRevealed((BalloonMenuOption)d) == true));
         IsHitTestVisibleProperty.OverrideMetadata(typeof(BalloonMenuOption), new UIPropertyMetadata(true, null,

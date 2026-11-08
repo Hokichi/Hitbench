@@ -91,6 +91,7 @@ public class BalloonMenu : BalloonButton
             root.MouseLeave += OnPopupLeave;
             root.LostKeyboardFocus += OnPopupLostFocus;
         }
+        if (surface is not null) surface.SizeChanged += OnSurfaceSizeChanged;
         AdoptOptions();
         UpdateReveal();
     }
@@ -112,7 +113,7 @@ public class BalloonMenu : BalloonButton
     private CustomPopupPlacement[] PlacePopup(Size popupSize, Size targetSize, Point offset) =>
         // WPF has already transformed the target offset. Custom placement avoids
         // MenuDropAlignment; RTL target coordinates start at the opposite edge.
-        [new(new Point(FlowDirection == FlowDirection.RightToLeft ? -popupSize.Width : 0, 0), PopupPrimaryAxis.None)];
+        [new(new Point(FlowDirection == FlowDirection.RightToLeft ? -popupSize.Width : targetSize.Width - popupSize.Width - 2 * offset.X, 0), PopupPrimaryAxis.None)];
 
     private void RequestPopupState(bool open)
     {
@@ -130,14 +131,13 @@ public class BalloonMenu : BalloonButton
         foreach (var option in Options)
         {
             option.MenuOwner = this;
-            // Keep icon coordinates unmirrored; the vertical panel preserves collection order.
-            option.SetCurrentValue(FlowDirectionProperty, FlowDirection.LeftToRight);
+            option.SetCurrentValue(ButtonSizeProperty, ActualHeight > 0 ? ActualHeight : ButtonSize);
         }
         adoptedOptions = [.. Options];
         items.ItemsSource = Options;
         // Materialize the finite controls even while closed, so their commands,
         // owner context and accessibility are ready before first activation.
-        items.Measure(new Size(ButtonSize, double.PositiveInfinity));
+        items.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
     }
 
     private void ReleaseOptions()
@@ -213,20 +213,23 @@ public class BalloonMenu : BalloonButton
             var width = ActualWidth > 0 ? ActualWidth : ButtonSize;
             var height = ActualHeight > 0 ? ActualHeight : ButtonSize;
             var t = Math.Clamp((RevealProgress - .2) / .6, 0, 1);
-            surface.Width = width;
-            surface.Height = height * (1 + (Math.Max(1, Options.Count) - 1) * (1 - Math.Pow(1 - t, 3)));
-            surface.Opacity = RevealProgress >= .2 ? 1 : 0;
-            surface.Background = SystemParameters.HighContrast ? SystemColors.HighlightBrush : HoveredBackground;
-            surface.BorderBrush = StrokeBrush;
-            surface.BorderThickness = new Thickness(StrokeThickness);
+            surface.MinWidth = width;
+            surface.MinHeight = height;
             surface.CornerRadius = new CornerRadius(CornerRadius);
-            foreach (var option in adoptedOptions)
+            surface.Opacity = RevealProgress >= .2 ? 1 : 0;
+            if (surface.RenderTransform is ScaleTransform scale)
             {
-                option.SetCurrentValue(ButtonSizeProperty, height);
-                option.SetCurrentValue(WidthProperty, width);
+                if (scale.IsFrozen) surface.RenderTransform = scale = scale.Clone();
+                var fullWidth = Math.Max(width, surface.ActualWidth);
+                var fullHeight = Math.Max(height, surface.ActualHeight);
+                var expansion = 1 - Math.Pow(1 - t, 3);
+                scale.ScaleX = width / fullWidth + (1 - width / fullWidth) * expansion;
+                scale.ScaleY = height / fullHeight + (1 - height / fullHeight) * expansion;
             }
         }
     }
+
+    private void OnSurfaceSizeChanged(object sender, SizeChangedEventArgs e) => UpdateReveal();
 
     protected virtual bool ClientAreaAnimationEnabled => SystemParameters.ClientAreaAnimation;
 
@@ -243,7 +246,7 @@ public class BalloonMenu : BalloonButton
         var generation = PresentationGeneration;
         var animation = new DoubleAnimation(current, target, TimeSpan.FromMilliseconds(200 * Math.Abs(target - current)))
         {
-
+            EasingFunction = new CubicEase { EasingMode = target > current ? EasingMode.EaseOut : EasingMode.EaseIn }
         };
         animation.Completed += (_, _) =>
         {
@@ -459,6 +462,7 @@ public class BalloonMenu : BalloonButton
             KeyboardNavigationPolicy.BindSuppressionScope(root, null);
         }
         popup = null;
+        if (surface is not null) surface.SizeChanged -= OnSurfaceSizeChanged;
         surface = null;
         items = null;
         icon = null;
