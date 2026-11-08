@@ -36,15 +36,15 @@ public sealed class OHsSampleConfigurationPopupTests
             row.OpenSampleConfiguration();
             var selector = (ComboBox)row.FindName("TrackSampleFileSelector");
             Assert.That(selector.IsEnabled, Is.True);
-            selector.SelectedItem = "b.wav";
+            selector.SelectedItem = selector.Items.Cast<Hitbench.Resources.DataModels.OHsTrackSampleChoice>().Single(c => c.FileName == "b.wav");
             Assert.That(track.SelectedSampleFileName, Is.EqualTo("b.wav"));
             Assert.That(track.Samples[0].FileName, Is.EqualTo("b.wav"));
             messenger.Send(new Hitbench.Resources.Messages.ProjectSamplesChangedMessage(vm.SampleManagementContext!, ["a.wav"], null, null));
             view.UpdateLayout();
-            Assert.That(selector.Items.Cast<string>(), Is.EqualTo(new[] { "a.wav" }));
+            Assert.That(selector.Items.Cast<Hitbench.Resources.DataModels.OHsTrackSampleChoice>().Where(c => !c.IsDefault).Select(c => c.FileName), Is.EqualTo(new[] { "a.wav" }));
             vm.SelectSample(track, "b.wav");
             Assert.That(track.SelectedSampleFileName, Is.EqualTo("b.wav"));
-            selector.SelectedItem = "a.wav";
+            selector.SelectedItem = selector.Items.Cast<Hitbench.Resources.DataModels.OHsTrackSampleChoice>().Single(c => c.FileName == "a.wav");
             Assert.That(track.SelectedSampleFileName, Is.EqualTo("a.wav"));
             vm.IsReturning = true; view.UpdateLayout();
             Assert.That(selector.IsEnabled, Is.False);
@@ -72,8 +72,8 @@ public sealed class OHsSampleConfigurationPopupTests
         using (view) try
         {
             var menu = Descendants(row).OfType<Hitbench.Resources.CustomControls.BalloonComboBox>().Single().ContextMenu;
-            Assert.That(menu.Items.OfType<MenuItem>().Any(item => Equals(item.Header, "Config Sample")), Is.False);
-            var action = Descendants(row).OfType<Hitbench.Resources.CustomControls.BalloonButton>().Single(button => button.ButtonText == "Config Sample");
+            Assert.That(menu.Items.OfType<MenuItem>().Single(item => Equals(item.Header, "Config Samples")).Visibility == Visibility.Visible, Is.EqualTo(!instrumental));
+            var action = Descendants(row).OfType<Hitbench.Resources.CustomControls.BalloonButton>().Single(button => button.ButtonText == "Config Samples");
             Assert.That(action.Visibility == Visibility.Visible, Is.EqualTo(!instrumental));
         }
         finally { UiTestPump.Run(vm.DeactivateAsync()); }
@@ -96,11 +96,11 @@ public sealed class OHsSampleConfigurationPopupTests
                 UiControlContract.AssertStyle<ComboBox>(selector, "OHsWorkstationTrackMetadataComboBoxStyle");
                 Assert.That(selector.IsEnabled, Is.True);
             }
-            file.SelectedItem = "b.wav"; addition.SelectedItem = "Soft"; type.SelectedItem = SampleType.Finish;
+            file.SelectedItem = file.Items.Cast<Hitbench.Resources.DataModels.OHsTrackSampleChoice>().Single(c => c.FileName == "b.wav"); addition.SelectedItem = "Soft"; type.SelectedItem = SampleType.Finish;
             Assert.That(track.SelectedSampleFileName, Is.EqualTo("b.wav"));
             Assert.That(track.Addition, Is.EqualTo("Soft")); Assert.That(track.SampleType, Is.EqualTo(SampleType.Finish));
             vm.SampleFiles.Clear(); vm.SampleFiles.Add("b.wav"); row.RefreshPresentation();
-            Assert.That(file.SelectedItem, Is.EqualTo("b.wav"));
+            Assert.That(((Hitbench.Resources.DataModels.OHsTrackSampleChoice)file.SelectedItem).FileName, Is.EqualTo("b.wav"));
             Assert.That(row.HandleSampleConfigurationEscape(), Is.True);
             Assert.That(row.IsSampleConfigurationOpen, Is.False);
         }
@@ -114,7 +114,7 @@ public sealed class OHsSampleConfigurationPopupTests
         using (view) try
         {
             var menu = Descendants(row).OfType<Hitbench.Resources.CustomControls.BalloonComboBox>().Single().ContextMenu;
-            var config = Descendants(row).OfType<Hitbench.Resources.CustomControls.BalloonButton>().Single(button => button.ButtonText == "Config Sample");
+            var config = Descendants(row).OfType<Hitbench.Resources.CustomControls.BalloonButton>().Single(button => button.ButtonText == "Config Samples");
             config.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent, config));
             Assert.That(row.IsSampleConfigurationOpen, Is.False, "Native menu must finish closing before popup presentation.");
             row.Track = new Track();

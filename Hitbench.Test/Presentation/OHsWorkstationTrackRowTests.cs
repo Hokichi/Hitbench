@@ -237,12 +237,12 @@ public sealed class OHsWorkstationTrackRowTests
         row.Track = b; view.UpdateLayout(); row.RefreshPresentation();
         Assert.That(row.Track, Is.SameAs(b));
         var selector = (ComboBox)row.FindName("TrackSampleFileSelector");
-        Assert.That(selector.SelectedItem, Is.EqualTo("b.wav"));
+        Assert.That(((Hitbench.Resources.DataModels.OHsTrackSampleChoice)selector.SelectedItem).FileName, Is.EqualTo("b.wav"));
         Assert.That(row.SampleTimeline!.DataContext, Is.SameAs(b));
         Assert.That(a.Name, Is.EqualTo("A"));
         row.Track = a; view.UpdateLayout(); row.RefreshPresentation();
         Assert.That(row.SampleTimeline!.DataContext, Is.SameAs(a));
-        Assert.That(selector.SelectedItem, Is.EqualTo("a.wav"));
+        Assert.That(((Hitbench.Resources.DataModels.OHsTrackSampleChoice)selector.SelectedItem).FileName, Is.EqualTo("a.wav"));
         UiTestPump.Run(vm.DeactivateAsync());
     }
 }

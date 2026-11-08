@@ -14,6 +14,11 @@
     Background="Transparent"
     mc:Ignorable="d">
     <UserControl.Resources>
+        <ObjectDataProvider x:Key="OHsWorkstationTrackRowSource" />
+        <Style x:Key="OHsDefaultTrackRowStyle" TargetType="pages:OHsWorkstationTrackRow" BasedOn="{StaticResource BaseControlStyle}"><Style.Triggers><Trigger Property="IsDefaultUnavailable" Value="True"><Setter Property="Opacity" Value="{StaticResource Opacity.Disabled}"/></Trigger></Style.Triggers></Style>
+        <Style x:Key="OHsWorkstationSampleChoiceStyle" TargetType="ComboBoxItem" BasedOn="{StaticResource OHsComboBoxItemStyle}"><Style.Triggers><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding IsDefault, Mode=OneWay}" Value="True"/><Condition Binding="{Binding IsDefaultSampleAvailable, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}" Value="False"/></MultiDataTrigger.Conditions><Setter Property="IsEnabled" Value="False"/></MultiDataTrigger></Style.Triggers></Style>
+        <Style x:Key="OHsWorkstationConfigSamplesMenuStyle" TargetType="MenuItem" BasedOn="{StaticResource OHsIconActionMenuItemStyle}"><Setter Property="Header" Value="Config Samples"/><Setter Property="Icon" Value="{StaticResource Cog}"/><Style.Triggers><DataTrigger Binding="{Binding IsInstrumentalTrack, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style>
+
         <Style
             x:Key="OHsWorkstationTrackVolumeTagBorderStyle"
             BasedOn="{StaticResource OHsPopupSurfaceBorderStyle}"
@@ -48,7 +53,7 @@
             </Border>
         </DataTemplate>
 
-        <ObjectDataProvider x:Key="OHsWorkstationTrackRowSource" />
+
         <Style
             x:Key="OHsWorkstationInstrumentActionStyle"
             BasedOn="{StaticResource OHsBalloonSurfaceActionStyle}"
@@ -63,7 +68,7 @@
             <Setter Property="TextTrimming" Value="CharacterEllipsis" />
             <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="IsEnabled" Value="{Binding ViewModel.CanEditTracks, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}" />
+            <Setter Property="IsEnabled" Value="{Binding CanOperateTrack, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}" />
             <Style.Triggers>
                 <Trigger Property="IsEnabled" Value="False">
                     <Setter Property="Cursor" Value="Arrow" />
@@ -173,7 +178,7 @@
                         AutomationProperties.HelpText="{Binding TrackNameDraft, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}"
                         AutomationProperties.Name="Change track name and color"
                         Click="OnTrackIdentityClick"
-                        IsEnabled="{Binding ViewModel.CanEditTracks, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}"
+                        IsEnabled="{Binding CanOperateTrack, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}"
                         PreviewMouseLeftButtonDown="OnTrackIdentityPointerDown"
                         Style="{StaticResource OHsWorkstationTrackIdentityActionStyle}"
                         ToolTip="{Binding TrackNameDraft, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}">
@@ -272,7 +277,7 @@
         <DataTemplate x:Key="OHsWorkstationSampleConfigurationFileTemplate">
             <TextBlock
                 Style="{StaticResource BaseTextBlockStyle}"
-                Text="{Binding Mode=OneWay}"
+                Text="{Binding DisplayName, Mode=OneWay}"
                 TextTrimming="CharacterEllipsis"
                 TextWrapping="NoWrap" />
         </DataTemplate>
@@ -307,6 +312,7 @@
             x:Key="OHsWorkstationTrackActionMenu"
             x:Shared="False"
             Style="{StaticResource OHsActionContextMenuStyle}">
+            <MenuItem Style="{StaticResource OHsWorkstationConfigSamplesMenuStyle}" Click="OnConfigSampleClick" AutomationProperties.Name="Config Samples"/>
             <MenuItem
                 Command="{Binding ViewModel.MoveTrackUpCommand, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}"
                 CommandParameter="{Binding Mode=OneWay}"
@@ -328,7 +334,7 @@
                 CommandParameter="{Binding Mode=OneWay}"
                 Header="Delete Track"
                 Icon="{StaticResource Delete}"
-                IsEnabled="{Binding ViewModel.CanRemoveTrack, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}"
+                IsEnabled="{Binding CanOperateTrack, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}"
                 Style="{StaticResource OHsWorkstationTrackDeleteMenuItemStyle}" />
             <MenuItem
                 AutomationProperties.Name="Keys Mapping"
@@ -392,7 +398,7 @@
             x:Key="OHsWorkstationConfigSampleActionStyle"
             BasedOn="{StaticResource OHsBalloonSurfaceActionStyle}"
             TargetType="customControls:BalloonButton">
-            <Setter Property="IsEnabled" Value="{Binding ViewModel.CanEditTracks, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}" />
+            <Setter Property="IsEnabled" Value="{Binding CanOperateTrack, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsTrackCollapsed, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}" Value="True">
                     <Setter Property="Visibility" Value="Collapsed" />
@@ -435,7 +441,7 @@
                         DataContextChanged="OnTrackControlDataContextChanged"
                         DisplayText="{Binding ElementName=VolumeSlider, Path=Value, Mode=OneWay, StringFormat={}{0:0}%}"
                         FocusVisualStyle="{StaticResource OHsSampleManagerKeyboardFocusStyle}"
-                        IsEnabled="{Binding ViewModel.CanImportSample, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}"
+                        IsEnabled="{Binding CanOperateTrack, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}"
                         IsMoveToPointEnabled="True"
                         IsSnapToTickEnabled="True"
                         IsTabStop="True"
@@ -458,7 +464,7 @@
                         Checked="OnTrackAuditionChanged"
                         Content="M"
                         DataContextChanged="OnTrackControlDataContextChanged"
-                        IsEnabled="{Binding ViewModel.CanPlaceSamples, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}"
+                        IsEnabled="{Binding CanOperateTrack, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}"
                         Loaded="OnTrackAuditionLoaded"
                         Style="{StaticResource OHsWorkstationExpandedToggleStyle}"
                         ToolTip="Mute track"
@@ -471,7 +477,7 @@
                         Checked="OnTrackAuditionChanged"
                         Content="S"
                         DataContextChanged="OnTrackControlDataContextChanged"
-                        IsEnabled="{Binding ViewModel.CanPlaceSamples, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}"
+                        IsEnabled="{Binding CanOperateTrack, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}"
                         Loaded="OnTrackAuditionLoaded"
                         Style="{StaticResource OHsWorkstationExpandedToggleStyle}"
                         ToolTip="Solo track"
@@ -483,7 +489,7 @@
                         HorizontalAlignment="Left"
                         AutomationProperties.Name="Config Sample"
                         ButtonIcon="{StaticResource Cog}"
-                        ButtonText="Config Sample"
+                        ButtonText="Config Samples"
                         Click="OnConfigSampleClick"
                         Style="{StaticResource OHsWorkstationConfigSampleActionStyle}"
                         ToolTip="Config Sample" />
@@ -589,6 +595,7 @@
             InstrumentalTrackTemplate="{StaticResource OHsWorkstationInstrumentalTrackTemplate}"
             SampleTrackTemplate="{StaticResource OHsWorkstationSampleTrackTemplate}" />
     </UserControl.Resources>
+    <UserControl.Style><StaticResource ResourceKey="OHsDefaultTrackRowStyle"/></UserControl.Style>
     <Grid Style="{StaticResource BaseGridStyle}">
         <ContentPresenter
             x:Name="RowContent"
@@ -617,11 +624,12 @@
                         DataContextChanged="OnTrackControlDataContextChanged"
                         IsEnabled="{Binding ViewModel.CanSelectTrackSample, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}"
                         ItemTemplate="{StaticResource OHsWorkstationSampleConfigurationFileTemplate}"
-                        ItemsSource="{Binding ViewModel.SampleFiles, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}"
+                        ItemContainerStyle="{StaticResource OHsWorkstationSampleChoiceStyle}"
+                        ItemsSource="{Binding ViewModel.TrackSampleChoices, Source={StaticResource OHsWorkstationTrackRowSource}, Mode=OneWay}"
                         Loaded="OnSampleSelectorLoaded"
                         SelectionChanged="OnSampleSelectionChanged"
                         Style="{StaticResource OHsWorkstationTrackMetadataComboBoxStyle}"
-                        ToolTip="{Binding SelectedItem, RelativeSource={RelativeSource Self}, Mode=OneWay}" />
+                        ToolTip="{Binding SelectedItem.DisplayName, RelativeSource={RelativeSource Self}, Mode=OneWay}" />
                     <ComboBox
                         x:Name="TrackAdditionSelector"
                         Margin="0,0,0,8"

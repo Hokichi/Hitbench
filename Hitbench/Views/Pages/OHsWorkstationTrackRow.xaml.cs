@@ -15,6 +15,16 @@ namespace Hitbench.Views.Pages;
 
 public partial class OHsWorkstationTrackRow : UserControl
 {
+    private static readonly DependencyPropertyKey IsDefaultUnavailablePropertyKey = DependencyProperty.RegisterReadOnly(nameof(IsDefaultUnavailable), typeof(bool), typeof(OHsWorkstationTrackRow), new PropertyMetadata(false));
+    public static readonly DependencyProperty IsDefaultUnavailableProperty = IsDefaultUnavailablePropertyKey.DependencyProperty;
+    public bool IsDefaultUnavailable => (bool)GetValue(IsDefaultUnavailableProperty);
+    private static readonly DependencyPropertyKey IsDefaultSampleAvailablePropertyKey = DependencyProperty.RegisterReadOnly(nameof(IsDefaultSampleAvailable), typeof(bool), typeof(OHsWorkstationTrackRow), new PropertyMetadata(false));
+    public static readonly DependencyProperty IsDefaultSampleAvailableProperty = IsDefaultSampleAvailablePropertyKey.DependencyProperty;
+    public bool IsDefaultSampleAvailable => (bool)GetValue(IsDefaultSampleAvailableProperty);
+    private static readonly DependencyPropertyKey CanOperateTrackPropertyKey = DependencyProperty.RegisterReadOnly(nameof(CanOperateTrack), typeof(bool), typeof(OHsWorkstationTrackRow), new PropertyMetadata(false));
+    public static readonly DependencyProperty CanOperateTrackProperty = CanOperateTrackPropertyKey.DependencyProperty;
+    public bool CanOperateTrack => (bool)GetValue(CanOperateTrackProperty);
+
     public static readonly DependencyProperty TrackSideColumnWidthProperty = DependencyProperty.Register(
         nameof(TrackSideColumnWidth), typeof(GridLength), typeof(OHsWorkstationTrackRow), new PropertyMetadata(new GridLength(240)));
     public GridLength TrackSideColumnWidth { get => (GridLength)GetValue(TrackSideColumnWidthProperty); set => SetValue(TrackSideColumnWidthProperty, value); }
@@ -74,7 +84,7 @@ public partial class OHsWorkstationTrackRow : UserControl
         if (e.PropertyName is nameof(WorkstationPageVM.SampleFiles) or nameof(WorkstationPageVM.SamplesRevision)
             or nameof(WorkstationPageVM.TrackAuditionRevision) or nameof(WorkstationPageVM.TrackPresentationRevision)
             or nameof(WorkstationPageVM.RenamingTrack) or nameof(WorkstationPageVM.TrackNameDraft)
-            or nameof(WorkstationPageVM.IsTrackRenamePending)) RefreshPresentation();
+            or nameof(WorkstationPageVM.IsTrackRenamePending) or nameof(WorkstationPageVM.CanPlaceSamples) or nameof(WorkstationPageVM.CanEditTracks)) RefreshPresentation();
     }
     public static readonly DependencyProperty TrackColorIndexProperty = DependencyProperty.Register(
         nameof(TrackColorIndex), typeof(int), typeof(OHsWorkstationTrackRow), new PropertyMetadata(0, (d, _) => ((OHsWorkstationTrackRow)d).RefreshTrackPalette()));
@@ -97,6 +107,9 @@ public partial class OHsWorkstationTrackRow : UserControl
         if (Track is {} current)
         {
             SetValue(IsInstrumentalTrackPropertyKey, current is InstrumentalTrack);
+            SetValue(IsDefaultSampleAvailablePropertyKey, viewModel.IsDefaultSampleAvailable(current));
+            SetValue(IsDefaultUnavailablePropertyKey, current.UsesDefaultSample && !IsDefaultSampleAvailable);
+            SetValue(CanOperateTrackPropertyKey, viewModel.CanPlaceSamples && viewModel.CanInteractWithTrack(current));
             SetCurrentValue(TrackColorIndexProperty, viewModel.Tracks.IndexOf(current));
             RefreshTrackPalette();
             if (!IsTrackCollapsed && current.IsCollapsed && HasExpandedControlFocus(Keyboard.FocusedElement as DependencyObject ?? FocusManager.GetFocusedElement(FocusManager.GetFocusScope(this)) as DependencyObject)) FindVisualChild<BalloonComboBox>(this)?.Focus();
@@ -145,8 +158,7 @@ public partial class OHsWorkstationTrackRow : UserControl
         {
             selector.Tag = true;
             var saved = track.SelectedSampleFileName;
-            selector.SelectedItem = viewModel.SampleFiles.FirstOrDefault(name =>
-                string.Equals(name, saved, StringComparison.OrdinalIgnoreCase));
+            selector.SelectedItem = viewModel.TrackSampleChoices.FirstOrDefault(choice => track.UsesDefaultSample ? choice.IsDefault : !choice.IsDefault && string.Equals(choice.FileName, saved, StringComparison.OrdinalIgnoreCase));
             selector.Tag = false;
             UpdateMissingSampleCue(selector, track);
         }
@@ -176,9 +188,12 @@ public partial class OHsWorkstationTrackRow : UserControl
     {
         if (sender is ComboBox selector && (selector.IsLoaded || IsSampleConfigurationOpen) && selector.Tag is not true && selector.DataContext is Track track)
         {
-            if (selector.SelectedItem is string fileName &&
-                !string.Equals(track.SelectedSampleFileName, fileName, StringComparison.OrdinalIgnoreCase))
-                viewModel.SelectSample(track, fileName);
+            if (selector.SelectedItem is OHsTrackSampleChoice choice)
+            {
+                if (choice.IsDefault) viewModel.SelectDefaultSample(track);
+                else if (choice.FileName is { } fileName) viewModel.SelectSample(track, fileName);
+                OnSampleSelectorLoaded(selector, new RoutedEventArgs());
+            }
             UpdateMissingSampleCue(selector, track);
         }
     }
