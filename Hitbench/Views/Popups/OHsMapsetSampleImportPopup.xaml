@@ -1,0 +1,31 @@
+<c:BasePopup x:Class="Hitbench.Views.Popups.OHsMapsetSampleImportPopup"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:c="clr-namespace:Hitbench.Resources.CustomControls" xmlns:h="clr-namespace:Hitbench.Resources.Helpers"
+ PopupTitle="Import from mapset" ShowCloseButton="False" SizeToContent="Manual">
+ <c:BasePopup.Resources>
+  <Style x:Key="OHsMapsetImportCheckStyle" TargetType="CheckBox" BasedOn="{StaticResource RegularCheckBoxStyle}">
+   <Setter Property="MinHeight" Value="{StaticResource Size.Control.Primary}"/>
+   <Setter Property="IsTabStop" Value="True"/>
+   <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+  </Style>
+  <DataTemplate x:Key="OHsMapsetImportFilenameTemplate">
+   <TextBlock Style="{StaticResource BodyTextStyle}" Text="{Binding Mode=OneWay}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"/>
+  </DataTemplate>
+  <DataTemplate x:Key="OHsMapsetImportEntryTemplate">
+   <CheckBox Style="{StaticResource OHsMapsetImportCheckStyle}" Content="{Binding FileName,Mode=OneWay}"
+    ContentTemplate="{StaticResource OHsMapsetImportFilenameTemplate}" IsChecked="{Binding IsChecked,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+    AutomationProperties.Name="{Binding FileName,Mode=OneWay}" ToolTip="{Binding SourcePath,Mode=OneWay}" ToolTipService.ShowsToolTipOnKeyboardFocus="True"/>
+  </DataTemplate>
+ </c:BasePopup.Resources>
+ <Grid Margin="16,0" Style="{StaticResource BaseGridStyle}">
+  <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+  <TextBlock Text="{Binding PromptText,Mode=OneWay}" Style="{StaticResource BodyTextStyle}"/>
+  <Expander x:Name="SamplesExpander" Grid.Row="1" Margin="0,8" Header="Mapset Samples" AutomationProperties.Name="Mapset Samples" Style="{StaticResource {x:Type Expander}}">
+   <ItemsControl x:Name="FileList" ItemsSource="{Binding Entries,Mode=OneWay}" ItemTemplate="{StaticResource OHsMapsetImportEntryTemplate}" Style="{StaticResource OHsVirtualizedDrawerItemsStyle}" AutomationProperties.Name="Mapset samples to import"/>
+  </Expander>
+  <WrapPanel Grid.Row="2" HorizontalAlignment="Right">
+   <c:BalloonButton x:Name="NoAction" ButtonText="No" ButtonIcon="{StaticResource Ban}" ShouldShowText="True" Style="{StaticResource OHsBalloonNavInfoActionStyle}" Click="OnNo" AutomationProperties.Name="Do not import mapset samples" h:KeyboardNavigationPolicy.AllowTabNavigation="True" IsTabStop="True"/>
+   <c:BalloonButton x:Name="YesAction" Margin="8,0,0,0" ButtonText="Yes" ButtonIcon="{StaticResource Check}" ShouldShowText="True" Style="{StaticResource OHsBalloonConfirmActionStyle}" IsEnabled="{Binding CanConfirm,Mode=OneWay}" Click="OnYes" AutomationProperties.Name="Import checked mapset samples" h:KeyboardNavigationPolicy.AllowTabNavigation="True" IsTabStop="True"/>
+  </WrapPanel>
+ </Grid>
+</c:BasePopup>

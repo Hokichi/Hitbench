@@ -17,8 +17,10 @@ public sealed partial class ManageSamplesPopupVM
         messenger.Register<ProjectSamplesChangedMessage>(this, (_, m) =>
         {
             if (deactivated || !SameContext(m.Context)) return;
-            var names = m.Files.Where(n => string.IsNullOrEmpty(Path.GetDirectoryName(n))).ToArray();
-            if (Entries.Select(e => e.FileName).SequenceEqual(names)) return;
+            var names = m.IncludesSubfolders ? m.Files.ToArray() :
+                m.Files.Where(n => !n.Contains('/') && !n.Contains('\\'))
+                    .Concat(allSampleFiles.Where(n => n.Contains('/') || n.Contains('\\'))).ToArray();
+            if (allSampleFiles.SequenceEqual(names)) return;
             InvalidateWaveforms(); Replace(names);
         });
     }

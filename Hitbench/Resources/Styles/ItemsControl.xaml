@@ -9,12 +9,22 @@
         TargetType="ItemsControl">
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
     </Style>
-    <ItemsPanelTemplate x:Key="OHsVirtualizedDrawerItemsPanel"><VirtualizingStackPanel /></ItemsPanelTemplate>
+    <ItemsPanelTemplate x:Key="OHsVirtualizedDrawerItemsPanel">
+        <VirtualizingStackPanel />
+    </ItemsPanelTemplate>
     <ControlTemplate x:Key="OHsVirtualizedDrawerItemsTemplate" TargetType="ItemsControl">
-        <ScrollViewer CanContentScroll="True" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
-                      Style="{StaticResource {x:Type ScrollViewer}}"><ItemsPresenter /></ScrollViewer>
+        <ScrollViewer
+            CanContentScroll="True"
+            HorizontalScrollBarVisibility="Disabled"
+            Style="{StaticResource {x:Type ScrollViewer}}"
+            VerticalScrollBarVisibility="Auto">
+            <ItemsPresenter />
+        </ScrollViewer>
     </ControlTemplate>
-    <Style x:Key="OHsVirtualizedDrawerItemsStyle" TargetType="ItemsControl" BasedOn="{StaticResource BaseItemsControlStyle}">
+    <Style
+        x:Key="OHsVirtualizedDrawerItemsStyle"
+        BasedOn="{StaticResource BaseItemsControlStyle}"
+        TargetType="ItemsControl">
         <Setter Property="Template" Value="{StaticResource OHsVirtualizedDrawerItemsTemplate}" />
         <Setter Property="ItemsPanel" Value="{StaticResource OHsVirtualizedDrawerItemsPanel}" />
         <Setter Property="VirtualizingPanel.IsVirtualizing" Value="True" />
@@ -32,7 +42,10 @@
         <StackPanel Orientation="Vertical" />
     </ItemsPanelTemplate>
 
-    <Style x:Key="BalloonMenuItemsStyle" TargetType="ItemsControl" BasedOn="{StaticResource BaseItemsControlStyle}">
+    <Style
+        x:Key="BalloonMenuItemsStyle"
+        BasedOn="{StaticResource BaseItemsControlStyle}"
+        TargetType="ItemsControl">
         <Setter Property="ItemsPanel" Value="{StaticResource VerticalStackItemsPanelTemplate}" />
         <Setter Property="ItemTemplate" Value="{x:Null}" />
     </Style>

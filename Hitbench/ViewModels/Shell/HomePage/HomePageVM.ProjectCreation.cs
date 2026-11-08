@@ -102,7 +102,23 @@ public partial class HomePageVM
             if (HasErrors) return;
             var path = await projectFiles.CreateAsync(selected.Directory, name, linked.Token);
             linked.Token.ThrowIfCancellationRequested();
-            if (active && generation == projectDraftGeneration) messenger.Send(new ProjectCreatedMessage(path));
+            if (mapsetImports is not null && active && generation == projectDraftGeneration)
+            {
+                try
+                {
+                    var result = await mapsetImports.ImportAsync(path, selected.Directory.FullName, linked.Token);
+                    if (active && generation == projectDraftGeneration && !linked.IsCancellationRequested && result.Failures.Count > 0)
+                        messenger.Send(new OHsSampleImportFailedMessage(string.Join(Environment.NewLine, result.Failures)));
+                }
+                catch (OperationCanceledException) when (linked.IsCancellationRequested) { }
+                catch (Exception error)
+                {
+                    if (active && generation == projectDraftGeneration && !linked.IsCancellationRequested)
+                        messenger.Send(new OHsSampleImportFailedMessage($"Unable to import mapset samples: {error.Message}"));
+                }
+            }
+            if (active && generation == projectDraftGeneration && !linked.IsCancellationRequested)
+                messenger.Send(new ProjectCreatedMessage(path));
         }
         catch (OperationCanceledException) when (linked.IsCancellationRequested) { }
         catch (Exception error)

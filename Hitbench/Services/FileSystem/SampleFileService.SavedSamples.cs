@@ -102,7 +102,7 @@ public sealed partial class SampleFileService
         finally { mutations.Release(); }
     }
 
-    private async Task<string> CopyUniqueAsync(string source, string folder, CancellationToken token)
+    private async Task<string> CopyUniqueAsync(string source, string folder, CancellationToken token, bool skipExisting = false)
     {
         token.ThrowIfCancellationRequested();
         SamplePaths.RejectLinkedPath(source);
@@ -119,9 +119,24 @@ public sealed partial class SampleFileService
                 token.ThrowIfCancellationRequested();
                 SamplePaths.RejectLinkedPath(folder);
                 var candidate = Path.Combine(folder, SampleFileNames.GetUniqueCopyName(name, suffix));
-                if (Directory.EnumerateFileSystemEntries(folder).Any(path => string.Equals(path, candidate, StringComparison.OrdinalIgnoreCase))) continue;
+                var existing = Directory.EnumerateFileSystemEntries(folder).FirstOrDefault(path => string.Equals(path, candidate, StringComparison.OrdinalIgnoreCase));
+                if (existing is not null)
+                {
+                    if (!skipExisting) continue;
+                    SamplePaths.RejectLinkedPath(existing);
+                    if (Directory.Exists(existing)) throw new IOException("Sample destination is a directory.");
+                    return existing;
+                }
                 try { File.Move(temporary, candidate); return candidate; }
-                catch (IOException) when (File.Exists(candidate) || Directory.Exists(candidate)) { }
+                catch (IOException) when (File.Exists(candidate) || Directory.Exists(candidate))
+                {
+                    if (skipExisting)
+                    {
+                        SamplePaths.RejectLinkedPath(candidate);
+                        if (Directory.Exists(candidate)) throw;
+                        return candidate;
+                    }
+                }
             }
         }
         finally

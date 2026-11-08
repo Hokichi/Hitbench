@@ -58,7 +58,7 @@ public partial class WorkstationPageVM
             managerCancellation = CancellationTokenSource.CreateLinkedTokenSource(loadCancellation?.Token ?? default);
             managingSamples = true;
             OnPropertyChanged(nameof(IsSamplesOpen)); NotifyEditingState();
-            activeManager = ManageSamplesCoreAsync(new(projectPath, Project?.BeatmapPath, session), managerCancellation.Token, request);
+            activeManager = ManageSamplesCoreAsync(new(projectPath, Project?.BeatmapPath, session, HasMapsetFolderConflict), managerCancellation.Token, request);
         }
         catch (OperationCanceledException) when (settlingDrawers || loadCancellation?.IsCancellationRequested == true || managerCancellation?.IsCancellationRequested == true) { }
         catch (Exception error) { ErrorMessage = error.Message; if (request == sampleManagerRequestGeneration) samplesRequestedOpen = managingSamples; }
@@ -85,7 +85,7 @@ public partial class WorkstationPageVM
     {
         if (activeManager is not { } manager) return true;
         using var closing = CancellationTokenSource.CreateLinkedTokenSource(token, managerCancellation?.Token ?? default);
-        if (!manager.IsCompleted && !await sampleManagementDialog!.TryCloseAsync(new(projectPath!, Project?.BeatmapPath, sampleSession), closing.Token)) return false;
+        if (!manager.IsCompleted && !await sampleManagementDialog!.TryCloseAsync(SampleManagementContext!, closing.Token)) return false;
         await manager;
         await sampleChangeNotifications;
         return true;

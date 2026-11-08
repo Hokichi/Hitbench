@@ -225,7 +225,7 @@
             <c:OHsSampleRow
                 ActionsTemplate="{StaticResource OHsManageSamplesActionsTemplate}"
                 DataContextChanged="OnSampleDragRowChanged"
-                FileName="{Binding FileName, Mode=OneWay}"
+                FileName="{Binding DisplayFileName, Mode=OneWay}"
                 FileToolTip="{Binding FileName, Mode=OneWay}"
                 IsEditing="{Binding IsEditing, Mode=OneWay}"
                 IsEnabled="{Binding IsInteractionEnabled, Mode=OneWay}"
@@ -282,7 +282,7 @@
             <StackPanel Grid.Row="1" Style="{StaticResource BaseStackPanelStyle}">
                 <Expander
                     x:Name="SkinDefaultsExpander"
-                    Grid.Row="1"
+                    Grid.Row="0"
                     AutomationProperties.Name="Skin Defaults"
                     Header="Skin Defaults"
                     IsExpanded="True"
@@ -291,6 +291,19 @@
                         x:Name="SkinDefaultRows"
                         ItemTemplate="{StaticResource OHsManageSamplesSkinRowTemplate}"
                         ItemsSource="{Binding SkinDefaultEntries, Mode=OneWay}"
+                        Style="{StaticResource OHsVirtualizedDrawerItemsStyle}" />
+                </Expander>
+                <Expander
+                    x:Name="MapsetSamplesExpander"
+                    Grid.Row="1"
+                    AutomationProperties.Name="Mapset Samples"
+                    Header="Mapset Samples"
+                    IsExpanded="True"
+                    Style="{StaticResource {x:Type Expander}}">
+                    <ItemsControl
+                        x:Name="MapsetSampleRows"
+                        ItemTemplate="{StaticResource OHsManageSamplesRowTemplate}"
+                        ItemsSource="{Binding MapsetEntries, Mode=OneWay}"
                         Style="{StaticResource OHsVirtualizedDrawerItemsStyle}" />
                 </Expander>
                 <Expander

@@ -34,7 +34,7 @@ public partial class WorkstationPageVM(
     TimeProvider? timeProvider = null,
     IOHsExportDialogService? exportDialog = null,
     IOHsExportDirectoryLauncher? directoryLauncher = null,
-    IOHsTrackAppearanceDialogService? trackAppearanceDialog = null, Func<TimeSpan, CancellationToken, Task>? saveDelay = null, IOHsSampleDropImportDialogService? sampleDropDialog = null, OHsAudioOperationProgress? audioOperationProgress = null, IOHsSkinDefaultsService? skinDefaults = null) : ObservableObject
+    IOHsTrackAppearanceDialogService? trackAppearanceDialog = null, Func<TimeSpan, CancellationToken, Task>? saveDelay = null, IOHsSampleDropImportDialogService? sampleDropDialog = null, OHsAudioOperationProgress? audioOperationProgress = null, IOHsSkinDefaultsService? skinDefaults = null, OHsMapsetSampleImportService? mapsetImports = null) : ObservableObject
 {
     private readonly IWorkstationAudioService audioService = playback.Audio;
     private bool subscribedToPlayback;
@@ -114,6 +114,7 @@ public partial class WorkstationPageVM(
     {
         await SettleSkinDefaultsAsync();
         await CancelDroppedImportAsync();
+        await CancelMapsetImportAsync();
         if (deactivated) return;
         IsAdditionMode = false;
         ResetSampleConfiguration();
@@ -154,6 +155,7 @@ public partial class WorkstationPageVM(
         if (deactivated) return;
         await SettleSkinDefaultsAsync();
         await CancelDroppedImportAsync();
+        await CancelMapsetImportAsync();
         ResetSampleConfiguration();
         trackAppearanceCancellation?.Cancel();
         await SettleFolderOpenAsync();
@@ -315,7 +317,7 @@ public partial class WorkstationPageVM(
 
     partial void OnIsReturningChanged(bool value)
     {
-        if (value) { trackAppearanceCancellation?.Cancel(); nodeEditCancellation?.Cancel(); folderOpenCancellation?.Cancel(); }
+        if (value) { mapsetImportCancellation?.Cancel(); trackAppearanceCancellation?.Cancel(); nodeEditCancellation?.Cancel(); folderOpenCancellation?.Cancel(); }
         OnPropertyChanged(nameof(CanGoBack));
         OnPropertyChanged(nameof(IsInteractionReady));
         NotifyEditingState();
@@ -492,7 +494,7 @@ public partial class WorkstationPageVM(
         if (!includesSubfolders)
             choices = choices.Concat(availableSamples.Where(name => !IsDirectSample(name))).ToArray();
         ReplaceSampleChoices(availableSamples, choices);
-        ReplaceSampleChoices(sampleTrackFiles, choices.Where(IsDirectSample).ToArray());
+        ReplaceSampleChoices(sampleTrackFiles, choices.Where(name => IsDirectSample(name) || !HasMapsetFolderConflict && OHsMapsetSamples.IsMapsetSamplePath(name)).ToArray());
         if (initializeSelections)
             foreach (var track in tracks.Where(t=>t is not InstrumentalTrack))
                 if (!track.UsesDefaultSample) track.SelectedSampleFileName ??= track.Samples.FirstOrDefault()?.FileName ?? sampleTrackFiles.FirstOrDefault();
@@ -593,9 +595,7 @@ public partial class WorkstationPageVM(
             await playback.ConfigureAsync(markerClock, waveform.Duration, token);
             if (sampleFiles is not null)
             {
-                var choices = await sampleFiles.ListAsync(projectPath, token, includeSubfolders: false);
-                if (source.Project.Tracks.OfType<InstrumentalTrack>().Any())
-                    choices = await sampleFiles.ListAsync(projectPath, token);
+                var choices = await sampleFiles.ListAsync(projectPath, token, includeSubfolders: true);
                 await CommitAsync(generation, token, () =>
                 {
                     RefreshAvailableSamples(choices);
@@ -671,6 +671,7 @@ public partial class WorkstationPageVM(
         ToggleTracksCollapsedCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(CanImportSample));
         OnPropertyChanged(nameof(CanImportDroppedSamples));
+        OnPropertyChanged(nameof(CanImportFromMapset)); ImportFromMapsetCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(CanAddTrack));
         OnPropertyChanged(nameof(CanRemoveTrack));
         OnPropertyChanged(nameof(CanPlaceSamples));

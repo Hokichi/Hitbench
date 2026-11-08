@@ -27,7 +27,7 @@ public sealed partial class ManageSamplesPopupVM(SampleManagementContext context
     private int previewGeneration;
     public SampleManagementContext Context { get; } = context;
     public ObservableCollection<SampleManagementEntry> Entries { get; } = [];
-    public bool IsEmpty => Entries.Count == 0;
+    public bool IsEmpty => !ManagedEntries.Any();
     public string EditExtension => ActiveEdit?.Extension ?? string.Empty;
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(EditExtension))] private SampleManagementEntry? activeEdit;
     [ObservableProperty] [CustomValidation(typeof(SampleFileNames), nameof(SampleFileNames.ValidateStem))]
@@ -39,10 +39,10 @@ public sealed partial class ManageSamplesPopupVM(SampleManagementContext context
     public bool CanClose => CanAct();
     public bool CanEditDraft => CanInteract() && ActiveEdit is not null;
     public bool CanCommitRename => CanEditDraft && !HasErrors && SampleFileNames.GetStemError(DraftStem) is null;
-    private bool CanEdit(SampleManagementEntry? entry) => CanInteract() && entry is not null && Entries.Contains(entry) &&
+    private bool CanEdit(SampleManagementEntry? entry) => CanInteract() && entry is not null && IsManagedRow(entry) &&
         (ActiveEdit is null || ReferenceEquals(ActiveEdit, entry) && CanCommitRename);
-    private bool CanDelete(SampleManagementEntry? entry) => CanAct() && entry is not null && Entries.Contains(entry);
-    private bool CanPlay(SampleManagementEntry? entry) => CanAct() && preview is not null && entry is not null && (Entries.Contains(entry) || AllowDefaults && SkinDefaultEntries.Contains(entry));
+    private bool CanDelete(SampleManagementEntry? entry) => CanAct() && entry is not null && IsManagedRow(entry);
+    private bool CanPlay(SampleManagementEntry? entry) => CanAct() && preview is not null && entry is not null && (IsManagedRow(entry) || AllowDefaults && SkinDefaultEntries.Contains(entry));
     partial void OnIsBusyChanged(bool value) => NotifyEditingState();
     partial void OnActiveEditChanged(SampleManagementEntry? value)
     {
@@ -61,10 +61,10 @@ public sealed partial class ManageSamplesPopupVM(SampleManagementContext context
     }
     private void NotifyEditingState()
     {
-        foreach (var row in Entries.Concat(SkinDefaultEntries))
+        foreach (var row in ManagedEntries.Concat(SkinDefaultEntries))
         {
             row.IsEditing = ReferenceEquals(row, ActiveEdit);
-            row.IsInteractionEnabled = CanInteract() && (Entries.Contains(row) || AllowDefaults) && (ActiveEdit is null || row.IsEditing);
+            row.IsInteractionEnabled = CanInteract() && (IsManagedRow(row) || AllowDefaults) && (ActiveEdit is null || row.IsEditing);
         }
         OnPropertyChanged(nameof(CanChangeAllowDefaults));
         OnPropertyChanged(nameof(CanClose)); OnPropertyChanged(nameof(CanEditDraft)); OnPropertyChanged(nameof(CanCommitRename));
@@ -80,7 +80,7 @@ public sealed partial class ManageSamplesPopupVM(SampleManagementContext context
         var generation = ++previewGeneration;
         previewCancellation?.Cancel(); previewCancellation?.Dispose();
         previewCancellation = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);
-        foreach (var row in Entries.Concat(SkinDefaultEntries)) row.IsPlaying = play && ReferenceEquals(row, entry);
+        foreach (var row in ManagedEntries.Concat(SkinDefaultEntries)) row.IsPlaying = play && ReferenceEquals(row, entry);
         ErrorMessage = null;
         previewOperation = ChangePreviewAsync(previewOperation, entry, play, generation, previewCancellation.Token);
         await previewOperation;
@@ -132,7 +132,7 @@ public sealed partial class ManageSamplesPopupVM(SampleManagementContext context
         ++previewGeneration; previewCancellation?.Cancel();
         await previewOperation; await previewMonitor;
         if (preview is not null) await preview.StopAsync(CancellationToken.None);
-        await scheduler.InvokeAsync(() => { foreach (var entry in Entries.Concat(SkinDefaultEntries)) entry.IsPlaying = false; }, CancellationToken.None);
+        await scheduler.InvokeAsync(() => { foreach (var entry in ManagedEntries.Concat(SkinDefaultEntries)) entry.IsPlaying = false; }, CancellationToken.None);
     }
     public async Task InitializeAsync(CancellationToken token)
     {
@@ -140,26 +140,32 @@ public sealed partial class ManageSamplesPopupVM(SampleManagementContext context
         RegisterExternalImport();
         RegisterSkinDefaults();
         await skinStateOperation;
-        try { var names = await files.ListAsync(Context.ProjectPath, lifetime.Token, includeSubfolders: false); lifetime.Token.ThrowIfCancellationRequested(); Replace(names); await PublishAsync(); }
+        try { var names = await files.ListAsync(Context.ProjectPath, lifetime.Token, includeSubfolders: true); lifetime.Token.ThrowIfCancellationRequested(); Replace(names); await PublishAsync(); }
         catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
         catch (Exception error) { ErrorMessage = error.Message; }
     }
     private void Replace(IReadOnlyList<string> names)
     {
-        var current = Entries.ToDictionary(e => e.FileName, StringComparer.OrdinalIgnoreCase);
-        Entries.Clear();
-        foreach (var name in names.OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ThenBy(n => n, StringComparer.Ordinal))
-        { var entry = current.GetValueOrDefault(name) ?? new(name); entry.FileName = name; Entries.Add(entry); }
-        OnPropertyChanged(nameof(IsEmpty));
-        NotifyEditingState();
+        allSampleFiles = names.ToArray();
+        var current = ManagedEntries.ToDictionary(e => e.FileName, StringComparer.OrdinalIgnoreCase);
+        Entries.Clear(); MapsetEntries.Clear();
+        foreach (var name in names.Where(IsManagedFile).OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ThenBy(n => n, StringComparer.Ordinal))
+        {
+            var entry = current.GetValueOrDefault(name) ?? new(name); entry.FileName = name;
+            if (Services.FileSystem.OHsMapsetSamples.IsMapsetSamplePath(name)) MapsetEntries.Add(entry); else Entries.Add(entry);
+        }
+        OnPropertyChanged(nameof(IsEmpty)); NotifyEditingState();
     }
     private Task PublishAsync(string? oldName = null, string? newName = null) => scheduler.InvokeAsync(() =>
-        messenger.Send(new ProjectSamplesChangedMessage(Context, Entries.Select(e => e.FileName).ToArray(), oldName, newName, includesSubfolders: false)), CancellationToken.None);
+    {
+        allSampleFiles = allSampleFiles.Where(n => !IsManagedFile(n)).Concat(ManagedEntries.Select(e => e.FileName)).ToArray();
+        messenger.Send(new ProjectSamplesChangedMessage(Context, allSampleFiles, oldName, newName));
+    }, CancellationToken.None);
     private async Task RefreshAsync(SampleManagementEntry? preserveWaveformFor = null)
     {
         var requestedWaveforms = waveformLoads.Keys.ToHashSet();
         InvalidateWaveforms(preserveWaveformFor);
-        try { lifetime.Token.ThrowIfCancellationRequested(); var names = await files.ListAsync(Context.ProjectPath, lifetime.Token, includeSubfolders: false); var changed = !Entries.Select(e => e.FileName).SequenceEqual(names); Replace(names); foreach (var row in Entries.Where(requestedWaveforms.Contains)) { _ = LoadWaveformAsync(row); } // Tasks are owned by waveformOperations.
+        try { lifetime.Token.ThrowIfCancellationRequested(); var names = await files.ListAsync(Context.ProjectPath, lifetime.Token, includeSubfolders: true); var changed = !allSampleFiles.SequenceEqual(names); Replace(names); foreach (var row in ManagedEntries.Where(requestedWaveforms.Contains)) { _ = LoadWaveformAsync(row); } // Tasks are owned by waveformOperations.
             if (changed) await PublishAsync(); }
         catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
         catch (Exception error) { ErrorMessage = $"Could not refresh samples: {error.Message}"; }
@@ -218,7 +224,7 @@ public sealed partial class ManageSamplesPopupVM(SampleManagementContext context
             if (!await removal.ConfirmAsync(entry.FileName, lifetime.Token)) return;
             lifetime.Token.ThrowIfCancellationRequested();
             await files.DeleteAsync(Context.ProjectPath, entry.FileName, lifetime.Token);
-            Entries.Remove(entry); OnPropertyChanged(nameof(IsEmpty));
+            Entries.Remove(entry); MapsetEntries.Remove(entry); OnPropertyChanged(nameof(IsEmpty));
             await PublishAsync(entry.FileName); await RefreshAsync();
         });
         await operation;
@@ -240,7 +246,7 @@ public sealed partial class ManageSamplesPopupVM(SampleManagementContext context
         });
         await operation;
     }
-    public OHsSampleTrackDragData? GetTrackDragData(SampleManagementEntry entry) => CanAct() && Entries.Contains(entry) ? new(Context,entry.FileName) : null;
+    public OHsSampleTrackDragData? GetTrackDragData(SampleManagementEntry entry) => CanAct() && IsManagedRow(entry) ? new(Context,entry.FileName) : null;
     private bool CanCreateTrack(SampleManagementEntry? entry)=>entry is not null && GetTrackDragData(entry) is not null;
     [RelayCommand(CanExecute=nameof(CanCreateTrack))]
     private void CreateTrack(SampleManagementEntry entry) {if(GetTrackDragData(entry) is {} data)messenger.Send(new AddSampleTrackRequestedMessage(data));}

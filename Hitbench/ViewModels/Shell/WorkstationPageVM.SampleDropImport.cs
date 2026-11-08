@@ -8,7 +8,7 @@ public partial class WorkstationPageVM
 {
     private CancellationTokenSource? droppedImportCancellation;
     private async Task CancelDroppedImportAsync() { droppedImportCancellation?.Cancel(); if (droppedImportCancellation is not null && activeImport is not null) await activeImport; }
-    public SampleManagementContext? SampleManagementContext => projectPath is null ? null : new(projectPath, Project?.BeatmapPath, sampleSession);
+    public SampleManagementContext? SampleManagementContext => projectPath is null ? null : new(projectPath, Project?.BeatmapPath, sampleSession, HasMapsetFolderConflict);
     public bool CanImportDroppedSamples => sampleDropDialog is not null && sampleFiles is not null && projectPath is not null && CanEditTracks && !folderRenamesActive && !instrumentBusy && !IsNodeEditBusy && !importBusy && !removalBusy && !settlingDrawers;
     public Task<IReadOnlyList<string>> ImportDroppedSamplesAsync(IReadOnlyList<string> paths)
     {

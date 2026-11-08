@@ -222,6 +222,9 @@
                             AutomationProperties.Name="Resnap all samples and control points"
                             AutomationProperties.HelpText="{Binding ToolTip, RelativeSource={RelativeSource Self}, Mode=OneWay}"
                             ToolTip="Resnap all samples and control points to the current beat subdivision, including instrumental notes" />
+                        <customControls:BalloonMenuOption ButtonText="Import from mapset" ButtonIcon="{StaticResource Download}"
+                            Command="{Binding ImportFromMapsetCommand, Mode=OneWay}" Style="{StaticResource BaseBalloonMenuOptionStyle}"
+                            AutomationProperties.Name="Import from mapset" ToolTip="Import from mapset" />
                         <customControls:BalloonMenuOption ButtonText="Refresh samples" ButtonIcon="{StaticResource ArrowsRotateSolid}"
                             Command="{Binding ReloadSamplesCommand, Mode=OneWay}" ToolTip="Refresh project samples (F5)" />
                         <customControls:BalloonMenuOption Command="{Binding ToggleTracksCollapsedCommand, Mode=OneWay}"

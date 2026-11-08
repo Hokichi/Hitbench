@@ -22,7 +22,7 @@ using Hitbench.Resources.Helpers;
 namespace Hitbench;
 
 public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
-    IRecipient<ProjectOpenRequestedMessage>, IRecipient<ProjectCreationFailedMessage>, IPopupHost
+    IRecipient<ProjectOpenRequestedMessage>, IRecipient<ProjectCreationFailedMessage>, IRecipient<OHsSampleImportFailedMessage>, IPopupHost
 {
     private readonly PopupOverlayHandoffState popupOverlayState = new();
     private readonly DispatcherTimer popupOverlayTimer;
@@ -196,6 +196,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
         messenger.Register<ProjectCreatedMessage>(this);
         messenger.Register<ProjectOpenRequestedMessage>(this);
         messenger.Register<ProjectCreationFailedMessage>(this);
+        messenger.Register<OHsSampleImportFailedMessage>(this);
         messenger.Register<OHsAudioBusyChangedMessage>(this);
         SizeChanged += OnWindowSizeChanged;
         StateChanged += OnWindowStateChanged;
@@ -345,6 +346,11 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
                 Converter = (System.Windows.Data.IValueConverter)FindResource("BoolToVisibilityConverter")
             });
         }
+    }
+
+    public void Receive(OHsSampleImportFailedMessage message)
+    {
+        if (!closed && PageHost.Content == page) reportError(message.Error);
     }
 
     public void Receive(ProjectCreationFailedMessage message)

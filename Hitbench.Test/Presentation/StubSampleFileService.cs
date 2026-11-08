@@ -26,7 +26,7 @@ public sealed class StubSampleFileService(IReadOnlyList<string> files) : ISample
         return includeSubfolders ? result : result.Where(name => !name.Contains('/') && !name.Contains('\\')).ToArray();
     }
 
-    public Task<string> ImportAsync(string projectPath, string sourcePath, CancellationToken token, string? folderName = null) =>
+    public Task<string> ImportAsync(string projectPath, string sourcePath, CancellationToken token, string? folderName = null, bool skipExisting = false) =>
         Import?.Invoke(projectPath, sourcePath, token) ?? Task.FromResult(folderName is null ? Path.GetFileName(sourcePath) : folderName + "/" + Path.GetFileName(sourcePath));
     public Func<string, string, string, IReadOnlyCollection<string>, CancellationToken, Task<string>>? FolderRename { get; set; }
     public Task<string> EnsureFolderAsync(string projectPath, string trackName, string currentFolderName, IReadOnlyCollection<string> reserved, CancellationToken token) =>

@@ -58,5 +58,5 @@ public sealed partial class ManageSamplesPopupVM
         catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
         catch (Exception error) { ErrorMessage = error.Message; }
     }
-    private bool IsKnownRow(SampleManagementEntry entry) => Entries.Contains(entry) || SkinDefaultEntries.Contains(entry);
+    private bool IsKnownRow(SampleManagementEntry entry) => IsManagedRow(entry) || SkinDefaultEntries.Contains(entry);
 }

@@ -50,7 +50,7 @@ public sealed partial class SampleFileService : ISampleFileService
             .OrderBy(name => name, StringComparer.OrdinalIgnoreCase).ThenBy(name => name, StringComparer.Ordinal).ToArray();
     }, token);
 
-    public async Task<string> ImportAsync(string projectPath, string sourcePath, CancellationToken token, string? folderName = null)
+    public async Task<string> ImportAsync(string projectPath, string sourcePath, CancellationToken token, string? folderName = null, bool skipExisting = false)
     {
         if (SampleFileNames.GetFileNameError(Path.GetFileName(sourcePath)) is { } error) throw new InvalidDataException(error);
         var folder = folderName is null ? SamplePaths.Root(projectPath) : SamplePaths.ResolveFolder(projectPath, folderName);
@@ -61,7 +61,7 @@ public sealed partial class SampleFileService : ISampleFileService
             var source = Path.GetFullPath(sourcePath);
             if (string.Equals(Path.GetDirectoryName(source), folder, StringComparison.OrdinalIgnoreCase) && File.Exists(source))
                 return SamplePaths.Relative(projectPath, source);
-            return SamplePaths.Relative(projectPath, await CopyUniqueAsync(source, folder, token));
+            return SamplePaths.Relative(projectPath, await CopyUniqueAsync(source, folder, token, skipExisting));
         }
         finally { mutations.Release(); }
     }
@@ -118,7 +118,9 @@ public sealed partial class SampleFileService : ISampleFileService
         for (var suffix = 1; ; suffix++)
         {
             var name = suffix == 1 ? stem : $"{stem} ({suffix})";
-            if (reserved.Contains(name, StringComparer.OrdinalIgnoreCase)) continue;
+            if (reserved.Contains(name, StringComparer.OrdinalIgnoreCase) ||
+                string.Equals(name, OHsMapsetSamples.FolderName, StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(ownFolder, OHsMapsetSamples.FolderName, StringComparison.OrdinalIgnoreCase)) continue;
             if (string.Equals(name, ownFolder, StringComparison.OrdinalIgnoreCase)) return name;
             if (!Directory.EnumerateFileSystemEntries(root).Any(path => string.Equals(Path.GetFileName(path), name, StringComparison.OrdinalIgnoreCase))) return name;
         }

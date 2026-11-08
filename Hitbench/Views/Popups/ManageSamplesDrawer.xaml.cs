@@ -1,9 +1,11 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Data;
 using System.ComponentModel;
+using System.Collections.Specialized;
 using Hitbench.Resources.CustomControls;
 using Hitbench.Resources.DataModels;
 using Hitbench.ViewModels.Popups;
@@ -20,10 +22,27 @@ public partial class ManageSamplesDrawer : UserControl,IOHsShellDrawer
     {
         InitializeComponent(); this.viewModel = viewModel; DataContext = viewModel;
         InitializeSampleDrag();
+        foreach (var expander in new[] { SkinDefaultsExpander, MapsetSamplesExpander, ProjectSamplesExpander })
+        {
+            expander.Expanded += OnSampleGroupChanged;
+            expander.Collapsed += OnSampleGroupChanged;
+        }
+        foreach (var entries in new[] { viewModel.SkinDefaultEntries, viewModel.MapsetEntries, viewModel.Entries })
+            entries.CollectionChanged += OnGroupCollectionChanged;
+        UpdateSampleGroupRows();
         ((ObjectDataProvider)Resources["OHsManageSamplesOwner"]).ObjectInstance = this;
         Loaded += OnDrawerLoaded;
         Unloaded += OnDrawerUnloaded;
         KeyboardNavigation.SetTabNavigation(this, KeyboardNavigationMode.Cycle);
+    }
+
+    private void OnGroupCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e) => UpdateSampleGroupRows();
+    private void OnSampleGroupChanged(object sender, RoutedEventArgs e) => UpdateSampleGroupRows();
+    private void UpdateSampleGroupRows()
+    {
+        SkinSamplesRegion.Height = SkinDefaultsExpander.IsExpanded && viewModel.SkinDefaultEntries.Count > 0 ? new GridLength(1, GridUnitType.Star) : GridLength.Auto;
+        MapsetSamplesRegion.Height = MapsetSamplesExpander.IsExpanded && viewModel.MapsetEntries.Count > 0 ? new GridLength(1, GridUnitType.Star) : GridLength.Auto;
+        ProjectSamplesRegion.Height = ProjectSamplesExpander.IsExpanded && viewModel.Entries.Count > 0 ? new GridLength(1, GridUnitType.Star) : GridLength.Auto;
     }
 
     public event EventHandler? CloseRequested;
@@ -54,8 +73,19 @@ public partial class ManageSamplesDrawer : UserControl,IOHsShellDrawer
         viewModel.PropertyChanged -= OnEditingChanged;
         viewModel.PropertyChanged += OnEditingChanged;
         editingRow = viewModel.ActiveEdit;
+        foreach (var entries in new[] { viewModel.SkinDefaultEntries, viewModel.MapsetEntries, viewModel.Entries })
+        {
+            entries.CollectionChanged -= OnGroupCollectionChanged;
+            entries.CollectionChanged += OnGroupCollectionChanged;
+        }
+        UpdateSampleGroupRows();
     }
-    private void OnDrawerUnloaded(object sender, RoutedEventArgs e) => viewModel.PropertyChanged -= OnEditingChanged;
+    private void OnDrawerUnloaded(object sender, RoutedEventArgs e)
+    {
+        viewModel.PropertyChanged -= OnEditingChanged;
+        foreach (var entries in new[] { viewModel.SkinDefaultEntries, viewModel.MapsetEntries, viewModel.Entries })
+            entries.CollectionChanged -= OnGroupCollectionChanged;
+    }
     private void OnEditingChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName != nameof(ManageSamplesPopupVM.ActiveEdit)) return;
@@ -68,7 +98,7 @@ public partial class ManageSamplesDrawer : UserControl,IOHsShellDrawer
     {
         if (!IsLoaded || !viewModel.CanClose) return;
         var action = editAction is { IsEnabled: true } && ReferenceEquals(editAction.DataContext, row)
-            ? editAction : Descendants(SampleRows).OfType<BalloonComboBox>().FirstOrDefault(button => ReferenceEquals(button.DataContext, row));
+            ? editAction : Descendants(this).OfType<BalloonComboBox>().FirstOrDefault(button => ReferenceEquals(button.DataContext, row));
         action?.Focus();
     }
 
@@ -96,7 +126,40 @@ public partial class ManageSamplesDrawer : UserControl,IOHsShellDrawer
     protected override void OnPreviewKeyDown(KeyEventArgs e)
     {
         if (e.Key == Key.Escape) { e.Handled = HandleEscape(); return; }
+        if (Keyboard.Modifiers == ModifierKeys.None && HandleSampleNavigation(e.Key)) { e.Handled = true; return; }
         base.OnPreviewKeyDown(e);
+    }
+
+    private bool HandleSampleNavigation(Key key)
+    {
+        if (key == Key.F6)
+        {
+            var targets = Descendants(this).OfType<Control>()
+                .Where(c => c.IsVisible && c.IsEnabled && c.Focusable && c is ButtonBase or BalloonControl)
+                .ToArray();
+            if (targets.Length == 0) return true;
+            var current = Array.FindIndex(targets, c => c.IsKeyboardFocusWithin);
+            targets[(current + 1) % targets.Length].Focus(); return true;
+        }
+        if (key is not (Key.Up or Key.Down or Key.Home or Key.End) || ActiveTextInput()) return false;
+        var list = new[] { SkinDefaultRows, MapsetSampleRows, SampleRows }.FirstOrDefault(l => l.IsKeyboardFocusWithin);
+        if (list is null || list.Items.Count == 0) return false;
+        var active = Descendants(list).OfType<OHsSampleRow>().FirstOrDefault(r => r.IsKeyboardFocusWithin);
+        var index = active is null ? 0 : list.Items.IndexOf(active.DataContext);
+        index = key switch { Key.Home => 0, Key.End => list.Items.Count - 1,
+            Key.Up => Math.Max(0, index - 1), _ => Math.Min(list.Items.Count - 1, index + 1) };
+        return FocusSampleRow(list, index);
+    }
+    private bool ActiveTextInput() => Descendants(this).OfType<TextBoxBase>().Any(t => t.IsKeyboardFocusWithin);
+    internal bool FocusSampleRow(ItemsControl list, int index)
+    {
+        if (index < 0 || index >= list.Items.Count) return false;
+        list.UpdateLayout();
+        Descendants(list).OfType<VirtualizingPanel>().FirstOrDefault()?.BringIndexIntoViewPublic(index);
+        list.UpdateLayout();
+        if (list.ItemContainerGenerator.ContainerFromIndex(index) is not DependencyObject container) return false;
+        return Descendants(container).OfType<OHsSampleRow>().FirstOrDefault()?.FocusPreview() == true ||
+            Descendants(container).OfType<BalloonComboBox>().FirstOrDefault()?.Focus() == true;
     }
 
     private async void OnEditorKeyDown(object sender, KeyEventArgs e)

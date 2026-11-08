@@ -17,7 +17,7 @@ public partial class HomePageVM(
     IHomeFolderService folders, IAppSettingsService settings, IInstallationDialogService dialogs,
     IUiScheduler ui,
     IProjectFileService projectFiles, IMessenger messenger,
-    IProjectRemovalDialogService? removalDialogs = null, Func<TimeSpan, CancellationToken, Task>? searchDelay = null, ISampleFileDialogService? picker = null) : ObservableObject, System.ComponentModel.INotifyDataErrorInfo
+    IProjectRemovalDialogService? removalDialogs = null, Func<TimeSpan, CancellationToken, Task>? searchDelay = null, ISampleFileDialogService? picker = null, OHsMapsetSampleImportService? mapsetImports = null) : ObservableObject, System.ComponentModel.INotifyDataErrorInfo
 {
     private readonly TaskCompletionSource projectsReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
     public OHsHomePanelState ProjectsState => !active ? OHsHomePanelState.Inactive : IsLoadingProjects ? OHsHomePanelState.Loading : CanRetryProjects ? OHsHomePanelState.Failed : projectsSnapshot is null ? OHsHomePanelState.Unavailable : OHsHomePanelState.Ready;

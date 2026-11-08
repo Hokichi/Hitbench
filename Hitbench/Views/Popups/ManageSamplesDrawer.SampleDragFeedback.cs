@@ -36,6 +36,7 @@ public partial class ManageSamplesDrawer
         entry.PropertyChanged += OnSampleEntryChanged;
         viewModel.CreateTrackCommand.CanExecuteChanged += OnSampleEligibilityChanged;
         viewModel.Entries.CollectionChanged += OnSampleEntriesChanged;
+        viewModel.MapsetEntries.CollectionChanged += OnSampleEntriesChanged;
         AddHandler(DragDrop.GiveFeedbackEvent, new GiveFeedbackEventHandler(OnSampleGiveFeedback), true);
         AddHandler(DragDrop.QueryContinueDragEvent, new QueryContinueDragEventHandler(OnSampleQueryContinue), true);
         for (DependencyObject? ancestor = this; ancestor is not null; ancestor = VisualTreeHelper.GetParent(ancestor))
@@ -44,7 +45,7 @@ public partial class ManageSamplesDrawer
                 sampleFeedbackOwner = owner; sampleFeedbackLayer = decorator.AdornerLayer; break;
             }
         if (sampleFeedbackOwner is null) return;
-        sampleFeedback = new OHsSampleDragAdorner(sampleFeedbackOwner, (DataTemplate)FindResource("OHsManageSamplesDragTagTemplate"),payload.FileName,(double)FindResource("Space.2"));
+        sampleFeedback = new OHsSampleDragAdorner(sampleFeedbackOwner, (DataTemplate)FindResource("OHsManageSamplesDragTagTemplate"),entry.DisplayFileName,(double)FindResource("Space.2"));
         sampleFeedback.SetBinding(FlowDirectionProperty,new Binding(nameof(FlowDirection)){Source=this,Mode=BindingMode.OneWay});
         sampleFeedback.SetBinding(LanguageProperty,new Binding(nameof(Language)){Source=this,Mode=BindingMode.OneWay});
         sampleFeedbackLayer!.Add(sampleFeedback);
@@ -52,7 +53,7 @@ public partial class ManageSamplesDrawer
         sampleFeedbackOwner.AddHandler(DragDrop.PreviewDragEnterEvent,new DragEventHandler(OnSampleFeedbackDrag),true);
         sampleFeedbackOwner.AddHandler(DragDrop.PreviewDragLeaveEvent,new DragEventHandler(OnSampleFeedbackDrag),true);
         sampleFeedbackOwner.LayoutUpdated += OnSampleFeedbackLayout;
-        foreach (var row in Descendants(SampleRows).OfType<OHsSampleRow>()) RefreshSampleSource(row);
+        foreach (var row in Descendants(SampleRows).Concat(Descendants(MapsetSampleRows)).OfType<OHsSampleRow>()) RefreshSampleSource(row);
         UpdateSampleDragFeedback();
     }
     private void RefreshSampleSource(OHsSampleRow row)
@@ -94,6 +95,7 @@ public partial class ManageSamplesDrawer
         sampleDragCanceled=true;
         viewModel.CreateTrackCommand.CanExecuteChanged -= OnSampleEligibilityChanged;
         viewModel.Entries.CollectionChanged -= OnSampleEntriesChanged;
+        viewModel.MapsetEntries.CollectionChanged -= OnSampleEntriesChanged;
         RemoveHandler(DragDrop.GiveFeedbackEvent,new GiveFeedbackEventHandler(OnSampleGiveFeedback));
         if (!sampleDragNativeInProgress) RemoveHandler(DragDrop.QueryContinueDragEvent,new QueryContinueDragEventHandler(OnSampleQueryContinue));
         if (sampleFeedbackOwner is {} owner)
