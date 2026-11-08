@@ -16,7 +16,7 @@ public static class BeatGridDrawing
         var highContrast = SystemParameters.HighContrast;
         foreach (var line in BeatGridCalculator.GetLines(offsets, bpms, subdivision, startMs, endMs))
         {
-            var key = isWaveform ? line.Division switch
+            var key = line.Division switch
             {
                 1 => "Brush.Beat.Whole",
                 2 => "Brush.Beat.Half",
@@ -24,7 +24,7 @@ public static class BeatGridDrawing
                 3 or 6 or 12 => "Brush.Beat.Triplet",
                 5 or 8 => "Brush.Beat.FifthEighth",
                 _ => "Brush.Beat.Sixteenth"
-            } : line.Division == 1 ? "Brush.Beat.Whole" : "Brush.Beat.Sixteenth";
+            };
             var brush = highContrast ? SystemColors.WindowTextBrush : owner.TryFindResource(key) as Brush ?? SystemColors.WindowTextBrush;
             var x = line.Milliseconds / durationMs * contentWidth - (isWaveform ? 0 : horizontalOffset);
             var barHeight = Math.Min(height, isWaveform ? line.Division == 1 ? 20 : 10 : height);

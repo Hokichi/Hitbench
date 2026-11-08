@@ -16,10 +16,8 @@ public sealed partial class BeatGridView
         var nodeBorder = new Pen(highContrast ? SystemColors.WindowTextBrush :
             TryFindResource("Brush.Border.Default") as Brush ?? marker, 1);
         var selectedBorder = new Pen(selectionCue, 2);
-        context.PushOpacity(0.5);
         BeatGridDrawing.Draw(context, this, Offsets, Bpms, Subdivision, Duration.TotalMilliseconds,
             ContentWidth, HorizontalOffset, ViewportWidth, ActualHeight, false);
-        context.Pop();
         var visible = SamplesInRange(0, Math.Min(ActualWidth, ViewportWidth));
         for (var layer = 0; layer < 2; layer++)
         {
@@ -50,7 +48,14 @@ public sealed partial class BeatGridView
             foreach (var preview in previews)
             {
                 var bounds = GetSampleBounds(preview);
-                if (!bounds.IsEmpty) OHsSampleNodeDrawing.Draw(context,marker, selectedBorder, Inset(bounds));
+                if (!bounds.IsEmpty)
+                {
+                    var rect = Inset(bounds);
+                    context.PushOpacity(TryFindResource("Opacity.Disabled") is double opacity ? opacity : 0.4);
+                    OHsSampleNodeDrawing.Draw(context, marker, null, rect);
+                    context.Pop();
+                    OHsSampleNodeDrawing.Draw(context, null, selectedBorder, rect);
+                }
             }
         context.Pop();
     }

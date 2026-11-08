@@ -509,7 +509,7 @@
                     Style="{StaticResource BaseContentPresenterStyle}" />
                 <Border
                     Grid.Column="2"
-                    Background="Transparent"
+                    Background="{DynamicResource Brush.Background.Deepened}"
                     BorderBrush="{DynamicResource Brush.Border.Subtle}"
                     BorderThickness="1,0"
                     Style="{StaticResource BaseBorderStyle}">
