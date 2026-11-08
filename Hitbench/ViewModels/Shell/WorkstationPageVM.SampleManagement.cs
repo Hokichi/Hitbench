@@ -126,7 +126,7 @@ public partial class WorkstationPageVM
                 history.RenameSample(oldName, newName);
             }
             RefreshAvailableSamples(change.Files, false, change.IncludesSubfolders); CancelNodeDrag(); PruneNodeSelection();
-            samplesRevision++; OnPropertyChanged(nameof(SamplesRevision)); NotifyHistoryState(); QueuePlaybackUpdate(); QueueSave();
+            samplesRevision++; OnPropertyChanged(nameof(SamplesRevision)); NotifyHistoryState(); QueuePlaybackUpdate(change.ReloadSamples); QueueSave();
             instrumentRevision++; PublishInstrumentSnapshot();
         }, CancellationToken.None);
     }

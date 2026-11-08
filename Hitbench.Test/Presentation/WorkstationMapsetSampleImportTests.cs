@@ -18,8 +18,9 @@ public sealed class WorkstationMapsetSampleImportTests
             var project=new ProjectData { BeatmapPath=song.FullName,Offsets=[0],BPMs=[120],ControlPoints=[new()] };
             if(conflict) project.Tracks.Add(new InstrumentalTrack { FolderName="Mapset" });
             var files=new SampleFileService(root.FullName);
+            var audio = new StubWorkstationAudioService();
             vm=new(new StubWorkstationSourceService { Load=(_,_)=>Task.FromResult(new WorkstationSource("map","song",project)) },
-                new MarkerPlaybackCoordinator(new StubWorkstationAudioService(),Task.Delay),new ImmediateUiScheduler(),files,
+                new MarkerPlaybackCoordinator(audio,Task.Delay),new ImmediateUiScheduler(),files,
                 messenger:new WeakReferenceMessenger(),mapsetImports:new(files,new StubOHsMapsetSampleImportDialogService()));
             await vm.LoadAsync(path,default); vm.AcknowledgePresentationReady(vm.LoadGeneration);
             Assert.That(vm.ImportFromMapsetCommand.CanExecute(null),Is.EqualTo(!conflict));
@@ -28,6 +29,12 @@ public sealed class WorkstationMapsetSampleImportTests
                 await vm.ImportFromMapsetCommand.ExecuteAsync(null);
                 Assert.That(vm.SampleFiles,Does.Contain("Mapset/drum-hitnormal9.wav"));
                 vm.AddSampleTrackCommand.Execute("Mapset/drum-hitnormal9.wav");
+                await vm.FlushPlaybackUpdatesAsync();
+                var before = audio.ForceReloadSampleRequests;
+                await File.WriteAllTextAsync(Path.Combine(song.FullName, "drum-hitnormal9.wav"), "replacement");
+                await vm.ImportFromMapsetCommand.ExecuteAsync(null);
+                Assert.That(audio.ForceReloadSampleRequests, Is.EqualTo(before + 1));
+                Assert.That(await File.ReadAllTextAsync(Path.Combine(root.FullName, "project", "Samples", "Mapset", "drum-hitnormal9.wav")), Is.EqualTo("replacement"));
                 Assert.That(vm.SampleFiles.Any(p=>p.StartsWith("Piano/")),Is.False);
                 await vm.LoadAsync(path,default); vm.AcknowledgePresentationReady(vm.LoadGeneration);
                 Assert.That(vm.SampleFiles,Does.Contain("Mapset/drum-hitnormal9.wav"));

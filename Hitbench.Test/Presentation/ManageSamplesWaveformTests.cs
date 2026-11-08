@@ -6,6 +6,27 @@ namespace Hitbench.Test.Presentation;
 public sealed class ManageSamplesWaveformTests
 {
     [Test]
+    public async Task ContentRefreshReloadsWaveformWhenFileListIsUnchanged()
+    {
+        var messenger = new WeakReferenceMessenger();
+        var current = new WaveformData(TimeSpan.FromSeconds(1), [.1f]);
+        var browser = new StubSampleBrowserService { Waveform = (_, _) => Task.FromResult(current) };
+        var files = new StubSampleFileService(["Mapset/hit.wav"]);
+        var vm = new ManageSamplesPopupVM(new("project.json", null, Guid.NewGuid()), files, new(files),
+            new StubSampleFileDialogService([]), new StubSampleRemovalDialogService(), messenger, new ImmediateUiScheduler(), waveformReader: browser);
+        try
+        {
+            await vm.InitializeAsync(default);
+            var row = vm.MapsetEntries.Single();
+            await vm.LoadWaveformAsync(row);
+            current = new WaveformData(TimeSpan.FromSeconds(1), [.9f]);
+            messenger.Send(new Hitbench.Resources.Messages.ProjectSamplesChangedMessage(vm.Context, ["Mapset/hit.wav"], reloadSamples: true));
+            await vm.LoadWaveformAsync(row);
+            Assert.That(row.Waveform, Is.SameAs(current));
+        }
+        finally { await vm.DeactivateAsync(); }
+    }
+    [Test]
     public async Task DecoderConcurrencyIsBoundedAndRenameKeepsLoadedContent()
     {
         var reads=0;var release=new TaskCompletionSource<WaveformData>();

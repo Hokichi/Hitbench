@@ -5,6 +5,30 @@ namespace Hitbench.Test.Services;
 
 public sealed class OHsMapsetSampleImportTests
 {
+    [TestCase("Mapset/DRUM-hitclap.wav", true)]
+    [TestCase("drum-hitclap.wav", false)]
+    [TestCase("Piano/drum-hitclap.wav", false)]
+    [TestCase("SkinDefault/drum-hitclap.wav", false)]
+    public async Task DuplicateClassificationUsesOnlyDirectMapsetChildren(string existing, bool duplicate)
+    {
+        var root = Directory.CreateTempSubdirectory("Hitbench-duplicate-");
+        try
+        {
+            var source = Path.Combine(root.FullName, "drum-hitclap.wav");
+            await File.WriteAllTextAsync(source, "new");
+            var dialog = new StubOHsMapsetSampleImportDialogService();
+            dialog.Select = (paths, _) =>
+            {
+                Assert.That(paths, Is.EqualTo(new[] { source }));
+                Assert.That(dialog.DuplicatePaths.Contains(source), Is.EqualTo(duplicate));
+                return Task.FromResult<IReadOnlyList<string>>([]);
+            };
+            var result = await new OHsMapsetSampleImportService(new StubSampleFileService([existing]), dialog)
+                .ImportAsync(Path.Combine(root.FullName, "project.json"), root.FullName, default);
+            Assert.That(result.ImportedFiles, Is.Empty);
+        }
+        finally { root.Delete(true); }
+    }
     [Test]
     public async Task SelectionCopiesOnlyCheckedFilesAndSelectedDuplicateReplacesOriginalCopy()
     {

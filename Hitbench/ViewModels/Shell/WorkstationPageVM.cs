@@ -394,14 +394,14 @@ public partial class WorkstationPageVM(
         await operation;
     }
 
-    private void QueuePlaybackUpdate()
+    private void QueuePlaybackUpdate(bool forceReload = false)
     {
         if (Project is null || projectPath is null || deactivated) return;
         playbackUpdateCancellation?.Cancel();
         playbackUpdateCancellation?.Dispose();
         playbackUpdateCancellation = CancellationTokenSource.CreateLinkedTokenSource(
             loadCancellation?.Token ?? CancellationToken.None);
-        var update = UpdatePlaybackAsync(projectPath, loadGeneration, playbackUpdateCancellation.Token);
+        var update = UpdatePlaybackAsync(projectPath, loadGeneration, playbackUpdateCancellation.Token, forceReload);
         playbackUpdates = AwaitPlaybackUpdatesAsync(playbackUpdates, update);
     }
 

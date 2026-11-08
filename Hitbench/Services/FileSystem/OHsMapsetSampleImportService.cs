@@ -23,7 +23,6 @@ public sealed class OHsMapsetSampleImportService(ISampleFileService files, IOHsM
             {
                 SamplePaths.RejectLinkedPath(source);
                 if (!File.Exists(source)) throw new FileNotFoundException("Sample no longer exists.", source);
-                var target = OHsMapsetSamples.FolderName + "/" + Path.GetFileName(source);
                 var overwrite = duplicates.Contains(source, StringComparer.OrdinalIgnoreCase);
                 var name = await files.ImportAsync(projectPath, source, token, OHsMapsetSamples.FolderName, skipExisting: !overwrite, overwriteExisting: overwrite);
                 imported.Add(name);

@@ -20,8 +20,11 @@ public sealed partial class ManageSamplesPopupVM
             var names = m.IncludesSubfolders ? m.Files.ToArray() :
                 m.Files.Where(n => !n.Contains('/') && !n.Contains('\\'))
                     .Concat(allSampleFiles.Where(n => n.Contains('/') || n.Contains('\\'))).ToArray();
-            if (allSampleFiles.SequenceEqual(names)) return;
+            if (allSampleFiles.SequenceEqual(names) && !m.ReloadSamples) return;
+            var requested = waveformLoads.Keys.ToHashSet();
             InvalidateWaveforms(); Replace(names);
+            foreach (var row in ManagedEntries.Where(requested.Contains))
+                _ = LoadWaveformAsync(row); // Completion and errors are owned by waveformOperations.
         });
     }
     private Task<bool> ReserveForImportAsync()

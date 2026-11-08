@@ -55,8 +55,8 @@ public partial class WorkstationPageVM
                 await uiScheduler.InvokeAsync(() =>
                 {
                     if (!IsCurrentProject(context.ProjectPath, project, generation) || token.IsCancellationRequested) return;
-                    if (messenger is not null) messenger.Send(new ProjectSamplesChangedMessage(context, choices));
-                    else { RefreshAvailableSamples(choices, false, true); QueuePlaybackUpdate(); QueueSave(); }
+                    if (messenger is not null) messenger.Send(new ProjectSamplesChangedMessage(context, choices, reloadSamples: true));
+                    else { RefreshAvailableSamples(choices, false, true); QueuePlaybackUpdate(forceReload: true); QueueSave(); }
                     ErrorMessage = result.Failures.Count > 0 ? string.Join(Environment.NewLine, result.Failures) : null;
                 }, token);
                 await sampleChangeNotifications; await FlushPlaybackUpdatesAsync(); return result.ImportedFiles;
