@@ -15,6 +15,8 @@ public partial class OHsControlPointLane : UserControl
     public static readonly DependencyProperty ContentWidthProperty = RegisterCoordinate(nameof(ContentWidth));
     public static readonly DependencyProperty ViewportWidthProperty = RegisterCoordinate(nameof(ViewportWidth));
     public static readonly DependencyProperty HorizontalOffsetProperty = RegisterCoordinate(nameof(HorizontalOffset));
+    public static readonly DependencyProperty HorizontalScrollPaddingProperty = RegisterCoordinate(nameof(HorizontalScrollPadding));
+    public double HorizontalScrollPadding { get => (double)GetValue(HorizontalScrollPaddingProperty); set => SetValue(HorizontalScrollPaddingProperty, value); }
     private static readonly DependencyPropertyKey IsMenuOwnerActivePropertyKey = DependencyProperty.RegisterReadOnly(nameof(IsMenuOwnerActive), typeof(bool), typeof(OHsControlPointLane), new PropertyMetadata(false));
     public static readonly DependencyProperty IsMenuOwnerActiveProperty = IsMenuOwnerActivePropertyKey.DependencyProperty;
     public ControlPointsSnapshot? State { get => (ControlPointsSnapshot?)GetValue(StateProperty); set => SetValue(StateProperty, value); }
@@ -120,7 +122,8 @@ public partial class OHsControlPointLane : UserControl
         var reveal = Math.Min(40, extent.Width);
         var offset = extent.Left + extent.Width <= HorizontalOffset ? extent.Left + extent.Width - reveal :
             extent.Left >= HorizontalOffset + ViewportWidth ? extent.Left - ViewportWidth + reveal : HorizontalOffset;
-        var requested = Math.Clamp(offset, 0, Math.Max(0, ContentWidth - ViewportWidth));
+        var bounds = OHsControlPointLayoutBounds();
+        var requested = Math.Clamp(offset, bounds.Minimum, bounds.Maximum);
         if (requested != HorizontalOffset) HorizontalOffsetRequested?.Invoke(requested);
         current.InvalidateMeasure(); PointItems.UpdateLayout();
         var index = State!.Points.ToList().FindIndex(p => p.Id == id);

@@ -44,7 +44,7 @@ public static class OHsControlPointLayout
     {
         if (!double.IsFinite(positionMilliseconds) || !double.IsFinite(durationMilliseconds) ||
             !double.IsFinite(contentWidth) || !double.IsFinite(horizontalOffset) || !double.IsFinite(viewportWidth) ||
-            durationMilliseconds <= 0 || contentWidth <= 0 || viewportWidth <= 0 || horizontalOffset < 0 ||
+            durationMilliseconds <= 0 || contentWidth <= 0 || viewportWidth <= 0 ||
             positionMilliseconds < 0 || positionMilliseconds > durationMilliseconds) return null;
         var x = positionMilliseconds / durationMilliseconds * contentWidth - horizontalOffset;
         return double.IsFinite(x) && x >= 0 && x <= viewportWidth ? x : null;

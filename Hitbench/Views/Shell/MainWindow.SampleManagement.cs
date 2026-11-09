@@ -182,6 +182,8 @@ public partial class MainWindow
                 piano.SetBinding(OHsInstrumentalArrangementDrawer.TimelineContentWidthProperty, new Binding(nameof(page.Timeline.TimelineContentWidth)) { Source = page.Timeline, Mode = BindingMode.OneWay });
                 piano.SetBinding(OHsInstrumentalArrangementDrawer.TimelineViewportWidthProperty, new Binding(nameof(page.Timeline.TimelineViewportWidth)) { Source = page.Timeline, Mode = BindingMode.OneWay });
                 piano.SetBinding(OHsInstrumentalArrangementDrawer.TimelineHorizontalOffsetProperty, new Binding(nameof(page.Timeline.TimelineHorizontalOffset)) { Source = page.Timeline, Mode = BindingMode.OneWay });
+                piano.SetBinding(OHsInstrumentalArrangementDrawer.TimelineEdgePaddingProperty, new Binding(nameof(page.Timeline.TimelineEdgePadding)) { Source = page.Timeline, Mode = BindingMode.OneWay });
+                piano.SetBinding(OHsInstrumentalArrangementDrawer.IsPlaybackMarkerStaticProperty, new Binding("DataContext.IsStaticMarker") { Source = page, Mode = BindingMode.OneWay });
                 scrollPiano = offset => { if (ReferenceEquals(state.Host.Content, piano) && ReferenceEquals(PageHost.Content, page)) page.Timeline.ScrollFromUser(offset); };
                 piano.HorizontalOffsetRequested += scrollPiano;
                 alignPiano = (_, _) =>
@@ -232,6 +234,8 @@ public partial class MainWindow
                     BindingOperations.ClearBinding(piano, OHsInstrumentalArrangementDrawer.TimelineContentWidthProperty);
                     BindingOperations.ClearBinding(piano, OHsInstrumentalArrangementDrawer.TimelineViewportWidthProperty);
                     BindingOperations.ClearBinding(piano, OHsInstrumentalArrangementDrawer.TimelineHorizontalOffsetProperty);
+                    BindingOperations.ClearBinding(piano, OHsInstrumentalArrangementDrawer.TimelineEdgePaddingProperty);
+                    BindingOperations.ClearBinding(piano, OHsInstrumentalArrangementDrawer.IsPlaybackMarkerStaticProperty);
                 }
                 if (ReferenceEquals(state.Completion, completion)) ResetDrawerAnimation(state);
                 if (ReferenceEquals(state.Host.Content, drawer))

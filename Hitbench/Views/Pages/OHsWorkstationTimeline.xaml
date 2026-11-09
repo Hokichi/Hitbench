@@ -77,6 +77,7 @@
                                 ScrollChanged="OnWaveformScrollChanged"
                                 SizeChanged="OnWaveformViewportSizeChanged"
                                 Style="{StaticResource OHsWorkstationWaveformScrollStyle}">
+                                <Border x:Name="WaveformExtent" Style="{StaticResource BaseBorderStyle}" Background="Transparent" MouseLeftButtonDown="OnWaveformMouseLeftButtonDown">
                                 <customControls:WaveformView
                                     x:Name="WaveformDisplay"
                                     Bpms="{Binding Project.BPMs, Mode=OneWay}"
@@ -84,9 +85,9 @@
                                     ControlPointBrush="{DynamicResource Brush.Success}"
                                     Data="{Binding Waveform, Mode=OneWay}"
                                     FontFamily="{DynamicResource Regular}"
-                                    HorizontalOffset="{Binding ElementName=WaveformScrollViewer, Path=HorizontalOffset, Mode=OneWay}"
+                                    HorizontalOffset="{Binding TimelineHorizontalOffset, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationTimeline}, Mode=OneWay}"
+                                    IsPlaybackMarkerStatic="{Binding IsStaticMarker, Mode=OneWay}"
                                     MarkerBrush="{DynamicResource Brush.Playhead}"
-                                    MouseLeftButtonDown="OnWaveformMouseLeftButtonDown"
                                     Offsets="{Binding Project.Offsets, Mode=OneWay}"
                                     Position="{Binding Position, Mode=OneWay}"
                                     SeekCommand="{Binding SeekCommand, Mode=OneWay}"
@@ -97,12 +98,15 @@
                                     WaveformBrush="{DynamicResource Brush.Waveform.Unplayed}"
                                     PlayedWaveformBrush="{DynamicResource Brush.Waveform.Played}"
                                     ZoomFactor="{Binding ZoomFactor, Mode=OneWay}" />
+                                </Border>
                             </ScrollViewer>
   <pages:OHsControlPointLane x:Name="ControlPointLane" Grid.Row="1" Margin="0,8,0,0" HorizontalAlignment="Left"
    FlowDirection="{Binding FlowDirection, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationTimeline}, Mode=OneWay}"
    Width="{Binding TimelineViewportWidth, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationTimeline}, Mode=OneWay}"
    State="{Binding ControlPointsState, Mode=OneWay}" PendingAdd="{Binding PendingControlPointAdd, Mode=OneWay}"
-   Position="{Binding Position, Mode=OneWay}" PlaybackMarkerBrush="{DynamicResource Brush.Playhead}" PlaybackMarkerOutlineBrush="{DynamicResource Brush.Background.Deepened}"
+   Position="{Binding Position, Mode=OneWay}" IsPlaybackMarkerStatic="{Binding IsStaticMarker, Mode=OneWay}"
+   HorizontalScrollPadding="{Binding TimelineEdgePadding, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationTimeline}, Mode=OneWay}"
+   PlaybackMarkerBrush="{DynamicResource Brush.Playhead}" PlaybackMarkerOutlineBrush="{DynamicResource Brush.Background.Deepened}"
    AddCommand="{Binding AddControlPointCommand, Mode=OneWay}" CommitAddCommand="{Binding CommitControlPointAddCommand, Mode=OneWay}"
    MovePointCommand="{Binding MoveControlPointCommand, Mode=OneWay}" SetPointCommand="{Binding SetControlPointCommand, Mode=OneWay}"
    SetPointDisabledCommand="{Binding SetControlPointDisabledCommand, Mode=OneWay}" SplitPointCommand="{Binding SplitControlPointCommand, Mode=OneWay}"

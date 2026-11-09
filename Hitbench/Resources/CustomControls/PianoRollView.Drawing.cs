@@ -49,10 +49,11 @@ public sealed partial class PianoRollView
         UpdateMarker();
     }
     protected override void OnRender(DrawingContext dc) { base.OnRender(dc); PrepareDrawing(); }
+    internal double? PlaybackMarkerX => Duration > TimeSpan.Zero && ContentWidth > 0 && TimeViewportWidth > 0
+        ? KeyColumnWidth + (IsPlaybackMarkerStatic ? TimeViewportWidth / 2 : Position.TotalMilliseconds / Duration.TotalMilliseconds * ContentWidth - HorizontalOffset) : null;
     private void UpdateMarker()
     {
-        var x = Duration > TimeSpan.Zero && ContentWidth > 0
-            ? KeyColumnWidth + Position.TotalMilliseconds / Duration.TotalMilliseconds * ContentWidth - HorizontalOffset : double.NaN;
+        var x = PlaybackMarkerX ?? double.NaN;
         markerVisual.Opacity = double.IsFinite(x) && TimeViewportWidth > 0 && ActualHeight > 0 ? 1 : 0;
         markerTransform.X = double.IsFinite(x) ? x : 0;
         markerClip.Rect = new Rect(KeyColumnWidth - markerTransform.X, 0, TimeViewportWidth, Math.Max(0, ActualHeight));

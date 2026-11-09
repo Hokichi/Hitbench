@@ -46,6 +46,10 @@ public partial class OHsInstrumentalArrangementDrawer : UserControl, IOHsShellDr
     public static readonly DependencyProperty TimelineContentWidthProperty = DependencyProperty.Register(nameof(TimelineContentWidth), typeof(double), typeof(OHsInstrumentalArrangementDrawer));
     public static readonly DependencyProperty TimelineViewportWidthProperty = DependencyProperty.Register(nameof(TimelineViewportWidth), typeof(double), typeof(OHsInstrumentalArrangementDrawer));
     public static readonly DependencyProperty TimelineHorizontalOffsetProperty = DependencyProperty.Register(nameof(TimelineHorizontalOffset), typeof(double), typeof(OHsInstrumentalArrangementDrawer));
+    public static readonly DependencyProperty TimelineEdgePaddingProperty = DependencyProperty.Register(nameof(TimelineEdgePadding), typeof(double), typeof(OHsInstrumentalArrangementDrawer), new PropertyMetadata(0d));
+    public double TimelineEdgePadding { get => (double)GetValue(TimelineEdgePaddingProperty); set => SetValue(TimelineEdgePaddingProperty, value); }
+    public static readonly DependencyProperty IsPlaybackMarkerStaticProperty = DependencyProperty.Register(nameof(IsPlaybackMarkerStatic), typeof(bool), typeof(OHsInstrumentalArrangementDrawer), new PropertyMetadata(false));
+    public bool IsPlaybackMarkerStatic { get => (bool)GetValue(IsPlaybackMarkerStaticProperty); set => SetValue(IsPlaybackMarkerStaticProperty, value); }
     public double TimelineContentWidth { get => (double)GetValue(TimelineContentWidthProperty); set => SetValue(TimelineContentWidthProperty, value); }
     public double TimelineViewportWidth { get => (double)GetValue(TimelineViewportWidthProperty); set => SetValue(TimelineViewportWidthProperty, value); }
     public double TimelineHorizontalOffset { get => (double)GetValue(TimelineHorizontalOffsetProperty); set => SetValue(TimelineHorizontalOffsetProperty, value); }
@@ -98,8 +102,9 @@ public partial class OHsInstrumentalArrangementDrawer : UserControl, IOHsShellDr
     private void RequestOffset(double value)
     {
         if (!double.IsFinite(value)) return;
-        viewModel.RequestFollow(false);
-        HorizontalOffsetRequested?.Invoke(Math.Clamp(value, 0, Math.Max(0, TimelineContentWidth - TimelineViewportWidth)));
+        if (!IsPlaybackMarkerStatic) viewModel.RequestFollow(false);
+        var bounds = Hitbench.Resources.Helpers.OHsTimelineViewport.GetHorizontalBounds(TimelineContentWidth, TimelineViewportWidth, TimelineEdgePadding);
+        HorizontalOffsetRequested?.Invoke(Math.Clamp(value, bounds.Minimum, bounds.Maximum));
     }
     private void OnStateChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -156,7 +161,7 @@ public partial class OHsInstrumentalArrangementDrawer : UserControl, IOHsShellDr
             if (index >= 0) { if (!repeat) viewModel.RequestSubdivision(index); return true; }
         }
         if (modifiers == ModifierKeys.None && key is Key.Home or Key.End)
-        { if (!repeat) RequestOffset(key == Key.Home ? 0 : TimelineContentWidth); return true; }
+        { if (!repeat) RequestOffset(key == Key.Home ? -TimelineEdgePadding : TimelineContentWidth + TimelineEdgePadding); return true; }
         return false;
     }
     internal bool HandleArrangementWheel(ModifierKeys modifiers, int delta, DependencyObject? origin)

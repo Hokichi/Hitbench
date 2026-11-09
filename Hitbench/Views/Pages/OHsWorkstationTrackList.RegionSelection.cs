@@ -121,7 +121,7 @@ public partial class OHsWorkstationTrackList
         var clip = GetTimelineViewportBounds();
         if (clip.IsEmpty || FindVisualChild<ScrollViewer>(TrackList) is not { } scroll) return;
         var point = TranslatePoint(pointerLast, TrackList);
-        var x = Math.Clamp(TimelineHorizontalOffset + SelectionAutoScroll.GetDelta(point.X, clip.Left, clip.Right, elapsed), 0, Timeline?.ScrollableWidth ?? 0);
+        var x = Math.Clamp(TimelineHorizontalOffset + SelectionAutoScroll.GetDelta(point.X, clip.Left, clip.Right, elapsed), Timeline?.MinimumHorizontalOffset ?? 0, Timeline?.ScrollableWidth ?? 0);
         var y = Math.Clamp(scroll.VerticalOffset + SelectionAutoScroll.GetDelta(point.Y, clip.Top, clip.Bottom, elapsed), 0, scroll.ScrollableHeight);
         if (x == TimelineHorizontalOffset && y == scroll.VerticalOffset) { regionScrollTimer?.Stop(); return; }
         if (x != TimelineHorizontalOffset) Timeline?.ScrollFromUser(x);

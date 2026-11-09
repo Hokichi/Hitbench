@@ -8,6 +8,8 @@ namespace Hitbench.Resources.CustomControls;
 
 public sealed class WaveformView : FrameworkElement
 {
+    public static readonly DependencyProperty IsPlaybackMarkerStaticProperty = DependencyProperty.Register(nameof(IsPlaybackMarkerStatic), typeof(bool), typeof(WaveformView), new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsRender));
+    public bool IsPlaybackMarkerStatic { get => (bool)GetValue(IsPlaybackMarkerStaticProperty); set => SetValue(IsPlaybackMarkerStaticProperty, value); }
     public static readonly DependencyProperty ShowPlaybackMarkerProperty = DependencyProperty.Register(nameof(ShowPlaybackMarker), typeof(bool), typeof(WaveformView), new FrameworkPropertyMetadata(true, FrameworkPropertyMetadataOptions.AffectsRender));
     public bool ShowPlaybackMarker { get => (bool)GetValue(ShowPlaybackMarkerProperty); set => SetValue(ShowPlaybackMarkerProperty,value); }
     public static readonly DependencyProperty CenterWaveformProperty = DependencyProperty.Register(nameof(CenterWaveform), typeof(bool), typeof(WaveformView), new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsRender));
@@ -145,7 +147,8 @@ public sealed class WaveformView : FrameworkElement
         playedClip.Rect = new Rect(0, 0, playedWidth, Math.Max(0, ActualHeight));
         var x = Math.Clamp(Position.TotalSeconds / Data.Duration.TotalSeconds * ActualWidth, .75, Math.Max(.75, ActualWidth - .75));
         var viewport = IsPositiveFinite(ViewportWidth) ? Math.Min(ViewportWidth, ActualWidth) : ActualWidth;
-        var offset = double.IsFinite(HorizontalOffset) ? Math.Clamp(HorizontalOffset, 0, Math.Max(0, ActualWidth - viewport)) : 0;
+        var offset = double.IsFinite(HorizontalOffset) ? IsPlaybackMarkerStatic ? HorizontalOffset : Math.Clamp(HorizontalOffset, 0, Math.Max(0, ActualWidth - viewport)) : 0;
+        if (IsPlaybackMarkerStatic) x = offset + viewport / 2;
         markerTransform.X = x;
         markerClip.Rect = new Rect(offset - x, 0, viewport, ActualHeight);
     }
@@ -184,7 +187,7 @@ public sealed class WaveformView : FrameworkElement
         }
 
         var viewport = IsPositiveFinite(ViewportWidth) ? Math.Min(ViewportWidth, width) : width;
-        var offset = double.IsFinite(HorizontalOffset) ? Math.Clamp(HorizontalOffset, 0, Math.Max(0, width - viewport)) : 0;
+        var offset = double.IsFinite(HorizontalOffset) ? IsPlaybackMarkerStatic ? HorizontalOffset : Math.Clamp(HorizontalOffset, 0, Math.Max(0, width - viewport)) : 0;
         var waveformBrush = SystemParameters.HighContrast ? SystemColors.HighlightBrush : WaveformBrush;
         var textBrush = SystemParameters.HighContrast ? SystemColors.WindowTextBrush : TextBrush;
         var rulerHeight=ShowBeatRuler?24:0;

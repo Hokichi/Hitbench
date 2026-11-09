@@ -37,7 +37,7 @@ public sealed partial class PianoRollView
     internal void AdvanceRegionSelection(TimeSpan elapsed)
     {
         if (!IsRectangleGesture || !CanEdit || !IsEnabled) { selectionTimer?.Stop(); return; }
-        var x = Math.Clamp(HorizontalOffset + SelectionAutoScroll.GetDelta(pointerLast.X, KeyColumnWidth, KeyColumnWidth + TimeViewportWidth, elapsed), 0, Math.Max(0, ContentWidth - TimeViewportWidth));
+        var x = Math.Clamp(HorizontalOffset + SelectionAutoScroll.GetDelta(pointerLast.X, KeyColumnWidth, KeyColumnWidth + TimeViewportWidth, elapsed), HorizontalBounds.Minimum, HorizontalBounds.Maximum);
         var y = Math.Clamp(VerticalOffset + SelectionAutoScroll.GetDelta(pointerLast.Y, 0, ActualHeight, elapsed), 0, MaximumVerticalOffset);
         if (x == HorizontalOffset && y == VerticalOffset) { selectionTimer?.Stop(); return; }
         SetCurrentValue(HorizontalOffsetProperty, x);

@@ -6,6 +6,10 @@ namespace Hitbench.Views.Pages;
 
 public partial class OHsControlPointLane
 {
+    public static readonly DependencyProperty IsPlaybackMarkerStaticProperty = DependencyProperty.Register(nameof(IsPlaybackMarkerStatic), typeof(bool), typeof(OHsControlPointLane),
+        new PropertyMetadata(false, (d, _) => ((OHsControlPointLane)d).UpdatePlaybackMarker()));
+    public bool IsPlaybackMarkerStatic { get => (bool)GetValue(IsPlaybackMarkerStaticProperty); set => SetValue(IsPlaybackMarkerStaticProperty, value); }
+    private (double Minimum, double Maximum) OHsControlPointLayoutBounds() => OHsTimelineViewport.GetHorizontalBounds(ContentWidth, ViewportWidth, HorizontalScrollPadding);
     public static readonly DependencyProperty PositionProperty = DependencyProperty.Register(nameof(Position), typeof(TimeSpan), typeof(OHsControlPointLane),
         new PropertyMetadata(TimeSpan.Zero, (d, _) => ((OHsControlPointLane)d).UpdatePlaybackMarker()));
     public static readonly DependencyProperty PlaybackMarkerBrushProperty = DependencyProperty.Register(nameof(PlaybackMarkerBrush), typeof(Brush), typeof(OHsControlPointLane));
@@ -14,7 +18,8 @@ public partial class OHsControlPointLane
     public TimeSpan Position { get => (TimeSpan)GetValue(PositionProperty); set => SetValue(PositionProperty, value); }
     public Brush? PlaybackMarkerBrush { get => (Brush?)GetValue(PlaybackMarkerBrushProperty); set => SetValue(PlaybackMarkerBrushProperty, value); }
     public Brush? PlaybackMarkerOutlineBrush { get => (Brush?)GetValue(PlaybackMarkerOutlineBrushProperty); set => SetValue(PlaybackMarkerOutlineBrushProperty, value); }
-    internal double? PlaybackMarkerX => OHsControlPointLayout.GetPlaybackMarkerX(Position.TotalMilliseconds, DurationMilliseconds, ContentWidth, HorizontalOffset, ViewportWidth);
+    internal double? PlaybackMarkerX => IsPlaybackMarkerStatic && DurationMilliseconds > 0 && ContentWidth > 0 && ViewportWidth > 0
+        ? ViewportWidth / 2 : OHsControlPointLayout.GetPlaybackMarkerX(Position.TotalMilliseconds, DurationMilliseconds, ContentWidth, HorizontalOffset, ViewportWidth);
 
     private void UpdatePlaybackMarker()
     {

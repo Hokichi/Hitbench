@@ -11,6 +11,11 @@ namespace Hitbench.Resources.CustomControls;
 
 public sealed partial class PianoRollView : Control
 {
+    public static readonly DependencyProperty IsPlaybackMarkerStaticProperty = DependencyProperty.Register(nameof(IsPlaybackMarkerStatic), typeof(bool), typeof(PianoRollView), new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsRender));
+    public bool IsPlaybackMarkerStatic { get => (bool)GetValue(IsPlaybackMarkerStaticProperty); set => SetValue(IsPlaybackMarkerStaticProperty, value); }
+    public static readonly DependencyProperty HorizontalScrollPaddingProperty = DependencyProperty.Register(nameof(HorizontalScrollPadding), typeof(double), typeof(PianoRollView), new PropertyMetadata(0d));
+    public double HorizontalScrollPadding { get => (double)GetValue(HorizontalScrollPaddingProperty); set => SetValue(HorizontalScrollPaddingProperty, value); }
+    private (double Minimum, double Maximum) HorizontalBounds => Helpers.OHsTimelineViewport.GetHorizontalBounds(ContentWidth, TimeViewportWidth, HorizontalScrollPadding);
     public static readonly DependencyProperty IsAdditionModeProperty=DependencyProperty.Register(nameof(IsAdditionMode),typeof(bool),typeof(PianoRollView),new FrameworkPropertyMetadata(true,FrameworkPropertyMetadataOptions.AffectsRender,(d,_)=>((PianoRollView)d).CancelInteraction()));
     public bool IsAdditionMode {get=>(bool)GetValue(IsAdditionModeProperty);set=>SetValue(IsAdditionModeProperty,value);}
     public static readonly DependencyProperty SelectedNoteIdsProperty=DependencyProperty.Register(nameof(SelectedNoteIds),typeof(IReadOnlyList<Guid>),typeof(PianoRollView),new FrameworkPropertyMetadata(Array.Empty<Guid>(),FrameworkPropertyMetadataOptions.AffectsRender));
@@ -201,7 +206,7 @@ public sealed partial class PianoRollView : Control
         var x = activeMs / Duration.TotalMilliseconds * ContentWidth;
         var width = TimeViewportWidth;
         if (width <= 0) return;
-        if (x < HorizontalOffset || x > HorizontalOffset + width) SetCurrentValue(HorizontalOffsetProperty, Math.Clamp(x - width / 2, 0, Math.Max(0, ContentWidth - width)));
+        if (x < HorizontalOffset || x > HorizontalOffset + width) SetCurrentValue(HorizontalOffsetProperty, Math.Clamp(x - width / 2, HorizontalBounds.Minimum, HorizontalBounds.Maximum));
     }
     public bool CancelInteraction()
     { selectionTimer?.Stop(); var active = pointerInteraction || IsMouseCaptured; pointerInteraction = false; pressedNote = null; dragging = false; hover = null; gestureIds=[]; if (IsMouseCaptured) ReleaseMouseCapture(); InvalidateContent(); return active; }

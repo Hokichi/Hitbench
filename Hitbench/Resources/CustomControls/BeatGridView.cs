@@ -9,6 +9,8 @@ namespace Hitbench.Resources.CustomControls;
 
 public sealed partial class BeatGridView : FrameworkElement
 {
+    public static readonly DependencyProperty IsPlaybackMarkerStaticProperty = DependencyProperty.Register(nameof(IsPlaybackMarkerStatic), typeof(bool), typeof(BeatGridView), RenderMetadata(false));
+    public bool IsPlaybackMarkerStatic { get => (bool)GetValue(IsPlaybackMarkerStaticProperty); set => SetValue(IsPlaybackMarkerStaticProperty, value); }
     public static readonly DependencyProperty ZoomFactorProperty = DependencyProperty.Register(nameof(ZoomFactor), typeof(double), typeof(BeatGridView), RenderMetadata(32d));
     public static readonly DependencyProperty DragPreviewTimestampsProperty = DependencyProperty.Register(nameof(DragPreviewTimestamps), typeof(IReadOnlyList<int>), typeof(BeatGridView), RenderMetadata());
     public double ZoomFactor { get => (double)GetValue(ZoomFactorProperty); set => SetValue(ZoomFactorProperty, value); }
@@ -273,6 +275,7 @@ public sealed partial class BeatGridView : FrameworkElement
         if (Duration <= TimeSpan.Zero || !double.IsFinite(ContentWidth) || ContentWidth <= 0 ||
             !double.IsFinite(HorizontalOffset) || !double.IsFinite(viewport) || viewport <= 0) return null;
         var time = Math.Clamp(Position.TotalMilliseconds, 0, Duration.TotalMilliseconds);
+        if (IsPlaybackMarkerStatic) return viewport / 2;
         var x = time / Duration.TotalMilliseconds * ContentWidth - HorizontalOffset;
         if (x < 0 || x > viewport) return null;
         return Math.Clamp(x, 0.75, Math.Max(0.75, viewport - 0.75));

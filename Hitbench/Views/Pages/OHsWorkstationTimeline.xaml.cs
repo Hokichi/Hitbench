@@ -58,11 +58,14 @@ public partial class OHsWorkstationTimeline : UserControl
     public double ScrollableWidth => (double)GetValue(ScrollableWidthProperty);
     public IInputElement FocusTarget => WaveformScrollViewer;
     public bool FocusTimeline() => WaveformScrollViewer.Focus();
-    public void ScrollToHorizontalOffset(double offset) => WaveformScrollViewer.ScrollToHorizontalOffset(offset);
+    public void ScrollToHorizontalOffset(double offset)
+    {
+        if (double.IsFinite(offset)) WaveformScrollViewer.ScrollToHorizontalOffset(Math.Clamp(offset, MinimumHorizontalOffset, ScrollableWidth) + TimelineEdgePadding);
+    }
     public void ScrollFromUser(double offset)
     {
         if (deactivationStarted) return;
-        viewModel.ScrollWithMarker = false;
+        if (!viewModel.IsStaticMarker) viewModel.ScrollWithMarker = false;
         ScrollToHorizontalOffset(offset);
     }
     public void AttachScrollBar(ScrollBar value)
@@ -70,6 +73,7 @@ public partial class OHsWorkstationTimeline : UserControl
         DetachScrollBar();
         scrollBar = value;
         scrollBar.Scroll += OnWaveformScrollBarScroll;
+        scrollBar.SetBinding(RangeBase.MinimumProperty, new Binding(nameof(MinimumHorizontalOffset)) { Source = this, Mode = BindingMode.OneWay });
         scrollBar.SetBinding(RangeBase.MaximumProperty, new Binding(nameof(ScrollableWidth)) { Source = this, Mode = BindingMode.OneWay });
         scrollBar.SetBinding(ScrollBar.ViewportSizeProperty, new Binding(nameof(TimelineViewportWidth)) { Source = this, Mode = BindingMode.OneWay });
         scrollBar.SetBinding(RangeBase.LargeChangeProperty, new Binding(nameof(TimelineViewportWidth)) { Source = this, Mode = BindingMode.OneWay });
@@ -114,7 +118,9 @@ public partial class OHsWorkstationTimeline : UserControl
     private void OnWaveformDisplaySizeChanged(object sender, SizeChangedEventArgs e)
     {
         TimelineContentWidth = e.NewSize.Width;
+        RefreshTimelineGeometry();
         ApplyPendingZoomAnchor();
+        if (viewModel?.IsStaticMarker == true) CenterPlaybackPosition();
         ViewportChanged?.Invoke(this, EventArgs.Empty);
     }
     private void OnWaveformScrollChanged(object sender, ScrollChangedEventArgs e)
@@ -123,18 +129,20 @@ public partial class OHsWorkstationTimeline : UserControl
         var padding = WaveformScrollViewer.Padding;
         ControlPointLane.Margin = new Thickness(inset.Left + padding.Left, ControlPointLane.Margin.Top, inset.Right + padding.Right, ControlPointLane.Margin.Bottom);
         if (e.ViewportWidth > 0) WaveformDisplay.SetCurrentValue(WaveformView.ViewportWidthProperty, e.ViewportWidth);
-        SetValue(ScrollableWidthPropertyKey, WaveformScrollViewer.ScrollableWidth);
-        TimelineHorizontalOffset = e.HorizontalOffset;
+        var viewportChanged = e.ViewportWidthChange != 0;
         TimelineViewportWidth = e.ViewportWidth;
-        if (scrollBar is not null) scrollBar.Value = e.HorizontalOffset;
+        RefreshTimelineGeometry();
+        TimelineHorizontalOffset = e.HorizontalOffset - TimelineEdgePadding;
+        if (scrollBar is not null) scrollBar.Value = TimelineHorizontalOffset;
         ApplyPendingZoomAnchor();
+        if (viewportChanged && viewModel?.IsStaticMarker == true) CenterPlaybackPosition();
         ViewportChanged?.Invoke(this, EventArgs.Empty);
 
     }
 
     private void OnWaveformScrollBarDragStarted(object sender, DragStartedEventArgs e)
     {
-        if (viewModel.CanPlay && !deactivationStarted) viewModel.ScrollWithMarker = false;
+        if (viewModel.CanPlay && !deactivationStarted && !viewModel.IsStaticMarker) viewModel.ScrollWithMarker = false;
     }
 
     private void OnWaveformScrollBarScroll(object sender, ScrollEventArgs e) => ScrollFromUser(e.NewValue);
@@ -146,12 +154,11 @@ public partial class OHsWorkstationTimeline : UserControl
         var viewport = WaveformScrollViewer.ViewportWidth;
         if (!double.IsFinite(extent) || extent <= 0 || !double.IsFinite(viewport) || viewport <= 0) return;
         var expectedExtent = WaveformDisplay.ViewportWidth * viewModel.ZoomFactor;
-        if (Math.Abs(extent - expectedExtent) > 1 || Math.Abs(WaveformScrollViewer.ExtentWidth - extent) > 1) return;
+        if (Math.Abs(extent - expectedExtent) > 1 || Math.Abs(WaveformScrollViewer.ExtentWidth - extent - 2 * TimelineEdgePadding) > 1) return;
 
-        var maximum = Math.Max(0, extent - viewport);
-        var offset = Math.Clamp(zoomAnchorFraction * extent - zoomAnchorViewportX, 0, maximum);
+        var offset = Math.Clamp(zoomAnchorFraction * extent - zoomAnchorViewportX, MinimumHorizontalOffset, ScrollableWidth);
         hasPendingZoomAnchor = false;
-        WaveformScrollViewer.ScrollToHorizontalOffset(offset);
+        ScrollToHorizontalOffset(offset);
     }
 
     private void OnWaveformMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -171,7 +178,8 @@ public partial class OHsWorkstationTimeline : UserControl
             !double.IsFinite(viewport) || viewport <= 0) return;
 
         zoomAnchorFraction = Math.Clamp(viewModel.Position.TotalSeconds / duration, 0, 1);
-        var markerViewportX = zoomAnchorFraction * extent - WaveformScrollViewer.HorizontalOffset;
+        var markerViewportX = zoomAnchorFraction * extent - TimelineHorizontalOffset;
+        if (viewModel.IsStaticMarker) { zoomAnchorViewportX = viewport / 2; hasPendingZoomAnchor = true; return; }
         zoomAnchorViewportX = markerViewportX >= 0 && markerViewportX <= viewport
             ? markerViewportX
             : viewport / 2;
@@ -179,6 +187,7 @@ public partial class OHsWorkstationTimeline : UserControl
     }
     public void RevealPlaybackPosition()
     {
+        if (viewModel.IsStaticMarker) { CenterPlaybackPosition(); return; }
         var duration = viewModel.Waveform?.Duration.TotalSeconds ?? 0;
         var extent = WaveformDisplay.ActualWidth;
         var viewport = WaveformScrollViewer.ViewportWidth;
@@ -193,6 +202,7 @@ public partial class OHsWorkstationTimeline : UserControl
 
     public void FollowPlaybackPosition()
     {
+        if (viewModel.IsStaticMarker) { CenterPlaybackPosition(); return; }
         if (!viewModel.ScrollWithMarker || deactivationStarted) return;
         var duration = viewModel.Waveform?.Duration.TotalSeconds ?? 0;
         if (duration <= 0) return;

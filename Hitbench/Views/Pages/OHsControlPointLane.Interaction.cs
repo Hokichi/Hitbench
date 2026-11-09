@@ -194,7 +194,7 @@ public partial class OHsControlPointLane
     {
         if (!IsMenuOwnerActive || State is not { CanEdit: true } state || !double.IsFinite(viewportX) ||
             !double.IsFinite(ViewportWidth) || ViewportWidth <= 0 || !double.IsFinite(HorizontalOffset) ||
-            HorizontalOffset < 0 || viewportX < 0 || viewportX > ViewportWidth) return null;
+            viewportX < 0 || viewportX > ViewportWidth) return null;
         // ponytail: scan snapshot extents; cache by snapshot if pointer profiling warrants it.
         var extents = OHsControlPointLayout.GetExtents(state.Points, DurationMilliseconds, ContentWidth);
         for (var index = 0; index < extents.Count; index++)

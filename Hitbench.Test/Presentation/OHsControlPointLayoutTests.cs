@@ -12,7 +12,7 @@ public class OHsControlPointLayoutTests
     [TestCase(1000, 0, 800, 80, 400, null)]
     [TestCase(1000, 4000, 0, 80, 400, null)]
     [TestCase(1000, 4000, 800, 80, 0, null)]
-    [TestCase(1000, 4000, 800, -1, 400, null)]
+    [TestCase(1000, 4000, 800, -1, 400, 201d)]
     [TestCase(-1, 4000, 800, 0, 400, null)]
     [TestCase(4001, 4000, 800, 0, 400, null)]
     [TestCase(1000, 4000, 800, 300, 400, null)]
