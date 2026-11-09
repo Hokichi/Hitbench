@@ -1,10 +1,29 @@
 using Hitbench.Services;
 using Hitbench.ViewModels.Shell;
+using Hitbench.Core.Entities;
 
 namespace Hitbench.Test.Presentation;
 
 public class WorkstationMarkerModeStateTests
 {
+    [Test]
+    public async Task StaticNodeSelectionPreservesDynamicFollowPreference()
+    {
+        var node = new Sample { FileName = "a.wav", Timestamp = 100 };
+        var track = new Track { SelectedSampleFileName = "a.wav", Samples = [node] };
+        var source = new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "audio",
+            new ProjectData { Offsets = [0], BPMs = [120], Tracks = [track] })) };
+        var vm = new WorkstationPageVM(source, new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay),
+            new ImmediateUiScheduler(), new StubSampleFileService(["a.wav"]));
+        try
+        {
+            await vm.LoadAsync("project.json", default); vm.AcknowledgePresentationReady(vm.LoadGeneration);
+            vm.SetMarkerMode(true); Assert.That(vm.SelectNode(track, node, false), Is.True);
+            vm.SetMarkerMode(false); Assert.That(vm.ScrollWithMarker, Is.True);
+            vm.SelectNode(track, node, false); Assert.That(vm.ScrollWithMarker, Is.False);
+        }
+        finally { await vm.DeactivateAsync(); }
+    }
     [Test]
     public async Task ModePreservesTransportHistoryAndFollowPreference()
     {

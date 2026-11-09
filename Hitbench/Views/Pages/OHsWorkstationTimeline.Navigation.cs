@@ -9,13 +9,19 @@ public partial class OHsWorkstationTimeline
     private bool navigating;
     private int navigationGeneration;
     public Task NavigationCompletion { get; private set; } = Task.CompletedTask;
-    private double UserHorizontalOffset => requestedOffset ?? TimelineHorizontalOffset;
+    private double UserHorizontalOffset => requestedOffset ?? (viewModel.IsStaticMarker && viewModel.Waveform is { } waveform
+        ? OHsTimelineViewport.GetCenteredOffset(viewModel.Position, waveform.Duration, TimelineContentWidth, TimelineViewportWidth) : TimelineHorizontalOffset);
 
     private void RequestSeek(TimeSpan position)
     {
         if (deactivationStarted) return;
         pendingSeek = position;
-        if (!navigating) NavigationCompletion = RunNavigationAsync(navigationGeneration);
+        if (!navigating)
+        {
+            navigating = true;
+            var generation = navigationGeneration;
+            NavigationCompletion = Dispatcher.InvokeAsync(() => RunNavigationAsync(generation)).Task.Unwrap();
+        }
     }
 
     private async Task RunNavigationAsync(int generation)
@@ -36,6 +42,10 @@ public partial class OHsWorkstationTimeline
         finally
         {
             navigating = false;
+            if (generation != navigationGeneration && pendingSeek is not null && !deactivationStarted)
+            {
+                await RunNavigationAsync(navigationGeneration);
+            }
             if (generation == navigationGeneration)
             {
                 if (!deactivationStarted && owner.IsStaticMarker) CenterPlaybackPosition();

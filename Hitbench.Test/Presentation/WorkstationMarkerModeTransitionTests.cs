@@ -25,6 +25,8 @@ public class WorkstationMarkerModeTransitionTests
         try
         {
             UiTestPump.Run(page.LoadCompletion); view.UpdateLayout();
+            UiTestPump.Run(page.ChangeMarkerModeAsync(false)); Assert.That(duration, Is.EqualTo(TimeSpan.Zero));
+            UiTestPump.Run(vm.PlayPauseCommand.ExecuteAsync(null));
             var switching = page.ChangeMarkerModeAsync(true);
             Assert.That(duration, Is.EqualTo(TimeSpan.FromSeconds(1)));
             Assert.That(page.IsMarkerModeTransitionActive, Is.True);
@@ -32,11 +34,16 @@ public class WorkstationMarkerModeTransitionTests
             Assert.That(page.LoadingStatusText, Is.Empty);
             Assert.That(vm.IsStaticMarker, Is.False);
             Assert.That(page.HandlePlaybackKey(Key.Space, ModifierKeys.None, false, page), Is.True);
-            Assert.That(vm.IsPlaying, Is.False);
+            Assert.That(vm.IsPlaying, Is.True);
             Assert.That(page.ChangeMarkerModeAsync(false), Is.SameAs(switching));
             page.IsAudioBusy = true; page.AudioBusyText = "Existing operation";
+            UiTestPump.Run(vm.SeekCommand.ExecuteAsync(TimeSpan.FromSeconds(4)));
             hold.SetResult(); UiTestPump.Run(switching); view.UpdateLayout();
             Assert.That(vm.IsStaticMarker, Is.True);
+            Assert.That(vm.IsPlaying, Is.True);
+            Assert.That(vm.Position, Is.EqualTo(TimeSpan.FromSeconds(4)));
+            Assert.That(page.Timeline.TimelineHorizontalOffset,
+                Is.EqualTo(.4 * page.Timeline.TimelineContentWidth - page.Timeline.TimelineViewportWidth / 2).Within(.01));
             Assert.That(page.IsMarkerModeTransitionActive, Is.False);
             Assert.That(page.IsLoadingPresentationActive, Is.True);
             Assert.That(page.LoadingStatusText, Is.EqualTo("Existing operation"));
@@ -63,8 +70,8 @@ public class WorkstationMarkerModeTransitionTests
         finally { UiTestPump.Run(page.DeactivateAsync()); }
     }
 
-    [TestCase(false)] [TestCase(true)]
-    public void CancellationPreventsLateApplication(bool reload)
+    [TestCase("deactivate")] [TestCase("reload")] [TestCase("unload")]
+    public void CancellationPreventsLateApplication(string action)
     {
         var page = WorkstationTestPage.Create(); var vm = (WorkstationPageVM)page.DataContext;
         page.SetProjectPath("project.json");
@@ -75,7 +82,9 @@ public class WorkstationMarkerModeTransitionTests
         {
             UiTestPump.Run(page.LoadCompletion);
             var switching = page.ChangeMarkerModeAsync(true);
-            if (reload) UiTestPump.Run(vm.LoadAsync("replacement.json", default)); else UiTestPump.Run(page.DeactivateAsync());
+            if (action == "reload") UiTestPump.Run(vm.LoadAsync("replacement.json", default));
+            else if (action == "unload") page.RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent));
+            else UiTestPump.Run(page.DeactivateAsync());
             UiTestPump.Run(switching); hold.SetResult(); view.UpdateLayout();
             Assert.That(vm.IsStaticMarker, Is.False);
             Assert.That(page.IsMarkerModeTransitionActive, Is.False);
@@ -97,6 +106,8 @@ public class WorkstationMarkerModeTransitionTests
             Assert.That(options.Select(o => o.Value), Is.EqualTo(new[] { true, false }));
             foreach (var option in options)
             {
+                UiControlContract.AssertStyle<SegmentedToggleOption>(option, "OHsWorkstationMarkerOptionStyle");
+                UiControlContract.AssertTemplate(option, "SegmentedToggleOptionTemplate");
                 Assert.That(option.IsTabStop, Is.False);
                 Assert.That(System.Windows.Automation.AutomationProperties.GetName(option), Is.Not.Empty);
                 Assert.That(option.ToolTip, Is.Not.Null);

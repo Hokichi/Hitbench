@@ -10,6 +10,39 @@ namespace Hitbench.Test.Presentation;
 [Apartment(ApartmentState.STA), NonParallelizable]
 public class WorkstationHorizontalWheelTests
 {
+    [TestCase(false)] [TestCase(true)]
+    public void PendingSeeksCoalesceAndResetDropsQueuedIntent(bool cancel)
+    {
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var delayCalls = 0;
+        Task Delay(TimeSpan duration, CancellationToken token)
+        {
+            if (Interlocked.Increment(ref delayCalls) != 1) return Task.Delay(duration, token);
+            entered.TrySetResult(); return release.Task;
+        }
+        var audio = new StubWorkstationAudioService();
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new MarkerPlaybackCoordinator(audio, Delay), new ImmediateUiScheduler());
+        var timeline = new OHsWorkstationTimeline { DataContext = vm };
+        using var view = new InMemoryView(new Window { Content = timeline, Width = 600, Height = 200 });
+        try
+        {
+            UiTestPump.Run(vm.LoadAsync("project.json", default)); vm.AcknowledgePresentationReady(vm.LoadGeneration);
+            vm.SetMarkerMode(true); view.UpdateLayout(); timeline.ApplyMarkerMode(); view.UpdateLayout();
+            UiTestPump.Run(vm.PlayPauseCommand.ExecuteAsync(null)); UiTestPump.Run(entered.Task);
+            timeline.ScrollFromUser(Hitbench.Resources.Helpers.OHsTimelineViewport.GetCenteredOffset(TimeSpan.FromSeconds(6), TimeSpan.FromSeconds(10), timeline.TimelineContentWidth, timeline.TimelineViewportWidth));
+            UiTestPump.Run(timeline.Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle).Task);
+            foreach (var seconds in new[] { 7, 8 })
+                timeline.ScrollFromUser(Hitbench.Resources.Helpers.OHsTimelineViewport.GetCenteredOffset(TimeSpan.FromSeconds(seconds), TimeSpan.FromSeconds(10), timeline.TimelineContentWidth, timeline.TimelineViewportWidth));
+            Assert.That(timeline.NavigationCompletion.IsCompleted, Is.False);
+            var completion = cancel ? timeline.CancelNavigationAsync() : timeline.NavigationCompletion;
+            release.SetResult(); UiTestPump.Run(completion);
+            Assert.That(audio.Snapshot.Position, Is.EqualTo(TimeSpan.FromSeconds(cancel ? 6 : 8)));
+            Assert.That(audio.SeekCalls, Is.EqualTo(cancel ? 1 : 2));
+            Assert.That(vm.IsPlaying, Is.True);
+        }
+        finally { release.TrySetResult(); UiTestPump.Run(timeline.CancelNavigationAsync()); UiTestPump.Run(vm.DeactivateAsync()); }
+    }
     [SetUp]
     public void Setup() => new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
 
@@ -59,6 +92,13 @@ public class WorkstationHorizontalWheelTests
                 timeline.HandleWaveformWheel(ModifierKeys.None, -120);
                 UiTestPump.Run(timeline.NavigationCompletion);
                 Assert.That(vm.Position.TotalSeconds, Is.EqualTo(before.TotalSeconds + 32 / timeline.TimelineContentWidth * 10).Within(.00001));
+                UiTestPump.Layout(timeline, 600, 180);
+                timeline.ScrollFromUser(Hitbench.Resources.Helpers.OHsTimelineViewport.GetCenteredOffset(TimeSpan.FromSeconds(6), TimeSpan.FromSeconds(10), timeline.TimelineContentWidth, timeline.TimelineViewportWidth));
+                UiTestPump.Run(timeline.NavigationCompletion);
+                UiTestPump.Run(vm.SeekCommand.ExecuteAsync(TimeSpan.FromSeconds(7)));
+                timeline.FollowPlaybackPosition();
+                timeline.HandleWaveformWheel(ModifierKeys.None, -120); UiTestPump.Run(timeline.NavigationCompletion);
+                Assert.That(vm.Position.TotalSeconds, Is.EqualTo(7 + 16 / timeline.TimelineContentWidth * 10).Within(.00001));
                 UiTestPump.Layout(timeline, 600, 180);
             }
             before = vm.Position;

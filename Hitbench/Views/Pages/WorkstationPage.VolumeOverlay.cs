@@ -138,7 +138,7 @@ public partial class WorkstationPage
         if (IsMarkerModeTransitionActive) { Timeline.ResetWheel(); return true; }
         if (IsVolumeOverlayOpen && modifiers == ModifierKeys.None && IsVolumeOverlayElement(origin)) return false;
         if (!IsVolumeOverlayOpen && HandleNodeDragWheel(modifiers, delta)) return true;
-        if (modifiers == ModifierKeys.None && !IsHorizontalWheelOrigin(origin)) { Timeline.ResetWheel(); return false; }
+        if (!IsVolumeOverlayOpen && modifiers == ModifierKeys.None && !IsHorizontalWheelOrigin(origin)) { Timeline.ResetWheel(); return false; }
         if (modifiers != ModifierKeys.Alt)
         {
             volumeWheelRemainder = 0;

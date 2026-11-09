@@ -11,8 +11,8 @@ public static class BeatGridDrawing
         double horizontalOffset, double viewportWidth, double height, bool isWaveform)
     {
         if (offsets is null || bpms is null || durationMs <= 0 || contentWidth <= 0 || viewportWidth <= 0 || height <= 0) return;
-        var startMs = horizontalOffset / contentWidth * durationMs;
-        var endMs = (horizontalOffset + viewportWidth) / contentWidth * durationMs;
+        var startMs = Math.Max(0, horizontalOffset / contentWidth * durationMs);
+        var endMs = Math.Min(durationMs, (horizontalOffset + viewportWidth) / contentWidth * durationMs);
         var highContrast = SystemParameters.HighContrast;
         foreach (var line in BeatGridCalculator.GetLines(offsets, bpms, subdivision, startMs, endMs))
         {

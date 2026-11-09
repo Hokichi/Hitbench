@@ -57,7 +57,7 @@ public partial class WorkstationPageVM
                 instrumentTimelineRequestSequence = message.Sequence;
                 if (message.ZoomFactor is { } value) SetZoom((int)Math.Clamp(value, 8, 128));
                 if (message.SelectedSubdivisionIndex is { } index) SelectedSubdivisionIndex = index;
-                if (message.ScrollWithMarker is { } follow) ScrollWithMarker = follow;
+                if (message.ScrollWithMarker is { } follow && !IsStaticMarker) ScrollWithMarker = follow;
                 if (message.IsAdditionMode is { } mode) IsAdditionMode = mode;
                 PublishInstrumentTimeline();
             }, CancellationToken.None);

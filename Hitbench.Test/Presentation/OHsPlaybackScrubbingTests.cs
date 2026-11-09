@@ -19,10 +19,12 @@ public class OHsPlaybackScrubbingTests
             var timeline = new OHsWorkstationTimeline { DataContext = vm, CaptureScrubPointer = () => true, ReleaseScrubPointer = () => released++ };
             UiTestPump.Layout(timeline, 600, 200);
             Assert.That(timeline.BeginScrub(100), Is.True);
+            UiTestPump.Run(timeline.NavigationCompletion);
             var start = vm.Position;
             timeline.UpdateScrub(700); timeline.TickScrub(TimeSpan.FromMilliseconds(40));
             UiTestPump.Layout(timeline, 600, 200);
             timeline.TickScrub(TimeSpan.FromMilliseconds(40));
+            UiTestPump.Run(timeline.NavigationCompletion);
             Assert.That(vm.Position, Is.GreaterThan(start));
             Assert.That(timeline.IsScrubAutoScrollActive, Is.True);
             timeline.Reset();

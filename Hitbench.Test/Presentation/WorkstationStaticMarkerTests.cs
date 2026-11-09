@@ -18,9 +18,12 @@ public class WorkstationStaticMarkerTests
     public void SharedViewportCentersAtBothAudioEdges(double seconds)
     {
         var audio = new StubWorkstationAudioService();
-        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new MarkerPlaybackCoordinator(audio, Task.Delay), new ImmediateUiScheduler());
+        var source = new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "audio",
+            new ProjectData { Offsets = [0], BPMs = [120], Tracks = [new Track { SelectedSampleFileName = "a.wav", Samples = [new Sample { Timestamp = 0, FileName = "a.wav" }] }] })) };
+        var vm = new WorkstationPageVM(source, new MarkerPlaybackCoordinator(audio, Task.Delay), new ImmediateUiScheduler(), new StubSampleFileService(["a.wav"]));
         var page = new WorkstationPage(vm);
-        using var view = new InMemoryView(new Window { Content = page, Width = 1100, Height = 700 });
+        var window = new Window { Content = page, Width = 1100, Height = 700 };
+        using var view = new InMemoryView(window);
         try
         {
             UiTestPump.Run(vm.LoadAsync("project.json", default)); vm.AcknowledgePresentationReady(vm.LoadGeneration);
@@ -34,6 +37,14 @@ public class WorkstationStaticMarkerTests
                 Is.EqualTo(seconds / 10 * width - page.Timeline.TimelineViewportWidth / 2).Within(.01));
             Assert.That(page.Timeline.MinimumHorizontalOffset, Is.EqualTo(-page.Timeline.TimelineViewportWidth / 2));
             Assert.That(audio.SeekCalls, Is.EqualTo(1), "following must not seek");
+            var grid = WorkstationControlTree.Descendants(page).OfType<BeatGridView>().Single();
+            Assert.That(grid.IsPlaybackMarkerStatic, Is.True);
+            var timeViewport = page.Timeline.GetTimeViewportBounds(page);
+            var trackMarker = grid.TranslatePoint(new Point(grid.GetPlaybackMarkerX()!.Value, 0), page).X;
+            Assert.That(trackMarker, Is.EqualTo(timeViewport.Left + timeViewport.Width / 2).Within(.01));
+            window.Width = 900; view.UpdateLayout(); view.UpdateLayout(); page.Timeline.FollowPlaybackPosition(); view.UpdateLayout();
+            Assert.That(page.Timeline.TimelineHorizontalOffset,
+                Is.EqualTo(seconds / 10 * page.Timeline.TimelineContentWidth - page.Timeline.TimelineViewportWidth / 2).Within(.01));
             vm.ZoomInCommand.Execute(null);
             view.UpdateLayout(); view.UpdateLayout(); page.Timeline.FollowPlaybackPosition(); view.UpdateLayout();
             Assert.That(page.Timeline.TimelineHorizontalOffset,
@@ -43,6 +54,24 @@ public class WorkstationStaticMarkerTests
             Assert.That(page.Timeline.TimelineEdgePadding, Is.Zero);
         }
         finally { UiTestPump.Run(page.DeactivateAsync()); }
+    }
+
+    [Test]
+    public void ControlPointBoundaryHitTestingSupportsLeadingPadding()
+    {
+        var vm = WorkstationControlPointStateTests.Create(new ProjectData { Offsets = [0], BPMs = [120],
+            ControlPoints = [new() { Timestamp = 1000, Volume = 50 }] }, new());
+        try
+        {
+            UiTestPump.Run(WorkstationControlPointStateTests.Ready(vm));
+            var state = vm.ControlPointsState!;
+            var lane = new OHsControlPointLane { State = state, DurationMilliseconds = 10000, ContentWidth = 1000,
+                ViewportWidth = 300, HorizontalOffset = -150, HorizontalScrollPadding = 150 };
+            UiTestPump.Layout(lane, 300, 60);
+            var point = state.Points.Single(p => p.Timestamp == 1000 && !p.IsOffsetAnchor);
+            Assert.That(lane.HitTestTimingBoundary(point.Id, 250), Is.EqualTo(point.Id));
+        }
+        finally { UiTestPump.Run(vm.DeactivateAsync()); }
     }
 
     [Test]
@@ -60,5 +89,17 @@ public class WorkstationStaticMarkerTests
             KeyColumnWidth = 50, HorizontalOffset = -100, HorizontalScrollPadding = 100, IsPlaybackMarkerStatic = true };
         UiTestPump.Layout(piano, 250, 100);
         Assert.That(piano.PlaybackMarkerX, Is.EqualTo(150));
+    }
+
+    [Test]
+    public void BlankTrailingSpaceContainsNoBeatsBeyondAudioDuration()
+    {
+        var drawing = new System.Windows.Media.DrawingGroup();
+        using (var context = drawing.Open())
+            BeatGridDrawing.Draw(context, new System.Windows.Controls.Border(), [0], [120], 1, 10000, 1000, 900, 200, 60, false);
+        var lines = drawing.Children.OfType<System.Windows.Media.GeometryDrawing>()
+            .Select(d => d.Geometry).OfType<System.Windows.Media.LineGeometry>().ToArray();
+        Assert.That(lines, Is.Not.Empty);
+        Assert.That(lines.All(line => line.StartPoint.X <= 100), Is.True, "audio ends at viewport x=100 for these explicit inputs");
     }
 }

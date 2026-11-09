@@ -39,7 +39,7 @@ public partial class OHsWorkstationTimeline : UserControl
         InitializeComponent();
         ControlPointLane.HorizontalOffsetRequested += ScrollFromUser;
         Unloaded += (_, _) => EndScrub();
-        DataContextChanged += (_, e) => { EndScrub(); ControlPointLane.ResetInteraction(); viewModel = e.NewValue as WorkstationPageVM ?? null!; };
+        DataContextChanged += (_, e) => { Reset(); viewModel = e.NewValue as WorkstationPageVM ?? null!; };
     }
     public event EventHandler? ViewportChanged;
     public Rect GetTimeViewportBounds(Visual relativeTo)
@@ -195,7 +195,7 @@ public partial class OHsWorkstationTimeline : UserControl
     }
     public void RevealPlaybackPosition()
     {
-        if (viewModel.IsStaticMarker) { CenterPlaybackPosition(); return; }
+        if (viewModel.IsStaticMarker) { if (!navigating) requestedOffset = null; CenterPlaybackPosition(); return; }
         var duration = viewModel.Waveform?.Duration.TotalSeconds ?? 0;
         var extent = WaveformDisplay.ActualWidth;
         var viewport = WaveformScrollViewer.ViewportWidth;
@@ -210,7 +210,7 @@ public partial class OHsWorkstationTimeline : UserControl
 
     public void FollowPlaybackPosition()
     {
-        if (viewModel.IsStaticMarker) { CenterPlaybackPosition(); return; }
+        if (viewModel.IsStaticMarker) { if (!navigating) requestedOffset = null; CenterPlaybackPosition(); return; }
         if (!viewModel.ScrollWithMarker || deactivationStarted) return;
         var duration = viewModel.Waveform?.Duration.TotalSeconds ?? 0;
         if (duration <= 0) return;

@@ -261,6 +261,25 @@ public class WorkstationShellVolumeTests
     });
 
     [Test]
+    public void StaticMarkerAndSignedViewportReachAttachedPianoAndDetachCleanly() => WithDrawer(false, (shell, page, drawer, view) =>
+    {
+        var piano = (OHsInstrumentalArrangementDrawer)drawer;
+        var roll = (Hitbench.Resources.CustomControls.PianoRollView)piano.FindName("PianoRoll");
+        page.MarkerModeTransitionDelay = (_, _) => Task.CompletedTask;
+        UiTestPump.Run(page.ChangeMarkerModeAsync(true)); view.UpdateLayout(); view.UpdateLayout();
+        Assert.That(piano.IsPlaybackMarkerStatic, Is.True);
+        Assert.That(roll.IsPlaybackMarkerStatic, Is.True);
+        Assert.That(roll.HorizontalScrollPadding, Is.EqualTo(page.Timeline.TimelineEdgePadding));
+        Assert.That(roll.HorizontalOffset, Is.EqualTo(page.Timeline.TimelineHorizontalOffset));
+        Assert.That(roll.HorizontalOffset, Is.LessThan(0));
+        Assert.That(shell.HandleWindowKeyDown(true, Key.F8, ModifierKeys.None, false, roll), Is.True);
+        UiTestPump.Run(page.MarkerModeChangeCompletion); Assert.That(piano.IsPlaybackMarkerStatic, Is.False);
+        UiTestPump.Run(shell.ReturnHomeAsync());
+        Assert.That(BindingOperations.IsDataBound(piano, OHsInstrumentalArrangementDrawer.TimelineEdgePaddingProperty), Is.False);
+        Assert.That(BindingOperations.IsDataBound(piano, OHsInstrumentalArrangementDrawer.IsPlaybackMarkerStaticProperty), Is.False);
+    });
+
+    [Test]
     public void VolumeHostDetachesOnNavigationAndClose() => WithDrawer(false, (shell, page, _, _) =>
     {
         var host = (Grid)shell.FindName("ShellVolumeOverlayHost");
