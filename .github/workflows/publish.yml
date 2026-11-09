@@ -53,7 +53,7 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: Publish and package self-contained application
+      - name: Publish and package self-contained single-file application
         id: package
         if: steps.version.outputs.version != ''
         env:
@@ -61,8 +61,8 @@ jobs:
           NUMERIC_VERSION: ${{ steps.version.outputs.numeric }}
         run: |
           $publishDir = Join-Path $env:RUNNER_TEMP 'hitbench-publish'
-          dotnet publish Hitbench/Hitbench.csproj -c Release -r win-x64 --self-contained true -o $publishDir "-p:OHsReleaseVersion=$env:BUILD_VERSION" "-p:VersionPrefix=$env:NUMERIC_VERSION" "-p:SourceRevisionId=$env:GITHUB_SHA"
-          if ($LASTEXITCODE -ne 0) { throw 'Self-contained publish failed.' }
+          dotnet publish Hitbench/Hitbench.csproj -c Release -p:PublishProfile=FolderProfile -o $publishDir "-p:OHsReleaseVersion=$env:BUILD_VERSION" "-p:VersionPrefix=$env:NUMERIC_VERSION" "-p:SourceRevisionId=$env:GITHUB_SHA"
+          if ($LASTEXITCODE -ne 0) { throw 'Self-contained single-file publish failed.' }
           $archive = Join-Path $env:RUNNER_TEMP "Hitbench-$env:BUILD_VERSION-win-x64.zip"
           & ./.github/scripts/New-HitbenchReleasePackage.ps1 -PublishDirectory $publishDir -Version $env:BUILD_VERSION -Commit $env:GITHUB_SHA -DestinationZip $archive
 
