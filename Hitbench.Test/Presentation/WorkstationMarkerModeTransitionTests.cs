@@ -88,6 +88,7 @@ public class WorkstationMarkerModeTransitionTests
             UiTestPump.Run(switching); hold.SetResult(); view.UpdateLayout();
             Assert.That(vm.IsStaticMarker, Is.False);
             Assert.That(page.IsMarkerModeTransitionActive, Is.False);
+            Assert.That(vm.Project!.IsMarkerStatic, Is.False);
         }
         finally { hold.TrySetResult(); UiTestPump.Run(page.DeactivateAsync()); }
     }

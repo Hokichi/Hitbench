@@ -8,6 +8,7 @@ public class ProjectData
     public string CurrentSkin { get; set; } = string.Empty;
     public bool AllowDefaults { get; set; }
     public bool IsPinned { get; set; }
+    public bool IsMarkerStatic { get; set; }
     public DateTimeOffset LastChanged { get; set; }
     public int WorkstationZoom { get; set; } = 32;
     public string BeatmapPath { get; set; } = string.Empty;

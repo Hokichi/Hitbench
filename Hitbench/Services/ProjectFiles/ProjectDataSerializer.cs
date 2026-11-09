@@ -15,7 +15,7 @@ public static class ProjectDataSerializer
         try { root = JObject.Parse(json, new JsonLoadSettings { DuplicatePropertyNameHandling = DuplicatePropertyNameHandling.Error }); }
         catch (JsonException error) { throw new InvalidDataException("Project JSON is invalid.", error); }
 
-        NormalizeMembers(root, nameof(ProjectData.IsPinned), nameof(ProjectData.LastChanged),
+        NormalizeMembers(root, nameof(ProjectData.IsPinned), nameof(ProjectData.IsMarkerStatic), nameof(ProjectData.LastChanged),
             nameof(ProjectData.WorkstationZoom), nameof(ProjectData.BeatmapPath), nameof(ProjectData.Tracks),
             nameof(ProjectData.ControlPoints), nameof(ProjectData.Offsets), nameof(ProjectData.BPMs),
             "Samples", "IsCollapsed");
@@ -34,6 +34,9 @@ public static class ProjectDataSerializer
         if (currentSkin is not null && currentSkin.Type != JTokenType.String)
             throw new InvalidDataException("Project CurrentSkin must be a string.");
         var pinned = Member(root, nameof(ProjectData.IsPinned));
+        var markerStatic = Member(root, nameof(ProjectData.IsMarkerStatic));
+        if (markerStatic is not null && markerStatic.Type != JTokenType.Boolean)
+            throw new InvalidDataException("Project IsMarkerStatic must be a boolean.");
         if (pinned is not null && pinned.Type != JTokenType.Boolean)
             throw new InvalidDataException("Project IsPinned must be a boolean.");
         var changed = Member(root, nameof(ProjectData.LastChanged));

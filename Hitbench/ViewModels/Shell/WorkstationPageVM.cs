@@ -572,6 +572,7 @@ public partial class WorkstationPageVM(
                 InitializeControlPoints();
                 PublishControlPointTimeline();
                 RestoreZoom(Project.WorkstationZoom);
+                RestoreMarkerMode(Project.IsMarkerStatic);
                 InitializeTrackPresentation(Project);
                 markerClock = new PlaybackMarkerClock(Project.Offsets, Project.BPMs);
                 OnPropertyChanged(nameof(CurrentBpmText));
