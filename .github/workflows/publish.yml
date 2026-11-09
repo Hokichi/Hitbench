@@ -31,21 +31,6 @@ jobs:
           if (-not $build) { exit 0 }
           "version=$($build.Version)" >> $env:GITHUB_OUTPUT
           "numeric=$($build.NumericVersion)" >> $env:GITHUB_OUTPUT
-          "description=$($build.Description)" >> $env:GITHUB_OUTPUT
-
-      - name: Reject existing tags and releases
-        id: available
-        if: steps.version.outputs.version != ''
-        env:
-          BUILD_VERSION: ${{ steps.version.outputs.version }}
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          git ls-remote --exit-code --tags origin "refs/tags/$env:BUILD_VERSION"
-          if ($LASTEXITCODE -eq 0) { throw "Tag $env:BUILD_VERSION already exists." }
-          if ($LASTEXITCODE -ne 2) { throw 'Unable to check remote tags.' }
-          $release = gh api "repos/$env:GITHUB_REPOSITORY/releases" --paginate --jq ".[] | select(.tag_name == `"$env:BUILD_VERSION`") | .id"
-          if ($LASTEXITCODE -ne 0) { throw 'Unable to check existing releases.' }
-          if ($release) { throw "Release $env:BUILD_VERSION already exists." }
 
       - name: Set up .NET
         if: steps.version.outputs.version != ''
@@ -66,19 +51,12 @@ jobs:
           $archive = Join-Path $env:RUNNER_TEMP "Hitbench-$env:BUILD_VERSION-win-x64.zip"
           & ./.github/scripts/New-HitbenchReleasePackage.ps1 -PublishDirectory $publishDir -Version $env:BUILD_VERSION -Commit $env:GITHUB_SHA -DestinationZip $archive
 
-      - name: Create tag and GitHub Release
+      - name: Create or update tag and GitHub Release
         id: release
         if: steps.version.outputs.version != ''
         env:
           BUILD_VERSION: ${{ steps.version.outputs.version }}
-          DESCRIPTION_TAG: ${{ steps.version.outputs.description }}
           GH_TOKEN: ${{ github.token }}
         run: |
           $archive = Join-Path $env:RUNNER_TEMP "Hitbench-$env:BUILD_VERSION-win-x64.zip"
-          git tag $env:BUILD_VERSION $env:GITHUB_SHA
-          if ($LASTEXITCODE -ne 0) { throw 'Unable to create release tag.' }
-          git push origin "refs/tags/$env:BUILD_VERSION"
-          if ($LASTEXITCODE -ne 0) { throw 'Unable to push release tag; it may already exist.' }
-          gh release create $env:BUILD_VERSION $archive --verify-tag --target $env:GITHUB_SHA --title $env:BUILD_VERSION --generate-notes
-          if ($LASTEXITCODE -ne 0) { throw 'Unable to create GitHub Release.' }
-          & ./.github/scripts/Set-HitbenchDescriptionTag.ps1 -Description $env:DESCRIPTION_TAG -Commit $env:GITHUB_SHA
+          & ./.github/scripts/Publish-HitbenchRelease.ps1 -Version $env:BUILD_VERSION -Commit $env:GITHUB_SHA -Archive $archive
