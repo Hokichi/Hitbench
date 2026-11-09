@@ -9,7 +9,7 @@ namespace Hitbench.Services.FileSystem;
 public sealed partial class OHsUpdateService(HttpClient http, string applicationDirectory, string temporaryDirectory,
     string? installedTag, string? installedCommit) : IOHsUpdateService
 {
-    private const string ApiRoot = "https://api.github.com/repos/Hokichi/osuHitsounder/";
+    private const string ApiRoot = "https://api.github.com/repos/Hokichi/Hitbench/";
     internal static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
     public async Task<OHsUpdateRelease?> CheckAsync(CancellationToken token)
@@ -92,5 +92,5 @@ public sealed partial class OHsUpdateService(HttpClient http, string application
     private static bool IsCommit(string? value) => value is not null && Regex.IsMatch(value, "\\A[0-9a-fA-F]{40,64}\\z");
     private static bool IsAssetUri(Uri uri, string tag) => uri.Scheme == "https" && uri.Host == "github.com" && uri.IsDefaultPort &&
         uri.UserInfo.Length == 0 && uri.Query.Length == 0 && uri.Fragment.Length == 0 &&
-        Uri.UnescapeDataString(uri.AbsolutePath) == $"/Hokichi/osuHitsounder/releases/download/{tag}/Hitbench-{tag}-win-x64.zip";
+        Uri.UnescapeDataString(uri.AbsolutePath) == $"/Hokichi/Hitbench/releases/download/{tag}/Hitbench-{tag}-win-x64.zip";
 }

@@ -11,6 +11,29 @@ public sealed class OHsUpdateStagingTests
     private string root = null!;
     [SetUp] public void SetUp() => root = Directory.CreateTempSubdirectory("hitbench-stage-test-").FullName;
     [TearDown] public void TearDown() => Directory.Delete(root, true);
+
+    [TestCase("https://github.com/Hokichi/osuHitsounder/releases/download/1.2.4-beta/Hitbench-1.2.4-beta-win-x64.zip")]
+    [TestCase("https://github.com/Other/Hitbench/releases/download/1.2.4-beta/Hitbench-1.2.4-beta-win-x64.zip")]
+    [TestCase("https://example.com/Hokichi/Hitbench/releases/download/1.2.4-beta/Hitbench-1.2.4-beta-win-x64.zip")]
+    [TestCase("https://github.com/Hokichi/Hitbench/releases/download/1.2.3/Hitbench-1.2.4-beta-win-x64.zip")]
+    [TestCase("https://github.com/Hokichi/Hitbench/releases/download/1.2.4-beta/Other.zip")]
+    [TestCase("https://github.com/Hokichi/Hitbench/releases/download/1.2.4-beta/Hitbench-1.2.4-beta-win-x64.zip?download=1")]
+    public void RejectsInvalidAssetUrlsBeforeDownload(string assetUrl)
+    {
+        var bytes = OHsUpdateTestData.Archive();
+        var requests = 0;
+        using var http = new HttpClient(new OHsUpdateHttpHandler((_, _) =>
+        {
+            requests++;
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(bytes) });
+        }));
+        var release = OHsUpdateTestData.Candidate(bytes.Length) with { AssetUri = new(assetUrl) };
+        Assert.ThrowsAsync<InvalidDataException>(() => new OHsUpdateService(http, root, root, "1.2.3", OHsUpdateTestData.Commit)
+            .StageAsync(release, new InlineProgress<double>(_ => { }), default));
+        Assert.That(requests, Is.Zero);
+        Assert.That(Directory.GetFileSystemEntries(root), Is.Empty);
+    }
+
     [Test]
     public async Task DownloadsVerifiedPayloadWithoutTouchingInstallation()
     {
@@ -68,7 +91,7 @@ public sealed class OHsUpdateStagingTests
         using var http = Client(bytes);
         OHsReleaseVersion.TryParse(version, out var parsed);
         var release = OHsUpdateTestData.Candidate(bytes.Length) with { Version = parsed!, SourceCommit = commit,
-            AssetUri = new($"https://github.com/Hokichi/osuHitsounder/releases/download/{version}/Hitbench-{version}-win-x64.zip") };
+            AssetUri = new($"https://github.com/Hokichi/Hitbench/releases/download/{version}/Hitbench-{version}-win-x64.zip") };
         var service = new OHsUpdateService(http, root, root, "1.2.3", OHsUpdateTestData.Commit);
         var staged = await service.StageAsync(release, new InlineProgress<double>(_ => { }), default);
         Assert.That(staged.Version, Is.EqualTo(version));

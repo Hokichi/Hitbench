@@ -11,17 +11,17 @@ public static class OHsUpdateTestData
 {
     public const string Commit = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
     public static HttpResponseMessage Json(object value) => new(HttpStatusCode.OK) { Content = new StringContent(JsonSerializer.Serialize(value)) };
-    public static object Release(string version, string published, long id = 1, bool draft = false, bool asset = true) => new
+    public static object Release(string version, string published, long id = 1, bool draft = false, bool asset = true, string? assetUrl = null) => new
     {
         tag_name = version, published_at = published, id, draft, prerelease = version.Contains("beta"),
         assets = asset ? new[] { new { name = $"Hitbench-{version}-win-x64.zip", size = 100,
-            browser_download_url = $"https://github.com/Hokichi/osuHitsounder/releases/download/{version}/Hitbench-{version}-win-x64.zip", digest = (string?)null } } : [],
+            browser_download_url = assetUrl ?? $"https://github.com/Hokichi/Hitbench/releases/download/{version}/Hitbench-{version}-win-x64.zip", digest = (string?)null } } : [],
     };
     public static OHsUpdateRelease Candidate(long size, string? digest = null)
     {
         OHsReleaseVersion.TryParse("1.2.4-beta", out var version);
         return new(version!, DateTimeOffset.Parse("2026-11-03T01:00:00Z"), 2, Commit,
-            new("https://github.com/Hokichi/osuHitsounder/releases/download/1.2.4-beta/Hitbench-1.2.4-beta-win-x64.zip"), size, digest);
+            new("https://github.com/Hokichi/Hitbench/releases/download/1.2.4-beta/Hitbench-1.2.4-beta-win-x64.zip"), size, digest);
     }
     public static byte[] Archive(string version = "1.2.4-beta", string commit = Commit, string? extra = null, string? missing = null, bool linked = false)
     {
