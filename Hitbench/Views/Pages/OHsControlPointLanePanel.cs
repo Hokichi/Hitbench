@@ -131,9 +131,20 @@ public sealed class OHsControlPointLanePanel : VirtualizingPanel
             var index = generator.IndexFromGeneratorPosition(new(childIndex, 0));
             if (index < 0 || index >= extents.Count || OHsControlPointLane.FindChild<OHsControlPointZone>(InternalChildren[childIndex]) is not { } zone) continue;
             var extent = extents[index]; var left = extent.Left - HorizontalOffset; var width = extent.Width;
+            var child = InternalChildren[childIndex];
+            if (width == 0)
+            {
+                width = Math.Min(40, Math.Max(0, ViewportWidth));
+                left = Math.Clamp(left, 0, Math.Max(0, ViewportWidth - width));
+                var arrangedLeft = Math.Clamp(extent.Left - retainedViewport.Origin, 0, Math.Max(0, ViewportWidth - width));
+                if (child.RenderTransform is not TranslateTransform adjustment) child.RenderTransform = adjustment = new TranslateTransform();
+                adjustment.X = left - arrangedLeft - translation.X;
+            }
+            else if (child.RenderTransform is TranslateTransform adjustment) adjustment.X = 0;
             var visibleLeft = Math.Clamp(-left, 0, width);
             var visibleRight = Math.Clamp(ViewportWidth - left, visibleLeft, width);
-            zone.SetVisibleLabelRange(zone.FlowDirection == FlowDirection.RightToLeft ? width - visibleRight : visibleLeft, visibleRight - visibleLeft, updateWidth);
+            zone.SetVisibleLabelRange(zone.FlowDirection == FlowDirection.RightToLeft ? width - visibleRight : visibleLeft,
+                visibleRight - visibleLeft, updateWidth, IsRetained ? Math.Min(width, ViewportWidth) : null);
         }
     }
 

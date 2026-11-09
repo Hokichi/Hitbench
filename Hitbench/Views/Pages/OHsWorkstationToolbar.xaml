@@ -145,7 +145,8 @@
             <Style.Triggers><DataTrigger Binding="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationToolbar}, Mode=OneWay}" Value="True"><Setter Property="Padding" Value="8,6" /></DataTrigger></Style.Triggers>
         </Style>
         <Style x:Key="OHsWorkstationMarkerModeStyle" TargetType="customControls:SegmentedToggleGroup" BasedOn="{StaticResource {x:Type customControls:SegmentedToggleGroup}}">
-            <Setter Property="Width" Value="92" />
+            <!-- Two 40-DIP targets, 8 padding, 4 spacing, and 2 border. -->
+            <Setter Property="Width" Value="94" />
         </Style>
         <Style x:Key="OHsWorkstationMarkerOptionStyle" TargetType="customControls:SegmentedToggleOption" BasedOn="{StaticResource OHsWorkstationEditingOptionStyle}">
             <Setter Property="Padding" Value="0" />

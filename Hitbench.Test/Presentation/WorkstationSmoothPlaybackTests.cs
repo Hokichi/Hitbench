@@ -101,6 +101,20 @@ public class WorkstationSmoothPlaybackTests
         Assert.That(lane.IsVolumePreviewActive, Is.True); Assert.That(lane.PreviewVolume, Is.EqualTo(75));
         lane.ResetInteraction();
     }
+
+    [Test]
+    public void PinnedZeroDurationTargetStaysReachableDuringRetainedMovement()
+    {
+        var first = new Hitbench.Resources.DataModels.ControlPointSnapshot(Guid.NewGuid(), 8000, 50, "Normal");
+        var second = first with { Id = Guid.NewGuid() };
+        var lane = OHsControlPointLaneTests.Create([first, second]); lane.IsPlaybackMarkerStatic = true;
+        lane.HorizontalOffsetRequested += offset => lane.HorizontalOffset = offset;
+        var target = lane.BringPointIntoView(first.Id)!;
+        lane.HorizontalOffset = 17000; lane.UpdateLayout();
+        Assert.That(target.TranslatePoint(new Point(), lane).X, Is.EqualTo(0).Within(.001));
+        lane.HorizontalOffset = 17000.25; lane.UpdateLayout();
+        Assert.That(target.TranslatePoint(new Point(), lane).X, Is.EqualTo(0).Within(.001));
+    }
     [Test]
     public void SampleGridRetainsContentWhileHitTestingUsesLiveOffset()
     {

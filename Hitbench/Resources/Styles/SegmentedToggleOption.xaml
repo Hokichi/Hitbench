@@ -27,11 +27,12 @@
                 BorderThickness="{TemplateBinding BorderThickness}"
                 Padding="{TemplateBinding Padding}"
                 CornerRadius="{StaticResource Radius.Control}">
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                <StackPanel Style="{StaticResource BaseStackPanelStyle}" Orientation="Horizontal" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                     VerticalAlignment="{TemplateBinding VerticalContentAlignment}">
                 <c:Icon x:Name="OptionIcon" Path="{TemplateBinding Icon}" Color="{TemplateBinding Foreground}"
                     Width="{TemplateBinding IconSize}" Height="{TemplateBinding IconSize}" VerticalAlignment="Center" />
-                <ContentPresenter x:Name="OptionContent" Style="{StaticResource BaseContentPresenterStyle}" Margin="8,0,0,0"
+                <Border x:Name="IconSpacing" Style="{StaticResource BaseBorderStyle}" Width="8" />
+                <ContentPresenter x:Name="OptionContent" Style="{StaticResource BaseContentPresenterStyle}"
                     Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
                     ContentTemplateSelector="{TemplateBinding ContentTemplateSelector}"
                     ContentStringFormat="{TemplateBinding ContentStringFormat}"
@@ -46,10 +47,11 @@
         <ControlTemplate.Triggers>
             <Trigger Property="Icon" Value="{x:Null}">
                 <Setter TargetName="OptionIcon" Property="Visibility" Value="Collapsed" />
-                <Setter TargetName="OptionContent" Property="Margin" Value="0" />
+                <Setter TargetName="IconSpacing" Property="Visibility" Value="Collapsed" />
             </Trigger>
             <Trigger Property="Content" Value="{x:Null}">
                 <Setter TargetName="OptionContent" Property="Visibility" Value="Collapsed" />
+                <Setter TargetName="IconSpacing" Property="Visibility" Value="Collapsed" />
             </Trigger>
             <Trigger Property="IsSelected" Value="True">
                 <Setter TargetName="SelectedMarker" Property="Visibility" Value="Visible" />

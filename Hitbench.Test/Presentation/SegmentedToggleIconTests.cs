@@ -36,7 +36,7 @@ public class SegmentedToggleIconTests
     public void CustomContentTemplateRemainsAssignedWithIcon()
     {
         var option = new SegmentedToggleOption { Content = "Choice", Icon = Geometry.Parse("M0,0 L10,10") };
-        var template = (DataTemplate)Application.Current.FindResource("SegmentedToggleOptionContentTemplate");
+        var template = new DataTemplate();
         option.ContentTemplate = template;
         UiTestPump.Layout(option, 100, 50);
         Assert.That(option.ContentTemplate, Is.SameAs(template));

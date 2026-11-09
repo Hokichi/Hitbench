@@ -56,10 +56,10 @@ public sealed class OHsControlPointZone : Button
     private readonly System.Windows.Media.RectangleGeometry visibleLabelClip = new();
     public System.Windows.Media.Geometry VisibleLabelClip => visibleLabelClip;
 
-    internal void SetVisibleLabelRange(double inset, double width, bool updateWidth = true)
+    internal void SetVisibleLabelRange(double inset, double width, bool updateWidth = true, double? measuredWidth = null)
     {
         SetValue(VisibleLabelInsetPropertyKey, Math.Max(0, inset));
-        if (updateWidth) SetValue(VisibleLabelWidthPropertyKey, Math.Max(0, Math.Min(ActualWidth, width) - 16));
+        if (updateWidth) SetValue(VisibleLabelWidthPropertyKey, Math.Max(0, Math.Min(ActualWidth, measuredWidth ?? width) - 16));
         visibleLabelClip.Rect = new Rect(0, 0, Math.Max(0, width - 16), Math.Max(0, ActualHeight));
     }
 
