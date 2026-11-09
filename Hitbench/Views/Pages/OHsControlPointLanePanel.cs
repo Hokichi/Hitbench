@@ -2,6 +2,7 @@ using System.Collections.Specialized;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Media;
 using Hitbench.Resources.DataModels;
 using Hitbench.Resources.Helpers;
 
@@ -11,6 +12,14 @@ namespace Hitbench.Views.Pages;
 public sealed class OHsControlPointLanePanel : VirtualizingPanel
 {
     private IReadOnlyList<OHsControlPointExtent> extents = [];
+    private readonly RetainedTimelineViewport retainedViewport = new();
+    private readonly TranslateTransform translation = new();
+    private bool geometryValid;
+    private (double, double, Guid?, double, Guid?, int?) geometryKey;
+    internal bool IsRetained { get; set; }
+    internal int GeometryBuildCount { get; private set; }
+    internal int MeasureCount { get; private set; }
+    public OHsControlPointLanePanel() => RenderTransform = translation;
     internal Guid? PreviewVolumePointId { get; set; }
     internal int? PreviewVolume { get; set; }
     private IReadOnlyDictionary<Guid, OHsControlPointCurveProjection> curves = new Dictionary<Guid, OHsControlPointCurveProjection>();
@@ -23,12 +32,23 @@ public sealed class OHsControlPointLanePanel : VirtualizingPanel
     internal double HorizontalOffset { get; set; }
     internal int RecycledPointCount { get; private set; }
     internal int RealizedPointCount => InternalChildren.Count;
-    internal void InvalidateGeometry() => InvalidateMeasure();
+    internal void InvalidateGeometry() { geometryValid = false; retainedViewport.Invalidate(); InvalidateMeasure(); }
 
-    internal IReadOnlyList<OHsControlPointExtent> GetExtents(bool refresh = false)
+    internal void UpdateHorizontalOffset(double offset)
+    {
+        HorizontalOffset = offset;
+        if (retainedViewport.Update(offset, ViewportWidth, IsRetained)) InvalidateMeasure();
+        translation.X = retainedViewport.Translation;
+        UpdateLabels(false);
+    }
+
+    internal IReadOnlyList<OHsControlPointExtent> GetExtents()
     {
         var owner = ItemsControl.GetItemsOwner(this);
         if (owner is null) return [];
+        var key = (DurationMilliseconds, ContentWidth, PreviewPointId, PreviewLeft, PreviewVolumePointId, PreviewVolume);
+        if (geometryValid && geometryKey == key) return extents;
+        geometryKey = key; geometryValid = true; GeometryBuildCount++;
         var points = owner.Items.Cast<ControlPointSnapshot>().ToArray();
         if (PreviewPointId is { } id && ContentWidth > 0 && double.IsFinite(PreviewLeft))
             points = points.Select(p => p.Id == id ? p with { Timestamp = (int)Math.Clamp(Math.Round(PreviewLeft / ContentWidth * DurationMilliseconds), 0, int.MaxValue) } : p).ToArray();
@@ -42,12 +62,14 @@ public sealed class OHsControlPointLanePanel : VirtualizingPanel
 
     protected override Size MeasureOverride(Size availableSize)
     {
+        MeasureCount++;
         var owner = ItemsControl.GetItemsOwner(this);
         if (owner is null) return new();
         GetExtents();
+        retainedViewport.Update(HorizontalOffset, ViewportWidth, IsRetained);
         var wanted = extents.Select((point, index) => (point, index)).Where(item =>
             item.point.Id == PinnedPointId || item.point.Id == PreviewPointId ||
-            item.point.Width > 0 && item.point.Left + item.point.Width > HorizontalOffset && item.point.Left < HorizontalOffset + ViewportWidth)
+            item.point.Width > 0 && item.point.Left + item.point.Width > retainedViewport.Origin + retainedViewport.Start && item.point.Left < retainedViewport.Origin + retainedViewport.Start + retainedViewport.Width)
             .Select(item => item.index).ToHashSet();
         var generator = (IRecyclingItemContainerGenerator)((IItemContainerGenerator)owner.ItemContainerGenerator).GetItemContainerGeneratorForPanel(this);
         for (var childIndex = InternalChildren.Count - 1; childIndex >= 0; childIndex--)
@@ -83,7 +105,7 @@ public sealed class OHsControlPointLanePanel : VirtualizingPanel
         {
             var index = generator.IndexFromGeneratorPosition(new(childIndex, 0));
             if (index < 0 || index >= extents.Count) continue;
-            var extent = extents[index]; var left = extent.Left - HorizontalOffset;
+            var extent = extents[index]; var left = extent.Left - retainedViewport.Origin;
             var width = extent.Width;
             if (width == 0) { width = Math.Min(40, Math.Max(0, ViewportWidth)); left = Math.Clamp(left, 0, Math.Max(0, ViewportWidth - width)); }
             var child = InternalChildren[childIndex];
@@ -91,18 +113,33 @@ public sealed class OHsControlPointLanePanel : VirtualizingPanel
             if (OHsControlPointLane.FindChild<OHsControlPointZone>(child) is { } zone)
             {
                 zone.Curve = curves.GetValueOrDefault(extent.Id);
-                var visibleLeft = Math.Clamp(-left, 0, width);
-                var visibleRight = Math.Clamp(ViewportWidth - left, visibleLeft, width);
-                zone.SetVisibleLabelRange(zone.FlowDirection == FlowDirection.RightToLeft ? width - visibleRight : visibleLeft, visibleRight - visibleLeft);
             }
             SetZIndex(child, extent.Id == PinnedPointId || extent.Id == PreviewPointId ? 1 : 0);
         }
+        translation.X = retainedViewport.Translation;
+        UpdateLabels(true);
         return finalSize;
+    }
+
+    private void UpdateLabels(bool updateWidth)
+    {
+        var owner = ItemsControl.GetItemsOwner(this);
+        if (owner is null) return;
+        var generator = (IItemContainerGenerator)((IItemContainerGenerator)owner.ItemContainerGenerator).GetItemContainerGeneratorForPanel(this);
+        for (var childIndex = 0; childIndex < InternalChildren.Count; childIndex++)
+        {
+            var index = generator.IndexFromGeneratorPosition(new(childIndex, 0));
+            if (index < 0 || index >= extents.Count || OHsControlPointLane.FindChild<OHsControlPointZone>(InternalChildren[childIndex]) is not { } zone) continue;
+            var extent = extents[index]; var left = extent.Left - HorizontalOffset; var width = extent.Width;
+            var visibleLeft = Math.Clamp(-left, 0, width);
+            var visibleRight = Math.Clamp(ViewportWidth - left, visibleLeft, width);
+            zone.SetVisibleLabelRange(zone.FlowDirection == FlowDirection.RightToLeft ? width - visibleRight : visibleLeft, visibleRight - visibleLeft, updateWidth);
+        }
     }
 
     protected override void OnItemsChanged(object sender, ItemsChangedEventArgs args)
     {
         if (args.Action == NotifyCollectionChangedAction.Reset) RemoveInternalChildRange(0, InternalChildren.Count);
-        base.OnItemsChanged(sender, args); InvalidateMeasure();
+        base.OnItemsChanged(sender, args); InvalidateGeometry();
     }
 }

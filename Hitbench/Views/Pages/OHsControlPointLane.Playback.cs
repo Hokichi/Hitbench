@@ -7,7 +7,7 @@ namespace Hitbench.Views.Pages;
 public partial class OHsControlPointLane
 {
     public static readonly DependencyProperty IsPlaybackMarkerStaticProperty = DependencyProperty.Register(nameof(IsPlaybackMarkerStatic), typeof(bool), typeof(OHsControlPointLane),
-        new PropertyMetadata(false, (d, _) => ((OHsControlPointLane)d).UpdatePlaybackMarker()));
+        new PropertyMetadata(false, (d, _) => { var lane = (OHsControlPointLane)d; lane.SyncPanel(); lane.UpdatePlaybackMarker(); }));
     public bool IsPlaybackMarkerStatic { get => (bool)GetValue(IsPlaybackMarkerStaticProperty); set => SetValue(IsPlaybackMarkerStaticProperty, value); }
     private (double Minimum, double Maximum) OHsControlPointLayoutBounds() => OHsTimelineViewport.GetHorizontalBounds(ContentWidth, ViewportWidth, HorizontalScrollPadding);
     public static readonly DependencyProperty PositionProperty = DependencyProperty.Register(nameof(Position), typeof(TimeSpan), typeof(OHsControlPointLane),

@@ -17,7 +17,7 @@
      </Grid>
      <TextBlock Text="{Binding Label, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}" Foreground="{TemplateBinding Foreground}"
        FontFamily="{TemplateBinding FontFamily}" FontWeight="{TemplateBinding FontWeight}" FontStyle="{TemplateBinding FontStyle}" FontSize="{TemplateBinding FontSize}" TextTrimming="CharacterEllipsis" VerticalAlignment="Top" HorizontalAlignment="Left"
-       Margin="8,4,8,0" MaxWidth="{Binding VisibleLabelWidth, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}" Style="{StaticResource BaseTextBlockStyle}" IsHitTestVisible="False">
+       Margin="8,4,8,0" MaxWidth="{Binding VisibleLabelWidth, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}" Clip="{Binding VisibleLabelClip, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}" Style="{StaticResource BaseTextBlockStyle}" IsHitTestVisible="False">
       <TextBlock.RenderTransform><TranslateTransform X="{Binding VisibleLabelInset, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}" /></TextBlock.RenderTransform>
      </TextBlock>
      <Border x:Name="EditingCue" Style="{StaticResource BaseBorderStyle}" Background="{TemplateBinding Foreground}" Height="3" VerticalAlignment="Top" Visibility="Collapsed" IsHitTestVisible="False" />

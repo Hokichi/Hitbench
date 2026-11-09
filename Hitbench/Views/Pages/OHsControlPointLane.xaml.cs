@@ -14,7 +14,13 @@ public partial class OHsControlPointLane : UserControl
     public static readonly DependencyProperty DurationMillisecondsProperty = RegisterCoordinate(nameof(DurationMilliseconds));
     public static readonly DependencyProperty ContentWidthProperty = RegisterCoordinate(nameof(ContentWidth));
     public static readonly DependencyProperty ViewportWidthProperty = RegisterCoordinate(nameof(ViewportWidth));
-    public static readonly DependencyProperty HorizontalOffsetProperty = RegisterCoordinate(nameof(HorizontalOffset));
+    public static readonly DependencyProperty HorizontalOffsetProperty = DependencyProperty.Register(nameof(HorizontalOffset), typeof(double), typeof(OHsControlPointLane),
+        new PropertyMetadata(0d, (d, _) =>
+        {
+            var lane = (OHsControlPointLane)d;
+            if (!lane.IsPlaybackMarkerStatic) { lane.CancelVolumeDrag(); lane.CancelPointDrag(); }
+            lane.panel?.UpdateHorizontalOffset(lane.HorizontalOffset); lane.UpdatePlaybackMarker(); lane.UpdateEditorViewport();
+        }));
     public static readonly DependencyProperty HorizontalScrollPaddingProperty = RegisterCoordinate(nameof(HorizontalScrollPadding));
     public double HorizontalScrollPadding { get => (double)GetValue(HorizontalScrollPaddingProperty); set => SetValue(HorizontalScrollPaddingProperty, value); }
     private static readonly DependencyPropertyKey IsMenuOwnerActivePropertyKey = DependencyProperty.RegisterReadOnly(nameof(IsMenuOwnerActive), typeof(bool), typeof(OHsControlPointLane), new PropertyMetadata(false));
@@ -30,6 +36,8 @@ public partial class OHsControlPointLane : UserControl
     public event Action<double>? HorizontalOffsetRequested;
     internal int RealizedPointCount => EnsurePanel()?.RealizedPointCount ?? 0;
     internal int RecycledPointCount => EnsurePanel()?.RecycledPointCount ?? 0;
+    internal int GeometryBuildCount => EnsurePanel()?.GeometryBuildCount ?? 0;
+    internal int PanelMeasureCount => EnsurePanel()?.MeasureCount ?? 0;
 
     public OHsControlPointLane()
     {
@@ -68,7 +76,7 @@ public partial class OHsControlPointLane : UserControl
         var points = lane.State?.Points ?? [];
         if (lane.PointItems.ItemsSource is not IReadOnlyList<ControlPointSnapshot> previous || !previous.SequenceEqual(points))
             lane.PointItems.ItemsSource = points;
-        lane.panel?.InvalidateMeasure();
+        lane.panel?.InvalidateGeometry();
         lane.UpdateSaveStatus();
     }
 
@@ -83,10 +91,12 @@ public partial class OHsControlPointLane : UserControl
     private void SyncPanel()
     {
         if (panel is null) return;
+        var changed = panel.DurationMilliseconds != DurationMilliseconds || panel.ContentWidth != ContentWidth || panel.ViewportWidth != ViewportWidth || panel.IsRetained != IsPlaybackMarkerStatic;
         panel.DurationMilliseconds = DurationMilliseconds; panel.ContentWidth = ContentWidth;
-        panel.ViewportWidth = ViewportWidth; panel.HorizontalOffset = HorizontalOffset;
+        panel.ViewportWidth = ViewportWidth; panel.IsRetained = IsPlaybackMarkerStatic;
+        if (changed) panel.InvalidateGeometry();
+        panel.UpdateHorizontalOffset(HorizontalOffset);
         if (measuredCulture != CultureInfo.CurrentCulture.Name) { measuredCulture = CultureInfo.CurrentCulture.Name; panel.InvalidateGeometry(); }
-        panel.InvalidateMeasure();
     }
 
     protected override Size MeasureOverride(Size constraint)
@@ -98,7 +108,7 @@ public partial class OHsControlPointLane : UserControl
         return result;
     }
 
-    internal IReadOnlyList<OHsControlPointExtent> GetExtents() => EnsurePanel()?.GetExtents(true) ?? [];
+    internal IReadOnlyList<OHsControlPointExtent> GetExtents() => EnsurePanel()?.GetExtents() ?? [];
 
     private OHsControlPointZone? FindRealizedTag(Guid id)
     {

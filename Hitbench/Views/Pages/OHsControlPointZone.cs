@@ -53,11 +53,14 @@ public sealed class OHsControlPointZone : Button
     public double VolumeLineOffset => (double)GetValue(VolumeLineOffsetProperty);
     public double VisibleLabelInset => (double)GetValue(VisibleLabelInsetProperty);
     public double VisibleLabelWidth => (double)GetValue(VisibleLabelWidthProperty);
+    private readonly System.Windows.Media.RectangleGeometry visibleLabelClip = new();
+    public System.Windows.Media.Geometry VisibleLabelClip => visibleLabelClip;
 
-    internal void SetVisibleLabelRange(double inset, double width)
+    internal void SetVisibleLabelRange(double inset, double width, bool updateWidth = true)
     {
         SetValue(VisibleLabelInsetPropertyKey, Math.Max(0, inset));
-        SetValue(VisibleLabelWidthPropertyKey, Math.Max(0, width - 16));
+        if (updateWidth) SetValue(VisibleLabelWidthPropertyKey, Math.Max(0, Math.Min(ActualWidth, width) - 16));
+        visibleLabelClip.Rect = new Rect(0, 0, Math.Max(0, width - 16), Math.Max(0, ActualHeight));
     }
 
     internal void RefreshText()

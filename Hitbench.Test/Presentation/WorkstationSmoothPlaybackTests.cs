@@ -9,6 +9,18 @@ namespace Hitbench.Test.Presentation;
 public class WorkstationSmoothPlaybackTests
 {
     [Test]
+    public void ControlPointLaneReusesGeometryAndLayoutForFractionalMovement()
+    {
+        var points = Enumerable.Range(0, 1000).Select(i => new Hitbench.Resources.DataModels.ControlPointSnapshot(Guid.NewGuid(), i * 10, 50, "Normal")).ToArray();
+        var lane = OHsControlPointLaneTests.Create(points); lane.IsPlaybackMarkerStatic = true; lane.HorizontalOffset = 400;
+        UiTestPump.Layout(lane, 400, 180);
+        var geometry = lane.GeometryBuildCount; var measures = lane.PanelMeasureCount;
+        for (var i = 1; i <= 100; i++) { lane.HorizontalOffset = 400 + i / 4d; lane.UpdateLayout(); }
+        Assert.That(lane.GeometryBuildCount, Is.EqualTo(geometry)); Assert.That(lane.PanelMeasureCount, Is.EqualTo(measures));
+        Assert.That(lane.RealizedPointCount, Is.LessThan(100));
+        Assert.That(lane.HitTestTimingBoundary(points[25].Id, 500 - 425), Is.EqualTo(points[25].Id));
+    }
+    [Test]
     public void SampleGridRetainsContentWhileHitTestingUsesLiveOffset()
     {
         var node = new Sample { Timestamp = 3000 };
