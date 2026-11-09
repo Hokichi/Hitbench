@@ -655,6 +655,7 @@ public partial class WorkstationPageVM(
         IncreaseSubdivisionCommand.NotifyCanExecuteChanged();
         DecreaseSubdivisionCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(CanPlay));
+        OnPropertyChanged(nameof(CanToggleScrollWithMarker));
         OnPropertyChanged(nameof(CanZoom));
         OnPropertyChanged(nameof(CanPlaceSamples));
     }
