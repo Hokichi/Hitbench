@@ -173,6 +173,13 @@
                             ToolTip="Stop audio and return to the beginning" />
                     </StackPanel>
                     <Border Style="{StaticResource OHsWorkstationCompactSeparatorStyle}" />
+                    <customControls:BalloonButton x:Name="UndoButton" ButtonText="Undo" ButtonIcon="{StaticResource RegularUndo}"
+                        Command="{Binding UndoCommand, Mode=OneWay}" Style="{StaticResource OHsWorkstationTransportButtonStyle}"
+                        AutomationProperties.Name="Undo" ToolTip="Undo (Ctrl+Z)" />
+                    <customControls:BalloonButton x:Name="RedoButton" ButtonText="Redo" ButtonIcon="{StaticResource RegularRedo}"
+                        Command="{Binding RedoCommand, Mode=OneWay}" Style="{StaticResource OHsWorkstationTransportButtonStyle}"
+                        AutomationProperties.Name="Redo" ToolTip="Redo (Ctrl+Y)" />
+                    <Border Style="{StaticResource OHsWorkstationCompactSeparatorStyle}" />
                     <customControls:BalloonCheckBox
                         x:Name="ScrollWithMarkerCheckBox"
                         AutomationProperties.HelpText="Follow the current playback marker. Selecting a node turns this off."
