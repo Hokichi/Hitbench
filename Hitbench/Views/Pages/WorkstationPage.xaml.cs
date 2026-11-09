@@ -197,6 +197,7 @@ public partial class WorkstationPage : UserControl
         if (playbackReady && viewModel.IsPlaying)
         {
             viewModel.RefreshPlayback();
+            if (viewModel.IsStaticMarker) viewModel.AdvancePlaybackPresentation(frameTime);
             FollowPlaybackPosition();
         }
         UpdatePlaybackRefreshSubscription();
@@ -217,6 +218,7 @@ public partial class WorkstationPage : UserControl
     private void RefreshVisibility()
     {
         readinessCandidate = null;
+        viewModel.ResetPlaybackPresentation();
         if (playbackReady && !deactivationStarted && IsVisible) viewModel.RefreshPlayback();
         UpdatePlaybackRefreshSubscription();
     }

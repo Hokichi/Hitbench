@@ -20,6 +20,10 @@ public partial class WorkstationPageVM
     private void RestoreMarkerMode(bool value)
     {
         if (SetProperty(ref isStaticMarker, value, nameof(IsStaticMarker)))
+        {
+            ResetPlaybackPresentation();
+            OnPropertyChanged(nameof(DisplayPosition));
             OnPropertyChanged(nameof(CanToggleScrollWithMarker));
+        }
     }
 }

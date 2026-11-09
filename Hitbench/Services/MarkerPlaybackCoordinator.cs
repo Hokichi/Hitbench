@@ -42,6 +42,9 @@ public sealed class MarkerPlaybackCoordinator(IWorkstationAudioService audio,
     private long generation;
     private bool disposed;
     private AudioPlaybackSnapshot latest = new(TimeSpan.Zero, false, null);
+    private long presentationRevision;
+    private PlaybackPresentationSnapshot presentation = new(0, new(TimeSpan.Zero, false, null));
+    public PlaybackPresentationSnapshot Presentation { get { lock (snapshotLock) return presentation; } }
     public event Action? StateChanged;
 
     public (long Generation, AudioPlaybackSnapshot Playback) Latest
@@ -78,17 +81,18 @@ public sealed class MarkerPlaybackCoordinator(IWorkstationAudioService audio,
     public async Task UpdateSamplesAsync(string path, IReadOnlyList<SamplePlaybackEvent> events, CancellationToken token, bool forceReload = false)
     {
         Task preparation = Task.CompletedTask;
-        await TransitionAsync(() => preparation = audio.UpdateSamplesAsync(path, events, token, forceReload), token).ConfigureAwait(false);
+        await TransitionAsync(() => preparation = audio.UpdateSamplesAsync(path, events, token, forceReload), token, false).ConfigureAwait(false);
         await preparation.ConfigureAwait(false);
     }
 
-    private async Task TransitionAsync(Action change, CancellationToken token)
+    private async Task TransitionAsync(Action change, CancellationToken token, bool resetPresentation = true)
     {
         await transitions.WaitAsync(token).ConfigureAwait(false);
         try
         {
             ObjectDisposedException.ThrowIf(disposed, this);
             await QuiesceAsync().ConfigureAwait(false);
+            if (resetPresentation) lock (snapshotLock) presentationRevision++;
             change();
             Tick();
             if (audio.GetSnapshot().IsPlaying && clock.IsValid)
@@ -133,6 +137,7 @@ public sealed class MarkerPlaybackCoordinator(IWorkstationAudioService audio,
     private void Tick()
     {
         var snapshot = audio.GetSnapshot();
+        var precise = snapshot;
         if (snapshot.IsPlaying && clock.IsValid)
         {
             var marker = clock.GetPosition(snapshot.Position, duration);
@@ -141,7 +146,7 @@ public sealed class MarkerPlaybackCoordinator(IWorkstationAudioService audio,
             snapshot = snapshot with { Position = marker };
         }
         else if (snapshot.Error is not null) Reset(snapshot.Position);
-        Publish(snapshot);
+        Publish(snapshot, precise);
     }
 
     private void Reset(TimeSpan position)
@@ -149,13 +154,14 @@ public sealed class MarkerPlaybackCoordinator(IWorkstationAudioService audio,
         processed = position;
     }
 
-    private void Publish(AudioPlaybackSnapshot value)
+    private void Publish(AudioPlaybackSnapshot value, AudioPlaybackSnapshot? precise = null)
     {
         bool notify;
         lock (snapshotLock)
         {
             notify = latest.IsPlaying != value.IsPlaying || latest.Error != value.Error || latest.Warning != value.Warning;
             latest = value;
+            presentation = new(presentationRevision, precise ?? value);
         }
         if (notify) StateChanged?.Invoke();
     }

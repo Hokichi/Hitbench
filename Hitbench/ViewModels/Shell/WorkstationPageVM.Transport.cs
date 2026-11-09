@@ -69,6 +69,8 @@ public partial class WorkstationPageVM
     public void RefreshPlayback()
     {
         if (deactivated) return;
+        var precise = playback.Presentation;
+        if (precise.Revision != observedPresentationRevision || !precise.Playback.IsPlaying) ResetPlaybackPresentation();
         var current = playback.Latest;
         if (presentedPlayback == current) return;
         presentedPlayback = current;
@@ -281,7 +283,7 @@ public partial class WorkstationPageVM
     [ObservableProperty] private TimeSpan position;
     [ObservableProperty] private string elapsedText = "00:00.000";
     [ObservableProperty] private bool isPlaying;
-    partial void OnPositionChanged(TimeSpan value) { NotifyControlPointCommands(); OnPropertyChanged(nameof(CurrentBpmText)); }
+    partial void OnPositionChanged(TimeSpan value) { NotifyControlPointCommands(); OnPropertyChanged(nameof(CurrentBpmText)); if (!IsStaticMarker) OnPropertyChanged(nameof(DisplayPosition)); }
     partial void OnIsPlayingChanged(bool value) => NotifyControlPointCommands();
     private TimeSpan? lastGridTarget;
     private TimeSpan? lastGridAudioPosition;
