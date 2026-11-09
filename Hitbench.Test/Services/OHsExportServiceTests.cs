@@ -50,7 +50,7 @@ public class OHsExportServiceTests
         var text = await File.ReadAllTextAsync(Path.Combine(output, "Song [Hitsounds].osu"));
         var hits = OHsExportPlaybackOracle.Resolve(text);
         Assert.That(hits.Select(h => h.Timestamp).Distinct(), Is.EqualTo(new[] { 100, 200, 300, 400, 600, 620 }));
-        var rendered = OHsExportPlaybackOracle.Render(text, name => AudioDecoder.Decode(Path.Combine(output, name), default), 44100);
+        var rendered = OHsExportPlaybackOracle.Render(text, name => AudioDecoder.Decode(Path.Combine(output, name), default), 44100, _ => DecodedAudio.CopyFrom(new float[2]));
         for (var frame = 0; frame < 44100; frame++)
         {
             double expected = 0;
@@ -245,7 +245,7 @@ public class OHsExportServiceTests
         Assert.That(resolved.Select(p => p.Index).Distinct().Count(), Is.EqualTo(2));
         Assert.That(resolved[0].Index, Is.EqualTo(resolved[2].Index));
         Assert.That(resolved[1].Index, Is.EqualTo(resolved[3].Index));
-        Assert.That(Directory.GetFiles(output).Count(p => Path.GetExtension(p) is ".wav" or ".ogg"), Is.EqualTo(4));
+        Assert.That(Directory.GetFiles(output).Count(p => Path.GetExtension(p) is ".wav" or ".ogg"), Is.EqualTo(2));
         var direct = AudioDecoder.Decode(Path.Combine(output, $"soft-hitclap{resolved[0].Index}.wav"), default);
         Assert.That(direct.Samples.ToArray(), Is.EqualTo(Enumerable.Repeat(.14f, 8820).ToArray()).Within(2d / 32768));
         var mixed = AudioDecoder.Decode(Path.Combine(output, $"soft-hitclap{resolved[1].Index}.ogg"), default);
@@ -255,7 +255,7 @@ public class OHsExportServiceTests
         await new OHsExportService().ExportAsync(request with { Options = request.Options with { SingleFormat = ".ogg", MixedFormat = ".wav" } }, default);
         Assert.That(File.Exists(Path.Combine(output, $"soft-hitclap{resolved[0].Index}.wav")), Is.False);
         Assert.That(File.Exists(Path.Combine(output, $"soft-hitclap{resolved[1].Index}.ogg")), Is.False);
-        Assert.That(Directory.GetFiles(output).Count(p => Path.GetExtension(p) is ".wav" or ".ogg"), Is.EqualTo(4));
+        Assert.That(Directory.GetFiles(output).Count(p => Path.GetExtension(p) is ".wav" or ".ogg"), Is.EqualTo(2));
     }
 
     [TestCase(OHsExportDestination.Project)] [TestCase(OHsExportDestination.Beatmap)]
@@ -288,8 +288,8 @@ public class OHsExportServiceTests
         var request = new OHsExportRequest(Guid.NewGuid(), folder.ProjectPath, source, "missing-song.wav", json, options);
         var output = await new OHsExportService().ExportAsync(request, default);
         var actualSampleNames = Directory.GetFiles(output, "*.wav").Select(Path.GetFileName).ToArray();
-        var plannedSampleNames = plan.Banks.SelectMany(b => b.Value.Select(s => OHsExportRepresentations.FileName(s.Key, b.Key, ".wav"))).ToArray();
-        Assert.That(actualSampleNames, Has.Length.EqualTo(4));
+        var plannedSampleNames = plan.Banks.SelectMany(b => b.Value.Where(s => !s.Value.IsNativeFallback).Select(s => OHsExportRepresentations.FileName(s.Key, b.Key, ".wav"))).ToArray();
+        Assert.That(actualSampleNames, Has.Length.EqualTo(3));
         Assert.That(plan.AudioFileCount, Is.EqualTo(actualSampleNames.Length));
         Assert.That(actualSampleNames, Is.EquivalentTo(plannedSampleNames));
         var text = await File.ReadAllTextAsync(Path.Combine(output, "Song [Hitsounds].osu"));
@@ -309,6 +309,11 @@ public class OHsExportServiceTests
         {
             var slot = new OHsExportSlot(new[] { "Normal", "Soft", "Drum" }[sound.Set - 1], Enum.Parse<SampleType>(sound.Type, true));
             var file = Path.Combine(output, OHsExportRepresentations.FileName(slot, sound.Index, ".wav"));
+            if (sound.Type == "normal" && sound.Timestamp is 200 or 400)
+            {
+                Assert.That(File.Exists(file), Is.False, "Default normal uses native lookup.");
+                continue;
+            }
             Assert.That(File.Exists(file), Is.True);
             var expected = sound.Type == "clap" ? .3f : sound.Timestamp == 100 ? .1f : sound.Timestamp == 300 ? .2f : 0f;
             var samples = AudioDecoder.Decode(file, default).Samples.ToArray();

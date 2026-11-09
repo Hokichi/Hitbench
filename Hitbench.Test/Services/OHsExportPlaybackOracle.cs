@@ -2,14 +2,17 @@ using System.Globalization;
 namespace Hitbench.Test.Services;
 public static class OHsExportPlaybackOracle
 {
-    public static float[] Render(string osuText, Func<string, Hitbench.Services.DecodedAudio> resolveOutput, long frameCount)
+    public static float[] Render(string osuText, Func<string, Hitbench.Services.DecodedAudio> resolveOutput, long frameCount, Func<string, Hitbench.Services.DecodedAudio>? resolveNative = null)
     {
         var output = new double[checked((int)(frameCount * 2))];
         foreach (var hit in Resolve(osuText))
         {
             var set = new[] { "normal", "soft", "drum" }[hit.Set - 1];
             var suffix = hit.Index == 1 ? "" : hit.Index.ToString(CultureInfo.InvariantCulture);
-            using var audio = resolveOutput($"{set}-hit{hit.Type}{suffix}.wav");
+            Hitbench.Services.DecodedAudio decoded;
+            try { decoded = resolveOutput($"{set}-hit{hit.Type}{suffix}.wav"); }
+            catch (FileNotFoundException) when (hit.Type == "normal" && resolveNative is not null) { decoded = resolveNative(set); }
+            using var audio = decoded;
             var start = checked((long)Math.Round(hit.Timestamp * 44.1m, MidpointRounding.AwayFromZero));
             for (var i = 0; i < audio.Samples.Length && start * 2 + i < output.Length; i++)
                 output[checked((int)(start * 2 + i))] += audio.Samples[i] * hit.Volume / 100d;

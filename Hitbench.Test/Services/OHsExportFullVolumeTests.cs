@@ -32,13 +32,13 @@ public class OHsExportFullVolumeTests
             using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             var output = await new OHsExportService().ExportAsync(request, cancellation.Token);
             var files = Directory.GetFiles(output, "*.wav");
-            Assert.That(files, Has.Length.EqualTo(instrumental ? 2 : 1));
+            Assert.That(files, Has.Length.EqualTo(1));
             using var rendered = AudioDecoder.Decode(files.Single(f => !instrumental || f.Contains("whistle")), default);
             Assert.That(rendered.Samples[0], Is.EqualTo(1).Within(2d / 32768));
             Assert.That(rendered.Samples[1], Is.EqualTo(-1).Within(2d / 32768));
             var text = await File.ReadAllTextAsync(Path.Combine(output, "Song [Hitsounds].osu"));
             Assert.That(OHsExportPlaybackOracle.Resolve(text).First().Volume, Is.EqualTo(volumes[i]));
-            var pcm = OHsExportPlaybackOracle.Render(text, name => AudioDecoder.Decode(Path.Combine(output, name), default), 5000);
+            var pcm = OHsExportPlaybackOracle.Render(text, name => AudioDecoder.Decode(Path.Combine(output, name), default), 5000, _ => DecodedAudio.CopyFrom(new float[2]));
             Assert.That(pcm[4410 * 2], Is.EqualTo(volumes[i] / 100d).Within(2d / 32768));
             Assert.That(pcm[4410 * 2 + 1], Is.EqualTo(-volumes[i] / 100d).Within(2d / 32768));
         }
@@ -70,7 +70,7 @@ public class OHsExportFullVolumeTests
             ProjectDataSerializer.Serialize(project), new("Hitsounds", 1, ".wav", ".wav", false));
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         var output = await new OHsExportService().ExportAsync(request, cancellation.Token);
-        Assert.That(Directory.GetFiles(output, "*.wav"), Has.Length.EqualTo(12));
+        Assert.That(Directory.GetFiles(output, "*.wav"), Has.Length.EqualTo(10));
         var text = await File.ReadAllTextAsync(Path.Combine(output, "Song [Hitsounds].osu"));
         var hits = OHsExportPlaybackOracle.Resolve(text).GroupBy(h => h.Timestamp).ToArray();
         Assert.That(hits.Select(g => g.Key), Is.EqualTo(Enumerable.Range(0, 1400).Select(i => 1000 + i * 100)));
@@ -89,7 +89,14 @@ public class OHsExportFullVolumeTests
                 Assert.That(hit.Volume, Is.EqualTo(volume));
                 var set = new[] { "normal", "soft", "drum" }[hit.Set - 1];
                 var suffix = hit.Index == 1 ? "" : hit.Index.ToString();
-                actual += amplitudes[$"{set}-hit{hit.Type}{suffix}.wav"] * volume / 100d;
+                if (!amplitudes.TryGetValue($"{set}-hit{hit.Type}{suffix}.wav", out var amplitude))
+                {
+                    // Explicit silent test skin for native fallback; authored normals must still have files.
+                    Assert.That(hit.Type, Is.EqualTo("normal"));
+                    Assert.That(voices.Any(v => v.Timestamp == hit.Timestamp && v.Type == SampleType.Normal), Is.False);
+                    amplitude = 0;
+                }
+                actual += amplitude * volume / 100d;
             }
             Assert.That(actual, Is.EqualTo(expected[group.Key] * volume / 100).Within(8d / 32768));
         }

@@ -3,10 +3,12 @@ using System.Text;
 namespace Hitbench.Resources.DataModels;
 public sealed record OHsExportAsset
 {
+    public bool IsNativeFallback { get; }
+    public static OHsExportAsset NativeFallback { get; } = new("native-hitnormal", [], true);
     public string Id { get; }
     public IReadOnlyList<(string FileName, int GainPercent)> Sources { get; }
-    public OHsExportAsset(string id, IReadOnlyList<(string FileName, int GainPercent)> sources)
-    { Id = id; Sources = Array.AsReadOnly(sources.ToArray()); }
+    public OHsExportAsset(string id, IReadOnlyList<(string FileName, int GainPercent)> sources, bool isNativeFallback = false)
+    { IsNativeFallback = isNativeFallback; Id = id; Sources = Array.AsReadOnly(sources.ToArray()); }
     public static OHsExportAsset Create(IEnumerable<(string FileName, int GainPercent)> sources)
         => Create(sources, null);
 

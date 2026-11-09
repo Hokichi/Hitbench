@@ -9,9 +9,6 @@ public static partial class OHsExportPlanner
         token.ThrowIfCancellationRequested(); input.Options.Validate();
         var assets = new Dictionary<string, OHsExportAsset>(StringComparer.Ordinal);
         var recipes = new Dictionary<string, IReadOnlyList<OHsExportRepresentation>>(StringComparer.Ordinal);
-        var normals = input.Voices.Where(v => v.Type == SampleType.Normal).ToArray();
-        var support = normals.Any(v => v.GainPercent == 0) ? null : new[] { "Normal", "Soft", "Drum" }
-            .FirstOrDefault(set => normals.All(v => v.Sampleset != set));
         var timestamps = new List<List<OHsExportVoice>>();
         foreach (var voice in input.Voices.OrderBy(v => v.Timestamp))
         {
@@ -21,19 +18,20 @@ public static partial class OHsExportPlanner
             timestamps[^1].Add(voice);
         }
         var timingVolume = CreateTimingVolumeResolver(input);
+        var samplesetAt = CreateTimingSamplesetResolver(input);
         var prepared = 0;
         var groups = timestamps.Select(g =>
         {
             token.ThrowIfCancellationRequested();
             var voices = g.ToArray();
-            var native = OHsExportRepresentations.TryBuildNative(voices, timingVolume((decimal)g[0].Timestamp + 5));
+            var fallbackSet = samplesetAt((decimal)g[0].Timestamp + 5);
+            var fallbackPath = input.HitNormals.GetPath(fallbackSet);
+            var native = OHsExportRepresentations.TryBuildNative(voices, timingVolume((decimal)g[0].Timestamp + 5), fallbackSet, fallbackPath);
             if (native is not null) return (Time: g[0].Timestamp, Choices: (IReadOnlyList<OHsExportRepresentation>)Array.AsReadOnly(new[] { native }));
-            var key = string.Join('|', voices.Select(v => $"{v.Sampleset}:{v.Type}:{v.GainPercent}:{v.FileName.Length}:{v.FileName.ToUpperInvariant()}").Order(StringComparer.Ordinal));
+            var key = fallbackSet + ":" + fallbackPath.Length + ":" + fallbackPath + "|" + string.Join('|', voices.Select(v => $"{v.Sampleset}:{v.Type}:{v.GainPercent}:{v.FileName.Length}:{v.FileName.ToUpperInvariant()}").Order(StringComparer.Ordinal));
             if (!recipes.TryGetValue(key, out var choices))
             {
-                choices = OHsExportRepresentations.Build(voices, token, assets);
-                if (support is not null && voices.All(v => v.Type != SampleType.Normal))
-                    choices = Array.AsReadOnly(choices.Where(c => c.NormalSet == support).ToArray());
+                choices = OHsExportRepresentations.Build(voices, token, assets, fallbackSet, fallbackPath);
                 recipes[key] = choices;
             }
             progress?.Report(new(25 + 10d * ++prepared / timestamps.Count, "Preparing sample combinations"));

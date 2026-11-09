@@ -31,7 +31,7 @@ public class OHsExportRampTests
         var request = new OHsExportRequest(Guid.NewGuid(), folder.ProjectPath, source, "unused.wav", ProjectDataSerializer.Serialize(project), new("Hitsounds", 1, format, format, false));
         var directory = await new OHsExportService().ExportAsync(request, default);
         var text = await File.ReadAllTextAsync(Path.Combine(directory, "Song [Hitsounds].osu"));
-        var pcm = OHsExportPlaybackOracle.Render(text, name => AudioDecoder.Decode(Path.Combine(directory, Path.ChangeExtension(name, format)), default), 110250);
+        var pcm = OHsExportPlaybackOracle.Render(text, name => AudioDecoder.Decode(Path.Combine(directory, Path.ChangeExtension(name, format)), default), 110250, _ => DecodedAudio.CopyFrom(new float[2]));
         Assert.That(OHsExportPlaybackOracle.Resolve(text).Single(h => h.Type == (instrumental ? "whistle" : "normal")).Volume,
             Is.EqualTo(initiallySilent ? 0 : 30));
         foreach (var relativeFrame in new[] { 2205, 22050, 44100, 65000, 70000, 85000 })
@@ -40,7 +40,7 @@ public class OHsExportRampTests
             Assert.That(pcm[frame * 2], Is.EqualTo(initiallySilent ? 0 : .06).Within(format == ".wav" ? 2d / 32768 : .005));
             Assert.That(pcm[frame * 2 + 1], Is.EqualTo(pcm[frame * 2]).Within(.001));
         }
-        Assert.That(Directory.GetFiles(directory, "*hit*" + format), Has.Length.EqualTo(instrumental ? 2 : 1));
+        Assert.That(Directory.GetFiles(directory, "*hit*" + format), Has.Length.EqualTo(1));
         var samplePath = Directory.GetFiles(directory, (instrumental ? "*hitwhistle*" : "*hitnormal*") + format).Single();
         using var raw = AudioDecoder.Decode(samplePath, default);
         Assert.That(raw.FrameCount, Is.EqualTo(88200));

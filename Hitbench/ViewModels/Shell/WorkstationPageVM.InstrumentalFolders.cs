@@ -62,6 +62,7 @@ public partial class WorkstationPageVM
                     if (item.SelectedSampleFileName is { } selected) item.SelectedSampleFileName = Rewrite(selected);
                     foreach (var sample in item.Samples) sample.FileName = Rewrite(sample.FileName);
                 }
+                Hitbench.Resources.DataModels.OHsHitNormalConfiguration.FromProject(project).Rewrite(Rewrite).ApplyTo(project);
                 history.RenameSampleFolder(old, renamed);
                 track.Name = name; track.FolderName = renamed;
                 if (appearance is not null) track.Color = appearance.Color;

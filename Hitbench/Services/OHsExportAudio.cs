@@ -40,20 +40,21 @@ public static class OHsExportAudio
         finally { charge?.Dispose(); }
     }
     public static async Task WriteAsync(string projectPath, string stagingDirectory, OHsExportPlan plan, OHsExportOptions options, CancellationToken token,
-        Func<string, CancellationToken, DecodedAudio>? decode = null, IProgress<OHsExportProgress>? progress = null, AudioMemoryBudget? budget = null)
+        Func<string, CancellationToken, DecodedAudio>? decode = null, IProgress<OHsExportProgress>? progress = null, AudioMemoryBudget? budget = null, Func<string, string>? resolvePath = null)
     {
         budget ??= new();
+        resolvePath ??= file => SamplePaths.Resolve(projectPath, file);
         var decoded = new Dictionary<string, DecodedAudio>(StringComparer.OrdinalIgnoreCase);
         var encoded = new Dictionary<(string Id, string Format), string>();
-        var total = plan.Banks.Values.Sum(b => b.Count);
+        var total = plan.AudioFileCount;
         var finished = 0;
         void ReportOutput() => progress?.Report(new(40 + 45d * ++finished / total, "Generating samples"));
         DecodedAudio Resolve(string file)
         {
             if (!decoded.TryGetValue(file, out var audio))
             {
-                audio = decode is null ? AudioDecoder.Decode(SamplePaths.Resolve(projectPath, file), token, budget: budget)
-                    : decode(SamplePaths.Resolve(projectPath, file), token);
+                audio = decode is null ? AudioDecoder.Decode(resolvePath(file), token, budget: budget)
+                    : decode(resolvePath(file), token);
                 try { audio.AttachBudget(budget); decoded.Add(file, audio); }
                 catch { audio.Dispose(); throw; }
             }
@@ -66,6 +67,7 @@ public static class OHsExportAudio
                 {
                     token.ThrowIfCancellationRequested();
                     var asset = slot.Value;
+                    if (asset.IsNativeFallback) continue;
                     var extension = asset.Sources.Count > 1 ? options.MixedFormat : options.SingleFormat;
                     var output = Path.Combine(stagingDirectory, OHsExportRepresentations.FileName(slot.Key, bank.Key, extension));
                     if (encoded.TryGetValue((asset.Id, extension), out var existing)) { File.Copy(existing, output); ReportOutput(); continue; }
@@ -73,7 +75,7 @@ public static class OHsExportAudio
                     using var rendered = asset.Sources.Count == 1 && single.GainPercent == 100 ? null : Render(asset, Resolve, token, budget);
                     var pcm = rendered ?? Resolve(single.FileName);
                     ValidatePcm(pcm);
-                    var source = asset.Sources.Count == 1 ? SamplePaths.Resolve(projectPath, single.FileName) : null;
+                    var source = asset.Sources.Count == 1 ? resolvePath(single.FileName) : null;
                     if (single.GainPercent == 100 && source is not null && MatchesEncoding(source, extension))
                     {
                         await using var input = File.OpenRead(source); await using var destination = File.Create(output);

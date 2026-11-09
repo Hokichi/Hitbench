@@ -35,7 +35,7 @@ public sealed class OHsWorkstationAudioCardTests
             WorkstationActionMenus.Prepare(actions);
             Assert.That(actions.Visibility, Is.EqualTo(Visibility.Visible));
             Assert.That(actions.Options.Select(i => i.Command), Is.EqualTo(new System.Windows.Input.ICommand[]
-            { vm.ResnapAllSamplesCommand, vm.ReloadSamplesCommand, vm.ToggleTracksCollapsedCommand, vm.ExportCommand }));
+            { vm.ResnapAllSamplesCommand, vm.ImportFromMapsetCommand, vm.ReloadSamplesCommand, vm.ToggleTracksCollapsedCommand, vm.ConfigHitNormalCommand, vm.ExportCommand }));
             var open = card.FindName("OpenFoldersButton") as BalloonMenu;
             Assert.That(open, Is.Not.Null);
             open!.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
@@ -67,7 +67,7 @@ public sealed class OHsWorkstationAudioCardTests
             var commands = menu.Options.Select(item => item.Command).ToArray();
             Assert.That(commands, Is.EquivalentTo(new System.Windows.Input.ICommand[]
             {
-                vm.ResnapAllSamplesCommand, vm.ReloadSamplesCommand, vm.ToggleTracksCollapsedCommand, vm.ExportCommand
+                vm.ResnapAllSamplesCommand, vm.ImportFromMapsetCommand, vm.ReloadSamplesCommand, vm.ToggleTracksCollapsedCommand, vm.ConfigHitNormalCommand, vm.ExportCommand
             }));
             Assert.That(menu.Options.All(item => !item.IsEnabled), Is.True);
             WorkstationActionMenus.Open(menu);

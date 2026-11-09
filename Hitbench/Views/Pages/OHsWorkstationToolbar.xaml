@@ -229,6 +229,9 @@
                             Command="{Binding ReloadSamplesCommand, Mode=OneWay}" ToolTip="Refresh project samples (F5)" />
                         <customControls:BalloonMenuOption Command="{Binding ToggleTracksCollapsedCommand, Mode=OneWay}"
                             Style="{StaticResource OHsWorkstationCollapseOptionStyle}" />
+                        <customControls:BalloonMenuOption ButtonText="Config Hitnormal" ButtonIcon="{StaticResource MusicNote}"
+                            Command="{Binding ConfigHitNormalCommand, Mode=OneWay}" Style="{StaticResource BaseBalloonMenuOptionStyle}"
+                            AutomationProperties.Name="Config Hitnormal" ToolTip="Config Hitnormal" />
                         <customControls:BalloonMenuOption ButtonText="Export" ButtonIcon="{StaticResource Export}"
                             Command="{Binding ExportCommand, Mode=OneWay}" ToolTip="Export" />
                     </customControls:BalloonMenu>

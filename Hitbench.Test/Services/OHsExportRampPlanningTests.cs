@@ -15,9 +15,11 @@ public class OHsExportRampPlanningTests
         var input = new OHsExportInput(baseline.Options with { StartingIndex = 999 }, baseline.Beatmap,
             [new(0, "a.wav", 100, "Normal", SampleType.Normal, 0), new(1100, "b.wav", 100, "Soft", SampleType.Clap, 1)],
             baseline.RequiredPoints, baseline.ControlPoints);
+        Assert.Throws<InvalidOperationException>(() => OHsExportPlanner.Plan(input, default));
+        input = new(input.Options with { StartingIndex = 998 }, input.Beatmap, input.Voices, input.RequiredPoints, input.ControlPoints);
         var plan = OHsExportPlanner.Plan(input, default);
-        Assert.That(plan.AudioFileCount, Is.EqualTo(3));
-        Assert.That(plan.Banks.Keys, Is.EqualTo(new[] { 999 }));
+        Assert.That(plan.AudioFileCount, Is.EqualTo(2));
+        Assert.That(plan.Banks.Keys, Is.EqualTo(new[] { 998, 999 }));
     }
     [Test]
     public void LongFixedRunUsesBoundedSearchStack()

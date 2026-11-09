@@ -2,6 +2,9 @@ namespace Hitbench.Core.Entities;
 
 public class ProjectData
 {
+    public string NormalHitNormalPath { get; set; } = string.Empty;
+    public string SoftHitNormalPath { get; set; } = string.Empty;
+    public string DrumHitNormalPath { get; set; } = string.Empty;
     public string CurrentSkin { get; set; } = string.Empty;
     public bool AllowDefaults { get; set; }
     public bool IsPinned { get; set; }

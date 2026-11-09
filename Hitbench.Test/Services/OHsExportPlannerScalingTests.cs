@@ -48,7 +48,7 @@ public class OHsExportPlannerScalingTests
         var next = OHsExportRepresentations.Build([voice with { Timestamp = 2000 }], default, assets);
         Assert.That(next[0].Slots.Values.Single(), Is.SameAs(first[0].Slots.Values.Single()));
     }
-    [TestCase(SampleType.Normal, 7)] [TestCase(SampleType.Clap, 14)]
+    [TestCase(SampleType.Normal, 7)] [TestCase(SampleType.Clap, 7)]
     public void HundredsOfConflictingRepeatedRecipesFinishAtProvenMinimum(SampleType type, int files)
     {
         var map = OHsExportBeatmap.Parse("[TimingPoints]\n0,500,4,1,1,100,1,0\n");
@@ -70,7 +70,7 @@ public class OHsExportPlannerScalingTests
         var input = new OHsExportInput(new("Hitsounds", 1, ".wav", ".wav", false), map, MixedExportVoices.Create(groups), map.TimingPoints);
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         var plan = OHsExportPlanner.Plan(input, cancellation.Token);
-        Assert.That(plan.AudioFileCount, Is.EqualTo(12));
+        Assert.That(plan.AudioFileCount, Is.EqualTo(10));
         Assert.That(plan.Circles, Has.Count.EqualTo(groups));
     }
     [TestCase(4, false), TestCase(12, false), TestCase(4, true), TestCase(8, true)]

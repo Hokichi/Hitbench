@@ -97,7 +97,8 @@ internal sealed class OHsExportLayoutSearch
         return result;
     }
 
-    private static int Count(int[] map) => map.Count(id => id != 0);
+    private bool IsFile(int id) => id != 0 && !assets[id - 1].IsNativeFallback;
+    private int Count(int[] map) => map.Count(IsFile);
     private static string MapKey(int[] map) => string.Join(',', map);
 
     private static bool Contains(int[] bank, int[] map)
@@ -106,13 +107,13 @@ internal sealed class OHsExportLayoutSearch
         return true;
     }
 
-    private static int Added(int[] bank, int[] map)
+    private int Added(int[] bank, int[] map)
     {
         var added = 0;
         for (var s = 0; s < 12; s++)
         {
             if (map[s] != 0 && bank[s] != 0 && map[s] != bank[s]) return -1;
-            if (map[s] != 0 && bank[s] == 0) added++;
+            if (IsFile(map[s]) && bank[s] == 0) added++;
         }
         return added;
     }
@@ -133,19 +134,12 @@ internal sealed class OHsExportLayoutSearch
     private int Bound(int files)
     {
         var missing = 0;
-        var missingAdditions = 0;
         foreach (var pair in copies)
         {
             Check();
-            var count = Math.Max(0, pair.Value - banks.Count(b => b[pair.Key.Slot] == pair.Key.Asset));
-            missing += count;
-            if (pair.Key.Slot % 4 != (int)SampleType.Normal) missingAdditions += count;
+            if (IsFile(pair.Key.Asset)) missing += Math.Max(0, pair.Value - banks.Count(b => b[pair.Key.Slot] == pair.Key.Asset));
         }
-        var normals = banks.Sum(b => b.Where((id, s) => s % 4 == (int)SampleType.Normal && id != 0).Count());
-        // Count flexible identities only when they are not already represented by
-        // mandatory pairs, then combine the overlapping support bound with a max.
-        return Math.Max(minimumSlots, Math.Max(files + missing + flexible.Count(id => !banks.Any(b => b.Contains(id))),
-            files - normals + missingAdditions + Math.Max(normals, minimumBanks)));
+        return Math.Max(minimumSlots, files + missing + flexible.Count(id => IsFile(id) && !banks.Any(b => b.Contains(id))));
     }
 
     private List<(int Bank, int[] Map, int Added)> Options(out bool complete)

@@ -239,7 +239,7 @@
                     <customControls:FadingScrollViewer
                         MaxHeight="{TemplateBinding MaxDropDownHeight}"
                         Margin="4"
-                        CanContentScroll="False"
+                        CanContentScroll="{TemplateBinding ScrollViewer.CanContentScroll}"
                         HorizontalScrollBarVisibility="Disabled"
                         VerticalScrollBarVisibility="Hidden">
                         <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained" />

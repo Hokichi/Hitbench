@@ -3,7 +3,7 @@ namespace Hitbench.Test.Services;
 
 public static class OHsExportBruteForceOracle
 {
-    public static int? MinimumAudioFiles(IReadOnlyList<IReadOnlyList<IReadOnlyDictionary<OHsExportSlot, string>>> recipes, int capacity)
+    public static int? MinimumAudioFiles(IReadOnlyList<IReadOnlyList<IReadOnlyDictionary<OHsExportSlot, string>>> recipes, int capacity, IReadOnlySet<string>? zeroFileAssetIds = null)
     {
         int? minimum = null;
         var assignment = new int[recipes.Count];
@@ -24,7 +24,7 @@ public static class OHsExportBruteForceOracle
                         bank[pair.Key] = pair.Value;
                     }
                 }
-                var files = banks.Values.Sum(b => b.Count);
+                var files = banks.Values.Sum(b => b.Values.Count(id => zeroFileAssetIds?.Contains(id) != true));
                 if (minimum is null || files < minimum) minimum = files;
                 return;
             }

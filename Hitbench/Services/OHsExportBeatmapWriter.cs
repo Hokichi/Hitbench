@@ -28,6 +28,8 @@ public static class OHsExportBeatmapWriter
         input.Options.Validate();
         if (plan.Circles.Select(c => c.Timestamp).Distinct().Count() != plan.Circles.Count)
             throw new InvalidDataException("Export has simultaneous duplicate circles.");
+        if (plan.Banks.Values.Any(bank => bank.Any(slot => slot.Value.IsNativeFallback && slot.Key.Type != Core.Enums.SampleType.Normal)))
+            throw new InvalidDataException("Native fallback is only valid for hitnormal slots.");
         var template = input.Beatmap.OriginalText;
         var newline = Regex.Match(template, @"\r?\n") is { Success: true } lineEnd ? lineEnd.Value : "\n";
         var timing = plan.TimingPoints.OrderBy(p => p.Timestamp).ThenBy(p => p.Kind).Select(p =>

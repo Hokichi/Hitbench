@@ -51,7 +51,7 @@ public class OHsExportPlannerTests
     {
         var input = Input([Voice(100, "a.wav"), Voice(200, "b.wav", "Soft", SampleType.Whistle), Voice(300, "c.wav")], 1, 150);
         var plan = OHsExportPlanner.Plan(input, default);
-        Assert.That(plan.AudioFileCount, Is.EqualTo(5));
+        Assert.That(plan.AudioFileCount, Is.EqualTo(3));
         Assert.That(plan.Circles[0].SampleIndex, Is.Not.EqualTo(plan.Circles[2].SampleIndex));
         AssertResolvedSources(input, plan);
     }
@@ -67,11 +67,9 @@ public class OHsExportPlannerTests
         Assert.That(free.AdditionalPointCount, Is.Zero);
     }
     [Test]
-    public void LastAvailableBankTriesAlternativeSilentNormalSet()
+    public void LastAvailableBankCannotChangeFallbackFamilyToAvoidConflict()
     {
-        var plan = OHsExportPlanner.Plan(Input([Voice(100, "normal.wav", "Normal", SampleType.Normal), Voice(200, "clap.wav", "Soft")], 999), default);
-        Assert.That(plan.Banks.Keys, Is.EqualTo(new[] { 999 }));
-        Assert.That(plan.Circles[1].NormalSet, Is.Not.EqualTo("Normal"));
+        Assert.Throws<InvalidOperationException>(() => OHsExportPlanner.Plan(Input([Voice(100, "normal.wav", "Normal", SampleType.Normal), Voice(200, "clap.wav", "Soft")], 999), default));
         Assert.Throws<InvalidOperationException>(() => OHsExportPlanner.Plan(Input([Voice(100, "a.wav"), Voice(200, "b.wav")], 999), default));
     }
     [Test]
@@ -110,7 +108,7 @@ public class OHsExportPlannerTests
             {
                 var input = Input(voices, 1000 - capacity, opportunities);
                 var groups = voices.Select(v => (v.Timestamp, (IReadOnlyList<IReadOnlyDictionary<OHsExportSlot, string>>)new IReadOnlyDictionary<OHsExportSlot, string>[] { new Dictionary<OHsExportSlot, string> { [new("Normal", SampleType.Normal)] = v.FileName } })).ToArray();
-                var minimum = OHsExportBruteForceOracle.MinimumAudioFiles(groups.Select(g => g.Item2).ToArray(), capacity);
+                var minimum = OHsExportBruteForceOracle.MinimumAudioFiles(groups.Select(g => g.Item2).ToArray(), capacity, new HashSet<string> { OHsExportAsset.NativeFallback.Id });
                 if (minimum is null) Assert.Throws<InvalidOperationException>(() => OHsExportPlanner.Plan(input, default));
                 else
                 {
@@ -128,13 +126,13 @@ public class OHsExportPlannerTests
         {
             var voices = Enumerable.Range(0, 4).Select(i => Voice(100 + i * 100, $"{random.Next(2)}.wav", "Normal", random.Next(2) == 0 ? SampleType.Normal : SampleType.Clap)).ToArray();
             var opportunities = Enumerable.Range(0, 3).Where(_ => random.Next(2) == 0).Select(i => 150 + 100 * i).ToArray();
-            var silence = OHsExportAsset.Create([]).Id;
+            var silence = OHsExportAsset.NativeFallback.Id;
             var groups = voices.Select(v => (v.Timestamp, (IReadOnlyList<IReadOnlyDictionary<OHsExportSlot, string>>)(v.Type == SampleType.Normal
                 ? new IReadOnlyDictionary<OHsExportSlot, string>[] { new Dictionary<OHsExportSlot, string> { [new("Normal", SampleType.Normal)] = OHsExportAsset.Create([(v.FileName, 100)]).Id } }
-                : new[] { "Normal", "Soft", "Drum" }.Select(set => (IReadOnlyDictionary<OHsExportSlot, string>)new Dictionary<OHsExportSlot, string> { [new(set, SampleType.Normal)] = silence, [new("Normal", SampleType.Clap)] = OHsExportAsset.Create([(v.FileName, 100)]).Id }).ToArray()))).ToArray();
+                : new[] { "Normal" }.Select(set => (IReadOnlyDictionary<OHsExportSlot, string>)new Dictionary<OHsExportSlot, string> { [new(set, SampleType.Normal)] = silence, [new("Normal", SampleType.Clap)] = OHsExportAsset.Create([(v.FileName, 100)]).Id }).ToArray()))).ToArray();
             for (var capacity = 1; capacity <= 3; capacity++)
             {
-                var minimum = OHsExportBruteForceOracle.MinimumAudioFiles(groups.Select(g => g.Item2).ToArray(), capacity);
+                var minimum = OHsExportBruteForceOracle.MinimumAudioFiles(groups.Select(g => g.Item2).ToArray(), capacity, new HashSet<string> { OHsExportAsset.NativeFallback.Id });
                 if (minimum is null) Assert.Throws<InvalidOperationException>(() => OHsExportPlanner.Plan(Input(voices, 1000 - capacity, opportunities), default));
                 else
                 {
@@ -173,7 +171,7 @@ public class OHsExportPlannerTests
             Voice(400, "c.wav", "Soft", SampleType.Clap)
         ], 1, opportunity);
         var plan = OHsExportPlanner.Plan(input, default);
-        Assert.That(plan.AudioFileCount, Is.EqualTo(4));
+        Assert.That(plan.AudioFileCount, Is.EqualTo(3));
         AssertResolvedSources(input, plan);
     }
 
@@ -190,12 +188,12 @@ public class OHsExportPlannerTests
     }
 
     [Test]
-    public void RepeatedSingleAndMixtureCountPhysicalSilenceFiles()
+    public void RepeatedSingleAndMixtureDoNotCountNativeFallbackAsFile()
     {
         var voices = new[] { 100, 200, 300, 400 }.Select(time => Voice(time, "a.wav", "Soft"))
             .Concat(new[] { 200, 400 }.Select(time => Voice(time, "b.wav", "Soft"))).ToArray();
         var plan = OHsExportPlanner.Plan(Input(voices), default);
-        Assert.That(plan.AudioFileCount, Is.EqualTo(4));
+        Assert.That(plan.AudioFileCount, Is.EqualTo(2));
         Assert.That(plan.Banks.Values.SelectMany(b => b.Values).Select(a => a.Id).Distinct().Count(), Is.EqualTo(3));
         Assert.That(plan.AdditionalPointCount, Is.EqualTo(3));
         Assert.That(plan.Circles[0].SampleIndex, Is.EqualTo(plan.Circles[2].SampleIndex));
@@ -209,23 +207,23 @@ public class OHsExportPlannerTests
         {
             Voice(time, "a.wav", "Soft", SampleType.Whistle), Voice(time, "b.wav", "Drum", SampleType.Clap)
         }).Append(Voice(200, "a.wav", "Soft", SampleType.Whistle)).ToArray();
-        var silence = OHsExportAsset.Create([]).Id;
+        var silence = OHsExportAsset.NativeFallback.Id;
         var mixed = OHsExportAsset.Create([("a.wav", 100), ("b.wav", 100)]).Id;
         var direct = OHsExportAsset.Create([("a.wav", 100)]).Id;
-        var choices = new[] { "Normal", "Soft", "Drum" }.SelectMany(set => new[]
+        var choices = new[] { "Normal" }.SelectMany(set => new[]
         {
             (IReadOnlyDictionary<OHsExportSlot, string>)new Dictionary<OHsExportSlot, string>
                 { [new(set, SampleType.Normal)] = silence, [new("Soft", SampleType.Whistle)] = mixed },
             new Dictionary<OHsExportSlot, string>
                 { [new(set, SampleType.Normal)] = silence, [new("Drum", SampleType.Clap)] = mixed }
         }).ToArray();
-        var singleton = new[] { "Normal", "Soft", "Drum" }.Select(set =>
+        var singleton = new[] { "Normal" }.Select(set =>
             (IReadOnlyDictionary<OHsExportSlot, string>)new Dictionary<OHsExportSlot, string>
                 { [new(set, SampleType.Normal)] = silence, [new("Soft", SampleType.Whistle)] = direct }).ToArray();
         var groups = new (int Timestamp, IReadOnlyList<IReadOnlyDictionary<OHsExportSlot, string>> Choices)[]
             { (100, choices), (200, singleton), (300, choices) };
-        var expected = OHsExportBruteForceOracle.MinimumAudioFiles(groups.Select(g => g.Choices).ToArray(), capacity);
-        Assert.That(expected, Is.EqualTo(3));
+        var expected = OHsExportBruteForceOracle.MinimumAudioFiles(groups.Select(g => g.Choices).ToArray(), capacity, new HashSet<string> { OHsExportAsset.NativeFallback.Id });
+        Assert.That(expected, Is.EqualTo(2));
         var plan = OHsExportPlanner.Plan(Input(voices, 1000 - capacity), default);
         Assert.That(plan.AudioFileCount, Is.EqualTo(expected!.Value));
     }
@@ -258,8 +256,8 @@ public class OHsExportPlannerTests
         var lateInput = Input(voices, 1, 250);
         var early = OHsExportPlanner.Plan(earlyInput, default);
         var late = OHsExportPlanner.Plan(lateInput, default);
-        Assert.That(early.AudioFileCount, Is.EqualTo(4));
-        Assert.That(late.AudioFileCount, Is.EqualTo(4));
+        Assert.That(early.AudioFileCount, Is.EqualTo(3));
+        Assert.That(late.AudioFileCount, Is.EqualTo(3));
         Assert.That(LayoutSignature(early), Is.EqualTo(LayoutSignature(late)));
         AssertResolvedSources(earlyInput, early);
         AssertResolvedSources(lateInput, late);
@@ -282,9 +280,11 @@ public class OHsExportPlannerTests
     }
 
     [Test]
-    public void AuthoredZeroNormalIsReusedForSupportAtLastIndex()
+    public void AuthoredZeroNormalCannotReplaceNativeFallbackAtLastIndex()
     {
         var input = Input([Voice(100, "zero.wav", "Normal", SampleType.Normal) with { GainPercent = 0 }, Voice(200, "c.wav", "Soft")], 999);
+        Assert.Throws<InvalidOperationException>(() => OHsExportPlanner.Plan(input, default));
+        input = Input(input.Voices.ToArray(), 998);
         var plan = OHsExportPlanner.Plan(input, default);
         Assert.That(plan.AudioFileCount, Is.EqualTo(2));
         Assert.That(plan.Circles[1].NormalSet, Is.EqualTo("Normal"));
@@ -292,7 +292,7 @@ public class OHsExportPlannerTests
     }
 
     [TestCase(1)] [TestCase(2)] [TestCase(3)]
-    public void AllNormalFamiliesKeepSilenceAlternatives(int capacity)
+    public void AllNormalFamiliesKeepNativeFallbackSeparate(int capacity)
     {
         var input = Input([Voice(100, "a.wav", "Normal", SampleType.Normal), Voice(200, "b.wav", "Soft", SampleType.Normal),
             Voice(300, "c.wav", "Drum", SampleType.Normal), Voice(400, "d.wav", "Soft")], 1000 - capacity);
@@ -300,13 +300,13 @@ public class OHsExportPlannerTests
         else
         {
             var plan = OHsExportPlanner.Plan(input, default);
-            Assert.That(plan.AudioFileCount, Is.EqualTo(5));
+            Assert.That(plan.AudioFileCount, Is.EqualTo(4));
             AssertResolvedSources(input, plan);
         }
     }
 
-    [TestCase("Normal", "Soft")] [TestCase("Soft", "Normal")] [TestCase("Drum", "Normal")]
-    public void SupportUsesGloballyUnusedNormalFamily(string authored, string support)
+    [TestCase("Normal", "Normal")] [TestCase("Soft", "Normal")] [TestCase("Drum", "Normal")]
+    public void FallbackUsesTimingFamilyRegardlessOfAuthoredNormalFamily(string authored, string support)
     {
         var input = Input([Voice(100, "a.wav", authored, SampleType.Normal), Voice(200, "c.wav", "Drum")]);
         var plan = OHsExportPlanner.Plan(input, default);
@@ -325,9 +325,9 @@ public class OHsExportPlannerTests
         var original = OHsExportPlanner.Plan(originalInput, default);
         var repeated = OHsExportPlanner.Plan(repeatedInput, default);
         var reordered = OHsExportPlanner.Plan(reversedInput, default);
-        Assert.That(original.AudioFileCount, Is.EqualTo(12));
-        Assert.That(repeated.AudioFileCount, Is.EqualTo(12));
-        Assert.That(reordered.AudioFileCount, Is.EqualTo(12));
+        Assert.That(original.AudioFileCount, Is.EqualTo(10));
+        Assert.That(repeated.AudioFileCount, Is.EqualTo(10));
+        Assert.That(reordered.AudioFileCount, Is.EqualTo(10));
         Assert.That(LayoutSignature(repeated), Is.EqualTo(LayoutSignature(original)));
         Assert.That(LayoutSignature(reordered), Is.EqualTo(LayoutSignature(original)));
         Assert.That(repeated.Circles, Has.Count.EqualTo(140));

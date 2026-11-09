@@ -11,7 +11,7 @@ public static partial class OHsExportRepresentations
         if (!Sets.Contains(slot.Sampleset) || !Enum.IsDefined(slot.Type) || index is < 1 or > 999 || extension is not (".ogg" or ".wav" or ".mp3")) throw new ArgumentException("Invalid export slot filename.");
         return $"{slot.Sampleset.ToLowerInvariant()}-hit{slot.Type.ToString().ToLowerInvariant()}{(index == 1 ? "" : index.ToString(System.Globalization.CultureInfo.InvariantCulture))}{extension}";
     }
-    public static IReadOnlyList<OHsExportRepresentation> Build(IReadOnlyList<OHsExportVoice> voices, CancellationToken token, IDictionary<string, OHsExportAsset>? assets = null)
+    public static IReadOnlyList<OHsExportRepresentation> Build(IReadOnlyList<OHsExportVoice> voices, CancellationToken token, IDictionary<string, OHsExportAsset>? assets = null, string fallbackSet = "Normal", string fallbackPath = "")
     {
         token.ThrowIfCancellationRequested();
         var components = voices.GroupBy(v => (v.Sampleset, v.Type))
@@ -20,7 +20,8 @@ public static partial class OHsExportRepresentations
         var results = new Dictionary<string, OHsExportRepresentation>(StringComparer.Ordinal);
         var bestParticipants = int.MaxValue;
         var groups = new List<List<int>>();
-        var silence = OHsExportAsset.Create([], assets);
+        if (!Sets.Contains(fallbackSet)) throw new ArgumentException("Invalid fallback sampleset.", nameof(fallbackSet));
+        var fallback = fallbackPath.Length == 0 ? OHsExportAsset.NativeFallback : OHsExportAsset.Create([(fallbackPath, 100)], assets);
         var maximumGroups = (components.Any(c => c.Slot.Type == SampleType.Normal) ? 1 : 0) +
             components.Where(c => c.Slot.Type != SampleType.Normal).GroupBy(c => c.Slot.Sampleset)
                 .Select(g => g.Select(c => c.Slot.Type).Distinct().Count()).DefaultIfEmpty(0).Max();
@@ -30,7 +31,7 @@ public static partial class OHsExportRepresentations
             if (results.Count > 0) break;
         }
         if (components.Length == 0)
-            foreach (var set in Sets) results.Add(set, new(set, "Normal", 0, new Dictionary<OHsExportSlot, OHsExportAsset> { [new(set, SampleType.Normal)] = silence }, 0, 0));
+            results.Add(fallbackSet, new(fallbackSet, "Normal", 0, new Dictionary<OHsExportSlot, OHsExportAsset> { [new(fallbackSet, SampleType.Normal)] = fallback }, 0, 0));
         return Array.AsReadOnly(results.OrderBy(p => p.Key, StringComparer.Ordinal).Select(p => p.Value).ToArray());
 
         void Partition(int next, int count)
@@ -76,10 +77,10 @@ public static partial class OHsExportRepresentations
             var normal = slots.Keys.FirstOrDefault(s => s.Type == SampleType.Normal);
             var addition = slots.Keys.FirstOrDefault(s => s.Type != SampleType.Normal)?.Sampleset ?? "Normal";
             var flags = slots.Keys.Aggregate(0, (mask, slot) => mask | (slot.Type switch { SampleType.Normal => 1, SampleType.Whistle => 2, SampleType.Finish => 4, SampleType.Clap => 8, _ => throw new ArgumentException("Invalid sample type.") }));
-            foreach (var normalSet in normal is null ? Sets : [normal.Sampleset])
+            foreach (var normalSet in normal is null ? [fallbackSet] : new[] { normal.Sampleset })
             {
                 var map = slots.ToDictionary();
-                if (normal is null) map.Add(new(normalSet, SampleType.Normal), silence);
+                if (normal is null) map.Add(new(normalSet, SampleType.Normal), fallback);
                 var key = string.Join("|", map.OrderBy(p => p.Key.Sampleset).ThenBy(p => p.Key.Type).Select(p => $"{p.Key}:{p.Value.Id}"));
                 if (participants < bestParticipants) { results.Clear(); bestParticipants = participants; }
                 results.TryAdd(key, new(normalSet, addition, flags, map, components.Length - groups.Count, participants));

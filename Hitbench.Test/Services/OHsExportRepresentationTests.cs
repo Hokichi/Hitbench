@@ -61,11 +61,11 @@ public class OHsExportRepresentationTests
     }
 
     [Test]
-    public void AdditionOnlyEnumeratesAllSilentNormalSets()
+    public void AdditionOnlyUsesConfiguredNativeNormalFamily()
     {
         var result = OHsExportRepresentations.Build([Voice("Soft", SampleType.Clap)], default);
-        Assert.That(result.Select(r => r.NormalSet), Is.EquivalentTo(new[] { "Normal", "Soft", "Drum" }));
-        Assert.That(result.All(r => r.Slots[new(r.NormalSet, SampleType.Normal)].Sources.Count == 0), Is.True);
+        Assert.That(result.Select(r => r.NormalSet), Is.EquivalentTo(new[] { "Normal" }));
+        Assert.That(result.All(r => r.Slots[new(r.NormalSet, SampleType.Normal)].IsNativeFallback), Is.True);
     }
 
     [Test]

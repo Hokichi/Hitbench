@@ -34,7 +34,7 @@ public partial class WorkstationPageVM(
     TimeProvider? timeProvider = null,
     IOHsExportDialogService? exportDialog = null,
     IOHsExportDirectoryLauncher? directoryLauncher = null,
-    IOHsTrackAppearanceDialogService? trackAppearanceDialog = null, Func<TimeSpan, CancellationToken, Task>? saveDelay = null, IOHsSampleDropImportDialogService? sampleDropDialog = null, OHsAudioOperationProgress? audioOperationProgress = null, IOHsSkinDefaultsService? skinDefaults = null, OHsMapsetSampleImportService? mapsetImports = null) : ObservableObject
+    IOHsTrackAppearanceDialogService? trackAppearanceDialog = null, Func<TimeSpan, CancellationToken, Task>? saveDelay = null, IOHsSampleDropImportDialogService? sampleDropDialog = null, OHsAudioOperationProgress? audioOperationProgress = null, IOHsSkinDefaultsService? skinDefaults = null, OHsMapsetSampleImportService? mapsetImports = null, IOHsHitNormalDialogService? hitNormalDialog = null) : ObservableObject
 {
     private readonly IWorkstationAudioService audioService = playback.Audio;
     private bool subscribedToPlayback;
@@ -68,7 +68,7 @@ public partial class WorkstationPageVM(
     public bool CanAddTrack => CanEditTracks;
     public bool CanRemoveTrack => !folderRenamesActive && !IsNodeEditBusy && CanEditTracks && !importBusy && !removalBusy && trackRemovalDialog is not null;
     public bool CanPlaceSamples => !folderRenamesActive && !IsNodeEditBusy && CanEditTracks && Waveform is not null && !importBusy && !removalBusy;
-    public bool HasPendingSaves => IsExporting || playbackVolumes.HasPendingSaves || folderRenamesActive || instrumentBusy || managingSamples || IsNodeEditBusy || pendingZoom is not null || importBusy || removalBusy || !saveTail.IsCompleted || lastSaveError is not null;
+    public bool HasPendingSaves => hitNormalBusy || IsExporting || playbackVolumes.HasPendingSaves || folderRenamesActive || instrumentBusy || managingSamples || IsNodeEditBusy || pendingZoom is not null || importBusy || removalBusy || !saveTail.IsCompleted || lastSaveError is not null;
     [ObservableProperty] private string? saveError;
     private CancellationTokenSource? loadCancellation;
     private Task? activeLoad;
@@ -83,7 +83,7 @@ public partial class WorkstationPageVM(
     [ObservableProperty] private ProjectLoadPhase loadPhase = ProjectLoadPhase.PreparingData;
     public int LoadGeneration => loadGeneration;
     public bool IsLoading => LoadPhase is ProjectLoadPhase.PreparingData or ProjectLoadPhase.AwaitingPresentation;
-    public bool IsInteractionReady => LoadPhase == ProjectLoadPhase.Ready && !deactivated && !IsReturning && !reloadingSamples && !IsExporting && !IsRefreshingSkinDefaults;
+    public bool IsInteractionReady => LoadPhase == ProjectLoadPhase.Ready && !deactivated && !IsReturning && !reloadingSamples && !IsExporting && !IsRefreshingSkinDefaults && !hitNormalBusy;
     public bool CanGoBack => !deactivated && !IsReturning;
     public bool ShowStatusOverlay => IsLoading || IsSavingForReturn;
     public string StatusText => IsSavingForReturn ? "Saving..." : "Loading Project...";
@@ -120,6 +120,7 @@ public partial class WorkstationPageVM(
         ResetSampleConfiguration();
         trackAppearanceCancellation?.Cancel();
         await SettleFolderOpenAsync();
+        await SettleHitNormalAsync();
         await SettleExportAsync();
         if (reloadingSamples && token != reloadSamplesCancellation?.Token) reloadSamplesCancellation?.Cancel();
         await SettleControlPointsAsync();
@@ -159,6 +160,7 @@ public partial class WorkstationPageVM(
         ResetSampleConfiguration();
         trackAppearanceCancellation?.Cancel();
         await SettleFolderOpenAsync();
+        await SettleHitNormalAsync();
         await SettleExportAsync();
         reloadSamplesCancellation?.Cancel();
         await SettleControlPointsAsync();
@@ -295,6 +297,7 @@ public partial class WorkstationPageVM(
 
     public async Task FlushSavesAsync()
     {
+        await hitNormalOperation;
         await skinDefaultsOperation;
         await playbackVolumes.FlushAsync();
         if(instrumentWorkflow is { } workflow) await workflow;
@@ -317,7 +320,7 @@ public partial class WorkstationPageVM(
 
     partial void OnIsReturningChanged(bool value)
     {
-        if (value) { mapsetImportCancellation?.Cancel(); trackAppearanceCancellation?.Cancel(); nodeEditCancellation?.Cancel(); folderOpenCancellation?.Cancel(); }
+        if (value) { hitNormalCancellation?.Cancel(); mapsetImportCancellation?.Cancel(); trackAppearanceCancellation?.Cancel(); nodeEditCancellation?.Cancel(); folderOpenCancellation?.Cancel(); }
         OnPropertyChanged(nameof(CanGoBack));
         OnPropertyChanged(nameof(IsInteractionReady));
         NotifyEditingState();
@@ -352,6 +355,7 @@ public partial class WorkstationPageVM(
         var prepared = false;
         try
         {
+            await WaitForReturnAsync(SettleHitNormalAsync());
             await WaitForReturnAsync(SettleExportAsync());
             pendingPlayCancellation?.Cancel();
             await WaitForReturnAsync(playback.PauseAsync(CancellationToken.None));
@@ -657,6 +661,7 @@ public partial class WorkstationPageVM(
 
     private void NotifyEditingState()
     {
+        NotifyHitNormalCommand();
         NotifyFolderCommands();
         NotifyExportState();
         NotifySampleReloadAvailability();

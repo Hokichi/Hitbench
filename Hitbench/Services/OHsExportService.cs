@@ -51,10 +51,13 @@ public sealed class OHsExportService(OHsExportPublisher? publisher = null, Func<
         var input = OHsExportInputFactory.Create(project, map, request.Options, token, defaults, request.DurationMilliseconds ?? double.PositiveInfinity);
         progress?.Report(new(5, "Optimizing sample reuse"));
         var plan = OHsExportPlanner.Plan(input, token, progress);
+        string ResolveSource(string file) => Path.IsPathFullyQualified(file)
+            ? OHsHitNormalSamples.Resolve(request.ProjectPath, Path.GetDirectoryName(mapPath)!, file)
+            : SamplePaths.Resolve(request.ProjectPath, file);
         var sourcePaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var file in plan.Banks.Values.SelectMany(bank => bank.Values).SelectMany(asset => asset.Sources).Select(source => source.FileName).Concat(input.Voices.Where(v => !v.IsDefault).Select(v => v.FileName)).Distinct(StringComparer.OrdinalIgnoreCase))
         {
-            token.ThrowIfCancellationRequested(); var path = ValidateSource(SamplePaths.Resolve(request.ProjectPath, file));
+            token.ThrowIfCancellationRequested(); var path = ValidateSource(ResolveSource(file));
             fingerprints[path] = OHsExportPublisher.HashFile(path);
             sourcePaths.Add(path);
         }
@@ -82,13 +85,13 @@ public sealed class OHsExportService(OHsExportPublisher? publisher = null, Func<
 
             var generated = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { [difficultyName] = "difficulty" };
             foreach (var bank in plan.Banks)
-                foreach (var slot in bank.Value)
+                foreach (var slot in bank.Value.Where(slot => !slot.Value.IsNativeFallback))
                     generated.Add(OHsExportRepresentations.FileName(slot.Key, bank.Key, slot.Value.Sources.Count > 1 ? request.Options.MixedFormat : request.Options.SingleFormat), "sample");
             if (request.Options.Destination == OHsExportDestination.Beatmap) OHsExportPublisher.ValidateBeatmapDestination(request.BeatmapPath, generated, token);
             progress?.Report(new(40, "Generating samples"));
             async Task BuildAsync(string stage, CancellationToken cancellation)
             {
-                await OHsExportAudio.WriteAsync(request.ProjectPath, stage, plan, request.Options, cancellation, (path, _) => decoded[path].Retain(), progress, memoryBudget);
+                await OHsExportAudio.WriteAsync(request.ProjectPath, stage, plan, request.Options, cancellation, (path, _) => decoded[path].Retain(), progress, memoryBudget, ResolveSource);
                 await File.WriteAllTextAsync(Path.Combine(stage, difficultyName), OHsExportBeatmapWriter.Write(input, plan), sourceEncoding, cancellation);
                 foreach (var source in fingerprints)
                 {

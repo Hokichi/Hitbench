@@ -19,6 +19,14 @@ public static class ProjectDataSerializer
             nameof(ProjectData.WorkstationZoom), nameof(ProjectData.BeatmapPath), nameof(ProjectData.Tracks),
             nameof(ProjectData.ControlPoints), nameof(ProjectData.Offsets), nameof(ProjectData.BPMs),
             "Samples", "IsCollapsed");
+        foreach (var name in new[] { nameof(ProjectData.NormalHitNormalPath), nameof(ProjectData.SoftHitNormalPath), nameof(ProjectData.DrumHitNormalPath) })
+        {
+            var value = Member(root, name);
+            if (value is null) continue;
+            if (value.Type != JTokenType.String || OHsHitNormalSamples.GetPathError(value.Value<string>()!) is not null)
+                throw new InvalidDataException($"Project {name} must be a valid sample path or empty string.");
+            if (!Path.IsPathFullyQualified(value.Value<string>()!)) root[name] = value.Value<string>()!.Replace('\\', '/');
+        }
         var allowDefaults = Member(root, nameof(ProjectData.AllowDefaults));
         if (allowDefaults is not null && allowDefaults.Type != JTokenType.Boolean)
             throw new InvalidDataException("Project AllowDefaults must be a boolean.");

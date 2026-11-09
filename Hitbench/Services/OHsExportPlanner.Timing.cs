@@ -4,6 +4,17 @@ namespace Hitbench.Services;
 
 public static partial class OHsExportPlanner
 {
+    internal static Func<decimal, string> CreateTimingSamplesetResolver(OHsExportInput input)
+    {
+        var points = input.RequiredPoints.OrderBy(p => p.Timestamp).ThenBy(p => p.Kind).ToArray();
+        return time =>
+        {
+            var low = 0; var high = points.Length;
+            while (low < high) { var middle = low + (high - low) / 2; if (points[middle].Timestamp <= time) low = middle + 1; else high = middle; }
+            return low == 0 ? "Normal" : points[low - 1].SampleSet switch { 2 => "Soft", 3 => "Drum", _ => "Normal" };
+        };
+    }
+
     internal static Func<decimal, int> CreateTimingVolumeResolver(OHsExportInput input)
     {
         if (input.ControlPoints.Count > 0)

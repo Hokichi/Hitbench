@@ -69,6 +69,9 @@ public partial class App : Application
             provider.GetRequiredService<Func<Hitbench.Resources.DataModels.OHsExportRequest, OHsExportPopupVM>>()));
         registrations.AddSingleton<INodePasteDialogService>(_ => new NodePasteDialogService(
             () => Current.MainWindow, Current.Dispatcher));
+        registrations.AddSingleton<OHsHitNormalSamples>();
+        registrations.AddSingleton<IOHsHitNormalDialogService>(provider => new OHsHitNormalDialogService(
+            () => Current.MainWindow, Current.Dispatcher, provider.GetRequiredService<OHsHitNormalSamples>()));
         registrations.AddSingleton<IOHsTrackAppearanceDialogService>(_ => new OHsTrackAppearanceDialogService(() => Current.MainWindow, Current.Dispatcher, (request, color) => new OHsTrackAppearancePopupVM(request, color)));
         registrations.AddSingleton<ITrackRemovalDialogService>(_ =>
             new TrackRemovalDialogService(() => Current.MainWindow, Current.Dispatcher));
@@ -79,7 +82,7 @@ public partial class App : Application
                 provider.GetRequiredService<ISampleFileService>(), provider.GetRequiredService<ISampleFileDialogService>(),
                 provider.GetRequiredService<IProjectFileService>(), provider.GetRequiredService<IMessenger>(),
                 provider.GetRequiredService<ITrackRemovalDialogService>(),
-                provider.GetRequiredService<PlaybackVolumeSettings>(), nodePasteDialog: provider.GetRequiredService<INodePasteDialogService>(), sampleManagementDialog: provider.GetRequiredService<ISampleManagementDialogService>(), sampleImports: provider.GetRequiredService<SampleImportBatch>(), instrumentDialogs: provider.GetRequiredService<IInstrumentalTrackDialogService>(), directoryLauncher: provider.GetRequiredService<IOHsExportDirectoryLauncher>(), exportDialog: provider.GetRequiredService<IOHsExportDialogService>(), trackAppearanceDialog: provider.GetRequiredService<IOHsTrackAppearanceDialogService>(), sampleDropDialog: provider.GetRequiredService<IOHsSampleDropImportDialogService>(), audioOperationProgress: provider.GetRequiredService<OHsAudioOperationProgress>(), skinDefaults: provider.GetRequiredService<IOHsSkinDefaultsService>(), mapsetImports: provider.GetRequiredService<OHsMapsetSampleImportService>())));
+                provider.GetRequiredService<PlaybackVolumeSettings>(), nodePasteDialog: provider.GetRequiredService<INodePasteDialogService>(), sampleManagementDialog: provider.GetRequiredService<ISampleManagementDialogService>(), sampleImports: provider.GetRequiredService<SampleImportBatch>(), instrumentDialogs: provider.GetRequiredService<IInstrumentalTrackDialogService>(), directoryLauncher: provider.GetRequiredService<IOHsExportDirectoryLauncher>(), exportDialog: provider.GetRequiredService<IOHsExportDialogService>(), trackAppearanceDialog: provider.GetRequiredService<IOHsTrackAppearanceDialogService>(), sampleDropDialog: provider.GetRequiredService<IOHsSampleDropImportDialogService>(), audioOperationProgress: provider.GetRequiredService<OHsAudioOperationProgress>(), skinDefaults: provider.GetRequiredService<IOHsSkinDefaultsService>(), mapsetImports: provider.GetRequiredService<OHsMapsetSampleImportService>(), hitNormalDialog: provider.GetRequiredService<IOHsHitNormalDialogService>())));
         registrations.AddSingleton<IHomeFolderService>(provider => new HomeFolderService(AppContext.BaseDirectory, sampleFiles: provider.GetRequiredService<ISampleFileService>()));
         registrations.AddSingleton<IAppSettingsService>(_ => new AppSettingsService(AppContext.BaseDirectory));
         registrations.AddSingleton<IUiScheduler>(_ => uiScheduler ?? new UiScheduler(Current.Dispatcher));

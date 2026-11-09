@@ -20,9 +20,9 @@ public class OHsExportLayoutSearchTests
                             : new Dictionary<OHsExportSlot, OHsExportAsset> { [new("Soft", SampleType.Normal)] = OHsExportAsset.Create([]), [new("Normal", type)] = OHsExportAsset.Create([($"{random.Next(3)}.wav", 100)]) }, 0, 0)).ToArray()).ToArray();
             var maps = recipes.Select(r => (IReadOnlyList<IReadOnlyDictionary<OHsExportSlot, string>>)r.Select(c =>
                 (IReadOnlyDictionary<OHsExportSlot, string>)c.Slots.ToDictionary(p => p.Key, p => p.Value.Id)).ToArray()).ToArray();
-            var minimum = OHsExportBruteForceOracle.MinimumAudioFiles(maps, capacity);
+            var minimum = OHsExportBruteForceOracle.MinimumAudioFiles(maps, capacity, new HashSet<string> { OHsExportAsset.NativeFallback.Id });
             if (minimum is null) Assert.Throws<InvalidOperationException>(() => OHsExportLayoutSearch.Find(recipes, capacity, default));
-            else Assert.That(OHsExportLayoutSearch.Find(recipes, capacity, default).Sum(b => b.Count), Is.EqualTo(minimum.Value));
+            else Assert.That(OHsExportLayoutSearch.Find(recipes, capacity, default).Sum(b => b.Values.Count(a => !a.IsNativeFallback)), Is.EqualTo(minimum.Value));
         }
     }
 
@@ -49,13 +49,13 @@ public class OHsExportLayoutSearchTests
                 (IReadOnlyDictionary<OHsExportSlot, string>)c.Slots.ToDictionary(p => p.Key, p => p.Value.Id)).ToArray()).ToArray();
             for (var capacity = 1; capacity <= 3; capacity++)
             {
-                var expected = OHsExportBruteForceOracle.MinimumAudioFiles(maps, capacity);
+                var expected = OHsExportBruteForceOracle.MinimumAudioFiles(maps, capacity, new HashSet<string> { OHsExportAsset.NativeFallback.Id });
                 if (expected is null)
                     Assert.Throws<InvalidOperationException>(() => OHsExportLayoutSearch.Find(recipes, capacity, default));
                 else
                 {
                     var layout = OHsExportLayoutSearch.Find(recipes, capacity, default);
-                    Assert.That(layout.Sum(b => b.Count), Is.EqualTo(expected.Value), $"iteration {iteration}, capacity {capacity}");
+                    Assert.That(layout.Sum(b => b.Values.Count(a => !a.IsNativeFallback)), Is.EqualTo(expected.Value), $"iteration {iteration}, capacity {capacity}");
                     Assert.That(layout.Count, Is.LessThanOrEqualTo(capacity));
                     foreach (var recipe in recipes)
                         Assert.That(recipe.Any(c => layout.Any(b => c.Slots.All(p => b.TryGetValue(p.Key, out var asset) && asset.Id == p.Value.Id))), Is.True);
@@ -70,17 +70,18 @@ public class OHsExportLayoutSearchTests
         var recipes = Recipes([Voice("a.wav"), Voice("c.wav", "Soft", SampleType.Clap)],
             [Voice("b.wav"), Voice("c.wav", "Soft", SampleType.Clap)]);
         var layout = OHsExportLayoutSearch.Find(recipes, 2, default);
-        Assert.That(layout.Sum(b => b.Count), Is.EqualTo(4));
+        Assert.That(layout.Sum(b => b.Values.Count(a => !a.IsNativeFallback)), Is.EqualTo(4));
         Assert.That(layout.Count, Is.EqualTo(2));
     }
 
     [Test]
-    public void AuthoredSilentNormalCanSupportAdditionWithoutAnotherFile()
+    public void AuthoredSilenceCannotReplaceNativeFallback()
     {
         var recipes = Recipes([Voice("zero.wav", gain: 0)], [Voice("c.wav", "Soft", SampleType.Clap)]);
-        var layout = OHsExportLayoutSearch.Find(recipes, 1, default);
-        Assert.That(layout.Sum(b => b.Count), Is.EqualTo(2));
-        Assert.That(layout.Single()[new("Normal", SampleType.Normal)].Sources, Is.Empty);
+        Assert.Throws<InvalidOperationException>(() => OHsExportLayoutSearch.Find(recipes, 1, default));
+        var layout = OHsExportLayoutSearch.Find(recipes, 2, default);
+        Assert.That(layout.Sum(b => b.Values.Count(a => !a.IsNativeFallback)), Is.EqualTo(2));
+        Assert.That(layout.SelectMany(b => b.Values).Count(a => a.IsNativeFallback), Is.EqualTo(1));
     }
 
     [TestCase(1)] [TestCase(2)] [TestCase(3)]
@@ -89,7 +90,7 @@ public class OHsExportLayoutSearchTests
         var recipes = Recipes([Voice("a.wav")], [Voice("b.wav", "Soft")], [Voice("c.wav", "Drum")],
             [Voice("d.wav", "Soft", SampleType.Clap)]);
         if (capacity == 1) Assert.Throws<InvalidOperationException>(() => OHsExportLayoutSearch.Find(recipes, capacity, default));
-        else Assert.That(OHsExportLayoutSearch.Find(recipes, capacity, default).Sum(b => b.Count), Is.EqualTo(5));
+        else Assert.That(OHsExportLayoutSearch.Find(recipes, capacity, default).Sum(b => b.Values.Count(a => !a.IsNativeFallback)), Is.EqualTo(4));
     }
 
     [Test]
@@ -114,7 +115,7 @@ public class OHsExportLayoutSearchTests
         using var cancellation = new CancellationTokenSource();
         cancellation.Cancel();
         Assert.Throws<OperationCanceledException>(() => OHsExportLayoutSearch.Find(recipes, 1, cancellation.Token));
-        Assert.That(OHsExportLayoutSearch.Find(recipes, 1, default).Sum(b => b.Count), Is.EqualTo(1));
+        Assert.That(OHsExportLayoutSearch.Find(recipes, 1, default).Sum(b => b.Values.Count(a => !a.IsNativeFallback)), Is.EqualTo(1));
     }
 
     [Test]
@@ -127,7 +128,7 @@ public class OHsExportLayoutSearchTests
         Assert.Throws<OperationCanceledException>(() => OHsExportLayoutSearch.Find(recipes, 1, cancellation.Token, progress));
         Assert.That(reports, Is.Not.Empty);
         Assert.That(reports.All(p => p.Percent == 35 && p.Phase.Contains("Optimiz", StringComparison.OrdinalIgnoreCase)), Is.True);
-        Assert.That(OHsExportLayoutSearch.Find(recipes, 1, default).Sum(b => b.Count), Is.EqualTo(1));
+        Assert.That(OHsExportLayoutSearch.Find(recipes, 1, default).Sum(b => b.Values.Count(a => !a.IsNativeFallback)), Is.EqualTo(1));
     }
 
     [Test]
@@ -144,6 +145,6 @@ public class OHsExportLayoutSearchTests
         var recipes = Recipes([Voice("a.wav")], [Voice("b.wav")]);
         Assert.Throws<OperationCanceledException>(() => OHsExportLayoutSearch.Find(recipes, 2, cancellation.Token, progress));
         Assert.That(candidateReported, Is.True);
-        Assert.That(OHsExportLayoutSearch.Find(recipes, 2, default).Sum(b => b.Count), Is.EqualTo(2));
+        Assert.That(OHsExportLayoutSearch.Find(recipes, 2, default).Sum(b => b.Values.Count(a => !a.IsNativeFallback)), Is.EqualTo(2));
     }
 }

@@ -123,6 +123,8 @@ public partial class WorkstationPageVM
                     foreach (var node in track.Samples)
                         if (string.Equals(node.FileName, oldName, StringComparison.OrdinalIgnoreCase)) node.FileName = newName;
                 }
+                if (Project is { } project)
+                    OHsHitNormalConfiguration.FromProject(project).Rewrite(p => string.Equals(p, oldName, StringComparison.OrdinalIgnoreCase) ? newName : p).ApplyTo(project);
                 history.RenameSample(oldName, newName);
             }
             RefreshAvailableSamples(change.Files, false, change.IncludesSubfolders); CancelNodeDrag(); PruneNodeSelection();
