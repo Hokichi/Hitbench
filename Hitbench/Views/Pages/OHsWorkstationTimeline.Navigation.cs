@@ -9,8 +9,7 @@ public partial class OHsWorkstationTimeline
     private bool navigating;
     private int navigationGeneration;
     public Task NavigationCompletion { get; private set; } = Task.CompletedTask;
-    private double UserHorizontalOffset => requestedOffset ?? (viewModel.IsStaticMarker && viewModel.Waveform is { } waveform
-        ? OHsTimelineViewport.GetCenteredOffset(viewModel.Position, waveform.Duration, TimelineContentWidth, TimelineViewportWidth) : TimelineHorizontalOffset);
+    private double UserHorizontalOffset => requestedOffset ?? TimelineHorizontalOffset;
 
     private void RequestSeek(TimeSpan position)
     {

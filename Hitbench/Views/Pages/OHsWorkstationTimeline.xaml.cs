@@ -60,6 +60,7 @@ public partial class OHsWorkstationTimeline : UserControl
     public bool FocusTimeline() => WaveformScrollViewer.Focus();
     public void ScrollToHorizontalOffset(double offset)
     {
+        if (viewModel?.IsStaticMarker == true) { PublishPresentationOffset(offset); return; }
         if (double.IsFinite(offset)) WaveformScrollViewer.ScrollToHorizontalOffset(Math.Clamp(offset, MinimumHorizontalOffset, ScrollableWidth) + TimelineEdgePadding);
     }
     public void ScrollFromUser(double offset)
@@ -139,7 +140,8 @@ public partial class OHsWorkstationTimeline : UserControl
         var viewportChanged = e.ViewportWidthChange != 0;
         TimelineViewportWidth = e.ViewportWidth;
         RefreshTimelineGeometry();
-        TimelineHorizontalOffset = e.HorizontalOffset - TimelineEdgePadding;
+        WaveformDisplay.LayoutHorizontalOffset = e.HorizontalOffset - TimelineEdgePadding;
+        if (viewModel?.IsStaticMarker != true) TimelineHorizontalOffset = e.HorizontalOffset - TimelineEdgePadding;
         if (!navigating && requestedOffset is { } requested && Math.Abs(requested - TimelineHorizontalOffset) < .01) requestedOffset = null;
         if (scrollBar is not null) scrollBar.Value = TimelineHorizontalOffset;
         ApplyPendingZoomAnchor();

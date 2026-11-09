@@ -18,6 +18,7 @@ public partial class OHsWorkstationTimeline
     {
         EndScrub(); hasPendingZoomAnchor = false;
         RefreshTimelineGeometry();
+        WaveformScrollViewer.ScrollToHorizontalOffset(TimelineHorizontalOffset + TimelineEdgePadding);
         if (viewModel.IsStaticMarker) CenterPlaybackPosition();
         else RevealPlaybackPosition();
     }
@@ -36,7 +37,7 @@ public partial class OHsWorkstationTimeline
     private void CenterPlaybackPosition()
     {
         if (deactivationStarted || navigating || viewModel.Waveform is not { } waveform) return;
-        ScrollToHorizontalOffset(OHsTimelineViewport.GetCenteredOffset(viewModel.Position, waveform.Duration,
+        ScrollToHorizontalOffset(OHsTimelineViewport.GetCenteredOffset(viewModel.DisplayPosition, waveform.Duration,
             TimelineContentWidth, TimelineViewportWidth));
     }
 }

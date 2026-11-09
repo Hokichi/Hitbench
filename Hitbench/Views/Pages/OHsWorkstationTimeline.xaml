@@ -89,7 +89,7 @@
                                     IsPlaybackMarkerStatic="{Binding IsStaticMarker, Mode=OneWay}"
                                     MarkerBrush="{DynamicResource Brush.Playhead}"
                                     Offsets="{Binding Project.Offsets, Mode=OneWay}"
-                                    Position="{Binding Position, Mode=OneWay}"
+                                    Position="{Binding DisplayPosition, Mode=OneWay}"
                                     SeekCommand="{Binding SeekCommand, Mode=OneWay}"
                                     SizeChanged="OnWaveformDisplaySizeChanged"
                                     Subdivision="{Binding Subdivision, Mode=OneWay}"

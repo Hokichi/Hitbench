@@ -6,7 +6,7 @@ using Hitbench.Services;
 
 namespace Hitbench.Resources.CustomControls;
 
-public sealed class WaveformView : FrameworkElement
+public sealed partial class WaveformView : FrameworkElement
 {
     public static readonly DependencyProperty IsPlaybackMarkerStaticProperty = DependencyProperty.Register(nameof(IsPlaybackMarkerStatic), typeof(bool), typeof(WaveformView), new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsRender));
     public bool IsPlaybackMarkerStatic { get => (bool)GetValue(IsPlaybackMarkerStaticProperty); set => SetValue(IsPlaybackMarkerStaticProperty, value); }
@@ -83,11 +83,14 @@ public sealed class WaveformView : FrameworkElement
     internal DrawingGroup? ContentDrawing { get; private set; }
     protected override int VisualChildrenCount => 2;
     protected override Visual GetVisualChild(int index) => index switch
-    { 0 => contentVisual, 1 => markerVisual, _ => throw new ArgumentOutOfRangeException(nameof(index)) };
+    { 0 => contentHost, 1 => markerVisual, _ => throw new ArgumentOutOfRangeException(nameof(index)) };
 
     private void InitializeDrawing()
     {
-        AddVisualChild(contentVisual);
+        contentHost.Children.Add(contentVisual);
+        AddVisualChild(contentHost);
+        contentVisual.Transform = contentTransform;
+        contentHost.Clip = contentClip;
         AddVisualChild(markerVisual);
         markerVisual.Transform = markerTransform;
         markerVisual.Clip = markerClip;
@@ -104,6 +107,8 @@ public sealed class WaveformView : FrameworkElement
     protected override void OnPropertyChanged(DependencyPropertyChangedEventArgs e)
     {
         base.OnPropertyChanged(e);
+        if (e.Property == HorizontalOffsetProperty || e.Property == LayoutHorizontalOffsetProperty)
+        { UpdateViewport(); UpdateMarker(); return; }
         if (e.Property != PositionProperty && e.Property.GetMetadata(GetType()) is FrameworkPropertyMetadata metadata &&
             (metadata.AffectsRender || metadata.AffectsMeasure)) InvalidateContent();
     }
@@ -112,11 +117,13 @@ public sealed class WaveformView : FrameworkElement
     { base.OnRenderSizeChanged(info); InvalidateContent(); }
     protected override void OnDpiChanged(DpiScale oldDpi, DpiScale newDpi)
     { base.OnDpiChanged(oldDpi, newDpi); InvalidateContent(); }
-    private void InvalidateContent() { contentDirty = true; InvalidateVisual(); }
+    private void InvalidateContent() { retainedViewport.Invalidate(); contentDirty = true; InvalidateVisual(); }
 
     internal void PrepareDrawing()
     {
+        UpdateViewport();
         if (!contentDirty) return;
+        ContentBuildCount++;
         var drawing = new DrawingGroup();
         using (var context = drawing.Open()) DrawContent(context);
         ContentDrawing = drawing;
@@ -148,7 +155,7 @@ public sealed class WaveformView : FrameworkElement
         var x = Math.Clamp(Position.TotalSeconds / Data.Duration.TotalSeconds * ActualWidth, .75, Math.Max(.75, ActualWidth - .75));
         var viewport = IsPositiveFinite(ViewportWidth) ? Math.Min(ViewportWidth, ActualWidth) : ActualWidth;
         var offset = double.IsFinite(HorizontalOffset) ? IsPlaybackMarkerStatic ? HorizontalOffset : Math.Clamp(HorizontalOffset, 0, Math.Max(0, ActualWidth - viewport)) : 0;
-        if (IsPlaybackMarkerStatic) x = offset + viewport / 2;
+        if (IsPlaybackMarkerStatic) { offset = LayoutHorizontalOffset; x = offset + viewport / 2; }
         markerTransform.X = x;
         markerClip.Rect = new Rect(offset - x, 0, viewport, ActualHeight);
     }
@@ -186,8 +193,8 @@ public sealed class WaveformView : FrameworkElement
             return;
         }
 
-        var viewport = IsPositiveFinite(ViewportWidth) ? Math.Min(ViewportWidth, width) : width;
-        var offset = double.IsFinite(HorizontalOffset) ? IsPlaybackMarkerStatic ? HorizontalOffset : Math.Clamp(HorizontalOffset, 0, Math.Max(0, width - viewport)) : 0;
+        var viewport = retainedViewport.Width;
+        var offset = retainedViewport.Origin + retainedViewport.Start;
         var waveformBrush = SystemParameters.HighContrast ? SystemColors.HighlightBrush : WaveformBrush;
         var textBrush = SystemParameters.HighContrast ? SystemColors.WindowTextBrush : TextBrush;
         var rulerHeight=ShowBeatRuler?24:0;

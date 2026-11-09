@@ -262,7 +262,8 @@ public partial class WorkstationPage : UserControl
             UpdatePlaybackRefreshSubscription();
         if (e.PropertyName == nameof(WorkstationPageVM.LoadPhase) && viewModel.IsLoading) markerModeCancellation?.Cancel();
         if (e.PropertyName == nameof(WorkstationPageVM.ZoomFactor)) { Timeline.ApplyPendingZoomAnchor(); TrackListComponent.RefreshViewport(); }
-        if (e.PropertyName == nameof(WorkstationPageVM.Position) && (viewModel.IsPlaying || viewModel.IsStaticMarker)) FollowPlaybackPosition();
+        if (e.PropertyName == nameof(WorkstationPageVM.Position) && !viewModel.IsStaticMarker && viewModel.IsPlaying) FollowPlaybackPosition();
+        if (e.PropertyName == nameof(WorkstationPageVM.DisplayPosition) && viewModel.IsStaticMarker && !viewModel.IsPlaying) FollowPlaybackPosition();
         if (e.PropertyName == nameof(WorkstationPageVM.ScrollWithMarker) && viewModel.ScrollWithMarker && viewModel.IsPlaying)
         {
             viewModel.RefreshPlayback();
