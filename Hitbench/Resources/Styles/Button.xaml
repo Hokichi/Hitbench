@@ -247,9 +247,9 @@
                             x:Name="PART_ButtonText"
                             VerticalAlignment="Center"
                             FontFamily="{TemplateBinding FontFamily}"
-                            FontWeight="{TemplateBinding FontWeight}"
-                            FontStyle="{TemplateBinding FontStyle}"
                             FontSize="{TemplateBinding FontSize}"
+                            FontStyle="{TemplateBinding FontStyle}"
+                            FontWeight="{TemplateBinding FontWeight}"
                             Text="{TemplateBinding ButtonText}"
                             TextTrimming="CharacterEllipsis"
                             TextWrapping="NoWrap">
@@ -286,16 +286,21 @@
             </Popup>
         </Grid>
     </ControlTemplate>
-    <Thickness x:Key="BalloonMenuPopupOutset" Left="{StaticResource Space.2}" Top="{StaticResource Space.2}"
-               Right="{StaticResource Space.2}" Bottom="{StaticResource Space.2}" />
+    <Thickness
+        x:Key="BalloonMenuPopupOutset"
+        Bottom="{StaticResource Space.2}"
+        Left="{StaticResource Space.2}"
+        Right="{StaticResource Space.2}"
+        Top="{StaticResource Space.2}" />
     <ControlTemplate
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Key="BalloonMenuControlTemplate"
         TargetType="{x:Type c:BalloonMenu}">
-        <Grid Background="Transparent"
-              Width="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}"
-              Height="{Binding ActualHeight, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}">
+        <Grid
+            Width="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}"
+            Height="{Binding ActualHeight, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}"
+            Background="Transparent">
             <Canvas IsHitTestVisible="False">
                 <!--  Shared action shape.  -->
                 <Path
@@ -348,9 +353,9 @@
                             x:Name="PART_ButtonText"
                             VerticalAlignment="Center"
                             FontFamily="{TemplateBinding FontFamily}"
-                            FontWeight="{TemplateBinding FontWeight}"
-                            FontStyle="{TemplateBinding FontStyle}"
                             FontSize="{TemplateBinding FontSize}"
+                            FontStyle="{TemplateBinding FontStyle}"
+                            FontWeight="{TemplateBinding FontWeight}"
                             Text="{TemplateBinding ButtonText}"
                             TextTrimming="CharacterEllipsis"
                             TextWrapping="NoWrap">
@@ -361,16 +366,29 @@
                     </Border>
                 </Grid>
             </Grid>
-            <Popup x:Name="PART_MenuPopup" Placement="Custom" AllowsTransparency="True"
-                   PlacementTarget="{Binding RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}"
-                   PopupAnimation="None" StaysOpen="True" HorizontalOffset="-8" VerticalOffset="-8">
+            <Popup
+                x:Name="PART_MenuPopup"
+                AllowsTransparency="True"
+                HorizontalOffset="-8"
+                Placement="Custom"
+                PlacementTarget="{Binding RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}"
+                PopupAnimation="None"
+                StaysOpen="True"
+                VerticalOffset="-8">
                 <Grid Background="Transparent">
                     <AdornerDecorator Margin="{StaticResource BalloonMenuPopupOutset}">
-                        <Border x:Name="PART_MenuSurface" Style="{StaticResource BalloonMenuPopupBorderStyle}" ClipToBounds="True"
-                                RenderTransformOrigin="1,0">
-                            <Border.RenderTransform><ScaleTransform /></Border.RenderTransform>
-                            <ItemsControl x:Name="PART_MenuItems" VerticalAlignment="Top"
-                                          Style="{StaticResource BalloonMenuItemsStyle}" />
+                        <Border
+                            x:Name="PART_MenuSurface"
+                            ClipToBounds="True"
+                            RenderTransformOrigin="1,0"
+                            Style="{StaticResource BalloonMenuPopupBorderStyle}">
+                            <Border.RenderTransform>
+                                <ScaleTransform />
+                            </Border.RenderTransform>
+                            <ItemsControl
+                                x:Name="PART_MenuItems"
+                                VerticalAlignment="Top"
+                                Style="{StaticResource BalloonMenuItemsStyle}" />
                         </Border>
                     </AdornerDecorator>
                 </Grid>
@@ -666,11 +684,6 @@
         <Setter Property="Template" Value="{StaticResource SwipeRevealContainerTemplate}" />
     </Style>
 
-
-
-
-
-
     <Style
         x:Key="OHsPopupCloseActionStyle"
         BasedOn="{StaticResource OHsBalloonDestructiveActionStyle}"
@@ -743,7 +756,10 @@
             </MultiDataTrigger>
         </Style.Triggers>
     </Style>
-    <Style x:Key="BaseBalloonMenuStyle" TargetType="c:BalloonMenu" BasedOn="{StaticResource OHsBalloonNavInfoActionStyle}">
+    <Style
+        x:Key="BaseBalloonMenuStyle"
+        BasedOn="{StaticResource OHsBalloonNavInfoActionStyle}"
+        TargetType="c:BalloonMenu">
         <Setter Property="Height" Value="{Binding ButtonSize, RelativeSource={RelativeSource Self}, Mode=OneWay}" />
         <Setter Property="VerticalAlignment" Value="Top" />
         <Setter Property="Template" Value="{StaticResource BalloonMenuControlTemplate}" />
@@ -754,8 +770,11 @@
         <Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
         <Setter Property="IsTabStop" Value="True" />
     </Style>
-    <Style TargetType="c:BalloonMenu" BasedOn="{StaticResource BaseBalloonMenuStyle}" />
-    <Style x:Key="BaseBalloonMenuOptionStyle" TargetType="c:BalloonMenuOption" BasedOn="{StaticResource OHsBalloonNeutralActionStyle}">
+    <Style BasedOn="{StaticResource BaseBalloonMenuStyle}" TargetType="c:BalloonMenu" />
+    <Style
+        x:Key="BaseBalloonMenuOptionStyle"
+        BasedOn="{StaticResource OHsBalloonNeutralActionStyle}"
+        TargetType="c:BalloonMenuOption">
         <Setter Property="HorizontalContentAlignment" Value="Left" />
         <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
         <Setter Property="ToolTip" Value="{Binding ButtonText, RelativeSource={RelativeSource Self}, Mode=OneWay}" />
@@ -764,6 +783,5 @@
         <Setter Property="h:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
         <Setter Property="IsTabStop" Value="True" />
     </Style>
-    <Style TargetType="c:BalloonMenuOption" BasedOn="{StaticResource BaseBalloonMenuOptionStyle}" />
+    <Style BasedOn="{StaticResource BaseBalloonMenuOptionStyle}" TargetType="c:BalloonMenuOption" />
 </ResourceDictionary>
-
