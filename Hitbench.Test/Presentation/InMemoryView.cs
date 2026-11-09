@@ -15,13 +15,13 @@ public sealed class InMemoryView : IDisposable
     private long frameNumber;
     private readonly SynchronizationContext? previousContext;
     private readonly DispatcherSynchronizationContext context;
-    private readonly bool processFrames;
+    public bool ProcessFrames { get; set; }
     private readonly bool inheritsFlowDirection;
     public FrameworkElement Root { get; }
 
     public InMemoryView(Window window, bool processFrames = true, bool scheduleLayout = true)
     {
-        this.processFrames = processFrames;
+        ProcessFrames = processFrames;
         previousContext = SynchronizationContext.Current;
         context = new DispatcherSynchronizationContext(window.Dispatcher);
         SynchronizationContext.SetSynchronizationContext(context);
@@ -52,7 +52,7 @@ public sealed class InMemoryView : IDisposable
         foreach (var element in current)
             if (attached.Add(element))
                 element.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent, element));
-        if (processFrames)
+        if (ProcessFrames)
             foreach (var page in current.OfType<Hitbench.Views.Pages.WorkstationPage>())
                 page.ProcessPresentationFrame(TimeSpan.FromMilliseconds(++frameNumber * 16));
     }

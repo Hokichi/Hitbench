@@ -70,6 +70,7 @@ public partial class WorkstationPage : UserControl
         SizeChanged += (_, args) => UpdateResponsiveLayout(args.NewSize);
         Timeline.AttachScrollBar(WaveformScrollBar);
         Timeline.ViewportChanged += OnTimelineViewportChanged;
+        Timeline.HorizontalOffsetChanged += OnTimelineHorizontalOffsetChanged;
         Toolbar.MarkerModeRequested += OnMarkerModeRequested;
         DataContext = viewModel;
         RefreshHeaderDimming();
@@ -169,14 +170,16 @@ public partial class WorkstationPage : UserControl
             Toolbar.MarkerModeRequested -= OnMarkerModeRequested;
             PreviewMouseLeftButtonDown -= OnPagePointerDown;
             Timeline.ViewportChanged -= OnTimelineViewportChanged;
+            Timeline.HorizontalOffsetChanged -= OnTimelineHorizontalOffsetChanged;
         }
     }
 
     internal bool IsPlaybackRefreshSubscribed => renderingSubscribed;
+    internal bool AutomaticPresentationFrames { get; set; } = true;
 
     private void OnRendering(object? sender, EventArgs e)
     {
-        if (e is RenderingEventArgs frame) ProcessPresentationFrame(frame.RenderingTime);
+        if (AutomaticPresentationFrames && e is RenderingEventArgs frame) ProcessPresentationFrame(frame.RenderingTime);
     }
 
     internal void ProcessPresentationFrame(TimeSpan frameTime)
@@ -219,6 +222,7 @@ public partial class WorkstationPage : UserControl
     {
         readinessCandidate = null;
         viewModel.ResetPlaybackPresentation();
+        lastPresentationFrame = TimeSpan.MinValue;
         if (playbackReady && !deactivationStarted && IsVisible) viewModel.RefreshPlayback();
         UpdatePlaybackRefreshSubscription();
     }
@@ -249,6 +253,7 @@ public partial class WorkstationPage : UserControl
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(WorkstationPageVM.IsStaticMarker)) Timeline.ApplyMarkerMode();
         if (e.PropertyName is nameof(WorkstationPageVM.StatusText) or nameof(WorkstationPageVM.ShowStatusOverlay)) RefreshLoadingPresentation();
         if (e.PropertyName == nameof(WorkstationPageVM.ShowStatusOverlay)) RefreshHeaderDimming();
         if (e.PropertyName == nameof(WorkstationPageVM.LoadPhase) && viewModel.LoadPhase == Hitbench.Services.ProjectLoadPhase.PreparingData)
@@ -435,5 +440,10 @@ public partial class WorkstationPage : UserControl
         TimelineHorizontalOffset = Timeline.TimelineHorizontalOffset;
         TrackListComponent.RefreshViewport();
 
+    }
+    private void OnTimelineHorizontalOffsetChanged(object? sender, EventArgs e)
+    {
+        TimelineHorizontalOffset = Timeline.TimelineHorizontalOffset;
+        TrackListComponent.RefreshViewport();
     }
 }

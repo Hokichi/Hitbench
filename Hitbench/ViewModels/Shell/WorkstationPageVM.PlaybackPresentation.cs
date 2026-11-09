@@ -22,7 +22,7 @@ public partial class WorkstationPageVM
         presentationClock.Reset();
         var snapshot = playback.Presentation;
         observedPresentationRevision = snapshot.Revision;
-        SetPresentationPosition(snapshot.Playback.Position);
+        SetPresentationPosition(TimeSpan.FromTicks(Math.Clamp(snapshot.Playback.Position.Ticks, 0, Math.Max(0, Waveform?.Duration.Ticks ?? 0))));
     }
 
     private void SetPresentationPosition(TimeSpan value)

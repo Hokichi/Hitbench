@@ -6,6 +6,28 @@ namespace Hitbench.Test.Services;
 public class MarkerPlaybackCoordinatorTests
 {
     [Test]
+    public async Task PresentationKeepsRawTimeAndOnlyTransportChangesRevision()
+    {
+        var audio = new StubWorkstationAudioService();
+        await using var coordinator = new MarkerPlaybackCoordinator(audio, (_, token) => Task.Delay(Timeout.Infinite, token));
+        await coordinator.ConfigureAsync(new PlaybackMarkerClock([0], [120]), TimeSpan.FromSeconds(10), default);
+        var revision = coordinator.Presentation.Revision;
+        await coordinator.PlayAsync(default); Assert.That(coordinator.Presentation.Revision, Is.GreaterThan(revision));
+        revision = coordinator.Presentation.Revision;
+        audio.Snapshot = audio.Snapshot with { Position = TimeSpan.FromMilliseconds(2010) };
+        await coordinator.UpdateSamplesAsync("project.json", [], default);
+        Assert.That(coordinator.Presentation.Revision, Is.EqualTo(revision));
+        Assert.That(coordinator.Presentation.Playback.Position, Is.EqualTo(TimeSpan.FromMilliseconds(2010)));
+        Assert.That(coordinator.Latest.Playback.Position, Is.Not.EqualTo(coordinator.Presentation.Playback.Position));
+        await coordinator.SeekAsync(TimeSpan.FromSeconds(1), default); Assert.That(coordinator.Presentation.Revision, Is.GreaterThan(revision));
+        revision = coordinator.Presentation.Revision;
+        await coordinator.PauseAsync(default); Assert.That(coordinator.Presentation.Revision, Is.GreaterThan(revision));
+        Assert.That(coordinator.Presentation.Playback.IsPlaying, Is.False);
+        revision = coordinator.Presentation.Revision;
+        await coordinator.StopAsync(default); Assert.That(coordinator.Presentation.Revision, Is.GreaterThan(revision));
+        Assert.That(coordinator.Presentation.Playback.Position, Is.EqualTo(TimeSpan.Zero));
+    }
+    [Test]
     public async Task NativeWaitHonorsCancellation()
     {
         using var cancellation = new CancellationTokenSource();

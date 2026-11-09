@@ -41,7 +41,6 @@ public partial class WorkstationPage
             if (deactivationStarted || generation != viewModel.LoadGeneration) return;
             viewModel.RefreshPlayback();
             viewModel.SetMarkerMode(isStatic);
-            Timeline.ApplyMarkerMode();
             await Dispatcher.InvokeAsync(() =>
             {
                 WorkstationRoot.UpdateLayout();

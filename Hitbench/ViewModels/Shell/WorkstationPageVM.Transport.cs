@@ -70,9 +70,9 @@ public partial class WorkstationPageVM
     {
         if (deactivated) return;
         var precise = playback.Presentation;
-        if (precise.Revision != observedPresentationRevision || !precise.Playback.IsPlaying) ResetPlaybackPresentation();
+        var settlePresentation = precise.Revision != observedPresentationRevision || !precise.Playback.IsPlaying;
         var current = playback.Latest;
-        if (presentedPlayback == current) return;
+        if (presentedPlayback == current) { if (settlePresentation) ResetPlaybackPresentation(); return; }
         presentedPlayback = current;
         var snapshot = current.Playback;
         PlaybackWarning = snapshot.Warning;
@@ -80,6 +80,7 @@ public partial class WorkstationPageVM
             SetProperty(ref playbackInterval, markerClock.GetInterval(snapshot.Position), nameof(PlaybackInterval));
         Position = snapshot.Position;
         IsPlaying = snapshot.IsPlaying;
+        if (settlePresentation) ResetPlaybackPresentation();
         ElapsedText = $"{(int)Position.TotalMinutes:00}:{Position.Seconds:00}.{Position.Milliseconds:000}";
         if (!string.IsNullOrWhiteSpace(snapshot.Error)) ErrorMessage = snapshot.Error;
         PublishInstrumentTimeline();

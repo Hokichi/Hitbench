@@ -272,6 +272,15 @@ public class WorkstationShellVolumeTests
         Assert.That(roll.HorizontalScrollPadding, Is.EqualTo(page.Timeline.TimelineEdgePadding));
         Assert.That(roll.HorizontalOffset, Is.EqualTo(page.Timeline.TimelineHorizontalOffset));
         Assert.That(roll.HorizontalOffset, Is.LessThan(0));
+        var position = ((WorkstationPageVM)page.DataContext).Position;
+        roll.PrepareDrawing(); var builds = roll.ContentBuildCount; var offset = page.TimelineHorizontalOffset;
+        for (var i = 1; i <= 50; i++)
+        {
+            page.Timeline.ScrollToHorizontalOffset(offset + i / 4d); roll.PrepareDrawing();
+            Assert.That(roll.HorizontalOffset, Is.EqualTo(page.Timeline.TimelineHorizontalOffset));
+        }
+        Assert.That(roll.ContentBuildCount, Is.EqualTo(builds));
+        Assert.That(((WorkstationPageVM)page.DataContext).Position, Is.EqualTo(position), "programmatic follow must not seek through attached piano");
         Assert.That(shell.HandleWindowKeyDown(true, Key.F8, ModifierKeys.None, false, roll), Is.True);
         UiTestPump.Run(page.MarkerModeChangeCompletion); Assert.That(piano.IsPlaybackMarkerStatic, Is.False);
         UiTestPump.Run(shell.ReturnHomeAsync());

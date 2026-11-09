@@ -7,6 +7,24 @@ namespace Hitbench.Test.Presentation;
 
 public class WorkstationMarkerModePersistenceTests
 {
+    [Test]
+    public async Task FailedWriteAndRetryKeepModeAndOriginalChangeTime()
+    {
+        var files = new FailOnceProjectFileService(); var clock = new ManualTimeProvider();
+        var instant = DateTimeOffset.Parse("2026-11-09T00:00:00Z"); clock.SetUtcNow(instant);
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay),
+            new ImmediateUiScheduler(), projectFiles: files, timeProvider: clock);
+        try
+        {
+            await vm.LoadAsync("project.json", default); vm.AcknowledgePresentationReady(vm.LoadGeneration);
+            vm.SetMarkerMode(true); Assert.ThrowsAsync<IOException>(() => vm.FlushSavesAsync());
+            Assert.That(vm.Project!.IsMarkerStatic, Is.True); Assert.That(vm.Project.LastChanged, Is.EqualTo(default(DateTimeOffset)));
+            clock.SetUtcNow(instant.AddHours(1)); vm.RetrySaveCommand.Execute(null); await vm.FlushSavesAsync();
+            var saved = ProjectDataSerializer.Deserialize(files.SavedJson!);
+            Assert.That(saved.IsMarkerStatic, Is.True); Assert.That(saved.LastChanged, Is.EqualTo(instant));
+        }
+        finally { await vm.DeactivateAsync(); }
+    }
     [TestCase(false)] [TestCase(true)]
     public async Task RestoreDoesNotSaveAndAppliedChangeUsesExistingQueue(bool initial)
     {
