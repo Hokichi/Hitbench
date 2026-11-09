@@ -144,12 +144,18 @@
         <Style x:Key="OHsWorkstationEditingOptionStyle" TargetType="customControls:SegmentedToggleOption" BasedOn="{StaticResource {x:Type customControls:SegmentedToggleOption}}">
             <Style.Triggers><DataTrigger Binding="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationToolbar}, Mode=OneWay}" Value="True"><Setter Property="Padding" Value="8,6" /></DataTrigger></Style.Triggers>
         </Style>
+        <Style x:Key="OHsWorkstationMarkerModeStyle" TargetType="customControls:SegmentedToggleGroup" BasedOn="{StaticResource {x:Type customControls:SegmentedToggleGroup}}">
+            <Setter Property="Width" Value="240" />
+        </Style>
+        <Style x:Key="OHsWorkstationMarkerOptionStyle" TargetType="customControls:SegmentedToggleOption" BasedOn="{StaticResource OHsWorkstationEditingOptionStyle}">
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}" />
+        </Style>
     </UserControl.Resources>
         <Border Style="{StaticResource OHsWorkstationHeaderCardStyle}">
             <Grid x:Name="ToolbarLayoutRoot">
                 <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                 <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*" MinWidth="8"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                <StackPanel x:Name="TransportGroup" Orientation="Horizontal" VerticalAlignment="Top">
+                <WrapPanel x:Name="TransportGroup" Orientation="Horizontal" VerticalAlignment="Top" MaxWidth="{Binding ActualWidth, ElementName=ToolbarLayoutRoot, Mode=OneWay}">
                     <StackPanel Orientation="Horizontal">
                         <customControls:BalloonButton
                             x:Name="PlayPauseButton"
@@ -175,7 +181,7 @@
                         ButtonText="Scroll with marker"
                         CheckedIcon="{StaticResource AlignArrowRightFill}"
                         IsChecked="{Binding ScrollWithMarker, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                        IsEnabled="{Binding CanPlay, Mode=OneWay}"
+                        IsEnabled="{Binding CanToggleScrollWithMarker, Mode=OneWay}"
                         Style="{StaticResource OHsWorkstationScrollWithMarkerStyle}"
                         ToolTip="Follow the current playback marker (F). Selecting a node turns this off." />
                     <Border Style="{StaticResource OHsWorkstationCompactSeparatorStyle}" />
@@ -205,8 +211,22 @@
                             </customControls:SegmentedToggleOption.Value>
                         </customControls:SegmentedToggleOption>
                     </customControls:SegmentedToggleGroup>
-                </StackPanel>
-                <StackPanel x:Name="ActionGroup" Orientation="Horizontal"
+                    <Border Style="{StaticResource OHsWorkstationCompactSeparatorStyle}" />
+                    <customControls:SegmentedToggleGroup x:Name="MarkerModeGroup"
+                        Style="{StaticResource OHsWorkstationMarkerModeStyle}"
+                        AutomationProperties.Name="Playback marker mode" IsEnabled="{Binding CanPlay, Mode=OneWay}"
+                        SelectedValue="{Binding IsStaticMarker, Mode=OneWay}" OptionSelected="OnMarkerModeSelected">
+                        <customControls:SegmentedToggleOption Content="MarkerStatic" AutomationProperties.Name="Static playback marker"
+                            Style="{StaticResource OHsWorkstationMarkerOptionStyle}" ToolTip="Keep playback marker centered and move tracks (F8)">
+                            <customControls:SegmentedToggleOption.Value><sys:Boolean>True</sys:Boolean></customControls:SegmentedToggleOption.Value>
+                        </customControls:SegmentedToggleOption>
+                        <customControls:SegmentedToggleOption Content="MarkerDynamic" AutomationProperties.Name="Dynamic playback marker"
+                            Style="{StaticResource OHsWorkstationMarkerOptionStyle}" ToolTip="Move playback marker across tracks (F8)">
+                            <customControls:SegmentedToggleOption.Value><sys:Boolean>False</sys:Boolean></customControls:SegmentedToggleOption.Value>
+                        </customControls:SegmentedToggleOption>
+                    </customControls:SegmentedToggleGroup>
+                </WrapPanel>
+                <WrapPanel x:Name="ActionGroup" Orientation="Horizontal" MaxWidth="{Binding ActualWidth, ElementName=ToolbarLayoutRoot, Mode=OneWay}"
                     Grid.Column="2"
                     HorizontalAlignment="Right"
                     VerticalAlignment="Top">
@@ -279,7 +299,7 @@
                     </Grid>
                     <Border Style="{StaticResource OHsWorkstationCompactSeparatorStyle}" />
                     <pages:OHsWorkstationFooter IsCompactLayout="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationToolbar}, Mode=OneWay}" x:Name="FooterControls" VerticalAlignment="Top" />
-                </StackPanel>
+                </WrapPanel>
             </Grid>
         </Border>
 </UserControl>

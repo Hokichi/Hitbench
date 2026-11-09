@@ -12,5 +12,5 @@ public partial class WorkstationPage
     public bool IsHeaderDimmed => (bool)GetValue(IsHeaderDimmedProperty);
 
     private void RefreshHeaderDimming() =>
-        SetValue(IsHeaderDimmedPropertyKey, !deactivationStarted && viewModel.ShowStatusOverlay);
+        SetValue(IsHeaderDimmedPropertyKey, !deactivationStarted && (viewModel.ShowStatusOverlay || IsMarkerModeTransitionActive));
 }

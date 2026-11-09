@@ -70,6 +70,7 @@ public partial class WorkstationPage : UserControl
         SizeChanged += (_, args) => UpdateResponsiveLayout(args.NewSize);
         Timeline.AttachScrollBar(WaveformScrollBar);
         Timeline.ViewportChanged += OnTimelineViewportChanged;
+        Toolbar.MarkerModeRequested += OnMarkerModeRequested;
         DataContext = viewModel;
         RefreshHeaderDimming();
         RefreshLoadingPresentation();
@@ -97,6 +98,7 @@ public partial class WorkstationPage : UserControl
 
     public Task DeactivateAsync()
     {
+        markerModeCancellation?.Cancel();
         Toolbar.CloseMenus();
         if (deactivationStarted) return LoadCompletion;
         CancelNodePointer();
@@ -152,7 +154,7 @@ public partial class WorkstationPage : UserControl
     private async Task DeactivateCoreAsync()
     {
         DismissVolumeOverlay();
-        try { await Timeline.CancelNavigationAsync(); await viewModel.DeactivateAsync(); await PlaybackInputCompletion; await NodeInputCompletion; }
+        try { await MarkerModeChangeCompletion; await Timeline.CancelNavigationAsync(); await viewModel.DeactivateAsync(); await PlaybackInputCompletion; await NodeInputCompletion; }
         finally
         {
             if (ownerWindow is not null) { ownerWindow.StateChanged -= OnOwnerStateChanged; ownerWindow.Deactivated -= OnNodeOwnerDeactivated; }
@@ -164,6 +166,7 @@ public partial class WorkstationPage : UserControl
             TrackListComponent.ViewportChanged -= OnTrackViewportChanged;
             Timeline.Reset();
             Timeline.DetachScrollBar();
+            Toolbar.MarkerModeRequested -= OnMarkerModeRequested;
             PreviewMouseLeftButtonDown -= OnPagePointerDown;
             Timeline.ViewportChanged -= OnTimelineViewportChanged;
         }
@@ -255,8 +258,9 @@ public partial class WorkstationPage : UserControl
         }
         if (e.PropertyName is nameof(WorkstationPageVM.IsPlaying) or nameof(WorkstationPageVM.LoadPhase))
             UpdatePlaybackRefreshSubscription();
+        if (e.PropertyName == nameof(WorkstationPageVM.LoadPhase) && viewModel.IsLoading) markerModeCancellation?.Cancel();
         if (e.PropertyName == nameof(WorkstationPageVM.ZoomFactor)) { Timeline.ApplyPendingZoomAnchor(); TrackListComponent.RefreshViewport(); }
-        if (e.PropertyName == nameof(WorkstationPageVM.Position) && viewModel.IsPlaying) FollowPlaybackPosition();
+        if (e.PropertyName == nameof(WorkstationPageVM.Position) && (viewModel.IsPlaying || viewModel.IsStaticMarker)) FollowPlaybackPosition();
         if (e.PropertyName == nameof(WorkstationPageVM.ScrollWithMarker) && viewModel.ScrollWithMarker && viewModel.IsPlaying)
         {
             viewModel.RefreshPlayback();
@@ -281,6 +285,13 @@ public partial class WorkstationPage : UserControl
 
     internal bool HandlePlaybackKey(Key key, ModifierKeys modifiers, bool isRepeat, DependencyObject? origin)
     {
+        if (IsMarkerModeTransitionActive) return true;
+        if (key == Key.F8 && modifiers == ModifierKeys.None && !IsTextInputOrigin(origin))
+        {
+            if (!viewModel.CanPlay) return false;
+            if (!isRepeat) MarkerModeChangeCompletion = ChangeMarkerModeAsync(!viewModel.IsStaticMarker);
+            return true;
+        }
         if (FindAncestor<Hitbench.Views.Popups.OHsControlPointEditor>(origin) is not null) return false;
         if (FindAncestor<OHsControlPointZone>(origin) is { } zone)
         {
@@ -402,6 +413,7 @@ public partial class WorkstationPage : UserControl
 
     internal bool HandleWaveformWheel(ModifierKeys modifiers, int delta)
     {
+        if (IsMarkerModeTransitionActive) { Timeline.ResetWheel(); return true; }
         if (IsVolumeOverlayOpen && modifiers != (ModifierKeys.Control | ModifierKeys.Alt)) { Timeline.ResetWheel(); return true; }
         return Timeline.HandleWaveformWheel(modifiers, delta);
     }

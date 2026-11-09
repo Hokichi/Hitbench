@@ -19,7 +19,7 @@ public partial class WorkstationPage
     public bool IsLoadingPresentationActive => (bool)GetValue(IsLoadingPresentationActiveProperty);
     private void RefreshLoadingPresentation()
     {
-        SetValue(IsLoadingPresentationActivePropertyKey, !deactivationStarted && (IsAudioBusy || viewModel.ShowStatusOverlay));
+        SetValue(IsLoadingPresentationActivePropertyKey, !deactivationStarted && (IsAudioBusy || viewModel.ShowStatusOverlay || IsMarkerModeTransitionActive));
         SetValue(LoadingStatusTextPropertyKey,deactivationStarted?"":IsAudioBusy?AudioBusyText:viewModel.ShowStatusOverlay?viewModel.StatusText:"");
         RefreshBlurPresentation();
     }

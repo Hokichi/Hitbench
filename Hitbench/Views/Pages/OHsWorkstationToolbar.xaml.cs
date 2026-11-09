@@ -7,6 +7,12 @@ namespace Hitbench.Views.Pages;
 
 public partial class OHsWorkstationToolbar : UserControl
 {
+    public event Action<bool>? MarkerModeRequested;
+    internal void RefreshMarkerModeSelection() => MarkerModeGroup.GetBindingExpression(SegmentedToggleGroup.SelectedValueProperty)?.UpdateTarget();
+    private void OnMarkerModeSelected(object sender, RoutedEventArgs e)
+    {
+        if (MarkerModeGroup.SelectedValue is bool value) MarkerModeRequested?.Invoke(value);
+    }
     private BalloonMenu? activeMenu;
     private static readonly DependencyPropertyKey IsCompactLayoutPropertyKey = DependencyProperty.RegisterReadOnly(nameof(IsCompactLayout), typeof(bool), typeof(OHsWorkstationToolbar), new PropertyMetadata(false));
     public static readonly DependencyProperty IsCompactLayoutProperty = IsCompactLayoutPropertyKey.DependencyProperty;

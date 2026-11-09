@@ -679,6 +679,9 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
         DependencyObject? origin)
     {
         if (!isActive || IsPopupOverlayVisible || IsAudioBusy || IsBlockingDrawerVisible || PageHost.Content is not WorkstationPage workstationPage) return false;
+        if (workstationPage.IsMarkerModeTransitionActive) return true;
+        if (key == Key.F8 && modifiers == ModifierKeys.None)
+            return workstationPage.HandlePlaybackKey(key, modifiers, isRepeat, origin);
         if (key == Key.V && modifiers == ModifierKeys.Alt && InstrumentalDrawerHost.Content is OHsInstrumentalArrangementDrawer activePiano)
             activePiano.TryPrepareClose();
         if (workstationPage.HandleVolumeShortcut(key, modifiers, origin) || workstationPage.IsVolumeOverlayOpen) return true;
@@ -708,7 +711,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
         if (drawer.HandleEditorShortcut(key, modifiers, isRepeat, origin)) return true;
         if (page.DataContext is not WorkstationPageVM vm) return false;
         if (key == Key.F && modifiers == ModifierKeys.None)
-        { if (!isRepeat && vm.CanPlay) vm.ScrollWithMarker = !vm.ScrollWithMarker; return true; }
+        { if (!isRepeat && vm.CanToggleScrollWithMarker) vm.ScrollWithMarker = !vm.ScrollWithMarker; return true; }
         IAsyncRelayCommand? command = (key, modifiers) switch
         {
             (Key.Space, ModifierKeys.None) => vm.PlayPauseCommand,
@@ -729,6 +732,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
         DependencyObject? origin = null)
     {
         if (!isActive || IsPopupOverlayVisible || IsAudioBusy || IsBlockingDrawerVisible || PageHost.Content is not WorkstationPage workstationPage) { (PageHost.Content as WorkstationPage)?.Timeline.ResetWheel(); return false; }
+        if (workstationPage.IsMarkerModeTransitionActive) return true;
         if (modifiers == ModifierKeys.Alt || workstationPage.IsVolumeOverlayOpen)
         {
             if (!workstationPage.IsVolumeOverlayOpen && InstrumentalDrawerHost.Content is OHsInstrumentalArrangementDrawer activePiano)

@@ -135,6 +135,7 @@ public partial class WorkstationPage
 
     internal bool HandleContextWheel(ModifierKeys modifiers, int delta, DependencyObject? origin)
     {
+        if (IsMarkerModeTransitionActive) { Timeline.ResetWheel(); return true; }
         if (IsVolumeOverlayOpen && modifiers == ModifierKeys.None && IsVolumeOverlayElement(origin)) return false;
         if (!IsVolumeOverlayOpen && HandleNodeDragWheel(modifiers, delta)) return true;
         if (modifiers == ModifierKeys.None && !IsHorizontalWheelOrigin(origin)) { Timeline.ResetWheel(); return false; }
@@ -168,6 +169,7 @@ public partial class WorkstationPage
 
     internal bool HandleVolumeShortcut(Key key, ModifierKeys modifiers, DependencyObject? origin)
     {
+        if (IsMarkerModeTransitionActive) return true;
         if (IsVolumeOverlayOpen && HandleVolumeOverlayKey(key, modifiers)) return true;
         if (key != Key.V || modifiers != ModifierKeys.Alt || deactivationStarted) return false;
         ShowVolumeOverlay(true, new Point());

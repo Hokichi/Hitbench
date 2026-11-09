@@ -28,6 +28,14 @@
 
         <BlurEffect x:Key="OHsWorkstationLoadingBlurEffect" Radius="8" />
         <BlurEffect x:Key="OHsWorkstationVolumeBlurEffect" Radius="0" />
+        <Style x:Key="OHsWorkstationRootStyle" TargetType="Grid" BasedOn="{StaticResource BaseGridStyle}">
+            <Setter Property="IsEnabled" Value="{Binding IsWorkstationContentEnabled, Mode=OneWay}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsMarkerModeTransitionActive, ElementName=Page, Mode=OneWay}" Value="True">
+                    <Setter Property="IsEnabled" Value="False" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
         <Style
             x:Key="OHsWorkstationContentStyle"
             BasedOn="{StaticResource BaseGridStyle}"
@@ -177,7 +185,7 @@
             <Setter Property="Background" Value="{DynamicResource Brush.Overlay}" />
             <Setter Property="Visibility" Value="Visible" />
             <Style.Triggers>
-                <DataTrigger Binding="{Binding LoadingStatusText, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}" Value="">
+                <DataTrigger Binding="{Binding IsLoadingPresentationActive, RelativeSource={RelativeSource AncestorType=pages:WorkstationPage}, Mode=OneWay}" Value="False">
                     <Setter Property="Visibility" Value="Collapsed" />
                 </DataTrigger>
             </Style.Triggers>
@@ -191,7 +199,7 @@
         <Grid
             x:Name="WorkstationRoot"
             Margin="16,8,16,8"
-            IsEnabled="{Binding IsWorkstationContentEnabled, Mode=OneWay}"
+            Style="{StaticResource OHsWorkstationRootStyle}"
             SizeChanged="OnVolumeOverlayHostSizeChanged">
             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
             <pages:OHsWorkstationToolbar IsEnabled="{Binding IsEnabled, ElementName=WorkstationDockLayout, Mode=OneWay}" x:Name="ToolbarComponent" IsShortLayout="{Binding IsShortLayout, ElementName=Page, Mode=OneWay}"/>
