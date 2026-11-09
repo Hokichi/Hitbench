@@ -6,15 +6,36 @@
     xmlns:h="clr-namespace:Hitbench.Resources.Helpers"
     Style="{StaticResource BaseControlStyle}">
     <UserControl.Resources>
-        <Style x:Key="OHsManageSamplesEmptyTextStyle" TargetType="TextBlock" BasedOn="{StaticResource BodyTextStyle}">
-            <Setter Property="Visibility" Value="Collapsed"/>
-            <Style.Triggers><DataTrigger Binding="{Binding HasItems, Mode=OneWay}" Value="False"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers>
+        <Style
+            x:Key="OHsManageSamplesEmptyTextStyle"
+            BasedOn="{StaticResource BodyTextStyle}"
+            TargetType="TextBlock">
+            <Setter Property="Visibility" Value="Collapsed" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding HasItems, Mode=OneWay}" Value="False">
+                    <Setter Property="Visibility" Value="Visible" />
+                </DataTrigger>
+            </Style.Triggers>
         </Style>
-        <Style x:Key="OHsManageSamplesItemsStyle" TargetType="ItemsControl" BasedOn="{StaticResource OHsVirtualizedDrawerItemsStyle}">
-            <Style.Triggers><Trigger Property="HasItems" Value="False"><Setter Property="Visibility" Value="Collapsed"/></Trigger></Style.Triggers>
+        <Style
+            x:Key="OHsManageSamplesItemsStyle"
+            BasedOn="{StaticResource OHsVirtualizedDrawerItemsStyle}"
+            TargetType="ItemsControl">
+            <Style.Triggers>
+                <Trigger Property="HasItems" Value="False">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                </Trigger>
+            </Style.Triggers>
         </Style>
-        <Style x:Key="OHsManageSamplesSkinExpanderStyle" TargetType="Expander" BasedOn="{StaticResource {x:Type Expander}}">
-            <Style.Triggers><DataTrigger Binding="{Binding AllowDefaults, Mode=OneWay}" Value="False"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
+        <Style
+            x:Key="OHsManageSamplesSkinExpanderStyle"
+            BasedOn="{StaticResource {x:Type Expander}}"
+            TargetType="Expander">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding AllowDefaults, Mode=OneWay}" Value="False">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
+            </Style.Triggers>
         </Style>
         <Style
             x:Key="OHsManageSamplesDragSourceStyle"
@@ -289,12 +310,7 @@
                     ToolTip="Close Manage Samples"
                     ToolTipService.ShowsToolTipOnKeyboardFocus="True" />
             </Grid>
-            <Grid Grid.Row="1" Style="{StaticResource BaseGridStyle}">
-                <Grid.RowDefinitions>
-                    <RowDefinition x:Name="SkinSamplesRegion" Height="Auto"/>
-                    <RowDefinition x:Name="MapsetSamplesRegion" Height="Auto"/>
-                    <RowDefinition x:Name="ProjectSamplesRegion" Height="Auto"/>
-                </Grid.RowDefinitions>
+            <StackPanel Grid.Row="1" Style="{StaticResource BaseStackPanelStyle}">
                 <Expander
                     x:Name="SkinDefaultsExpander"
                     Grid.Row="0"
@@ -302,11 +318,20 @@
                     Header="Skin Defaults"
                     IsExpanded="True"
                     Style="{StaticResource OHsManageSamplesSkinExpanderStyle}">
-                    <Grid Style="{StaticResource BaseGridStyle}"><ItemsControl
-                        x:Name="SkinDefaultRows"
-                        ItemTemplate="{StaticResource OHsManageSamplesSkinRowTemplate}"
-                        ItemsSource="{Binding SkinDefaultEntries, Mode=OneWay}"
-                        Style="{StaticResource OHsManageSamplesItemsStyle}" /><TextBlock Text="No samples found" DataContext="{Binding ElementName=SkinDefaultRows, Mode=OneWay}" Style="{StaticResource OHsManageSamplesEmptyTextStyle}"/></Grid>
+                    <Grid Style="{StaticResource BaseGridStyle}">
+                        <ItemsControl
+                            x:Name="SkinDefaultRows"
+                            ItemTemplate="{StaticResource OHsManageSamplesSkinRowTemplate}"
+                            ItemsSource="{Binding SkinDefaultEntries, Mode=OneWay}"
+                            Style="{StaticResource OHsManageSamplesItemsStyle}" />
+                        <TextBlock
+                            Margin="0,4"
+                            DataContext="{Binding ElementName=SkinDefaultRows, Mode=OneWay}"
+                            Foreground="{StaticResource Brush.Text.Secondary}"
+                            Style="{StaticResource OHsManageSamplesEmptyTextStyle}"
+                            Text="No samples found"
+                            TextAlignment="Center" />
+                    </Grid>
                 </Expander>
                 <Expander
                     x:Name="MapsetSamplesExpander"
@@ -315,11 +340,20 @@
                     Header="Mapset Samples"
                     IsExpanded="True"
                     Style="{StaticResource {x:Type Expander}}">
-                    <Grid Style="{StaticResource BaseGridStyle}"><ItemsControl
-                        x:Name="MapsetSampleRows"
-                        ItemTemplate="{StaticResource OHsManageSamplesRowTemplate}"
-                        ItemsSource="{Binding MapsetEntries, Mode=OneWay}"
-                        Style="{StaticResource OHsManageSamplesItemsStyle}" /><TextBlock Text="No samples found" DataContext="{Binding ElementName=MapsetSampleRows, Mode=OneWay}" Style="{StaticResource OHsManageSamplesEmptyTextStyle}"/></Grid>
+                    <Grid Style="{StaticResource BaseGridStyle}">
+                        <ItemsControl
+                            x:Name="MapsetSampleRows"
+                            ItemTemplate="{StaticResource OHsManageSamplesRowTemplate}"
+                            ItemsSource="{Binding MapsetEntries, Mode=OneWay}"
+                            Style="{StaticResource OHsManageSamplesItemsStyle}" />
+                        <TextBlock
+                            Margin="0,4"
+                            DataContext="{Binding ElementName=MapsetSampleRows, Mode=OneWay}"
+                            Foreground="{StaticResource Brush.Text.Secondary}"
+                            Style="{StaticResource OHsManageSamplesEmptyTextStyle}"
+                            Text="No samples found"
+                            TextAlignment="Center" />
+                    </Grid>
                 </Expander>
                 <Expander
                     x:Name="ProjectSamplesExpander"
@@ -328,13 +362,22 @@
                     Header="Project Samples"
                     IsExpanded="True"
                     Style="{StaticResource {x:Type Expander}}">
-                    <Grid Style="{StaticResource BaseGridStyle}"><ItemsControl
-                        x:Name="SampleRows"
-                        ItemTemplate="{StaticResource OHsManageSamplesRowTemplate}"
-                        ItemsSource="{Binding Entries, Mode=OneWay}"
-                        Style="{StaticResource OHsManageSamplesItemsStyle}" /><TextBlock Text="No samples found" DataContext="{Binding ElementName=SampleRows, Mode=OneWay}" Style="{StaticResource OHsManageSamplesEmptyTextStyle}"/></Grid>
+                    <Grid Style="{StaticResource BaseGridStyle}">
+                        <ItemsControl
+                            x:Name="SampleRows"
+                            ItemTemplate="{StaticResource OHsManageSamplesRowTemplate}"
+                            ItemsSource="{Binding Entries, Mode=OneWay}"
+                            Style="{StaticResource OHsManageSamplesItemsStyle}" />
+                        <TextBlock
+                            Margin="0,4"
+                            DataContext="{Binding ElementName=SampleRows, Mode=OneWay}"
+                            Foreground="{StaticResource Brush.Text.Secondary}"
+                            Style="{StaticResource OHsManageSamplesEmptyTextStyle}"
+                            Text="No samples found"
+                            TextAlignment="Center" />
+                    </Grid>
                 </Expander>
-            </Grid>
+            </StackPanel>
             <Grid
                 Grid.Row="3"
                 Margin="0,16,0,0"

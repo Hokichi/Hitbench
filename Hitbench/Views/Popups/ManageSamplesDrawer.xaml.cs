@@ -5,7 +5,6 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Data;
 using System.ComponentModel;
-using System.Collections.Specialized;
 using Hitbench.Resources.CustomControls;
 using Hitbench.Resources.DataModels;
 using Hitbench.ViewModels.Popups;
@@ -22,28 +21,11 @@ public partial class ManageSamplesDrawer : UserControl,IOHsShellDrawer
     {
         InitializeComponent(); this.viewModel = viewModel; DataContext = viewModel;
         InitializeSampleDrag();
-        foreach (var expander in new[] { SkinDefaultsExpander, MapsetSamplesExpander, ProjectSamplesExpander })
-        {
-            expander.Expanded += OnSampleGroupChanged;
-            expander.Collapsed += OnSampleGroupChanged;
-        }
-        foreach (var entries in new[] { viewModel.SkinDefaultEntries, viewModel.MapsetEntries, viewModel.Entries })
-            entries.CollectionChanged += OnGroupCollectionChanged;
         viewModel.PropertyChanged += OnEditingChanged;
-        UpdateSampleGroupRows();
         ((ObjectDataProvider)Resources["OHsManageSamplesOwner"]).ObjectInstance = this;
         Loaded += OnDrawerLoaded;
         Unloaded += OnDrawerUnloaded;
         KeyboardNavigation.SetTabNavigation(this, KeyboardNavigationMode.Cycle);
-    }
-
-    private void OnGroupCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e) => UpdateSampleGroupRows();
-    private void OnSampleGroupChanged(object sender, RoutedEventArgs e) => UpdateSampleGroupRows();
-    private void UpdateSampleGroupRows()
-    {
-        SkinSamplesRegion.Height = viewModel.AllowDefaults && SkinDefaultsExpander.IsExpanded && viewModel.SkinDefaultEntries.Count > 0 ? new GridLength(1, GridUnitType.Star) : GridLength.Auto;
-        MapsetSamplesRegion.Height = MapsetSamplesExpander.IsExpanded && viewModel.MapsetEntries.Count > 0 ? new GridLength(1, GridUnitType.Star) : GridLength.Auto;
-        ProjectSamplesRegion.Height = ProjectSamplesExpander.IsExpanded && viewModel.Entries.Count > 0 ? new GridLength(1, GridUnitType.Star) : GridLength.Auto;
     }
 
     public event EventHandler? CloseRequested;
@@ -74,22 +56,14 @@ public partial class ManageSamplesDrawer : UserControl,IOHsShellDrawer
         viewModel.PropertyChanged -= OnEditingChanged;
         viewModel.PropertyChanged += OnEditingChanged;
         editingRow = viewModel.ActiveEdit;
-        foreach (var entries in new[] { viewModel.SkinDefaultEntries, viewModel.MapsetEntries, viewModel.Entries })
-        {
-            entries.CollectionChanged -= OnGroupCollectionChanged;
-            entries.CollectionChanged += OnGroupCollectionChanged;
-        }
-        UpdateSampleGroupRows();
+
     }
     private void OnDrawerUnloaded(object sender, RoutedEventArgs e)
     {
         viewModel.PropertyChanged -= OnEditingChanged;
-        foreach (var entries in new[] { viewModel.SkinDefaultEntries, viewModel.MapsetEntries, viewModel.Entries })
-            entries.CollectionChanged -= OnGroupCollectionChanged;
     }
     private void OnEditingChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(ManageSamplesPopupVM.AllowDefaults)) UpdateSampleGroupRows();
         if (e.PropertyName != nameof(ManageSamplesPopupVM.ActiveEdit)) return;
         var previous = editingRow;
         editingRow = viewModel.ActiveEdit;
