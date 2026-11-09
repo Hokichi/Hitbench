@@ -8,6 +8,31 @@ namespace Hitbench.Test.Presentation;
 [Apartment(ApartmentState.STA), NonParallelizable]
 public class WorkstationSmoothPlaybackTests
 {
+    [Test]
+    public void SampleGridRetainsContentWhileHitTestingUsesLiveOffset()
+    {
+        var node = new Sample { Timestamp = 3000 };
+        var grid = new BeatGridView { Duration = TimeSpan.FromSeconds(10), ContentWidth = 1600, ViewportWidth = 200,
+            IsPlaybackMarkerStatic = true, HorizontalOffset = 400, Samples = [node], CanPlaceSamples = true };
+        UiTestPump.Layout(grid, 200, 60); grid.PrepareDrawing(); var builds = grid.ContentBuildCount;
+        for (var i = 1; i <= 100; i++) { grid.HorizontalOffset = 400 + i / 4d; grid.PrepareDrawing(); }
+        Assert.That(grid.ContentBuildCount, Is.EqualTo(builds));
+        Assert.That(grid.FindSampleAt(new Point(480 - 425, 30)), Is.SameAs(node));
+        grid.HorizontalOffset = 500.25; grid.PrepareDrawing(); Assert.That(grid.ContentBuildCount, Is.EqualTo(builds + 1));
+    }
+    [Test]
+    public void PianoRollRetainsTimeDrawingAndUsesLiveNoteBounds()
+    {
+        var note = new Hitbench.Resources.DataModels.InstrumentalNoteSnapshot(Guid.NewGuid(), "C4", 3000);
+        var roll = new PianoRollView { Duration = TimeSpan.FromSeconds(10), ContentWidth = 1600, ViewportWidth = 200,
+            KeyColumnWidth = 60, LaneHeight = 20, VerticalOffset = 1200, IsPlaybackMarkerStatic = true, HorizontalOffset = 400, Notes = [note] };
+        UiTestPump.Layout(roll, 260, 400); roll.PrepareDrawing(); var builds = roll.ContentBuildCount;
+        var before = roll.GetNoteBounds(note);
+        for (var i = 1; i <= 100; i++) { roll.HorizontalOffset = 400 + i / 4d; roll.PrepareDrawing(); }
+        Assert.That(roll.ContentBuildCount, Is.EqualTo(builds));
+        var after = roll.GetNoteBounds(note); Assert.That(after.Left, Is.EqualTo(before.Left - 25));
+        Assert.That(roll.FindNoteAt(new Point(after.Left + after.Width / 2, after.Top + after.Height / 2)), Is.EqualTo(note));
+    }
     [SetUp]
     public void Setup() => new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
 

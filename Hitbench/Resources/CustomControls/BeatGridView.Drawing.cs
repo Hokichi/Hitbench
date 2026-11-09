@@ -7,7 +7,7 @@ public sealed partial class BeatGridView
 {
     private void DrawContent(DrawingContext context)
     {
-        context.PushClip(new RectangleGeometry(new Rect(RenderSize)));
+        context.PushClip(new RectangleGeometry(new Rect(retainedViewport.Start, 0, retainedViewport.Width, ActualHeight)));
         context.DrawRectangle(Brushes.Transparent, null, new Rect(RenderSize));
         var highContrast = SystemParameters.HighContrast;
         var pressed = highContrast ? SystemColors.HighlightTextBrush : PressedBrush;
@@ -17,10 +17,13 @@ public sealed partial class BeatGridView
             TryFindResource("Brush.Border.Default") as Brush ?? marker, 1);
         var selectedBorder = new Pen(selectionCue, 2);
         context.PushOpacity(highContrast ? 1 : 0.5);
+        context.PushTransform(new TranslateTransform(retainedViewport.Start, 0));
         BeatGridDrawing.Draw(context, this, Offsets, Bpms, Subdivision, Duration.TotalMilliseconds,
-            ContentWidth, HorizontalOffset, ViewportWidth, ActualHeight, false);
+            ContentWidth, retainedViewport.Origin + retainedViewport.Start, retainedViewport.Width, ActualHeight, false);
         context.Pop();
-        var visible = SamplesInRange(0, Math.Min(ActualWidth, ViewportWidth));
+        context.Pop();
+        var left = retainedViewport.Origin + retainedViewport.Start - HorizontalOffset;
+        var visible = SamplesInRange(left, left + retainedViewport.Width);
         for (var layer = 0; layer < 2; layer++)
         {
             var selectedLayer = layer == 1;
@@ -28,7 +31,7 @@ public sealed partial class BeatGridView
                 foreach (var sample in visible)
                 {
                     if (IsSampleSelected(sample) != selectedLayer) continue;
-                    var rect = GetDisplayedSampleBounds(sample);
+                    var rect = RetainedBounds(GetDisplayedSampleBounds(sample));
                     if (rect.IsEmpty) continue;
                     rect = Inset(rect);
                     OHsSampleNodeDrawing.Draw(context,marker, selectedLayer ? selectedBorder : nodeBorder, rect);
@@ -37,7 +40,7 @@ public sealed partial class BeatGridView
                 foreach (var sample in visible)
                 {
                     if (IsSampleSelected(sample) != selectedLayer) continue;
-                    var bounds = GetDisplayedSampleBounds(sample);
+                    var bounds = RetainedBounds(GetDisplayedSampleBounds(sample));
                     if (bounds.IsEmpty) continue;
                     var rect = Inset(bounds);
                     if (ReferenceEquals(PressedSample, sample) && pressed is not null)
@@ -49,7 +52,7 @@ public sealed partial class BeatGridView
         if (DragPreviewTimestamps is { } previews)
             foreach (var preview in previews)
             {
-                var bounds = GetSampleBounds(preview);
+                var bounds = RetainedBounds(GetSampleBounds(preview));
                 if (!bounds.IsEmpty)
                 {
                     var rect = Inset(bounds);

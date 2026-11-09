@@ -16,22 +16,24 @@ public sealed partial class PianoRollView
     private readonly RectangleGeometry markerClip = new();
     private bool contentDirty = true;
     internal long ContentBuildCount { get; private set; }
-    protected override int VisualChildrenCount => base.VisualChildrenCount + 2;
+    protected override int VisualChildrenCount => base.VisualChildrenCount + 4;
     protected override Visual GetVisualChild(int index) => index < base.VisualChildrenCount ? base.GetVisualChild(index)
         : (index - base.VisualChildrenCount) switch
-        { 0 => contentVisual, 1 => markerVisual, _ => throw new ArgumentOutOfRangeException(nameof(index)) };
+        { 0 => chromeVisual, 1 => contentHost, 2 => feedbackVisual, 3 => markerVisual, _ => throw new ArgumentOutOfRangeException(nameof(index)) };
     protected override Size MeasureOverride(Size constraint) => base.VisualChildrenCount > 0 ? base.MeasureOverride(constraint) : new Size();
     protected override Size ArrangeOverride(Size bounds) => base.VisualChildrenCount > 0 ? base.ArrangeOverride(bounds) : bounds;
 
     private void InitializeDrawing()
     {
-        AddVisualChild(contentVisual); AddVisualChild(markerVisual);
+        contentHost.Children.Add(contentVisual); contentHost.Clip = contentClip; contentVisual.Transform = contentTransform;
+        AddVisualChild(chromeVisual); AddVisualChild(contentHost); AddVisualChild(feedbackVisual); AddVisualChild(markerVisual);
         markerVisual.Transform = markerTransform; markerVisual.Clip = markerClip;
     }
-    private void InvalidateContent() { contentDirty = true; InvalidateVisual(); }
+    private void InvalidateContent() { retainedViewport.Invalidate(); contentDirty = true; InvalidateVisual(); }
     protected override void OnPropertyChanged(DependencyPropertyChangedEventArgs e)
     {
         base.OnPropertyChanged(e);
+        if (e.Property == HorizontalOffsetProperty) { UpdateViewport(); UpdateMarker(); return; }
         if (e.Property != PositionProperty && (e.Property == IsEnabledProperty ||
             e.Property.GetMetadata(GetType()) is FrameworkPropertyMetadata metadata && (metadata.AffectsRender || metadata.AffectsMeasure))) InvalidateContent();
     }
@@ -39,8 +41,11 @@ public sealed partial class PianoRollView
     { base.OnDpiChanged(oldDpi, newDpi); InvalidateContent(); }
     internal void PrepareDrawing()
     {
+        UpdateViewport();
+        using (var dc = feedbackVisual.RenderOpen()) DrawFeedback(dc);
         if (contentDirty)
         {
+            using (var dc = chromeVisual.RenderOpen()) DrawChrome(dc);
             using (var dc = contentVisual.RenderOpen()) DrawContent(dc);
             using (var dc = markerVisual.RenderOpen())
                 dc.DrawLine(new Pen(SystemParameters.HighContrast ? SystemColors.WindowTextBrush : BrushOr(PlaybackMarkerBrush, "Brush.Playhead"), 1.5), new(0, 0), new(0, ActualHeight));
@@ -59,7 +64,7 @@ public sealed partial class PianoRollView
         markerClip.Rect = new Rect(KeyColumnWidth - markerTransform.X, 0, TimeViewportWidth, Math.Max(0, ActualHeight));
     }
     private Brush BrushOr(Brush? value, string key) => value ?? TryFindResource(key) as Brush ?? SystemColors.WindowTextBrush;
-    private void DrawContent(DrawingContext dc)
+    private void DrawChrome(DrawingContext dc)
     {
         dc.DrawRectangle(SystemParameters.HighContrast ? SystemColors.WindowBrush : BrushOr(Background, "Brush.Background.Deepened"), null, new Rect(RenderSize));
         if (ActualWidth <= KeyColumnWidth || ActualHeight <= 0 || LaneHeight <= 0 || !double.IsFinite(LaneHeight)) return;
@@ -77,10 +82,40 @@ public sealed partial class PianoRollView
             dc.DrawText(label, new Point(Math.Max(4, KeyColumnWidth - label.Width - 8), y + (LaneHeight - label.Height) / 2));
             dc.DrawLine(new Pen(hc ? SystemColors.WindowTextBrush : BrushOr(GridBrush, "Brush.Border.Subtle"), .5), new(KeyColumnWidth, y + LaneHeight), new(KeyColumnWidth + TimeViewportWidth, y + LaneHeight));
         }
-        dc.PushClip(new RectangleGeometry(new Rect(KeyColumnWidth, 0, TimeViewportWidth, ActualHeight)));
-        dc.PushTransform(new TranslateTransform(KeyColumnWidth, 0)); dc.PushOpacity(.5);
-        BeatGridDrawing.Draw(dc, this, Offsets, Bpms, Subdivision, Duration.TotalMilliseconds, ContentWidth, HorizontalOffset, TimeViewportWidth, ActualHeight, false);
+    }
+    private void DrawContent(DrawingContext dc)
+    {
+        if (ActualWidth <= KeyColumnWidth || ActualHeight <= 0 || LaneHeight <= 0 || !double.IsFinite(LaneHeight)) return;
+        var hc = SystemParameters.HighContrast;
+        var text = hc ? SystemColors.WindowTextBrush : BrushOr(Foreground, "Brush.Text.Primary");
+        var marker = hc ? SystemColors.WindowTextBrush : BrushOr(MarkerBrush, Hitbench.Resources.Helpers.OHsTrackPalette.DefaultResourceKey);
+        var selection = hc ? SystemColors.HighlightBrush : BrushOr(SelectionBrush, "Brush.Navy");
+        var cue = hc ? SystemColors.HighlightTextBrush : BrushOr(SelectionCueBrush, "Brush.Node.SelectedOutline");
+        var border = new Pen(hc ? SystemColors.WindowTextBrush : BrushOr(NodeBorderBrush, "Brush.Border.Default"), 1);
+        dc.PushClip(new RectangleGeometry(new Rect(KeyColumnWidth + retainedViewport.Start, 0, retainedViewport.Width, ActualHeight)));
+        dc.PushTransform(new TranslateTransform(KeyColumnWidth + retainedViewport.Start, 0)); dc.PushOpacity(.5);
+        BeatGridDrawing.Draw(dc, this, Offsets, Bpms, Subdivision, Duration.TotalMilliseconds, ContentWidth,
+            retainedViewport.Origin + retainedViewport.Start, retainedViewport.Width, ActualHeight, false);
         dc.Pop(); dc.Pop();
+        foreach (var note in Notes.OrderBy(n => n.Id == SelectedNoteId))
+        {
+            var rect = RetainedBounds(GetNoteBounds(note)); if (rect.IsEmpty || !rect.IntersectsWith(new Rect(KeyColumnWidth + retainedViewport.Start, 0, retainedViewport.Width, ActualHeight)) || dragging && !IsAdditionMode && gestureIds.Contains(note.Id)) continue;
+            var chosen = SelectedNoteIds.Contains(note.Id) || note.Id == SelectedNoteId;
+            OHsSampleNodeDrawing.Draw(dc, marker, chosen ? new Pen(cue, 2) : border, OHsSampleNodeDrawing.Inset(rect));
+            if (note == pressedNote) OHsSampleNodeDrawing.Draw(dc, null, new Pen(chosen ? cue : hc ? SystemColors.HighlightTextBrush : BrushOr(PressedBrush, "Brush.Navy.Pressed"), 2), OHsSampleNodeDrawing.Inset(rect));
+        }
+        dc.Pop();
+    }
+    private void DrawFeedback(DrawingContext dc)
+    {
+        if (ActualWidth <= KeyColumnWidth || ActualHeight <= 0 || LaneHeight <= 0 || !double.IsFinite(LaneHeight)) return;
+        var hc = SystemParameters.HighContrast;
+        var text = hc ? SystemColors.WindowTextBrush : BrushOr(Foreground, "Brush.Text.Primary");
+        var marker = hc ? SystemColors.WindowTextBrush : BrushOr(MarkerBrush, Hitbench.Resources.Helpers.OHsTrackPalette.DefaultResourceKey);
+        var selection = hc ? SystemColors.HighlightBrush : BrushOr(SelectionBrush, "Brush.Navy");
+        var cue = hc ? SystemColors.HighlightTextBrush : BrushOr(SelectionCueBrush, "Brush.Node.SelectedOutline");
+        var border = new Pen(hc ? SystemColors.WindowTextBrush : BrushOr(NodeBorderBrush, "Brush.Border.Default"), 1);
+        dc.PushClip(new RectangleGeometry(new Rect(KeyColumnWidth, 0, TimeViewportWidth, ActualHeight)));
         if(pointerInteraction && dragging && !IsAdditionMode && !pointerModifiers.HasFlag(ModifierKeys.Control) && pressedNote is null)
             dc.DrawRectangle(null,new Pen(selection,1),SelectionViewportBounds);
         if(dragging && pressedNote is {} anchor && hover is {} destination && !IsAdditionMode)
@@ -100,13 +135,6 @@ public sealed partial class PianoRollView
         {
             var ts = dragging ? BeatGridCalculator.GetNearestTimestamp(Offsets, Bpms, Subdivision, cell.Time, Duration.TotalMilliseconds) : BeatGridCalculator.GetContainingInterval(Offsets, Bpms, Subdivision, cell.Time, Duration.TotalMilliseconds) is { } interval ? (int?)Math.Round(interval.StartMilliseconds, MidpointRounding.AwayFromZero) : null;
             if (ts is { } t) { var rect = GetNoteBounds(new(Guid.Empty, cell.Key, t)); if (!rect.IsEmpty) OHsSampleNodeDrawing.Draw(dc, marker, new Pen(cue, 2), OHsSampleNodeDrawing.Inset(rect)); }
-        }
-        foreach (var note in Notes.OrderBy(n => n.Id == SelectedNoteId))
-        {
-            var rect = GetNoteBounds(note); if (rect.IsEmpty || !rect.IntersectsWith(new Rect(KeyColumnWidth, 0, TimeViewportWidth, ActualHeight)) || dragging && !IsAdditionMode && gestureIds.Contains(note.Id)) continue;
-            var chosen = SelectedNoteIds.Contains(note.Id) || note.Id == SelectedNoteId;
-            OHsSampleNodeDrawing.Draw(dc, marker, chosen ? new Pen(cue, 2) : border, OHsSampleNodeDrawing.Inset(rect));
-            if (note == pressedNote) OHsSampleNodeDrawing.Draw(dc, null, new Pen(chosen ? cue : hc ? SystemColors.HighlightTextBrush : BrushOr(PressedBrush, "Brush.Navy.Pressed"), 2), OHsSampleNodeDrawing.Inset(rect));
         }
         if (IsKeyboardFocused)
         {

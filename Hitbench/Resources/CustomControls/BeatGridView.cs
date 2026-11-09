@@ -293,11 +293,13 @@ public sealed partial class BeatGridView : FrameworkElement
     internal DrawingGroup? ContentDrawing { get; private set; }
     protected override int VisualChildrenCount => 3;
     protected override Visual GetVisualChild(int index) => index switch
-    { 0 => contentVisual, 1 => feedbackVisual, 2 => markerVisual, _ => throw new ArgumentOutOfRangeException(nameof(index)) };
+    { 0 => contentHost, 1 => feedbackVisual, 2 => markerVisual, _ => throw new ArgumentOutOfRangeException(nameof(index)) };
 
     private void InitializeDrawing()
     {
-        AddVisualChild(contentVisual);
+        contentHost.Children.Add(contentVisual); contentHost.Clip = contentClip;
+        contentVisual.Transform = contentTransform;
+        AddVisualChild(contentHost);
         AddVisualChild(feedbackVisual);
         AddVisualChild(markerVisual);
         markerVisual.Transform = markerTransform;
@@ -315,6 +317,7 @@ public sealed partial class BeatGridView : FrameworkElement
     protected override void OnPropertyChanged(DependencyPropertyChangedEventArgs e)
     {
         base.OnPropertyChanged(e);
+        if (e.Property == HorizontalOffsetProperty) { UpdateViewport(); InvalidateFeedback(); UpdateMarker(); return; }
         if (e.Property == SelectedSamplesProperty)
             selectedMembership = new HashSet<Sample>(SelectedSamples ?? [], ReferenceEqualityComparer.Instance);
         if (e.Property != PositionProperty && e.Property.GetMetadata(GetType()) is FrameworkPropertyMetadata metadata &&
@@ -325,11 +328,12 @@ public sealed partial class BeatGridView : FrameworkElement
     { base.OnRenderSizeChanged(info); InvalidateContent(); }
     protected override void OnDpiChanged(DpiScale oldDpi, DpiScale newDpi)
     { base.OnDpiChanged(oldDpi, newDpi); InvalidateContent(); }
-    private void InvalidateContent() { contentDirty = feedbackDirty = true; InvalidateVisual(); }
+    private void InvalidateContent() { retainedViewport.Invalidate(); contentDirty = feedbackDirty = true; InvalidateVisual(); }
     private void InvalidateFeedback() { feedbackDirty = true; InvalidateVisual(); }
 
     internal void PrepareDrawing()
     {
+        UpdateViewport();
         if (feedbackDirty)
         {
             using var feedback = feedbackVisual.RenderOpen();
@@ -462,6 +466,7 @@ public sealed partial class BeatGridView : FrameworkElement
     private static void OnGeometryChanged(DependencyObject sender, DependencyPropertyChangedEventArgs e)
     {
         var view = (BeatGridView)sender;
+        if (e.Property == HorizontalOffsetProperty) { if (view.pointerX is { } pointer) view.ActiveInterval = view.IntervalAt(pointer); return; }
         view.pressedInterval = null;
         if (view.pointerX is { } x) view.ActiveInterval = view.IntervalAt(x);
     }
