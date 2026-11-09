@@ -22,7 +22,7 @@ public sealed partial class ManageSamplesPopupVM
                     .Concat(allSampleFiles.Where(n => n.Contains('/') || n.Contains('\\'))).ToArray();
             if (allSampleFiles.SequenceEqual(names) && !m.ReloadSamples) return;
             var requested = waveformLoads.Keys.ToHashSet();
-            InvalidateWaveforms(); Replace(names);
+            InvalidateWaveforms(appliesTo: entry => !SkinDefaultEntries.Contains(entry)); Replace(names);
             foreach (var row in ManagedEntries.Where(requested.Contains))
                 _ = LoadWaveformAsync(row); // Completion and errors are owned by waveformOperations.
         });

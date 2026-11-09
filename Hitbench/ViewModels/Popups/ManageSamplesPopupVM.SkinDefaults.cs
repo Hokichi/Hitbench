@@ -14,9 +14,9 @@ public sealed partial class ManageSamplesPopupVM
     private bool skinDefaultsRegistered;
     public async Task PrepareSkinDefaultsRefreshAsync(CancellationToken token)
     {
-        InvalidateWaveforms();
+        InvalidateWaveforms(appliesTo: SkinDefaultEntries.Contains);
         await StopPreviewAsync();
-        await Task.WhenAll(waveformOperations).WaitAsync(token);
+        await Task.WhenAll(waveformOperations.Where(operation => operation.IsSkinDefault).Select(operation => operation.Task)).WaitAsync(token);
     }
     public bool CanChangeAllowDefaults => CanAct() && !skinDefaultsBusy;
     public bool AllowDefaults
@@ -49,7 +49,7 @@ public sealed partial class ManageSamplesPopupVM
             await scheduler.InvokeAsync(() =>
             {
                 if (deactivated) return;
-                InvalidateWaveforms(); SkinDefaultEntries.Clear();
+                InvalidateWaveforms(appliesTo: SkinDefaultEntries.Contains); SkinDefaultEntries.Clear();
                 foreach (var file in message.Files) SkinDefaultEntries.Add(new(file));
                 SetProperty(ref allowDefaults, message.AllowDefaults, nameof(AllowDefaults));
                 skinDefaultsBusy = message.IsBusy; NotifyEditingState();

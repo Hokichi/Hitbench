@@ -164,7 +164,7 @@ public sealed partial class ManageSamplesPopupVM(SampleManagementContext context
     private async Task RefreshAsync(SampleManagementEntry? preserveWaveformFor = null)
     {
         var requestedWaveforms = waveformLoads.Keys.ToHashSet();
-        InvalidateWaveforms(preserveWaveformFor);
+        InvalidateWaveforms(preserveWaveformFor, entry => !SkinDefaultEntries.Contains(entry));
         try { lifetime.Token.ThrowIfCancellationRequested(); var names = await files.ListAsync(Context.ProjectPath, lifetime.Token, includeSubfolders: true); var changed = !allSampleFiles.SequenceEqual(names); Replace(names); foreach (var row in ManagedEntries.Where(requestedWaveforms.Contains)) { _ = LoadWaveformAsync(row); } // Tasks are owned by waveformOperations.
             if (changed) await PublishAsync(); }
         catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }

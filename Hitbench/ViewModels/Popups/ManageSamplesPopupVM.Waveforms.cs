@@ -8,7 +8,7 @@ public sealed partial class ManageSamplesPopupVM
     private readonly SemaphoreSlim waveformGate = new(2, 2);
     private readonly Dictionary<SampleManagementEntry, Task> waveformLoads = [];
     private readonly Dictionary<SampleManagementEntry, CancellationTokenSource> waveformTokens = [];
-    private readonly List<Task> waveformOperations = [];
+    private readonly List<(Task Task, bool IsSkinDefault)> waveformOperations = [];
 
     public Task LoadWaveformAsync(SampleManagementEntry entry)
     {
@@ -17,7 +17,7 @@ public sealed partial class ManageSamplesPopupVM
         var cancellation = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);
         waveformTokens[entry] = cancellation;
         var task = ReadRowWaveformAsync(entry, entry.FileName, cancellation);
-        waveformLoads[entry] = task; waveformOperations.Add(task);
+        waveformLoads[entry] = task; waveformOperations.Add((task, SkinDefaultEntries.Contains(entry)));
         return task;
     }
 
@@ -39,10 +39,11 @@ public sealed partial class ManageSamplesPopupVM
         finally { if (entered) waveformGate.Release(); }
     }
 
-    private void InvalidateWaveforms(SampleManagementEntry? preserve = null)
+    private void InvalidateWaveforms(SampleManagementEntry? preserve = null, Func<SampleManagementEntry, bool>? appliesTo = null)
     {
         foreach (var entry in waveformTokens.Keys.ToArray())
         {
+            if (appliesTo is not null && !appliesTo(entry)) continue;
             if (ReferenceEquals(entry, preserve) && entry.Waveform is not null) continue;
             waveformTokens.Remove(entry, out var cancellation); cancellation?.Cancel();
             waveformLoads.Remove(entry); entry.Waveform = null;
@@ -54,7 +55,7 @@ public sealed partial class ManageSamplesPopupVM
     private async Task StopWaveformsAsync()
     {
         InvalidateWaveforms();
-        await Task.WhenAll(waveformOperations);
+        await Task.WhenAll(waveformOperations.Select(operation => operation.Task));
         foreach (var cancellation in retiredWaveformTokens) cancellation.Dispose();
         retiredWaveformTokens.Clear(); waveformOperations.Clear(); waveformGate.Dispose();
     }
