@@ -71,7 +71,7 @@ public sealed partial class OHsUpdateService
                 if (!listed.Add(file)) throw new InvalidDataException("Duplicate inventory entry.");
             }
             var actual = Directory.GetFiles(payload, "*", SearchOption.AllDirectories).Select(path => Path.GetRelativePath(payload, path).Replace('\\', '/')).ToHashSet(StringComparer.OrdinalIgnoreCase);
-            if (!listed.SetEquals(actual) || !new[] { "Hitbench.exe", "Hitbench.dll", "Hitbench.runtimeconfig.json", "Hitbench.deps.json", "hitbench-release.json" }.All(listed.Contains))
+            if (!listed.SetEquals(actual) || !new[] { "Hitbench.exe", "hitbench-release.json" }.All(listed.Contains))
                 throw new InvalidDataException("Incomplete application payload.");
             return new(release.Version.Tag, workspace, payload, listed.ToArray());
         }

@@ -23,10 +23,12 @@ public static class OHsUpdateTestData
         return new(version!, DateTimeOffset.Parse("2026-11-03T01:00:00Z"), 2, Commit,
             new("https://github.com/Hokichi/Hitbench/releases/download/1.2.4-beta/Hitbench-1.2.4-beta-win-x64.zip"), size, digest);
     }
-    public static byte[] Archive(string version = "1.2.4-beta", string commit = Commit, string? extra = null, string? missing = null, bool linked = false)
+    public static byte[] Archive(string version = "1.2.4-beta", string commit = Commit, string? extra = null, string? missing = null, bool linked = false, bool singleFile = false)
     {
         var entries = new Dictionary<string, string>
         { ["Hitbench.exe"] = "executable", ["Hitbench.dll"] = "assembly", ["Hitbench.runtimeconfig.json"] = "{}", ["Hitbench.deps.json"] = "{}" };
+        if (singleFile)
+            foreach (var file in new[] { "Hitbench.dll", "Hitbench.runtimeconfig.json", "Hitbench.deps.json" }) entries.Remove(file);
         if (extra is not null) entries[extra] = "invalid";
         if (missing is not null) entries.Remove(missing);
         entries["hitbench-release.json"] = JsonSerializer.Serialize(new { Version = version, Commit = commit, Files = entries.Keys.Append("hitbench-release.json").ToArray() });

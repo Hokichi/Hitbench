@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using System.Net;
 using System.Net.Http;
 using System.Security.Cryptography;
@@ -34,16 +35,19 @@ public sealed class OHsUpdateStagingTests
         Assert.That(Directory.GetFileSystemEntries(root), Is.Empty);
     }
 
-    [Test]
-    public async Task DownloadsVerifiedPayloadWithoutTouchingInstallation()
+    [TestCase(false)] [TestCase(true)]
+    public async Task DownloadsVerifiedPayloadWithoutTouchingInstallation(bool singleFile)
     {
-        var bytes = OHsUpdateTestData.Archive();
+        var bytes = OHsUpdateTestData.Archive(singleFile: singleFile);
         using var http = Client(bytes);
         var values = new List<double>();
         var progress = new InlineProgress<double>(values.Add);
         var staged = await new OHsUpdateService(http, root, root, "1.2.3", OHsUpdateTestData.Commit).StageAsync(
             OHsUpdateTestData.Candidate(bytes.Length, "sha256:" + Convert.ToHexString(SHA256.HashData(bytes))), progress, default);
         Assert.That(File.Exists(Path.Combine(staged.PayloadDirectory, "Hitbench.exe")), Is.True);
+        Assert.That(staged.Files, Does.Contain("hitbench-release.json"));
+        foreach (var file in new[] { "Hitbench.dll", "Hitbench.runtimeconfig.json", "Hitbench.deps.json" })
+            Assert.That(staged.Files.Contains(file), Is.EqualTo(!singleFile));
         Assert.That(File.Exists(Path.Combine(root, "Hitbench.exe")), Is.False);
         Assert.That(values[^1], Is.EqualTo(100));
         Assert.That(values, Is.Ordered);
@@ -110,6 +114,37 @@ public sealed class OHsUpdateStagingTests
                 .StageAsync(OHsUpdateTestData.Candidate(bytes.Length), new InlineProgress<double>(_ => { }), default));
             Assert.That(Directory.GetFileSystemEntries(root), Is.Empty);
         }
+    }
+    [Test]
+    public void RejectsMissingManifestAndCleansWorkspace()
+    {
+        using var stream = new MemoryStream();
+        stream.Write(OHsUpdateTestData.Archive(singleFile: true));
+        stream.Position = 0;
+        using (var archive = new ZipArchive(stream, ZipArchiveMode.Update, true))
+            archive.GetEntry("hitbench-release.json")!.Delete();
+        var bytes = stream.ToArray();
+        using var http = Client(bytes);
+        Assert.ThrowsAsync<FileNotFoundException>(() => new OHsUpdateService(http, root, root, "1.2.3", OHsUpdateTestData.Commit)
+            .StageAsync(OHsUpdateTestData.Candidate(bytes.Length), new InlineProgress<double>(_ => { }), default));
+        Assert.That(Directory.GetFileSystemEntries(root), Is.Empty);
+    }
+    [TestCase(true)] [TestCase(false)]
+    public void RejectsManifestInventoryMismatchAndCleansWorkspace(bool missingListedFile)
+    {
+        using var stream = new MemoryStream();
+        stream.Write(OHsUpdateTestData.Archive());
+        stream.Position = 0;
+        using (var archive = new ZipArchive(stream, ZipArchiveMode.Update, true))
+        {
+            if (missingListedFile) archive.GetEntry("Hitbench.dll")!.Delete();
+            else archive.CreateEntry("unlisted.dll");
+        }
+        var bytes = stream.ToArray();
+        using var http = Client(bytes);
+        Assert.ThrowsAsync<InvalidDataException>(() => new OHsUpdateService(http, root, root, "1.2.3", OHsUpdateTestData.Commit)
+            .StageAsync(OHsUpdateTestData.Candidate(bytes.Length), new InlineProgress<double>(_ => { }), default));
+        Assert.That(Directory.GetFileSystemEntries(root), Is.Empty);
     }
     [Test]
     public async Task UnicodeAndApostropheWorkspacePathsArePreserved()
