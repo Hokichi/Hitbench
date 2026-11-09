@@ -1,16 +1,25 @@
-<c:BasePopup x:Class="Hitbench.Views.Popups.OHsHitNormalPopup"
+<c:BasePopup
+    x:Class="Hitbench.Views.Popups.OHsHitNormalPopup"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:c="clr-namespace:Hitbench.Resources.CustomControls"
     xmlns:h="clr-namespace:Hitbench.Resources.Helpers"
-    PopupTitle="Config Hitnormal" ShowInTaskbar="False" h:KeyboardNavigationPolicy.SuppressTabNavigation="True">
+    h:KeyboardNavigationPolicy.SuppressTabNavigation="True"
+    PopupTitle="Config Hitnormal"
+    ShowInTaskbar="False">
     <c:BasePopup.Resources>
         <DataTemplate x:Key="OHsHitNormalChoiceTemplate">
-            <TextBlock Text="{Binding DisplayName, Mode=OneWay}" Style="{StaticResource BaseTextBlockStyle}"
-                TextTrimming="CharacterEllipsis" ToolTip="{Binding DisplayName, Mode=OneWay}"
+            <TextBlock
+                Style="{StaticResource BaseTextBlockStyle}"
+                Text="{Binding DisplayName, Mode=OneWay}"
+                TextTrimming="CharacterEllipsis"
+                ToolTip="{Binding DisplayName, Mode=OneWay}"
                 ToolTipService.ShowsToolTipOnKeyboardFocus="True" />
         </DataTemplate>
-        <Style x:Key="OHsHitNormalComboBoxStyle" TargetType="ComboBox" BasedOn="{StaticResource OHsComboBoxStyle}">
+        <Style
+            x:Key="OHsHitNormalComboBoxStyle"
+            BasedOn="{StaticResource OHsComboBoxStyle}"
+            TargetType="ComboBox">
             <Setter Property="ItemsPanel" Value="{StaticResource OHsVirtualizedDrawerItemsPanel}" />
             <Setter Property="VirtualizingPanel.IsVirtualizing" Value="True" />
             <Setter Property="VirtualizingPanel.VirtualizationMode" Value="Recycling" />
@@ -21,41 +30,100 @@
             <Setter Property="SelectedValuePath" Value="Path" />
             <Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="True" />
         </Style>
-        <Style x:Key="OHsHitNormalLabelStyle" TargetType="TextBlock" BasedOn="{StaticResource BodyTextStyle}">
+        <Style
+            x:Key="OHsHitNormalLabelStyle"
+            BasedOn="{StaticResource BodyTextStyle}"
+            TargetType="TextBlock">
             <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="Margin" Value="0,0,16,0" />
         </Style>
-        <Style x:Key="OHsHitNormalScrollStyle" TargetType="ScrollViewer" BasedOn="{StaticResource {x:Type ScrollViewer}}">
+        <Style
+            x:Key="OHsHitNormalScrollStyle"
+            BasedOn="{StaticResource {x:Type ScrollViewer}}"
+            TargetType="ScrollViewer">
             <Setter Property="HorizontalScrollBarVisibility" Value="Disabled" />
             <Setter Property="VerticalScrollBarVisibility" Value="Auto" />
             <Setter Property="Focusable" Value="False" />
         </Style>
     </c:BasePopup.Resources>
-    <ScrollViewer x:Name="ContentScroll" Style="{StaticResource OHsHitNormalScrollStyle}" h:KeyboardNavigationPolicy.SuppressTabNavigation="True">
+    <ScrollViewer
+        x:Name="ContentScroll"
+        Width="400"
+        h:KeyboardNavigationPolicy.SuppressTabNavigation="True"
+        Style="{StaticResource OHsHitNormalScrollStyle}">
         <Grid Margin="24,8,24,24" Style="{StaticResource BaseGridStyle}">
-            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" /><RowDefinition Height="16" /><RowDefinition Height="Auto" />
-                <RowDefinition Height="16" /><RowDefinition Height="Auto" /><RowDefinition Height="24" /><RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="16" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="16" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="24" />
+                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
-            <TextBlock Text="Normal" Style="{StaticResource OHsHitNormalLabelStyle}" />
-            <ComboBox x:Name="NormalInput" Grid.Column="1" Style="{StaticResource OHsHitNormalComboBoxStyle}"
-                AutomationProperties.Name="Normal" ItemsSource="{Binding Choices, Mode=OneWay}"
-                SelectedValue="{Binding NormalPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" ToolTip="Normal (Alt+N)" />
-            <TextBlock Grid.Row="2" Text="Soft" Style="{StaticResource OHsHitNormalLabelStyle}" />
-            <ComboBox x:Name="SoftInput" Grid.Row="2" Grid.Column="1" Style="{StaticResource OHsHitNormalComboBoxStyle}"
-                AutomationProperties.Name="Soft" ItemsSource="{Binding Choices, Mode=OneWay}"
-                SelectedValue="{Binding SoftPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" ToolTip="Soft (Alt+S)" />
-            <TextBlock Grid.Row="4" Text="Drum" Style="{StaticResource OHsHitNormalLabelStyle}" />
-            <ComboBox x:Name="DrumInput" Grid.Row="4" Grid.Column="1" Style="{StaticResource OHsHitNormalComboBoxStyle}"
-                AutomationProperties.Name="Drum" ItemsSource="{Binding Choices, Mode=OneWay}"
-                SelectedValue="{Binding DrumPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" ToolTip="Drum (Alt+D)" />
-            <WrapPanel Grid.Row="6" Grid.ColumnSpan="2" HorizontalAlignment="Right">
-                <c:BalloonButton x:Name="CancelAction" ButtonText="Cancel" ButtonIcon="{StaticResource Ban}" ShouldShowText="True"
-                    Style="{StaticResource OHsBalloonDestructiveActionStyle}" AutomationProperties.Name="Cancel" ToolTip="Cancel (Esc, Alt+C)" Click="OnCancel" Margin="0,0,8,0" />
-                <c:BalloonButton x:Name="SaveAction" ButtonText="Save" ButtonIcon="{StaticResource Check}" ShouldShowText="True"
-                    Style="{StaticResource OHsBalloonConfirmActionStyle}" AutomationProperties.Name="Save" ToolTip="Save (Enter, Alt+V)"
-                    IsEnabled="{Binding CanSave, Mode=OneWay}" Click="OnSave" />
+            <TextBlock Style="{StaticResource OHsHitNormalLabelStyle}" Text="Normal" />
+            <ComboBox
+                x:Name="NormalInput"
+                Grid.Column="1"
+                AutomationProperties.Name="Normal"
+                ItemsSource="{Binding Choices, Mode=OneWay}"
+                SelectedValue="{Binding NormalPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                Style="{StaticResource OHsHitNormalComboBoxStyle}"
+                ToolTip="Normal (Alt+N)" />
+            <TextBlock
+                Grid.Row="2"
+                Style="{StaticResource OHsHitNormalLabelStyle}"
+                Text="Soft" />
+            <ComboBox
+                x:Name="SoftInput"
+                Grid.Row="2"
+                Grid.Column="1"
+                AutomationProperties.Name="Soft"
+                ItemsSource="{Binding Choices, Mode=OneWay}"
+                SelectedValue="{Binding SoftPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                Style="{StaticResource OHsHitNormalComboBoxStyle}"
+                ToolTip="Soft (Alt+S)" />
+            <TextBlock
+                Grid.Row="4"
+                Style="{StaticResource OHsHitNormalLabelStyle}"
+                Text="Drum" />
+            <ComboBox
+                x:Name="DrumInput"
+                Grid.Row="4"
+                Grid.Column="1"
+                AutomationProperties.Name="Drum"
+                ItemsSource="{Binding Choices, Mode=OneWay}"
+                SelectedValue="{Binding DrumPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                Style="{StaticResource OHsHitNormalComboBoxStyle}"
+                ToolTip="Drum (Alt+D)" />
+            <WrapPanel
+                Grid.Row="6"
+                Grid.ColumnSpan="2"
+                HorizontalAlignment="Right">
+                <c:BalloonButton
+                    x:Name="CancelAction"
+                    Margin="0,0,8,0"
+                    AutomationProperties.Name="Cancel"
+                    ButtonIcon="{StaticResource Ban}"
+                    ButtonText="Cancel"
+                    Click="OnCancel"
+                    ShouldShowText="True"
+                    Style="{StaticResource OHsBalloonDestructiveActionStyle}"
+                    ToolTip="Cancel (Esc, Alt+C)" />
+                <c:BalloonButton
+                    x:Name="SaveAction"
+                    AutomationProperties.Name="Save"
+                    ButtonIcon="{StaticResource Check}"
+                    ButtonText="Save"
+                    Click="OnSave"
+                    IsEnabled="{Binding CanSave, Mode=OneWay}"
+                    ShouldShowText="True"
+                    Style="{StaticResource OHsBalloonConfirmActionStyle}"
+                    ToolTip="Save (Enter, Alt+V)" />
             </WrapPanel>
         </Grid>
     </ScrollViewer>

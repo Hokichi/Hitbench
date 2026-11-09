@@ -253,7 +253,7 @@
                             FocusVisualStyle="{StaticResource OHsSampleManagerKeyboardFocusStyle}"
                             IsEnabled="{Binding CanClose, Mode=OneWay}"
                             IsTabStop="True"
-                            ShouldShowText="True"
+                            ShouldShowText="False"
                             Style="{StaticResource OHsBalloonDestructiveActionStyle}"
                             ToolTip="Close (Esc)"
                             ToolTipService.ShowsToolTipOnKeyboardFocus="True" />

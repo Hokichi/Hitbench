@@ -61,6 +61,7 @@
                                 x:Name="PART_CloseButton"
                                 Grid.Column="1"
                                 AutomationProperties.Name="Close (Esc)"
+                                ToolTip="Close (Esc)"
                                 ButtonIcon="{StaticResource Close}"
                                 ShouldShowText="False"
                                 Style="{StaticResource OHsBalloonNeutralActionStyle}"

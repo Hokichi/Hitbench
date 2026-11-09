@@ -48,7 +48,7 @@
      Command="{Binding RequestKeysMappingCommand, Mode=OneWay}" Style="{StaticResource OHsArrangementMappingActionStyle}"
      AutomationProperties.Name="Keys Mapping" ToolTip="Map samples to instrument keys" />
                     <c:BalloonButton ButtonText="Close" ButtonIcon="{StaticResource Close}" Style="{StaticResource OHsBalloonDestructiveActionStyle}"
-     Click="OnCloseClick" AutomationProperties.Name="Close arrangement" ToolTip="Close (Esc)" ShouldShowText="True" IsTabStop="True"
+     Click="OnCloseClick" AutomationProperties.Name="Close arrangement" ToolTip="Close (Esc)" ShouldShowText="False" IsTabStop="True"
      h:KeyboardNavigationPolicy.AllowTabNavigation="True" FocusVisualStyle="{StaticResource OHsSampleManagerKeyboardFocusStyle}" ToolTipService.ShowsToolTipOnKeyboardFocus="True" />
                 </StackPanel>
             </Grid>

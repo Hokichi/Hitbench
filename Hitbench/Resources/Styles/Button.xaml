@@ -689,7 +689,7 @@
         BasedOn="{StaticResource OHsBalloonDestructiveActionStyle}"
         TargetType="c:BalloonButton">
         <Setter Property="IsTabStop" Value="True" />
-        <Setter Property="ShouldShowText" Value="True" />
+        <Setter Property="ShouldShowText" Value="False" />
         <Setter Property="FocusVisualStyle" Value="{StaticResource DefaultFocusVisualStyle}" />
         <Setter Property="ToolTip" Value="Close (Esc)" />
         <Setter Property="AutomationProperties.Name" Value="Close" />
