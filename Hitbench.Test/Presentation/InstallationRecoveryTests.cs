@@ -12,7 +12,7 @@ public class InstallationRecoveryTests
     public async Task SavedRootSkipsExecutableScan()
     {
         string? loaded = null;
-        var vm = Create(new StubHomeFolderService { Find = _ => throw new AssertionException("Must not scan"), Songs = (path, _) => { loaded = path; return Task.FromResult<FolderSnapshot?>(new FolderSnapshot([])); } }, new StubAppSettingsService());
+        var vm = Create(new StubHomeFolderService { Find = _ => throw new AssertionException("Must not scan"), Songs = (path, _) => { loaded = path; return Task.FromResult<FolderSnapshot?>(new FolderSnapshot([])); } }, new StubAppSettingsService { Save = (_, _) => throw new AssertionException("Must not overwrite installation") });
         try { await vm.LoadAsync(default); Assert.That(loaded, Is.EqualTo(@"C:\osu\Songs")); Assert.That(vm.MapsetsAvailability, Is.EqualTo(OHsHomeMapsetsAvailability.Empty)); }
         finally { vm.Deactivate(); }
     }
@@ -33,8 +33,86 @@ public class InstallationRecoveryTests
     public async Task EmptySettingScansAndPersistsDetectedSongsRoot()
     {
         var saved = "";
-        var vm = Create(new StubHomeFolderService { Find = _ => Task.FromResult(new OsuSearchResult(@"C:\detected", false)) }, new StubAppSettingsService { Load = _ => Task.FromResult(new AppSettings()), SaveMapsetsDirectory = (path, _) => { saved = path; return Task.CompletedTask; } });
-        try { await vm.LoadAsync(default); Assert.That(saved, Is.EqualTo(@"C:\detected\Songs")); } finally { vm.Deactivate(); }
+        var installation = "";
+        var pending = new TaskCompletionSource();
+        var songsLoaded = false;
+        var vm = Create(new StubHomeFolderService
+        {
+            Find = _ => Task.FromResult(new OsuSearchResult(@"C:\detected", false)),
+            Songs = (_, _) => { songsLoaded = true; return Task.FromResult<FolderSnapshot?>(new FolderSnapshot([])); }
+        }, new StubAppSettingsService
+        {
+            Load = _ => Task.FromResult(new AppSettings()),
+            Save = (path, _) => { installation = path; return pending.Task; },
+            SaveMapsetsDirectory = (path, _) => { saved = path; return Task.CompletedTask; }
+        });
+        try
+        {
+            var loading = vm.LoadAsync(default);
+            Assert.That(installation, Is.EqualTo(@"C:\detected"));
+            Assert.That(songsLoaded, Is.False);
+            pending.SetResult();
+            await loading;
+            Assert.That(saved, Is.EqualTo(@"C:\detected\Songs"));
+            Assert.That(songsLoaded, Is.True);
+        }
+        finally { pending.TrySetResult(); vm.Deactivate(); }
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task MissingOrInvalidDetectionDoesNotSaveInstallation(bool invalid)
+    {
+        var saves = 0;
+        var vm = Create(new StubHomeFolderService
+        {
+            Find = _ => Task.FromResult(new OsuSearchResult(invalid ? @"C:\invalid" : null, false)),
+            Valid = (_, _) => Task.FromResult(false)
+        }, new StubAppSettingsService
+        {
+            Load = _ => Task.FromResult(new AppSettings()),
+            Save = (_, _) => { saves++; return Task.CompletedTask; },
+            SaveMapsetsDirectory = (_, _) => { saves++; return Task.CompletedTask; }
+        });
+        try { await vm.LoadAsync(default); Assert.That(saves, Is.Zero); }
+        finally { vm.Deactivate(); }
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task FailedOrCancelledInstallationSaveDoesNotLoadSongs(bool cancel)
+    {
+        using var cancellation = new CancellationTokenSource();
+        var songsLoaded = false;
+        var mapsetsSaved = false;
+        var vm = Create(new StubHomeFolderService
+        {
+            Find = _ => Task.FromResult(new OsuSearchResult(@"C:\detected", false)),
+            Songs = (_, _) => { songsLoaded = true; return Task.FromResult<FolderSnapshot?>(new FolderSnapshot([])); }
+        }, new StubAppSettingsService
+        {
+            Load = _ => Task.FromResult(new AppSettings()),
+            Save = (_, _) =>
+            {
+                if (!cancel) throw new IOException("Settings write failed");
+                cancellation.Cancel();
+                return Task.CompletedTask;
+            },
+            SaveMapsetsDirectory = (_, _) => { mapsetsSaved = true; return Task.CompletedTask; }
+        });
+        try
+        {
+            if (cancel) Assert.CatchAsync<OperationCanceledException>(() => vm.LoadAsync(cancellation.Token));
+            else
+            {
+                await vm.LoadAsync(default);
+                Assert.That(vm.CanRetrySongs, Is.True);
+                Assert.That(vm.SongsStatus, Does.Contain("Settings write failed"));
+            }
+            Assert.That(songsLoaded, Is.False);
+            Assert.That(mapsetsSaved, Is.False);
+        }
+        finally { vm.Deactivate(); }
     }
     [Test]
     public async Task CancelledPickerPreservesSavedRoot()

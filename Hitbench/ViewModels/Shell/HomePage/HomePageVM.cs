@@ -366,6 +366,8 @@ public partial class HomePageVM(
         token.ThrowIfCancellationRequested();
         if (result.Directory is not { } found || !await folders.IsInstallationAsync(found, token)) return null;
         token.ThrowIfCancellationRequested();
+        await settings.SaveOsuPathAsync(found, token);
+        token.ThrowIfCancellationRequested();
         return Path.Combine(found, "Songs");
     }
 
