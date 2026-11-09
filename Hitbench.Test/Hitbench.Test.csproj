@@ -27,6 +27,7 @@
 
   <ItemGroup>
     <None Include="Fixtures\Audio\*.*" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="Fixtures\Export\*.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

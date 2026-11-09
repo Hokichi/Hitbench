@@ -16,10 +16,11 @@ internal sealed class OHsExportLayoutSearch
     private readonly IProgress<OHsExportProgress>? progress;
     private readonly List<int[]> banks = [];
     private readonly HashSet<string> seen = new(StringComparer.Ordinal);
-    private readonly Dictionary<(int Slot, int Asset), int> copies = [];
+    private readonly Dictionary<(int Slot, int Asset), int> copies;
     private readonly HashSet<int> flexible = [];
     private readonly int minimumBanks;
     private readonly int minimumSlots;
+    private readonly int conditionalMinimumFiles;
     private int[][]? best;
     private int bestFiles = int.MaxValue;
     private long lastReport = Stopwatch.GetTimestamp();
@@ -61,9 +62,18 @@ internal sealed class OHsExportLayoutSearch
             forced.Add(common);
             flexible.UnionWith(required);
         }
+        copies = BuildCopyRequirements(forced);
+        if (copies.Keys.GroupBy(p => p.Slot).Any(g => g.Count() > capacity)) throw new InvalidOperationException(IndexRangeError);
+        conditionalMinimumFiles = ComputeConditionalMinimumFiles(forced, flexible);
+        flexible.ExceptWith(copies.Keys.Select(p => p.Asset));
+        minimumBanks = copies.GroupBy(p => p.Key.Slot).Select(g => g.Sum(p => p.Value)).DefaultIfEmpty(recipes.Length == 0 ? 0 : 1).Max();
+    }
+
+    private Dictionary<(int Slot, int Asset), int> BuildCopyRequirements(IReadOnlyList<int[]> forced)
+    {
+        var result = new Dictionary<(int Slot, int Asset), int>();
         var pairs = forced.SelectMany(m => m.Select((id, slot) => (Slot: slot, Asset: id)))
-            .Where(p => p.Asset != 0).Distinct().ToArray();
-        if (pairs.GroupBy(p => p.Slot).Any(g => g.Count() > capacity)) throw new InvalidOperationException(IndexRangeError);
+            .Where(p => p.Asset != 0).Distinct();
         foreach (var pair in pairs)
         {
             Check();
@@ -73,10 +83,40 @@ internal sealed class OHsExportLayoutSearch
             // so this identity needs at least that many physical copies too.
             for (var s = 0; s < 12; s++)
                 required = Math.Max(required, together.Select(m => m[s]).Where(id => id != 0).Distinct().Count());
-            copies[pair] = required;
+            result[pair] = required;
         }
-        flexible.ExceptWith(copies.Keys.Select(p => p.Asset));
-        minimumBanks = copies.GroupBy(p => p.Key.Slot).Select(g => g.Sum(p => p.Value)).DefaultIfEmpty(recipes.Length == 0 ? 0 : 1).Max();
+        return result;
+    }
+
+    private int RequiredFileBound(IReadOnlyList<int[]> forced, IReadOnlyCollection<int> required)
+    {
+        var requirements = BuildCopyRequirements(forced);
+        var fixedAssets = requirements.Keys.Select(p => p.Asset).ToHashSet();
+        return requirements.Where(p => IsFile(p.Key.Asset)).Sum(p => p.Value) +
+            required.Count(id => IsFile(id) && !fixedAssets.Contains(id));
+    }
+
+    private int ComputeConditionalMinimumFiles(IReadOnlyList<int[]> common, IReadOnlyCollection<int> required)
+    {
+        var lowerBound = Math.Max(minimumSlots, RequiredFileBound(common, required));
+        for (var i = 0; i < recipes.Length; i++)
+        {
+            Check();
+            if (recipes[i].Length == 1) continue;
+            var forced = common.ToArray();
+            var minimum = int.MaxValue;
+            foreach (var choice in recipes[i])
+            {
+                Check();
+                forced[i] = choice;
+                var identities = required.Concat(choice.Where(id => id != 0)).ToHashSet();
+                minimum = Math.Min(minimum, RequiredFileBound(forced, identities));
+            }
+            // A completion realizes some alternative of every recipe. The minimum
+            // bound over its alternatives is therefore a necessary global floor.
+            lowerBound = Math.Max(lowerBound, minimum);
+        }
+        return lowerBound;
     }
 
     internal static IReadOnlyList<IReadOnlyDictionary<OHsExportSlot, OHsExportAsset>> Find(
@@ -139,7 +179,7 @@ internal sealed class OHsExportLayoutSearch
             Check();
             if (IsFile(pair.Key.Asset)) missing += Math.Max(0, pair.Value - banks.Count(b => b[pair.Key.Slot] == pair.Key.Asset));
         }
-        return Math.Max(minimumSlots, files + missing + flexible.Count(id => IsFile(id) && !banks.Any(b => b.Contains(id))));
+        return Math.Max(conditionalMinimumFiles, files + missing + flexible.Count(id => IsFile(id) && !banks.Any(b => b.Contains(id))));
     }
 
     private List<(int Bank, int[] Map, int Added)> Options(out bool complete)
@@ -225,6 +265,7 @@ internal sealed class OHsExportLayoutSearch
         while (stack.TryPop(out var frame))
         {
             Check();
+            if (bestFiles == conditionalMinimumFiles) return;
             if (frame.Next == frame.Options.Count)
             {
                 if (frame.Bank >= 0) Undo(frame.Bank, frame.Previous);
