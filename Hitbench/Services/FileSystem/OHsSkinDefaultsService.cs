@@ -16,11 +16,6 @@ public sealed class OHsSkinDefaultsService(IAppSettingsService settings, string?
 
     public async Task<OHsSkinDefaultsSnapshot> RefreshAsync(string projectPath, string currentSkin, bool allowDefaults, bool force, CancellationToken token)
     {
-        var configuration = await settings.LoadAsync(token).ConfigureAwait(false);
-        var text = await File.ReadAllLinesAsync(Path.Combine(configuration.OsuPath, $"osu!.{userName ?? Environment.UserName}.cfg"), token).ConfigureAwait(false);
-        var skin = text.Select(line => line.Trim().TrimStart('\uFEFF')).Select(line => line.Split('=', 2))
-            .LastOrDefault(pair => pair.Length == 2 && pair[0].Trim() == "Skin")?[1].Trim()
-            ?? throw new InvalidDataException("The osu! configuration has no Skin setting.");
         return await Task.Run(async () =>
         {
             await mutations.WaitAsync(token).ConfigureAwait(false);
@@ -29,19 +24,40 @@ public sealed class OHsSkinDefaultsService(IAppSettingsService settings, string?
                 var cache = SamplePaths.ResolveFolder(projectPath, OHsDefaultSamples.FolderName);
                 IReadOnlyList<string> List() => Directory.Exists(cache) ? Directory.EnumerateFiles(cache).Where(IsHitsound)
                     .Select(path => SamplePaths.Relative(projectPath, path)).Order(StringComparer.OrdinalIgnoreCase).ToArray() : [];
-                if (!allowDefaults || !force && skin == currentSkin && Directory.Exists(cache))
+                OHsSkinDefaultsSnapshot Unchanged()
+                {
+                    token.ThrowIfCancellationRequested();
                     return new OHsSkinDefaultsSnapshot(currentSkin, List(), false);
+                }
+                if (!allowDefaults) return Unchanged();
+                var configuration = await settings.LoadAsync(token).ConfigureAwait(false);
+                if (string.IsNullOrWhiteSpace(configuration.OsuPath)) return Unchanged();
+                string[] text;
+                try
+                {
+                    text = await File.ReadAllLinesAsync(Path.Combine(configuration.OsuPath,
+                        $"osu!.{userName ?? Environment.UserName}.cfg"), token).ConfigureAwait(false);
+                }
+                catch (Exception error) when (error is FileNotFoundException or DirectoryNotFoundException)
+                { return Unchanged(); }
+                var skin = text.Select(line => line.Trim().TrimStart('\uFEFF')).Select(line => line.Split('=', 2))
+                    .LastOrDefault(pair => pair.Length == 2 && pair[0].Trim() == "Skin")?[1].Trim()
+                    ?? throw new InvalidDataException("The osu! configuration has no Skin setting.");
+                if (!force && skin == currentSkin && Directory.Exists(cache)) return Unchanged();
                 if (string.IsNullOrWhiteSpace(skin) || skin is "." or ".." || skin.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
                     throw new InvalidDataException("Invalid skin folder name.");
                 var source = Path.Combine(Path.GetFullPath(configuration.OsuPath), "Skins", skin);
                 SamplePaths.RejectLinkedPath(source);
+                string[] files;
+                try { files = Directory.GetFiles(source); }
+                catch (DirectoryNotFoundException) { return Unchanged(); }
                 var root = SamplePaths.Root(projectPath); Directory.CreateDirectory(root);
                 var stage = Path.Combine(root, ".skin-stage-" + Guid.NewGuid().ToString("N"));
                 var backup = Path.Combine(root, ".skin-backup-" + Guid.NewGuid().ToString("N"));
                 Directory.CreateDirectory(stage);
                 try
                 {
-                    foreach (var file in Directory.EnumerateFiles(source).Where(IsHitsound))
+                    foreach (var file in files.Where(IsHitsound))
                     {
                         token.ThrowIfCancellationRequested(); SamplePaths.RejectLinkedPath(file);
                         using var input = File.OpenRead(file);

@@ -1,12 +1,56 @@
 using Hitbench.Core.Entities;
 using Hitbench.Resources.DataModels;
 using Hitbench.Services;
+using Hitbench.Services.FileSystem;
 using Hitbench.ViewModels.Shell;
 
 namespace Hitbench.Test.Presentation;
 
 public class WorkstationSkinDefaultsTests
 {
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task ProjectLoadsWhenSkinLoadingIsSkipped(bool allowDefaults)
+    {
+        var root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        var project = new ProjectData
+        {
+            AllowDefaults = allowDefaults, CurrentSkin = "Old", Offsets = [0], BPMs = [120],
+            Tracks = [new Track { Name = "Hits", SelectedSampleFileName = "hit.wav", Samples = [new Sample { FileName = "hit.wav", Timestamp = 500 }] }],
+            ControlPoints = [new ControlPoint { Timestamp = 0, Volume = 80 }]
+        };
+        var settings = new StubAppSettingsService
+        {
+            Load = _ => allowDefaults
+                ? Task.FromResult(new AppSettings { OsuPath = Path.Combine(root, "missing-osu") })
+                : throw new InvalidOperationException("Disabled defaults must not read settings.")
+        };
+        var audio = new StubWorkstationAudioService();
+        var vm = new WorkstationPageVM(
+            new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav", project)) },
+            new MarkerPlaybackCoordinator(audio, Task.Delay), new ImmediateUiScheduler(),
+            sampleFiles: new StubSampleFileService(["hit.wav"]), skinDefaults: new OHsSkinDefaultsService(settings));
+        try
+        {
+            await vm.LoadAsync(Path.Combine(root, "project.json"), default);
+            vm.AcknowledgePresentationReady(vm.LoadGeneration);
+
+            Assert.That(vm.LoadPhase, Is.EqualTo(ProjectLoadPhase.Ready));
+            Assert.That(vm.ErrorMessage, Is.Null);
+            Assert.That(vm.Project, Is.SameAs(project));
+            Assert.That(vm.Waveform, Is.Not.Null);
+            Assert.That(audio.OpenedPath, Is.EqualTo("audio.wav"));
+            Assert.That(vm.Tracks.Single().Name, Is.EqualTo("Hits"));
+            Assert.That(vm.Tracks.Single().Samples.Single().Timestamp, Is.EqualTo(500));
+            Assert.That(vm.ControlPointCount, Is.EqualTo(1));
+            Assert.That(project.ControlPoints.Single().Volume, Is.EqualTo(80));
+            Assert.That(vm.AllowDefaults, Is.EqualTo(allowDefaults));
+            Assert.That(project.CurrentSkin, Is.EqualTo("Old"));
+        }
+        finally { await vm.DeactivateAsync(); Directory.Delete(root, true); }
+    }
+
     [Test]
     public async Task ReplacementLoadSettlesCancelledRefreshBeforeLoadingAgain()
     {
