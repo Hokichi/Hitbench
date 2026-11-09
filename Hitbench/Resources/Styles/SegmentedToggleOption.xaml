@@ -27,18 +27,30 @@
                 BorderThickness="{TemplateBinding BorderThickness}"
                 Padding="{TemplateBinding Padding}"
                 CornerRadius="{StaticResource Radius.Control}">
-                <ContentPresenter Style="{StaticResource BaseContentPresenterStyle}"
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                    VerticalAlignment="{TemplateBinding VerticalContentAlignment}">
+                <c:Icon x:Name="OptionIcon" Path="{TemplateBinding Icon}" Color="{TemplateBinding Foreground}"
+                    Width="{TemplateBinding IconSize}" Height="{TemplateBinding IconSize}" VerticalAlignment="Center" />
+                <ContentPresenter x:Name="OptionContent" Style="{StaticResource BaseContentPresenterStyle}" Margin="8,0,0,0"
                     Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
                     ContentTemplateSelector="{TemplateBinding ContentTemplateSelector}"
                     ContentStringFormat="{TemplateBinding ContentStringFormat}"
                     HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                     VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                </StackPanel>
             </Border>
             <Border x:Name="SelectedMarker" Style="{StaticResource BaseBorderStyle}" Height="3"
                 Margin="8,0,8,0" VerticalAlignment="Bottom" Background="{TemplateBinding Foreground}"
                 IsHitTestVisible="False" Visibility="Collapsed" />
         </Grid>
         <ControlTemplate.Triggers>
+            <Trigger Property="Icon" Value="{x:Null}">
+                <Setter TargetName="OptionIcon" Property="Visibility" Value="Collapsed" />
+                <Setter TargetName="OptionContent" Property="Margin" Value="0" />
+            </Trigger>
+            <Trigger Property="Content" Value="{x:Null}">
+                <Setter TargetName="OptionContent" Property="Visibility" Value="Collapsed" />
+            </Trigger>
             <Trigger Property="IsSelected" Value="True">
                 <Setter TargetName="SelectedMarker" Property="Visibility" Value="Visible" />
             </Trigger>
@@ -55,6 +67,7 @@
         <Setter Property="FontWeight" Value="Bold" />
         <Setter Property="FontSize" Value="{StaticResource FontSize.Caption}" />
         <Setter Property="MinHeight" Value="{StaticResource Size.Control.Primary}" />
+        <Setter Property="IconSize" Value="{StaticResource Size.Icon.Default}" />
         <Setter Property="HorizontalContentAlignment" Value="Center" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
         <Setter Property="ContentTemplate" Value="{StaticResource SegmentedToggleOptionContentTemplate}" />

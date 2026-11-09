@@ -102,7 +102,9 @@ public class WorkstationMarkerModeTransitionTests
             var group = (SegmentedToggleGroup)page.Toolbar.FindName("MarkerModeGroup");
             UiControlContract.AssertStyle<SegmentedToggleGroup>(group, "OHsWorkstationMarkerModeStyle");
             var options = group.Items.OfType<SegmentedToggleOption>().ToArray();
-            Assert.That(options.Select(o => o.Content), Is.EqualTo(new[] { "MarkerStatic", "MarkerDynamic" }));
+            Assert.That(options.Select(o => o.Content), Is.All.Null);
+            Assert.That(options[0].Icon, Is.SameAs(options[0].FindResource("BullseyeSolid")));
+            Assert.That(options[1].Icon, Is.SameAs(options[1].FindResource("AlignArrowRightFill")));
             Assert.That(options.Select(o => o.Value), Is.EqualTo(new[] { true, false }));
             foreach (var option in options)
             {

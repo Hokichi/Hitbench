@@ -145,9 +145,11 @@
             <Style.Triggers><DataTrigger Binding="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationToolbar}, Mode=OneWay}" Value="True"><Setter Property="Padding" Value="8,6" /></DataTrigger></Style.Triggers>
         </Style>
         <Style x:Key="OHsWorkstationMarkerModeStyle" TargetType="customControls:SegmentedToggleGroup" BasedOn="{StaticResource {x:Type customControls:SegmentedToggleGroup}}">
-            <Setter Property="Width" Value="240" />
+            <Setter Property="Width" Value="92" />
         </Style>
         <Style x:Key="OHsWorkstationMarkerOptionStyle" TargetType="customControls:SegmentedToggleOption" BasedOn="{StaticResource OHsWorkstationEditingOptionStyle}">
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="MinWidth" Value="{StaticResource Size.Control.Primary}" />
             <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}" />
         </Style>
     </UserControl.Resources>
@@ -223,11 +225,11 @@
                         Style="{StaticResource OHsWorkstationMarkerModeStyle}"
                         AutomationProperties.Name="Playback marker mode" IsEnabled="{Binding CanPlay, Mode=OneWay}"
                         SelectedValue="{Binding IsStaticMarker, Mode=OneWay}" OptionSelected="OnMarkerModeSelected">
-                        <customControls:SegmentedToggleOption Content="MarkerStatic" AutomationProperties.Name="Static playback marker"
+                        <customControls:SegmentedToggleOption Icon="{StaticResource BullseyeSolid}" AutomationProperties.Name="Static playback marker"
                             Style="{StaticResource OHsWorkstationMarkerOptionStyle}" ToolTip="Keep playback marker centered and move tracks (F8)">
                             <customControls:SegmentedToggleOption.Value><sys:Boolean>True</sys:Boolean></customControls:SegmentedToggleOption.Value>
                         </customControls:SegmentedToggleOption>
-                        <customControls:SegmentedToggleOption Content="MarkerDynamic" AutomationProperties.Name="Dynamic playback marker"
+                        <customControls:SegmentedToggleOption Icon="{StaticResource AlignArrowRightFill}" AutomationProperties.Name="Dynamic playback marker"
                             Style="{StaticResource OHsWorkstationMarkerOptionStyle}" ToolTip="Move playback marker across tracks (F8)">
                             <customControls:SegmentedToggleOption.Value><sys:Boolean>False</sys:Boolean></customControls:SegmentedToggleOption.Value>
                         </customControls:SegmentedToggleOption>

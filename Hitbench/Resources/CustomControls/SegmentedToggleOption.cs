@@ -1,11 +1,18 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 
 namespace Hitbench.Resources.CustomControls;
 
 public class SegmentedToggleOption : RadioButton
 {
+    public static readonly DependencyProperty IconProperty = DependencyProperty.Register(
+        nameof(Icon), typeof(Geometry), typeof(SegmentedToggleOption), new PropertyMetadata(null));
+    public static readonly DependencyProperty IconSizeProperty = DependencyProperty.Register(
+        nameof(IconSize), typeof(double), typeof(SegmentedToggleOption), new PropertyMetadata(20d));
+    public Geometry? Icon { get => (Geometry?)GetValue(IconProperty); set => SetValue(IconProperty, value); }
+    public double IconSize { get => (double)GetValue(IconSizeProperty); set => SetValue(IconSizeProperty, value); }
     static SegmentedToggleOption()
     {
         DefaultStyleKeyProperty.OverrideMetadata(
