@@ -64,8 +64,15 @@ public partial class OHsWorkstationTimeline : UserControl
     }
     public void ScrollFromUser(double offset)
     {
-        if (deactivationStarted) return;
+        if (deactivationStarted || !double.IsFinite(offset)) return;
         if (!viewModel.IsStaticMarker) viewModel.ScrollWithMarker = false;
+        else
+        {
+            requestedOffset = Math.Clamp(offset, MinimumHorizontalOffset, ScrollableWidth);
+            ScrollToHorizontalOffset(requestedOffset.Value);
+            SeekViewportPosition(TimelineViewportWidth / 2, requestedOffset.Value);
+            return;
+        }
         ScrollToHorizontalOffset(offset);
     }
     public void AttachScrollBar(ScrollBar value)
@@ -87,7 +94,7 @@ public partial class OHsWorkstationTimeline : UserControl
         scrollBar = null;
     }
     public void ResetWheel() { wheelMode = ModifierKeys.None; wheelRemainder = 0; }
-    public void Reset() { EndScrub(); hasPendingZoomAnchor = false; ResetWheel(); ControlPointLane.ResetInteraction(); }
+    public void Reset() { EndScrub(); ResetNavigation(); hasPendingZoomAnchor = false; ResetWheel(); ControlPointLane.ResetInteraction(); }
     public bool PreparePresentation()
     {
         var inset = WaveformScrollViewer.BorderThickness;
@@ -133,6 +140,7 @@ public partial class OHsWorkstationTimeline : UserControl
         TimelineViewportWidth = e.ViewportWidth;
         RefreshTimelineGeometry();
         TimelineHorizontalOffset = e.HorizontalOffset - TimelineEdgePadding;
+        if (!navigating && requestedOffset is { } requested && Math.Abs(requested - TimelineHorizontalOffset) < .01) requestedOffset = null;
         if (scrollBar is not null) scrollBar.Value = TimelineHorizontalOffset;
         ApplyPendingZoomAnchor();
         if (viewportChanged && viewModel?.IsStaticMarker == true) CenterPlaybackPosition();
@@ -222,7 +230,7 @@ public partial class OHsWorkstationTimeline : UserControl
 
     public bool HandleWaveformWheel(ModifierKeys modifiers, int delta)
     {
-        if (modifiers is not ModifierKeys.Control and not (ModifierKeys.Control | ModifierKeys.Alt) and not ModifierKeys.Shift and
+        if (modifiers is not ModifierKeys.None and not ModifierKeys.Control and not (ModifierKeys.Control | ModifierKeys.Alt) and not ModifierKeys.Shift and
             not (ModifierKeys.Control | ModifierKeys.Shift) ||
             !viewModel.CanZoom || deactivationStarted)
         {
@@ -240,13 +248,16 @@ public partial class OHsWorkstationTimeline : UserControl
         wheelRemainder += delta;
         var steps = wheelRemainder / Mouse.MouseWheelDeltaForOneLine;
         wheelRemainder %= Mouse.MouseWheelDeltaForOneLine;
-        if (modifiers == ModifierKeys.Shift)
+        if (modifiers is ModifierKeys.Shift or ModifierKeys.None)
         {
-            if (delta != 0) viewModel.ScrollWithMarker = false;
-            for (var index = 0; index < Math.Abs(steps); index++)
+            if (delta != 0 && !viewModel.IsStaticMarker) viewModel.ScrollWithMarker = false;
+            if (viewModel.IsStaticMarker)
             {
-                if (steps > 0) WaveformScrollViewer.LineLeft();
-                else WaveformScrollViewer.LineRight();
+                if (steps != 0) ScrollFromUser(UserHorizontalOffset - steps * 16);
+            }
+            else for (var index = 0; index < Math.Abs(steps); index++)
+            {
+                if (steps > 0) WaveformScrollViewer.LineLeft(); else WaveformScrollViewer.LineRight();
             }
             return true;
         }

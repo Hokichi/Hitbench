@@ -35,7 +35,7 @@ public partial class OHsWorkstationTimeline
 
     private void CenterPlaybackPosition()
     {
-        if (deactivationStarted || viewModel.Waveform is not { } waveform) return;
+        if (deactivationStarted || navigating || viewModel.Waveform is not { } waveform) return;
         ScrollToHorizontalOffset(OHsTimelineViewport.GetCenteredOffset(viewModel.Position, waveform.Duration,
             TimelineContentWidth, TimelineViewportWidth));
     }

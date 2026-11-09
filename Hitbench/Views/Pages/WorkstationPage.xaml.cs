@@ -152,7 +152,7 @@ public partial class WorkstationPage : UserControl
     private async Task DeactivateCoreAsync()
     {
         DismissVolumeOverlay();
-        try { await viewModel.DeactivateAsync(); await PlaybackInputCompletion; await NodeInputCompletion; }
+        try { await Timeline.CancelNavigationAsync(); await viewModel.DeactivateAsync(); await PlaybackInputCompletion; await NodeInputCompletion; }
         finally
         {
             if (ownerWindow is not null) { ownerWindow.StateChanged -= OnOwnerStateChanged; ownerWindow.Deactivated -= OnNodeOwnerDeactivated; }
@@ -322,6 +322,7 @@ public partial class WorkstationPage : UserControl
                 if (!viewModel.SeekCommand.CanExecute(target)) return false;
                 PlaybackInputCompletion = RevealAfterNavigationAsync(viewModel.SeekCommand.ExecuteAsync(target));
             }
+            else if (viewModel.IsStaticMarker) Timeline.ScrollFromUser(key == Key.Home ? Timeline.MinimumHorizontalOffset : Timeline.ScrollableWidth);
             else if (key == Key.Home) Timeline.ScrollToHorizontalOffset(0);
             else Timeline.ScrollToHorizontalOffset(Timeline.ScrollableWidth);
             return true;
@@ -349,7 +350,7 @@ public partial class WorkstationPage : UserControl
         }
         if (modifiers == ModifierKeys.None && key == Key.F)
         {
-            if (!viewModel.CanPlay || IsTextInputOrigin(origin)) return false;
+            if (!viewModel.CanToggleScrollWithMarker || IsTextInputOrigin(origin)) return false;
             if (!isRepeat) viewModel.ScrollWithMarker = !viewModel.ScrollWithMarker;
             return true;
         }

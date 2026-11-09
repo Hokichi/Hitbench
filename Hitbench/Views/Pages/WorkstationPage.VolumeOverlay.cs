@@ -137,6 +137,7 @@ public partial class WorkstationPage
     {
         if (IsVolumeOverlayOpen && modifiers == ModifierKeys.None && IsVolumeOverlayElement(origin)) return false;
         if (!IsVolumeOverlayOpen && HandleNodeDragWheel(modifiers, delta)) return true;
+        if (modifiers == ModifierKeys.None && !IsHorizontalWheelOrigin(origin)) { Timeline.ResetWheel(); return false; }
         if (modifiers != ModifierKeys.Alt)
         {
             volumeWheelRemainder = 0;
@@ -162,6 +163,8 @@ public partial class WorkstationPage
             Math.Clamp(active.Value + Math.Sign(steps) * Math.Abs(steps) * 5, active.Minimum, active.Maximum));
         return true;
     }
+
+    internal bool IsHorizontalWheelOrigin(DependencyObject? origin) => IsWithin(origin, AudioCard) || IsWithin(origin, WaveformScrollBar);
 
     internal bool HandleVolumeShortcut(Key key, ModifierKeys modifiers, DependencyObject? origin)
     {

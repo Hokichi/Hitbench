@@ -177,7 +177,7 @@ public class WorkstationPageIntegrationTests
     [TestCase(ModifierKeys.Shift)]
     [TestCase(ModifierKeys.Control | ModifierKeys.Shift)]
     [TestCase(ModifierKeys.Control | ModifierKeys.Alt)]
-    public void OnlyShiftWheelDisablesMarkerFollow(ModifierKeys modifiers)
+    public void HorizontalWheelDisablesMarkerFollow(ModifierKeys modifiers)
     {
         EnsureResources("Dark");
         var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new Hitbench.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler());
@@ -188,10 +188,10 @@ public class WorkstationPageIntegrationTests
         {
             vm.ScrollWithMarker = true;
             page.HandleWaveformWheel(modifiers, delta);
-            Assert.That(vm.ScrollWithMarker, Is.EqualTo(!(modifiers == ModifierKeys.Shift && delta != 0)), $"Direct: {modifiers}, {delta}");
+            Assert.That(vm.ScrollWithMarker, Is.EqualTo(!(modifiers is ModifierKeys.Shift or ModifierKeys.None && delta != 0)), $"Direct: {modifiers}, {delta}");
             vm.ScrollWithMarker = true;
             page.HandleContextWheel(modifiers, delta, page.AudioCard);
-            Assert.That(vm.ScrollWithMarker, Is.EqualTo(!(modifiers == ModifierKeys.Shift && delta != 0)), $"Context: {modifiers}, {delta}");
+            Assert.That(vm.ScrollWithMarker, Is.EqualTo(!(modifiers is ModifierKeys.Shift or ModifierKeys.None && delta != 0)), $"Context: {modifiers}, {delta}");
         }
         if (modifiers == ModifierKeys.Alt)
         {
@@ -1382,7 +1382,7 @@ public class WorkstationPageIntegrationTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(page.HandleWaveformWheel(ModifierKeys.None, 120), Is.False);
+            Assert.That(page.HandleWaveformWheel(ModifierKeys.None, 120), Is.True);
             Assert.That(page.HandleWaveformWheel(ModifierKeys.Control | ModifierKeys.Alt | ModifierKeys.Shift, 120), Is.False);
         });
 
