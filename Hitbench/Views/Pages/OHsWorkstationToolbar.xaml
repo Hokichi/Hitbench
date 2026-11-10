@@ -18,7 +18,9 @@
             x:Key="OHsWorkstationHeaderCardStyle"
             BasedOn="{StaticResource CardBorderStyle}"
             TargetType="Border">
-            <Setter Property="Margin" Value="0,0,0,8" /><Setter Property="Padding" Value="8"/><Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Margin" Value="0,0,0,8" />
+            <Setter Property="Padding" Value="8" />
+            <Setter Property="BorderThickness" Value="0" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsShortLayout, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationToolbar}, Mode=OneWay}" Value="True">
                     <Setter Property="Padding" Value="16,8" />
@@ -29,6 +31,7 @@
             x:Key="OHsWorkstationTransportButtonStyle"
             BasedOn="{StaticResource OHsBalloonNeutralActionStyle}"
             TargetType="customControls:BalloonButton">
+            <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="Margin" Value="0,0,8,0" />
             <Setter Property="ShouldShowText" Value="False" />
             <Setter Property="IsTabStop" Value="True" />
@@ -45,6 +48,7 @@
             x:Key="OHsWorkstationScrollWithMarkerStyle"
             BasedOn="{StaticResource {x:Type customControls:BalloonCheckBox}}"
             TargetType="customControls:BalloonCheckBox">
+            <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="ButtonSize" Value="{StaticResource Size.Control.Primary}" />
             <Setter Property="Margin" Value="4,0,0,0" />
             <Setter Property="ShouldShowText" Value="False" />
@@ -72,6 +76,7 @@
             x:Key="OHsWorkstationPlayPauseStyle"
             BasedOn="{StaticResource OHsBalloonDefaultActionStyle}"
             TargetType="customControls:BalloonButton">
+            <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="AutomationProperties.Name" Value="Play audio" />
             <Setter Property="ButtonIcon" Value="{StaticResource MediaPlay}" />
             <Setter Property="ButtonText" Value="Play" />
@@ -89,9 +94,8 @@
             x:Key="OHsWorkstationSamplesActionStyle"
             BasedOn="{StaticResource OHsBalloonNavInfoActionStyle}"
             TargetType="customControls:BalloonButton">
-            <Setter Property="VerticalAlignment" Value="Top" />
+            <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="ButtonIcon" Value="{StaticResource MusicNote}" />
-            <Setter Property="ButtonText" Value="Samples" />
             <Setter Property="ToolTip" Value="Manage samples" />
             <Setter Property="AutomationProperties.ItemStatus" Value="Closed" />
             <Setter Property="ShouldShowText" Value="False" />
@@ -115,11 +119,14 @@
         <Style
             x:Key="OHsWorkstationAddActionStyle"
             BasedOn="{StaticResource BaseBalloonMenuStyle}"
-            TargetType="customControls:BalloonMenu" />
+            TargetType="customControls:BalloonMenu">
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
         <Style
             x:Key="OHsWorkstationProjectActionsStyle"
             BasedOn="{StaticResource BaseBalloonMenuStyle}"
             TargetType="customControls:BalloonMenu">
+            <Setter Property="VerticalAlignment" Value="Center" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationToolbar}, Mode=OneWay}" Value="True">
                     <Setter Property="Margin" Value="0" />
@@ -146,7 +153,7 @@
             x:Key="OHsWorkstationCompactSeparatorStyle"
             BasedOn="{StaticResource OHsWorkstationToolbarSeparatorStyle}"
             TargetType="Border">
-            <Setter Property="VerticalAlignment" Value="Top" />
+            <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="Height" Value="{StaticResource Size.Control.Compact}" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationToolbar}, Mode=OneWay}" Value="True">
@@ -170,6 +177,7 @@
             x:Key="OHsWorkstationEditingModeStyle"
             BasedOn="{StaticResource {x:Type customControls:SegmentedToggleGroup}}"
             TargetType="customControls:SegmentedToggleGroup">
+            <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="Width" Value="160" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationToolbar}, Mode=OneWay}" Value="True">
@@ -181,7 +189,7 @@
             x:Key="OHsWorkstationEditingOptionStyle"
             BasedOn="{StaticResource {x:Type customControls:SegmentedToggleOption}}"
             TargetType="customControls:SegmentedToggleOption">
-            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}"/>
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationToolbar}, Mode=OneWay}" Value="True">
                     <Setter Property="Padding" Value="8,6" />
@@ -192,6 +200,7 @@
             x:Key="OHsWorkstationMarkerModeStyle"
             BasedOn="{StaticResource {x:Type customControls:SegmentedToggleGroup}}"
             TargetType="customControls:SegmentedToggleGroup">
+            <Setter Property="VerticalAlignment" Value="Center" />
             <!--  Two 40-DIP targets, 8 padding, 4 spacing, and 2 border.  -->
             <Setter Property="Width" Value="94" />
         </Style>
@@ -217,9 +226,9 @@
             <WrapPanel
                 x:Name="TransportGroup"
                 MaxWidth="{Binding ActualWidth, ElementName=ToolbarLayoutRoot, Mode=OneWay}"
-                VerticalAlignment="Top"
+                VerticalAlignment="Center"
                 Orientation="Horizontal">
-                <StackPanel Orientation="Horizontal">
+                <StackPanel VerticalAlignment="Center" Orientation="Horizontal">
                     <customControls:BalloonButton
                         x:Name="PlayPauseButton"
                         Margin="0"
@@ -326,11 +335,20 @@
                 Grid.Column="2"
                 MaxWidth="{Binding ActualWidth, ElementName=ToolbarLayoutRoot, Mode=OneWay}"
                 HorizontalAlignment="Right"
-                VerticalAlignment="Top"
+                VerticalAlignment="Center"
                 Orientation="Horizontal">
-                <customControls:BalloonButton x:Name="ExportButton" ButtonIcon="{StaticResource Export}" ButtonText="Export" Command="{Binding ExportCommand, Mode=OneWay}" Style="{StaticResource OHsBalloonNavInfoActionStyle}" ToolTip="Export" AutomationProperties.Name="Export"/>
+                <customControls:BalloonButton
+                    x:Name="ExportButton"
+                    VerticalAlignment="Center"
+                    AutomationProperties.Name="Export"
+                    ButtonIcon="{StaticResource Export}"
+                    Command="{Binding ExportCommand, Mode=OneWay}"
+                    ShouldShowText="False"
+                    Style="{StaticResource OHsBalloonNavInfoActionStyle}"
+                    ToolTip="Export" />
                 <customControls:BalloonMenu
                     x:Name="ProjectActionsButton"
+                    Margin="8,0,0,0"
                     AutomationProperties.Name="Project actions"
                     ButtonIcon="{StaticResource BarsSolid}"
                     ButtonText="Actions"
@@ -382,7 +400,7 @@
                         Command="{Binding OpenProjectFolderCommand, Mode=OneWay}" />
                 </customControls:BalloonMenu>
                 <Border Style="{StaticResource OHsWorkstationCompactSeparatorStyle}" />
-                <Grid VerticalAlignment="Top" Style="{StaticResource BaseGridStyle}">
+                <Grid VerticalAlignment="Center" Style="{StaticResource BaseGridStyle}">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="8" />
@@ -420,7 +438,7 @@
                 <Border Style="{StaticResource OHsWorkstationCompactSeparatorStyle}" />
                 <pages:OHsWorkstationFooter
                     x:Name="FooterControls"
-                    VerticalAlignment="Top"
+                    VerticalAlignment="Center"
                     IsCompactLayout="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationToolbar}, Mode=OneWay}" />
             </WrapPanel>
         </Grid>

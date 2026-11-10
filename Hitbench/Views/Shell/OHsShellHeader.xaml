@@ -46,7 +46,10 @@
             <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}" />
             <Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="True" />
         </Style>
-        <Style x:Key="OHsShellHeaderUpdateActionStyle" TargetType="customControls:BalloonButton" BasedOn="{StaticResource OHsBalloonNeutralActionStyle}">
+        <Style
+            x:Key="OHsShellHeaderUpdateActionStyle"
+            BasedOn="{StaticResource OHsBalloonNeutralActionStyle}"
+            TargetType="customControls:BalloonButton">
             <Setter Property="ShouldShowText" Value="False" />
             <Setter Property="IsTabStop" Value="True" />
             <Setter Property="helpers:KeyboardNavigationPolicy.AllowTabNavigation" Value="True" />
@@ -85,12 +88,36 @@
             </Style.Triggers>
         </Style>
         <ControlTemplate x:Key="OHsShellThemeToggleTemplate" TargetType="ToggleButton">
-        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{StaticResource Radius.Control}">
-            <customControls:Icon x:Name="ThemeIcon" Width="16" Height="16" Path="{StaticResource Moon}" Color="{TemplateBinding Foreground}"/>
-        </Border>
-        <ControlTemplate.Triggers><Trigger Property="IsChecked" Value="True"><Setter TargetName="ThemeIcon" Property="Path" Value="{StaticResource Sun}"/></Trigger></ControlTemplate.Triggers>
-    </ControlTemplate>
-    <Style x:Key="OHsShellProjectNameStyle" TargetType="TextBlock" BasedOn="{StaticResource MainWindowTitleStyle}"><Setter Property="MaxWidth" Value="320"/><Setter Property="Margin" Value="12,0"/><Style.Triggers><DataTrigger Binding="{Binding ProjectName, RelativeSource={RelativeSource AncestorType=shell:OHsShellHeader}, Mode=OneWay}" Value=""><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style>
+            <Border
+                Background="{TemplateBinding Background}"
+                BorderBrush="{TemplateBinding BorderBrush}"
+                BorderThickness="{TemplateBinding BorderThickness}"
+                CornerRadius="{StaticResource Radius.Control}">
+                <customControls:Icon
+                    x:Name="ThemeIcon"
+                    Width="16"
+                    Height="16"
+                    Path="{StaticResource Moon}"
+                    Color="{TemplateBinding Foreground}" />
+            </Border>
+            <ControlTemplate.Triggers>
+                <Trigger Property="IsChecked" Value="True">
+                    <Setter TargetName="ThemeIcon" Property="Path" Value="{StaticResource Sun}" />
+                </Trigger>
+            </ControlTemplate.Triggers>
+        </ControlTemplate>
+        <Style
+            x:Key="OHsShellProjectNameStyle"
+            BasedOn="{StaticResource MainWindowTitleStyle}"
+            TargetType="TextBlock">
+            <Setter Property="MaxWidth" Value="320" />
+            <Setter Property="Margin" Value="12,0" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding ProjectName, RelativeSource={RelativeSource AncestorType=shell:OHsShellHeader}, Mode=OneWay}" Value="">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
 
         <Style
             x:Key="OHsShellThemeToggleStyle"
@@ -144,7 +171,11 @@
             <ColumnDefinition Width="*" />
             <ColumnDefinition Width="Auto" />
         </Grid.ColumnDefinitions>
-        <Grid VerticalAlignment="Center" Style="{StaticResource BaseGridStyle}"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+        <Grid VerticalAlignment="Center" Style="{StaticResource BaseGridStyle}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
             <StackPanel Orientation="Horizontal">
                 <Image Style="{StaticResource OHsShellHeaderLogoStyle}" />
                 <TextBlock
@@ -157,9 +188,19 @@
                     Style="{StaticResource MainWindowTitleStyle}"
                     Text="bench" />
             </StackPanel>
-            <Grid Grid.Column="1" Style="{StaticResource BaseGridStyle}"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                <TextBlock Style="{StaticResource OHsShellProjectNameStyle}" Text="{Binding ProjectName, RelativeSource={RelativeSource AncestorType=shell:OHsShellHeader}, Mode=OneWay}" ToolTip="{Binding ProjectName, RelativeSource={RelativeSource AncestorType=shell:OHsShellHeader}, Mode=OneWay}"/>
-                <ToggleButton Grid.Column="1" x:Name="ThemeSwitch" AutomationProperties.Name="Light theme" Click="OnThemeToggleClick" IsChecked="{Binding IsLightTheme, RelativeSource={RelativeSource AncestorType=shell:OHsShellHeader}, Mode=OneWay}" Style="{StaticResource OHsShellThemeToggleStyle}" ToolTip="Toggle Dark / Light theme"/>
+            <Grid Grid.Column="1" Style="{StaticResource BaseGridStyle}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <ToggleButton
+                    x:Name="ThemeSwitch"
+                    Grid.Column="1"
+                    AutomationProperties.Name="Light theme"
+                    Click="OnThemeToggleClick"
+                    IsChecked="{Binding IsLightTheme, RelativeSource={RelativeSource AncestorType=shell:OHsShellHeader}, Mode=OneWay}"
+                    Style="{StaticResource OHsShellThemeToggleStyle}"
+                    ToolTip="Toggle Dark / Light theme" />
             </Grid>
         </Grid>
         <StackPanel
@@ -174,21 +215,26 @@
                 <customControls:BalloonButton
                     x:Name="GoBackButton"
                     AutomationProperties.Name="Return to projects"
-                    ButtonIcon="{StaticResource AngleLeft}"
+                    ButtonIcon="{StaticResource Home}"
                     ButtonText="Return to projects"
-                    ShouldShowText="False"
                     Click="OnGoBackClick"
                     IsEnabled="{Binding CanGoBack, RelativeSource={RelativeSource AncestorType=shell:OHsShellHeader}, Mode=OneWay}"
                     Style="{StaticResource OHsMainWindowGoBackStyle}"
                     ToolTip="Save project and return to projects" />
                 <Border Style="{StaticResource OHsShellHeaderHomeSeparatorStyle}" />
             </StackPanel>
-            <StackPanel x:Name="UpdateActions" Orientation="Horizontal" Style="{StaticResource BaseStackPanelStyle}">
-                <customControls:BalloonButton x:Name="DownloadUpdateButton"
-                    ButtonIcon="{StaticResource Download}" AutomationProperties.Name="Download update"
+            <StackPanel
+                x:Name="UpdateActions"
+                Orientation="Horizontal"
+                Style="{StaticResource BaseStackPanelStyle}">
+                <customControls:BalloonButton
+                    x:Name="DownloadUpdateButton"
+                    AutomationProperties.Name="Download update"
+                    ButtonIcon="{StaticResource Download}"
+                    Click="OnDownloadUpdateClick"
                     IsEnabled="{Binding CanDownloadUpdate, RelativeSource={RelativeSource AncestorType=shell:OHsShellHeader}, Mode=OneWay}"
-                    ToolTip="{Binding DownloadUpdateToolTip, RelativeSource={RelativeSource AncestorType=shell:OHsShellHeader}, Mode=OneWay}"
-                    Click="OnDownloadUpdateClick" Style="{StaticResource OHsShellHeaderUpdateActionStyle}" />
+                    Style="{StaticResource OHsShellHeaderUpdateActionStyle}"
+                    ToolTip="{Binding DownloadUpdateToolTip, RelativeSource={RelativeSource AncestorType=shell:OHsShellHeader}, Mode=OneWay}" />
                 <Border Style="{StaticResource OHsShellHeaderHomeSeparatorStyle}" />
             </StackPanel>
             <customControls:BalloonButton

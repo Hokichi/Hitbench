@@ -19,7 +19,9 @@
             x:Key="OHsWorkstationPanelStyle"
             BasedOn="{StaticResource CardBorderStyle}"
             TargetType="Border">
-            <Setter Property="Margin" Value="0,0,0,8" /><Setter Property="Padding" Value="16,8"/><Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Margin" Value="0,0,0,8" />
+            <Setter Property="Padding" Value="16,8" />
+            <Setter Property="BorderThickness" Value="0" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
                     <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
@@ -63,8 +65,9 @@
             x:Key="OHsWorkstationControlPointPillStyle"
             BasedOn="{StaticResource CardBorderStyle}"
             TargetType="Border">
-            <Setter Property="Padding" Value="8,4" />
-            <Setter Property="CornerRadius" Value="0" />
+            <Setter Property="Padding" Value="8" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Background" Value="{DynamicResource Brush.Background.Deepened}" />
         </Style>
         <Style
             x:Key="OHsWorkstationControlPointLabelStyle"
@@ -122,7 +125,8 @@
                             Style="{StaticResource OHsWorkstationElapsedStyle}"
                             Text="{Binding ElapsedText, Mode=OneWay}" />
                         <TextBlock
-                            Foreground="{DynamicResource Brush.Text.Secondary}" AutomationProperties.Name="Current BPM"
+                            AutomationProperties.Name="Current BPM"
+                            Foreground="{DynamicResource Brush.Text.Secondary}"
                             Style="{StaticResource BodyTextStyle}"
                             Text="{Binding CurrentBpmText, Mode=OneWay}"
                             TextTrimming="CharacterEllipsis"
@@ -174,7 +178,10 @@
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Style="{StaticResource OHsWorkstationControlPointLabelStyle}" Text="Control Points:" />
-                                <TextBlock Grid.Column="2" Style="{StaticResource OHsWorkstationControlPointCountStyle}" Text="{Binding ControlPointCount, Mode=OneWay}" />
+                                <TextBlock
+                                    Grid.Column="2"
+                                    Style="{StaticResource OHsWorkstationControlPointCountStyle}"
+                                    Text="{Binding ControlPointCount, Mode=OneWay}" />
                             </Grid>
                         </Border>
                     </Grid>

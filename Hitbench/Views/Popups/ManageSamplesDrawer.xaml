@@ -310,9 +310,14 @@
                     ToolTip="Close Manage Samples"
                     ToolTipService.ShowsToolTipOnKeyboardFocus="True" />
             </Grid>
-            <StackPanel Grid.Row="1" Style="{StaticResource BaseStackPanelStyle}">
+            <Grid Grid.Row="1" Style="{StaticResource BaseGridStyle}">
+                <Grid.RowDefinitions>
+                    <RowDefinition x:Name="SkinSectionRow" />
+                    <RowDefinition x:Name="MapsetSectionRow" />
+                    <RowDefinition x:Name="ProjectSectionRow" />
+                </Grid.RowDefinitions>
                 <Expander
-                    x:Name="SkinDefaultsExpander"
+                    x:Name="SkinDefaultsExpander" Expanded="OnSectionLayoutChanged" Collapsed="OnSectionLayoutChanged" IsVisibleChanged="OnSectionVisibilityChanged"
                     Grid.Row="0"
                     AutomationProperties.Name="Skin Defaults"
                     Header="Skin Defaults"
@@ -334,7 +339,7 @@
                     </Grid>
                 </Expander>
                 <Expander
-                    x:Name="MapsetSamplesExpander"
+                    x:Name="MapsetSamplesExpander" Expanded="OnSectionLayoutChanged" Collapsed="OnSectionLayoutChanged" IsVisibleChanged="OnSectionVisibilityChanged"
                     Grid.Row="1"
                     AutomationProperties.Name="Mapset Samples"
                     Header="Mapset Samples"
@@ -356,7 +361,7 @@
                     </Grid>
                 </Expander>
                 <Expander
-                    x:Name="ProjectSamplesExpander"
+                    x:Name="ProjectSamplesExpander" Expanded="OnSectionLayoutChanged" Collapsed="OnSectionLayoutChanged" IsVisibleChanged="OnSectionVisibilityChanged"
                     Grid.Row="2"
                     AutomationProperties.Name="Project Samples"
                     Header="Project Samples"
@@ -377,7 +382,7 @@
                             TextAlignment="Center" />
                     </Grid>
                 </Expander>
-            </StackPanel>
+            </Grid>
             <Grid
                 Grid.Row="3"
                 Margin="0,16,0,0"

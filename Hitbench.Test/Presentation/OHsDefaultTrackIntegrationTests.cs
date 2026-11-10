@@ -23,7 +23,7 @@ public class OHsDefaultTrackIntegrationTests
         {
             var row = new OHsWorkstationTrackRow { Track = track, ViewModel = vm, PresentSampleConfiguration = (_, _) => { } };
             UiTestPump.Layout(row, 900, 200);
-            Assert.That(vm.CanEditTracks, Is.True);
+            Assert.That(Descendants<BalloonButton>(row).Single(button => button.Name == "ConfigSampleAction").IsEnabled, Is.True);
             Assert.That(row.CanOperateTrack, Is.False);
             Assert.That(row.OpenSampleConfiguration(), Is.True);
             var selector = (ComboBox)row.FindName("TrackSampleFileSelector");

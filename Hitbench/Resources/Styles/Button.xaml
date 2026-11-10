@@ -708,8 +708,14 @@
                     ContentTemplate="{TemplateBinding ContentTemplate}"
                     Style="{StaticResource BaseContentPresenterStyle}" />
             </Border>
-            <Border x:Name="CheckedCue" Height="3" Margin="8,0" VerticalAlignment="Bottom"
-                    Background="{TemplateBinding Foreground}" Visibility="Collapsed" IsHitTestVisible="False" />
+            <Border
+                x:Name="CheckedCue"
+                Height="3"
+                Margin="8,0"
+                VerticalAlignment="Bottom"
+                Background="{TemplateBinding Foreground}"
+                IsHitTestVisible="False"
+                Visibility="Collapsed" />
         </Grid>
         <ControlTemplate.Triggers>
             <Trigger Property="IsChecked" Value="True">

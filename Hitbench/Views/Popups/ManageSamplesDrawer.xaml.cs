@@ -28,6 +28,29 @@ public partial class ManageSamplesDrawer : UserControl,IOHsShellDrawer
         KeyboardNavigation.SetTabNavigation(this, KeyboardNavigationMode.Cycle);
     }
 
+    protected override Size MeasureOverride(Size constraint)
+    {
+        UpdateSectionLayout();
+        return base.MeasureOverride(constraint);
+    }
+
+    private void UpdateSectionLayout()
+    {
+        SetSection(SkinSectionRow, SkinDefaultsExpander, SkinDefaultRows);
+        SetSection(MapsetSectionRow, MapsetSamplesExpander, MapsetSampleRows);
+        SetSection(ProjectSectionRow, ProjectSamplesExpander, SampleRows);
+        static void SetSection(RowDefinition row, Expander section, ItemsControl items)
+        {
+            var height = section.Visibility == Visibility.Visible && section.IsExpanded && items.HasItems
+                ? new GridLength(1, GridUnitType.Star) : GridLength.Auto;
+            if (row.Height != height) row.Height = height;
+        }
+    }
+
+    private void OnSectionLayoutChanged(object sender, RoutedEventArgs e) => InvalidateMeasure();
+    private void OnSectionVisibilityChanged(object sender, DependencyPropertyChangedEventArgs e) => InvalidateMeasure();
+    private void OnSectionCollectionChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e) => InvalidateMeasure();
+
     public event EventHandler? CloseRequested;
     public bool CanDismiss => viewModel.CanClose;
     public bool TryPrepareClose() => CanDismiss;
@@ -55,11 +78,21 @@ public partial class ManageSamplesDrawer : UserControl,IOHsShellDrawer
     {
         viewModel.PropertyChanged -= OnEditingChanged;
         viewModel.PropertyChanged += OnEditingChanged;
+        viewModel.Entries.CollectionChanged -= OnSectionCollectionChanged;
+        viewModel.MapsetEntries.CollectionChanged -= OnSectionCollectionChanged;
+        viewModel.SkinDefaultEntries.CollectionChanged -= OnSectionCollectionChanged;
+        viewModel.Entries.CollectionChanged += OnSectionCollectionChanged;
+        viewModel.MapsetEntries.CollectionChanged += OnSectionCollectionChanged;
+        viewModel.SkinDefaultEntries.CollectionChanged += OnSectionCollectionChanged;
+        InvalidateMeasure();
         editingRow = viewModel.ActiveEdit;
 
     }
     private void OnDrawerUnloaded(object sender, RoutedEventArgs e)
     {
+        viewModel.Entries.CollectionChanged -= OnSectionCollectionChanged;
+        viewModel.MapsetEntries.CollectionChanged -= OnSectionCollectionChanged;
+        viewModel.SkinDefaultEntries.CollectionChanged -= OnSectionCollectionChanged;
         viewModel.PropertyChanged -= OnEditingChanged;
     }
     private void OnEditingChanged(object? sender, PropertyChangedEventArgs e)

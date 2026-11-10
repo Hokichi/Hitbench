@@ -73,7 +73,8 @@ public sealed class OHsSampleConfigurationPopupTests
         {
             var menu = Descendants(row).OfType<Hitbench.Resources.CustomControls.BalloonComboBox>().Single().ContextMenu;
             Assert.That(menu.Items.OfType<MenuItem>().Single(item => Equals(item.Header, "Config Samples")).Visibility == Visibility.Visible, Is.EqualTo(!instrumental));
-            Assert.That(Descendants(row).OfType<Hitbench.Resources.CustomControls.BalloonButton>().Any(button => button.ButtonText == "Config Samples"), Is.False);
+            var action = Descendants(row).OfType<Hitbench.Resources.CustomControls.BalloonButton>().Single(button => button.ButtonText == "Config Samples");
+            Assert.That(action.Visibility == Visibility.Visible, Is.EqualTo(!instrumental));
         }
         finally { UiTestPump.Run(vm.DeactivateAsync()); }
     }
@@ -113,8 +114,8 @@ public sealed class OHsSampleConfigurationPopupTests
         using (view) try
         {
             var menu = Descendants(row).OfType<Hitbench.Resources.CustomControls.BalloonComboBox>().Single().ContextMenu;
-            var config = menu.Items.OfType<MenuItem>().Single(item => Equals(item.Header, "Config Samples"));
-            config.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent, config));
+            var config = Descendants(row).OfType<Hitbench.Resources.CustomControls.BalloonButton>().Single(button => button.ButtonText == "Config Samples");
+            config.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent, config));
             Assert.That(row.IsSampleConfigurationOpen, Is.False, "Native menu must finish closing before popup presentation.");
             row.Track = new Track();
             UiTestPump.Run(row.Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle).Task);

@@ -78,7 +78,7 @@ public class WorkstationPageIntegrationTests
 
     [TestCase(FlowDirection.LeftToRight, "Dark")]
     [TestCase(FlowDirection.RightToLeft, "Light")]
-    public void AudioRightActionsKeepLabelsCommandsAndMenuOwnership(FlowDirection direction, string theme)
+    public void AudioRightActionsKeepAccessibleNamesCommandsAndMenuOwnership(FlowDirection direction, string theme)
     {
         EnsureResources(theme);
         var page = WorkstationTestPage.Create();
@@ -89,7 +89,6 @@ public class WorkstationPageIntegrationTests
             var samples = (BalloonButton)page.Toolbar.FindName("ManageSamplesButton");
             Assert.That(AutomationProperties.GetName(add), Is.EqualTo("Add"));
             Assert.That(AutomationProperties.GetName(samples), Is.EqualTo("Samples"));
-            Assert.That((add.ButtonText, samples.ButtonText), Is.EqualTo(("Add", "Samples")));
             var owner = (WorkstationPageVM)page.DataContext;
             Assert.That(samples.Command, Is.SameAs(owner.ManageSamplesCommand));
             WorkstationActionMenus.Prepare(add);
@@ -315,8 +314,9 @@ public class WorkstationPageIntegrationTests
         var solo = FindVisualChildren<ToggleButton>(page).Single(control => control.Name == "TrackSoloToggle" && ReferenceEquals(control.DataContext, a));
         Assert.That(mute.GetType(), Is.EqualTo(typeof(ToggleButton)));
         Assert.That(mute.IsTabStop, Is.False);
-        UiControlContract.AssertStyle<System.Windows.Controls.Primitives.ToggleButton>(mute, "OHsWorkstationTrackToggleStyle");
-        Assert.That(mute.Style.BasedOn, Is.SameAs(page.FindResource("BaseToggleButtonStyle")));
+        UiControlContract.AssertStyle<System.Windows.Controls.Primitives.ToggleButton>(mute, "OHsWorkstationExpandedToggleStyle");
+        Assert.That(mute.Style.BasedOn, Is.SameAs(mute.FindResource("OHsWorkstationTrackToggleStyle")));
+        Assert.That(mute.Style.BasedOn.BasedOn, Is.SameAs(page.FindResource("BaseToggleButtonStyle")));
         Assert.That(mute.Template, Is.SameAs(page.FindResource("OHsWorkstationTrackToggleTemplate")));
         Assert.That(mute.IsChecked, Is.True); Assert.That(solo.IsChecked, Is.True);
         var remove = FindRemovalAction(page, a);

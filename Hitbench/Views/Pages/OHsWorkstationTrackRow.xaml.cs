@@ -60,8 +60,6 @@ public partial class OHsWorkstationTrackRow : UserControl
         OpenTrackActionMenu(trigger);
         return true;
     }
-    public static readonly DependencyProperty ArrangementTrackProperty = DependencyProperty.Register(nameof(ArrangementTrack), typeof(InstrumentalTrack), typeof(OHsWorkstationTrackRow));
-    public InstrumentalTrack? ArrangementTrack => (InstrumentalTrack?)GetValue(ArrangementTrackProperty);
     public static readonly DependencyProperty TrackProperty = DependencyProperty.Register(nameof(Track), typeof(Track), typeof(OHsWorkstationTrackRow), new PropertyMetadata(null, OnTrackChanged));
     public Track? Track { get => (Track?)GetValue(TrackProperty); set => SetValue(TrackProperty, value); }
     public static readonly DependencyProperty ViewModelProperty = DependencyProperty.Register(nameof(ViewModel), typeof(WorkstationPageVM), typeof(OHsWorkstationTrackRow), new PropertyMetadata(null, OnOwnerChanged));
@@ -132,7 +130,7 @@ public partial class OHsWorkstationTrackRow : UserControl
         for (var current = origin; current is not null; current = current is Visual or System.Windows.Media.Media3D.Visual3D ? VisualTreeHelper.GetParent(current) : LogicalTreeHelper.GetParent(current))
         {
             if (ReferenceEquals(current, this)) return expanded;
-            if (current is FrameworkElement { Name: "VolumeSlider" }) expanded = true;
+            if (current is FrameworkElement { Name: "VolumeSlider" or "TrackMuteToggle" or "TrackSoloToggle" or "ConfigSampleAction" }) expanded = true;
         }
         return false;
     }
@@ -329,7 +327,6 @@ public partial class OHsWorkstationTrackRow : UserControl
     private static void OnTrackChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var row = (OHsWorkstationTrackRow)d;
-        row.SetValue(ArrangementTrackProperty, row.Track as InstrumentalTrack);
         row.InvalidateSampleConfiguration();
         if (!row.IsTrackDragPreview && e.OldValue is Track old) row.ViewModel?.CancelTrackRename(old);
         if (!row.IsTrackDragPreview && e.OldValue is Track previous) row.ViewModel?.CancelTrackAppearance(previous);
@@ -340,7 +337,6 @@ public partial class OHsWorkstationTrackRow : UserControl
     private static void OnOwnerChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var row = (OHsWorkstationTrackRow)d;
-        row.SetValue(ArrangementTrackProperty, row.Track as InstrumentalTrack);
         row.InvalidateSampleConfiguration();
         if (!row.IsTrackDragPreview && e.OldValue is WorkstationPageVM old && row.Track is {} track) old.CancelTrackRename(track);
         if (!row.IsTrackDragPreview && e.OldValue is WorkstationPageVM previousOwner && row.Track is { } previousTrack) previousOwner.CancelTrackAppearance(previousTrack);
