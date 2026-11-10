@@ -36,12 +36,13 @@ git diff --check
 In the served page:
 
 1. Check 375, 768, 1024, and 1440 pixel viewport widths. Confirm readable text, wrapped actions, unclipped images, and no horizontal page overflow.
-2. Select each of the six features. Confirm the screenshot, selected label, and counter agree. Check previous/next wraparound and rapid repeated input.
-3. With focus on a feature selector, arrow button, or the screenshot track, use Left/Right and Home/End. Focus stays on the used control. Tab reaches only the active slide's full-image link; Enter opens it. Screenshot links retain normal keyboard behavior.
+2. Select each of the six features using both the named selectors and the dots below the card. Confirm the screenshot, selected label, active dot, and counter agree. The card's scrollbar stays hidden. Check previous/next wraparound and rapid repeated input.
+3. With focus on a feature selector, dot, arrow button, or the screenshot track, use Left/Right and Home/End. Space/Enter activates focused dots, and focus stays on the used control. Tab reaches only the active slide's full-image link; Enter opens it in a separate tab while preserving the carousel page and selection.
 4. Scroll/swipe the feature track manually, then resize the viewport. Confirm the selected feature and counter follow the visible slide. There is no autoplay.
-5. Disable JavaScript and reload. Controls stay hidden, while native horizontal scrolling and full-image links expose every feature.
+5. Disable JavaScript and reload. Selectors, arrows, and dots stay hidden, while native horizontal scrolling and full-image links expose every feature.
 6. Check visible focus outlines and reduced-motion behavior. With reduced motion enabled, carousel movement is immediate. GitHub stays `#FFFFFF` and osu! stays `#FF66AA`, including on hover.
 7. Check all images, icons, and fonts load from the documented paths. Inspect the original export dialog without stretching or cropping it. Check both download links match their visible version.
+8. Every website hyperlink, including internal anchors, opens a new tab using `target="_blank" rel="noopener noreferrer"`. Confirm destinations are unchanged and carousel controls remain buttons that operate on the current page.
 
 ## Asset sources
 

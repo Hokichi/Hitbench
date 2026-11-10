@@ -91,7 +91,8 @@ h2 { margin: 13px 0 0; font-size: clamp(29px, 3.4vw, 43px); line-height: 1.22; l
 .icon-button:hover { background: var(--elevated); }
 .carousel-hint { color: var(--secondary); font-size: 12px; }
 [data-carousel-enhanced] .carousel-hint { display: none; }
-.feature-track { display: flex; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scrollbar-width: thin; scrollbar-color: var(--border) transparent; border: 1px solid var(--border); border-radius: 13px; background: #12151b; }
+.feature-track { display: flex; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scrollbar-width: none; border: 1px solid var(--border); border-radius: 13px; background: #12151b; }
+.feature-track::-webkit-scrollbar { display: none; }
 .feature-slide { flex: 0 0 100%; min-width: 0; display: grid; grid-template-columns: minmax(0, 1.9fr) minmax(0, 1fr); align-items: center; gap: 30px; padding: 24px; scroll-snap-align: start; scroll-snap-stop: always; }
 .feature-image { display: flex; justify-content: center; align-items: center; min-width: 0; aspect-ratio: 16 / 9; border: 1px solid #232938; border-radius: 7px; overflow: hidden; background: #0d0f14; }
 .feature-image img { width: 100%; height: 100%; object-fit: contain; }
@@ -101,6 +102,12 @@ h3 { margin: 14px 0; font-size: 26px; font-weight: 700; line-height: 1.28; lette
 .feature-copy>p:not(.feature-number) { color: var(--secondary); font-size: 12px; line-height: 1.9; margin: 0; }
 .feature-tags { display: flex; flex-wrap: wrap; gap: 7px; list-style: none; padding: 0; margin: 24px 0 0; }
 .feature-tags li { padding: 5px 10px; color: var(--secondary); border: 1px solid var(--border); border-radius: 30px; font-size: 9px; line-height: 1.5; }
+.carousel-dots { display: flex; justify-content: center; margin: 12px 0 -4px; }
+.carousel-dots button { display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 8px; background: transparent; }
+.carousel-dots span { width: 8px; height: 8px; border: 1px solid #667089; border-radius: 50%; }
+.carousel-dots button[aria-pressed="true"] span { background: var(--accent-text); border-color: var(--accent-text); }
+.carousel-dots button:hover span { border-color: var(--text); }
+.carousel-dots:not([hidden]) + .feature-footer { margin-top: 6px; }
 .feature-footer { display: flex; justify-content: space-between; gap: 20px; margin-top: 16px; font-size: 10px; color: var(--muted); }
 [data-carousel-status] { color: var(--accent-text); }
 .setup-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; padding: 0; margin: 0; list-style: none; }
