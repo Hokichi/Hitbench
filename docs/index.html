@@ -33,20 +33,19 @@
       </div>
       <div class="hero-actions">
         <a target="_blank" rel="noopener noreferrer" class="button button-primary" href="https://github.com/Hokichi/Hitbench/releases/download/0.0.4-beta/Hitbench-0.0.4-beta-win-x64.zip" data-download>
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M5 16v4h14v-4"/></svg>
           Download v0.0.4-beta
         </a>
-        <a target="_blank" rel="noopener noreferrer" class="button button-github" href="https://github.com/Hokichi/Hitbench">
-          <img src="./assets/github-mark.svg" width="20" height="20" alt="" aria-hidden="true">GitHub
-        </a>
-        <a target="_blank" rel="noopener noreferrer" class="button button-osu" href="https://osu.ppy.sh" data-osu-post>
-          <img src="./assets/osu-mark.svg" width="24" height="24" alt="" aria-hidden="true">osu! post
-        </a>
+        <div class="social-links">
+          <a target="_blank" rel="noopener noreferrer" class="social-link social-link-github" href="https://github.com/Hokichi/Hitbench">
+            <img src="./assets/github-mark.svg" width="20" height="20" alt="" aria-hidden="true">GitHub
+          </a>
+          <a target="_blank" rel="noopener noreferrer" class="social-link social-link-osu" href="https://osu.ppy.sh" data-osu-post>
+            <img src="./assets/osu-mark.svg" width="24" height="24" alt="" aria-hidden="true">osu! Post
+          </a>
+        </div>
       </div>
       <figure class="workstation">
-        <a target="_blank" rel="noopener noreferrer" href="./images/workstation.png" aria-label="View the full Hitbench workstation screenshot">
-          <img src="./images/workstation.png" width="1920" height="1080" fetchpriority="high" alt="Hitbench’s dark workstation with a song waveform, sample tracks, and control points on the timeline.">
-        </a>
+        <img src="./images/workstation.png" width="1920" height="1080" fetchpriority="high" alt="Hitbench’s dark workstation with a song waveform, sample tracks, and control points on the timeline.">
       </figure>
     </section>
 
@@ -71,37 +70,29 @@
       <p class="carousel-hint">Scroll or swipe to explore all six features.</p>
       <div class="feature-track" data-carousel-track tabindex="0" role="group" aria-label="Feature screenshots">
         <article class="feature-slide" id="feature-timeline" data-carousel-slide role="group" aria-roledescription="slide" aria-label="1 of 6: Timeline">
-          <a target="_blank" rel="noopener noreferrer" class="feature-image" href="./images/timeline.png" aria-label="View the full timeline screenshot"><img src="./images/timeline.png" width="1920" height="1080" loading="lazy" alt="Beat-snapped sample placements arranged against the song waveform."></a>
+          <div class="feature-image"><img src="./images/timeline.png" width="1920" height="1080" loading="lazy" alt="Beat-snapped sample placements arranged against the song waveform."></div>
           <div class="feature-copy"><p class="feature-number">01 / Timeline</p><h3>Right on the beat.</h3><p>Place samples against the song waveform. Snap to the beat, zoom into the details, and hear your arrangement as you work.</p><ul class="feature-tags" aria-label="Timeline highlights"><li>Beat snapping</li><li>Undo & redo</li></ul></div>
         </article>
         <article class="feature-slide" id="feature-tracks" data-carousel-slide role="group" aria-roledescription="slide" aria-label="2 of 6: Tracks">
-          <a target="_blank" rel="noopener noreferrer" class="feature-image" href="./images/tracks.png" aria-label="View the full tracks screenshot"><img src="./images/tracks.png" width="1920" height="1080" loading="lazy" alt="Expanded sample tracks with volume, mute, solo, and sample settings."></a>
+          <div class="feature-image"><img src="./images/tracks.png" width="1920" height="1080" loading="lazy" alt="Expanded sample tracks with volume, mute, solo, and sample settings."></div>
           <div class="feature-copy"><p class="feature-number">02 / Tracks</p><h3>Every layer, in its place.</h3><p>Give each sound its own track. Rename, recolor, reorder, and audition parts with volume, mute, and solo controls.</p><ul class="feature-tags" aria-label="Track highlights"><li>Track colors</li><li>Mute & solo</li></ul></div>
         </article>
         <article class="feature-slide" id="feature-instruments" data-carousel-slide role="group" aria-roledescription="slide" aria-label="3 of 6: Instruments">
-          <a target="_blank" rel="noopener noreferrer" class="feature-image" href="./images/instrumental.png" aria-label="View the full instrumental screenshot"><img src="./images/instrumental.png" width="1920" height="1080" loading="lazy" alt="Piano roll with instrumental notes arranged alongside sample tracks."></a>
+          <div class="feature-image"><img src="./images/instrumental.png" width="1920" height="1080" loading="lazy" alt="Piano roll with instrumental notes arranged alongside sample tracks."></div>
           <div class="feature-copy"><p class="feature-number">03 / Instruments</p><h3>Let the melody in.</h3><p>Write instrumental parts in a dedicated piano roll. Map samples to musical keys and preview notes alongside your hitsounds.</p><ul class="feature-tags" aria-label="Instrument highlights"><li>Piano roll</li><li>Key mapping</li></ul></div>
         </article>
         <article class="feature-slide" id="feature-samples" data-carousel-slide role="group" aria-roledescription="slide" aria-label="4 of 6: Samples">
-          <a target="_blank" rel="noopener noreferrer" class="feature-image" href="./images/samples.png" aria-label="View the full sample manager screenshot"><img src="./images/samples.png" width="1920" height="1080" loading="lazy" alt="Sample manager with project and skin sounds and waveform previews."></a>
+          <div class="feature-image"><img src="./images/samples.png" width="1920" height="1080" loading="lazy" alt="Sample manager with project and skin sounds and waveform previews."></div>
           <div class="feature-copy"><p class="feature-number">04 / Samples</p><h3>Your sounds, close at hand.</h3><p>Browse and preview project and skin samples. Import WAV, OGG, and MP3 files, or drag audio straight into your workstation.</p><ul class="feature-tags" aria-label="Sample highlights"><li>Audio previews</li><li>Drag & drop</li></ul></div>
         </article>
         <article class="feature-slide" id="feature-control-points" data-carousel-slide role="group" aria-roledescription="slide" aria-label="5 of 6: Control points">
-          <a target="_blank" rel="noopener noreferrer" class="feature-image" href="./images/control-points.png" aria-label="View the full control points screenshot"><img src="./images/control-points.png" width="1920" height="1080" loading="lazy" alt="Control-point volume and sample-set editor next to a volume ramp."></a>
+          <div class="feature-image"><img src="./images/control-points.png" width="1920" height="1080" loading="lazy" alt="Control-point volume and sample-set editor next to a volume ramp."></div>
           <div class="feature-copy"><p class="feature-number">05 / Control points</p><h3>Shape the dynamics.</h3><p>Change volume and sample sets along the timeline. Add volume ramps for gradual transitions and preview their effect on sample tails.</p><ul class="feature-tags" aria-label="Control point highlights"><li>Volume ramps</li><li>Sample sets</li></ul></div>
         </article>
         <article class="feature-slide" id="feature-export" data-carousel-slide role="group" aria-roledescription="slide" aria-label="6 of 6: Export">
-          <a target="_blank" rel="noopener noreferrer" class="feature-image" href="./images/export.png" aria-label="View the full export screenshot"><img src="./images/export.png" width="648" height="564" loading="lazy" alt="Export settings for difficulty name, audio formats, and output destination."></a>
+          <div class="feature-image"><img src="./images/export.png" width="648" height="564" loading="lazy" alt="Export settings for difficulty name, audio formats, and output destination."></div>
           <div class="feature-copy"><p class="feature-number">06 / Export</p><h3>Ready for your beatmap.</h3><p>Export a hitsound difficulty with its generated samples. Choose audio formats and save to your project or source mapset folder.</p><ul class="feature-tags" aria-label="Export highlights"><li>Beatmap export</li><li>OGG · WAV · MP3</li></ul></div>
         </article>
-      </div>
-      <div class="carousel-dots" data-carousel-dots role="group" aria-label="Choose feature by dot" hidden>
-        <button type="button" data-carousel-dot="0" aria-label="Show Timeline" aria-controls="feature-timeline" aria-pressed="true"><span aria-hidden="true"></span></button>
-        <button type="button" data-carousel-dot="1" aria-label="Show Tracks" aria-controls="feature-tracks" aria-pressed="false"><span aria-hidden="true"></span></button>
-        <button type="button" data-carousel-dot="2" aria-label="Show Instruments" aria-controls="feature-instruments" aria-pressed="false"><span aria-hidden="true"></span></button>
-        <button type="button" data-carousel-dot="3" aria-label="Show Samples" aria-controls="feature-samples" aria-pressed="false"><span aria-hidden="true"></span></button>
-        <button type="button" data-carousel-dot="4" aria-label="Show Control points" aria-controls="feature-control-points" aria-pressed="false"><span aria-hidden="true"></span></button>
-        <button type="button" data-carousel-dot="5" aria-label="Show Export" aria-controls="feature-export" aria-pressed="false"><span aria-hidden="true"></span></button>
       </div>
       <div class="feature-footer"><span></span><span data-carousel-status aria-live="polite" aria-atomic="true"></span></div>
     </section>

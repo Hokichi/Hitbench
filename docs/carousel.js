@@ -3,7 +3,6 @@
     const track = root.querySelector('[data-carousel-track]');
     const slides = [...root.querySelectorAll('[data-carousel-slide]')];
     const selectors = [...root.querySelectorAll('[data-feature-index]')];
-    const dots = [...root.querySelectorAll('[data-carousel-dot]')];
     const choices = root.querySelector('.feature-choices');
     const status = root.querySelector('[data-carousel-status]');
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -18,8 +17,6 @@
     function setActive(index) {
       selected = index;
       selectors.forEach((button, i) => button.setAttribute('aria-pressed', String(i === index)));
-      dots.forEach((button, i) => button.setAttribute('aria-pressed', String(i === index)));
-      slides.forEach((slide, i) => { slide.inert = i !== index; });
       status.textContent = `${String(index + 1).padStart(2, '0')} / ${String(slides.length).padStart(2, '0')} · ${selectors[index].textContent}`;
 
       const buttonBounds = selectors[index].getBoundingClientRect();
@@ -50,7 +47,6 @@
     }
 
     selectors.forEach((button, index) => button.addEventListener('click', () => selectFeature(index)));
-    dots.forEach((button, index) => button.addEventListener('click', () => selectFeature(index)));
     root.querySelector('[data-carousel-prev]').addEventListener('click', () => selectFeature(selected - 1));
     root.querySelector('[data-carousel-next]').addEventListener('click', () => selectFeature(selected + 1));
     root.addEventListener('keydown', event => {
@@ -79,7 +75,6 @@
     status.setAttribute('aria-live', 'off');
     setActive(0);
     root.querySelector('[data-carousel-controls]').hidden = false;
-    root.querySelector('[data-carousel-dots]').hidden = false;
     root.setAttribute('data-carousel-enhanced', '');
     requestAnimationFrame(() => status.setAttribute('aria-live', 'polite'));
   }
