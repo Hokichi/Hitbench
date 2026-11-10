@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0A0C10">
+  <meta name="description" content="Everything you need for hitsounding in one tool. Hitbench is a Windows hitsounding workstation for osu! mappers, with beat-snapped samples, a piano roll, and beatmap export.">
+  <title>Hitbench — Hitsounding. Streamlined and elevated</title>
+  <link rel="icon" type="image/png" href="./assets/hitbench.png">
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./carousel.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header container">
+    <a class="brand" href="#main" aria-label="Hitbench home">
+      <img src="./assets/hitbench.png" width="36" height="36" alt="">
+      <span>Hitbench</span>
+    </a>
+    <a class="creator" href="https://osu.ppy.sh/users/6607303">Made by Hokichi with love</a>
+  </header>
+
+  <main id="main">
+    <section class="hero container" aria-labelledby="hero-title">
+      <p class="eyebrow">For osu! mappers <span aria-hidden="true">·</span> Windows</p>
+      <h1 id="hero-title">Hitsounding.<br><span>Streamlined and elevated</span></h1>
+      <div class="hero-description">
+        <p>Everything you need for hitsounding in one tool</p>
+        <p class="mapper-line">By an osu! mapper, for osu! mappers</p>
+      </div>
+      <div class="hero-actions">
+        <a class="button button-primary" href="https://github.com/Hokichi/Hitbench/releases/download/0.0.4-beta/Hitbench-0.0.4-beta-win-x64.zip" data-download>
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M5 16v4h14v-4"/></svg>
+          Download v0.0.4-beta
+        </a>
+        <a class="button button-github" href="https://github.com/Hokichi/Hitbench">
+          <img src="./assets/github-mark.svg" width="20" height="20" alt="" aria-hidden="true">GitHub
+        </a>
+        <a class="button button-osu" href="https://osu.ppy.sh" data-osu-post>
+          <img src="./assets/osu-mark.svg" width="24" height="24" alt="" aria-hidden="true">osu! post
+        </a>
+      </div>
+      <p class="download-meta">Windows x64 <span>·</span> Extract and launch <span>·</span> Runtime included</p>
+      <figure class="workstation">
+        <a href="../images/workstation.png" aria-label="View the full Hitbench workstation screenshot">
+          <img src="../images/workstation.png" width="1920" height="1080" fetchpriority="high" alt="Hitbench’s dark workstation with a song waveform, sample tracks, and control points on the timeline.">
+        </a>
+        <figcaption><span class="image-label">Your hitsounding workstation</span><span>Sample by sample. Beat by beat.</span></figcaption>
+      </figure>
+    </section>
+
+    <section class="features container section-space" id="features" aria-labelledby="features-title" aria-roledescription="carousel" data-carousel>
+      <div class="section-heading">
+        <div><p class="eyebrow">Your workflow, in focus</p><h2 id="features-title">A place for every part<br>of your sound.</h2></div>
+        <p class="section-description">From the first sample to the final export.<br>Explore what’s inside Hitbench.</p>
+      </div>
+      <div class="feature-toolbar" data-carousel-controls hidden>
+        <div class="feature-choices" role="group" aria-label="Choose a feature">
+          <button type="button" data-feature-index="0" aria-pressed="true" aria-controls="feature-timeline">Timeline</button>
+          <button type="button" data-feature-index="1" aria-pressed="false" aria-controls="feature-tracks">Tracks</button>
+          <button type="button" data-feature-index="2" aria-pressed="false" aria-controls="feature-instruments">Instruments</button>
+          <button type="button" data-feature-index="3" aria-pressed="false" aria-controls="feature-samples">Samples</button>
+          <button type="button" data-feature-index="4" aria-pressed="false" aria-controls="feature-control-points">Control points</button>
+          <button type="button" data-feature-index="5" aria-pressed="false" aria-controls="feature-export">Export</button>
+        </div>
+        <div class="carousel-arrows">
+          <button class="icon-button" type="button" aria-label="Previous feature" data-carousel-prev><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg></button>
+          <button class="icon-button" type="button" aria-label="Next feature" data-carousel-next><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m10 6 6 6-6 6"/></svg></button>
+        </div>
+      </div>
+      <p class="carousel-hint">Scroll or swipe to explore all six features.</p>
+      <div class="feature-track" data-carousel-track tabindex="0" role="group" aria-label="Feature screenshots">
+        <article class="feature-slide" id="feature-timeline" data-carousel-slide role="group" aria-roledescription="slide" aria-label="1 of 6: Timeline">
+          <a class="feature-image" href="../images/timeline.png" aria-label="View the full timeline screenshot"><img src="../images/timeline.png" width="1920" height="1080" loading="lazy" alt="Beat-snapped sample placements arranged against the song waveform."></a>
+          <div class="feature-copy"><p class="feature-number">01 / Timeline</p><h3>Right on the beat.</h3><p>Place samples against the song waveform. Snap to the beat, zoom into the details, and hear your arrangement as you work.</p><ul class="feature-tags" aria-label="Timeline highlights"><li>Beat snapping</li><li>Undo & redo</li></ul></div>
+        </article>
+        <article class="feature-slide" id="feature-tracks" data-carousel-slide role="group" aria-roledescription="slide" aria-label="2 of 6: Tracks">
+          <a class="feature-image" href="../images/tracks.png" aria-label="View the full tracks screenshot"><img src="../images/tracks.png" width="1920" height="1080" loading="lazy" alt="Expanded sample tracks with volume, mute, solo, and sample settings."></a>
+          <div class="feature-copy"><p class="feature-number">02 / Tracks</p><h3>Every layer, in its place.</h3><p>Give each sound its own track. Rename, recolor, reorder, and audition parts with volume, mute, and solo controls.</p><ul class="feature-tags" aria-label="Track highlights"><li>Track colors</li><li>Mute & solo</li></ul></div>
+        </article>
+        <article class="feature-slide" id="feature-instruments" data-carousel-slide role="group" aria-roledescription="slide" aria-label="3 of 6: Instruments">
+          <a class="feature-image" href="../images/instrumental.png" aria-label="View the full instrumental screenshot"><img src="../images/instrumental.png" width="1920" height="1080" loading="lazy" alt="Piano roll with instrumental notes arranged alongside sample tracks."></a>
+          <div class="feature-copy"><p class="feature-number">03 / Instruments</p><h3>Let the melody in.</h3><p>Write instrumental parts in a dedicated piano roll. Map samples to musical keys and preview notes alongside your hitsounds.</p><ul class="feature-tags" aria-label="Instrument highlights"><li>Piano roll</li><li>Key mapping</li></ul></div>
+        </article>
+        <article class="feature-slide" id="feature-samples" data-carousel-slide role="group" aria-roledescription="slide" aria-label="4 of 6: Samples">
+          <a class="feature-image" href="../images/samples.png" aria-label="View the full sample manager screenshot"><img src="../images/samples.png" width="1920" height="1080" loading="lazy" alt="Sample manager with project and skin sounds and waveform previews."></a>
+          <div class="feature-copy"><p class="feature-number">04 / Samples</p><h3>Your sounds, close at hand.</h3><p>Browse and preview project and skin samples. Import WAV, OGG, and MP3 files, or drag audio straight into your workstation.</p><ul class="feature-tags" aria-label="Sample highlights"><li>Audio previews</li><li>Drag & drop</li></ul></div>
+        </article>
+        <article class="feature-slide" id="feature-control-points" data-carousel-slide role="group" aria-roledescription="slide" aria-label="5 of 6: Control points">
+          <a class="feature-image" href="../images/control-points.png" aria-label="View the full control points screenshot"><img src="../images/control-points.png" width="1920" height="1080" loading="lazy" alt="Control-point volume and sample-set editor next to a volume ramp."></a>
+          <div class="feature-copy"><p class="feature-number">05 / Control points</p><h3>Shape the dynamics.</h3><p>Change volume and sample sets along the timeline. Add volume ramps for gradual transitions and preview their effect on sample tails.</p><ul class="feature-tags" aria-label="Control point highlights"><li>Volume ramps</li><li>Sample sets</li></ul></div>
+        </article>
+        <article class="feature-slide" id="feature-export" data-carousel-slide role="group" aria-roledescription="slide" aria-label="6 of 6: Export">
+          <a class="feature-image" href="../images/export.png" aria-label="View the full export screenshot"><img src="../images/export.png" width="648" height="564" loading="lazy" alt="Export settings for difficulty name, audio formats, and output destination."></a>
+          <div class="feature-copy"><p class="feature-number">06 / Export</p><h3>Ready for your beatmap.</h3><p>Export a hitsound difficulty with its generated samples. Choose audio formats and save to your project or source mapset folder.</p><ul class="feature-tags" aria-label="Export highlights"><li>Beatmap export</li><li>OGG · WAV · MP3</li></ul></div>
+        </article>
+      </div>
+      <div class="feature-footer"><span>Explore your workstation</span><span data-carousel-status aria-live="polite" aria-atomic="true"></span></div>
+    </section>
+
+    <section class="getting-started container section-space" id="getting-started" aria-labelledby="setup-title">
+      <div class="section-heading"><div><p class="eyebrow">Less setup. More hitsounding.</p><h2 id="setup-title">Your next arrangement<br>starts here.</h2></div><p class="section-description">A few steps from download<br>to your first hitsound.</p></div>
+      <ol class="setup-grid">
+        <li><span class="step-number" aria-hidden="true">01</span><h3>Make yourself at home.</h3><p>Download the ZIP, extract it into a writable folder, and launch <code>Hitbench.exe</code>. The .NET runtime is included.</p></li>
+        <li><span class="step-number" aria-hidden="true">02</span><h3>Pick your mapset.</h3><p>Locate your osu! installation or mapsets folder. Select a mapset and create a new project.</p></li>
+        <li><span class="step-number" aria-hidden="true">03</span><h3>Bring it to life.</h3><p>Add samples or instrumental tracks, arrange your sounds, and export. Your project saves automatically as you work.</p></li>
+      </ol>
+    </section>
+
+    <section class="closing container section-space" aria-labelledby="closing-title">
+      <p class="eyebrow">From one mapper to another</p>
+      <h2 id="closing-title">Make every beat your own.</h2>
+      <p>Your next hitsounding project is waiting.</p>
+      <a class="button button-primary" href="https://github.com/Hokichi/Hitbench/releases/download/0.0.4-beta/Hitbench-0.0.4-beta-win-x64.zip" data-download>Download v0.0.4-beta</a>
+      <p class="closing-meta">Windows x64 <span>·</span> Runtime included</p>
+    </section>
+  </main>
+
+  <footer class="site-footer container">
+    <div><a class="brand" href="#main"><img src="./assets/hitbench.png" width="28" height="28" alt=""><span>Hitbench</span></a><p>A Windows hitsounding workstation for osu! mappers.</p></div>
+    <nav aria-label="Project links"><a href="https://github.com/Hokichi/Hitbench">Source</a><a href="https://github.com/Hokichi/Hitbench/releases">Releases</a><a href="https://github.com/Hokichi/Hitbench/issues">Feedback</a></nav>
+  </footer>
+</body>
+</html>
