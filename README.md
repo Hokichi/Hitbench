@@ -22,8 +22,6 @@ Projects save automatically as you work. Project files live in the `projects` fo
 
 ## Features
 
-Jump to a feature:
-
 - [Timeline editing](#timeline-editing)
 - [Tracks and organization](#tracks-and-organization)
 - [Instrumental arrangement](#instrumental-arrangement)
@@ -36,8 +34,6 @@ Jump to a feature:
 
 ### Timeline editing
 
-Arrange hitsounds against the song waveform using timing loaded from the mapset.
-
 - Switch between **Select** mode to select and move nodes and **Draw** mode to place them.
 - Adjust beat subdivision to control snapping.
 - Zoom in for precise placement or out to view longer sections.
@@ -48,8 +44,6 @@ Arrange hitsounds against the song waveform using timing loaded from the mapset.
 
 ### Tracks and organization
 
-Give each part of your arrangement its own track.
-
 - Add sample tracks for individual sounds or instrumental tracks for pitched parts.
 - Rename, recolor, reorder, and collapse tracks to keep larger arrangements readable.
 - Organize sample files into folders.
@@ -58,8 +52,6 @@ Give each part of your arrangement its own track.
 ![Expanded tracks with volume, sample settings, mute, and solo controls](images/tracks.png)
 
 ### Instrumental arrangement
-
-Write melodic and harmonic hitsounds in a dedicated piano roll.
 
 - Map audio samples to musical keys from **C1 through B9** using **Keys Mapping**.
 - Import a folder of note-named samples to populate key mappings.
@@ -72,8 +64,6 @@ Write melodic and harmonic hitsounds in a dedicated piano roll.
 ![Keys Mapping keyboard for assigning samples to musical notes](images/key-mapping.png)
 
 ### Sample management
-
-Keep your sounds accessible while arranging.
 
 - Import **WAV**, **OGG**, and **MP3** files.
 - Drag audio files into the workstation.
@@ -88,8 +78,6 @@ Mapset samples are imported automatically when you create a project.
 
 ### Default hitsounds and hitnormal configuration
 
-Work with osu! sample sets alongside custom audio.
-
 - Use default hitsound tracks with sample sources resolved from your configured skin.
 - Browse project samples and skin samples in separate expandable groups.
 - Configure project hitnormal samples through **Actions → Config Hitnormal**.
@@ -98,8 +86,6 @@ Work with osu! sample sets alongside custom audio.
 ![Hitnormal configuration for Normal, Soft, and Drum sample sets](images/hitnormal.png)
 
 ### Control points and volume ramps
-
-Shape how your arrangement sounds over time.
 
 - Add control points to change volume and sample set at specific positions.
 - Move control points along the timeline.
@@ -111,8 +97,6 @@ Shape how your arrangement sounds over time.
 
 ### Playback and navigation
 
-Listen to the full arrangement while editing.
-
 - Play, pause, stop, and seek through the song.
 - Follow the playback marker automatically.
 - Switch between a moving marker and a centered marker with scrolling tracks.
@@ -122,8 +106,6 @@ Listen to the full arrangement while editing.
 ![Active playback with centered marker and scrolling waveform and tracks](images/playback.png)
 
 ### Beatmap export
-
-Generate a hitsound difficulty and the audio files needed to play your arrangement.
 
 Open **Actions → Export** to configure:
 
