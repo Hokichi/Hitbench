@@ -33,7 +33,7 @@ public sealed class ManageSampleHeaderTests
         Assert.That(button, Is.TypeOf<BalloonButton>());
         Assert.That(button.Command, Is.SameAs(vm.ManageSamplesCommand));
         UiControlContract.AssertStyle<BalloonButton>(button, "OHsWorkstationSamplesActionStyle");
-        Assert.That(button.Style.BasedOn, Is.SameAs(button.FindResource("OHsBalloonDefaultActionStyle")));
+        Assert.That(button.Style.BasedOn, Is.SameAs(button.FindResource("OHsBalloonNavInfoActionStyle")));
         Assert.That(button.IsTabStop, Is.False);
         Assert.That(System.Windows.Automation.AutomationProperties.GetItemStatus(button), Is.EqualTo("Closed"));
         var trigger = (BalloonMenu)page.Toolbar.FindName("AddMenuButton");

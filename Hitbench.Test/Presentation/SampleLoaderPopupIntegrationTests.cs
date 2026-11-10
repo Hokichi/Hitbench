@@ -47,6 +47,53 @@ public sealed class SampleLoaderPopupIntegrationTests
     }
 
     [Test]
+    public void NarrowPaneChangesPreserveCrossFolderSelectionAndPreview()
+    {
+        UiTestPump.Run(vm.SetCheckedAsync(file, true));
+        var folder = Path.Combine(browser.RootPath, "second");
+        var other = new SampleBrowserEntry(Path.Combine(folder, "other.wav"), "other.wav", false);
+        browser.Entries[folder] = [other];
+        UiTestPump.Run(vm.NavigateCommand.ExecuteAsync(folder));
+        UiTestPump.Run(vm.SetCheckedAsync(other, true));
+        UiTestPump.Run(vm.SelectAsync(other));
+        UiTestPump.Run(vm.SeekPreviewCommand.ExecuteAsync(TimeSpan.FromSeconds(.4)));
+        var selected = vm.SelectedFile;
+        var position = vm.PlaybackPosition;
+        var playCalls = preview.PlayedPaths.Count;
+        var basket = (ListBox)popup.FindName("SelectedSamplesList");
+        foreach (var width in new[] { 799d, 800d, 1039d, 1040d, 799d })
+        {
+            popup.Width = width;
+            popup.UpdateBrowserLayout(width);
+            popup.ActivePane = OHsSampleBrowserPane.SelectedSamples;
+            view.UpdateLayout();
+            Assert.That(vm.CurrentDirectory, Is.EqualTo(folder));
+            Assert.That(vm.CheckedCount, Is.EqualTo(2));
+            Assert.That(vm.SelectedFile, Is.SameAs(selected));
+            Assert.That(basket.SelectedItem, Is.SameAs(selected));
+            Assert.That(vm.PlaybackPosition, Is.EqualTo(position));
+            Assert.That(preview.PlayedPaths.Count, Is.EqualTo(playCalls));
+            Assert.That(popup.HandlePaneShortcut(Key.F6, ModifierKeys.None), Is.EqualTo(width < 800));
+        }
+        Assert.That(popup.ActivePane, Is.EqualTo(OHsSampleBrowserPane.Browse));
+        Assert.That(completion, Is.Null);
+    }
+
+    [Test]
+    public void FolderModeNeverExposesBasketPane()
+    {
+        vm.ConfigureSelectionMode(SampleSelectionMode.Folder);
+        popup.ActivePane = OHsSampleBrowserPane.SelectedSamples;
+        popup.UpdateBrowserLayout(640);
+        Assert.That(popup.ActivePane, Is.EqualTo(OHsSampleBrowserPane.Browse));
+        Assert.That(popup.IsNarrowLayout, Is.False);
+        Assert.That(((FrameworkElement)popup.FindName("PaneSelector")).Visibility, Is.EqualTo(Visibility.Collapsed));
+        Assert.That(((FrameworkElement)popup.FindName("BasketPane")).Visibility, Is.EqualTo(Visibility.Collapsed));
+        Assert.That(popup.HandlePaneShortcut(Key.F6, ModifierKeys.None), Is.False);
+        Assert.That(completion, Is.Null);
+    }
+
+    [Test]
     public void LongNamesAndRightToLeftKeepSelectionAndImport()
     {
         var folder = Path.Combine(browser.RootPath, "Long names");
@@ -109,10 +156,10 @@ public sealed class SampleLoaderPopupIntegrationTests
         Assert.That(vm.SelectionAnnouncement, Is.EqualTo("0 samples selected"));
     }
     [Test]
-    public void WrittenSpecUsesOwnerLocalChromeContract()
+    public void SampleBrowserUsesSharedPopupTemplateContract()
     {
         Assert.That(popup.Style, Is.SameAs(popup.FindResource("OHsSampleLoaderPopupStyle")));
-        Assert.That(popup.Template, Is.SameAs(popup.FindResource("OHsSampleLoaderPopupTemplate")));
+        Assert.That(popup.Template, Is.SameAs(popup.FindResource("BasePopupTemplate")));
     }
     [Test]
     public void SpaceTogglesTheFocusedFileWithoutImporting()

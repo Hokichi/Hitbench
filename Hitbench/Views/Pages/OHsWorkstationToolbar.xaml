@@ -18,7 +18,7 @@
             x:Key="OHsWorkstationHeaderCardStyle"
             BasedOn="{StaticResource CardBorderStyle}"
             TargetType="Border">
-            <Setter Property="Margin" Value="0,0,0,8" />
+            <Setter Property="Margin" Value="0,0,0,8" /><Setter Property="Padding" Value="8"/><Setter Property="BorderThickness" Value="0"/>
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsShortLayout, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationToolbar}, Mode=OneWay}" Value="True">
                     <Setter Property="Padding" Value="16,8" />
@@ -70,7 +70,7 @@
         </Style>
         <Style
             x:Key="OHsWorkstationPlayPauseStyle"
-            BasedOn="{StaticResource OHsWorkstationTransportButtonStyle}"
+            BasedOn="{StaticResource OHsBalloonDefaultActionStyle}"
             TargetType="customControls:BalloonButton">
             <Setter Property="AutomationProperties.Name" Value="Play audio" />
             <Setter Property="ButtonIcon" Value="{StaticResource MediaPlay}" />
@@ -87,7 +87,7 @@
         </Style>
         <Style
             x:Key="OHsWorkstationSamplesActionStyle"
-            BasedOn="{StaticResource OHsBalloonDefaultActionStyle}"
+            BasedOn="{StaticResource OHsBalloonNavInfoActionStyle}"
             TargetType="customControls:BalloonButton">
             <Setter Property="VerticalAlignment" Value="Top" />
             <Setter Property="ButtonIcon" Value="{StaticResource MusicNote}" />
@@ -181,6 +181,7 @@
             x:Key="OHsWorkstationEditingOptionStyle"
             BasedOn="{StaticResource {x:Type customControls:SegmentedToggleOption}}"
             TargetType="customControls:SegmentedToggleOption">
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}"/>
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsCompactLayout, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationToolbar}, Mode=OneWay}" Value="True">
                     <Setter Property="Padding" Value="8,6" />
@@ -200,7 +201,6 @@
             TargetType="customControls:SegmentedToggleOption">
             <Setter Property="Padding" Value="0" />
             <Setter Property="MinWidth" Value="{StaticResource Size.Control.Primary}" />
-            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}" />
         </Style>
     </UserControl.Resources>
     <Border Style="{StaticResource OHsWorkstationHeaderCardStyle}">
@@ -328,6 +328,7 @@
                 HorizontalAlignment="Right"
                 VerticalAlignment="Top"
                 Orientation="Horizontal">
+                <customControls:BalloonButton x:Name="ExportButton" ButtonIcon="{StaticResource Export}" ButtonText="Export" Command="{Binding ExportCommand, Mode=OneWay}" Style="{StaticResource OHsBalloonNavInfoActionStyle}" ToolTip="Export" AutomationProperties.Name="Export"/>
                 <customControls:BalloonMenu
                     x:Name="ProjectActionsButton"
                     AutomationProperties.Name="Project actions"
@@ -360,14 +361,9 @@
                         ButtonIcon="{StaticResource MusicNote}"
                         ButtonText="Config Hitnormal"
                         Command="{Binding ConfigHitNormalCommand, Mode=OneWay}"
-                        IsEnabled="false"
+                        IsEnabled="{Binding CanConfigHitNormal, Mode=OneWay}"
                         Style="{StaticResource BaseBalloonMenuOptionStyle}"
                         ToolTip="Config Hitnormal" />
-                    <customControls:BalloonMenuOption
-                        ButtonIcon="{StaticResource Export}"
-                        ButtonText="Export"
-                        Command="{Binding ExportCommand, Mode=OneWay}"
-                        ToolTip="Export" />
                 </customControls:BalloonMenu>
                 <customControls:BalloonMenu
                     x:Name="OpenFoldersButton"

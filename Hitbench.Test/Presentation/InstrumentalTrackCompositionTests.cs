@@ -23,8 +23,8 @@ public class InstrumentalTrackCompositionTests
         var row = (ListBoxItem)list.ItemContainerGenerator.ContainerFromIndex(0);
         Assert.That(Children(row).OfType<ComboBox>(), Is.Empty);
         var arrangement = Children(row).OfType<Hitbench.Resources.CustomControls.BalloonButton>().Single(b => b.ButtonText == "View Arrangement");
-        UiControlContract.AssertStyle<Hitbench.Resources.CustomControls.BalloonButton>(arrangement, "OHsWorkstationInstrumentMutedActionStyle");
-        Assert.That(arrangement.Style.BasedOn, Is.SameAs(arrangement.FindResource("OHsWorkstationInstrumentActionStyle")));
+        UiControlContract.AssertStyle<Hitbench.Resources.CustomControls.BalloonButton>(arrangement, "OHsWorkstationInstrumentHeaderActionStyle");
+        Assert.That(arrangement.Style.BasedOn, Is.SameAs(arrangement.FindResource("OHsBalloonSurfaceActionStyle")));
         var trigger = Children(row).OfType<Hitbench.Resources.CustomControls.BalloonComboBox>().Single();
         trigger.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
         var mapping = trigger.ContextMenu.Items.OfType<MenuItem>().Single(item => Equals(item.Header, "Keys Mapping"));

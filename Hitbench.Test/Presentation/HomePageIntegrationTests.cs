@@ -796,7 +796,7 @@ public class HomePageIntegrationTests
                     UiControlContract.AssertStyle<Image>(backgroundImage, "HomePageSongBackgroundStyle");
                     UiControlContract.AssertStyle<Grid>((Grid)button.Content, "HomePageSongArtworkStyle");
                     UiControlContract.AssertStyle<TextBlock>(labels.Single(label => label.Text == "Artist"), "HomePageSongArtistStyle");
-                    UiControlContract.AssertStyle<TextBlock>(labels.Single(label => label.Text.StartsWith("Title")), "HomePageSongArtistStyle");
+                    UiControlContract.AssertStyle<TextBlock>(labels.Single(label => label.Text.StartsWith("Title")), "OHsHomeMapsetTitleStyle");
                     var peer = new ButtonAutomationPeer(button);
                     Assert.Multiple(() =>
                     {

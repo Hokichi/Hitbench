@@ -276,6 +276,8 @@
                 VerticalAlignment="Center"
                 Panel.ZIndex="10"
                 PreviewMouseMove="OnVolumeOverlayMouseMove"
+                MouseLeave="OnVolumeOverlayMouseMove"
+                LostMouseCapture="OnVolumeOverlayMouseMove"
                 Style="{StaticResource OHsWorkstationVolumeOverlayStyle}"
                 Visibility="Collapsed">
                 <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">

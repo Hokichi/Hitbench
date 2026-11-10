@@ -20,6 +20,36 @@ public partial class SampleLoaderPopup : BasePopup
     private readonly Func<Window, Size> getWorkArea;
     private Window? sizingOwner;
     private bool deactivated;
+    public static readonly DependencyProperty ActivePaneProperty = DependencyProperty.Register(nameof(ActivePane), typeof(OHsSampleBrowserPane), typeof(SampleLoaderPopup), new PropertyMetadata(OHsSampleBrowserPane.Browse, (d, _) => ((SampleLoaderPopup)d).UpdateBrowserLayout(((SampleLoaderPopup)d).Width)));
+    public OHsSampleBrowserPane ActivePane { get => (OHsSampleBrowserPane)GetValue(ActivePaneProperty); set => SetValue(ActivePaneProperty, value); }
+    private static readonly DependencyPropertyKey IsNarrowLayoutPropertyKey = DependencyProperty.RegisterReadOnly(nameof(IsNarrowLayout), typeof(bool), typeof(SampleLoaderPopup), new PropertyMetadata(false));
+    public static readonly DependencyProperty IsNarrowLayoutProperty = IsNarrowLayoutPropertyKey.DependencyProperty;
+    public bool IsNarrowLayout => (bool)GetValue(IsNarrowLayoutProperty);
+    private static readonly DependencyPropertyKey IsShortLayoutPropertyKey = DependencyProperty.RegisterReadOnly(nameof(IsShortLayout), typeof(bool), typeof(SampleLoaderPopup), new PropertyMetadata(false));
+    public static readonly DependencyProperty IsShortLayoutProperty = IsShortLayoutPropertyKey.DependencyProperty;
+    public bool IsShortLayout => (bool)GetValue(IsShortLayoutProperty);
+    internal void UpdateBrowserLayout(double availableWidth)
+    {
+        if (BrowserPane is null || BasketPane is null) return;
+        if (viewModel.IsFolderSelection && ActivePane != OHsSampleBrowserPane.Browse) SetCurrentValue(ActivePaneProperty, OHsSampleBrowserPane.Browse);
+        var narrow = availableWidth < 800 && !viewModel.IsFolderSelection;
+        var shortLayout = Height < 480;
+        SetValue(IsShortLayoutPropertyKey, shortLayout);
+        SetValue(IsNarrowLayoutPropertyKey, narrow);
+        BasketColumn.Width = viewModel.IsFolderSelection ? new GridLength(0) : narrow ? GridLength.Auto : new GridLength(Math.Min(280, availableWidth * .3));
+        PaneSelector.Visibility = narrow ? Visibility.Visible : Visibility.Collapsed;
+        Grid.SetColumn(BasketPane, narrow ? 1 : 2);
+        Grid.SetColumnSpan(BasketPane, narrow ? 2 : 1);
+        Grid.SetColumnSpan(BrowserPane, narrow || viewModel.IsFolderSelection ? 2 : 1);
+        BrowserPane.Visibility = !narrow || ActivePane == OHsSampleBrowserPane.Browse ? Visibility.Visible : Visibility.Collapsed;
+        BasketPane.Visibility = !viewModel.IsFolderSelection && (!narrow || ActivePane == OHsSampleBrowserPane.SelectedSamples) ? Visibility.Visible : Visibility.Collapsed;
+    }
+    internal bool HandlePaneShortcut(Key key, ModifierKeys modifiers)
+    {
+        if (key != Key.F6 || modifiers != ModifierKeys.None || !IsNarrowLayout) return false;
+        ActivePane = ActivePane == OHsSampleBrowserPane.Browse ? OHsSampleBrowserPane.SelectedSamples : OHsSampleBrowserPane.Browse;
+        (ActivePane == OHsSampleBrowserPane.Browse ? DirectoryContents : SelectedSamplesList).Focus(); return true;
+    }
     private DispatcherOperation? initialFocus;
     private bool navigationHadFocus;
     private int lastAnnouncedCount = -1;
@@ -156,6 +186,7 @@ public partial class SampleLoaderPopup : BasePopup
         var compact = Width < 1040;
         SetValue(IsCompactLayoutPropertyKey, compact);
         LocationColumn.Width = new GridLength(compact ? 0 : 184);
+        UpdateBrowserLayout(Width);
     }
 
     private static double ConstrainSize(double preferred, double workArea, double owner)
@@ -222,6 +253,7 @@ public partial class SampleLoaderPopup : BasePopup
 
     private void OnBrowserStateChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(SampleLoaderPopupVM.IsFolderSelection)) UpdateBrowserLayout(Width);
         if (e.PropertyName == nameof(SampleLoaderPopupVM.SelectionAnnouncement) && lastAnnouncedCount != viewModel.CheckedCount)
         {
             lastAnnouncedCount = viewModel.CheckedCount;
@@ -366,6 +398,7 @@ public partial class SampleLoaderPopup : BasePopup
 
     protected override void OnPreviewKeyDown(KeyEventArgs e)
     {
+        if (HandlePaneShortcut(e.Key, Keyboard.Modifiers)) { e.Handled = true; return; }
         if (e.Key == Key.Tab) { e.Handled = true; return; }
         base.OnPreviewKeyDown(e);
     }

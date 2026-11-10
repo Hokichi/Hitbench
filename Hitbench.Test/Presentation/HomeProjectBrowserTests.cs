@@ -7,6 +7,24 @@ namespace Hitbench.Test.Presentation;
 public sealed class HomeProjectBrowserTests
 {
     [Test]
+    public async Task AllProjectsCommandRestoresSavedQuery()
+    {
+        var vm = await Ready([Entry("project89")]);
+        try
+        {
+            vm.ProjectSearchText = "project89";
+            await vm.SearchProjectsCommand.ExecutionTask!;
+            vm.SelectedMapset = new FolderEntry(@"C:\Songs\Chosen", "Chosen", default);
+            await vm.SearchProjectsCommand.ExecutionTask!;
+            vm.ShowAllProjectsCommand.Execute(null);
+            await vm.SearchProjectsCommand.ExecutionTask!;
+            Assert.That(vm.SelectedMapset, Is.Null);
+            Assert.That(vm.ProjectSearchText, Is.EqualTo("project89"));
+            Assert.That(vm.Projects.Single().Name, Is.EqualTo("project89"));
+        }
+        finally { vm.Deactivate(); }
+    }
+    [Test]
     public async Task SelectedMapsetFiltersFullInventoryWithoutHeadingsAndRestoresQuery()
     {
         var mapset = new FolderEntry(@"C:\Songs\Chosen", "Chosen", default);
@@ -25,6 +43,46 @@ public sealed class HomeProjectBrowserTests
             await vm.SearchProjectsCommand.ExecutionTask!;
             Assert.That(vm.ProjectSearchText, Is.EqualTo("project89"));
             Assert.That(vm.Projects.Single().Name, Is.EqualTo("project89"));
+        }
+        finally { vm.Deactivate(); }
+    }
+
+    [Test]
+    public async Task AllProjectsRejectsBusyAndInactiveScopeChanges()
+    {
+        var vm = await Ready([Entry("project")]);
+        try
+        {
+            vm.SelectedMapset = new FolderEntry(@"C:\Songs\Chosen", "Chosen", default);
+            await vm.SearchProjectsCommand.ExecutionTask!;
+            Assert.That(vm.ShowAllProjectsCommand.CanExecute(null), Is.True);
+            vm.IsInteractionBlocked = true;
+            Assert.That(vm.ShowAllProjectsCommand.CanExecute(null), Is.False);
+            vm.IsInteractionBlocked = false;
+            vm.IsCreatingProject = true;
+            Assert.That(vm.ShowAllProjectsCommand.CanExecute(null), Is.False);
+            vm.IsCreatingProject = false;
+            Assert.That(vm.ShowAllProjectsCommand.CanExecute(null), Is.True);
+            vm.Deactivate();
+            Assert.That(vm.ShowAllProjectsCommand.CanExecute(null), Is.False);
+        }
+        finally { vm.Deactivate(); }
+    }
+
+    [Test]
+    public async Task AllProjectsDoesNotPublishLateScopedResults()
+    {
+        var vm = await Ready([Entry("global"), Entry("scoped") with { BeatmapPath = @"C:\Songs\Chosen" }]);
+        try
+        {
+            vm.ProjectSearchText = "global";
+            await vm.SearchProjectsCommand.ExecutionTask!;
+            vm.SelectedMapset = new FolderEntry(@"C:\Songs\Chosen", "Chosen", default);
+            var scoped = vm.SearchProjectsCommand.ExecutionTask!;
+            vm.ShowAllProjectsCommand.Execute(null);
+            await Task.WhenAll(scoped, vm.SearchProjectsCommand.ExecutionTask!);
+            Assert.That(vm.SelectedMapset, Is.Null);
+            Assert.That(vm.Projects.Select(entry => entry.Name), Is.EqualTo(new[] { "global" }));
         }
         finally { vm.Deactivate(); }
     }

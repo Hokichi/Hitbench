@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Data;
 using System.Windows.Controls;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -239,6 +240,8 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
             viewModel.PropertyChanged += OnStateChanged;
             SetHeaderPresentationSource(null);
             PageHost.Content = next;
+            BindingOperations.ClearBinding(ShellHeader, Hitbench.Views.Shell.OHsShellHeader.ProjectNameProperty);
+            ShellHeader.ProjectName = "";
             ShellHeader.IsWorkstationVisible = false;
             MinWidth = defaultMinWidth;
             MinHeight = defaultMinHeight;
@@ -308,6 +311,7 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
             workstation.SetProjectPath(projectPath);
             page.Deactivate();
             PageHost.Content = workstation;
+            ShellHeader.SetBinding(Hitbench.Views.Shell.OHsShellHeader.ProjectNameProperty, new Binding(nameof(WorkstationPageVM.ProjectName)) { Source = workstation.DataContext, Mode = BindingMode.OneWay });
             SetHeaderPresentationSource(workstation);
             ShellHeader.IsWorkstationVisible = true;
             MinWidth = defaultMinWidth;
@@ -667,6 +671,8 @@ public partial class MainWindow : Window, IRecipient<ProjectCreatedMessage>,
     {
         if (input.Handled) return false;
         var origin = input.OriginalSource as DependencyObject;
+        if (isActive && !IsPopupOverlayVisible && PageHost.Content is WorkstationPage volumePage && input is MouseButtonEventArgs &&
+            (input.RoutedEvent == Mouse.PreviewMouseDownEvent || input.RoutedEvent == Mouse.MouseDownEvent) && volumePage.HandleVolumeOverlayPointerDown(origin)) return true;
         if (input is KeyEventArgs key && (input.RoutedEvent == Keyboard.KeyDownEvent || input.RoutedEvent == Keyboard.PreviewKeyDownEvent))
             return HandleWindowKeyDown(isActive, key.Key == Key.System ? key.SystemKey : key.Key, modifiers,
                 key.IsRepeat, origin ?? Keyboard.FocusedElement as DependencyObject);

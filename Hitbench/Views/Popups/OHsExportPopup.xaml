@@ -153,10 +153,10 @@
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
                 <StackPanel IsEnabled="{Binding CanEditOptions, Mode=OneWay}">
-                    <TextBlock Style="{StaticResource OHsExportLabelStyle}" Text="Diff Name" />
+                    <TextBlock Style="{StaticResource OHsExportLabelStyle}" Text="Difficulty name" />
                     <TextBox
                         x:Name="DiffNameInput"
-                        AutomationProperties.Name="Diff Name"
+                        AutomationProperties.Name="Difficulty name"
                         Style="{StaticResource OHsExportNameInputStyle}"
                         Text="{Binding DiffName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}" />
                 </StackPanel>
@@ -164,10 +164,10 @@
                     Grid.Row="1"
                     Margin="0,16,0,0"
                     IsEnabled="{Binding CanEditOptions, Mode=OneWay}">
-                    <TextBlock Style="{StaticResource OHsExportLabelStyle}" Text="Starting sample count" />
+                    <TextBlock Style="{StaticResource OHsExportLabelStyle}" Text="Starting sample index" />
                     <c:NumericUpDown
                         x:Name="StartingIndexInput"
-                        AutomationProperties.Name="Starting custom sample index"
+                        AutomationProperties.Name="Starting sample index"
                         Style="{StaticResource OHsExportIndexInputStyle}"
                         Value="{Binding StartingIndex, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                 </StackPanel>

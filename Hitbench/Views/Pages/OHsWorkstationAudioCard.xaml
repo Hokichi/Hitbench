@@ -19,11 +19,8 @@
             x:Key="OHsWorkstationPanelStyle"
             BasedOn="{StaticResource CardBorderStyle}"
             TargetType="Border">
-            <Setter Property="Margin" Value="0,0,0,12" />
+            <Setter Property="Margin" Value="0,0,0,8" /><Setter Property="Padding" Value="16,8"/><Setter Property="BorderThickness" Value="0"/>
             <Style.Triggers>
-                <DataTrigger Binding="{Binding IsShortLayout, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationAudioCard}, Mode=OneWay}" Value="True">
-                    <Setter Property="Padding" Value="16,8" />
-                </DataTrigger>
                 <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
                     <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
                     <Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
@@ -66,28 +63,8 @@
             x:Key="OHsWorkstationControlPointPillStyle"
             BasedOn="{StaticResource CardBorderStyle}"
             TargetType="Border">
-            <Setter Property="Background" Value="{DynamicResource Brush.Background.Deepened}" />
             <Setter Property="Padding" Value="8,4" />
-            <Setter Property="CornerRadius" Value="8" />
-        </Style>
-        <Style
-            x:Key="OHsWorkstationControlPointBadgeStyle"
-            BasedOn="{StaticResource BaseBorderStyle}"
-            TargetType="Border">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Control}" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Padding" Value="6,0" />
-            <Setter Property="CornerRadius" Value="1000" />
-            <Setter Property="MinWidth" Value="{StaticResource Size.Control.Dense}" />
-            <Setter Property="MinHeight" Value="{StaticResource Size.Control.Dense}" />
-            <Setter Property="Height" Value="{Binding ActualWidth, RelativeSource={RelativeSource Self}, Mode=OneWay}" />
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
-                    <Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
-                </DataTrigger>
-            </Style.Triggers>
+            <Setter Property="CornerRadius" Value="0" />
         </Style>
         <Style
             x:Key="OHsWorkstationControlPointLabelStyle"
@@ -145,7 +122,7 @@
                             Style="{StaticResource OHsWorkstationElapsedStyle}"
                             Text="{Binding ElapsedText, Mode=OneWay}" />
                         <TextBlock
-                            AutomationProperties.Name="Current BPM"
+                            Foreground="{DynamicResource Brush.Text.Secondary}" AutomationProperties.Name="Current BPM"
                             Style="{StaticResource BodyTextStyle}"
                             Text="{Binding CurrentBpmText, Mode=OneWay}"
                             TextTrimming="CharacterEllipsis"
@@ -197,9 +174,7 @@
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Style="{StaticResource OHsWorkstationControlPointLabelStyle}" Text="Control Points:" />
-                                <Border Grid.Column="2" Style="{StaticResource OHsWorkstationControlPointBadgeStyle}">
-                                    <TextBlock Style="{StaticResource OHsWorkstationControlPointCountStyle}" Text="{Binding ControlPointCount, Mode=OneWay}" />
-                                </Border>
+                                <TextBlock Grid.Column="2" Style="{StaticResource OHsWorkstationControlPointCountStyle}" Text="{Binding ControlPointCount, Mode=OneWay}" />
                             </Grid>
                         </Border>
                     </Grid>

@@ -23,6 +23,7 @@ public partial class WorkstationPage
     private long volumeLastActivity;
     private int volumeOverlayVersion;
     private bool volumeFading;
+    private bool volumeKeyboardInvoked;
     private bool volumeAnimate;
     private double volumeBlurRadius;
     private BlurEffect? volumeBlur;
@@ -44,6 +45,8 @@ public partial class WorkstationPage
         DetachVolumeOverlayHost();
         WorkstationRoot.Children.Remove(VolumeOverlay);
         volumeOverlayHost = host;
+        VolumeOverlay.LostKeyboardFocus -= OnVolumeFocusLeft;
+        VolumeOverlay.LostKeyboardFocus += OnVolumeFocusLeft;
         host.Children.Add(VolumeOverlay);
         host.SizeChanged += OnVolumeOverlayHostSizeChanged;
         RefreshBlurPresentation();
@@ -54,6 +57,7 @@ public partial class WorkstationPage
     {
         if (volumeOverlayHost is null) return;
         DismissVolumeOverlay();
+        VolumeOverlay.LostKeyboardFocus -= OnVolumeFocusLeft;
         volumeOverlayHost.SizeChanged -= OnVolumeOverlayHostSizeChanged;
         volumeOverlayHost.Children.Remove(VolumeOverlay);
         volumeOverlayHost = null;
@@ -71,6 +75,7 @@ public partial class WorkstationPage
         if (deactivationStarted) return;
         CancelNodePointer();
         var wasOpen = IsVolumeOverlayOpen;
+        volumeKeyboardInvoked = keyboardInvoked;
         var settingsChanged = volumeAnimate != animate || volumeBlurRadius != (highContrast ? 0 : 6);
         volumeAnimate = animate;
         volumeBlurRadius = highContrast ? 0 : 6;
@@ -201,6 +206,18 @@ public partial class WorkstationPage
         RecordVolumeActivity();
     }
 
+    private void OnVolumeFocusLeft(object sender, KeyboardFocusChangedEventArgs e) =>
+        Dispatcher.BeginInvoke(DispatcherPriority.Input, () => { if (IsVolumeOverlayOpen) HandleVolumeOverlayFocusDeparture(VolumeOverlay.IsKeyboardFocusWithin); });
+
+    internal void HandleVolumeOverlayFocusDeparture(bool remainsWithin)
+    { if (volumeKeyboardInvoked && !remainsWithin) DismissVolumeOverlay(); }
+
+    internal bool HandleVolumeOverlayPointerDown(DependencyObject? origin)
+    {
+        if (!IsVolumeOverlayOpen || IsVolumeOverlayElement(origin)) return false;
+        DismissVolumeOverlay(); return true;
+    }
+
     private void OnVolumeOverlayMouseMove(object sender, MouseEventArgs e) => RecordVolumeActivity();
 
     private void OnVolumeWheelMouseDown(object sender, MouseButtonEventArgs e)
@@ -224,9 +241,12 @@ public partial class WorkstationPage
         volumeIdleTimer.Start();
     }
 
-    internal void ProcessVolumeOverlayIdle(TimeSpan idleFor, bool animate)
+    internal void ProcessVolumeOverlayIdle(TimeSpan idleFor, bool animate) =>
+        ProcessVolumeOverlayIdle(idleFor, animate, VolumeOverlay.IsMouseOver, Mouse.Captured is not null);
+
+    internal void ProcessVolumeOverlayIdle(TimeSpan idleFor, bool animate, bool pointerWithin, bool hasCapture)
     {
-        if (!IsVolumeOverlayOpen || volumeFading || idleFor < TimeSpan.FromMilliseconds(100)) return;
+        if (!IsVolumeOverlayOpen || volumeFading || volumeKeyboardInvoked || pointerWithin || hasCapture || idleFor < TimeSpan.FromMilliseconds(1500)) return;
         volumeIdleTimer?.Stop();
         if (!animate) { DismissVolumeOverlay(); return; }
         AnimateVolumeOverlay(false, true);

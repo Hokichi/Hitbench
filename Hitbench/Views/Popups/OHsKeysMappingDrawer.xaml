@@ -107,20 +107,26 @@
                         IsHitTestVisible="False"
                         Style="{StaticResource OHsKeysSelectedOverlayStyle}"
                         Visibility="Collapsed" />
-                    <ContentPresenter
+                    <c:Icon x:Name="MappedCue" Width="10" Height="10" HorizontalAlignment="Center" VerticalAlignment="Top" Path="{StaticResource Check}" Color="{TemplateBinding Foreground}" Visibility="Collapsed" IsHitTestVisible="False"/>
+<Border x:Name="SelectionCue" Height="3" VerticalAlignment="Bottom" Background="{TemplateBinding Foreground}" Visibility="Collapsed" IsHitTestVisible="False"/>
+<ContentPresenter
                         Margin="{TemplateBinding Padding}"
                         HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                         VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
                 </Grid>
             </Border>
             <ControlTemplate.Triggers>
+                <DataTrigger Binding="{Binding IsMapped, Mode=OneWay}" Value="True"><Setter TargetName="MappedCue" Property="Visibility" Value="Visible"/></DataTrigger>
+                <DataTrigger Binding="{Binding IsMissing, Mode=OneWay}" Value="True"><Setter TargetName="KeySurface" Property="BorderThickness" Value="2"/><Setter TargetName="KeySurface" Property="BorderBrush" Value="{DynamicResource Brush.Border.Danger}"/></DataTrigger>
                 <DataTrigger Binding="{Binding IsMapped, Mode=OneWay}" Value="False">
                     <Setter TargetName="UnmappedOverlay" Property="Visibility" Value="Visible" />
                 </DataTrigger>
                 <Trigger Property="IsSelected" Value="True">
+                    <Setter TargetName="SelectionCue" Property="Visibility" Value="Visible"/>
                     <Setter TargetName="SelectedOverlay" Property="Visibility" Value="Visible" />
                 </Trigger>
                 <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
+                    <Setter TargetName="KeySurface" Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
                     <Setter TargetName="UnmappedOverlay" Property="Visibility" Value="Collapsed" />
                     <Setter TargetName="SelectedOverlay" Property="Background" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
                     <Setter TargetName="SelectedOverlay" Property="Opacity" Value="1" />

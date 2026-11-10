@@ -215,6 +215,7 @@ public partial class HomePageVM(
         OnPropertyChanged(nameof(CanSearchProjects));
         OnPropertyChanged(nameof(CanSelectMapset));
         SelectMapsetCommand.NotifyCanExecuteChanged();
+        ShowAllProjectsCommand.NotifyCanExecuteChanged();
         ShowProjectCreationCommand.NotifyCanExecuteChanged();
         CancelProjectCreationCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(HasMoreProjects));

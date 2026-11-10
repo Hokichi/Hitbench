@@ -35,7 +35,7 @@ public sealed class OHsWorkstationAudioCardTests
             WorkstationActionMenus.Prepare(actions);
             Assert.That(actions.Visibility, Is.EqualTo(Visibility.Visible));
             Assert.That(actions.Options.Select(i => i.Command), Is.EqualTo(new System.Windows.Input.ICommand[]
-            { vm.ResnapAllSamplesCommand, vm.ImportFromMapsetCommand, vm.ReloadSamplesCommand, vm.ToggleTracksCollapsedCommand, vm.ConfigHitNormalCommand, vm.ExportCommand }));
+            { vm.ResnapAllSamplesCommand, vm.ImportFromMapsetCommand, vm.ReloadSamplesCommand, vm.ToggleTracksCollapsedCommand, vm.ConfigHitNormalCommand }));
             var open = card.FindName("OpenFoldersButton") as BalloonMenu;
             Assert.That(open, Is.Not.Null);
             open!.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
@@ -67,7 +67,7 @@ public sealed class OHsWorkstationAudioCardTests
             var commands = menu.Options.Select(item => item.Command).ToArray();
             Assert.That(commands, Is.EquivalentTo(new System.Windows.Input.ICommand[]
             {
-                vm.ResnapAllSamplesCommand, vm.ImportFromMapsetCommand, vm.ReloadSamplesCommand, vm.ToggleTracksCollapsedCommand, vm.ConfigHitNormalCommand, vm.ExportCommand
+                vm.ResnapAllSamplesCommand, vm.ImportFromMapsetCommand, vm.ReloadSamplesCommand, vm.ToggleTracksCollapsedCommand, vm.ConfigHitNormalCommand
             }));
             Assert.That(menu.Options.All(item => !item.IsEnabled), Is.True);
             WorkstationActionMenus.Open(menu);
@@ -106,18 +106,48 @@ public sealed class OHsWorkstationAudioCardTests
         {
             var card = new OHsWorkstationToolbar { DataContext = vm };
             UiTestPump.Layout(card, 900, 300);
-            var button = WorkstationActionMenus.Find(card, vm.ExportCommand);
-            UiControlContract.AssertStyle<BalloonMenuOption>(button, typeof(BalloonMenuOption));
+            var button = (BalloonButton)card.FindName("ExportButton");
+            UiControlContract.AssertStyle<BalloonButton>(button, "OHsBalloonNavInfoActionStyle");
             Assert.That(AutomationProperties.GetName(button), Is.EqualTo("Export"));
             Assert.That(button.Command, Is.SameAs(vm.ExportCommand)); Assert.That(button.IsEnabled, Is.False);
             UiTestPump.Run(vm.LoadAsync("project.json", default)); vm.AcknowledgePresentationReady(vm.LoadGeneration);
             UiTestPump.Layout(card, 900, 300); Assert.That(button.IsEnabled, Is.True);
-            WorkstationActionMenus.Invoke(button);
+            ((System.Windows.Automation.Provider.IInvokeProvider)new BalloonButtonAutomationPeer(button).GetPattern(System.Windows.Automation.Peers.PatternInterface.Invoke)!).Invoke();
+            UiTestPump.Run(button.Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle).Task);
             UiTestPump.Run(vm.ExportCommand.ExecutionTask ?? Task.CompletedTask);
             Assert.That(dialogs.Calls, Is.EqualTo(1));
         }
         finally { UiTestPump.Run(vm.DeactivateAsync()); }
     }
+    [Test]
+    public void HitnormalMenuFollowsExistingEligibility()
+    {
+        new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
+        var calls = 0;
+        var completion = new TaskCompletionSource<OHsHitNormalConfiguration?>();
+        var dialog = new StubOHsHitNormalDialogService { Request = (_, _) => { calls++; return completion.Task; } };
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService(), new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), hitNormalDialog: dialog);
+        try
+        {
+            var card = new OHsWorkstationToolbar { DataContext = vm };
+            UiTestPump.Layout(card, 900, 300);
+            var action = WorkstationActionMenus.Find(card, vm.ConfigHitNormalCommand);
+            Assert.That(action.IsEnabled, Is.False);
+            UiTestPump.Run(vm.LoadAsync("project.json", default));
+            vm.AcknowledgePresentationReady(vm.LoadGeneration);
+            Assert.That(action.IsEnabled, Is.True);
+            WorkstationActionMenus.Invoke(action);
+            Assert.That(calls, Is.EqualTo(1));
+            Assert.That(action.IsEnabled, Is.False);
+            completion.SetResult(null);
+            UiTestPump.Run(vm.ConfigHitNormalCommand.ExecutionTask!);
+            Assert.That(action.IsEnabled, Is.True);
+            UiTestPump.Run(vm.DeactivateAsync());
+            Assert.That(action.IsEnabled, Is.False);
+        }
+        finally { completion.TrySetResult(null); UiTestPump.Run(vm.DeactivateAsync()); }
+    }
+
     [Test]
     public void TrackAddMenuOmitsControlPointCreation()
     {

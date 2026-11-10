@@ -35,10 +35,13 @@ public partial class OHsWorkstationToolbar : UserControl
     private void UpdateToolbarLayout()
     {
         if (ToolbarLayoutRoot.ActualWidth <= 0) return;
+        foreach (var action in new BalloonControl[] { AddMenuButton, ManageSamplesButton, ProjectActionsButton, ExportButton })
+            action.SetCurrentValue(BalloonControl.ShouldShowTextProperty, !IsCompactLayout && !(ReferenceEquals(action, ManageSamplesButton) && DataContext is Hitbench.ViewModels.Shell.WorkstationPageVM { IsSamplesOpen: true }));
         var wrapped = TransportGroup.DesiredSize.Width + ActionGroup.DesiredSize.Width +
             (double)FindResource("Space.2") > ToolbarLayoutRoot.ActualWidth;
         if (wrapped == AreActionsWrapped) return;
         AreActionsWrapped = wrapped;
+        ActionGroup.Margin = wrapped ? new Thickness(0, 8, 0, 0) : new Thickness(0);
         Grid.SetRow(ActionGroup, wrapped ? 1 : 0);
         Grid.SetColumn(ActionGroup, wrapped ? 0 : 2);
         Grid.SetColumnSpan(ActionGroup, wrapped ? 3 : 1);

@@ -177,7 +177,6 @@ public partial class HomePage : UserControl
     public void Deactivate()
     {
         HideSongs();
-        OuterGlow.SetIsActive(CardGlowHost, false);
         Detach();
         ReleaseScanningAnimation();
         lifetime.Cancel();
@@ -193,7 +192,6 @@ public partial class HomePage : UserControl
     {
         if (attached) return;
         attached = true;
-        OuterGlow.SetIsActive(CardGlowHost, true);
         ProjectsList.AddHandler(ScrollViewer.ScrollChangedEvent, new ScrollChangedEventHandler(OnScrollChanged));
         SongsList.AddHandler(ScrollViewer.ScrollChangedEvent, new ScrollChangedEventHandler(OnScrollChanged));
         SongsList.PreviewMouseWheel += OnSongsPreviewMouseWheel;

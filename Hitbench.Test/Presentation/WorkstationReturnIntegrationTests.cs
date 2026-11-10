@@ -86,6 +86,24 @@ public class WorkstationReturnIntegrationTests
     }
 
     [Test]
+    public void ProjectIdentityFollowsActiveWorkstationAndClearsOnHome()
+    {
+        var immediate = new DelayedProjectFileService();
+        immediate.Release();
+        Open(immediate);
+        var header = (Hitbench.Views.Shell.OHsShellHeader)window.FindName("ShellHeader");
+        Assert.That(header.ProjectName, Is.EqualTo(vm.ProjectName).And.Not.Empty);
+        UiTestPump.Run(window.ReturnHomeAsync());
+        Assert.That(header.ProjectName, Is.Empty);
+        messenger.Send(new ProjectOpenRequestedMessage(@"C:\Projects\Second\project.json"));
+        view.UpdateLayout();
+        UiTestPump.Run(workstation.LoadCompletion);
+        view.UpdateLayout();
+        Assert.That(header.ProjectName, Is.EqualTo("Second"));
+        Assert.That(System.Windows.Data.BindingOperations.GetBinding(header, Hitbench.Views.Shell.OHsShellHeader.ProjectNameProperty)!.Source, Is.SameAs(vm));
+    }
+
+    [Test]
     public void WorkstationScopeSuppressesShellAndRestoresAfterReturn()
     {
         var immediate = new DelayedProjectFileService();

@@ -17,6 +17,9 @@ public partial class HomePageVM
     private FolderSnapshot? projectsInventory;
     private readonly HashSet<Task> projectOperations = [];
     public bool IsProjectSearchActive => !string.IsNullOrWhiteSpace(ProjectSearchText);
+    public bool CanShowAllProjects => HasSelectedMapset && CanSelectMapset;
+    [RelayCommand(CanExecute = nameof(CanShowAllProjects))]
+    private void ShowAllProjects() => SelectedMapset = null;
     public bool HasSelectedMapset => SelectedMapset is not null;
     public bool CanSearchProjects => CanInteract && !HasSelectedMapset && !IsCreatingProject;
     public bool CanSelectMapset => CanInteract && !IsCreatingProject && !IsScanningMapsets && !IsProcessing && !IsAwaitingSongsPresentation;

@@ -25,7 +25,7 @@ public partial class WorkstationPage
         {
             var compact = availableSize.Width < 960;
             SetValue(IsCompactLayoutPropertyKey, compact);
-            SetValue(TrackSideColumnWidthPropertyKey, new GridLength(240));
+            SetValue(TrackSideColumnWidthPropertyKey, new GridLength(compact ? 200 : 240));
         }
         if (double.IsFinite(availableSize.Height) && availableSize.Height > 0)
             SetValue(IsShortLayoutPropertyKey, availableSize.Height < 480);

@@ -708,7 +708,14 @@
                     ContentTemplate="{TemplateBinding ContentTemplate}"
                     Style="{StaticResource BaseContentPresenterStyle}" />
             </Border>
+            <Border x:Name="CheckedCue" Height="3" Margin="8,0" VerticalAlignment="Bottom"
+                    Background="{TemplateBinding Foreground}" Visibility="Collapsed" IsHitTestVisible="False" />
         </Grid>
+        <ControlTemplate.Triggers>
+            <Trigger Property="IsChecked" Value="True">
+                <Setter TargetName="CheckedCue" Property="Visibility" Value="Visible" />
+            </Trigger>
+        </ControlTemplate.Triggers>
     </ControlTemplate>
     <Style
         x:Key="OHsWorkstationTrackToggleStyle"
@@ -733,6 +740,9 @@
                 <Setter Property="Background" Value="{DynamicResource Brush.Background.Pressed}" />
                 <Setter Property="FontFamily" Value="{DynamicResource Bold}" />
                 <Setter Property="FontWeight" Value="Bold" />
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+                <Setter Property="Background" Value="{DynamicResource Brush.Background.Pressed}" />
             </Trigger>
             <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
                 <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />

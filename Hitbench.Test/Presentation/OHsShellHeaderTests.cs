@@ -9,6 +9,33 @@ namespace Hitbench.Test.Presentation;
 public sealed class OHsShellHeaderTests
 {
     [Test]
+    public void LongRtlProjectIdentityPreservesDataAndHeaderRequests()
+    {
+        new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
+        var title = string.Concat(Enumerable.Repeat("Project 日本語 العربية ไทย ", 12));
+        var header = new OHsShellHeader { ProjectName = title, FlowDirection = FlowDirection.RightToLeft, CanGoBack = true, IsWorkstationVisible = true };
+        UiTestPump.Layout(header, 640, 100);
+        var data = header.FindResource("OHsShellProjectNameStyle");
+        var text = FindText(header).Single(block => ReferenceEquals(block.Style, data));
+        Assert.That(text.Text, Is.EqualTo(title));
+        Assert.That(text.ToolTip, Is.EqualTo(title));
+        var requests = 0;
+        header.GoBackRequested += (_, _) => requests++;
+        ((BalloonButton)header.FindName("GoBackButton")).RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+        Assert.That(requests, Is.EqualTo(1));
+    }
+
+    private static IEnumerable<System.Windows.Controls.TextBlock> FindText(DependencyObject root)
+    {
+        for (var i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(root); i++)
+        {
+            var child = System.Windows.Media.VisualTreeHelper.GetChild(root, i);
+            if (child is System.Windows.Controls.TextBlock text) yield return text;
+            foreach (var descendant in FindText(child)) yield return descendant;
+        }
+    }
+
+    [Test]
     public void DownloadAvailabilityAndRequestUseIndependentHeaderContract()
     {
         new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();

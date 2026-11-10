@@ -7,6 +7,8 @@ namespace Hitbench.Views.Shell;
 
 public partial class OHsShellHeader : UserControl
 {
+    public static readonly DependencyProperty ProjectNameProperty = DependencyProperty.Register(nameof(ProjectName), typeof(string), typeof(OHsShellHeader), new PropertyMetadata(""));
+    public string ProjectName { get => (string)GetValue(ProjectNameProperty); set => SetValue(ProjectNameProperty, value); }
     public OHsShellHeader() { InitializeComponent(); UpdateState(); }
     public static readonly DependencyProperty IsUpdateAvailableProperty = DependencyProperty.Register(nameof(IsUpdateAvailable), typeof(bool), typeof(OHsShellHeader), new PropertyMetadata(false, (d, _) => ((OHsShellHeader)d).UpdateState()));
     public bool IsUpdateAvailable { get => (bool)GetValue(IsUpdateAvailableProperty); set => SetValue(IsUpdateAvailableProperty, value); }

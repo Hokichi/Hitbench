@@ -241,13 +241,13 @@ public class WorkstationTrackCollapseTests
             var track = (Track)row.DataContext;
             var groups = Descendants<FrameworkElement>(row).Where(x => x.Name is "VolumeSlider" or "TrackMuteToggle" or "TrackSoloToggle").ToArray();
             Assert.That(groups, Is.Not.Empty);
-            Assert.That(groups.Select(x => x.Visibility), Is.All.EqualTo(track.IsCollapsed ? Visibility.Collapsed : Visibility.Visible), track.Name);
+            foreach (var control in groups) Assert.That(control.Visibility, Is.EqualTo(control.Name == "VolumeSlider" && track.IsCollapsed ? Visibility.Collapsed : Visibility.Visible), track.Name);
             if (track is InstrumentalTrack)
             {
                 var actions = Descendants<BalloonButton>(row).ToArray();
                 var arrangement = actions.Single(x => AutomationProperties.GetName(x) == "View Arrangement");
                 var mapping = Descendants<BalloonComboBox>(row).Single().ContextMenu.Items.OfType<MenuItem>().Single(item => Equals(item.Header, "Keys Mapping"));
-                UiControlContract.AssertStyle<BalloonButton>(arrangement, "OHsWorkstationInstrumentMutedActionStyle");
+                UiControlContract.AssertStyle<BalloonButton>(arrangement, "OHsWorkstationInstrumentHeaderActionStyle");
                 UiControlContract.AssertStyle<MenuItem>(mapping, "OHsWorkstationKeysMappingMenuItemStyle");
                 Assert.That(arrangement.Command, Is.SameAs(vm.ViewArrangementCommand));
                 Assert.That(mapping.Command, Is.SameAs(vm.KeysMappingCommand));
@@ -381,7 +381,8 @@ public class WorkstationTrackCollapseTests
                 Assert.That(configRow.OpenSampleConfiguration(), Is.True);
                 Assert.That(file.IsEnabled, Is.True);
                 configRow.CloseSampleConfiguration();
-                Assert.That(secondary.All(control => !control.IsVisible), Is.True);
+                Assert.That(secondary[0].IsVisible, Is.False);
+                Assert.That(secondary.Skip(1).All(control => control.IsVisible), Is.True);
                 Assert.That(grid.IsVisible, Is.True);
                 Assert.That(vm.TrackHeight, Is.EqualTo(vm.MinimumTrackHeight));
                 Assert.That(grid.AllowNodeCreation, Is.True);
@@ -478,6 +479,7 @@ public class WorkstationTrackCollapseTests
             var toggle = (BalloonButton)page.Toolbar.FindName("ProjectActionsButton");
             var scope = FocusManager.GetFocusScope(toggle);
             page.RestoreTrackFocusBeforeCollapse(hidden);
+            if (controlName is "TrackMuteToggle" or "TrackSoloToggle") { Assert.That(((OHsWorkstationTrackRow)Descendants<OHsWorkstationTrackRow>(page).Single()).HasExpandedControlFocus(hidden), Is.False); UiTestPump.Run(page.DeactivateAsync()); return; }
             Assert.That(FocusManager.GetFocusedElement(scope), Is.SameAs(toggle));
             FocusManager.SetFocusedElement(scope, hidden);
             vm.ToggleTracksCollapsedCommand.Execute(null);

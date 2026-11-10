@@ -186,7 +186,7 @@ public class WorkstationShellVolumeTests
         page.ShowVolumeOverlay(false, default, true, false);
         foreach (var fading in new[] { false, true })
         {
-            if (fading) page.ProcessVolumeOverlayIdle(TimeSpan.FromMilliseconds(100), true);
+            if (fading) page.ProcessVolumeOverlayIdle(TimeSpan.FromMilliseconds(1500), true);
             foreach (var key in new[] { Key.Space, Key.Delete, Key.F2, Key.Enter })
                 Assert.That(shell.HandleWindowKeyDown(true, key, ModifierKeys.None, false, drawer), Is.True);
             Assert.That(vm.IsPlaying, Is.False);
@@ -197,6 +197,18 @@ public class WorkstationShellVolumeTests
         Assert.That(shell.HandleWindowKeyDown(true, Key.Escape, ModifierKeys.None, false, drawer), Is.True);
         Assert.That(page.IsVolumeOverlayOpen, Is.False);
         Assert.That(shell.IsAnyDrawerVisible, Is.True);
+    });
+
+    [Test]
+    public void OutsideDismissalConsumesClickAndUnlocksContent() => WithDrawer(false, (shell, page, drawer, _) =>
+    {
+        page.ShowVolumeOverlay(false, default, false, false);
+        var click = new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left)
+            { RoutedEvent = Mouse.PreviewMouseDownEvent, Source = drawer };
+        Assert.That(shell.HandleWorkstationInput(true, click, ModifierKeys.None), Is.True);
+        Assert.That(page.IsVolumeOverlayOpen, Is.False);
+        Assert.That(drawer.IsEnabled, Is.True);
+        Assert.That(((WorkstationPageVM)page.DataContext).IsPlaying, Is.False);
     });
 
     [Test]

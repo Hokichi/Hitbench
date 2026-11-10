@@ -1,19 +1,16 @@
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Documents;
 using System.Windows.Media;
-using System.Windows.Media.Effects;
 using CommunityToolkit.Mvvm.Messaging;
 using Hitbench.Resources.CustomControls;
 using Hitbench.Resources.DataModels;
-using Hitbench.Resources.Helpers;
 using Hitbench.ViewModels.Shell.HomePage;
 using Hitbench.Views.Pages;
 
 namespace Hitbench.Test.Presentation;
 
 [Apartment(ApartmentState.STA), NonParallelizable]
-public sealed class HomePageGlowOverlayIntegrationTests
+public sealed class HomePageCardIntegrationTests
 {
     private HomePageVM vm = null!;
     private HomePage page = null!;
@@ -45,16 +42,6 @@ public sealed class HomePageGlowOverlayIntegrationTests
     [TearDown]
     public void TearDown() { page.Deactivate(); view.Dispose(); window.Close(); }
 
-    private AdornerDecorator Host
-    {
-        get
-        {
-            var host = page.FindName("CardGlowHost") as AdornerDecorator;
-            Assert.That(host, Is.Not.Null, "HomePage must provide an explicit outer glow host.");
-            return host!;
-        }
-    }
-
     private FrameworkElement Card(bool project)
     {
         var list = (ItemsControl)page.FindName(project ? "ProjectsList" : "SongsList");
@@ -62,29 +49,17 @@ public sealed class HomePageGlowOverlayIntegrationTests
         return Descendants<FrameworkElement>(list).First(element => ReferenceEquals(element.Style, style));
     }
 
-    private void Activate(FrameworkElement card) => OuterGlow.SetEffect(card, (DropShadowEffect)card.FindResource("OHsHomePageSongCardGlowEffect"));
-
     [TestCase("Dark", FlowDirection.LeftToRight), TestCase("Light", FlowDirection.RightToLeft)]
-    public void BothCardFamiliesUseOuterHostAndRetainControlContracts(string theme, FlowDirection direction)
+    public void BothCardFamiliesRetainControlAndCommandContracts(string theme, FlowDirection direction)
     {
         Application.Current.Resources.MergedDictionaries[0] = new ResourceDictionary
             { Source = new Uri($"/Hitbench;component/Resources/Themes/{theme}.xaml", UriKind.Relative) };
         window.FlowDirection = direction;
         view.UpdateLayout();
-        Assert.That(OuterGlow.GetIsHost(Host), Is.True);
         var song = (Button)Card(false);
         var project = (Border)Card(true);
         var songContext = song.DataContext;
         var projectContext = project.DataContext;
-        Activate(song);
-        Activate(project);
-        view.UpdateLayout();
-        foreach (var card in new FrameworkElement[] { song, project })
-        {
-            Assert.That(Host.AdornerLayer.GetAdorners(card), Has.Length.EqualTo(1));
-            Assert.That(AdornerLayer.GetAdornerLayer(card).GetAdorners(card), Is.Null);
-            Assert.That(card.Effect, Is.Null);
-        }
         UiControlContract.AssertStyle<Button>(song, "HomePageSongCardButtonStyle");
         UiControlContract.AssertTemplate(song, "FolderActionButtonTemplate");
         UiControlContract.AssertStyle<Border>(project, "OHsHomePageProjectCardBorderStyle");
@@ -95,21 +70,16 @@ public sealed class HomePageGlowOverlayIntegrationTests
     }
 
     [Test]
-    public void ReloadSuppressesOnlyMapsetGlowsAndPreservesSelection()
+    public void ReloadGatesMapsetActionsAndPreservesSelection()
     {
         var song = (Button)Card(false);
-        var project = Card(true);
         var selected = (FolderEntry)song.DataContext;
-        Activate(song);
-        Activate(project);
         vm.SelectMapsetCommand.Execute(selected);
         if (vm.SearchProjectsCommand.ExecutionTask is { } filtering) UiTestPump.Run(filtering);
         var ready = new TaskCompletionSource();
         vm.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(vm.CanSelectMapset) && vm.CanSelectMapset) ready.TrySetResult(); };
         var reload = vm.ReloadSongsCommand.ExecuteAsync(null);
         Assert.That(((ListBox)page.FindName("SongsList")).IsEnabled, Is.False);
-        Assert.That(OuterGlow.GetIsActive(song), Is.False);
-        Assert.That(Host.AdornerLayer.GetAdorners(song), Is.Null);
         UiTestPump.Run(reload);
         UiTestPump.Run(ready.Task);
         view.UpdateLayout();
@@ -118,35 +88,28 @@ public sealed class HomePageGlowOverlayIntegrationTests
     }
 
     [Test]
-    public void DeactivateReleasesAllCardGlows()
+    public void DeactivateDisablesCardCommands()
     {
-        var song = Card(false);
-        var project = Card(true);
-        Activate(song);
-        Activate(project);
-        Assert.That(Host.AdornerLayer.GetAdorners(song), Has.Length.EqualTo(1));
-        Assert.That(Host.AdornerLayer.GetAdorners(project), Has.Length.EqualTo(1));
+        var song = (Button)Card(false);
+        var selected = (FolderEntry)song.DataContext;
         page.Deactivate();
-        view.UpdateLayout();
-        Assert.That(Host.AdornerLayer.GetAdorners(song), Is.Null);
-        Assert.That(Host.AdornerLayer.GetAdorners(project), Is.Null);
+        Assert.That(vm.SelectMapsetCommand.CanExecute(selected), Is.False);
+        Assert.That(vm.OpenProjectCommand.CanExecute(new FolderEntry("project", "project", default)), Is.False);
     }
 
     [TestCase(false), TestCase(true)]
-    public void RecycledCardsDoNotLeaveOldGlows(bool project)
+    public void RecycledCardsKeepCurrentCommandContext(bool project)
     {
         UiTestPump.Run(vm.LoadMoreSongsCommand.ExecuteAsync(300));
         view.UpdateLayout();
-        var card = Card(project);
-        Activate(card);
-        var old = Host.AdornerLayer.GetAdorners(card)!.Single();
         var list = (ItemsControl)page.FindName(project ? "ProjectsList" : "SongsList");
         Descendants<ScrollViewer>(list).First().ScrollToEnd();
         view.UpdateLayout();
-        var remaining = Descendants<OuterGlowAdorner>(Host.AdornerLayer).ToArray();
-        Assert.That(remaining, Does.Not.Contain(old));
-        Assert.That(remaining.All(adorner => adorner.AdornedElement.IsDescendantOf(list)), Is.True);
-        Assert.That(remaining.Select(adorner => adorner.AdornedElement).Distinct().Count(), Is.EqualTo(remaining.Length));
+        var card = Card(project);
+        var button = project ? Descendants<Button>(card).Single() : (Button)card;
+        Assert.That(button.Command, Is.SameAs(project ? vm.OpenProjectCommand : vm.SelectMapsetCommand));
+        var entry = (FolderEntry)card.DataContext;
+        Assert.That(button.CommandParameter, Is.SameAs(entry));
     }
 
     private static IEnumerable<T> Descendants<T>(DependencyObject root) where T : DependencyObject

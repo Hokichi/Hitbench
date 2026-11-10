@@ -59,18 +59,18 @@ public class VolumeWheelTests
     }
 
     [Test]
-    public void IdleDismissalStartsAt100Milliseconds()
+    public void IdleDismissalStartsAt1500Milliseconds()
     {
         var (page, _, view) = CreateLoadedPage();
         using (view)
         {
             page.ShowVolumeOverlay(false, new Point());
-            page.ProcessVolumeOverlayIdle(TimeSpan.FromMilliseconds(99), false);
+            page.ProcessVolumeOverlayIdle(TimeSpan.FromMilliseconds(1499), false);
             Assert.That(page.IsVolumeOverlayOpen, Is.True);
             page.ApplicationVolumeWheel.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, MouseButton.Left) { RoutedEvent = Mouse.MouseDownEvent });
             page.ActivateVolumeWheel(page.SongVolumeWheel);
             Assert.That(page.ActiveVolumeWheel, Is.SameAs(page.SongVolumeWheel));
-            page.ProcessVolumeOverlayIdle(TimeSpan.FromMilliseconds(100), false);
+            page.ProcessVolumeOverlayIdle(TimeSpan.FromMilliseconds(1500), false);
             Assert.That(page.IsVolumeOverlayOpen, Is.False);
         }
     }
@@ -82,7 +82,7 @@ public class VolumeWheelTests
         using (view)
         {
             page.ShowVolumeOverlay(false, new Point());
-            page.ProcessVolumeOverlayIdle(TimeSpan.FromMilliseconds(100), true);
+            page.ProcessVolumeOverlayIdle(TimeSpan.FromMilliseconds(1500), true);
             var overlay = (Border)page.FindName("VolumeOverlay");
             page.RecordVolumeActivity();
             Assert.That(page.IsVolumeOverlayOpen, Is.True);
@@ -103,12 +103,12 @@ public class VolumeWheelTests
         using (view)
         {
             page.ShowVolumeOverlay(false, new Point());
-            page.ProcessVolumeOverlayIdle(TimeSpan.FromMilliseconds(100), true);
+            page.ProcessVolumeOverlayIdle(TimeSpan.FromMilliseconds(1500), true);
             var overlay = (Border)page.FindName("VolumeOverlay");
             overlay.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, 0) { RoutedEvent = Mouse.PreviewMouseMoveEvent });
-            page.ProcessVolumeOverlayIdle(TimeSpan.FromMilliseconds(99), false);
+            page.ProcessVolumeOverlayIdle(TimeSpan.FromMilliseconds(1499), false);
             Assert.That(page.IsVolumeOverlayOpen, Is.True);
-            page.ProcessVolumeOverlayIdle(TimeSpan.FromMilliseconds(100), false);
+            page.ProcessVolumeOverlayIdle(TimeSpan.FromMilliseconds(1500), false);
             Assert.That(page.IsVolumeOverlayOpen, Is.False);
         }
     }
