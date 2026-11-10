@@ -4,7 +4,7 @@ A Windows hitsounding workstation for osu! mappers.
 
 Arrange samples on a beat-snapped timeline, write instrumental parts in a piano roll, and preview everything alongside the song. Export your arrangement as a hitsound difficulty with its generated samples.
 
-![Hitbench workstation with waveform, sample tracks, and control points](images/workstation.png)
+![Hitbench workstation with waveform, sample tracks, and control points](docs/images/workstation.png)
 
 [Getting started](#getting-started) · [Features](#features) · [Keyboard shortcuts](#keyboard-shortcuts) · [Building from source](#building-from-source) · [Changelog](#changelog) · [Feedback](#feedback)
 
@@ -18,7 +18,7 @@ Arrange samples on a beat-snapped timeline, write instrumental parts in a piano 
 
 Projects save automatically as you work. Project files live in the `projects` folder beside the application.
 
-![Mapset browser and project history](images/home.png)
+![Mapset browser and project history](docs/images/home.png)
 
 ## Features
 
@@ -40,7 +40,7 @@ Projects save automatically as you work. Project files live in the `projects` fo
 - Use **Actions → Resnap** to align existing samples, control points, and instrumental notes to the current subdivision.
 - Undo and redo edits using the toolbar or keyboard shortcuts.
 
-![Beat-snapped timeline with sample placements and waveform](images/timeline.png)
+![Beat-snapped timeline with sample placements and waveform](docs/images/timeline.png)
 
 ### Tracks and organization
 
@@ -49,7 +49,7 @@ Projects save automatically as you work. Project files live in the `projects` fo
 - Organize sample files into folders.
 - Adjust track volume and use mute or solo controls to audition parts against the song.
 
-![Expanded tracks with volume, sample settings, mute, and solo controls](images/tracks.png)
+![Expanded tracks with volume, sample settings, mute, and solo controls](docs/images/tracks.png)
 
 ### Instrumental arrangement
 
@@ -59,9 +59,9 @@ Projects save automatically as you work. Project files live in the `projects` fo
 - Preview instrumental notes alongside sample tracks and the song.
 - Use keyboard navigation to select keys, place notes, and adjust their positions.
 
-![Instrumental piano roll with arranged notes alongside sample tracks](images/instrumental.png)
+![Instrumental piano roll with arranged notes alongside sample tracks](docs/images/instrumental.png)
 
-![Keys Mapping keyboard for assigning samples to musical notes](images/key-mapping.png)
+![Keys Mapping keyboard for assigning samples to musical notes](docs/images/key-mapping.png)
 
 ### Sample management
 
@@ -74,7 +74,7 @@ Projects save automatically as you work. Project files live in the `projects` fo
 
 Mapset samples are imported automatically when you create a project.
 
-![Sample manager showing skin hitsounds and waveform previews](images/samples.png)
+![Sample manager showing skin hitsounds and waveform previews](docs/images/samples.png)
 
 ### Default hitsounds and hitnormal configuration
 
@@ -83,7 +83,7 @@ Mapset samples are imported automatically when you create a project.
 - Configure project hitnormal samples through **Actions → Config Hitnormal**.
 - Carry your default-sample and hitnormal choices into export.
 
-![Hitnormal configuration for Normal, Soft, and Drum sample sets](images/hitnormal.png)
+![Hitnormal configuration for Normal, Soft, and Drum sample sets](docs/images/hitnormal.png)
 
 ### Control points and volume ramps
 
@@ -93,7 +93,7 @@ Mapset samples are imported automatically when you create a project.
 - Preview volume changes during playback, including their effect on sample tails.
 - Export control-point and ramp behavior with the arrangement.
 
-![Control point volume and sample-set editor beside a volume ramp](images/control-points.png)
+![Control point volume and sample-set editor beside a volume ramp](docs/images/control-points.png)
 
 ### Playback and navigation
 
@@ -103,7 +103,7 @@ Mapset samples are imported automatically when you create a project.
 - Navigate static-marker playback using wheel and drag gestures.
 - Retain the project's marker mode when reopening it.
 
-![Active playback with centered marker and scrolling waveform and tracks](images/playback.png)
+![Active playback with centered marker and scrolling waveform and tracks](docs/images/playback.png)
 
 ### Beatmap export
 
@@ -119,7 +119,7 @@ Choose **Project** to write output into the project's `Export` folder, or **Beat
 
 The exporter combines overlapping sounds where needed and reuses samples to reduce generated assets. Export progress is shown while processing, and the operation can be canceled.
 
-![Export settings for difficulty name, sample formats, and destination](images/export.png)
+![Export settings for difficulty name, sample formats, and destination](docs/images/export.png)
 
 ### Projects and appearance
 
@@ -129,7 +129,7 @@ The exporter combines overlapping sounds where needed and reuses samples to redu
 - Open project and beatmap folders directly from the workstation.
 - Switch between light and dark themes.
 
-![Mapset browser and project list in the light theme](images/appearance.png)
+![Mapset browser and project list in the light theme](docs/images/appearance.png)
 
 ## Keyboard shortcuts
 
@@ -147,6 +147,10 @@ The exporter combines overlapping sounds where needed and reuses samples to redu
 | `F6` | Add control point |
 | `F` | Toggle following the playback marker |
 | `F8` | Switch playback marker mode |
+
+## Website
+
+The static website lives in `docs`. Publish the `main` branch's `/docs` folder with GitHub Pages. Its screenshots live in `docs/images` and are shared with this README.
 
 ## Building from source
 
