@@ -52,8 +52,10 @@ a:focus-visible, button:focus-visible, [tabindex]:focus-visible {
 .site-header { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding-block: 26px; }
 .brand { display: inline-flex; align-items: center; gap: 10px; font-size: 17px; font-weight: 700; }
 .brand img { flex: none; }
-.creator { color: var(--secondary); font-size: 12px; padding-block: 12px; transition: color 180ms; }
+.creator { display: inline-flex; align-items: center; gap: 12px; min-height: 44px; color: var(--secondary); font-size: 12px; padding-block: 4px; transition: color 180ms; }
+.creator-avatar { flex: none; width: 40px; height: 40px; padding: 2px; border: 2px solid var(--border); border-radius: 50%; object-fit: cover; background: var(--surface); transition: border-color 180ms; }
 .creator:hover { color: var(--text); }
+.creator:hover .creator-avatar { border-color: var(--accent-text); }
 .hero { text-align: center; padding-top: 56px; }
 .eyebrow { margin: 0; color: var(--accent-text); font-size: 10px; line-height: 1.6; letter-spacing: 2px; text-transform: uppercase; }
 .hero .eyebrow span { margin-inline: 7px; }
@@ -157,7 +159,8 @@ code { color: var(--text); font-size: .96em; overflow-wrap: anywhere; }
 @media (max-width: 500px) {
   .brand { font-size: 15px; gap: 8px; }
   .brand img { width: 29px; height: 29px; }
-  .creator { font-size: 10px; }
+  .creator { gap: 8px; font-size: 10px; }
+  .creator-avatar { width: 32px; height: 32px; }
   .site-header { gap: 12px; }
   .hero { padding-top: 32px; }
   .hero .eyebrow { font-size: 9px; letter-spacing: 1.6px; }

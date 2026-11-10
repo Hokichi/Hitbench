@@ -48,6 +48,7 @@ In the served page:
 
 - App logo and Noto Sans Regular/Bold: existing `Hitbench/Resources` assets. The fonts' SIL Open Font License is included in `assets/fonts/OFL.txt`.
 - Screenshots: original files in the repository's `images` directory.
+- Creator avatar: [Hokichi's osu! avatar](https://a.ppy.sh/6607303?format=png), saved locally as `assets/hokichi-avatar.png` and framed with CSS.
 - GitHub Invertocat: original black SVG from [GitHub's official logo kit](https://brand.github.com/foundations/logo), downloaded from [GitHub_Logos.zip](https://brand.github.com/GitHub_Logos.zip). The icon is used to link to the project on GitHub.
 - osu! cookie: original [monochrome SVG from osu-web](https://github.com/ppy/osu-web/blob/master/public/images/layout/osu-logo-white.svg), recolored black in CSS as permitted by the [osu! brand guidelines](https://osu.ppy.sh/wiki/en/Brand_identity_guidelines). Pink `#FF66AA` comes from [osu-web's `@pink` palette value](https://github.com/ppy/osu-web/blob/master/resources/css/colors.less).
 
