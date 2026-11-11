@@ -48,7 +48,7 @@ public partial class WorkstationPageVM
             await previous;
             await uiScheduler.InvokeAsync(() =>
             {
-                if (deactivated || ActiveInstrument(message.Context) is null || message is { ZoomFactor: null, SelectedSubdivisionIndex: null, ScrollWithMarker: null, IsAdditionMode: null }) return;
+                if (deactivated || IsMidiImportBusy || ActiveInstrument(message.Context) is null || message is { ZoomFactor: null, SelectedSubdivisionIndex: null, ScrollWithMarker: null, IsAdditionMode: null }) return;
                 if (instrumentTimelineEditor != message.Context.EditorSessionId)
                 { instrumentTimelineEditor = message.Context.EditorSessionId; instrumentTimelineRequestSequence = 0; }
                 if (message.Sequence <= instrumentTimelineRequestSequence ||

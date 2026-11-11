@@ -301,7 +301,7 @@ public partial class WorkstationPageVM
     }
     private bool TryApplyInstrumentNotes(InstrumentalTrack track, IReadOnlyList<InstrumentalNoteSnapshot> desired)
     {
-        if (Waveform is null || desired.Any(n => n.Id == Guid.Empty || !InstrumentalKeys.TryGetIndex(n.Key, out _)) || desired.Select(n => n.Id).Distinct().Count() != desired.Count) return false;
+        if (IsMidiImportBusy || Waveform is null || desired.Any(n => n.Id == Guid.Empty || !InstrumentalKeys.TryGetIndex(n.Key, out _)) || desired.Select(n => n.Id).Distinct().Count() != desired.Count) return false;
         var before = NoteSnapshots(track).ToDictionary(n => n.Id);
         var protectedNotes = before.Values.Where(n => n.IsReadOnly || n.Timestamp < 0 || n.Timestamp >= Waveform.Duration.TotalMilliseconds).ToArray();
         if (protectedNotes.Any(n => !desired.Contains(n)) || desired.Any(n =>

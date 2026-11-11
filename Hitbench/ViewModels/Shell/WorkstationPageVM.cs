@@ -34,7 +34,8 @@ public partial class WorkstationPageVM(
     TimeProvider? timeProvider = null,
     IOHsExportDialogService? exportDialog = null,
     IOHsExportDirectoryLauncher? directoryLauncher = null,
-    IOHsTrackAppearanceDialogService? trackAppearanceDialog = null, Func<TimeSpan, CancellationToken, Task>? saveDelay = null, IOHsSampleDropImportDialogService? sampleDropDialog = null, OHsAudioOperationProgress? audioOperationProgress = null, IOHsSkinDefaultsService? skinDefaults = null, OHsMapsetSampleImportService? mapsetImports = null, IOHsHitNormalDialogService? hitNormalDialog = null) : ObservableObject
+    IOHsTrackAppearanceDialogService? trackAppearanceDialog = null, Func<TimeSpan, CancellationToken, Task>? saveDelay = null, IOHsSampleDropImportDialogService? sampleDropDialog = null, OHsAudioOperationProgress? audioOperationProgress = null, IOHsSkinDefaultsService? skinDefaults = null, OHsMapsetSampleImportService? mapsetImports = null, IOHsHitNormalDialogService? hitNormalDialog = null,
+    IOHsMidiFileReader? midiReader = null, IOHsMidiImportDialogService? midiDialogs = null) : ObservableObject
 {
     private readonly IWorkstationAudioService audioService = playback.Audio;
     private bool subscribedToPlayback;
@@ -83,7 +84,7 @@ public partial class WorkstationPageVM(
     [ObservableProperty] private ProjectLoadPhase loadPhase = ProjectLoadPhase.PreparingData;
     public int LoadGeneration => loadGeneration;
     public bool IsLoading => LoadPhase is ProjectLoadPhase.PreparingData or ProjectLoadPhase.AwaitingPresentation;
-    public bool IsInteractionReady => LoadPhase == ProjectLoadPhase.Ready && !deactivated && !IsReturning && !reloadingSamples && !IsExporting && !IsRefreshingSkinDefaults && !hitNormalBusy;
+    public bool IsInteractionReady => LoadPhase == ProjectLoadPhase.Ready && !deactivated && !IsReturning && !reloadingSamples && !IsExporting && !IsRefreshingSkinDefaults && !hitNormalBusy && !IsMidiImportBusy;
     public bool CanGoBack => !deactivated && !IsReturning;
     public bool ShowStatusOverlay => IsLoading || IsSavingForReturn;
     public string StatusText => IsSavingForReturn ? "Saving..." : "Loading Project...";
@@ -112,6 +113,7 @@ public partial class WorkstationPageVM(
 
     public async Task LoadAsync(string projectPath, CancellationToken token)
     {
+        await CancelMidiImportAsync();
         await SettleSkinDefaultsAsync();
         await CancelDroppedImportAsync();
         await CancelMapsetImportAsync();
@@ -154,6 +156,7 @@ public partial class WorkstationPageVM(
     private async Task DeactivateCoreAsync()
     {
         if (deactivated) return;
+        await CancelMidiImportAsync();
         await SettleSkinDefaultsAsync();
         await CancelDroppedImportAsync();
         await CancelMapsetImportAsync();
@@ -297,6 +300,7 @@ public partial class WorkstationPageVM(
 
     public async Task FlushSavesAsync()
     {
+        await midiImportOperation;
         await hitNormalOperation;
         await skinDefaultsOperation;
         await playbackVolumes.FlushAsync();
@@ -320,6 +324,7 @@ public partial class WorkstationPageVM(
 
     partial void OnIsReturningChanged(bool value)
     {
+        if (value) midiImportCancellation?.Cancel();
         if (value) { hitNormalCancellation?.Cancel(); mapsetImportCancellation?.Cancel(); trackAppearanceCancellation?.Cancel(); nodeEditCancellation?.Cancel(); folderOpenCancellation?.Cancel(); }
         OnPropertyChanged(nameof(CanGoBack));
         OnPropertyChanged(nameof(IsInteractionReady));
@@ -346,6 +351,7 @@ public partial class WorkstationPageVM(
     public async Task<bool> PrepareToReturnAsync(CancellationToken token)
     {
         if (deactivated || IsReturning || token.IsCancellationRequested) return false;
+        await CancelMidiImportAsync();
         await SettleControlPointsAsync();
         reloadSamplesCancellation?.Cancel();
         if (activeSampleReload is not null) await activeSampleReload;
@@ -669,6 +675,7 @@ public partial class WorkstationPageVM(
 
     private void NotifyEditingState()
     {
+        OnPropertyChanged(nameof(CanImportMidi)); ImportMidiCommand.NotifyCanExecuteChanged();
         NotifyHitNormalCommand();
         NotifyFolderCommands();
         NotifyExportState();
