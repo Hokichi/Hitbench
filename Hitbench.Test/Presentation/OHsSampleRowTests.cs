@@ -16,6 +16,7 @@ public sealed class OHsSampleRowTests
         new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
         var row = new OHsSampleRow { FileName = "hit.wav" };
         UiTestPump.Layout(row, 500, 120);
+        UiControlContract.AssertStyle<OHsSampleRow>(row, typeof(OHsSampleRow));
         var play = (BalloonButton)row.FindName("PlayAction");
         Assert.That(row.ShowPlayButton, Is.True);
         Assert.That(play.Visibility, Is.EqualTo(Visibility.Visible));

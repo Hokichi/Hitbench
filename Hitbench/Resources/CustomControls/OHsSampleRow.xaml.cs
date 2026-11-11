@@ -5,6 +5,8 @@ namespace Hitbench.Resources.CustomControls;
 
 public partial class OHsSampleRow : UserControl
 {
+    public static readonly DependencyProperty WaveformMarginProperty = DependencyProperty.Register(nameof(WaveformMargin), typeof(Thickness), typeof(OHsSampleRow), new PropertyMetadata(new Thickness(8, 4, 8, 4)));
+    public Thickness WaveformMargin { get => (Thickness)GetValue(WaveformMarginProperty); set => SetValue(WaveformMarginProperty, value); }
     public static readonly DependencyProperty ShowPlayButtonProperty = DependencyProperty.Register(nameof(ShowPlayButton), typeof(bool), typeof(OHsSampleRow), new PropertyMetadata(true));
     public bool ShowPlayButton { get => (bool)GetValue(ShowPlayButtonProperty); set => SetValue(ShowPlayButtonProperty, value); }
     public static readonly DependencyProperty NameTrailingTemplateProperty = DependencyProperty.Register(nameof(NameTrailingTemplate), typeof(DataTemplate), typeof(OHsSampleRow), new PropertyMetadata(null));

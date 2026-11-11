@@ -14,6 +14,7 @@ public sealed class ManageSamplesDragTests
     public void DragThresholdAndManagerReadinessGuardNativeInvocation()
     {
         using var c = new ManageSamplesDragTestContext(); var calls=0;
+        UiControlContract.AssertStyle<OHsSampleRow>(c.RowFor(c.Entry), "OHsManageSamplesDragSourceStyle");
         c.Drawer.SetSampleDragHandler((_,data,_)=>{ calls++;Assert.That(data.GetDataPresent(DataFormats.FileDrop),Is.False);return DragDropEffects.None;});
         Assert.That(c.Drawer.TryStartSampleDrag(c.Entry,new Vector()),Is.False);
         Assert.That(c.Drawer.TryStartSampleDrag(c.Entry,new Vector(100,0)),Is.True);

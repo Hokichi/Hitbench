@@ -9,6 +9,7 @@
     ShowInTaskbar="False">
     <c:BasePopup.Resources>
         <Style x:Key="OHsHitNormalPillTextStyle" TargetType="TextBlock" BasedOn="{StaticResource BodyTextStyle}">
+            <Setter Property="Foreground" Value="{Binding Path=(TextElement.Foreground), RelativeSource={RelativeSource AncestorType=Border}, Mode=OneWay}" />
             <Setter Property="FontSize" Value="{StaticResource FontSize.Caption}" />
             <Setter Property="TextWrapping" Value="NoWrap" />
             <Setter Property="VerticalAlignment" Value="Center" />
@@ -18,18 +19,20 @@
             <Setter Property="CornerRadius" Value="{StaticResource Radius.Card}" />
             <Setter Property="Padding" Value="8,0" />
             <Setter Property="Margin" Value="4,0" />
-            <Setter Property="Background" Value="{DynamicResource Brush.Background.Surface}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Control}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="Visibility" Value="Collapsed" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
                     <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
                     <Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+                    <Setter Property="TextElement.Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
                 </DataTrigger>
             </Style.Triggers>
         </Style>
         <Style x:Key="OHsHitNormalDefaultPillStyle" TargetType="Border" BasedOn="{StaticResource OHsHitNormalPillStyle}">
+            <Setter Property="Background" Value="{DynamicResource Brush.Info.Dark}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Info}" />
+            <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Info}" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsDefault, Mode=OneWay}" Value="True">
                     <Setter Property="Visibility" Value="Visible" />
@@ -37,6 +40,9 @@
             </Style.Triggers>
         </Style>
         <Style x:Key="OHsHitNormalCurrentPillStyle" TargetType="Border" BasedOn="{StaticResource OHsHitNormalPillStyle}">
+            <Setter Property="Background" Value="{DynamicResource Brush.Success.Dark}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Success}" />
+            <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Success}" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsCurrent, Mode=OneWay}" Value="True">
                     <Setter Property="Visibility" Value="Visible" />
@@ -53,45 +59,36 @@
                 </Border>
             </StackPanel>
         </DataTemplate>
+        <Style x:Key="OHsHitNormalSampleRowStyle" TargetType="c:OHsSampleRow" BasedOn="{StaticResource BaseControlStyle}">
+            <Setter Property="WaveformMargin" Value="0,4" />
+        </Style>
         <DataTemplate x:Key="OHsHitNormalSlotTemplate">
             <c:OHsSampleRow FileName="{Binding Name, Mode=OneWay}"
                 FileToolTip="{Binding Sample.DisplayName, Mode=OneWay}"
                 Waveform="{Binding Sample.Waveform, Mode=OneWay}" ShowPlayButton="False"
-                Style="{StaticResource BaseControlStyle}" WaveformRequested="OnWaveformRequested" />
+                Style="{StaticResource OHsHitNormalSampleRowStyle}" WaveformRequested="OnWaveformRequested" />
         </DataTemplate>
         <DataTemplate x:Key="OHsHitNormalSampleTemplate">
             <c:OHsSampleRow FileName="{Binding DisplayFileName, Mode=OneWay}"
                 FileToolTip="{Binding DisplayName, Mode=OneWay}" Waveform="{Binding Waveform, Mode=OneWay}"
                 NameTrailingTemplate="{StaticResource OHsHitNormalPillsTemplate}" ShowPlayButton="False"
-                Style="{StaticResource BaseControlStyle}" WaveformRequested="OnWaveformRequested" />
+                Style="{StaticResource OHsHitNormalSampleRowStyle}" WaveformRequested="OnWaveformRequested" />
         </DataTemplate>
         <ControlTemplate x:Key="OHsHitNormalSelectionTemplate" TargetType="ListBoxItem">
             <Border Style="{StaticResource BaseBorderStyle}"
                 Padding="{TemplateBinding Padding}" Background="{TemplateBinding Background}"
                 BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
                 CornerRadius="{StaticResource Radius.Control}">
-                <Grid Style="{StaticResource BaseGridStyle}">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="24" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <c:Icon x:Name="SelectionMark" Width="12" Height="12" Path="{StaticResource Check}"
-                        Color="{TemplateBinding Foreground}" Visibility="Hidden" IsHitTestVisible="False" />
-                    <ContentPresenter Grid.Column="1" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
-                        VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
-                </Grid>
+                <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                    VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
             </Border>
-            <ControlTemplate.Triggers>
-                <Trigger Property="IsSelected" Value="True">
-                    <Setter TargetName="SelectionMark" Property="Visibility" Value="Visible" />
-                </Trigger>
-            </ControlTemplate.Triggers>
         </ControlTemplate>
         <Style x:Key="OHsHitNormalItemStyle" TargetType="ListBoxItem" BasedOn="{StaticResource PlainListBoxItemStyle}">
             <Setter Property="Template" Value="{StaticResource OHsHitNormalSelectionTemplate}" />
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
             <Setter Property="MinHeight" Value="{StaticResource Size.Control.Primary}" />
             <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="1" />
             <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
             <Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="True" />
             <Style.Triggers>
@@ -101,6 +98,8 @@
                 <Trigger Property="IsSelected" Value="True">
                     <Setter Property="Background" Value="{DynamicResource Brush.Navy.Tint}" />
                     <Setter Property="BorderBrush" Value="{DynamicResource Brush.Navy}" />
+                    <Setter Property="BorderThickness" Value="2" />
+                    <Setter Property="Padding" Value="0" />
                 </Trigger>
                 <Trigger Property="IsMouseCaptureWithin" Value="True">
                     <Setter Property="Background" Value="{DynamicResource Brush.Background.Pressed}" />

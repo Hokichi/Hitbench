@@ -90,6 +90,9 @@ public class OHsHitNormalPopupIntegrationTests
             var list = (ListBox)popup.FindName("SampleList");
             Assert.That(list.Items.Groups, Has.Count.EqualTo(4));
             var currentRow = Children(list).OfType<OHsSampleRow>().Single(r => ReferenceEquals(r.DataContext, vm.PinnedSamples.Last()));
+            UiControlContract.AssertStyle<OHsSampleRow>(currentRow, "OHsHitNormalSampleRowStyle");
+            foreach (var slotRow in Children((ListBox)popup.FindName("SlotList")).OfType<OHsSampleRow>())
+                UiControlContract.AssertStyle<OHsSampleRow>(slotRow, "OHsHitNormalSampleRowStyle");
             Assert.That(currentRow.NameTrailingTemplate, Is.SameAs(popup.FindResource("OHsHitNormalPillsTemplate")));
             Assert.That(Children(list).OfType<TextBlock>().Where(t => t.IsVisible).Select(t => t.Text), Does.Contain("default").And.Contain("current"));
             list.SelectedItem = vm.PinnedSamples[0];
