@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using Hitbench.Services.ProjectFiles;
 using CommunityToolkit.Mvvm.Messaging;
 using Hitbench.Resources.Messages;
@@ -13,7 +14,7 @@ public sealed class WorkstationSampleManagementTests
     private static WorkstationPageVM CreateOwner(StubSampleManagementDialogService manager,
         StubInstrumentalTrackDialogService? dialogs = null, ProjectData? project = null, WeakReferenceMessenger? messenger = null) =>
         new(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song",
-                project ?? new ProjectData { Offsets = [0], BPMs = [120], ControlPoints = [new()] })) },
+                project ?? new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints = [new()] })) },
             new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(),
             new StubSampleFileService(["piano.wav"]), new StubSampleFileDialogService([]),
             messenger: messenger ?? new WeakReferenceMessenger(), sampleManagementDialog: manager, instrumentDialogs: dialogs);
@@ -95,7 +96,7 @@ public sealed class WorkstationSampleManagementTests
             Present = (_, token) => { samples.TrySetResult(); return samplesClosed.Task.WaitAsync(token); },
             Close = (_, _) => { samplesClosed.TrySetResult(); return Task.FromResult(true); }
         };
-        var vm = CreateOwner(manager, dialogs, new() { Tracks = [track], Offsets = [0], BPMs = [120] }, messenger);
+        var vm = CreateOwner(manager, dialogs, new() { Tracks = [track], UninheritedPoints = TimingTestData.Points([0], [120]) }, messenger);
         try
         {
             await vm.LoadAsync("project.json", default); vm.AcknowledgePresentationReady(vm.LoadGeneration);
@@ -130,7 +131,7 @@ public sealed class WorkstationSampleManagementTests
             Arrangement = (_, token) => { pianoToken = token; piano.TrySetResult(); return Task.Delay(Timeout.Infinite, token); },
             Mapping = (_, token) => { mapped.TrySetResult(); return Task.Delay(Timeout.Infinite, token); }
         };
-        var vm = CreateOwner(manager, dialogs, new() { Tracks = [track], Offsets = [0], BPMs = [120] });
+        var vm = CreateOwner(manager, dialogs, new() { Tracks = [track], UninheritedPoints = TimingTestData.Points([0], [120]) });
         try
         {
             await vm.LoadAsync("project.json", default); vm.AcknowledgePresentationReady(vm.LoadGeneration);
@@ -160,7 +161,7 @@ public sealed class WorkstationSampleManagementTests
         var dialogs = new StubInstrumentalTrackDialogService { Arrangement = (data, token) =>
         { if (data.Track.Name == "Next") next.TrySetResult(); else first.TrySetResult(); return Task.Delay(Timeout.Infinite, token); } };
         other.Name = "Next";
-        var vm = CreateOwner(manager, dialogs, new() { Tracks = [track, other], Offsets = [0], BPMs = [120] });
+        var vm = CreateOwner(manager, dialogs, new() { Tracks = [track, other], UninheritedPoints = TimingTestData.Points([0], [120]) });
         try
         {
             await vm.LoadAsync("project.json", default); vm.AcknowledgePresentationReady(vm.LoadGeneration);
@@ -207,7 +208,7 @@ public sealed class WorkstationSampleManagementTests
         { samples.TrySetResult(); return Task.Delay(Timeout.Infinite, token); } };
         var dialogs = new StubInstrumentalTrackDialogService { Arrangement = (_, token) =>
         { calls++; opened.TrySetResult(); return closePiano.Task.WaitAsync(token); } };
-        var vm = CreateOwner(manager, dialogs, new() { Tracks = [track], Offsets = [0], BPMs = [120] });
+        var vm = CreateOwner(manager, dialogs, new() { Tracks = [track], UninheritedPoints = TimingTestData.Points([0], [120]) });
         try
         {
             await vm.LoadAsync("project.json", default); vm.AcknowledgePresentationReady(vm.LoadGeneration);
@@ -243,7 +244,7 @@ public sealed class WorkstationSampleManagementTests
             Arrangement = (_, token) => { pianoToken = token; opened.TrySetResult(); return Task.Delay(Timeout.Infinite, token); },
             Mapping = (_, _) => { mappings++; return Task.CompletedTask; }
         };
-        var vm = CreateOwner(manager, dialogs, new() { Tracks = [track], Offsets = [0], BPMs = [120] });
+        var vm = CreateOwner(manager, dialogs, new() { Tracks = [track], UninheritedPoints = TimingTestData.Points([0], [120]) });
         try
         {
             await vm.LoadAsync("project.json", default); vm.AcknowledgePresentationReady(vm.LoadGeneration);
@@ -268,7 +269,7 @@ public sealed class WorkstationSampleManagementTests
             KeyFiles = new() { ["C3"] = "Piano/C3.wav" }, Notes = [new() { Key = "C3", Timestamp = 125 }]
         };
         var sample = new Hitbench.Core.Entities.Track { SelectedSampleFileName = "Piano/C3.wav" };
-        var project = new Hitbench.Core.Entities.ProjectData { Tracks = [sample, instrument], Offsets = [0], BPMs = [120] };
+        var project = new Hitbench.Core.Entities.ProjectData { Tracks = [sample, instrument], UninheritedPoints = TimingTestData.Points([0], [120]) };
         var messenger = new WeakReferenceMessenger();
         var audio = new StubWorkstationAudioService();
         var manager = new StubSampleManagementDialogService();

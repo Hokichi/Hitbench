@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using Hitbench.Core.Entities;
 using Hitbench.Services;
 using Hitbench.Services.ProjectFiles;
@@ -24,7 +25,7 @@ public class WorkstationHistoryTests
         source = new StubWorkstationSourceService
         {
             Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav",
-                new ProjectData { Offsets = [0], BPMs = [120], ControlPoints = [new()], Tracks = [first, second] }))
+                new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints = [new()], Tracks = [first, second] }))
         };
         audio = new StubWorkstationAudioService();
         files = new StubSampleFileService(["a.wav", "b.wav"]);

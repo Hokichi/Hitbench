@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using Hitbench.Core.Entities;
 using Hitbench.ViewModels.Shell;
 using NAudio.Wave;
@@ -54,7 +55,7 @@ public class WorkstationPageVMTests
         var source = new StubWorkstationSourceService
         {
             Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav",
-                new ProjectData { Offsets = [0, 800], BPMs = [120, 60] }))
+                new ProjectData { UninheritedPoints = TimingTestData.Points([0, 800], [120, 60]) }))
         };
         var vm = new WorkstationPageVM(source, new Hitbench.Services.MarkerPlaybackCoordinator(audio, (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
         await vm.LoadAsync("project.json", CancellationToken.None);
@@ -84,7 +85,7 @@ public class WorkstationPageVMTests
         var source = new StubWorkstationSourceService
         {
             Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav",
-                new ProjectData { Offsets = [0], BPMs = [137] }))
+                new ProjectData { UninheritedPoints = TimingTestData.Points([0], [137]) }))
         };
         var vm = new WorkstationPageVM(source, new Hitbench.Services.MarkerPlaybackCoordinator(audio, (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
         await vm.LoadAsync("project.json", CancellationToken.None);
@@ -110,7 +111,7 @@ public class WorkstationPageVMTests
         var source = new StubWorkstationSourceService
         {
             Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav",
-                new ProjectData { Offsets = [0], BPMs = [120] }))
+                new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]) }))
         };
         var vm = new WorkstationPageVM(source, new Hitbench.Services.MarkerPlaybackCoordinator(audio, (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
         await vm.LoadAsync("project.json", CancellationToken.None);
@@ -137,7 +138,7 @@ public class WorkstationPageVMTests
         var source = new StubWorkstationSourceService
         {
             Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav",
-                new ProjectData { Offsets = [0], BPMs = [120] }))
+                new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]) }))
         };
         var vm = new WorkstationPageVM(source, new Hitbench.Services.MarkerPlaybackCoordinator(audio, (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
         await vm.LoadAsync("project.json", CancellationToken.None);

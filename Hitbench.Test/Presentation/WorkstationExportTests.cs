@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using CommunityToolkit.Mvvm.Messaging;
 using Hitbench.Core.Entities;
 using Hitbench.Resources.Messages;
@@ -14,7 +15,7 @@ public class WorkstationExportTests
         var files = new StubProjectFileService((_, _, _) => Task.FromResult("project.json"))
         { Save = async (_, _, _) => { await release.Task; if (fail) throw new IOException("save failed"); } };
         var track = new Track { Volume = 70 };
-        var source = new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "song.wav", new ProjectData { Tracks = [track], Offsets = [0], BPMs = [120] })) };
+        var source = new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "song.wav", new ProjectData { Tracks = [track], UninheritedPoints = TimingTestData.Points([0], [120]) })) };
         var dialog = new StubOHsExportDialogService();
         var vm = new WorkstationPageVM(source, new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), projectFiles: files, exportDialog: dialog);
         await vm.LoadAsync("project.json", default); vm.AcknowledgePresentationReady(vm.LoadGeneration);
@@ -33,7 +34,7 @@ public class WorkstationExportTests
     [Test]
     public async Task ReadyExportPausesAndSnapshotsActualSourceAndRejectsCompetingEdits()
     {
-        var track = new Track { Volume = 70 }; var data = new ProjectData { Tracks = [track], Offsets = [0], BPMs = [120] };
+        var track = new Track { Volume = 70 }; var data = new ProjectData { Tracks = [track], UninheritedPoints = TimingTestData.Points([0], [120]) };
         var audio = new StubWorkstationAudioService(); var dialog = new StubOHsExportDialogService();
         var release = new TaskCompletionSource(); dialog.Run = (_, _) => release.Task;
         var vm = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("chosen.osu", "actual.wav", data)) }, new MarkerPlaybackCoordinator(audio, Task.Delay), new ImmediateUiScheduler(), exportDialog: dialog);

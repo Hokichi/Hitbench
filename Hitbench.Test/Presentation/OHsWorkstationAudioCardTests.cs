@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using Hitbench.Views.Pages;
 using Hitbench.ViewModels.Shell;
 using Hitbench.Core.Entities;
@@ -176,7 +177,7 @@ public sealed class OHsWorkstationAudioCardTests
         var source = new StubWorkstationSourceService
         {
             Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav",
-                new ProjectData { Offsets = [0, 60000], BPMs = [120, 180] }))
+                new ProjectData { UninheritedPoints = TimingTestData.Points([0, 60000], [120, 180]) }))
         };
         var vm = new WorkstationPageVM(source,
             new MarkerPlaybackCoordinator(audio, Task.Delay), new ImmediateUiScheduler());
@@ -294,7 +295,7 @@ public sealed class OHsWorkstationAudioCardTests
         var node = new Sample { FileName = "hit.wav", Timestamp = 125 };
         var track = new Track { SelectedSampleFileName = "hit.wav", Samples = [node] };
         var vm = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(
-            new WorkstationSource("map", "song", new ProjectData { Tracks = [track], Offsets = [0], BPMs = [120] })) },
+            new WorkstationSource("map", "song", new ProjectData { Tracks = [track], UninheritedPoints = TimingTestData.Points([0], [120]) })) },
             new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), new StubSampleFileService(["hit.wav"]));
         var context = new InstrumentalTrackContext("project.json", null, Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
         var snapshot = new InstrumentalTrackSnapshot(context, "Piano", 100, new Dictionary<string, string>(), [], null, 0);
@@ -342,7 +343,7 @@ public sealed class OHsWorkstationAudioCardTests
             Mapping = async (_, token) => { mappingOpened.TrySetResult(); await Task.Delay(Timeout.Infinite, token); }
         };
         var vm = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(
-            new WorkstationSource("map", "song", new ProjectData { Tracks = [track], Offsets = [0], BPMs = [120] })) },
+            new WorkstationSource("map", "song", new ProjectData { Tracks = [track], UninheritedPoints = TimingTestData.Points([0], [120]) })) },
             new MarkerPlaybackCoordinator(audio, Task.Delay), new ImmediateUiScheduler(),
             new StubSampleFileService([]), new StubSampleFileDialogService(Array.Empty<string>()), messenger: new WeakReferenceMessenger(),
             instrumentDialogs: dialogs, sampleManagementDialog: new StubSampleManagementDialogService
@@ -379,7 +380,7 @@ public sealed class OHsWorkstationAudioCardTests
         var track = new InstrumentalTrack { KeyFiles = new() { ["C4"] = "piano.wav" } };
         var opened = new TaskCompletionSource(); var release = new TaskCompletionSource();
         var vm = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(
-            new WorkstationSource("map", "song", new ProjectData { Tracks = [track], Offsets = [0], BPMs = [120] })) },
+            new WorkstationSource("map", "song", new ProjectData { Tracks = [track], UninheritedPoints = TimingTestData.Points([0], [120]) })) },
             new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(),
             messenger: new WeakReferenceMessenger(), instrumentDialogs: new StubInstrumentalTrackDialogService
             { Mapping = async (_, token) => { opened.TrySetResult(); await release.Task.WaitAsync(token); } });

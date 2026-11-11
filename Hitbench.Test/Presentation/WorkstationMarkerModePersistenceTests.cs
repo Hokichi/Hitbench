@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using Hitbench.Core.Entities;
 using Hitbench.Services;
 using Hitbench.Services.ProjectFiles;
@@ -30,7 +31,7 @@ public class WorkstationMarkerModePersistenceTests
     {
         var files = new DelayedProjectFileService(); files.Release();
         var clock = new ManualTimeProvider(); var instant = DateTimeOffset.Parse("2026-11-09T00:00:00Z"); clock.SetUtcNow(instant);
-        var project = new ProjectData { IsMarkerStatic = initial, Offsets = [0], BPMs = [120], ControlPoints = [new()] };
+        var project = new ProjectData { IsMarkerStatic = initial, UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints = [new()] };
         var source = new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "audio", project)) };
         var vm = new WorkstationPageVM(source, new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay),
             new ImmediateUiScheduler(), projectFiles: files, timeProvider: clock);
@@ -44,7 +45,7 @@ public class WorkstationMarkerModePersistenceTests
             Assert.That(saved.IsMarkerStatic, Is.EqualTo(!initial)); Assert.That(saved.LastChanged, Is.EqualTo(instant));
             Assert.That(vm.CanUndo, Is.False);
             var writes = files.Writes; vm.SetMarkerMode(!initial); await vm.FlushSavesAsync(); Assert.That(files.Writes, Is.EqualTo(writes));
-            source.Load = (_, _) => Task.FromResult(new WorkstationSource("map", "audio", new ProjectData { Offsets = [0], BPMs = [120] }));
+            source.Load = (_, _) => Task.FromResult(new WorkstationSource("map", "audio", new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]) }));
             await vm.LoadAsync("other.json", default); Assert.That(vm.IsStaticMarker, Is.False);
             Assert.That(project.IsMarkerStatic, Is.EqualTo(!initial));
         }

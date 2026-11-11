@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
@@ -28,7 +29,7 @@ public class WorkstationRegionSelectionTests
         new VolumeWheelTests().SetUp();
         first = new Sample { Timestamp = 1000, FileName = "a.wav" };
         second = new Sample { Timestamp = 1500, FileName = "b.wav" };
-        var data = new ProjectData { Offsets = [0], BPMs = [120], Tracks =
+        var data = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), Tracks =
             [new Track { SelectedSampleFileName = "a.wav", Samples = [first] },
              new Track { SelectedSampleFileName = "b.wav", Samples = [second] }] };
         saves = new DelayedProjectFileService(); saves.Release();

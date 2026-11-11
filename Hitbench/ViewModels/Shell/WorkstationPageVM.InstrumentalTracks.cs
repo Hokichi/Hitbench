@@ -289,8 +289,8 @@ public partial class WorkstationPageVM
     private int? InstrumentTimestamp(double requested, int subdivision, bool moving)
     {
         if (Waveform is null || Project is null || !double.IsFinite(requested) || requested < 0 || requested >= Waveform.Duration.TotalMilliseconds) return null;
-        var time = moving ? BeatGridCalculator.GetNearestTimestamp(Project.Offsets, Project.BPMs, subdivision, requested, Waveform.Duration.TotalMilliseconds)
-            : BeatGridCalculator.GetContainingInterval(Project.Offsets, Project.BPMs, subdivision, requested, Waveform.Duration.TotalMilliseconds) is { } interval
+        var time = moving ? BeatGridCalculator.GetNearestTimestamp(Project.UninheritedPoints, subdivision, requested, Waveform.Duration.TotalMilliseconds)
+            : BeatGridCalculator.GetContainingInterval(Project.UninheritedPoints, subdivision, requested, Waveform.Duration.TotalMilliseconds) is { } interval
                 ? (int?)Math.Round(interval.StartMilliseconds, MidpointRounding.AwayFromZero) : null;
         return time is >= 0 && time < Waveform.Duration.TotalMilliseconds ? time : null;
     }

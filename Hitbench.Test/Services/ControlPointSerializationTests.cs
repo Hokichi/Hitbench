@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using Hitbench.Core.Entities;
 using Hitbench.Services.ProjectFiles;
 
@@ -8,7 +9,7 @@ public class ControlPointSerializationTests
     [Test]
     public void NegativePointIsAcceptedOnlyAtTheFirstTimingOffset()
     {
-        var project = new ProjectData { Offsets = [-100, -50], BPMs = [120, 150],
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([-100, -50], [120, 150]),
             ControlPoints = [new() { Timestamp = -100, Volume = 40, Sampleset = "Soft" }] };
         var saved = ProjectDataSerializer.Deserialize(ProjectDataSerializer.Serialize(project));
         Assert.That((saved.ControlPoints.Single().Timestamp, saved.ControlPoints.Single().Volume), Is.EqualTo((-100, 40)));

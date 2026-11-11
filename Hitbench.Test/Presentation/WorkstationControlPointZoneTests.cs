@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using Hitbench.Core.Entities;
 using Hitbench.Resources.Messages;
 using Hitbench.Services;
@@ -9,7 +10,7 @@ public class WorkstationControlPointZoneTests
     [Test]
     public async Task DisabledEditsRetainStoredValueAndOneSavePerAcceptedMutation()
     {
-        var project = new ProjectData { Offsets = [0], BPMs = [120], ControlPoints =
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints =
             [new() { Volume = 80 }, new() { Timestamp = 1000, Volume = 20 }] };
         var files = new DelayedProjectFileService(); files.Release();
         var audio = new StubWorkstationAudioService(); var owner = WorkstationControlPointStateTests.Create(project, audio, files);
@@ -38,7 +39,7 @@ public class WorkstationControlPointZoneTests
     [TestCase(false, false)][TestCase(true, false)][TestCase(false, true)][TestCase(true, true)]
     public async Task SplitUsesCurrentMarkerCopiesSettingsAndKeepsOriginalIdentity(bool disabled, bool playing)
     {
-        var project = new ProjectData { Offsets = [0], BPMs = [120], ControlPoints =
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints =
             [new() { Timestamp = 1000, Volume = 4, Sampleset = "Drum", IsDisabled = disabled }, new() { Timestamp = 3000 }] };
         var audio = new StubWorkstationAudioService(); var files = new DelayedProjectFileService(); files.Release();
         var owner = WorkstationControlPointStateTests.Create(project, audio, files);
@@ -70,7 +71,7 @@ public class WorkstationControlPointZoneTests
     [TestCase(999)][TestCase(1000)][TestCase(1000.4)][TestCase(2999.6)][TestCase(3000)][TestCase(4000)]
     public async Task SplitRejectsOutsideAndRoundedBoundaries(double marker)
     {
-        var project = new ProjectData { Offsets = [0], BPMs = [120], ControlPoints = [new() { Timestamp = 1000 }, new() { Timestamp = 3000 }] };
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints = [new() { Timestamp = 1000 }, new() { Timestamp = 3000 }] };
         var audio = new StubWorkstationAudioService(); var owner = WorkstationControlPointStateTests.Create(project, audio);
         try
         {
@@ -85,7 +86,7 @@ public class WorkstationControlPointZoneTests
     [Test]
     public async Task OpenSplitRequestTracksMarkerCrossingAndRevalidatesExecute()
     {
-        var project = new ProjectData { Offsets = [0], BPMs = [120], ControlPoints = [new() { Timestamp = 1000 }, new() { Timestamp = 3000 }] };
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints = [new() { Timestamp = 1000 }, new() { Timestamp = 3000 }] };
         var audio = new StubWorkstationAudioService(); var owner = WorkstationControlPointStateTests.Create(project, audio);
         try
         {
@@ -111,7 +112,7 @@ public class WorkstationControlPointZoneTests
     [Test]
     public async Task EarlierDuplicateCannotSplit()
     {
-        var owner = WorkstationControlPointStateTests.Create(new() { Offsets = [0], BPMs = [120], ControlPoints =
+        var owner = WorkstationControlPointStateTests.Create(new() { UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints =
             [new() { Timestamp = 1000 }, new() { Timestamp = 1000 }, new() { Timestamp = 3000 }] }, new());
         try
         {

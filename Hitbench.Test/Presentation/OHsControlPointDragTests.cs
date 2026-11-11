@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Controls;
@@ -16,7 +17,7 @@ public class OHsControlPointDragTests
     [Test]
     public void OffsetAnchorBlocksTimingAndDeletionButKeepsVolumeAndEditor()
     {
-        var project = new ProjectData { Offsets = [0], BPMs = [120],
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]),
             ControlPoints = [new() { Volume = 50 }, new() { Timestamp = 2000 }] };
         var owner = WorkstationControlPointStateTests.Create(project, new());
         try
@@ -52,12 +53,12 @@ public class OHsControlPointDragTests
     [TestCase("right edge", 2000, 100, 2500, 100, true, 2500, 50)]
     public void ZoneGesturesChangeOnlyTheCorrespondingValue(string gesture, double startX, double startY, double endX, double endY, bool commits, int timestamp, int volume)
     {
-        var project = new ProjectData { Offsets = [0], BPMs = [120], ControlPoints = [new() { Volume = 50 }, new() { Timestamp = 2000, Volume = 50 }, new() { Timestamp = 8000 }] };
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints = [new() { Volume = 50 }, new() { Timestamp = 2000, Volume = 50 }, new() { Timestamp = 8000 }] };
         var files = new DelayedProjectFileService(); var owner = WorkstationControlPointStateTests.Create(project, new(), files);
         try
         {
             UiTestPump.Run(WorkstationControlPointStateTests.Ready(owner)); var lane = Connect(owner);
-            lane.Offsets = [0]; lane.Bpms = [120];
+            lane.UninheritedPoints = TimingTestData.Replace(lane.UninheritedPoints, [0], true); lane.UninheritedPoints = TimingTestData.Replace(lane.UninheritedPoints, [120], false);
             var id = owner.ControlPointsState!.Points.Single(p => p.Timestamp == 0).Id;
             lane.BeginZoneGesture(id, new Point(startX, startY), 200);
             lane.UpdateZoneGesture(new Point(endX, endY));
@@ -76,12 +77,12 @@ public class OHsControlPointDragTests
     [Test]
     public void NoOpOrStaleBoundaryDropDoesNotSave()
     {
-        var project = new ProjectData { Offsets = [0], BPMs = [120], ControlPoints = [new() { Timestamp = 500 }, new() { Timestamp = 2000 }] };
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints = [new() { Timestamp = 500 }, new() { Timestamp = 2000 }] };
         var files = new DelayedProjectFileService(); var owner = WorkstationControlPointStateTests.Create(project, new(), files);
         try
         {
             UiTestPump.Run(WorkstationControlPointStateTests.Ready(owner)); var lane = Connect(owner);
-            lane.Offsets = [0]; lane.Bpms = [120];
+            lane.UninheritedPoints = TimingTestData.Replace(lane.UninheritedPoints, [0], true); lane.UninheritedPoints = TimingTestData.Replace(lane.UninheritedPoints, [120], false);
             var id = owner.ControlPointsState!.Points.First(p => !p.IsOffsetAnchor).Id;
             lane.BeginZoneGesture(id, new Point(500, 10), 200);
             lane.UpdateZoneGesture(new Point(510, 10));
@@ -103,7 +104,7 @@ public class OHsControlPointDragTests
     {
         var lane = OHsControlPointLaneTests.Create(owner.ControlPointsState!.Points);
         lane.ContentWidth = 10000; lane.ViewportWidth = 4000;
-        lane.Offsets = [0, 1000]; lane.Bpms = [120, 240]; lane.Subdivision = 4;
+        lane.UninheritedPoints = TimingTestData.Replace(lane.UninheritedPoints, [0, 1000], true); lane.UninheritedPoints = TimingTestData.Replace(lane.UninheritedPoints, [120, 240], false); lane.Subdivision = 4;
         lane.PresentEditor = (_, _) => { }; lane.CapturePointer = () => true; lane.ReleasePointer = () => { };
         lane.AddCommand = owner.AddControlPointCommand; lane.CommitAddCommand = owner.CommitControlPointAddCommand;
         lane.SetPointCommand = owner.SetControlPointCommand; lane.MovePointCommand = owner.MoveControlPointCommand;
@@ -118,7 +119,7 @@ public class OHsControlPointDragTests
     [Test]
     public void ValidDropCommitsOnceAndPreviewNeverMovesAcceptedMarkers()
     {
-        var project = new ProjectData { Offsets = [0, 1000], BPMs = [120, 240], ControlPoints = [new() { Timestamp = 500, Volume = 4, Sampleset = "Drum" }] };
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0, 1000], [120, 240]), ControlPoints = [new() { Timestamp = 500, Volume = 4, Sampleset = "Drum" }] };
         var audio = new StubWorkstationAudioService(); var files = new DelayedProjectFileService(); var owner = WorkstationControlPointStateTests.Create(project, audio, files);
         try
         {
@@ -138,11 +139,11 @@ public class OHsControlPointDragTests
     [Test]
     public void DuplicateTimestampRejectsAndDistinctCloseBoundaryCommits()
     {
-        var project = new ProjectData { Offsets = [0], BPMs = [120], ControlPoints = [new() { Timestamp = 500 }, new() { Timestamp = 2000 }] };
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints = [new() { Timestamp = 500 }, new() { Timestamp = 2000 }] };
         var audio = new StubWorkstationAudioService(); var files = new DelayedProjectFileService(); var owner = WorkstationControlPointStateTests.Create(project, audio, files);
         try
         {
-            UiTestPump.Run(WorkstationControlPointStateTests.Ready(owner)); var lane = Connect(owner); lane.Offsets = [0]; lane.Bpms = [120];
+            UiTestPump.Run(WorkstationControlPointStateTests.Ready(owner)); var lane = Connect(owner); lane.UninheritedPoints = TimingTestData.Replace(lane.UninheritedPoints, [0], true); lane.UninheritedPoints = TimingTestData.Replace(lane.UninheritedPoints, [120], false);
             var id = owner.ControlPointsState!.Points.First(p => !p.IsOffsetAnchor).Id; var timeline = audio.ControlPoints;
             lane.BeginPointDrag(id, 500); lane.UpdatePointDrag(2000);
             Assert.That(lane.IsDragCandidateValid, Is.False); Assert.That(lane.RejectionReason, Is.Not.Empty);
@@ -159,7 +160,7 @@ public class OHsControlPointDragTests
     [TestCase("cancel")][TestCase("context")][TestCase("capture")][TestCase("delete")]
     public void CancelledGestureCannotLeakMutationOrOpenEditor(string reason)
     {
-        var project = new ProjectData { Offsets = [0], BPMs = [120], ControlPoints = [new() { Timestamp = 500 }] };
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints = [new() { Timestamp = 500 }] };
         var owner = WorkstationControlPointStateTests.Create(project, new());
         try
         {
@@ -178,7 +179,7 @@ public class OHsControlPointDragTests
     [Test]
     public void BothAddEntryPointsAcceptCloseBoundariesButRejectDuplicateTimestamp()
     {
-        var project = new ProjectData { Offsets = [0], BPMs = [120] }; var files = new DelayedProjectFileService();
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]) }; var files = new DelayedProjectFileService();
         var owner = WorkstationControlPointStateTests.Create(project, new(), files);
         try
         {
@@ -206,7 +207,7 @@ public class OHsControlPointDragTests
     [Test]
     public void KeyboardMenuDeletesCapturedIdentityEvenIfTagIsRecycled()
     {
-        var project = new ProjectData { Offsets = [0], BPMs = [120], ControlPoints = [new() { Timestamp = 500 }, new() { Timestamp = 2000 }] };
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints = [new() { Timestamp = 500 }, new() { Timestamp = 2000 }] };
         var owner = WorkstationControlPointStateTests.Create(project, new());
         try
         {
@@ -227,7 +228,7 @@ public class OHsControlPointDragTests
     [Test]
     public void PointerPreviewDoesNotScrollBackToAcceptedTimestamp()
     {
-        var project = new ProjectData { Offsets = [0], BPMs = [120], ControlPoints = [new() { Timestamp = 500 }] };
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints = [new() { Timestamp = 500 }] };
         var owner = WorkstationControlPointStateTests.Create(project, new());
         try
         {
@@ -244,7 +245,7 @@ public class OHsControlPointDragTests
     [Test]
     public void KeyboardInvocationStillOpensEditorAfterPointerDrop()
     {
-        var owner = WorkstationControlPointStateTests.Create(new() { Offsets = [0], BPMs = [120], ControlPoints = [new() { Timestamp = 500 }] }, new());
+        var owner = WorkstationControlPointStateTests.Create(new() { UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints = [new() { Timestamp = 500 }] }, new());
         try
         {
             UiTestPump.Run(WorkstationControlPointStateTests.Ready(owner)); var lane = Connect(owner); var id = owner.ControlPointsState!.Points.First(p => !p.IsOffsetAnchor).Id;

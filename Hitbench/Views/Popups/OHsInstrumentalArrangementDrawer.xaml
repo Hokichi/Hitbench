@@ -61,7 +61,7 @@
                 <c:PianoRollView x:Name="PianoRoll" Style="{StaticResource BasePianoRollViewStyle}" Notes="{Binding Notes,Mode=OneWay}"
     HorizontalAlignment="Left" Width="{Binding PianoRollWidth,ElementName=Drawer,Mode=OneWay}"
     KeyColumnWidth="{Binding PianoKeyColumnWidth,ElementName=Drawer,Mode=OneWay}"
-    SelectedNoteId="{Binding SelectedNoteId,Mode=OneWay}" SelectedNoteIds="{Binding SelectedNoteIds,Mode=OneWay}" IsAdditionMode="{Binding IsAdditionMode,Mode=OneWay}" LaneHeight="{Binding LaneHeight,Mode=OneWay}" NoteSelectionRequested="OnNoteSelection" Offsets="{Binding Offsets,Mode=OneWay}" Bpms="{Binding Bpms,Mode=OneWay}"
+    SelectedNoteId="{Binding SelectedNoteId,Mode=OneWay}" SelectedNoteIds="{Binding SelectedNoteIds,Mode=OneWay}" IsAdditionMode="{Binding IsAdditionMode,Mode=OneWay}" LaneHeight="{Binding LaneHeight,Mode=OneWay}" NoteSelectionRequested="OnNoteSelection" UninheritedPoints="{Binding UninheritedPoints,Mode=OneWay}"
     Subdivision="{Binding Subdivision,Mode=OneWay}" Duration="{Binding Duration,Mode=OneWay}" Position="{Binding Position,Mode=OneWay}" ZoomFactor="{Binding ZoomFactor,Mode=OneWay}"
     ContentWidth="{Binding TimelineContentWidth,ElementName=Drawer,Mode=OneWay}" ViewportWidth="{Binding TimelineViewportWidth,ElementName=Drawer,Mode=OneWay}"
     HorizontalOffset="{Binding TimelineHorizontalOffset,ElementName=Drawer,Mode=OneWay}"

@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using Newtonsoft.Json;
 using Hitbench.Core.Entities;
 using Hitbench.Services.FileSystem;
@@ -32,7 +33,7 @@ public class WorkstationSourceServiceTests
         Assert.That(result.Project.Tracks.Single().IsTrackMuted, Is.True);
         Assert.That(result.Project.Tracks.Single().IsTrackSoloed, Is.True);
         Assert.That(File.ReadAllText(projectPath), Is.EqualTo(json));
-        Assert.That(result.Project.BPMs, Is.EqualTo(new[] { 120 }));
+        Assert.That(result.Project.UninheritedPoints.Select(p => p.BPM).ToArray(), Is.EqualTo(new[] { 120 }));
     }
 
     private string root = null!;
@@ -64,8 +65,8 @@ public class WorkstationSourceServiceTests
         var result = await new WorkstationSourceService().LoadAsync(projectPath, CancellationToken.None);
 
         Assert.That(result.BeatmapPath, Is.EqualTo(Path.Combine(songFolder, "a.osu")));
-        Assert.That(result.Project.Offsets, Is.EqualTo(new[] { 125 }));
-        Assert.That(result.Project.BPMs, Is.EqualTo(new[] { 120 }));
+        Assert.That(result.Project.UninheritedPoints.Select(p => p.Offset).ToArray(), Is.EqualTo(new[] { 125 }));
+        Assert.That(result.Project.UninheritedPoints.Select(p => p.BPM).ToArray(), Is.EqualTo(new[] { 120 }));
         Assert.That(File.ReadAllText(projectPath), Does.Not.Contain("Offsets"));
         Assert.That(Directory.Exists(Path.Combine(Path.GetDirectoryName(projectPath)!, "Samples")), Is.True);
         Assert.That(result.AudioPath, Is.EqualTo(Path.Combine(songFolder, "音楽 sample.ogg")));

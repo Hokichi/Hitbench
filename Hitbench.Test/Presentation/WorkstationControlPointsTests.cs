@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using Hitbench.Core.Entities;
 using Hitbench.Resources.Messages;
 
@@ -8,7 +9,7 @@ public class WorkstationControlPointsTests
     [Test]
     public async Task InvalidSamplesetAndNoOpLeaveAcceptedIdentityAndTimelineUnchanged()
     {
-        var project = new ProjectData { Offsets = [0], BPMs = [120], ControlPoints = [new() { Volume = 4 }] };
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints = [new() { Volume = 4 }] };
         var audio = new StubWorkstationAudioService(); var files = new DelayedProjectFileService();
         var owner = WorkstationControlPointStateTests.Create(project, audio, files);
         try

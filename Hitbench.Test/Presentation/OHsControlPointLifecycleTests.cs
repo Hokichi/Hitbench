@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -15,7 +16,7 @@ public class OHsControlPointLifecycleTests
     [Test]
     public void GlobalKeyRoutingExecutesZoneInputOnce()
     {
-        var project = new ProjectData { Offsets = [0], BPMs = [120], ControlPoints = [new() { Timestamp = 1000, Volume = 50 }] };
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints = [new() { Timestamp = 1000, Volume = 50 }] };
         var audio = new StubWorkstationAudioService(); var owner = WorkstationControlPointStateTests.Create(project, audio);
         try
         {
@@ -41,7 +42,7 @@ public class OHsControlPointLifecycleTests
     [Test]
     public void TimelineResetDismissesEditorAndPreviewWithoutMutatingPoint()
     {
-        var project = new ProjectData { Offsets = [0], BPMs = [120], ControlPoints = [new() { Timestamp = 1000, Volume = 4 }] };
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints = [new() { Timestamp = 1000, Volume = 4 }] };
         var owner = WorkstationControlPointStateTests.Create(project, new());
         try
         {
@@ -63,7 +64,7 @@ public class OHsControlPointLifecycleTests
     [Test]
     public void TagArrowAndPopupInputCannotSeekOrTriggerWorkstationTransport()
     {
-        var project = new ProjectData { Offsets = [0], BPMs = [120], ControlPoints = [new() { Timestamp = 0 }] };
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints = [new() { Timestamp = 0 }] };
         var owner = WorkstationControlPointStateTests.Create(project, new());
         try
         {
@@ -84,7 +85,7 @@ public class OHsControlPointLifecycleTests
     [Test]
     public void EditorClickKeyboardAndRepeatedOpenDoNotDuplicateOrLeakCommands()
     {
-        var project = new ProjectData { Offsets = [0], BPMs = [120], ControlPoints = [new() { Timestamp = 500, Volume = 4 }] };
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints = [new() { Timestamp = 500, Volume = 4 }] };
         var owner = WorkstationControlPointStateTests.Create(project, new());
         try
         {
@@ -111,7 +112,7 @@ public class OHsControlPointLifecycleTests
     [TestCase(4000)][TestCase(5000)]
     public void OffscreenAnchorClosesPopupAndDeactivatedOwnerClearsPendingWork(double offset)
     {
-        var project = new ProjectData { Offsets = [0], BPMs = [120], ControlPoints = [new() { Timestamp = 500 }, new() { Timestamp = 4000 }] };
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints = [new() { Timestamp = 500 }, new() { Timestamp = 4000 }] };
         var owner = WorkstationControlPointStateTests.Create(project, new());
         try
         {
@@ -128,7 +129,7 @@ public class OHsControlPointLifecycleTests
     [Test]
     public void DismissingValidTypedDraftCommitsWhileInvalidDraftPreservesAcceptedValue()
     {
-        var project = new ProjectData { Offsets = [0], BPMs = [120], ControlPoints = [new() { Timestamp = 0, Volume = 4 }] };
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints = [new() { Timestamp = 0, Volume = 4 }] };
         var owner = WorkstationControlPointStateTests.Create(project, new());
         try
         {
@@ -162,7 +163,7 @@ public class OHsControlPointLifecycleTests
     [Test]
     public void LiveEditKeepsEditorAnchoredToCurrentRecycledTag()
     {
-        var project = new ProjectData { Offsets = [0], BPMs = [120], ControlPoints = [new() { Timestamp = 0 }] };
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints = [new() { Timestamp = 0 }] };
         var owner = WorkstationControlPointStateTests.Create(project, new());
         try
         {
@@ -179,7 +180,7 @@ public class OHsControlPointLifecycleTests
     [Test]
     public void DismissalUsesSurvivingInvokerAfterCommittingDraft()
     {
-        var project = new ProjectData { Offsets = [0], BPMs = [120], ControlPoints = [new() { Timestamp = 0 }] };
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints = [new() { Timestamp = 0 }] };
         var owner = WorkstationControlPointStateTests.Create(project, new());
         try
         {
@@ -197,7 +198,7 @@ public class OHsControlPointLifecycleTests
     [Test]
     public void OpeningAlreadyVisibleTagDoesNotDisablePlaybackFollow()
     {
-        var project = new ProjectData { Offsets = [0], BPMs = [120], ControlPoints = [new() { Timestamp = 0 }] };
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints = [new() { Timestamp = 0 }] };
         var owner = WorkstationControlPointStateTests.Create(project, new());
         try
         {

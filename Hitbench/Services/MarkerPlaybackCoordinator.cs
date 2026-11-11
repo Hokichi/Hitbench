@@ -34,7 +34,7 @@ public sealed class MarkerPlaybackCoordinator(IWorkstationAudioService audio,
     internal IWorkstationAudioService Audio => audio;
     private readonly SemaphoreSlim transitions = new(1);
     private readonly object snapshotLock = new();
-    private PlaybackMarkerClock clock = new([], []);
+    private PlaybackMarkerClock clock = new([]);
     private TimeSpan duration;
     private TimeSpan processed;
     private CancellationTokenSource? cancellation;

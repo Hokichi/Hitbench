@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using Hitbench.Core.Entities;
 using Hitbench.ViewModels.Shell;
 using Hitbench.Services.FileSystem;
@@ -542,7 +543,7 @@ public class WorkstationTrackTests
     [Test]
     public async Task PlacementUsesSelectedFileAndRoundedTimestamp()
     {
-        var project = new ProjectData { Offsets = [0], BPMs = [60] };
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [60]) };
         var source = new StubWorkstationSourceService
         {
             Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav", project))
@@ -623,7 +624,7 @@ public class WorkstationTrackTests
     [Test]
     public async Task RemovalDeletesExactSampleAndUpdatesRevision()
     {
-        var project = new ProjectData { Offsets = [0], BPMs = [60] };
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [60]) };
         var source = new StubWorkstationSourceService
         {
             Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav", project))

@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using CommunityToolkit.Mvvm.Messaging;
 using Hitbench.Core.Entities;
 using Hitbench.Resources.DataModels;
@@ -32,7 +33,7 @@ public sealed class OHsKeysMappingTestContext : IAsyncDisposable
         files ??= new StubSampleFileService(["Piano/C5.wav", "Piano/new.wav", "other.wav"]);
         Messenger.Register<InstrumentalTrackChangedMessage>(this, (_, message) => Snapshot = message.Snapshot);
         var dialogs = new StubInstrumentalTrackDialogService();
-        Owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [Track, Other], Offsets = [0], BPMs = [120], ControlPoints = [new()] })) },
+        Owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [Track, Other], UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints = [new()] })) },
             new MarkerPlaybackCoordinator(Audio, Task.Delay), new ImmediateUiScheduler(), sampleFiles: files, messenger: Messenger, instrumentDialogs: dialogs, projectFiles: projectFiles);
         dialogs.Mapping = async (snapshot, token) =>
         {

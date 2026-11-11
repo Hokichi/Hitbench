@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Media;
@@ -73,7 +74,7 @@ public class WaveformControlPointMarkerTests
     public void RealPageBindsLoadedAndMutatedOwnerTimestampsOneWay()
     {
         new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
-        var project = new ProjectData { Offsets = [0], BPMs = [120], ControlPoints = [new() { Timestamp = 1000, Volume = 50 }] };
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints = [new() { Timestamp = 1000, Volume = 50 }] };
         var messages = new CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger();
 
         var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", project)) },

@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using System.Diagnostics;
 using Hitbench.Core.Entities;
 using Hitbench.Services;
@@ -45,7 +46,7 @@ public sealed class UxPerformanceMeasurements
         var eager = new List<double>(); var coalesced = new List<double>(); var allocations = new List<long>();
         for (var run = 0; run < 6; run++)
         {
-            var project = new ProjectData { Tracks = [new Track { Samples = Enumerable.Range(0, 1000).Select(i => new Sample { Timestamp = i }).ToList() }], Offsets = [0], BPMs = [120] };
+            var project = new ProjectData { Tracks = [new Track { Samples = Enumerable.Range(0, 1000).Select(i => new Sample { Timestamp = i }).ToList() }], UninheritedPoints = TimingTestData.Points([0], [120]) };
             var files = new DelayedProjectFileService(); files.Release();
             var source = new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", project)) };
             var vm = new WorkstationPageVM(source, new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), projectFiles: files);

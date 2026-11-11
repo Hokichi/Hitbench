@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using System.Windows;
 using Hitbench.Core.Entities;
 using Hitbench.Resources.CustomControls;
@@ -32,7 +33,7 @@ public sealed class BeatGridDrawingCacheTests
     {
         var grid = new BeatGridView
         {
-            Offsets = [0], Bpms = [120], Duration = TimeSpan.FromSeconds(10),
+            UninheritedPoints = TimingTestData.Points([0], [120]), Duration = TimeSpan.FromSeconds(10),
             ContentWidth = 1000, ViewportWidth = 400, CanPlaceSamples = true
         };
         UiTestPump.Layout(grid, 400, 60);

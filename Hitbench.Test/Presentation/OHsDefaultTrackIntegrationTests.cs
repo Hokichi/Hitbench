@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -16,7 +17,7 @@ public class OHsDefaultTrackIntegrationTests
     {
         new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
         var track = new Track { UsesDefaultSample = true };
-        var project = new ProjectData { Offsets = [0], BPMs = [120], Tracks = [track] };
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), Tracks = [track] };
         var vm = WorkstationSkinDefaultsTests.Create(project, new());
         UiTestPump.Run(vm.LoadAsync("project.json", default)); vm.AcknowledgePresentationReady(vm.LoadGeneration);
         try

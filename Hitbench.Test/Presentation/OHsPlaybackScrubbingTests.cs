@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using System.Windows;
 using Hitbench.Core.Entities;
 using Hitbench.Views.Pages;
@@ -11,7 +12,7 @@ public class OHsPlaybackScrubbingTests
     public void ScrubSeeksScrollsAtStationaryEdgeAndStopsOnReset()
     {
         new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
-        var vm = WorkstationSkinDefaultsTests.Create(new ProjectData { Offsets = [0], BPMs = [120] }, new());
+        var vm = WorkstationSkinDefaultsTests.Create(new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]) }, new());
         UiTestPump.Run(vm.LoadAsync("project.json", default)); vm.AcknowledgePresentationReady(vm.LoadGeneration);
         try
         {

@@ -1,3 +1,4 @@
+using Hitbench.Core.Entities;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Media;
@@ -94,7 +95,7 @@ public sealed partial class PianoRollView
         var border = new Pen(hc ? SystemColors.WindowTextBrush : BrushOr(NodeBorderBrush, "Brush.Border.Default"), 1);
         dc.PushClip(new RectangleGeometry(new Rect(KeyColumnWidth + retainedViewport.Start, 0, retainedViewport.Width, ActualHeight)));
         dc.PushTransform(new TranslateTransform(KeyColumnWidth + retainedViewport.Start, 0)); dc.PushOpacity(.5);
-        BeatGridDrawing.Draw(dc, this, Offsets, Bpms, Subdivision, Duration.TotalMilliseconds, ContentWidth,
+        BeatGridDrawing.Draw(dc, this, UninheritedPoints, Subdivision, Duration.TotalMilliseconds, ContentWidth,
             retainedViewport.Origin + retainedViewport.Start, retainedViewport.Width, ActualHeight, false);
         dc.Pop(); dc.Pop();
         foreach (var note in Notes.OrderBy(n => n.Id == SelectedNoteId))
@@ -121,7 +122,7 @@ public sealed partial class PianoRollView
         if(dragging && pressedNote is {} anchor && hover is {} destination && !IsAdditionMode)
         {
             InstrumentalKeys.TryGetIndex(anchor.Key,out var originalPitch);InstrumentalKeys.TryGetIndex(destination.Key,out var targetPitch);
-            var time=BeatGridCalculator.GetNearestTimestamp(Offsets,Bpms,Subdivision,destination.Time,Duration.TotalMilliseconds);
+            var time=BeatGridCalculator.GetNearestTimestamp(UninheritedPoints,Subdivision,destination.Time,Duration.TotalMilliseconds);
             if(time is {} timestamp)foreach(var note in Notes.Where(n=>gestureIds.Contains(n.Id)))
             {
                 InstrumentalKeys.TryGetIndex(note.Key,out var pitch);pitch+=targetPitch-originalPitch;
@@ -133,7 +134,7 @@ public sealed partial class PianoRollView
         }
         if (IsAdditionMode && hover is { } cell)
         {
-            var ts = dragging ? BeatGridCalculator.GetNearestTimestamp(Offsets, Bpms, Subdivision, cell.Time, Duration.TotalMilliseconds) : BeatGridCalculator.GetContainingInterval(Offsets, Bpms, Subdivision, cell.Time, Duration.TotalMilliseconds) is { } interval ? (int?)Math.Round(interval.StartMilliseconds, MidpointRounding.AwayFromZero) : null;
+            var ts = dragging ? BeatGridCalculator.GetNearestTimestamp(UninheritedPoints, Subdivision, cell.Time, Duration.TotalMilliseconds) : BeatGridCalculator.GetContainingInterval(UninheritedPoints, Subdivision, cell.Time, Duration.TotalMilliseconds) is { } interval ? (int?)Math.Round(interval.StartMilliseconds, MidpointRounding.AwayFromZero) : null;
             if (ts is { } t) { var rect = GetNoteBounds(new(Guid.Empty, cell.Key, t)); if (!rect.IsEmpty) OHsSampleNodeDrawing.Draw(dc, marker, new Pen(cue, 2), OHsSampleNodeDrawing.Inset(rect)); }
         }
         if (IsKeyboardFocused)

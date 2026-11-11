@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using System.Windows;
 using System.Windows.Automation.Peers;
 using System.Windows.Media;
@@ -18,7 +19,7 @@ public class BeatGridNodeEditingTests
     {
         var grid = CreateGrid();
         var step = 60000d / bpm / subdivision;
-        grid.Bpms = [bpm]; grid.Subdivision = subdivision;
+        grid.UninheritedPoints = TimingTestData.Replace(grid.UninheritedPoints, [bpm], false); grid.Subdivision = subdivision;
         grid.ContentWidth = contentWidth; grid.ZoomFactor = zoom; grid.HorizontalOffset = offset;
         grid.Samples = [new Sample { Timestamp = 0 }, new Sample { Timestamp = (int)Math.Round(2 * step, MidpointRounding.AwayFromZero) }];
         var x = 1.25 * step / grid.Duration.TotalMilliseconds * contentWidth - offset;
@@ -46,7 +47,7 @@ public class BeatGridNodeEditingTests
         var grid = CreateGrid();
         var step = 60000d / bpm / subdivision;
         var existing = new Sample { Timestamp = (int)Math.Round(step, MidpointRounding.AwayFromZero) };
-        grid.Bpms = [bpm]; grid.Subdivision = subdivision; grid.Samples = [existing];
+        grid.UninheritedPoints = TimingTestData.Replace(grid.UninheritedPoints, [bpm], false); grid.Subdivision = subdivision; grid.Samples = [existing];
         grid.SetActivePosition(1.25 * step);
         Assert.That(grid.HasPlacementPreview, Is.False);
         var placements = 0;
@@ -156,7 +157,7 @@ public class BeatGridNodeEditingTests
     public void ActiveSampleActionsDoNotRequireMeasuredNodeGeometry()
     {
         var node = new Sample { Timestamp = 250 };
-        var grid = new BeatGridView { Offsets = [0], Bpms = [60], Subdivision = 4,
+        var grid = new BeatGridView { UninheritedPoints = TimingTestData.Points([0], [60]), Subdivision = 4,
             Duration = TimeSpan.FromSeconds(1), CanPlaceSamples = true, Samples = [node], SelectedSamples = [node] };
         grid.SetActivePosition(TimeSpan.FromMilliseconds(250));
         Assert.That(grid.FindActiveSample(), Is.SameAs(node));
@@ -222,7 +223,7 @@ public class BeatGridNodeEditingTests
     {
         var a = new Sample { Timestamp = 250 };
         var b = new Sample { Timestamp = 275 };
-        var grid = new BeatGridView { Offsets = [0], Bpms = [60], Subdivision = 4,
+        var grid = new BeatGridView { UninheritedPoints = TimingTestData.Points([0], [60]), Subdivision = 4,
             Duration = TimeSpan.FromSeconds(1), CanPlaceSamples = true, Samples = [a, b] };
         grid.SetActivePosition(TimeSpan.FromMilliseconds(250));
         Sample? requested = null;
@@ -328,7 +329,7 @@ public class BeatGridNodeEditingTests
     }
     private static BeatGridView CreateGrid(double height = 36)
     {
-        var grid = new BeatGridView { Offsets = [0], Bpms = [60], Subdivision = 4, Duration = TimeSpan.FromSeconds(1),
+        var grid = new BeatGridView { UninheritedPoints = TimingTestData.Points([0], [60]), Subdivision = 4, Duration = TimeSpan.FromSeconds(1),
             ContentWidth = 400, ViewportWidth = 200, HorizontalOffset = 90, CanPlaceSamples = true,
             MarkerBrush = Brushes.Blue, SelectionBrush = Brushes.Yellow, SelectionCueBrush = Brushes.Green,
             HoverBrush = Brushes.Orange, PressedBrush = Brushes.Red };

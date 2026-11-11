@@ -9,15 +9,18 @@ namespace Hitbench.Services.ProjectFiles;
 
 public static class ProjectDataSerializer
 {
-    public static ProjectData Deserialize(string json)
+    public static ProjectData Deserialize(string json) => Deserialize(json, out _);
+
+    public static ProjectData Deserialize(string json, out bool requiresTimingMigration)
     {
+        requiresTimingMigration = false;
         JObject root;
         try { root = JObject.Parse(json, new JsonLoadSettings { DuplicatePropertyNameHandling = DuplicatePropertyNameHandling.Error }); }
         catch (JsonException error) { throw new InvalidDataException("Project JSON is invalid.", error); }
 
         NormalizeMembers(root, nameof(ProjectData.IsPinned), nameof(ProjectData.IsMarkerStatic), nameof(ProjectData.LastChanged),
             nameof(ProjectData.WorkstationZoom), nameof(ProjectData.BeatmapPath), nameof(ProjectData.Tracks),
-            nameof(ProjectData.ControlPoints), nameof(ProjectData.Offsets), nameof(ProjectData.BPMs),
+            nameof(ProjectData.ControlPoints), "Offsets", "BPMs", nameof(ProjectData.UninheritedPoints),
             "Samples", "IsCollapsed");
         foreach (var name in new[] { nameof(ProjectData.NormalHitNormalPath), nameof(ProjectData.SoftHitNormalPath), nameof(ProjectData.DrumHitNormalPath) })
         {
@@ -75,6 +78,29 @@ public static class ProjectDataSerializer
         if (collapsed is not null && collapsed.Type != JTokenType.Boolean)
             throw new InvalidDataException("Project IsCollapsed must be a boolean.");
         root.Remove("IsCollapsed");
+        requiresTimingMigration = root["Offsets"] is not null || root["BPMs"] is not null;
+        if (root["UninheritedPoints"] is null)
+        {
+            if (requiresTimingMigration)
+            {
+                if (root["Offsets"] is not JArray offsets || root["BPMs"] is not JArray bpms || offsets.Count != bpms.Count)
+                    throw new InvalidDataException("Legacy timing arrays must have matching lengths.");
+                root["UninheritedPoints"] = new JArray(offsets.Select((offset, i) => new JObject { ["Offset"] = offset.DeepClone(), ["BPM"] = bpms[i].DeepClone() }));
+            }
+            else root["UninheritedPoints"] = new JArray();
+        }
+        if (root["UninheritedPoints"] is not JArray points) throw new InvalidDataException("UninheritedPoints must be an array.");
+        foreach (var item in points)
+        {
+            if (item is not JObject point) throw new InvalidDataException("Timing point must be an object.");
+            foreach (var name in new[] { "Offset", "BPM" })
+            {
+                var value = Member(point, name);
+                if (value?.Type != JTokenType.Integer || !int.TryParse(value.ToString(), out _))
+                    throw new InvalidDataException("Timing values must be Int32 integers.");
+            }
+        }
+        root.Remove("Offsets"); root.Remove("BPMs");
         NormalizeControlPoints(root);
 
         if (root["Tracks"] is JArray trackNodes)
@@ -233,7 +259,7 @@ public static class ProjectDataSerializer
                 throw new InvalidDataException("Control point IsDisabled must be a boolean.");
             var isNegativeOffset = time?.Type == JTokenType.Integer && int.TryParse(time.ToString(Formatting.None),
                 System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var timestamp) &&
-                timestamp < 0 && root[nameof(ProjectData.Offsets)] is JArray { Count: > 0 } offsets && JToken.DeepEquals(time, offsets[0]);
+                timestamp < 0 && root[nameof(ProjectData.UninheritedPoints)] is JArray { Count: > 0 } offsets && JToken.DeepEquals(time, offsets[0]!["Offset"]);
             if (!IsIntegerInRange(time, int.MaxValue) && !isNegativeOffset)
                 throw new InvalidDataException("Control point Timestamp must be nonnegative or match the first timing offset.");
             if (volume is null) point[nameof(ControlPoint.Volume)] = 100;

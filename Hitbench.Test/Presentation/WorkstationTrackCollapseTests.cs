@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Automation;
@@ -34,7 +35,7 @@ public class WorkstationTrackCollapseTests
         var tracks = CreateTracks(files);
         var saves = new DelayedProjectFileService();
         saves.Release();
-        var (page, vm, view) = Create(direction, new ProjectData { Tracks = tracks, Offsets = [0], BPMs = [120], ControlPoints = [new()] }, files, width, height, saves);
+        var (page, vm, view) = Create(direction, new ProjectData { Tracks = tracks, UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints = [new()] }, files, width, height, saves);
         using (view)
         try
         {
@@ -75,7 +76,7 @@ public class WorkstationTrackCollapseTests
     public void CollapsedHeightStaysStableAcrossRecyclingAndRestoresGrowth()
     {
         var tracks = CreateTracks(["kick.wav"]);
-        var (page, vm, view) = Create(project: new ProjectData { Tracks = tracks, Offsets = [0], BPMs = [120] });
+        var (page, vm, view) = Create(project: new ProjectData { Tracks = tracks, UninheritedPoints = TimingTestData.Points([0], [120]) });
         using (view)
         try
         {
@@ -112,7 +113,7 @@ public class WorkstationTrackCollapseTests
         missing.SelectedSampleFileName = missing.Samples[0].FileName = "missing.wav";
         var saves = new DelayedProjectFileService();
         saves.Release();
-        var (page, vm, view) = Create(project: new ProjectData { Tracks = tracks, Offsets = [0], BPMs = [120] }, files: files, saves: saves);
+        var (page, vm, view) = Create(project: new ProjectData { Tracks = tracks, UninheritedPoints = TimingTestData.Points([0], [120]) }, files: files, saves: saves);
         using (view)
         try
         {
@@ -180,7 +181,7 @@ public class WorkstationTrackCollapseTests
         string[] files = ["kick.wav", "snare.wav"];
         var tracks = CreateTracks(files);
         var samples = new StubSampleFileService(files);
-        var (page, vm, view) = Create(project: new ProjectData { Tracks = tracks, Offsets = [0], BPMs = [120] }, sampleFiles: samples);
+        var (page, vm, view) = Create(project: new ProjectData { Tracks = tracks, UninheritedPoints = TimingTestData.Points([0], [120]) }, sampleFiles: samples);
         using (view)
         try
         {
@@ -259,8 +260,8 @@ public class WorkstationTrackCollapseTests
             var expected = vm.TrackSampleChoices.FirstOrDefault(choice => track.UsesDefaultSample ? choice.IsDefault : !choice.IsDefault && string.Equals(choice.FileName, track.SelectedSampleFileName, StringComparison.OrdinalIgnoreCase));
             Assert.That(selector.SelectedItem, Is.EqualTo(expected), track.Name);
             var grid = Descendants<BeatGridView>(row).Single();
-            Assert.That(grid.Bpms, Is.SameAs(vm.Project!.BPMs), track.Name);
-            Assert.That(grid.Offsets, Is.SameAs(vm.Project.Offsets), track.Name);
+            Assert.That(grid.UninheritedPoints, Is.SameAs(vm.Project!.UninheritedPoints), track.Name);
+            Assert.That(grid.UninheritedPoints, Is.SameAs(vm.Project.UninheritedPoints), track.Name);
             Assert.That(BindingOperations.GetBindingExpression(grid, FrameworkElement.HeightProperty), Is.Not.Null, track.Name);
         }
     }
@@ -358,7 +359,7 @@ public class WorkstationTrackCollapseTests
         var node = new Sample { Timestamp = 125, FileName = "kick.wav" };
         var track = new Track { Name = "Kick", SelectedSampleFileName = "kick.wav", Volume = 64,
             Addition = "Drum", IsTrackMuted = true, IsTrackSoloed = true, Samples = [node] };
-        var (page, vm, view) = Create(direction, new ProjectData { Offsets = [0], BPMs = [120], Tracks = [track] });
+        var (page, vm, view) = Create(direction, new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), Tracks = [track] });
         using (view)
         {
             Assert.That(vm.SelectNode(track, node, false), Is.True);
@@ -414,7 +415,7 @@ public class WorkstationTrackCollapseTests
     {
         var node = new Sample { Timestamp = 125, FileName = "kick.wav" };
         var track = new Track { SelectedSampleFileName = "kick.wav", Samples = [node] };
-        var (page, vm, view) = Create(project: new ProjectData { Offsets = [0], BPMs = [120], Tracks = [track] });
+        var (page, vm, view) = Create(project: new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), Tracks = [track] });
         using (view)
         {
             Assert.That(vm.SelectNode(track, node, false), Is.True);
@@ -435,7 +436,7 @@ public class WorkstationTrackCollapseTests
     {
         var tracks = Enumerable.Range(0, 80).Select(index => new Track
             { Name = $"Track {index}", SelectedSampleFileName = "kick.wav" }).ToList();
-        var (page, vm, view) = Create(project: new ProjectData { Offsets = [0], BPMs = [120], Tracks = tracks });
+        var (page, vm, view) = Create(project: new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), Tracks = tracks });
         using (view)
         {
             var list = (ListBox)((Hitbench.Views.Pages.OHsWorkstationTrackList)page.FindName("TrackListComponent")).FindName("TrackList");
@@ -471,7 +472,7 @@ public class WorkstationTrackCollapseTests
     public void CollapseRestoresLogicalFocusOnlyFromHiddenControls(string controlName, int width)
     {
         var track = new Track { SelectedSampleFileName = "kick.wav" };
-        var (page, vm, view) = Create(project: new ProjectData { Offsets = [0], BPMs = [120], Tracks = [track] }, width: width);
+        var (page, vm, view) = Create(project: new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), Tracks = [track] }, width: width);
         using (view)
         {
             var hidden = Find<FrameworkElement>(page, controlName);

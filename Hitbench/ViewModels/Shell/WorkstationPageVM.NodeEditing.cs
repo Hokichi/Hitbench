@@ -145,7 +145,7 @@ public partial class WorkstationPageVM
         var marker = Position.TotalMilliseconds;
         var token = nodeEditCancellation?.Token ?? loadCancellation?.Token ?? CancellationToken.None;
         if (!IsCurrentProject(path, project, generation) || !CanEditTracks || importBusy || removalBusy) return false;
-        var anchor = BeatGridCalculator.GetNearestTimestamp(project.Offsets, project.BPMs, Subdivision, marker, Waveform!.Duration.TotalMilliseconds);
+        var anchor = BeatGridCalculator.GetNearestTimestamp(project.UninheritedPoints, Subdivision, marker, Waveform!.Duration.TotalMilliseconds);
         if (anchor is null) return RejectPaste("No usable grid beat for pasting samples.");
         var batch = new List<NodeHistoryEntry>();
         foreach (var node in copied)
@@ -233,7 +233,7 @@ public partial class WorkstationPageVM
         var minimum = anchor - dragNodes.Min(entry => entry.PreviousTimestamp);
         var last = (int)Math.Min(int.MaxValue, Math.Ceiling(Waveform!.Duration.TotalMilliseconds) - 1);
         var maximum = last - (dragNodes.Max(entry => entry.PreviousTimestamp) - anchor);
-        var snapped = BeatGridCalculator.GetNearestTimestamp(Project!.Offsets, Project.BPMs, Subdivision,
+        var snapped = BeatGridCalculator.GetNearestTimestamp(Project!.UninheritedPoints, Subdivision,
             anchor + deltaMilliseconds, Waveform.Duration.TotalMilliseconds, minimum, maximum);
         if (snapped is null) { ClearNodeDragPreview(); return false; }
         dragDelta = (long)snapped.Value - anchor;
@@ -264,7 +264,7 @@ public partial class WorkstationPageVM
         var entries = dragNodes.Select(entry =>
         {
             var candidate = entry.PreviousTimestamp + dragDelta;
-            var next = destination is null ? (int?)candidate : BeatGridCalculator.GetNearestTimestamp(Project!.Offsets, Project.BPMs, Subdivision, candidate, Waveform!.Duration.TotalMilliseconds);
+            var next = destination is null ? (int?)candidate : BeatGridCalculator.GetNearestTimestamp(Project!.UninheritedPoints, Subdivision, candidate, Waveform!.Duration.TotalMilliseconds);
             return entry with { NextTimestamp = next ?? -1 };
         }).ToArray();
         var valid = (copy || dragDelta != 0 || entries.Where((entry, i) => !ReferenceEquals(entry.Track, destinations[i])).Any()) &&
@@ -336,9 +336,9 @@ public partial class WorkstationPageVM
         var earliest = SelectedNodeEntries(NodeHistoryOperation.Movement).MinBy(entry => entry.PreviousTimestamp);
         if (earliest is null) return false;
         var time = TimeSpan.FromMilliseconds(earliest.PreviousTimestamp);
-        var next = BeatGridCalculator.GetAdjacentPosition(Project!.Offsets, Project.BPMs, Subdivision, time, Waveform!.Duration, forward);
+        var next = BeatGridCalculator.GetAdjacentPosition(Project!.UninheritedPoints, Subdivision, time, Waveform!.Duration, forward);
         if (next is not null && Math.Round(next.Value.TotalMilliseconds, MidpointRounding.AwayFromZero) == earliest.PreviousTimestamp)
-            next = BeatGridCalculator.GetAdjacentPosition(Project.Offsets, Project.BPMs, Subdivision,
+            next = BeatGridCalculator.GetAdjacentPosition(Project.UninheritedPoints, Subdivision,
                 TimeSpan.FromMilliseconds(earliest.PreviousTimestamp + (forward ? 0.4999 : -0.5)), Waveform.Duration, forward);
         if (next is null || !BeginNodeDrag(earliest.Track, earliest.Sample)) return false;
         PreviewNodeDrag(next.Value.TotalMilliseconds - time.TotalMilliseconds);

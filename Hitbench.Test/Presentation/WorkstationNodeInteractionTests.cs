@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using System.Windows.Controls;
 using System.Windows;
 using System.Windows.Documents;
@@ -404,7 +405,7 @@ public class WorkstationNodeInteractionTests
             var vm = editor.Vm; var track = vm.Tracks[1];
             vm.SelectedSubdivisionIndex = Array.IndexOf(new[] { 1, 2, 3, 4, 5, 6, 8, 12, 16 }, subdivision);
             var grid = Descendants<BeatGridView>(editor.Page).Single(g => ReferenceEquals(g.DataContext, track));
-            grid.Offsets = [offset]; grid.Bpms = [bpm]; grid.Subdivision = subdivision;
+            grid.UninheritedPoints = TimingTestData.Replace(grid.UninheritedPoints, [offset], true); grid.UninheritedPoints = TimingTestData.Replace(grid.UninheritedPoints, [bpm], false); grid.Subdivision = subdivision;
             grid.ContentWidth = contentWidth; grid.ViewportWidth = 500; grid.HorizontalOffset = horizontalOffset;
             if (occupyPreviousBeat) track.Samples.Add(new Sample { Timestamp = offset, FileName = "b.wav" });
             var initialCount = track.Samples.Count;
@@ -713,7 +714,7 @@ public class WorkstationNodeInteractionTests
     private static (WorkstationPage Page, WorkstationPageVM Vm, Sample Node, InMemoryView View) CreateEditor(int trackCount = 2, int bpm = 120, int offset = 0, StubNodePasteDialogService? nodeDialogs = null)
     {
         var node = new Sample { Timestamp = 1000, FileName = "a.wav" };
-        var data = new ProjectData { Offsets = [offset], BPMs = [bpm], Tracks = [new Track { SelectedSampleFileName = "a.wav", Samples = [node] }, new Track { SelectedSampleFileName = "b.wav" }] };
+        var data = new ProjectData { UninheritedPoints = TimingTestData.Points([offset], [bpm]), Tracks = [new Track { SelectedSampleFileName = "a.wav", Samples = [node] }, new Track { SelectedSampleFileName = "b.wav" }] };
         data.Tracks.AddRange(Enumerable.Range(2, trackCount - 2).Select(_ => new Track { SelectedSampleFileName = "b.wav" }));
         var vm = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav", data)) },
             new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), new StubSampleFileService(["a.wav", "b.wav"]), nodePasteDialog: nodeDialogs ?? new StubNodePasteDialogService());

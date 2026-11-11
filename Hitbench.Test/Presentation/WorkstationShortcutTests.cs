@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -172,7 +173,7 @@ public class WorkstationShortcutTests
         var track = new Hitbench.Core.Entities.Track { SelectedSampleFileName = "a.wav" };
         var source = new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(
             new Hitbench.Core.Entities.WorkstationSource("map.osu", "audio.wav",
-                new Hitbench.Core.Entities.ProjectData { Offsets = [0], BPMs = [120], Tracks = [track] })) };
+                new Hitbench.Core.Entities.ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), Tracks = [track] })) };
         var vm = new WorkstationPageVM(source, new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay),
             new ImmediateUiScheduler(), new StubSampleFileService(["a.wav"]));
         var page = new WorkstationPage(vm);
@@ -202,7 +203,7 @@ public class WorkstationShortcutTests
         var source = new StubWorkstationSourceService
         {
             Load = (_, _) => Task.FromResult(new Hitbench.Core.Entities.WorkstationSource("map.osu", "audio.wav",
-                new Hitbench.Core.Entities.ProjectData { Offsets = [0], BPMs = [120], Tracks = [first, second] }))
+                new Hitbench.Core.Entities.ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), Tracks = [first, second] }))
         };
         var vm = new WorkstationPageVM(source, new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay),
             new ImmediateUiScheduler(), new StubSampleFileService(["a.wav"]));
@@ -273,7 +274,7 @@ public class WorkstationShortcutTests
         page.SetProjectPath("project.json");
         using var view = new InMemoryView(new Window { Content = page, Width = 900, Height = 600 });
         UiTestPump.Run(page.LoadCompletion);
-        var grid = new BeatGridView { Offsets = [0], Bpms = [120], Subdivision = 4, Duration = TimeSpan.FromSeconds(10), CanPlaceSamples = true };
+        var grid = new BeatGridView { UninheritedPoints = TimingTestData.Points([0], [120]), Subdivision = 4, Duration = TimeSpan.FromSeconds(10), CanPlaceSamples = true };
         Assert.That(page.HandlePlaybackKey(Key.Right, ModifierKeys.None, false, grid), Is.True);
         UiTestPump.Run(page.PlaybackInputCompletion);
         Assert.That(grid.ActiveInterval!.Value.StartMilliseconds, Is.EqualTo(125));

@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using Hitbench.Core.Entities;
 using Hitbench.Resources.Messages;
 using Hitbench.Services;
@@ -9,7 +10,7 @@ public class WorkstationControlPointPlacementTests
     [TestCase(0, "Drum")][TestCase(4, "Soft")][TestCase(75, "Drum")]
     public async Task AddCapturesMarkerAndInheritsBothPredecessorFields(int volume, string sampleset)
     {
-        var project = new ProjectData { Offsets = [0], BPMs = [120], ControlPoints =
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints =
             [new() { Timestamp = 2000, Volume = 25 }, new() { Timestamp = 900, Volume = volume, Sampleset = sampleset }] };
         var audio = new StubWorkstationAudioService(); var files = new DelayedProjectFileService();
         var owner = WorkstationControlPointStateTests.Create(project, audio, files);
@@ -33,7 +34,7 @@ public class WorkstationControlPointPlacementTests
     [Test]
     public async Task PlayingAddUsesLatestPlaybackRatherThanOldPresentationPosition()
     {
-        var audio = new StubWorkstationAudioService(); var owner = WorkstationControlPointStateTests.Create(new() { Offsets = [0], BPMs = [120] }, audio);
+        var audio = new StubWorkstationAudioService(); var owner = WorkstationControlPointStateTests.Create(new() { UninheritedPoints = TimingTestData.Points([0], [120]) }, audio);
         try
         {
             await WorkstationControlPointStateTests.Ready(owner); owner.Position = TimeSpan.FromMilliseconds(250);
@@ -51,7 +52,7 @@ public class WorkstationControlPointPlacementTests
     [Test]
     public async Task DuplicateForgedAndStaleAddNeverReplaceOrPersist()
     {
-        var project = new ProjectData { Offsets = [0], BPMs = [120], ControlPoints = [new() { Timestamp = 0 }] };
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints = [new() { Timestamp = 0 }] };
         var files = new DelayedProjectFileService(); var audio = new StubWorkstationAudioService(); var owner = WorkstationControlPointStateTests.Create(project, audio, files);
         try
         {
@@ -72,7 +73,7 @@ public class WorkstationControlPointPlacementTests
     [Test]
     public async Task MovePreservesIdentityAndSettingsRejectsDuplicateStaleAndNoOp()
     {
-        var project = new ProjectData { Offsets = [0], BPMs = [120], ControlPoints =
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints =
             [new() { Timestamp = 500, Volume = 4, Sampleset = "Drum" }, new() { Timestamp = 1000 }] };
         var audio = new StubWorkstationAudioService(); var files = new DelayedProjectFileService(); var owner = WorkstationControlPointStateTests.Create(project, audio, files);
         try
@@ -95,13 +96,13 @@ public class WorkstationControlPointPlacementTests
     [Test]
     public async Task InvalidTimingAndInactiveOwnerCannotCreateIntentOrAcceptOldOne()
     {
-        var project = new ProjectData { Offsets = [0], BPMs = [120] }; var owner = WorkstationControlPointStateTests.Create(project, new());
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]) }; var owner = WorkstationControlPointStateTests.Create(project, new());
         try
         {
             await WorkstationControlPointStateTests.Ready(owner); await owner.AddControlPointCommand.ExecuteAsync(null); var old = owner.PendingControlPointAdd!;
             await owner.SettleControlPointsAsync(); owner.CommitControlPointAddCommand.Execute(old);
             Assert.That(project.ControlPoints.Single().Timestamp, Is.Zero); Assert.That(owner.PendingControlPointAdd, Is.Null);
-            await WorkstationControlPointStateTests.Ready(owner); project.BPMs = [];
+            await WorkstationControlPointStateTests.Ready(owner); project.UninheritedPoints = TimingTestData.Replace(project.UninheritedPoints, [], false);
             await owner.AddControlPointCommand.ExecuteAsync(null); Assert.That(owner.PendingControlPointAdd, Is.Null);
         }
         finally { await owner.DeactivateAsync(); }

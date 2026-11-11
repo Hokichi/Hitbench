@@ -80,7 +80,6 @@
                                 <Border x:Name="WaveformExtent" Style="{StaticResource BaseBorderStyle}" Background="Transparent" MouseLeftButtonDown="OnWaveformMouseLeftButtonDown">
                                 <customControls:WaveformView
                                     x:Name="WaveformDisplay"
-                                    Bpms="{Binding Project.BPMs, Mode=OneWay}"
                                     ControlPointTimestamps="{Binding ControlPointTimestamps, Mode=OneWay}"
                                     ControlPointBrush="{DynamicResource Brush.Success}"
                                     Data="{Binding Waveform, Mode=OneWay}"
@@ -88,7 +87,7 @@
                                     HorizontalOffset="{Binding TimelineHorizontalOffset, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationTimeline}, Mode=OneWay}"
                                     IsPlaybackMarkerStatic="{Binding IsStaticMarker, Mode=OneWay}"
                                     MarkerBrush="{DynamicResource Brush.Playhead}"
-                                    Offsets="{Binding Project.Offsets, Mode=OneWay}"
+                                    UninheritedPoints="{Binding Project.UninheritedPoints, Mode=OneWay}"
                                     Position="{Binding DisplayPosition, Mode=OneWay}"
                                     SeekCommand="{Binding SeekCommand, Mode=OneWay}"
                                     SizeChanged="OnWaveformDisplaySizeChanged"
@@ -112,8 +111,7 @@
    SetPointDisabledCommand="{Binding SetControlPointDisabledCommand, Mode=OneWay}" SplitPointCommand="{Binding SplitControlPointCommand, Mode=OneWay}"
    DeletePointCommand="{Binding DeleteControlPointCommand, Mode=OneWay}" RetrySaveCommand="{Binding RetryControlPointsSaveCommand, Mode=OneWay}"
    OwnerError="{Binding ControlPointError, Mode=OneWay}" DurationMilliseconds="{Binding Waveform.Duration.TotalMilliseconds, Mode=OneWay, FallbackValue=0}"
-   Offsets="{Binding Project.Offsets, Mode=OneWay}"
-   Bpms="{Binding Project.BPMs, Mode=OneWay}" Subdivision="{Binding Subdivision, Mode=OneWay}"
+   UninheritedPoints="{Binding Project.UninheritedPoints, Mode=OneWay}" Subdivision="{Binding Subdivision, Mode=OneWay}"
    ContentWidth="{Binding TimelineContentWidth, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationTimeline}, Mode=OneWay}"
    ViewportWidth="{Binding TimelineViewportWidth, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationTimeline}, Mode=OneWay}"
    HorizontalOffset="{Binding TimelineHorizontalOffset, RelativeSource={RelativeSource AncestorType=pages:OHsWorkstationTimeline}, Mode=OneWay}" />

@@ -1,3 +1,4 @@
+using Hitbench.Core.Entities;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
@@ -41,7 +42,7 @@ public sealed partial class InstrumentalArrangementDrawerVM
     {
         var anchor=Notes.FirstOrDefault(n=>n.Id==anchorId);
         if (!CanEdit || anchor is null || !ids.Contains(anchorId) || !InstrumentalKeys.TryGetIndex(targetKey,out var targetPitch) || !InstrumentalKeys.TryGetIndex(anchor.Key,out var originalPitch) || !double.IsFinite(requestedMilliseconds) || requestedMilliseconds < 0 || requestedMilliseconds >= Duration.TotalMilliseconds) return;
-        var time=BeatGridCalculator.GetNearestTimestamp(Offsets,Bpms,Subdivision,requestedMilliseconds,Duration.TotalMilliseconds);
+        var time=BeatGridCalculator.GetNearestTimestamp(UninheritedPoints,Subdivision,requestedMilliseconds,Duration.TotalMilliseconds);
         if(time is null)return;
         var delta=(long)time.Value-anchor.Timestamp; var pitches=targetPitch-originalPitch;
         var movingIds = ids.ToHashSet();
@@ -62,7 +63,7 @@ public sealed partial class InstrumentalArrangementDrawerVM
     { var selected = SelectedNoteIds.ToHashSet(); var notes=Notes.Where(n=>selected.Contains(n.Id)).ToArray(); if(notes.Length==0)return; var first=notes.Min(n=>n.Timestamp); clipboard=notes.Select(n=>n with{Timestamp=n.Timestamp-first}).ToArray();NotifyNoteCommands(); }
     [RelayCommand(CanExecute=nameof(CanPasteNotes))] private void PasteNotes()
     {
-        var anchor=BeatGridCalculator.GetNearestTimestamp(Offsets,Bpms,Subdivision,Position.TotalMilliseconds,Duration.TotalMilliseconds);if(anchor is null)return;
+        var anchor=BeatGridCalculator.GetNearestTimestamp(UninheritedPoints,Subdivision,Position.TotalMilliseconds,Duration.TotalMilliseconds);if(anchor is null)return;
         var added=clipboard.Where(n=>(long)anchor.Value+n.Timestamp<Duration.TotalMilliseconds && (long)anchor.Value+n.Timestamp<=int.MaxValue).Select(n=>n with{Id=Guid.NewGuid(),Timestamp=anchor.Value+n.Timestamp}).ToArray();
         if(added.Length>0)ReplaceNotes([..Notes,..added],added.Select(n=>n.Id).ToArray());
     }

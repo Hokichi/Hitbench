@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Automation;
@@ -62,7 +63,7 @@ public class WorkstationReturnIntegrationTests
             vm = new WorkstationPageVM(new StubWorkstationSourceService
             {
                 Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song",
-                    new ProjectData { Offsets = [0], BPMs = [120], Tracks = [new Track()] }))
+                    new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), Tracks = [new Track()] }))
             }, new MarkerPlaybackCoordinator(audio, MarkerPlaybackCoordinator.DelayAsync), new ImmediateUiScheduler(),
                 new StubSampleFileService(["hit.wav"]), projectFiles: saves, messenger: messenger);
             return workstation = new WorkstationPage(vm);

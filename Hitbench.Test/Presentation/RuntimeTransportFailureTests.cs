@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using Hitbench.Core.Entities;
 using Hitbench.Services;
 using Hitbench.ViewModels.Shell;
@@ -10,7 +11,7 @@ public class RuntimeTransportFailureTests
     public async Task DeactivateReleasesRemainingOwnersAfterStopFailure()
     {
         var audio = new StubWorkstationAudioService();
-        var vm = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Offsets = [0], BPMs = [120] })) },
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]) })) },
             new MarkerPlaybackCoordinator(audio, Task.Delay), new ImmediateUiScheduler());
         await vm.LoadAsync("project.json", default); vm.AcknowledgePresentationReady(vm.LoadGeneration);
         audio.Stopping = () => throw new IOException("stop failed");
@@ -23,7 +24,7 @@ public class RuntimeTransportFailureTests
     public async Task InitialSnapshotFailureIsContainedByEveryTransportCommand()
     {
         var audio = new StubWorkstationAudioService();
-        var vm = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Offsets = [0], BPMs = [120] })) },
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]) })) },
             new MarkerPlaybackCoordinator(audio, Task.Delay), new ImmediateUiScheduler());
         try
         {

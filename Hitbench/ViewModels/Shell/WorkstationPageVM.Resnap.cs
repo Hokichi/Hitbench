@@ -30,7 +30,7 @@ public partial class WorkstationPageVM
     public bool ResnapAllSampleNodes()
     {
         if (!CanResnapAllSamples()) return false;
-        var timing = BeatGridCalculator.PrepareTiming(Project!.Offsets, Project.BPMs);
+        var timing = BeatGridCalculator.PrepareTiming(Project!.UninheritedPoints);
         if (timing is null) { ErrorMessage = "No usable grid beat for resnapping samples."; return false; }
         var entries = new List<NodeHistoryEntry>();
         foreach (var track in tracks.Where(CanEditTrackGrid))

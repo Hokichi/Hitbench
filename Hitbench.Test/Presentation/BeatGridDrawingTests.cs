@@ -62,7 +62,7 @@ public class BeatGridDrawingTests
         owner.Resources.Add("Brush.Beat.Sixteenth", Brushes.LightGray);
         var drawing = new DrawingGroup();
         using (var context = drawing.Open())
-            BeatGridDrawing.Draw(context, owner, [0], [60], subdivision, 2000, 200, horizontalOffset, viewportWidth, height, isWaveform);
+            BeatGridDrawing.Draw(context, owner, TimingTestData.Points([0],[60]), subdivision, 2000, 200, horizontalOffset, viewportWidth, height, isWaveform);
         return drawing.Children.OfType<GeometryDrawing>().ToArray();
     }
 

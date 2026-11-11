@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using System.Windows;
 using System.Windows.Automation;
 using Hitbench.Core.Entities;
@@ -17,7 +18,7 @@ public class WorkstationToolbarHistoryTests
         new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
         var track = new Track { SelectedSampleFileName = "a.wav" };
         var source = new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "audio",
-            new ProjectData { Offsets = [0], BPMs = [120], Tracks = [track] })) };
+            new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), Tracks = [track] })) };
         var vm = new WorkstationPageVM(source, new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay),
             new ImmediateUiScheduler(), new StubSampleFileService(["a.wav"]));
         var page = new WorkstationPage(vm) { FlowDirection = direction };

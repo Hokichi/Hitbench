@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -108,7 +109,7 @@ public class WorkstationPageIntegrationTests
         EnsureResources(theme);
         var track = new Track { SelectedSampleFileName = "a.wav" };
         var source = new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav",
-            new ProjectData { Offsets = [0], BPMs = [120], Tracks = [track] })) };
+            new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), Tracks = [track] })) };
         var vm = new WorkstationPageVM(source, new Hitbench.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), new StubSampleFileService(["a.wav"]));
         var page = new WorkstationPage(vm); page.SetProjectPath("project.json");
         using var view = new InMemoryView(new Window { Content = page, Width = 1100, Height = 800, FlowDirection = direction });
@@ -147,7 +148,7 @@ public class WorkstationPageIntegrationTests
         var node = new Sample { Timestamp = 1000, FileName = "a.wav" };
         var track = new Track { SelectedSampleFileName = "a.wav", Samples = [node] };
         var source = new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav",
-            new ProjectData { Offsets = [0], BPMs = [120], Tracks = [track] })) };
+            new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), Tracks = [track] })) };
         var vm = new WorkstationPageVM(source, new Hitbench.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), new StubSampleFileService(["a.wav"]));
         var page = new WorkstationPage(vm); page.SetProjectPath("project.json");
         using var view = new InMemoryView(new Window { Content = page, Width = 1100, Height = 800 });
@@ -265,7 +266,7 @@ public class WorkstationPageIntegrationTests
         var tracks = Enumerable.Range(0, 100).Select(i => new Track { Name = i.ToString(), IsTrackMuted = i == 99,
             IsTrackSoloed = i == 99 }).ToList();
         var source = new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(
-            new WorkstationSource("map.osu", "audio.wav", new ProjectData { Tracks = tracks, Offsets = [0], BPMs = [120], ControlPoints = [new() { Timestamp = 0 }] })) };
+            new WorkstationSource("map.osu", "audio.wav", new ProjectData { Tracks = tracks, UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints = [new() { Timestamp = 0 }] })) };
         var saves = new DelayedProjectFileService(); saves.Release();
         var vm = new WorkstationPageVM(source, new Hitbench.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay),
             new ImmediateUiScheduler(), projectFiles: saves, saveDelay: (_, _) => Task.CompletedTask);
@@ -298,7 +299,7 @@ public class WorkstationPageIntegrationTests
         EnsureResources(theme);
         var a = new Track { Name = "กลอง " + new string('a', 100), IsTrackMuted = true, IsTrackSoloed = true };
         var b = new Track { Name = "Snare", IsTrackSoloed = true };
-        var json = ProjectDataSerializer.Serialize(new ProjectData { Tracks = [a, b], Offsets = [0], BPMs = [120] });
+        var json = ProjectDataSerializer.Serialize(new ProjectData { Tracks = [a, b], UninheritedPoints = TimingTestData.Points([0], [120]) });
         var source = new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(
             new WorkstationSource("map.osu", "audio.wav", ProjectDataSerializer.Deserialize(json))) };
         var audio = new StubWorkstationAudioService(); var saves = new DelayedProjectFileService(); saves.Release();
@@ -339,7 +340,7 @@ public class WorkstationPageIntegrationTests
     {
         var track = new Track(); var audio = new StubWorkstationAudioService();
         var source = new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(
-            new WorkstationSource("map.osu", "audio.wav", new ProjectData { Tracks = [track], Offsets = [0], BPMs = [120] })) };
+            new WorkstationSource("map.osu", "audio.wav", new ProjectData { Tracks = [track], UninheritedPoints = TimingTestData.Points([0], [120]) })) };
         var vm = new WorkstationPageVM(source, new Hitbench.Services.MarkerPlaybackCoordinator(audio, Task.Delay), new ImmediateUiScheduler());
         var page = new WorkstationPage(vm); page.SetProjectPath("project.json");
         using var view = new InMemoryView(new Window { Content = page, Width = 900, Height = 700 });
@@ -882,7 +883,7 @@ public class WorkstationPageIntegrationTests
     [Test]
     public void TrackGridPlacementAddsSampleFromCurrentTrackControls()
     {
-        var project = new ProjectData { Offsets = [0], BPMs = [60] };
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [60]) };
         var source = new StubWorkstationSourceService
         {
             Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav", project))
@@ -1224,7 +1225,7 @@ public class WorkstationPageIntegrationTests
         var source = new StubWorkstationSourceService
         {
             Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav",
-                new ProjectData { Offsets = [0], BPMs = [120] }))
+                new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]) }))
         };
         var vm = new WorkstationPageVM(source, new Hitbench.Services.MarkerPlaybackCoordinator(audio, (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
         var page = new WorkstationPage(vm);
@@ -1263,7 +1264,7 @@ public class WorkstationPageIntegrationTests
         var source = new StubWorkstationSourceService
         {
             Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav",
-                new ProjectData { Offsets = [0, 800], BPMs = [120, 60] }))
+                new ProjectData { UninheritedPoints = TimingTestData.Points([0, 800], [120, 60]) }))
         };
         var vm = new WorkstationPageVM(source, new Hitbench.Services.MarkerPlaybackCoordinator(audio, (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
         var page = new WorkstationPage(vm);
@@ -1310,7 +1311,7 @@ public class WorkstationPageIntegrationTests
         var source = new StubWorkstationSourceService
         {
             Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav",
-                new ProjectData { Offsets = [0], BPMs = [120] }))
+                new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]) }))
         };
         var vm = new WorkstationPageVM(source, new Hitbench.Services.MarkerPlaybackCoordinator(audio, (duration, token) => Task.Delay(duration, token)), new ImmediateUiScheduler());
         var page = new WorkstationPage(vm);
@@ -1596,7 +1597,7 @@ public class WorkstationPageIntegrationTests
             Assert.That(button.IsEnabled, Is.False);
             completion.SetResult(new WorkstationSource("map.osu", "audio.wav", new ProjectData
             {
-                Offsets = [0], BPMs = [120], Tracks = [track]
+                UninheritedPoints = TimingTestData.Points([0], [120]), Tracks = [track]
             }));
             UiTestPump.Run(page.LoadCompletion);
             view.UpdateLayout();

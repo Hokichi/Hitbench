@@ -34,7 +34,7 @@ public partial class WorkstationPageVM
     {
         if (Project is null || Waveform is null || !IsInteractionReady) return null;
         var current = playback.Latest.Playback;
-        return BeatGridCalculator.GetNearestTimestamp(Project.Offsets, Project.BPMs, Subdivision,
+        return BeatGridCalculator.GetNearestTimestamp(Project.UninheritedPoints, Subdivision,
             current.IsPlaying ? current.Position.TotalMilliseconds : Position.TotalMilliseconds, Waveform.Duration.TotalMilliseconds);
     }
 

@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using Hitbench.Core.Entities;
 using Hitbench.Core.Enums;
 using Hitbench.Resources.DataModels;
@@ -13,7 +14,7 @@ public class OHsExportInputTests
     [Test]
     public void NegativeOffsetAnchorExportsAtItsOriginalTimestamp()
     {
-        var project = new ProjectData { Offsets = [-100], BPMs = [120],
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([-100], [120]),
             ControlPoints = [new() { Timestamp = -100, Volume = 40, Sampleset = "Drum" }],
             Tracks = [new() { Samples = [new() { Timestamp = 0, FileName = "hit.wav" }] }] };
         var input = OHsExportInputFactory.Create(project, Map(), Options(), default);

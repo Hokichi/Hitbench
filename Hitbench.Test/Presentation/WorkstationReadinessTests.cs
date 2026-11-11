@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using Hitbench.Services;
 using Hitbench.ViewModels.Shell;
 
@@ -13,7 +14,7 @@ public class WorkstationReadinessTests
         {
             Load = (_, _) => Task.FromResult(new Hitbench.Core.Entities.WorkstationSource("map", "song", new Hitbench.Core.Entities.ProjectData
             {
-                Offsets = [0], BPMs = [120], Tracks = Enumerable.Range(0, count).Select(_ => new Hitbench.Core.Entities.Track()).ToList()
+                UninheritedPoints = TimingTestData.Points([0], [120]), Tracks = Enumerable.Range(0, count).Select(_ => new Hitbench.Core.Entities.Track()).ToList()
             }))
         };
         var vm = new WorkstationPageVM(source,

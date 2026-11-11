@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using CommunityToolkit.Mvvm.Messaging;
 using Hitbench.Services;
 using Hitbench.ViewModels.Shell;
@@ -24,7 +25,7 @@ public sealed class WorkstationSampleImportTests
         var source = new StubWorkstationSourceService
         {
             Load = (_, _) => Task.FromResult(new Hitbench.Core.Entities.WorkstationSource("map.osu", "audio.wav",
-                new Hitbench.Core.Entities.ProjectData { BeatmapPath = directory, Offsets = [0], BPMs = [120] }))
+                new Hitbench.Core.Entities.ProjectData { BeatmapPath = directory, UninheritedPoints = TimingTestData.Points([0], [120]) }))
         };
         var dialog = new StubSampleFileDialogService(Array.Empty<string>());
         var model = new WorkstationPageVM(source, new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), MarkerPlaybackCoordinator.DelayAsync),

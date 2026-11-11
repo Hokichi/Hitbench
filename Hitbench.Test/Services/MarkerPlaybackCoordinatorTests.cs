@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using Hitbench.Services;
 using Hitbench.Test.Presentation;
 
@@ -10,7 +11,7 @@ public class MarkerPlaybackCoordinatorTests
     {
         var audio = new StubWorkstationAudioService();
         await using var coordinator = new MarkerPlaybackCoordinator(audio, (_, token) => Task.Delay(Timeout.Infinite, token));
-        await coordinator.ConfigureAsync(new PlaybackMarkerClock([0], [120]), TimeSpan.FromSeconds(10), default);
+        await coordinator.ConfigureAsync(new PlaybackMarkerClock(TimingTestData.Points([0], [120])), TimeSpan.FromSeconds(10), default);
         var revision = coordinator.Presentation.Revision;
         await coordinator.PlayAsync(default); Assert.That(coordinator.Presentation.Revision, Is.GreaterThan(revision));
         revision = coordinator.Presentation.Revision;
@@ -47,7 +48,7 @@ public class MarkerPlaybackCoordinatorTests
     {
         var audio = new StubWorkstationAudioService();
         await using var coordinator = new MarkerPlaybackCoordinator(audio, MarkerPlaybackCoordinator.DelayAsync);
-        await coordinator.ConfigureAsync(new PlaybackMarkerClock([0], [60]), TimeSpan.FromSeconds(10), default);
+        await coordinator.ConfigureAsync(new PlaybackMarkerClock(TimingTestData.Points([0], [60])), TimeSpan.FromSeconds(10), default);
         for (var index = 0; index < 10; index++)
         {
             await coordinator.PlayAsync(default);
@@ -65,11 +66,11 @@ public class MarkerPlaybackCoordinatorTests
     {
         var audio = new StubWorkstationAudioService();
         await using var coordinator = new MarkerPlaybackCoordinator(audio, (_, token) => Task.Delay(Timeout.Infinite, token));
-        await coordinator.ConfigureAsync(new PlaybackMarkerClock([0], [120]), TimeSpan.FromSeconds(10), default);
+        await coordinator.ConfigureAsync(new PlaybackMarkerClock(TimingTestData.Points([0], [120])), TimeSpan.FromSeconds(10), default);
         await coordinator.PlayAsync(default);
         var previous = coordinator.Latest.Generation;
         await coordinator.StopAsync(default);
-        await coordinator.ConfigureAsync(new PlaybackMarkerClock([0], [240]), TimeSpan.FromSeconds(10), default);
+        await coordinator.ConfigureAsync(new PlaybackMarkerClock(TimingTestData.Points([0], [240])), TimeSpan.FromSeconds(10), default);
         await coordinator.PlayAsync(default);
         Assert.That(coordinator.Latest.Generation, Is.GreaterThan(previous));
         Assert.That(coordinator.Latest.Playback.Position, Is.EqualTo(TimeSpan.Zero));
@@ -88,7 +89,7 @@ public class MarkerPlaybackCoordinatorTests
             waiting.Release();
             await wake.WaitAsync(token);
         });
-        await coordinator.ConfigureAsync(new PlaybackMarkerClock([0], [120]), TimeSpan.FromSeconds(10), default);
+        await coordinator.ConfigureAsync(new PlaybackMarkerClock(TimingTestData.Points([0], [120])), TimeSpan.FromSeconds(10), default);
         await coordinator.PlayAsync(default);
         await waiting.WaitAsync().WaitAsync(TimeSpan.FromSeconds(3));
         audio.ReadingSnapshot = () => { entered.TrySetResult(); if (!release.Wait(TimeSpan.FromSeconds(3))) throw new TimeoutException(); };
@@ -109,7 +110,7 @@ public class MarkerPlaybackCoordinatorTests
     {
         var audio = new StubWorkstationAudioService { Playing = () => throw new IOException("play failed") };
         await using var coordinator = new MarkerPlaybackCoordinator(audio, (_, token) => Task.Delay(Timeout.Infinite, token));
-        await coordinator.ConfigureAsync(new PlaybackMarkerClock([0], [120]), TimeSpan.FromSeconds(10), default);
+        await coordinator.ConfigureAsync(new PlaybackMarkerClock(TimingTestData.Points([0], [120])), TimeSpan.FromSeconds(10), default);
         Assert.ThrowsAsync<IOException>(async () => await coordinator.PlayAsync(default));
         Assert.That(audio.Snapshot.IsPlaying, Is.False);
         Assert.That(coordinator.Latest.Playback.Error, Is.EqualTo("play failed"));
@@ -121,7 +122,7 @@ public class MarkerPlaybackCoordinatorTests
 
     [Test]
     public void BoundaryWaitNeverBecomesASynchronousSpin() =>
-        Assert.That(new PlaybackMarkerClock([0], [240]).GetDelayToNextBoundary(TimeSpan.FromMilliseconds(2)),
+        Assert.That(new PlaybackMarkerClock(TimingTestData.Points([0], [240])).GetDelayToNextBoundary(TimeSpan.FromMilliseconds(2)),
             Is.GreaterThanOrEqualTo(TimeSpan.FromMilliseconds(1)));
 
     [Test]
@@ -135,7 +136,7 @@ public class MarkerPlaybackCoordinatorTests
             stepped.Release();
             await wake.WaitAsync(token);
         });
-        await coordinator.ConfigureAsync(new PlaybackMarkerClock([0], [120]), TimeSpan.FromSeconds(10), default);
+        await coordinator.ConfigureAsync(new PlaybackMarkerClock(TimingTestData.Points([0], [120])), TimeSpan.FromSeconds(10), default);
         await coordinator.PlayAsync(default);
         await stepped.WaitAsync().WaitAsync(TimeSpan.FromSeconds(3));
         audio.Snapshot = audio.Snapshot with { Position = TimeSpan.FromMilliseconds(30) };
@@ -155,7 +156,7 @@ public class MarkerPlaybackCoordinatorTests
     {
         var audio = new StubWorkstationAudioService();
         await using var coordinator = new MarkerPlaybackCoordinator(audio, (_, token) => Task.Delay(Timeout.Infinite, token));
-        await coordinator.ConfigureAsync(new PlaybackMarkerClock([0], [120]), TimeSpan.FromSeconds(10), default);
+        await coordinator.ConfigureAsync(new PlaybackMarkerClock(TimingTestData.Points([0], [120])), TimeSpan.FromSeconds(10), default);
         audio.Snapshot = audio.Snapshot with { Position = TimeSpan.FromMilliseconds(30) };
         await coordinator.PlayAsync(default);
         await coordinator.PauseAsync(default);
@@ -168,7 +169,7 @@ public class MarkerPlaybackCoordinatorTests
     [Test]
     public void DelayHonorsTimingTransitionBeforeNextBoundary()
     {
-        var clock = new PlaybackMarkerClock([0, 7], [120, 240]);
+        var clock = new PlaybackMarkerClock(TimingTestData.Points([0, 7], [120, 240]));
         Assert.That(clock.GetDelayToNextBoundary(TimeSpan.FromMilliseconds(6)), Is.EqualTo(TimeSpan.FromMilliseconds(1)));
         Assert.That(clock.GetPosition(TimeSpan.FromMilliseconds(10), TimeSpan.FromSeconds(1)), Is.EqualTo(TimeSpan.FromTicks(90833)));
     }

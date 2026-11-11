@@ -14,8 +14,7 @@ public static class BeatmapTimingReader
     public static void Populate(ProjectData project, string beatmapPath, CancellationToken token)
     {
         ArgumentNullException.ThrowIfNull(project);
-        var offsets = new List<int>();
-        var bpms = new List<int>();
+        var points = new List<UninheritedPoint>();
         var inTimingPoints = false;
         var lineNumber = 0;
 
@@ -47,12 +46,10 @@ public static class BeatmapTimingReader
             if (roundedOffset < int.MinValue || roundedOffset > int.MaxValue ||
                 !double.IsFinite(roundedBpm) || roundedBpm < int.MinValue || roundedBpm > int.MaxValue)
                 throw InvalidRow(beatmapPath, lineNumber, "rounded timing values must fit in Int32");
-            offsets.Add(checked((int)roundedOffset));
-            bpms.Add(checked((int)roundedBpm));
+            points.Add(new UninheritedPoint { Offset = checked((int)roundedOffset), BPM = checked((int)roundedBpm) });
         }
 
-        project.Offsets = offsets;
-        project.BPMs = bpms;
+        project.UninheritedPoints = points;
     }
 
     private static InvalidDataException InvalidRow(string path, int lineNumber, string reason) =>

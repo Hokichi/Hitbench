@@ -12,7 +12,7 @@ public sealed class InstrumentalArrangementDrawerVMTests
     {
         var context = new InstrumentalTrackContext("project.json", null, Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
         var vm = new InstrumentalArrangementDrawerVM(InstrumentalArrangementTestContext.Create(
-            new(context, "Piano", 100, new Dictionary<string, string>(), [], null, 0), [0], [120], TimeSpan.Zero, 4, 32),
+            new(context, "Piano", 100, new Dictionary<string, string>(), [], null, 0), TimingTestData.Points([0], [120]), TimeSpan.Zero, 4, 32),
             new WeakReferenceMessenger(), new ImmediateUiScheduler());
         try
         {
@@ -30,7 +30,7 @@ public sealed class InstrumentalArrangementDrawerVMTests
         var context = new InstrumentalTrackContext("project.json", null, Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
         var messenger = new WeakReferenceMessenger();
         var vm = new InstrumentalArrangementDrawerVM(InstrumentalArrangementTestContext.Create(
-            new(context, "Piano", 100, new Dictionary<string, string>(), [], null, 0), [0], [120], TimeSpan.Zero, 4, 32), messenger, new ImmediateUiScheduler());
+            new(context, "Piano", 100, new Dictionary<string, string>(), [], null, 0), TimingTestData.Points([0], [120]), TimeSpan.Zero, 4, 32), messenger, new ImmediateUiScheduler());
         var requests = new List<InstrumentalTrackContext>();
         messenger.Register<OHsInstrumentalKeysMappingRequestedMessage>(requests, (_, m) =>
         {
@@ -52,7 +52,7 @@ public sealed class InstrumentalArrangementDrawerVMTests
     {
         var context = new InstrumentalTrackContext("project.json", null, Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
         var messenger = new WeakReferenceMessenger();
-        OHsInstrumentalTimelineSnapshot Timeline(long revision, bool mode) => new(context, revision, TimeSpan.FromSeconds(10), TimeSpan.Zero, false, true, true, [0], [120], 32, 3, true, null, mode);
+        OHsInstrumentalTimelineSnapshot Timeline(long revision, bool mode) => new(context, revision, TimeSpan.FromSeconds(10), TimeSpan.Zero, false, true, true, TimingTestData.Points([0], [120]), 32, 3, true, null, mode);
         var vm = new InstrumentalArrangementDrawerVM(new(new(context, "Piano", 100, new Dictionary<string, string>(), [], null, 0), Timeline(0, false)), messenger, new ImmediateUiScheduler());
         await vm.InitializeAsync(default);
         try
@@ -77,7 +77,7 @@ public sealed class InstrumentalArrangementDrawerVMTests
             new(other ?? context, "Piano", 100, new Dictionary<string, string>(), [], null, revision, trackColorIndex: index, trackColor: index == 1 ? "#123456" : null);
         var messenger = new WeakReferenceMessenger();
         var vm = new InstrumentalArrangementDrawerVM(InstrumentalArrangementTestContext.Create(Snapshot(8, 0),
-            [0], [120], TimeSpan.Zero, 4, 32), messenger, new ImmediateUiScheduler());
+            TimingTestData.Points([0], [120]), TimeSpan.Zero, 4, 32), messenger, new ImmediateUiScheduler());
         await vm.InitializeAsync(default);
         var notifications = new List<string?>();
         vm.PropertyChanged += (_, e) => notifications.Add(e.PropertyName);
@@ -99,7 +99,7 @@ public sealed class InstrumentalArrangementDrawerVMTests
         var ctx = new InstrumentalTrackContext("project.json", null, Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
         OHsInstrumentalTimelineSnapshot Timeline(long revision, int ms, InstrumentalTrackContext? context = null) =>
             new(context ?? ctx, revision, TimeSpan.FromSeconds(10), TimeSpan.FromMilliseconds(ms), true,
-                true, false, [0], [120], 32, 3, true, null);
+                true, false, TimingTestData.Points([0], [120]), 32, 3, true, null);
         var messenger = new WeakReferenceMessenger();
         var vm = new InstrumentalArrangementDrawerVM(new(new(ctx, "Piano", 100,
             new Dictionary<string, string>(), [], null, 0), Timeline(0, 0)), messenger, new ImmediateUiScheduler());

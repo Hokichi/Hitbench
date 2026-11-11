@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using Hitbench.Core.Entities;
 using Hitbench.Resources.Messages;
 using Hitbench.Services;
@@ -10,7 +11,7 @@ public class WorkstationControlPointStateTests
     [Test]
     public async Task ResnapCannotMoveNegativeOffsetAnchor()
     {
-        var project = new ProjectData { Offsets = [-100], BPMs = [120] };
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([-100], [120]) };
         var owner = Create(project, new());
         try
         {
@@ -25,7 +26,7 @@ public class WorkstationControlPointStateTests
     [TestCase(-100)]
     public async Task LegacyLoadSeedsPersistsAndProtectsOffsetPoint(int offset)
     {
-        var project = new ProjectData { Offsets = [offset], BPMs = [120] };
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([offset], [120]) };
         var audio = new StubWorkstationAudioService();
         var files = new DelayedProjectFileService(); files.Release();
         var owner = Create(project, audio, files, includeOffsetAnchor: false);
@@ -73,7 +74,7 @@ public class WorkstationControlPointStateTests
     [Test]
     public async Task ProjectContextAllowsEditingWithoutOpeningUiAndPreservesLegacyVolumes()
     {
-        var project = new ProjectData { Offsets = [0], BPMs = [120], ControlPoints =
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints =
             [new() { Volume = 0 }, new() { Timestamp = 500, Volume = 4 }, new() { Timestamp = 1000, Volume = 5 }, new() { Timestamp = 1500, Volume = 100 }] };
         var audio = new StubWorkstationAudioService(); var files = new DelayedProjectFileService();
         var owner = Create(project, audio, files);
@@ -96,7 +97,7 @@ public class WorkstationControlPointStateTests
     [TestCase(-1)][TestCase(0)][TestCase(4)][TestCase(101)][TestCase(50.5)]
     public async Task InvalidExplicitEditsDoNotPublishOrSave(decimal volume)
     {
-        var project = new ProjectData { Offsets = [0], BPMs = [120], ControlPoints = [new() { Volume = 50 }] };
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints = [new() { Volume = 50 }] };
         var audio = new StubWorkstationAudioService(); var files = new DelayedProjectFileService(); var owner = Create(project, audio, files);
         try
         {
@@ -112,7 +113,7 @@ public class WorkstationControlPointStateTests
     [Test]
     public async Task AcceptedEditsAndDeletePublishBeforeBlockedSaveAndDrainInOrder()
     {
-        var project = new ProjectData { Offsets = [0], BPMs = [120], ControlPoints = [new() { Timestamp = 500, Volume = 50 }] };
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints = [new() { Timestamp = 500, Volume = 50 }] };
         var audio = new StubWorkstationAudioService(); var files = new DelayedProjectFileService(); var owner = Create(project, audio, files);
         try
         {
@@ -139,7 +140,7 @@ public class WorkstationControlPointStateTests
     [Test]
     public async Task SaveFailureRetryKeepsAcceptedStateAndDoesNotAdvancePointRevision()
     {
-        var project = new ProjectData { Offsets = [0], BPMs = [120], ControlPoints = [new()] };
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints = [new()] };
         var files = new FailOnceProjectFileService(); var audio = new StubWorkstationAudioService(); var owner = Create(project, audio, files);
         try
         {
@@ -159,7 +160,7 @@ public class WorkstationControlPointStateTests
     [Test]
     public async Task ReloadAndDeactivateRejectOldContext()
     {
-        var project = new ProjectData { Offsets = [0], BPMs = [120], ControlPoints = [new() { Volume = 50 }] };
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints = [new() { Volume = 50 }] };
         var owner = Create(project, new());
         try
         {
@@ -178,7 +179,7 @@ public class WorkstationControlPointStateTests
     [Test]
     public async Task CancelledReturnReactivatesEditingWithNewContextAndRejectsOldEditor()
     {
-        var project = new ProjectData { Offsets = [0], BPMs = [120], ControlPoints = [new() { Volume = 50 }] };
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints = [new() { Volume = 50 }] };
         var owner = Create(project, new());
         try
         {

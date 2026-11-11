@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using CommunityToolkit.Mvvm.Messaging;
 using Hitbench.Core.Entities;
 using Hitbench.Resources.DataModels;
@@ -14,7 +15,7 @@ public sealed class WorkstationDockedSamplesTests
     {
         var node = new Sample { FileName = "hit.wav", Timestamp = 125 };
         var track = new Track { SelectedSampleFileName = "hit.wav", Samples = [node] };
-        var project = new ProjectData { Offsets = [0], BPMs = [120], Tracks = [track], ControlPoints = [new() { Volume = 50 }] };
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), Tracks = [track], ControlPoints = [new() { Volume = 50 }] };
         var messenger = new WeakReferenceMessenger();
         var opened = new TaskCompletionSource<SampleManagementContext>(TaskCreationOptions.RunContinuationsAsynchronously);
         var close = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);

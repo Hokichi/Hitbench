@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using CommunityToolkit.Mvvm.Messaging;
 using Hitbench.Core.Entities;
 using Hitbench.Services;
@@ -46,7 +47,7 @@ public class KeysMappingDrawerVMTests
     public async Task ValidMappingAutosavesAndInvalidDraftPreservesOldFile(bool folderScanFails)
     {
         var track = new InstrumentalTrack { KeyFiles = new() { ["C1"] = "old.wav" } };
-        var project = new ProjectData { Tracks = [track], Offsets = [0], BPMs = [120] };
+        var project = new ProjectData { Tracks = [track], UninheritedPoints = TimingTestData.Points([0], [120]) };
         var messenger = new WeakReferenceMessenger(); var dialogs = new StubInstrumentalTrackDialogService();
         var files = new StubSampleFileService(["old.wav"]);
         var audio = new StubWorkstationAudioService();

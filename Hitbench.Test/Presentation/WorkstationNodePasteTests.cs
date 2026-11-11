@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using Hitbench.Core.Entities;
 using Hitbench.Services;
 using Hitbench.ViewModels.Shell;
@@ -16,7 +17,7 @@ public class WorkstationNodePasteTests
         node = new Sample { Timestamp = 1000, FileName = "a.wav" };
         source = new Track { SelectedSampleFileName = "a.wav", Samples = [node] };
         destination = new Track { SelectedSampleFileName = "b.wav" };
-        var data = new ProjectData { Offsets = [0], BPMs = [120], Tracks = [source, destination] };
+        var data = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), Tracks = [source, destination] };
         dialogs = new StubNodePasteDialogService();
         vm = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav", data)) },
             new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), new StubSampleFileService(["a.wav", "b.wav"]), nodePasteDialog: dialogs, trackRemovalDialog: new StubTrackRemovalDialogService { Confirm = _ => Task.FromResult(true) });
@@ -50,7 +51,7 @@ public class WorkstationNodePasteTests
     {
         var other = new Sample { Timestamp = 1001, FileName = "a.wav" }; source.Samples.Add(other);
         vm.SetNodeSelection([node, other]); vm.CopySelectedNodes();
-        vm.Project!.Offsets = [0, 2500]; vm.Project.BPMs = [120, 60];
+        vm.Project!.UninheritedPoints = TimingTestData.Replace(vm.Project!.UninheritedPoints, [0, 2500], true); vm.Project.UninheritedPoints = TimingTestData.Replace(vm.Project.UninheritedPoints, [120, 60], false);
         await vm.SeekCommand.ExecuteAsync(TimeSpan.FromMilliseconds(3010));
         Assert.That(await vm.PasteCopiedNodesAsync(), Is.True);
         Assert.That(vm.SelectedSamples.Select(n => n.Timestamp).Order(), Is.EqualTo(new[] { 3000, 3001 }));
@@ -125,7 +126,7 @@ public class WorkstationNodePasteTests
         if (reason == "collision") source.Samples.Add(new Sample { Timestamp = 3000, FileName = "a.wav" });
         if (reason == "track") { await vm.RemoveTrackCommand.ExecuteAsync(source); vm.SelectedTrack = null; }
         if (reason == "file") vm.SampleFiles.Remove("a.wav");
-        if (reason == "grid") { vm.Project!.Offsets = [11000]; vm.Project.BPMs = [120]; }
+        if (reason == "grid") { vm.Project!.UninheritedPoints = TimingTestData.Replace(vm.Project!.UninheritedPoints, [11000], true); vm.Project.UninheritedPoints = TimingTestData.Replace(vm.Project.UninheritedPoints, [120], false); }
         var selected = vm.SelectedSamples.ToArray(); var before = vm.Tracks.SelectMany(t => t.Samples).ToArray();
         var revision = vm.SamplesRevision;
         Assert.That(await vm.PasteCopiedNodesAsync(), Is.False);

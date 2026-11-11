@@ -1,7 +1,5 @@
 namespace Hitbench.Resources.DataModels;
-
-public sealed class OHsTimingSnapshot(IReadOnlyList<int> offsets, IReadOnlyList<int> bpms)
+public sealed class OHsTimingSnapshot(IReadOnlyList<Hitbench.Core.Entities.UninheritedPoint> uninheritedPoints)
 {
-    public IReadOnlyList<int> Offsets { get; } = Array.AsReadOnly(offsets.ToArray());
-    public IReadOnlyList<int> Bpms { get; } = Array.AsReadOnly(bpms.ToArray());
+ public IReadOnlyList<Hitbench.Core.Entities.UninheritedPoint> UninheritedPoints { get; } = Array.AsReadOnly(uninheritedPoints.ToArray());
 }

@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using Hitbench.Core.Entities;
 using Hitbench.Core.Enums;
 using Hitbench.Resources.DataModels;
@@ -212,7 +213,7 @@ public class OHsExportControlPointSeparationTests
             ? new InstrumentalTrack { KeyFiles = new() { ["C4"] = "a.wav" }, Notes = times.Select(t => new InstrumentalNote { Key = "C4", Timestamp = t }).ToList() }
             : new Track { Samples = times.Select(t => new Sample { FileName = "a.wav", Timestamp = t }).ToList() };
         track.Volume = gain; track.Addition = "Normal"; track.SampleType = SampleType.Normal;
-        return OHsExportInputFactory.Create(new ProjectData { Offsets = [offset], BPMs = [120], ControlPoints = controls.ToList(), Tracks = [track] },
+        return OHsExportInputFactory.Create(new ProjectData { UninheritedPoints = TimingTestData.Points([offset], [120]), ControlPoints = controls.ToList(), Tracks = [track] },
             map ?? OHsExportBeatmap.Parse("[TimingPoints]\n0,500,4,1,1,100,1,0\n"), new("Hitsounds", 1, ".wav", ".wav", false), default);
     }
 }

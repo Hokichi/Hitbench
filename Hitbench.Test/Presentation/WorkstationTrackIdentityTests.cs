@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using CommunityToolkit.Mvvm.Messaging;
 using Hitbench.Core.Entities;
 using Hitbench.Resources.DataModels;
@@ -12,7 +13,7 @@ public sealed class WorkstationTrackIdentityTests
     public async Task SnapshotUsesCurrentDisplayedIndexAfterReorder()
     {
         var instrument = new InstrumentalTrack { KeyFiles = new() { ["C4"] = "piano.wav" } };
-        var project = new ProjectData { Offsets = [0], BPMs = [120],
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]),
             Tracks = [.. Enumerable.Range(0, 8).Select(_ => new Track()), instrument] };
         var indices = new List<int>();
         var dialogs = new StubInstrumentalTrackDialogService

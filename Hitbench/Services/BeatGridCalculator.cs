@@ -6,19 +6,19 @@ public static class BeatGridCalculator
 {
     private static readonly HashSet<int> Supported = [1, 2, 3, 4, 5, 6, 8, 12, 16];
 
-    internal static (int Offset, int Bpm)[]? PrepareTiming(IReadOnlyList<int> offsets, IReadOnlyList<int> bpms)
+    internal static (int Offset, int Bpm)[]? PrepareTiming(IReadOnlyList<UninheritedPoint> uninheritedPoints)
     {
-        if (offsets.Count == 0 || offsets.Count != bpms.Count || bpms.Any(bpm => bpm <= 0)) return null;
-        return offsets.Select((offset, index) => (Offset: offset, Bpm: bpms[index], Index: index))
+        if (uninheritedPoints.Count == 0 || uninheritedPoints.Any(point => point.BPM <= 0)) return null;
+        return uninheritedPoints.Select((point, index) => (Offset: point.Offset, Bpm: point.BPM, Index: index))
             .OrderBy(item => item.Offset).ThenBy(item => item.Index)
             .GroupBy(item => item.Offset).Select(group => (group.Last().Offset, group.Last().Bpm)).ToArray();
     }
 
-    public static int? GetNearestTimestamp(IReadOnlyList<int> offsets, IReadOnlyList<int> bpms,
+    public static int? GetNearestTimestamp(IReadOnlyList<UninheritedPoint> uninheritedPoints,
         int subdivision, double requestedMilliseconds, double durationMilliseconds,
         int minimumTimestamp = 0, int maximumTimestamp = int.MaxValue)
     {
-        var segments = PrepareTiming(offsets, bpms);
+        var segments = PrepareTiming(uninheritedPoints);
         return segments is null ? null : GetNearestTimestamp(segments.AsSpan(), subdivision, requestedMilliseconds, durationMilliseconds, minimumTimestamp, maximumTimestamp);
     }
 
@@ -66,15 +66,15 @@ public static class BeatGridCalculator
         return result;
     }
 
-    public static BeatInterval? GetContainingInterval(IReadOnlyList<int> offsets, IReadOnlyList<int> bpms,
+    public static BeatInterval? GetContainingInterval(IReadOnlyList<UninheritedPoint> uninheritedPoints,
         int subdivision, double positionMilliseconds, double durationMilliseconds)
     {
-        if (offsets.Count == 0 || offsets.Count != bpms.Count || !Supported.Contains(subdivision) ||
-            bpms.Any(bpm => bpm <= 0) || !double.IsFinite(positionMilliseconds) ||
+        if (uninheritedPoints.Count == 0 || !Supported.Contains(subdivision) ||
+            uninheritedPoints.Any(point => point.BPM <= 0) || !double.IsFinite(positionMilliseconds) ||
             !double.IsFinite(durationMilliseconds) || durationMilliseconds <= 0 ||
             positionMilliseconds < 0 || positionMilliseconds >= durationMilliseconds) return null;
 
-        var segments = offsets.Select((offset, index) => (Offset: offset, Bpm: bpms[index], Index: index))
+        var segments = uninheritedPoints.Select((point, index) => (Offset: point.Offset, Bpm: point.BPM, Index: index))
             .OrderBy(item => item.Offset).ThenBy(item => item.Index)
             .GroupBy(item => item.Offset).Select(group => group.Last()).ToArray();
         var segmentIndex = Array.FindLastIndex(segments, segment => segment.Offset <= positionMilliseconds);
@@ -95,13 +95,13 @@ public static class BeatGridCalculator
         return new BeatInterval(start, end);
     }
 
-    public static TimeSpan? GetAdjacentPosition(IReadOnlyList<int> offsets, IReadOnlyList<int> bpms,
+    public static TimeSpan? GetAdjacentPosition(IReadOnlyList<UninheritedPoint> uninheritedPoints,
         int subdivision, TimeSpan position, TimeSpan duration, bool forward)
     {
-        if (offsets.Count == 0 || offsets.Count != bpms.Count || !Supported.Contains(subdivision) ||
-            bpms.Any(bpm => bpm <= 0) || duration <= TimeSpan.Zero) return null;
+        if (uninheritedPoints.Count == 0 || !Supported.Contains(subdivision) ||
+            uninheritedPoints.Any(point => point.BPM <= 0) || duration <= TimeSpan.Zero) return null;
 
-        var segments = offsets.Select((offset, index) => (Offset: offset, Bpm: bpms[index], Index: index))
+        var segments = uninheritedPoints.Select((point, index) => (Offset: point.Offset, Bpm: point.BPM, Index: index))
             .OrderBy(item => item.Offset).ThenBy(item => item.Index)
             .GroupBy(item => item.Offset).Select(group => group.Last()).ToArray();
         TimeSpan? best = null;
@@ -150,14 +150,14 @@ public static class BeatGridCalculator
         return best;
     }
 
-    public static IReadOnlyList<BeatGridLine> GetLines(IReadOnlyList<int> offsets, IReadOnlyList<int> bpms,
+    public static IReadOnlyList<BeatGridLine> GetLines(IReadOnlyList<UninheritedPoint> uninheritedPoints,
         int subdivision, double visibleStartMs, double visibleEndMs)
     {
-        if (offsets.Count == 0 || offsets.Count != bpms.Count || !Supported.Contains(subdivision) ||
+        if (uninheritedPoints.Count == 0 || !Supported.Contains(subdivision) ||
             !double.IsFinite(visibleStartMs) || !double.IsFinite(visibleEndMs) || visibleEndMs < visibleStartMs ||
-            bpms.Any(bpm => bpm <= 0)) return [];
+            uninheritedPoints.Any(point => point.BPM <= 0)) return [];
 
-        var segments = offsets.Select((offset, index) => (Offset: offset, Bpm: bpms[index], Index: index))
+        var segments = uninheritedPoints.Select((point, index) => (Offset: point.Offset, Bpm: point.BPM, Index: index))
             .OrderBy(item => item.Offset).ThenBy(item => item.Index)
             .GroupBy(item => item.Offset).Select(group => group.Last()).ToArray();
         var result = new List<BeatGridLine>();
@@ -169,7 +169,7 @@ public static class BeatGridCalculator
             if (start > end) continue;
             var interval = 60000d / segment.Bpm / subdivision;
             if ((end - start) / interval > 100000)
-                return subdivision == 1 ? [] : GetLines(offsets, bpms, 1, visibleStartMs, visibleEndMs);
+                return subdivision == 1 ? [] : GetLines(uninheritedPoints, 1, visibleStartMs, visibleEndMs);
             var firstTick = Math.Max(0L, (long)Math.Ceiling((start - segment.Offset) / interval - 1e-9));
             var lastTick = (long)Math.Floor((end - segment.Offset) / interval + 1e-9);
             for (var tick = firstTick; tick <= lastTick; tick++)

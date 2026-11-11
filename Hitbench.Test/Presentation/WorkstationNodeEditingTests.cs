@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using Hitbench.Core.Entities;
 using Hitbench.Services;
 using Hitbench.Services.ProjectFiles;
@@ -64,7 +65,7 @@ public class WorkstationNodeEditingTests
         c = new Sample { Timestamp = 1125, FileName = "b.wav" };
         first = new Track { SelectedSampleFileName = "a.wav", Samples = [a, b] };
         second = new Track { SelectedSampleFileName = "b.wav", Samples = [c] };
-        var project = new ProjectData { Offsets = [0], BPMs = [120], Tracks = [first, second] };
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), Tracks = [first, second] };
         var source = new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav", project)) };
         audio = new StubWorkstationAudioService();
         saves = new DelayedProjectFileService(); saves.Release();
@@ -236,7 +237,7 @@ public class WorkstationNodeEditingTests
         Assert.That(new[] { a.Timestamp, b.Timestamp, c.Timestamp }, Is.EqualTo(new[] { 1125, 1375, 1250 }));
         Assert.That(await vm.MoveSelectedNodesAsync(false), Is.True);
         Assert.That(a.Timestamp, Is.EqualTo(1000));
-        vm.Project!.BPMs = [123]; a.Timestamp = 122; b.Timestamp = 366;
+        vm.Project!.UninheritedPoints = TimingTestData.Replace(vm.Project!.UninheritedPoints, [123], false); a.Timestamp = 122; b.Timestamp = 366;
         vm.SetNodeSelection([a, b]);
         Assert.That(await vm.MoveSelectedNodesAsync(false), Is.True);
         Assert.That(new[] { a.Timestamp, b.Timestamp }, Is.EqualTo(new[] { 0, 244 }));

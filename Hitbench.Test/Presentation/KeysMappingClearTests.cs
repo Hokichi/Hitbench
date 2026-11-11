@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using CommunityToolkit.Mvvm.Messaging;
 using Hitbench.Core.Entities;
 using Hitbench.Resources.Messages;
@@ -12,7 +13,7 @@ public class KeysMappingClearTests
         var track = new InstrumentalTrack { KeyFiles = new() { ["C5"] = "piano.wav" }, Notes = [new() { Key = "C5", Timestamp = 125 }] };
         var messenger = new WeakReferenceMessenger();
         var dialogs = new StubInstrumentalTrackDialogService();
-        var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [track], Offsets = [0], BPMs = [120] })) }, new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), messenger: messenger, instrumentDialogs: dialogs);
+        var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [track], UninheritedPoints = TimingTestData.Points([0], [120]) })) }, new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), messenger: messenger, instrumentDialogs: dialogs);
         dialogs.Mapping = (snapshot, _) => {
             messenger.Send(new OHsClearInstrumentalKeyMappingsRequestedMessage(snapshot.Context, Guid.NewGuid(), snapshot.Revision - (stale ? 1 : 0)));
             Assert.That(track.KeyFiles.Count, Is.EqualTo(stale ? 1 : 0));
@@ -27,7 +28,7 @@ public class KeysMappingClearTests
     {
         var track = new InstrumentalTrack { KeyFiles = new() { ["C5"] = "piano.wav" }, Notes = [new() { Key = "C5", Timestamp = 125 }] };
         var messenger = new WeakReferenceMessenger(); var dialogs = new StubInstrumentalTrackDialogService();
-        var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map","song",new ProjectData { Tracks = [track],Offsets=[0],BPMs=[120] })) },new MarkerPlaybackCoordinator(new StubWorkstationAudioService(),Task.Delay),new ImmediateUiScheduler(),messenger:messenger,instrumentDialogs:dialogs);
+        var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map","song",new ProjectData { Tracks = [track],UninheritedPoints = TimingTestData.Points([0], [120]) })) },new MarkerPlaybackCoordinator(new StubWorkstationAudioService(),Task.Delay),new ImmediateUiScheduler(),messenger:messenger,instrumentDialogs:dialogs);
         dialogs.Mapping = async (snapshot,_) => {
             var vm = new Hitbench.ViewModels.Popups.KeysMappingDrawerVM(snapshot,messenger,new ImmediateUiScheduler(),new StubSampleFileService([]),new StubSampleFileDialogService((string?)null),confirmClearMappings:(_,_)=>Task.FromResult(confirm));
             try {

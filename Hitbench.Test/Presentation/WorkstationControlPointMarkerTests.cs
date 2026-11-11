@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using Hitbench.Core.Entities;
 using Hitbench.Resources.Messages;
 using Hitbench.Services;
@@ -10,7 +11,7 @@ public class WorkstationControlPointMarkerTests
     [Test]
     public async Task LoadedAndEditedTimestampSnapshotsAreImmutableDistinctAndLive()
     {
-        var project = new ProjectData { Offsets = [0], BPMs = [120], ControlPoints =
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints =
             [new() { Timestamp = 500, Volume = 50 }, new() { Timestamp = 500, Volume = 75 }, new() { Timestamp = 1500, Volume = 20 }] };
         var owner = WorkstationControlPointStateTests.Create(project, new());
         try

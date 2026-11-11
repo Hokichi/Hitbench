@@ -1,3 +1,4 @@
+using Hitbench.Core.Entities;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
@@ -29,8 +30,7 @@ public sealed partial class InstrumentalArrangementDrawerVM : ObservableObject
     public int TrackColorIndex => snapshot.TrackColorIndex;
     public IReadOnlyList<InstrumentalNoteSnapshot> Notes => snapshot.Notes;
     public IReadOnlyDictionary<string, string> KeyFiles => snapshot.KeyFiles;
-    public IReadOnlyList<int> Offsets => timeline.Offsets;
-    public IReadOnlyList<int> Bpms => timeline.Bpms;
+    public IReadOnlyList<UninheritedPoint> UninheritedPoints => timeline.UninheritedPoints;
     public TimeSpan Duration => timeline.Duration;
     public TimeSpan Position => timeline.Position;
     public bool IsPlaying => timeline.IsPlaying;
@@ -89,8 +89,9 @@ public sealed partial class InstrumentalArrangementDrawerVM : ObservableObject
             if (old.Position != timeline.Position) OnPropertyChanged(nameof(Position));
             if (old.IsPlaying != timeline.IsPlaying) OnPropertyChanged(nameof(IsPlaying));
             if (old.Duration != timeline.Duration) OnPropertyChanged(nameof(Duration));
-            if (!ReferenceEquals(old.Offsets, timeline.Offsets) && !old.Offsets.SequenceEqual(timeline.Offsets)) OnPropertyChanged(nameof(Offsets));
-            if (!ReferenceEquals(old.Bpms, timeline.Bpms) && !old.Bpms.SequenceEqual(timeline.Bpms)) OnPropertyChanged(nameof(Bpms));
+            if (!ReferenceEquals(old.UninheritedPoints, timeline.UninheritedPoints) &&
+                !old.UninheritedPoints.Select(p => (p.Offset, p.BPM)).SequenceEqual(timeline.UninheritedPoints.Select(p => (p.Offset, p.BPM))))
+                OnPropertyChanged(nameof(UninheritedPoints));
             if (old.Subdivision != timeline.Subdivision) OnPropertyChanged(nameof(Subdivision));
             if (old.SelectedSubdivisionIndex != timeline.SelectedSubdivisionIndex) OnPropertyChanged(nameof(SelectedSubdivisionIndex));
             if (old.ZoomFactor != timeline.ZoomFactor) OnPropertyChanged(nameof(ZoomFactor));

@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
@@ -122,7 +123,7 @@ public sealed class WorkstationDrawerCoexistenceTests
             finally { await vm.DeactivateAsync(); }
         } };
         var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song",
-            new ProjectData { Tracks = [track], Offsets = [0], BPMs = [120], ControlPoints = [new()] })) },
+            new ProjectData { Tracks = [track], UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints = [new()] })) },
             new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), files, picker,
             messenger: messenger, sampleManagementDialog: service, instrumentDialogs: dialogs);
         page = new(owner);

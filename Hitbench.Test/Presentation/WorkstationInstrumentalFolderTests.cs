@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using CommunityToolkit.Mvvm.Messaging;
 using Hitbench.Core.Entities;
 using Hitbench.Services;
@@ -32,7 +33,7 @@ public sealed class WorkstationInstrumentalFolderTests
         var messenger = new WeakReferenceMessenger(); var dialogs = new StubInstrumentalTrackDialogService();
         var files = new SampleFileService();
         Directory.CreateDirectory(Path.Combine(root, "Samples")); File.WriteAllBytes(Path.Combine(root, "Samples", "C3.wav"), [3]);
-        var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [track, other], Offsets = [0], BPMs = [120] })) },
+        var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [track, other], UninheritedPoints = TimingTestData.Points([0], [120]) })) },
             new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), sampleFiles: files, messenger: messenger, instrumentDialogs: dialogs);
         dialogs.Mapping = async (snapshot, _) =>
         {
@@ -62,7 +63,7 @@ public sealed class WorkstationInstrumentalFolderTests
     {
         var track = new InstrumentalTrack { Name = "Piano", FolderName = "Piano", KeyFiles = new() { ["C3"] = "Piano/C3.wav" } };
         var files = new StubSampleFileService(["Piano/C3.wav"]) { FolderRename = (_, _, _, _, _) => Task.FromException<string>(new IOException("move failed")) };
-        var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [track], Offsets = [0], BPMs = [120] })) },
+        var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [track], UninheritedPoints = TimingTestData.Points([0], [120]) })) },
             new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), sampleFiles: files);
         try
         {
@@ -77,7 +78,7 @@ public sealed class WorkstationInstrumentalFolderTests
     [Test] public async Task ReturningToAcceptedNameCancelsPendingRename()
     {
         var track = new InstrumentalTrack { Name = "Piano", FolderName = "Piano", KeyFiles = new() { ["C3"] = "Piano/C3.wav" } };
-        var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [track], Offsets = [0], BPMs = [120] })) },
+        var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [track], UninheritedPoints = TimingTestData.Points([0], [120]) })) },
             new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), sampleFiles: new StubSampleFileService(["Piano/C3.wav"]));
         try
         {
@@ -91,7 +92,7 @@ public sealed class WorkstationInstrumentalFolderTests
     [Test] public async Task PendingFolderRenameGatesSampleOperationsUntilSettled()
     {
         var track = new InstrumentalTrack { Name = "Piano", FolderName = "Piano" };
-        var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [track], Offsets = [0], BPMs = [120] })) },
+        var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [track], UninheritedPoints = TimingTestData.Points([0], [120]) })) },
             new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), sampleFiles: new StubSampleFileService([]), sampleDialog: new StubSampleFileDialogService((string?)null));
         try
         {
@@ -111,7 +112,7 @@ public sealed class WorkstationInstrumentalFolderTests
         var second = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var calls = 0;
         var track = new InstrumentalTrack { Name = "Piano", FolderName = "Piano" };
-        var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [track], Offsets = [0], BPMs = [120] })) },
+        var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [track], UninheritedPoints = TimingTestData.Points([0], [120]) })) },
             new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), sampleFiles: new StubSampleFileService([]), folderRenameDelay: (_, token) =>
             { if (Interlocked.Increment(ref calls) == 1) first.TrySetResult(); else second.TrySetResult(); return Task.Delay(Timeout.Infinite, token); });
         try

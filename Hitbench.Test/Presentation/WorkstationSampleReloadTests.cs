@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using Hitbench.Core.Entities;
 using Hitbench.Resources.DataModels;
 using Hitbench.Services;
@@ -13,7 +14,7 @@ public class WorkstationSampleReloadTests
         new(source, new MarkerPlaybackCoordinator(audio ?? new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(),
             files, projectFiles: saves, zoomDelay: (_, token) => Task.Delay(Timeout.Infinite, token));
 
-    private static ProjectData Project(string name = "first") => new() { Offsets = [0], BPMs = [120],
+    private static ProjectData Project(string name = "first") => new() { UninheritedPoints = TimingTestData.Points([0], [120]),
         Tracks = [new Track { Name = name, SelectedSampleFileName = "hit.wav" }] };
 
     private static async Task Load(WorkstationPageVM vm)

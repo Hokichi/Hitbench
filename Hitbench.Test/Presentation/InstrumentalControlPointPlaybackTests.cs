@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using CommunityToolkit.Mvvm.Messaging;
 using Hitbench.Core.Entities;
 using Hitbench.Resources.DataModels;
@@ -13,7 +14,7 @@ public class InstrumentalControlPointPlaybackTests
     public async Task ArrangementUsesWorkstationControlPointsAndKeepsMappedFiles(bool hasPoints)
     {
         var instrument = new InstrumentalTrack { KeyFiles = new() { ["C4"] = "piano.wav" }, Notes = [new() { Key = "C4", Timestamp = 1500 }] };
-        var project = new ProjectData { Offsets = [0], BPMs = [120], Tracks = [instrument], ControlPoints = hasPoints ? [new() { Timestamp = 1000, Volume = 50, Sampleset = "Drum" }] : [] };
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), Tracks = [instrument], ControlPoints = hasPoints ? [new() { Timestamp = 1000, Volume = 50, Sampleset = "Drum" }] : [] };
         var messenger = new WeakReferenceMessenger(); var dialogs = new StubInstrumentalTrackDialogService(); var audio = new StubWorkstationAudioService();
         var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", project)) },
             new MarkerPlaybackCoordinator(audio, Task.Delay), new ImmediateUiScheduler(), messenger: messenger, instrumentDialogs: dialogs);

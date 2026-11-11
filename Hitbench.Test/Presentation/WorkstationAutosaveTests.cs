@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using Hitbench.Core.Entities;
 using Hitbench.Services;
 using Hitbench.ViewModels.Shell;
@@ -10,7 +11,7 @@ public sealed class WorkstationAutosaveTests
     {
         var clock = new ManualTimeProvider();
         var delay = new ManualDelay(clock);
-        var project = new ProjectData { Tracks = [new Track()], Offsets = [0], BPMs = [120], ControlPoints = [new()] };
+        var project = new ProjectData { Tracks = [new Track()], UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints = [new()] };
         var files = new DelayedProjectFileService(); files.Release();
         var vm = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", project)) },
             new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(),
@@ -37,7 +38,7 @@ public sealed class WorkstationAutosaveTests
     {
         var clock = new ManualTimeProvider(); clock.SetUtcNow(DateTimeOffset.UtcNow);
         var delay = new ManualDelay(clock);
-        var project = new ProjectData { Tracks = [new Track()], Offsets = [0], BPMs = [120], ControlPoints = [new()] };
+        var project = new ProjectData { Tracks = [new Track()], UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints = [new()] };
         var files = new DelayedProjectFileService(); files.Release();
         var vm = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", project)) },
             new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(),

@@ -52,8 +52,7 @@ public sealed partial class WaveformView : FrameworkElement
         nameof(FontFamily), typeof(FontFamily), typeof(WaveformView), new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
     public static readonly DependencyProperty SeekCommandProperty = DependencyProperty.Register(
         nameof(SeekCommand), typeof(ICommand), typeof(WaveformView), new FrameworkPropertyMetadata(null));
-    public static readonly DependencyProperty OffsetsProperty = DependencyProperty.Register(nameof(Offsets), typeof(IReadOnlyList<int>), typeof(WaveformView), new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
-    public static readonly DependencyProperty BpmsProperty = DependencyProperty.Register(nameof(Bpms), typeof(IReadOnlyList<int>), typeof(WaveformView), new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
+    public static readonly DependencyProperty UninheritedPointsProperty = DependencyProperty.Register(nameof(UninheritedPoints), typeof(IReadOnlyList<UninheritedPoint>), typeof(WaveformView), new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
     public static readonly DependencyProperty SubdivisionProperty = DependencyProperty.Register(nameof(Subdivision), typeof(int), typeof(WaveformView), new FrameworkPropertyMetadata(4, FrameworkPropertyMetadataOptions.AffectsRender));
 
     public WaveformData? Data { get => (WaveformData?)GetValue(DataProperty); set => SetValue(DataProperty, value); }
@@ -68,8 +67,7 @@ public sealed partial class WaveformView : FrameworkElement
     public Brush TextBrush { get => (Brush)GetValue(TextBrushProperty); set => SetValue(TextBrushProperty, value); }
     public FontFamily? FontFamily { get => (FontFamily?)GetValue(FontFamilyProperty); set => SetValue(FontFamilyProperty, value); }
     public ICommand? SeekCommand { get => (ICommand?)GetValue(SeekCommandProperty); set => SetValue(SeekCommandProperty, value); }
-    public IReadOnlyList<int>? Offsets { get => (IReadOnlyList<int>?)GetValue(OffsetsProperty); set => SetValue(OffsetsProperty, value); }
-    public IReadOnlyList<int>? Bpms { get => (IReadOnlyList<int>?)GetValue(BpmsProperty); set => SetValue(BpmsProperty, value); }
+    public IReadOnlyList<UninheritedPoint>? UninheritedPoints { get => (IReadOnlyList<UninheritedPoint>?)GetValue(UninheritedPointsProperty); set => SetValue(UninheritedPointsProperty, value); }
     public int Subdivision { get => (int)GetValue(SubdivisionProperty); set => SetValue(SubdivisionProperty, value); }
 
     public WaveformView() { FlowDirection = FlowDirection.LeftToRight; InitializeDrawing(); }
@@ -204,7 +202,7 @@ public sealed partial class WaveformView : FrameworkElement
         var baselinePen = new Pen(textBrush, 1) { DashStyle = DashStyles.Dot };
 
         drawingContext.PushClip(new RectangleGeometry(new Rect(offset, 0, viewport, height)));
-        BeatGridDrawing.Draw(drawingContext, this, Offsets, Bpms, Subdivision, data.Duration.TotalMilliseconds,
+        BeatGridDrawing.Draw(drawingContext, this, UninheritedPoints, Subdivision, data.Duration.TotalMilliseconds,
             width, offset, viewport, height, true);
         drawingContext.DrawLine(baselinePen, new Point(offset, baselineY), new Point(offset + viewport, baselineY));
         var startPixel = Math.Max(0, (int)Math.Floor(offset));
@@ -229,10 +227,10 @@ public sealed partial class WaveformView : FrameworkElement
             new Pen(SystemParameters.HighContrast ? SystemColors.HighlightBrush : PlayedWaveformBrush, 1), peaks));
         drawingContext.DrawDrawing(played);
 
-        if(ShowBeatRuler && Offsets is not null && Bpms is not null)
+        if(ShowBeatRuler && UninheritedPoints is not null)
         {
             var lastLabelRight=double.NegativeInfinity;
-            foreach(var beat in BeatGridCalculator.GetLines(Offsets,Bpms,1,offset/width*data.Duration.TotalMilliseconds,(offset+viewport)/width*data.Duration.TotalMilliseconds))
+            foreach(var beat in BeatGridCalculator.GetLines(UninheritedPoints,1,offset/width*data.Duration.TotalMilliseconds,(offset+viewport)/width*data.Duration.TotalMilliseconds))
             {
                 var labelX=beat.Milliseconds/data.Duration.TotalMilliseconds*width+4;
                 if(labelX<lastLabelRight+8)continue;

@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using CommunityToolkit.Mvvm.Messaging;
 using Hitbench.Core.Entities;
 using Hitbench.Resources.DataModels;
@@ -42,7 +43,7 @@ public sealed class InstrumentalDrawerSwitchingTests
             }
         };
         var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(
-            new WorkstationSource("map", "song", new ProjectData { Tracks = [track, other], Offsets = [0], BPMs = [120], ControlPoints = [new()] })) },
+            new WorkstationSource("map", "song", new ProjectData { Tracks = [track, other], UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints = [new()] })) },
             new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), messenger: messenger,
             projectFiles: completion == "save" ? new FailOnceProjectFileService() : null,
             instrumentDialogs: dialogs, trackRemovalDialog: new StubTrackRemovalDialogService { Confirm = _ => Task.FromResult(true) });
@@ -99,7 +100,7 @@ public sealed class InstrumentalDrawerSwitchingTests
         var track = new InstrumentalTrack { KeyFiles = new() { ["C4"] = "piano.wav" } };
         var calls = 0;
         var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(
-            new WorkstationSource("map", "song", new ProjectData { Tracks = [track], Offsets = [0], BPMs = [120], ControlPoints = [new()] })) },
+            new WorkstationSource("map", "song", new ProjectData { Tracks = [track], UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints = [new()] })) },
             new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), messenger: new WeakReferenceMessenger(),
             instrumentDialogs: new StubInstrumentalTrackDialogService { Arrangement = (_, _) => { calls++; return Task.CompletedTask; } });
         try
@@ -119,7 +120,7 @@ public sealed class InstrumentalDrawerSwitchingTests
         var messenger = new WeakReferenceMessenger();
         var dialogs = new StubInstrumentalTrackDialogService { Arrangement = async (data, token) =>
         { opened.TrySetResult(data.Track.Context); try { await Task.Delay(Timeout.Infinite, token); } finally { settled = true; } } };
-        var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [track], Offsets = [0], BPMs = [120], ControlPoints = [new()] })) },
+        var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [track], UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints = [new()] })) },
             new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(),
             messenger: messenger, instrumentDialogs: dialogs, trackRemovalDialog: new StubTrackRemovalDialogService { Confirm = _ => Task.FromResult(true) });
         try
@@ -140,7 +141,7 @@ public sealed class InstrumentalDrawerSwitchingTests
         var track = new InstrumentalTrack { KeyFiles = new() { ["C4"] = "piano.wav" } };
         var audio = new StubWorkstationAudioService(); var prepared = new TaskCompletionSource(); var entered = new TaskCompletionSource();
         var dialogs = new StubInstrumentalTrackDialogService { Mapping = async (_, token) => { entered.TrySetResult(); await Task.Delay(Timeout.Infinite, token); } };
-        var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [track], Offsets = [0], BPMs = [120], ControlPoints = [new()] })) },
+        var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [track], UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints = [new()] })) },
             new MarkerPlaybackCoordinator(audio, Task.Delay), new ImmediateUiScheduler(), messenger: new WeakReferenceMessenger(), instrumentDialogs: dialogs);
         try
         {
@@ -169,7 +170,7 @@ public sealed class InstrumentalDrawerSwitchingTests
             Mapping = async (_, token) => { mappingCalls++; mappingEntered.TrySetResult(); await Task.Delay(Timeout.Infinite, token); }
         };
         var samples = new StubSampleManagementDialogService { Present = async (_, token) => { samplesEntered.TrySetResult(); await Task.Delay(Timeout.Infinite, token); } };
-        var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [track], Offsets = [0], BPMs = [120], ControlPoints = [new()] })) },
+        var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [track], UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints = [new()] })) },
             new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(),
             sampleFiles: new StubSampleFileService([]), sampleDialog: new StubSampleFileDialogService(Array.Empty<string>()),
             messenger: new WeakReferenceMessenger(), instrumentDialogs: dialogs, sampleManagementDialog: samples);
@@ -200,7 +201,7 @@ public sealed class InstrumentalDrawerSwitchingTests
         InstrumentalTrackContext? old = null;
         var dialogs = new StubInstrumentalTrackDialogService { Mapping = (data, _) => { old = data.Context; throw new IOException("present failed"); } };
         var messenger = new WeakReferenceMessenger();
-        var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [track], Offsets = [0], BPMs = [120], ControlPoints = [new()] })) },
+        var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [track], UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints = [new()] })) },
             new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), messenger: messenger, instrumentDialogs: dialogs);
         try
         {
@@ -224,7 +225,7 @@ public sealed class InstrumentalDrawerSwitchingTests
         dialogs.Arrangement = async (data, token) => { opened.TrySetResult(data); await Task.Delay(Timeout.Infinite, token); };
         dialogs.Mapping = async (data, token) => { mappingOpened.TrySetResult(data); await Task.Delay(Timeout.Infinite, token); };
         var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(
-            new WorkstationSource("map", "song", new ProjectData { Tracks = [track], Offsets = [0], BPMs = [120], ControlPoints = [new()] })) },
+            new WorkstationSource("map", "song", new ProjectData { Tracks = [track], UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints = [new()] })) },
             new MarkerPlaybackCoordinator(audio, Task.Delay), new ImmediateUiScheduler(), messenger: new WeakReferenceMessenger(), instrumentDialogs: dialogs);
         try
         {
@@ -265,7 +266,7 @@ public sealed class InstrumentalDrawerSwitchingTests
         var dialogs = new StubInstrumentalTrackDialogService { Arrangement = async (_, token) =>
         { calls++; opened.TrySetResult(); await Task.Delay(Timeout.Infinite, token); } };
         var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(
-            new WorkstationSource("map", "song", new ProjectData { Tracks = [track], Offsets = [0], BPMs = [120], ControlPoints = [new()] })) },
+            new WorkstationSource("map", "song", new ProjectData { Tracks = [track], UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints = [new()] })) },
             new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), messenger: new WeakReferenceMessenger(), instrumentDialogs: dialogs);
         try
         {

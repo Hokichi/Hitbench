@@ -75,7 +75,7 @@ public partial class WorkstationPageVM(
     private int loadGeneration;
     private bool deactivated;
     private Task? deactivation;
-    private PlaybackMarkerClock markerClock = new([], []);
+    private PlaybackMarkerClock markerClock = new([]);
 
 
     [ObservableProperty] private WaveformData? waveform;
@@ -533,11 +533,11 @@ public partial class WorkstationPageVM(
                 playbackErrorMessage = null;
                 Waveform = null;
                 Project = null;
-                instrumentTiming = new([], []);
+                instrumentTiming = new([]);
                 availableSamples.Clear();
                 sampleTrackFiles.Clear();
                 RefreshControlPointTimestamps();
-                markerClock = new([], []);
+                markerClock = new([]);
                 OnPropertyChanged(nameof(CurrentBpmText));
 
                 Position = TimeSpan.Zero;
@@ -567,14 +567,14 @@ public partial class WorkstationPageVM(
                 exportBeatmapPath = source.BeatmapPath; exportAudioPath = source.AudioPath;
                 Project = source.Project;
                 skinDefaultFiles = skinSnapshot.Files;
-                instrumentTiming = new(Project.Offsets, Project.BPMs);
+                instrumentTiming = new(Project.UninheritedPoints);
                 latestRequestedLastChanged = Project.LastChanged;
                 InitializeControlPoints();
                 PublishControlPointTimeline();
                 RestoreZoom(Project.WorkstationZoom);
                 RestoreMarkerMode(Project.IsMarkerStatic);
                 InitializeTrackPresentation(Project);
-                markerClock = new PlaybackMarkerClock(Project.Offsets, Project.BPMs);
+                markerClock = new PlaybackMarkerClock(Project.UninheritedPoints);
                 OnPropertyChanged(nameof(CurrentBpmText));
                 SetProperty(ref playbackInterval, markerClock.IsValid ? markerClock.GetInterval(TimeSpan.Zero) : TimeSpan.Zero,
                     nameof(PlaybackInterval));

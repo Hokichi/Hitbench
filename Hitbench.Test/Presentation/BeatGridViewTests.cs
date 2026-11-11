@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using System.Windows;
 using System.Windows.Media;
 using Hitbench.Core.Entities;
@@ -45,7 +46,7 @@ public class BeatGridViewTests
     public void HoverAndOccupiedSelectionUseSameSnappedTimestamp(int bpm, double pointer, int timestamp)
     {
         var grid = CreateGrid();
-        grid.Bpms = [bpm];
+        grid.UninheritedPoints = TimingTestData.Replace(grid.UninheritedPoints, [bpm], false);
         if (timestamp == 0) grid.HorizontalOffset = 0;
         grid.Samples = [new Sample { Timestamp = timestamp }];
         grid.UpdatePointerPosition(pointer);
@@ -194,7 +195,7 @@ public class BeatGridViewTests
     {
         var grid = new BeatGridView
         {
-            Offsets = [0], Bpms = [60], Subdivision = 4,
+            UninheritedPoints = TimingTestData.Points([0], [60]), Subdivision = 4,
             Duration = TimeSpan.FromMilliseconds(2000), ContentWidth = 400,
             HorizontalOffset = 40, ViewportWidth = 200, Width = 200, Height = 72,
             CanPlaceSamples = true, Samples = [new Sample { Timestamp = 250 }]

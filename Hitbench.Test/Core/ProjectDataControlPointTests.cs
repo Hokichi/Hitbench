@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using Hitbench.Core.Entities;
 
 namespace Hitbench.Test.Core;
@@ -8,7 +9,7 @@ public sealed class ProjectDataControlPointTests
     [TestCase(-100)]
     public void OffsetPointIsCreatedOnceAndPreservesEdits(int offset)
     {
-        var project = new ProjectData { Offsets = [offset, 1000] };
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([offset, 1000], []) };
         Assert.That(project.EnsureOffsetControlPoint(), Is.True);
         var point = project.ControlPoints.Single();
         Assert.That((point.Timestamp, point.Volume, point.Sampleset, point.IsDisabled), Is.EqualTo((offset, 100, "Normal", false)));

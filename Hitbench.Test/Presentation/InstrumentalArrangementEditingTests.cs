@@ -38,7 +38,7 @@ public class InstrumentalArrangementEditingTests
         {
             await vm.InitializeAsync(default);
             vm.SetNoteSelection([a.Id,b.Id],a.Id);
-            vm.CopyNotesCommand.Execute(null); messenger.Send(new OHsInstrumentalTimelineChangedMessage(new(ctx,1,TimeSpan.FromSeconds(10),TimeSpan.FromMilliseconds(9750),false,true,true,[0],[120],32,3,false,null))); vm.PasteNotesCommand.Execute(null);
+            vm.CopyNotesCommand.Execute(null); messenger.Send(new OHsInstrumentalTimelineChangedMessage(new(ctx,1,TimeSpan.FromSeconds(10),TimeSpan.FromMilliseconds(9750),false,true,true,TimingTestData.Points([0],[120]),32,3,false,null))); vm.PasteNotesCommand.Execute(null);
             Assert.That(request!.DesiredNotes.Count,Is.EqualTo(3));
             var pasted = request.DesiredNotes.Last(); Assert.That(pasted.Key, Is.EqualTo("C4")); Assert.That(pasted.Timestamp, Is.EqualTo(9750)); Assert.That(pasted.Id, Is.Not.EqualTo(a.Id));
         }

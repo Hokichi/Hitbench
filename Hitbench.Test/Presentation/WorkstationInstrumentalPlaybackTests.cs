@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using Hitbench.Core.Entities;
 using CommunityToolkit.Mvvm.Messaging;
 using Hitbench.Services;
@@ -11,7 +12,7 @@ public class WorkstationInstrumentalPlaybackTests
     {
         var sample = new Track { SelectedSampleFileName = "kick.wav", Samples = [new() { FileName = "kick.wav", Timestamp = 125 }] };
         var instrument = new InstrumentalTrack { Volume = 75, KeyFiles = new() { ["C4"] = "piano.wav", ["E4"] = "piano.wav" }, Notes = [new() { Key = "C4", Timestamp = 125 }, new() { Key = "E4", Timestamp = 125 }] };
-        var project = new ProjectData { Tracks = [sample, instrument], Offsets = [0], BPMs = [120] };
+        var project = new ProjectData { Tracks = [sample, instrument], UninheritedPoints = TimingTestData.Points([0], [120]) };
         var messenger = new CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger(); var audio = new StubWorkstationAudioService();
         var dialogs = new StubInstrumentalTrackDialogService();
         var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", project)) }, new MarkerPlaybackCoordinator(audio, Task.Delay), new ImmediateUiScheduler(), sampleFiles: new StubSampleFileService(["kick.wav", "piano.wav"]), messenger: messenger, instrumentDialogs: dialogs);
@@ -43,7 +44,7 @@ public class WorkstationInstrumentalPlaybackTests
     public async Task GlobalPlaybackContainsInstrumentAndHonorsMute()
     {
         var instrument = new InstrumentalTrack { Volume = 75, KeyFiles = new() { ["C4"] = "piano.wav" }, Notes = [new() { Key = "C4", Timestamp = 125 }] };
-        var project = new ProjectData { Tracks = [instrument], Offsets = [0], BPMs = [120] }; var audio = new StubWorkstationAudioService();
+        var project = new ProjectData { Tracks = [instrument], UninheritedPoints = TimingTestData.Points([0], [120]) }; var audio = new StubWorkstationAudioService();
         var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", project)) }, new MarkerPlaybackCoordinator(audio, Task.Delay), new ImmediateUiScheduler(), sampleFiles: new StubSampleFileService(["piano.wav"]));
         try
         {

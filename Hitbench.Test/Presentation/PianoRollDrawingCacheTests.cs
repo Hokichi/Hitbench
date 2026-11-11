@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using System.Windows;
 using System.Windows.Media;
 using Hitbench.Resources.CustomControls;
@@ -10,7 +11,7 @@ public sealed class PianoRollDrawingCacheTests
     [Test]
     public void PositionOnlyUpdatesReuseContentAndGeometryInputsInvalidate()
     {
-        var roll = new PianoRollView { Duration = TimeSpan.FromSeconds(10), ContentWidth = 1000, Offsets = [0], Bpms = [120] };
+        var roll = new PianoRollView { Duration = TimeSpan.FromSeconds(10), ContentWidth = 1000, UninheritedPoints = TimingTestData.Points([0], [120]) };
         UiTestPump.Layout(roll, 400, 150);
         roll.PrepareDrawing(); var before = roll.ContentBuildCount;
         for (var i = 0; i < 1000; i++) { roll.Position = TimeSpan.FromMilliseconds(i); roll.PrepareDrawing(); }

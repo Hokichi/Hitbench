@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using Hitbench.Core.Entities;
 using Hitbench.ViewModels.Shell;
 
@@ -13,7 +14,7 @@ public class WorkstationMarkerPlaybackTests
 
     private async Task Load(params int[] timestamps)
     {
-        var project = new ProjectData { Offsets = [0, 100], BPMs = [120, 240], Tracks = [new Track
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0, 100], [120, 240]), Tracks = [new Track
         {
             Samples = timestamps.Select(time => new Sample { FileName = "hit.wav", Timestamp = time }).ToList()
         }] };
@@ -30,7 +31,7 @@ public class WorkstationMarkerPlaybackTests
         audio.Snapshot = audio.Snapshot with { Position = TimeSpan.FromMilliseconds(milliseconds) };
         if (audio.Snapshot.IsPlaying && !audio.Disposed)
         {
-            var expected = new Hitbench.Services.PlaybackMarkerClock([0,100],[120,240])
+            var expected = new Hitbench.Services.PlaybackMarkerClock(TimingTestData.Points([0,100], [120,240]))
                 .GetPosition(audio.Snapshot.Position, TimeSpan.FromSeconds(10));
             await StubWorkstationAudioService.WaitUntilAsync(() => playback.Latest.Playback.Position >= expected);
         }

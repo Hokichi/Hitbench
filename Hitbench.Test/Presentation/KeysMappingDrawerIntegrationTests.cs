@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -138,7 +139,7 @@ public class KeysMappingDrawerIntegrationTests
         var files = new StubSampleFileService(["new.wav"]) { Import = async (_, _, token) =>
         { if (++attempts == 1) { entered.TrySetResult(); await Task.Delay(Timeout.Infinite, token); } return "Piano/new.wav"; } };
         var messenger = new WeakReferenceMessenger(); var dialogs = new StubInstrumentalTrackDialogService();
-        var owner = new Hitbench.ViewModels.Shell.WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new Hitbench.Core.Entities.ProjectData { Tracks = [track], Offsets = [0], BPMs = [120] })) },
+        var owner = new Hitbench.ViewModels.Shell.WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new Hitbench.Core.Entities.ProjectData { Tracks = [track], UninheritedPoints = TimingTestData.Points([0], [120]) })) },
             new Hitbench.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), sampleFiles: files, messenger: messenger, instrumentDialogs: dialogs);
         dialogs.Mapping = async (snapshot, _) =>
         {

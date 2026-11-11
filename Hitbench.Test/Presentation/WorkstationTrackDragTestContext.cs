@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -32,7 +33,7 @@ public sealed class WorkstationTrackDragTestContext : IDisposable
             : new InstrumentalTrack { Name = $"Track {i}", IsCollapsed = true }).ToList();
         Saves.Release();
         Vm = new WorkstationPageVM(new StubWorkstationSourceService
-        { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = tracks, Offsets = [0], BPMs = [120], ControlPoints = [new()] })) },
+        { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = tracks, UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints = [new()] })) },
             new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new Hitbench.Services.Ui.UiScheduler(System.Windows.Threading.Dispatcher.CurrentDispatcher), projectFiles: Saves);
         UiTestPump.Run(Vm.LoadAsync("project.json", default));
         Vm.AcknowledgePresentationReady(Vm.LoadGeneration);

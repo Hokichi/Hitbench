@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using System.Windows;
 using Hitbench.Resources.DataModels;
 using Hitbench.Services.Ui;
@@ -10,7 +11,7 @@ public sealed class FollowupContractTests
     {
         var track = new Hitbench.Core.Entities.InstrumentalTrack { Name = "Piano", FolderName = "Piano", Color = "#ABCDEF", KeyFiles = new() { ["C3"] = "Piano/C3.wav" } };
         var files = new StubSampleFileService(["Piano/C3.wav"]) { FolderRename = (_, _, _, _, _) => fail ? Task.FromException<string>(new IOException("rename failed")) : Task.FromResult("Soft") };
-        var vm = new Hitbench.ViewModels.Shell.WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new Hitbench.Core.Entities.WorkstationSource("map", "song", new Hitbench.Core.Entities.ProjectData { Tracks = [track], Offsets = [0], BPMs = [120] })) },
+        var vm = new Hitbench.ViewModels.Shell.WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new Hitbench.Core.Entities.WorkstationSource("map", "song", new Hitbench.Core.Entities.ProjectData { Tracks = [track], UninheritedPoints = TimingTestData.Points([0], [120]) })) },
             new Hitbench.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), sampleFiles: files,
             trackAppearanceDialog: new StubOHsTrackAppearanceDialogService { Request = (_, _) => Task.FromResult<OHsTrackAppearanceResult?>(new("#123456")) });
         try

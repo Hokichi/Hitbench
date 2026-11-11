@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using Hitbench.Core.Entities;
 using Hitbench.Resources.DataModels;
 using Hitbench.Services;
@@ -16,7 +17,7 @@ public class WorkstationSkinDefaultsTests
         Directory.CreateDirectory(root);
         var project = new ProjectData
         {
-            AllowDefaults = allowDefaults, CurrentSkin = "Old", Offsets = [0], BPMs = [120],
+            AllowDefaults = allowDefaults, CurrentSkin = "Old", UninheritedPoints = TimingTestData.Points([0], [120]),
             Tracks = [new Track { Name = "Hits", SelectedSampleFileName = "hit.wav", Samples = [new Sample { FileName = "hit.wav", Timestamp = 500 }] }],
             ControlPoints = [new ControlPoint { Timestamp = 0, Volume = 80 }]
         };
@@ -56,7 +57,7 @@ public class WorkstationSkinDefaultsTests
     {
         var gate = new TaskCompletionSource<OHsSkinDefaultsSnapshot>(TaskCreationOptions.RunContinuationsAsynchronously);
         var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var project = new ProjectData { Offsets = [0], BPMs = [120] };
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]) };
         var service = new StubOHsSkinDefaultsService { Refresh = (_, old, allow, _, _) =>
         {
             if (!allow) return Task.FromResult(new OHsSkinDefaultsSnapshot(old, [], false));
@@ -80,7 +81,7 @@ public class WorkstationSkinDefaultsTests
     public async Task RefreshWaitsForDrawerAudioAndForcesDecodeOfSamePath()
     {
         var prepared = false; var audio = new StubWorkstationAudioService();
-        var project = new ProjectData { Offsets = [0], BPMs = [120] };
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]) };
         var manager = new StubSampleManagementDialogService { PrepareSkin = (_, _) => { prepared = true; return Task.CompletedTask; } };
         var skin = new StubOHsSkinDefaultsService { Refresh = (_, old, allow, _, _) =>
         {
@@ -106,7 +107,7 @@ public class WorkstationSkinDefaultsTests
     public async Task EachLoadChecksSkinAndEnableDisablePersists()
     {
         var calls = 0;
-        var project = new ProjectData { Offsets = [0], BPMs = [120] };
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]) };
         var skin = new StubOHsSkinDefaultsService { Refresh = (_, old, allow, _, _) =>
         {
             calls++;
@@ -129,7 +130,7 @@ public class WorkstationSkinDefaultsTests
     [Test]
     public async Task FailedEnableRetainsCommittedState()
     {
-        var project = new ProjectData { Offsets = [0], BPMs = [120] };
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]) };
         var skin = new StubOHsSkinDefaultsService(); var vm = Create(project, skin);
         try
         {

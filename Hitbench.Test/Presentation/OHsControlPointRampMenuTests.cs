@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using System.Windows.Controls;
 using System.Windows.Input;
 using Hitbench.Core.Entities;
@@ -22,7 +23,7 @@ public class OHsControlPointRampMenuTests
     [Test]
     public void MenuConvertsBothWaysWithCapturedIdentityAndSharedStyle()
     {
-        var project = new ProjectData { Offsets = [0], BPMs = [120], ControlPoints = [new() { Volume = 10 }, new() { Timestamp = 2000, Volume = 50 }] };
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints = [new() { Volume = 10 }, new() { Timestamp = 2000, Volume = 50 }] };
         var owner = WorkstationControlPointStateTests.Create(project, new());
         try
         {

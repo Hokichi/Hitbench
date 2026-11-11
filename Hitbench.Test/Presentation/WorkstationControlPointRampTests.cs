@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using Hitbench.Core.Entities;
 using Hitbench.Resources.Messages;
 using Hitbench.Services;
@@ -9,7 +10,7 @@ public class WorkstationControlPointRampTests
     [Test]
     public async Task ModeEditKeepsVolumeAndRejectsStaleRequests()
     {
-        var project = new ProjectData { Offsets = [0], BPMs = [120], ControlPoints = [new() { Volume = 10 }, new() { Timestamp = 3000, Volume = 50 }] };
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints = [new() { Volume = 10 }, new() { Timestamp = 3000, Volume = 50 }] };
         var audio = new StubWorkstationAudioService();
         var owner = WorkstationControlPointStateTests.Create(project, audio);
         try

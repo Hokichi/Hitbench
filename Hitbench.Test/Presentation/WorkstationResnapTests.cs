@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using Hitbench.Core.Entities;
 using Hitbench.Services;
 using Hitbench.Services.ProjectFiles;
@@ -23,7 +24,7 @@ public class WorkstationResnapTests
         c = new Sample { Timestamp = 1188, FileName = "b.wav" };
         first = new Track { SelectedSampleFileName = "a.wav", Samples = [a, b] };
         second = new Track { SelectedSampleFileName = "b.wav", Samples = [c] };
-        var project = new ProjectData { Offsets = [0], BPMs = [120], Tracks = [first, second], ControlPoints = [new()] };
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), Tracks = [first, second], ControlPoints = [new()] };
         var source = new StubWorkstationSourceService
         {
             Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav", project))
@@ -58,7 +59,7 @@ public class WorkstationResnapTests
         vm.ResnapAllSampleNodes();
         Assert.That(new[] { firstPoint.Timestamp, secondPoint.Timestamp }, Is.EqualTo(new[] { 1125, 1120 }));
         Assert.That(vm.Project.ControlPoints, Has.Count.EqualTo(3));
-        vm.Project.BPMs = [0];
+        vm.Project.UninheritedPoints = TimingTestData.Replace(vm.Project.UninheritedPoints, [0], false);
         firstPoint.Timestamp = 1100;
         Assert.That(vm.ResnapAllSampleNodes(), Is.False);
         Assert.That(firstPoint.Timestamp, Is.EqualTo(1100));
@@ -151,8 +152,8 @@ public class WorkstationResnapTests
     [Test]
     public void TimingChangesAndFractionalBeatsUseExistingGridRules()
     {
-        vm.Project!.Offsets = [0, 700];
-        vm.Project.BPMs = [120, 123];
+        vm.Project!.UninheritedPoints = TimingTestData.Replace(vm.Project!.UninheritedPoints, [0, 700], true);
+        vm.Project.UninheritedPoints = TimingTestData.Replace(vm.Project.UninheritedPoints, [120, 123], false);
         a.Timestamp = 690;
         b.Timestamp = 820;
         c.Timestamp = 970;
@@ -174,7 +175,7 @@ public class WorkstationResnapTests
         var writes = saves.Writes;
         var updates = audio.SampleUpdates.Count;
         var revision = vm.SamplesRevision;
-        if (invalid) vm.Project!.BPMs = [0];
+        if (invalid) vm.Project!.UninheritedPoints = TimingTestData.Replace(vm.Project!.UninheritedPoints, [0], false);
 
         Assert.That(vm.ResnapAllSampleNodes(), Is.False);
         Assert.That(new[] { a.Timestamp, b.Timestamp, c.Timestamp }, Is.EqualTo(new[] { 1000, 1250, 1125 }));
@@ -218,7 +219,7 @@ public class WorkstationResnapTests
     [Test]
     public void GridWithNoBeatInsideSongRejectsEntireBatch()
     {
-        vm.Project!.Offsets = [10000];
+        vm.Project!.UninheritedPoints = TimingTestData.Replace(vm.Project!.UninheritedPoints, [10000], true);
         Assert.That(vm.ResnapAllSampleNodes(), Is.False);
         Assert.That(new[] { a.Timestamp, b.Timestamp, c.Timestamp }, Is.EqualTo(new[] { 1100, 1200, 1188 }));
         Assert.That(vm.CanUndo, Is.False);

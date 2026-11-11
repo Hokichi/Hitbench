@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -19,7 +20,7 @@ public class WorkstationNodeScrollTests
     private static (WorkstationPage Page, WorkstationPageVM Vm, Sample Node, BeatGridView Grid, ScrollViewer Scroll, InMemoryView View) CreateEditor()
     {
         var node = new Sample { FileName = "hit.wav", Timestamp = 1000 };
-        var project = new ProjectData { Offsets = [0], BPMs = [120], WorkstationZoom = 8, Tracks = Enumerable.Range(0, 128)
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), WorkstationZoom = 8, Tracks = Enumerable.Range(0, 128)
             .Select(i => new Track { SelectedSampleFileName = "hit.wav", Samples = i == 0 ? [node] : [] }).ToList() };
         var vm = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", project)) },
             new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), new StubSampleFileService(["hit.wav"]));

@@ -18,8 +18,7 @@ public sealed partial class BeatGridView : FrameworkElement
     private static FrameworkPropertyMetadata RenderMetadata(object? value = null) =>
         new(value, FrameworkPropertyMetadataOptions.AffectsRender, OnGeometryChanged);
 
-    public static readonly DependencyProperty OffsetsProperty = DependencyProperty.Register(nameof(Offsets), typeof(IReadOnlyList<int>), typeof(BeatGridView), RenderMetadata());
-    public static readonly DependencyProperty BpmsProperty = DependencyProperty.Register(nameof(Bpms), typeof(IReadOnlyList<int>), typeof(BeatGridView), RenderMetadata());
+    public static readonly DependencyProperty UninheritedPointsProperty = DependencyProperty.Register(nameof(UninheritedPoints), typeof(IReadOnlyList<UninheritedPoint>), typeof(BeatGridView), RenderMetadata());
     public static readonly DependencyProperty SubdivisionProperty = DependencyProperty.Register(nameof(Subdivision), typeof(int), typeof(BeatGridView), RenderMetadata(4));
     public static readonly DependencyProperty DurationProperty = DependencyProperty.Register(nameof(Duration), typeof(TimeSpan), typeof(BeatGridView), RenderMetadata(TimeSpan.Zero));
     public static readonly DependencyProperty ContentWidthProperty = DependencyProperty.Register(nameof(ContentWidth), typeof(double), typeof(BeatGridView), RenderMetadata(0d));
@@ -54,8 +53,7 @@ public sealed partial class BeatGridView : FrameworkElement
     public static readonly RoutedEvent SampleSelectionRequestedEvent = EventManager.RegisterRoutedEvent(nameof(SampleSelectionRequested), RoutingStrategy.Bubble, typeof(EventHandler<SampleSelectionRequestedEventArgs>), typeof(BeatGridView));
     public event EventHandler<SampleSelectionRequestedEventArgs> SampleSelectionRequested
     { add => AddHandler(SampleSelectionRequestedEvent, value); remove => RemoveHandler(SampleSelectionRequestedEvent, value); }
-    public IReadOnlyList<int>? Offsets { get => (IReadOnlyList<int>?)GetValue(OffsetsProperty); set => SetValue(OffsetsProperty, value); }
-    public IReadOnlyList<int>? Bpms { get => (IReadOnlyList<int>?)GetValue(BpmsProperty); set => SetValue(BpmsProperty, value); }
+    public IReadOnlyList<UninheritedPoint>? UninheritedPoints { get => (IReadOnlyList<UninheritedPoint>?)GetValue(UninheritedPointsProperty); set => SetValue(UninheritedPointsProperty, value); }
     public int Subdivision { get => (int)GetValue(SubdivisionProperty); set => SetValue(SubdivisionProperty, value); }
     public TimeSpan Duration { get => (TimeSpan)GetValue(DurationProperty); set => SetValue(DurationProperty, value); }
     public double ContentWidth { get => (double)GetValue(ContentWidthProperty); set => SetValue(ContentWidthProperty, value); }
@@ -237,13 +235,13 @@ public sealed partial class BeatGridView : FrameworkElement
 
     public bool MoveActiveInterval(bool forward)
     {
-        if (!CanPlaceSamples || Duration <= TimeSpan.Zero || ContentWidth <= 0 || Offsets is null || Bpms is null) return false;
+        if (!CanPlaceSamples || Duration <= TimeSpan.Zero || ContentWidth <= 0 || UninheritedPoints is null) return false;
         var visibleStart = Math.Max(0, HorizontalOffset / ContentWidth * Duration.TotalMilliseconds);
         var visibleEnd = Math.Min(Duration.TotalMilliseconds, (HorizontalOffset + Math.Max(0, ViewportWidth)) / ContentWidth * Duration.TotalMilliseconds);
         var position = ActiveInterval is { } current ? forward ? current.EndMilliseconds : current.StartMilliseconds - 0.000001 : visibleStart;
-        var next = BeatGridCalculator.GetContainingInterval(Offsets, Bpms, Subdivision, position, Duration.TotalMilliseconds);
+        var next = BeatGridCalculator.GetContainingInterval(UninheritedPoints, Subdivision, position, Duration.TotalMilliseconds);
         if (ActiveInterval is null && next is { } partial && partial.StartMilliseconds < visibleStart)
-            next = BeatGridCalculator.GetContainingInterval(Offsets, Bpms, Subdivision,
+            next = BeatGridCalculator.GetContainingInterval(UninheritedPoints, Subdivision,
                 partial.EndMilliseconds, Duration.TotalMilliseconds);
         if (next is null || next.Value.StartMilliseconds < visibleStart || next.Value.StartMilliseconds >= visibleEnd) return false;
         ActiveInterval = next;
@@ -256,8 +254,8 @@ public sealed partial class BeatGridView : FrameworkElement
 
     internal void SetActivePosition(double positionMilliseconds)
     {
-        if (!CanPlaceSamples || Offsets is null || Bpms is null) return;
-        ActiveInterval = BeatGridCalculator.GetContainingInterval(Offsets, Bpms, Subdivision,
+        if (!CanPlaceSamples || UninheritedPoints is null) return;
+        ActiveInterval = BeatGridCalculator.GetContainingInterval(UninheritedPoints, Subdivision,
             positionMilliseconds, Duration.TotalMilliseconds);
         pointerX = null;
         pressedInterval = null;
@@ -439,9 +437,9 @@ public sealed partial class BeatGridView : FrameworkElement
     private BeatInterval? IntervalAt(double x)
     {
         if (!CanPlaceSamples || x < 0 || x >= Math.Min(ActualWidth, ViewportWidth) || Duration <= TimeSpan.Zero ||
-            ContentWidth <= 0 || Offsets is null || Bpms is null) return null;
+            ContentWidth <= 0 || UninheritedPoints is null) return null;
         var time = (x + HorizontalOffset) / ContentWidth * Duration.TotalMilliseconds;
-        return BeatGridCalculator.GetContainingInterval(Offsets, Bpms, Subdivision, time, Duration.TotalMilliseconds);
+        return BeatGridCalculator.GetContainingInterval(UninheritedPoints, Subdivision, time, Duration.TotalMilliseconds);
     }
 
     private bool RequestSampleRemoval(Sample sample)

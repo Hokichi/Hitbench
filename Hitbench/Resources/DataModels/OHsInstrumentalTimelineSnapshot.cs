@@ -1,3 +1,4 @@
+using Hitbench.Core.Entities;
 namespace Hitbench.Resources.DataModels;
 
 public sealed class OHsInstrumentalTimelineSnapshot(InstrumentalTrackContext context, long revision,
@@ -8,10 +9,10 @@ public sealed class OHsInstrumentalTimelineSnapshot(InstrumentalTrackContext con
     private static readonly int[] subdivisions = [1, 2, 3, 4, 5, 6, 8, 12, 16];
     public OHsInstrumentalTimelineSnapshot(InstrumentalTrackContext context, long revision,
         TimeSpan duration, TimeSpan position, bool isPlaying, bool canEdit, bool canUseTransport,
-        IReadOnlyList<int> offsets, IReadOnlyList<int> bpms, double zoomFactor,
+        IReadOnlyList<UninheritedPoint> uninheritedPoints, double zoomFactor,
         int selectedSubdivisionIndex, bool scrollWithMarker, string? playbackWarning, bool isAdditionMode = true)
         : this(context, revision, duration, position, isPlaying, canEdit, canUseTransport,
-            new OHsTimingSnapshot(offsets, bpms), zoomFactor, selectedSubdivisionIndex, scrollWithMarker, playbackWarning, isAdditionMode) { }
+            new OHsTimingSnapshot(uninheritedPoints), zoomFactor, selectedSubdivisionIndex, scrollWithMarker, playbackWarning, isAdditionMode) { }
     public InstrumentalTrackContext Context { get; } = context;
     public long Revision { get; } = revision;
     public TimeSpan Duration { get; } = duration;
@@ -20,8 +21,7 @@ public sealed class OHsInstrumentalTimelineSnapshot(InstrumentalTrackContext con
     public bool IsPlaying { get; } = isPlaying;
     public bool CanEdit { get; } = canEdit;
     public bool CanUseTransport { get; } = canUseTransport;
-    public IReadOnlyList<int> Offsets => timing.Offsets;
-    public IReadOnlyList<int> Bpms => timing.Bpms;
+    public IReadOnlyList<UninheritedPoint> UninheritedPoints => timing.UninheritedPoints;
     public double ZoomFactor { get; } = zoomFactor;
     public int SelectedSubdivisionIndex { get; } = selectedSubdivisionIndex is >= 0 and <= 8
         ? selectedSubdivisionIndex : throw new ArgumentOutOfRangeException(nameof(selectedSubdivisionIndex));

@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Input;
@@ -118,7 +119,7 @@ public class PianoRollViewportTests
     private static PianoRollView CreateRoll(double keys, double viewport, double content, double offset, IReadOnlyList<InstrumentalNoteSnapshot> notes)
     {
         var roll = new PianoRollView { KeyColumnWidth = keys, ViewportWidth = viewport, ContentWidth = content,
-            HorizontalOffset = offset, Duration = TimeSpan.FromSeconds(10), Offsets = [0], Bpms = [120],
+            HorizontalOffset = offset, Duration = TimeSpan.FromSeconds(10), UninheritedPoints = TimingTestData.Points([0], [120]),
             Subdivision = 4, VerticalOffset = 70 * 36, LaneHeight = 36, CanEdit = true, Notes = notes };
         UiTestPump.Layout(roll, keys + viewport + 100, 150);
         return roll;

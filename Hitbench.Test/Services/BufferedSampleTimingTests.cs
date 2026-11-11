@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using NAudio.Wave;
 using Hitbench.Services;
 
@@ -27,7 +28,7 @@ public class BufferedSampleTimingTests
         });
         audio.Open("song.wav");
         var events = new[] { new Hitbench.Core.Entities.SamplePlaybackEvent(1, "hit.wav", 100, 100) };
-        await coordinator.ConfigureAsync(new PlaybackMarkerClock([0], [120]), TimeSpan.FromSeconds(.5), default);
+        await coordinator.ConfigureAsync(new PlaybackMarkerClock(TimingTestData.Points([0], [120])), TimeSpan.FromSeconds(.5), default);
         await coordinator.UpdateSamplesAsync(project.ProjectPath, events, default);
         await coordinator.PlayAsync(default);
         await waiting.WaitAsync().WaitAsync(TimeSpan.FromSeconds(3));
@@ -184,7 +185,7 @@ public class BufferedSampleTimingTests
         await audio.UpdateSamplesAsync(project.ProjectPath, [new(1, "hit.wav", 100, 100)], default);
         if (startWorker)
         {
-            await coordinator.ConfigureAsync(new PlaybackMarkerClock([0], [120]), TimeSpan.FromSeconds(.5), default);
+            await coordinator.ConfigureAsync(new PlaybackMarkerClock(TimingTestData.Points([0], [120])), TimeSpan.FromSeconds(.5), default);
             await coordinator.PlayAsync(default);
         }
         else audio.Play();

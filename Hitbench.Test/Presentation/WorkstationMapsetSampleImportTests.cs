@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using CommunityToolkit.Mvvm.Messaging;
 using Hitbench.Core.Entities;
 using Hitbench.Services;
@@ -15,7 +16,7 @@ public sealed class WorkstationMapsetSampleImportTests
         {
             var song=root.CreateSubdirectory("song"); await File.WriteAllTextAsync(Path.Combine(song.FullName,"drum-hitnormal9.wav"),"sample");
             var path=Path.Combine(root.FullName,"project","project.json");
-            var project=new ProjectData { BeatmapPath=song.FullName,Offsets=[0],BPMs=[120],ControlPoints=[new()] };
+            var project=new ProjectData { BeatmapPath=song.FullName,UninheritedPoints = TimingTestData.Points([0], [120]),ControlPoints=[new()] };
             if(conflict) project.Tracks.Add(new InstrumentalTrack { FolderName="Mapset" });
             var files=new SampleFileService(root.FullName);
             var audio = new StubWorkstationAudioService();
@@ -55,7 +56,7 @@ public sealed class WorkstationMapsetSampleImportTests
             var source=Path.Combine(root.FullName,"drum-hitnormal9.wav");await File.WriteAllTextAsync(source,"sample");
             var copied=0;var files=new StubSampleFileService([]) { Import=(_,_,_)=>{copied++;return Task.FromResult("Mapset/drum-hitnormal9.wav");} };
             var dialog=new StubOHsMapsetSampleImportDialogService { Select=(_,_)=>{entered.TrySetResult();return gate.Task;} };
-            vm=new(new StubWorkstationSourceService { Load=(_,_)=>Task.FromResult(new WorkstationSource("map","song",new ProjectData { BeatmapPath=root.FullName,Offsets=[0],BPMs=[120] })) },
+            vm=new(new StubWorkstationSourceService { Load=(_,_)=>Task.FromResult(new WorkstationSource("map","song",new ProjectData { BeatmapPath=root.FullName,UninheritedPoints = TimingTestData.Points([0], [120]) })) },
                 new MarkerPlaybackCoordinator(new StubWorkstationAudioService(),Task.Delay),new ImmediateUiScheduler(),files,mapsetImports:new(files,dialog));
             Assert.That(vm.CanImportFromMapset,Is.False);
             await vm.LoadAsync("old.json",default);vm.AcknowledgePresentationReady(vm.LoadGeneration);
@@ -85,7 +86,7 @@ public sealed class WorkstationMapsetSampleImportTests
             var files=new StubSampleFileService([]);
             var dialog=new StubOHsMapsetSampleImportDialogService { Select=(_,_)=>{presented++;return Task.FromResult<IReadOnlyList<string>>([]);} };
             var manager=new StubSampleManagementDialogService { Present=(_,token)=>{opened.TrySetResult();return release.Task.WaitAsync(token);} };
-            vm=new(new StubWorkstationSourceService { Load=(_,_)=>Task.FromResult(new WorkstationSource("map","song",new ProjectData { BeatmapPath=root.FullName,Offsets=[0],BPMs=[120] })) },
+            vm=new(new StubWorkstationSourceService { Load=(_,_)=>Task.FromResult(new WorkstationSource("map","song",new ProjectData { BeatmapPath=root.FullName,UninheritedPoints = TimingTestData.Points([0], [120]) })) },
                 new MarkerPlaybackCoordinator(new StubWorkstationAudioService(),Task.Delay),new ImmediateUiScheduler(),files,new StubSampleFileDialogService([]),
                 messenger:messenger,sampleManagementDialog:manager,mapsetImports:new(files,dialog));
             await vm.LoadAsync("project.json",default);vm.AcknowledgePresentationReady(vm.LoadGeneration);

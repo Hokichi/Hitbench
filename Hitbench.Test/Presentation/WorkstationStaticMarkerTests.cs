@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using System.Windows;
 using Hitbench.Core.Entities;
 using Hitbench.Resources.CustomControls;
@@ -19,7 +20,7 @@ public class WorkstationStaticMarkerTests
     {
         var audio = new StubWorkstationAudioService();
         var source = new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "audio",
-            new ProjectData { Offsets = [0], BPMs = [120], Tracks = [new Track { SelectedSampleFileName = "a.wav", Samples = [new Sample { Timestamp = 0, FileName = "a.wav" }] }] })) };
+            new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), Tracks = [new Track { SelectedSampleFileName = "a.wav", Samples = [new Sample { Timestamp = 0, FileName = "a.wav" }] }] })) };
         var vm = new WorkstationPageVM(source, new MarkerPlaybackCoordinator(audio, Task.Delay), new ImmediateUiScheduler(), new StubSampleFileService(["a.wav"]));
         var page = new WorkstationPage(vm);
         var window = new Window { Content = page, Width = 1100, Height = 700 };
@@ -59,7 +60,7 @@ public class WorkstationStaticMarkerTests
     [Test]
     public void ControlPointBoundaryHitTestingSupportsLeadingPadding()
     {
-        var vm = WorkstationControlPointStateTests.Create(new ProjectData { Offsets = [0], BPMs = [120],
+        var vm = WorkstationControlPointStateTests.Create(new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]),
             ControlPoints = [new() { Timestamp = 1000, Volume = 50 }] }, new());
         try
         {
@@ -96,7 +97,7 @@ public class WorkstationStaticMarkerTests
     {
         var drawing = new System.Windows.Media.DrawingGroup();
         using (var context = drawing.Open())
-            BeatGridDrawing.Draw(context, new System.Windows.Controls.Border(), [0], [120], 1, 10000, 1000, 900, 200, 60, false);
+            BeatGridDrawing.Draw(context, new System.Windows.Controls.Border(), TimingTestData.Points([0], [120]), 1, 10000, 1000, 900, 200, 60, false);
         var lines = drawing.Children.OfType<System.Windows.Media.GeometryDrawing>()
             .Select(d => d.Geometry).OfType<System.Windows.Media.LineGeometry>().ToArray();
         Assert.That(lines, Is.Not.Empty);

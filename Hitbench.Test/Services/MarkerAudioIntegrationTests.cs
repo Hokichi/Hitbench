@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using NAudio.Wave;
 using Hitbench.Core.Entities;
 using Hitbench.Services;
@@ -19,7 +20,7 @@ public class MarkerAudioIntegrationTests
         {
             Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song.wav", new ProjectData
             {
-                Offsets = [0], BPMs = [120], Tracks = [new Track
+                UninheritedPoints = TimingTestData.Points([0], [120]), Tracks = [new Track
                 {
                     Samples = [new Sample { FileName = "hit.wav", Timestamp = 10 }]
                 }]

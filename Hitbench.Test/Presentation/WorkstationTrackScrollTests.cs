@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -81,7 +82,7 @@ public class WorkstationTrackScrollTests
 
     private static (WorkstationPage, WorkstationPageVM, InMemoryView) Create(bool collapsed, IMessenger messenger)
     {
-        var project = new ProjectData { Offsets = [0], BPMs = [120],
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]),
             Tracks = Enumerable.Range(0, 60).Select(i => new Track { IsCollapsed = collapsed, Name = $"Track {i}", SelectedSampleFileName = "hit.wav" }).ToList() };
         var source = new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", project)) };
         var vm = new WorkstationPageVM(source, new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay),

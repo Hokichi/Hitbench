@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using CommunityToolkit.Mvvm.Messaging;
 using Hitbench.Resources.DataModels;
 using Hitbench.Services;
@@ -53,7 +54,7 @@ public class WorkstationHitNormalTests
     public async Task RenameAndDeletionPreserveConfiguredIntent()
     {
         var messenger = new CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger();
-        var project = new Hitbench.Core.Entities.ProjectData { NormalHitNormalPath = "old.wav", SoftHitNormalPath = "old.wav", Offsets = [0], BPMs = [120], ControlPoints = [new()] };
+        var project = new Hitbench.Core.Entities.ProjectData { NormalHitNormalPath = "old.wav", SoftHitNormalPath = "old.wav", UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints = [new()] };
         var vm = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new Hitbench.Core.Entities.WorkstationSource("map", "song", project)) },
             new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(),
             sampleFiles: new StubSampleFileService(["old.wav"]), messenger: messenger);
@@ -74,7 +75,7 @@ public class WorkstationHitNormalTests
     public async Task InstrumentFolderRenameRewritesConfiguredRelativePaths()
     {
         var track = new Hitbench.Core.Entities.InstrumentalTrack { Name = "Piano", FolderName = "Piano" };
-        var project = new Hitbench.Core.Entities.ProjectData { DrumHitNormalPath = "Piano/C3.wav", Tracks = [track], Offsets = [0], BPMs = [120] };
+        var project = new Hitbench.Core.Entities.ProjectData { DrumHitNormalPath = "Piano/C3.wav", Tracks = [track], UninheritedPoints = TimingTestData.Points([0], [120]) };
         var vm = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new Hitbench.Core.Entities.WorkstationSource("map", "song", project)) },
             new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), sampleFiles: new StubSampleFileService(["Piano/C3.wav"]));
         try

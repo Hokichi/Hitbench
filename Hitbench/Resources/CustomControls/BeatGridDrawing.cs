@@ -1,3 +1,4 @@
+using Hitbench.Core.Entities;
 using System.Windows;
 using System.Windows.Media;
 using Hitbench.Services;
@@ -6,15 +7,14 @@ namespace Hitbench.Resources.CustomControls;
 
 public static class BeatGridDrawing
 {
-    public static void Draw(DrawingContext context, FrameworkElement owner, IReadOnlyList<int>? offsets,
-        IReadOnlyList<int>? bpms, int subdivision, double durationMs, double contentWidth,
+    public static void Draw(DrawingContext context, FrameworkElement owner, IReadOnlyList<UninheritedPoint>? uninheritedPoints, int subdivision, double durationMs, double contentWidth,
         double horizontalOffset, double viewportWidth, double height, bool isWaveform)
     {
-        if (offsets is null || bpms is null || durationMs <= 0 || contentWidth <= 0 || viewportWidth <= 0 || height <= 0) return;
+        if (uninheritedPoints is null || durationMs <= 0 || contentWidth <= 0 || viewportWidth <= 0 || height <= 0) return;
         var startMs = Math.Max(0, horizontalOffset / contentWidth * durationMs);
         var endMs = Math.Min(durationMs, (horizontalOffset + viewportWidth) / contentWidth * durationMs);
         var highContrast = SystemParameters.HighContrast;
-        foreach (var line in BeatGridCalculator.GetLines(offsets, bpms, subdivision, startMs, endMs))
+        foreach (var line in BeatGridCalculator.GetLines(uninheritedPoints, subdivision, startMs, endMs))
         {
             var key = line.Division switch
             {

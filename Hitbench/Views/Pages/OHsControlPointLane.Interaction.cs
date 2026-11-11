@@ -1,3 +1,4 @@
+using Hitbench.Core.Entities;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
@@ -37,8 +38,7 @@ public partial class OHsControlPointLane
     private static readonly DependencyPropertyKey DisableMenuHeaderPropertyKey = DependencyProperty.RegisterReadOnly(nameof(DisableMenuHeader), typeof(string), typeof(OHsControlPointLane), new PropertyMetadata("Disable"));
     public static readonly DependencyProperty DisableMenuHeaderProperty = DisableMenuHeaderPropertyKey.DependencyProperty;
     public static readonly DependencyProperty PendingAddProperty = DependencyProperty.Register(nameof(PendingAdd), typeof(AddControlPointRequestedMessage), typeof(OHsControlPointLane), new PropertyMetadata(null, (d, e) => ((OHsControlPointLane)d).AcceptPendingAdd(e.NewValue as AddControlPointRequestedMessage)));
-    public static readonly DependencyProperty OffsetsProperty = DependencyProperty.Register(nameof(Offsets), typeof(IReadOnlyList<int>), typeof(OHsControlPointLane), new PropertyMetadata(Array.Empty<int>()));
-    public static readonly DependencyProperty BpmsProperty = DependencyProperty.Register(nameof(Bpms), typeof(IReadOnlyList<int>), typeof(OHsControlPointLane), new PropertyMetadata(Array.Empty<int>()));
+    public static readonly DependencyProperty UninheritedPointsProperty = DependencyProperty.Register(nameof(UninheritedPoints), typeof(IReadOnlyList<UninheritedPoint>), typeof(OHsControlPointLane), new PropertyMetadata(Array.Empty<UninheritedPoint>()));
     public static readonly DependencyProperty SubdivisionProperty = DependencyProperty.Register(nameof(Subdivision), typeof(int), typeof(OHsControlPointLane), new PropertyMetadata(4));
     public static readonly DependencyProperty OwnerErrorProperty = DependencyProperty.Register(nameof(OwnerError), typeof(string), typeof(OHsControlPointLane));
     private static readonly DependencyPropertyKey RejectionReasonPropertyKey = DependencyProperty.RegisterReadOnly(nameof(RejectionReason), typeof(string), typeof(OHsControlPointLane), new PropertyMetadata(null));
@@ -57,8 +57,7 @@ public partial class OHsControlPointLane
     public DeleteControlPointRequestedMessage? MenuDeleteRequest => (DeleteControlPointRequestedMessage?)GetValue(MenuDeleteRequestProperty);
     public string DisableMenuHeader => (string)GetValue(DisableMenuHeaderProperty);
     public AddControlPointRequestedMessage? PendingAdd { get => (AddControlPointRequestedMessage?)GetValue(PendingAddProperty); set => SetValue(PendingAddProperty, value); }
-    public IReadOnlyList<int> Offsets { get => (IReadOnlyList<int>)GetValue(OffsetsProperty); set => SetValue(OffsetsProperty, value); }
-    public IReadOnlyList<int> Bpms { get => (IReadOnlyList<int>)GetValue(BpmsProperty); set => SetValue(BpmsProperty, value); }
+    public IReadOnlyList<UninheritedPoint> UninheritedPoints { get => (IReadOnlyList<UninheritedPoint>)GetValue(UninheritedPointsProperty); set => SetValue(UninheritedPointsProperty, value); }
     public int Subdivision { get => (int)GetValue(SubdivisionProperty); set => SetValue(SubdivisionProperty, value); }
     public string? OwnerError { get => (string?)GetValue(OwnerErrorProperty); set => SetValue(OwnerErrorProperty, value); }
     public string? RejectionReason => (string?)GetValue(RejectionReasonProperty);
@@ -151,7 +150,7 @@ public partial class OHsControlPointLane
         }
         var point = state.Points.FirstOrDefault(p => p.Id == id);
         if (point is null || point.IsOffsetAnchor || point.Timestamp != originalTimestamp || ContentWidth <= 0) { CancelPointDrag(); return; }
-        PreviewTimestamp = BeatGridCalculator.GetNearestTimestamp(Offsets, Bpms, Subdivision,
+        PreviewTimestamp = BeatGridCalculator.GetNearestTimestamp(UninheritedPoints, Subdivision,
             (pointerX + HorizontalOffset - grabOffset) / ContentWidth * DurationMilliseconds, DurationMilliseconds);
         var extents = GetExtents();
         var left = PreviewTimestamp is { } timestamp ? OHsControlPointLayout.GetLeft(timestamp, DurationMilliseconds, ContentWidth) : double.NaN;
@@ -295,7 +294,7 @@ public partial class OHsControlPointLane
         if (tag?.Point is { } point && modifiers == ModifierKeys.Alt && key is Key.Left or Key.Right)
         {
             if (point.IsOffsetAnchor) return true;
-            if (IsMenuOwnerActive && double.IsFinite(DurationMilliseconds) && DurationMilliseconds > 0 && State is { CanEdit: true } state && BeatGridCalculator.GetAdjacentPosition(Offsets, Bpms, Subdivision,
+            if (IsMenuOwnerActive && double.IsFinite(DurationMilliseconds) && DurationMilliseconds > 0 && State is { CanEdit: true } state && BeatGridCalculator.GetAdjacentPosition(UninheritedPoints, Subdivision,
                 TimeSpan.FromMilliseconds(point.Timestamp), TimeSpan.FromMilliseconds(DurationMilliseconds), key == Key.Right) is { } target)
             {
                 var timestamp = Math.Round(target.TotalMilliseconds, MidpointRounding.AwayFromZero);

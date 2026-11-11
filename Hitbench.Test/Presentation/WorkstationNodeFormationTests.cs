@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using Hitbench.Core.Entities;
 using Hitbench.Services;
 using Hitbench.Services.ProjectFiles;
@@ -21,7 +22,7 @@ public class WorkstationNodeFormationTests
         a = new Sample { Timestamp = 1000, FileName = "t1.wav" };
         b = new Sample { Timestamp = 1500, FileName = "t4.wav" };
         tracks[0].Samples.Add(a); tracks[3].Samples.Add(b);
-        var data = new ProjectData { Offsets = [0], BPMs = [120], Tracks = [.. tracks] };
+        var data = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), Tracks = [.. tracks] };
         audio = new StubWorkstationAudioService();
         saves = new DelayedProjectFileService(); saves.Release();
         dialogs = new StubNodePasteDialogService();

@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -31,7 +32,7 @@ public class WorkstationNodePlaceholderTests
         b = new Sample { Timestamp = 1500, FileName = "b.wav" };
         var tracks = Enumerable.Range(0, trackCount).Select(_ => new Track { SelectedSampleFileName = "b.wav" }).ToList();
         tracks[0].SelectedSampleFileName = "a.wav"; tracks[0].Samples.Add(a); tracks[3].Samples.Add(b);
-        var data = new ProjectData { Offsets = [0], BPMs = [120], Tracks = tracks };
+        var data = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), Tracks = tracks };
         vm = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map.osu", "audio.wav", data)) },
             new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(),
             new StubSampleFileService(["a.wav", "b.wav"]), nodePasteDialog: new StubNodePasteDialogService());

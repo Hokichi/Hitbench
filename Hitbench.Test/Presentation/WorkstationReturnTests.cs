@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using Hitbench.Core.Entities;
 using Hitbench.Services;
 using Hitbench.Services.ProjectFiles;
@@ -10,7 +11,7 @@ public class WorkstationReturnTests
     private static async Task<WorkstationPageVM> ReadyAsync(IProjectFileService saves, StubWorkstationAudioService audio,
         Track? track = null, StubTrackRemovalDialogService? removal = null)
     {
-        var project = new ProjectData { Offsets = [0], BPMs = [120], Tracks = [track ?? new Track()] };
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), Tracks = [track ?? new Track()] };
         var vm = new WorkstationPageVM(new StubWorkstationSourceService
         {
             Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", project))

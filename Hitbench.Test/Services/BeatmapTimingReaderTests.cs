@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using System.Globalization;
 using Hitbench.Core.Entities;
 using Hitbench.Services.FileSystem;
@@ -38,8 +39,8 @@ public class BeatmapTimingReaderTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(project.Offsets, Is.EqualTo(new[] { -2, 1001, 1001 }));
-            Assert.That(project.BPMs, Is.EqualTo(new[] { 120, 150, 150 }));
+            Assert.That(project.UninheritedPoints.Select(p => p.Offset).ToArray(), Is.EqualTo(new[] { -2, 1001, 1001 }));
+            Assert.That(project.UninheritedPoints.Select(p => p.BPM).ToArray(), Is.EqualTo(new[] { 120, 150, 150 }));
         });
     }
 
@@ -53,7 +54,7 @@ public class BeatmapTimingReaderTests
             CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("fr-FR");
             var project = new ProjectData();
             BeatmapTimingReader.Populate(project, beatmapPath, CancellationToken.None);
-            Assert.That(project.BPMs, Is.EqualTo(new[] { 469, 31, 38 }));
+            Assert.That(project.UninheritedPoints.Select(p => p.BPM).ToArray(), Is.EqualTo(new[] { 469, 31, 38 }));
         }
         finally { CultureInfo.CurrentCulture = previousCulture; }
     }
@@ -62,12 +63,12 @@ public class BeatmapTimingReaderTests
     public void MissingSectionProducesEmptyLists()
     {
         File.WriteAllText(beatmapPath, "[General]\nAudioFilename: song.mp3\n");
-        var project = new ProjectData { Offsets = [1], BPMs = [2] };
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([1], [2]) };
         BeatmapTimingReader.Populate(project, beatmapPath, CancellationToken.None);
         Assert.Multiple(() =>
         {
-            Assert.That(project.Offsets, Is.Empty);
-            Assert.That(project.BPMs, Is.Empty);
+            Assert.That(project.UninheritedPoints.Select(p => p.Offset).ToArray(), Is.Empty);
+            Assert.That(project.UninheritedPoints.Select(p => p.BPM).ToArray(), Is.Empty);
         });
     }
 
@@ -82,14 +83,14 @@ public class BeatmapTimingReaderTests
     public void InvalidUninheritedPointReportsLineAndPreservesExistingLists(string row)
     {
         File.WriteAllText(beatmapPath, $"[TimingPoints]\n{row}\n");
-        var project = new ProjectData { Offsets = [7], BPMs = [8] };
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([7], [8]) };
         var error = Assert.Throws<InvalidDataException>(() =>
             BeatmapTimingReader.Populate(project, beatmapPath, CancellationToken.None));
         Assert.Multiple(() =>
         {
             Assert.That(error!.Message, Does.Contain("line 2"));
-            Assert.That(project.Offsets, Is.EqualTo(new[] { 7 }));
-            Assert.That(project.BPMs, Is.EqualTo(new[] { 8 }));
+            Assert.That(project.UninheritedPoints.Select(p => p.Offset).ToArray(), Is.EqualTo(new[] { 7 }));
+            Assert.That(project.UninheritedPoints.Select(p => p.BPM).ToArray(), Is.EqualTo(new[] { 8 }));
         });
     }
 
@@ -99,17 +100,17 @@ public class BeatmapTimingReaderTests
         File.WriteAllText(beatmapPath, "[TimingPoints]\nanything,anything,anything,anything,anything,anything,0,anything\n");
         var project = new ProjectData();
         Assert.DoesNotThrow(() => BeatmapTimingReader.Populate(project, beatmapPath, CancellationToken.None));
-        Assert.That(project.Offsets, Is.Empty);
+        Assert.That(project.UninheritedPoints.Select(p => p.Offset).ToArray(), Is.Empty);
     }
 
     [Test]
     public void CancellationPreservesExistingLists()
     {
         File.WriteAllText(beatmapPath, "[TimingPoints]\n0,500,4,1,0,100,1,0\n");
-        var project = new ProjectData { Offsets = [7], BPMs = [8] };
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([7], [8]) };
         Assert.Throws<OperationCanceledException>(() =>
             BeatmapTimingReader.Populate(project, beatmapPath, new CancellationToken(true)));
-        Assert.That(project.Offsets, Is.EqualTo(new[] { 7 }));
+        Assert.That(project.UninheritedPoints.Select(p => p.Offset).ToArray(), Is.EqualTo(new[] { 7 }));
     }
 
     [Test]

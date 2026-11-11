@@ -1,3 +1,4 @@
+using Hitbench.Core.Entities;
 namespace Hitbench.Services;
 
 /// <summary>Maps song time onto the timing map's 1/120-beat boundaries.</summary>
@@ -5,11 +6,11 @@ public sealed class PlaybackMarkerClock
 {
     private readonly (int Offset, int Bpm)[] segments;
 
-    public PlaybackMarkerClock(IReadOnlyList<int> offsets, IReadOnlyList<int> bpms)
+    public PlaybackMarkerClock(IReadOnlyList<UninheritedPoint> uninheritedPoints)
     {
-        IsValid = offsets.Count > 0 && offsets.Count == bpms.Count && bpms.All(bpm => bpm > 0);
+        IsValid = uninheritedPoints.Count > 0 && uninheritedPoints.All(point => point.BPM > 0);
         segments = IsValid
-            ? offsets.Select((offset, index) => (Offset: offset, Bpm: bpms[index]))
+            ? uninheritedPoints.Select(point => (Offset: point.Offset, Bpm: point.BPM))
                 .OrderBy(segment => segment.Offset).GroupBy(segment => segment.Offset)
                 .Select(group => group.Last()).ToArray()
             : [];

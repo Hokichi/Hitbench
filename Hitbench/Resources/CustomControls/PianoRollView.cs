@@ -1,3 +1,4 @@
+using Hitbench.Core.Entities;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Input;
@@ -30,16 +31,14 @@ public sealed partial class PianoRollView : Control
     {
         activeKey=Math.Clamp(107-(int)Math.Floor(VerticalOffset/Math.Max(1,LaneHeight)),0,107);
         var visible=ContentWidth>0 ? HorizontalOffset/ContentWidth*Duration.TotalMilliseconds : 0;
-        activeMs=BeatGridCalculator.GetContainingInterval(Offsets,Bpms,Subdivision,visible,Duration.TotalMilliseconds)?.StartMilliseconds ?? visible;
+        activeMs=BeatGridCalculator.GetContainingInterval(UninheritedPoints,Subdivision,visible,Duration.TotalMilliseconds)?.StartMilliseconds ?? visible;
     }
     public static readonly DependencyProperty NotesProperty = DependencyProperty.Register(nameof(Notes), typeof(IReadOnlyList<InstrumentalNoteSnapshot>), typeof(PianoRollView), new FrameworkPropertyMetadata(Array.Empty<InstrumentalNoteSnapshot>(), FrameworkPropertyMetadataOptions.AffectsRender, OnGeometryChanged));
     public IReadOnlyList<InstrumentalNoteSnapshot> Notes { get => (IReadOnlyList<InstrumentalNoteSnapshot>)GetValue(NotesProperty); set => SetValue(NotesProperty, value); }
     public static readonly DependencyProperty SelectedNoteIdProperty = DependencyProperty.Register(nameof(SelectedNoteId), typeof(Guid?), typeof(PianoRollView), new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender, OnGeometryChanged));
     public Guid? SelectedNoteId { get => (Guid?)GetValue(SelectedNoteIdProperty); set => SetValue(SelectedNoteIdProperty, value); }
-    public static readonly DependencyProperty OffsetsProperty = DependencyProperty.Register(nameof(Offsets), typeof(IReadOnlyList<int>), typeof(PianoRollView), new FrameworkPropertyMetadata(Array.Empty<int>(), FrameworkPropertyMetadataOptions.AffectsRender, OnGeometryChanged));
-    public IReadOnlyList<int> Offsets { get => (IReadOnlyList<int>)GetValue(OffsetsProperty); set => SetValue(OffsetsProperty, value); }
-    public static readonly DependencyProperty BpmsProperty = DependencyProperty.Register(nameof(Bpms), typeof(IReadOnlyList<int>), typeof(PianoRollView), new FrameworkPropertyMetadata(Array.Empty<int>(), FrameworkPropertyMetadataOptions.AffectsRender, OnGeometryChanged));
-    public IReadOnlyList<int> Bpms { get => (IReadOnlyList<int>)GetValue(BpmsProperty); set => SetValue(BpmsProperty, value); }
+    public static readonly DependencyProperty UninheritedPointsProperty = DependencyProperty.Register(nameof(UninheritedPoints), typeof(IReadOnlyList<UninheritedPoint>), typeof(PianoRollView), new FrameworkPropertyMetadata(Array.Empty<UninheritedPoint>(), FrameworkPropertyMetadataOptions.AffectsRender, OnGeometryChanged));
+    public IReadOnlyList<UninheritedPoint> UninheritedPoints { get => (IReadOnlyList<UninheritedPoint>)GetValue(UninheritedPointsProperty); set => SetValue(UninheritedPointsProperty, value); }
     public static readonly DependencyProperty SubdivisionProperty = DependencyProperty.Register(nameof(Subdivision), typeof(int), typeof(PianoRollView), new FrameworkPropertyMetadata(4, FrameworkPropertyMetadataOptions.AffectsRender, OnGeometryChanged));
     public int Subdivision { get => (int)GetValue(SubdivisionProperty); set => SetValue(SubdivisionProperty, value); }
     public static readonly DependencyProperty DurationProperty = DependencyProperty.Register(nameof(Duration), typeof(TimeSpan), typeof(PianoRollView), new FrameworkPropertyMetadata(TimeSpan.Zero, FrameworkPropertyMetadataOptions.AffectsRender, OnGeometryChanged));
@@ -157,9 +156,9 @@ public sealed partial class PianoRollView : Control
     }
     private double GridTime(double ms)
     {
-        if (Bpms.Count == 0 || Bpms.Any(b => b <= 0)) return ms;
-        var radius = 60000d / Bpms.Min() / Math.Max(1, Subdivision);
-        var nearest = BeatGridCalculator.GetLines(Offsets, Bpms, Subdivision, Math.Max(0, ms - radius), Math.Min(Duration.TotalMilliseconds, ms + radius))
+        if (UninheritedPoints.Count == 0 || UninheritedPoints.Any(b => b.BPM <= 0)) return ms;
+        var radius = 60000d / UninheritedPoints.Min(b => b.BPM) / Math.Max(1, Subdivision);
+        var nearest = BeatGridCalculator.GetLines(UninheritedPoints, Subdivision, Math.Max(0, ms - radius), Math.Min(Duration.TotalMilliseconds, ms + radius))
          .OrderBy(l => Math.Abs(l.Milliseconds - ms)).FirstOrDefault();
         return Math.Abs(nearest.Milliseconds - ms) <= .500001 ? nearest.Milliseconds : ms;
     }
@@ -175,13 +174,13 @@ public sealed partial class PianoRollView : Control
             InstrumentalKeys.TryGetIndex(selected.Key, out var pitch);
             if (key is Key.Up or Key.Down)
             { pitch += key == Key.Up ? 1 : -1; if (pitch is >= 0 and < 108) Request(InstrumentalNoteEditKind.Move, selected.Id, InstrumentalKeys.GetName(pitch), selected.Timestamp); }
-            else if (BeatGridCalculator.GetAdjacentPosition(Offsets, Bpms, Subdivision, TimeSpan.FromMilliseconds(GridTime(selected.Timestamp)), Duration, key == Key.Right) is { } next)
+            else if (BeatGridCalculator.GetAdjacentPosition(UninheritedPoints, Subdivision, TimeSpan.FromMilliseconds(GridTime(selected.Timestamp)), Duration, key == Key.Right) is { } next)
                 Request(InstrumentalNoteEditKind.Move, selected.Id, selected.Key, next.TotalMilliseconds);
             return true;
         }
         if(key==Key.Enter && modifiers is ModifierKeys.None or ModifierKeys.Control)
         {
-            var hit=Notes.FirstOrDefault(n=>n.Key==InstrumentalKeys.GetName(activeKey) && BeatGridCalculator.GetContainingInterval(Offsets,Bpms,Subdivision,activeMs,Duration.TotalMilliseconds) is {} interval && n.Timestamp==Math.Round(interval.StartMilliseconds,MidpointRounding.AwayFromZero));
+            var hit=Notes.FirstOrDefault(n=>n.Key==InstrumentalKeys.GetName(activeKey) && BeatGridCalculator.GetContainingInterval(UninheritedPoints,Subdivision,activeMs,Duration.TotalMilliseconds) is {} interval && n.Timestamp==Math.Round(interval.StartMilliseconds,MidpointRounding.AwayFromZero));
             if(hit is not null){var ids=modifiers==ModifierKeys.Control ? SelectedNoteIds.Contains(hit.Id) ? SelectedNoteIds.Where(id=>id!=hit.Id).ToArray() : [..SelectedNoteIds,hit.Id] : new[]{hit.Id};SelectIds(ids,hit.Id);}
             else if(modifiers==ModifierKeys.None){if(IsAdditionMode)Request(InstrumentalNoteEditKind.Place,Guid.Empty,InstrumentalKeys.GetName(activeKey),activeMs);else SelectIds([],null);}
             return true;
@@ -191,7 +190,7 @@ public sealed partial class PianoRollView : Control
         if (key == Key.Up) activeKey = Math.Min(107, activeKey + 1);
         else if (key == Key.Down) activeKey = Math.Max(0, activeKey - 1);
         else if (key is Key.Left or Key.Right)
-        { if (BeatGridCalculator.GetAdjacentPosition(Offsets, Bpms, Subdivision, TimeSpan.FromMilliseconds(activeMs), Duration, key == Key.Right) is { } next) activeMs = next.TotalMilliseconds; }
+        { if (BeatGridCalculator.GetAdjacentPosition(UninheritedPoints, Subdivision, TimeSpan.FromMilliseconds(activeMs), Duration, key == Key.Right) is { } next) activeMs = next.TotalMilliseconds; }
         else return false;
         RevealActive(); InvalidateContent(); return true;
     }
@@ -229,7 +228,7 @@ public sealed partial class PianoRollView : Control
         selectionOrigin = SelectionContentPoint(p);
         pointerStart = p; pressedNote = FindNoteAt(p); dragging = false; hover = (key, ms);
         if (pressedNote is not null) { gestureIds=SelectedNoteIds.Contains(pressedNote.Id)?SelectedNoteIds:new[]{pressedNote.Id};InstrumentalKeys.TryGetIndex(pressedNote.Key, out activeKey); activeMs = GridTime(pressedNote.Timestamp); grabOffset = ms - pressedNote.Timestamp; }
-        else { InstrumentalKeys.TryGetIndex(key, out activeKey); activeMs = BeatGridCalculator.GetContainingInterval(Offsets, Bpms, Subdivision, ms, Duration.TotalMilliseconds)?.StartMilliseconds ?? ms; }
+        else { InstrumentalKeys.TryGetIndex(key, out activeKey); activeMs = BeatGridCalculator.GetContainingInterval(UninheritedPoints, Subdivision, ms, Duration.TotalMilliseconds)?.StartMilliseconds ?? ms; }
         InvalidateContent(); return true;
     }
     protected override void OnMouseMove(MouseEventArgs e)

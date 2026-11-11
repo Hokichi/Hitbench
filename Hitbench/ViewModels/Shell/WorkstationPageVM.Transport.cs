@@ -22,7 +22,7 @@ public partial class WorkstationPageVM
     private long instrumentTimelineRequestSequence;
     private Guid instrumentTimelineEditor;
     private Task instrumentTimelineNotifications = Task.CompletedTask;
-    private OHsTimingSnapshot instrumentTiming = new([], []);
+    private OHsTimingSnapshot instrumentTiming = new([]);
 
     private OHsInstrumentalTimelineSnapshot InstrumentTimeline(InstrumentalTrackContext context) =>
         new(context, ++instrumentTimelineRevision, Waveform?.Duration ?? TimeSpan.Zero, Position,
@@ -196,7 +196,7 @@ public partial class WorkstationPageVM
                 position >= TimeSpan.FromTicks(Math.Min(lastAudioPosition.Ticks, lastTarget.Ticks)) &&
                 position <= TimeSpan.FromTicks(Math.Max(lastAudioPosition.Ticks, lastTarget.Ticks)))
                 position = lastTarget;
-            var target = BeatGridCalculator.GetAdjacentPosition(Project.Offsets, Project.BPMs,
+            var target = BeatGridCalculator.GetAdjacentPosition(Project.UninheritedPoints,
                 subdivision, position, Waveform.Duration, forward);
             if (target is not null)
             {

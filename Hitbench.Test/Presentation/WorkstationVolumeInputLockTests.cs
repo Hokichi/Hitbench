@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -106,7 +107,7 @@ public class WorkstationVolumeInputLockTests
     {
         var track = new Track { SelectedSampleFileName = "hit.wav" };
         var source = new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(
-            new WorkstationSource("map.osu", "audio.wav", new ProjectData { Offsets = [0], BPMs = [120], Tracks = [track] })) };
+            new WorkstationSource("map.osu", "audio.wav", new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), Tracks = [track] })) };
         var vm = new WorkstationPageVM(source, new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay),
             new ImmediateUiScheduler(), new StubSampleFileService(["hit.wav"]));
         var page = new WorkstationPage(vm);

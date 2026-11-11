@@ -124,7 +124,7 @@ public class ProjectFileServiceTests
     public void TearDown() => Directory.Delete(root, true);
 
     [Test]
-    public async Task CreatesProjectWithAbsoluteBeatmapPathAndTimingLists()
+    public async Task CreatesProjectWithAbsoluteBeatmapPathAndTimingPoints()
     {
         var path = await new ProjectFileService(applicationDirectory).CreateAsync(song, "Manual name", CancellationToken.None);
         var json = JObject.Parse(await File.ReadAllTextAsync(path));
@@ -135,8 +135,10 @@ public class ProjectFileServiceTests
         Assert.That((int)point["Timestamp"]!, Is.EqualTo(125));
         Assert.That((int)point["Volume"]!, Is.EqualTo(100));
         Assert.That((string)point["Sampleset"]!, Is.EqualTo("Normal"));
-        Assert.That((JArray)json["Offsets"]!, Is.EqualTo(new JArray(125)));
-        Assert.That((JArray)json["BPMs"]!, Is.EqualTo(new JArray(120)));
+        Assert.That((int)json["UninheritedPoints"]![0]!["Offset"]!, Is.EqualTo(125));
+        Assert.That(json["Offsets"], Is.Null);
+        Assert.That((int)json["UninheritedPoints"]![0]!["BPM"]!, Is.EqualTo(120));
+        Assert.That(json["BPMs"], Is.Null);
         Assert.That(Directory.GetFiles(Path.GetDirectoryName(path)!), Has.Length.EqualTo(1));
     }
 

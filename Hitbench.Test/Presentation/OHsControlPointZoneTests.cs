@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
@@ -14,7 +15,7 @@ public class OHsControlPointZoneTests
     [Test]
     public void ZoneMenuUsesCapturedIdentityAndLiveSplitEligibility()
     {
-        var project = new ProjectData { Offsets = [0], BPMs = [120], ControlPoints = [new() { Timestamp = 1000 }, new() { Timestamp = 3000 }] };
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints = [new() { Timestamp = 1000 }, new() { Timestamp = 3000 }] };
         var owner = WorkstationControlPointStateTests.Create(project, new());
         try
         {

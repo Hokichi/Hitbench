@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using Hitbench.Core.Entities;
 using Hitbench.Services;
 using Hitbench.ViewModels.Shell;
@@ -90,7 +91,7 @@ public sealed class WorkstationHeaderStateTests
     [Test]
     public async Task HeaderFollowsProjectAndPlaybackTiming()
     {
-        var project = new ProjectData { Offsets = [100, 1000, 1000], BPMs = [120, 150, 180],
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([100, 1000, 1000], [120, 150, 180]),
             ControlPoints = [new() { Timestamp = 0 }, new() { Timestamp = 0, IsDisabled = true }] };
         var vm = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", project)) },
             new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), MarkerPlaybackCoordinator.DelayAsync), new ImmediateUiScheduler());

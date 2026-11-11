@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using System.Windows;
 using Hitbench.Core.Entities;
 using Hitbench.Resources.Helpers;
@@ -20,7 +21,7 @@ public class OHsControlPointVolumeDragTests
     [TestCase(false)][TestCase(true)]
     public void PreviewHasNoAudioOrSaveAndReleaseCommitsExactlyOnce(bool disabled)
     {
-        var project = new ProjectData { Offsets = [0], BPMs = [120], ControlPoints = [new() { Volume = 50, IsDisabled = disabled }] };
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints = [new() { Volume = 50, IsDisabled = disabled }] };
         var audio = new StubWorkstationAudioService(); var files = new DelayedProjectFileService();
         var owner = WorkstationControlPointStateTests.Create(project, audio, files);
         try
@@ -42,7 +43,7 @@ public class OHsControlPointVolumeDragTests
     [TestCase("context")][TestCase("delete")][TestCase("revision")][TestCase("scale")][TestCase("cancel")][TestCase("lostcapture")][TestCase("scroll")]
     public void CancelledVolumeGestureNeverSubmits(string reason)
     {
-        var project = new ProjectData { Offsets = [0], BPMs = [120], ControlPoints = [new() { Timestamp = 1000, Volume = 50 }, new() { Timestamp = 5000, Volume = 60 }] };
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints = [new() { Timestamp = 1000, Volume = 50 }, new() { Timestamp = 5000, Volume = 60 }] };
         var files = new DelayedProjectFileService(); var owner = WorkstationControlPointStateTests.Create(project, new(), files);
         try
         {
@@ -74,7 +75,7 @@ public class OHsControlPointVolumeDragTests
     [Test]
     public void SaveStatusOnlySnapshotKeepsPreviewAndNoOpReleaseWritesNothing()
     {
-        var project = new ProjectData { Offsets = [0], BPMs = [120], ControlPoints = [new() { Volume = 50 }] };
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints = [new() { Volume = 50 }] };
         var files = new DelayedProjectFileService(); var owner = WorkstationControlPointStateTests.Create(project, new(), files);
         try
         {
@@ -97,7 +98,7 @@ public class OHsControlPointVolumeDragTests
     [TestCase(0)][TestCase(4)]
     public void UntouchedLegacyClickAndCancelKeepStoredVolume(int volume)
     {
-        var project = new ProjectData { Offsets = [0], BPMs = [120], ControlPoints = [new() { Volume = volume }] };
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints = [new() { Volume = volume }] };
         var owner = WorkstationControlPointStateTests.Create(project, new());
         try
         {

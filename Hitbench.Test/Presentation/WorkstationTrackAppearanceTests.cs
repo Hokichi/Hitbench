@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using Hitbench.Core.Entities;
 using Hitbench.Resources.DataModels;
 using Hitbench.Services;
@@ -18,7 +19,7 @@ public class WorkstationTrackAppearanceTests
             Assert.That(saved.Name, Is.EqualTo(expectedName));
             Assert.That(saved.Color, Is.EqualTo(color?.ToUpperInvariant()));
             writes++; return Task.CompletedTask; } };
-        var vm = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [track], Offsets = [0], BPMs = [120], ControlPoints = [new()] })) },
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [track], UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints = [new()] })) },
             new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), projectFiles: files,
             trackAppearanceDialog: new StubOHsTrackAppearanceDialogService { Request = (_, _) => Task.FromResult<OHsTrackAppearanceResult?>(new(color) { Name = expectedName }) });
         try
@@ -38,7 +39,7 @@ public class WorkstationTrackAppearanceTests
         var gate = new TaskCompletionSource<string>();
         var entered = new TaskCompletionSource();
         var files = new StubSampleFileService([]) { FolderRename = (_, _, _, _, _) => { entered.SetResult(); return gate.Task; } };
-        var vm = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [track], Offsets = [0], BPMs = [120] })) },
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [track], UninheritedPoints = TimingTestData.Points([0], [120]) })) },
             new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), sampleFiles: files,
             trackAppearanceDialog: new StubOHsTrackAppearanceDialogService { Request = (request, _) => {
                 Assert.That(request.Name, Is.EqualTo("Piano"));
@@ -83,7 +84,7 @@ public class WorkstationTrackAppearanceTests
         WorkstationPageVM? owner = null;
         var files = new StubSampleFileService(["Piano/C3.wav"]) { FolderRename = async (_, _, _, _, _) =>
         { await Task.Yield(); owner!.Tracks.Remove(track); return "Soft Piano"; } };
-        owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [track, other], Offsets = [0], BPMs = [120] })) },
+        owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [track, other], UninheritedPoints = TimingTestData.Points([0], [120]) })) },
             new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), sampleFiles: files,
             trackAppearanceDialog: new StubOHsTrackAppearanceDialogService { Request = (_, _) => Task.FromResult<OHsTrackAppearanceResult?>(new("#123456")) });
         try
@@ -112,7 +113,7 @@ public class WorkstationTrackAppearanceTests
         var files = new StubSampleFileService(["Piano/C3.wav"]) { FolderRename = (_, _, _, _, _) =>
         { Assert.That(settled, Is.True); return Task.FromResult("Soft Piano"); } };
         var dialogs = new StubInstrumentalTrackDialogService { Arrangement = (_, token) => Drawer(token), Mapping = (_, token) => Drawer(token) };
-        var vm = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [track], Offsets = [0], BPMs = [120] })) },
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [track], UninheritedPoints = TimingTestData.Points([0], [120]) })) },
             new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), sampleFiles: files,
             messenger: new CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger(), instrumentDialogs: dialogs,
             sampleDialog: new StubSampleFileDialogService((string?)null), sampleManagementDialog: new StubSampleManagementDialogService { Present = (_, token) => Drawer(token) },
@@ -142,7 +143,7 @@ public class WorkstationTrackAppearanceTests
             Assert.That(saved.Name,Is.EqualTo("Old"));Assert.That(saved.Color,Is.EqualTo("#123456"));
             return fails?Task.FromException(new IOException("save failed")):Task.CompletedTask;
         }};
-        var vm=new WorkstationPageVM(new StubWorkstationSourceService{Load=(_,_)=>Task.FromResult(new WorkstationSource("map","song",new ProjectData{Tracks=[track],Offsets=[0],BPMs=[120]}))},new MarkerPlaybackCoordinator(new StubWorkstationAudioService(),Task.Delay),new ImmediateUiScheduler(),projectFiles:files,trackAppearanceDialog:new StubOHsTrackAppearanceDialogService{Request=(_,_)=>Task.FromResult<OHsTrackAppearanceResult?>(new("#123456"))});
+        var vm=new WorkstationPageVM(new StubWorkstationSourceService{Load=(_,_)=>Task.FromResult(new WorkstationSource("map","song",new ProjectData{Tracks=[track],UninheritedPoints = TimingTestData.Points([0], [120])}))},new MarkerPlaybackCoordinator(new StubWorkstationAudioService(),Task.Delay),new ImmediateUiScheduler(),projectFiles:files,trackAppearanceDialog:new StubOHsTrackAppearanceDialogService{Request=(_,_)=>Task.FromResult<OHsTrackAppearanceResult?>(new("#123456"))});
         try
         {
             await vm.LoadAsync("project.json",default);vm.AcknowledgePresentationReady(vm.LoadGeneration);
@@ -156,7 +157,7 @@ public class WorkstationTrackAppearanceTests
     public async Task IgnoresCancelledStaleAndInvalidResults(string action)
     {
         var track=new Track{Name="Old"}; var completion=new TaskCompletionSource<OHsTrackAppearanceResult?>();
-        var source=new StubWorkstationSourceService{Load=(_,_)=>Task.FromResult(new WorkstationSource("map","song",new ProjectData{Tracks=[track],Offsets=[0],BPMs=[120]}))};
+        var source=new StubWorkstationSourceService{Load=(_,_)=>Task.FromResult(new WorkstationSource("map","song",new ProjectData{Tracks=[track],UninheritedPoints = TimingTestData.Points([0], [120])}))};
         var vm=new WorkstationPageVM(source,new MarkerPlaybackCoordinator(new StubWorkstationAudioService(),Task.Delay),new ImmediateUiScheduler(),trackAppearanceDialog:new StubOHsTrackAppearanceDialogService{Request=(_,_)=>completion.Task});
         try
         {
@@ -176,7 +177,7 @@ public class WorkstationTrackAppearanceTests
         Track track=instrumental ? new InstrumentalTrack{Name="Old"} : new Track{Name="Old"};
         var completion=new TaskCompletionSource<OHsTrackAppearanceResult?>();
         var dialog=new StubOHsTrackAppearanceDialogService{Request=(_,_)=>completion.Task};
-        var source=new StubWorkstationSourceService{Load=(_,_)=>Task.FromResult(new WorkstationSource("map","song",new ProjectData{Tracks=[track],Offsets=[0],BPMs=[120]}))};
+        var source=new StubWorkstationSourceService{Load=(_,_)=>Task.FromResult(new WorkstationSource("map","song",new ProjectData{Tracks=[track],UninheritedPoints = TimingTestData.Points([0], [120])}))};
         var vm=new WorkstationPageVM(source,new MarkerPlaybackCoordinator(new StubWorkstationAudioService(),Task.Delay),new ImmediateUiScheduler(),trackAppearanceDialog:dialog);
         try
         {

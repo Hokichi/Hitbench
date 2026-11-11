@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using System.Windows;
 using System.Windows.Media;
 using Hitbench.Core.Entities;
@@ -17,7 +18,7 @@ public class MarkerPresentationStressTests
         var views = Enumerable.Range(0, tracks).Select(track => new BeatGridView
         {
             Duration = TimeSpan.FromMinutes(5), ContentWidth = 10240, ViewportWidth = 640,
-            Offsets = [0, 100000, 200000], Bpms = [60, 120, 240], PlaybackMarkerBrush = Brushes.White,
+            UninheritedPoints = TimingTestData.Points([0, 100000, 200000], [60, 120, 240]), PlaybackMarkerBrush = Brushes.White,
             Samples = events.Skip(track * 1000).Take(1000).Select(e => new Sample { Timestamp = e.Timestamp }).ToArray()
         }).ToArray();
         foreach (var view in views) { UiTestPump.Layout(view, 640, 72); view.PrepareDrawing(); }
@@ -40,7 +41,7 @@ public class MarkerPresentationStressTests
     public void RecycledTrackAndThemeUseCurrentGeometryAndMarker()
     {
         var grid = new BeatGridView { Duration = TimeSpan.FromSeconds(10), ContentWidth = 640, ViewportWidth = 640,
-            Offsets = [0], Bpms = [120], Position = TimeSpan.FromSeconds(1), PlaybackMarkerBrush = Brushes.White };
+            UninheritedPoints = TimingTestData.Points([0], [120]), Position = TimeSpan.FromSeconds(1), PlaybackMarkerBrush = Brushes.White };
         UiTestPump.Layout(grid, 640, 72);
         grid.PrepareDrawing();
         var old = grid.ContentDrawing;
@@ -55,7 +56,7 @@ public class MarkerPresentationStressTests
     public void WaveformPositionRetainsContentAndViewportInvalidatesIt()
     {
         var wave = new WaveformView { Data = new WaveformData(TimeSpan.FromSeconds(10), [.1f, .5f]),
-            ViewportWidth = 640, FontFamily = SystemFonts.MessageFontFamily, Offsets = [0], Bpms = [120] };
+            ViewportWidth = 640, FontFamily = SystemFonts.MessageFontFamily, UninheritedPoints = TimingTestData.Points([0], [120]) };
         UiTestPump.Layout(wave, 640, 120);
         wave.PrepareDrawing();
         var content = wave.ContentDrawing;
@@ -71,7 +72,7 @@ public class MarkerPresentationStressTests
     public void TrackPositionRetainsContentAndSampleRevisionInvalidatesIt()
     {
         var grid = new BeatGridView { Duration = TimeSpan.FromSeconds(10), ContentWidth = 640, ViewportWidth = 640,
-            Offsets = [0], Bpms = [120], PlaybackMarkerBrush = Brushes.White, Samples = [new Sample { Timestamp = 100 }] };
+            UninheritedPoints = TimingTestData.Points([0], [120]), PlaybackMarkerBrush = Brushes.White, Samples = [new Sample { Timestamp = 100 }] };
         UiTestPump.Layout(grid, 640, 72);
         grid.PrepareDrawing();
         var content = grid.ContentDrawing;

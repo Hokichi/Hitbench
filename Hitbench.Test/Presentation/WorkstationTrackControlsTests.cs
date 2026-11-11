@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using System.Windows;
 using System.Windows.Controls.Primitives;
 using System.Windows.Automation.Peers;
@@ -54,7 +55,7 @@ public class WorkstationTrackControlsTests
     {
         var tracks = empty ? new List<Track>() : new List<Track> { new() { IsTrackMuted = true }, new() };
         var vm = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(
-            new WorkstationSource("map", "song", new ProjectData { Tracks = tracks, Offsets = [0], BPMs = [120] })) },
+            new WorkstationSource("map", "song", new ProjectData { Tracks = tracks, UninheritedPoints = TimingTestData.Points([0], [120]) })) },
             new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler());
         try
         {
@@ -89,7 +90,7 @@ public class WorkstationTrackControlsTests
         Application.Current.Resources.MergedDictionaries[0] = new ResourceDictionary { Source = new Uri($"/Hitbench;component/Resources/Themes/{theme}.xaml", UriKind.Relative) };
         var track = new Hitbench.Core.Entities.Track { IsTrackMuted = true, IsTrackSoloed = true };
         var source = new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(
-            new WorkstationSource("map.osu", "audio.wav", new ProjectData { Tracks = [track], Offsets = [0], BPMs = [120] })) };
+            new WorkstationSource("map.osu", "audio.wav", new ProjectData { Tracks = [track], UninheritedPoints = TimingTestData.Points([0], [120]) })) };
         var vm = new WorkstationPageVM(source, new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler());
         var page = new WorkstationPage(vm) { FlowDirection = direction }; page.SetProjectPath("project.json");
         using var view = new InMemoryView(new Window { Content = page, Width = 900, Height = 700 });

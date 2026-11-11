@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using System.Windows;
 using CommunityToolkit.Mvvm.Messaging;
 using System.Windows.Controls;
@@ -21,7 +22,7 @@ public sealed class OHsSampleConfigurationPopupTests
         var messenger = new CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger();
         var entered = new TaskCompletionSource();
         var vm = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(
-            new WorkstationSource("map", "song", new ProjectData { Tracks = [track], Offsets = [0], BPMs = [120] })) },
+            new WorkstationSource("map", "song", new ProjectData { Tracks = [track], UninheritedPoints = TimingTestData.Points([0], [120]) })) },
             new Hitbench.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(),
             sampleFiles: new StubSampleFileService(["a.wav", "b.wav"]), sampleDialog: new StubSampleFileDialogService([]), messenger: messenger,
             sampleManagementDialog: new StubSampleManagementDialogService { Present = (_, token) =>

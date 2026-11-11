@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using Hitbench.Core.Entities;
 using Hitbench.Services;
 using Hitbench.ViewModels.Shell;
@@ -9,7 +10,7 @@ public sealed class WorkstationSampleConfigurationTests
     internal static async Task<WorkstationPageVM> CreateAsync(params Track[] tracks)
     {
         var vm = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(
-            new WorkstationSource("map", "song", new ProjectData { Tracks = tracks.ToList(), Offsets = [0], BPMs = [120] })) },
+            new WorkstationSource("map", "song", new ProjectData { Tracks = tracks.ToList(), UninheritedPoints = TimingTestData.Points([0], [120]) })) },
             new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(),
             sampleFiles: new StubSampleFileService(["a.wav", "b.wav"]), sampleDialog: new StubSampleFileDialogService([]),
             trackRemovalDialog: new StubTrackRemovalDialogService { Confirm = _ => Task.FromResult(true) });

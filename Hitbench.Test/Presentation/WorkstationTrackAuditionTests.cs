@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using Hitbench.Core.Entities;
 using Hitbench.Services;
 using Hitbench.Services.FileSystem;
@@ -221,7 +222,7 @@ public class WorkstationTrackAuditionTests
         SelectedSampleFileName = name,
         Samples = [new Sample { FileName = name, Timestamp = 125 }]
     };
-    private static ProjectData Project(Track[] tracks) => new() { Tracks = tracks.ToList(), Offsets = [0], BPMs = [120], ControlPoints = [new()] };
+    private static ProjectData Project(Track[] tracks) => new() { Tracks = tracks.ToList(), UninheritedPoints = TimingTestData.Points([0], [120]), ControlPoints = [new()] };
     private static WorkstationPageVM CreateVM(StubWorkstationAudioService audio, IProjectFileService saves, Track[] tracks,
         StubTrackRemovalDialogService? dialog = null) => new(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(
             new WorkstationSource("map.osu", "audio.wav", Project(tracks))) }, new MarkerPlaybackCoordinator(audio, Task.Delay),

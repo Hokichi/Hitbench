@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using Hitbench.Core.Entities;
 using Hitbench.Services.ProjectFiles;
 
@@ -202,15 +203,14 @@ public class ProjectDataSerializerTests
         var source = new ProjectData
         {
             BeatmapPath = "song",
-            Offsets = [125],
-            BPMs = [120],
+            UninheritedPoints = TimingTestData.Points([125], [120]),
             Tracks = [new Track { Volume = 75, SelectedSampleFileName = "kick.wav", Samples = [new Sample { FileName = "kick.wav", Timestamp = 125 }] }]
         };
         var restored = ProjectDataSerializer.Deserialize(ProjectDataSerializer.Serialize(source));
         Assert.Multiple(() =>
         {
             Assert.That(restored.BeatmapPath, Is.EqualTo("song"));
-            Assert.That(restored.Offsets, Is.EqualTo(new[] { 125 }));
+            Assert.That(restored.UninheritedPoints.Select(p => p.Offset).ToArray(), Is.EqualTo(new[] { 125 }));
             Assert.That(restored.Tracks[0].Volume, Is.EqualTo(75));
             Assert.That(restored.Tracks[0].Samples[0].FileName, Is.EqualTo("kick.wav"));
             Assert.That(restored.Tracks[0].Samples[0].Timestamp, Is.EqualTo(125));

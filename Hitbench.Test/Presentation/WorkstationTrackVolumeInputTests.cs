@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -23,7 +24,7 @@ public class WorkstationTrackVolumeInputTests
     {
         var track = new Hitbench.Core.Entities.Track { Volume = 50 };
         var source = new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(
-            new WorkstationSource("map.osu", "audio.wav", new ProjectData { Offsets = [0], BPMs = [120], Tracks = [track] })) };
+            new WorkstationSource("map.osu", "audio.wav", new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), Tracks = [track] })) };
         var vm = new WorkstationPageVM(source,
             new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler());
         var page = new WorkstationPage(vm) { FlowDirection = direction };

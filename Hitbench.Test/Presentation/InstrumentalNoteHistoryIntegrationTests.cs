@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using CommunityToolkit.Mvvm.Messaging;
 using Hitbench.Core.Entities;
 using Hitbench.Resources.DataModels;
@@ -13,7 +14,7 @@ public class InstrumentalNoteHistoryIntegrationTests
     {
         var track=new InstrumentalTrack{KeyFiles=new(){["C4"]="piano.wav"}};
         var messenger=new WeakReferenceMessenger();var dialogs=new StubInstrumentalTrackDialogService();
-        var owner=new WorkstationPageVM(new StubWorkstationSourceService{Load=(_,_)=>Task.FromResult(new WorkstationSource("map","song",new ProjectData{Tracks=[track],Offsets=[0],BPMs=[120]}))},new MarkerPlaybackCoordinator(new StubWorkstationAudioService(),Task.Delay),new ImmediateUiScheduler(),messenger:messenger,instrumentDialogs:dialogs);
+        var owner=new WorkstationPageVM(new StubWorkstationSourceService{Load=(_,_)=>Task.FromResult(new WorkstationSource("map","song",new ProjectData{Tracks=[track],UninheritedPoints = TimingTestData.Points([0], [120])}))},new MarkerPlaybackCoordinator(new StubWorkstationAudioService(),Task.Delay),new ImmediateUiScheduler(),messenger:messenger,instrumentDialogs:dialogs);
         InstrumentalTrackSnapshot? latest=null;messenger.Register<InstrumentalTrackChangedMessage>(this,(_,m)=>latest=m.Snapshot);
         dialogs.Arrangement=(data,_)=>
         {
@@ -34,7 +35,7 @@ public class InstrumentalNoteHistoryIntegrationTests
     {
         var track = new InstrumentalTrack { KeyFiles = new() { ["C4"] = "old.wav" } };
         var messenger = new WeakReferenceMessenger(); var dialogs = new StubInstrumentalTrackDialogService();
-        var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [track], Offsets = [0], BPMs = [120] })) }, new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), messenger: messenger, instrumentDialogs: dialogs);
+        var owner = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [track], UninheritedPoints = TimingTestData.Points([0], [120]) })) }, new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), messenger: messenger, instrumentDialogs: dialogs);
         InstrumentalTrackSnapshot? latest = null;
         messenger.Register<InstrumentalTrackChangedMessage>(this, (_, m) => latest = m.Snapshot);
         Guid originalId = default;

@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using Hitbench.Core.Entities;
 using Hitbench.Resources.DataModels;
 
@@ -9,7 +10,7 @@ public class WorkstationDefaultSampleTests
     public async Task DisabledDefaultCannotBeChangedByUndo()
     {
         var track = new Track { UsesDefaultSample = true };
-        var vm = WorkstationSkinDefaultsTests.Create(new ProjectData { AllowDefaults = true, Tracks = [track], Offsets = [0], BPMs = [120] },
+        var vm = WorkstationSkinDefaultsTests.Create(new ProjectData { AllowDefaults = true, Tracks = [track], UninheritedPoints = TimingTestData.Points([0], [120]) },
             new() { Refresh = (_, _, _, _, _) => Task.FromResult(new OHsSkinDefaultsSnapshot("skin", ["SkinDefault/normal-hitnormal.wav"], false)) });
         try
         {
@@ -24,7 +25,7 @@ public class WorkstationDefaultSampleTests
     [Test]
     public async Task NewTrackStartsDefaultAndUnavailableSourceCanBeReconfigured()
     {
-        var project = new ProjectData { Offsets = [0], BPMs = [120] };
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]) };
         var vm = WorkstationSkinDefaultsTests.Create(project, new());
         try
         {
@@ -44,7 +45,7 @@ public class WorkstationDefaultSampleTests
     public async Task DefaultSupportsNodesAndSwitchingSourceKeepsTimestamps()
     {
         var track = new Track { UsesDefaultSample = true };
-        var project = new ProjectData { AllowDefaults = true, Offsets = [0], BPMs = [120], Tracks = [track] };
+        var project = new ProjectData { AllowDefaults = true, UninheritedPoints = TimingTestData.Points([0], [120]), Tracks = [track] };
         var vm = WorkstationSkinDefaultsTests.Create(project, new() { Refresh = (_, _, _, _, _) =>
             Task.FromResult(new OHsSkinDefaultsSnapshot("skin", ["SkinDefault/normal-hitnormal.wav"], false)) });
         try

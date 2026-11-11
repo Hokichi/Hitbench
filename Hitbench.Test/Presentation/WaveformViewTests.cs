@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using System.Windows;
 using System.Windows.Media;
 using CommunityToolkit.Mvvm.Input;
@@ -31,8 +32,7 @@ public class WaveformViewTests
     {
         var view = CreateView();
         view.Data = new WaveformData(TimeSpan.FromSeconds(10), [0, 0]);
-        view.Offsets = new[] { 0 };
-        view.Bpms = new[] { 120 };
+        view.UninheritedPoints = TimingTestData.Points([ 0 ], [ 120 ]);
         view.Subdivision = 4;
         view.ViewportWidth = 400;
         foreach (var currentHeight in new[] { height, height + 40 })

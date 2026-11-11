@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using Hitbench.Services.FileSystem;
 using Hitbench.Services.ProjectFiles;
 
@@ -103,7 +104,7 @@ public sealed class ProjectCreationPublicationTests
         var results = await Task.WhenAll(OutcomeAsync(first), OutcomeAsync(second));
         Assert.That(results.Count(error => error is null), Is.EqualTo(1));
         Assert.That(results.Count(error => error is IOException), Is.EqualTo(1));
-        Assert.That(ProjectDataSerializer.Deserialize(await File.ReadAllTextAsync(Path.Combine(Target, "project.json"))).BPMs,
+        Assert.That(ProjectDataSerializer.Deserialize(await File.ReadAllTextAsync(Path.Combine(Target, "project.json"))).UninheritedPoints.Select(p => p.BPM).ToArray(),
             Is.EqualTo(new[] { 120 }));
         Assert.That(Directory.EnumerateDirectories(appRoot, ".project-staging-*"), Is.Empty);
     }

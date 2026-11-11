@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using Hitbench.Core.Entities;
 using Hitbench.Services;
 using Hitbench.ViewModels.Shell;
@@ -10,7 +11,7 @@ public sealed class WorkstationTrackReorderTests
         var a = new Track { SelectedSampleFileName = "hit.wav", Name = "A", Color = "#123456" };
         var b = new InstrumentalTrack { Name = "B", IsCollapsed = true, Notes = [new InstrumentalNote { Key = "C3", Timestamp = 125 }] };
         var saves = new DelayedProjectFileService(); saves.Release();
-        var vm = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [a,b], Offsets = [0], BPMs = [120] })) }, new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), projectFiles: saves);
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [a,b], UninheritedPoints = TimingTestData.Points([0], [120]) })) }, new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), projectFiles: saves);
         try
         {
             await vm.LoadAsync("project.json", default); vm.AcknowledgePresentationReady(vm.LoadGeneration); vm.IsAdditionMode = true;

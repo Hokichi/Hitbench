@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using System.Windows;
 using Hitbench.Core.Entities;
 using Hitbench.Resources.CustomControls;
@@ -17,7 +18,7 @@ public class WorkstationSmoothPlaybackTests
     {
         var audio = new StubWorkstationAudioService();
         var playback = new MarkerPlaybackCoordinator(audio, (_, token) => Task.Delay(Timeout.Infinite, token));
-        var project = new ProjectData { Offsets = [0], BPMs = [120], IsMarkerStatic = true, WorkstationZoom = zoom,
+        var project = new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), IsMarkerStatic = true, WorkstationZoom = zoom,
             Tracks = [new Track { Samples = [new Sample { Timestamp = 2000 }] }], ControlPoints = [new() { Timestamp = 2000 }] };
         var source = new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "audio", project)) };
         var vm = new WorkstationPageVM(source, playback, new Hitbench.Services.Ui.UiScheduler(System.Windows.Threading.Dispatcher.CurrentDispatcher));

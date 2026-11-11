@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using Hitbench.Services;
 using Hitbench.ViewModels.Shell;
 using Hitbench.Core.Entities;
@@ -12,7 +13,7 @@ public class WorkstationMarkerModeStateTests
         var node = new Sample { FileName = "a.wav", Timestamp = 100 };
         var track = new Track { SelectedSampleFileName = "a.wav", Samples = [node] };
         var source = new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "audio",
-            new ProjectData { Offsets = [0], BPMs = [120], Tracks = [track] })) };
+            new ProjectData { UninheritedPoints = TimingTestData.Points([0], [120]), Tracks = [track] })) };
         var vm = new WorkstationPageVM(source, new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay),
             new ImmediateUiScheduler(), new StubSampleFileService(["a.wav"]));
         try

@@ -1,3 +1,4 @@
+using Hitbench.Core.Entities;
 using System.Windows;
 using System.Windows.Media;
 
@@ -18,7 +19,7 @@ public sealed partial class BeatGridView
         var selectedBorder = new Pen(selectionCue, 2);
         context.PushOpacity(highContrast ? 1 : 0.5);
         context.PushTransform(new TranslateTransform(retainedViewport.Start, 0));
-        BeatGridDrawing.Draw(context, this, Offsets, Bpms, Subdivision, Duration.TotalMilliseconds,
+        BeatGridDrawing.Draw(context, this, UninheritedPoints, Subdivision, Duration.TotalMilliseconds,
             ContentWidth, retainedViewport.Origin + retainedViewport.Start, retainedViewport.Width, ActualHeight, false);
         context.Pop();
         context.Pop();

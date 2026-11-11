@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using Hitbench.Core.Entities;
 using Hitbench.Services;
 using Hitbench.ViewModels.Shell;
@@ -50,7 +51,7 @@ public sealed class WorkstationTrackStateTests
         var a = new Track { Name = "A", SelectedSampleFileName = "a.wav" }; var b = new Track { Name = "B" };
         var appearance = new StubOHsTrackAppearanceDialogService();
         var saves = new DelayedProjectFileService(); saves.Release();
-        var vm = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [a,b], Offsets = [0], BPMs = [120] })) }, new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), projectFiles:saves, trackAppearanceDialog:appearance);
+        var vm = new WorkstationPageVM(new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData { Tracks = [a,b], UninheritedPoints = TimingTestData.Points([0], [120]) })) }, new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), projectFiles:saves, trackAppearanceDialog:appearance);
         try {
             await vm.LoadAsync("project.json", default); vm.AcknowledgePresentationReady(vm.LoadGeneration);
             vm.SetTrackCollapsed(a, true); Assert.That(b.IsCollapsed, Is.False); Assert.That(vm.AreTracksCollapsed, Is.False);

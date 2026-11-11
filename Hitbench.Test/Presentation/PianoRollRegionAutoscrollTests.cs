@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using System.Windows;
 using Hitbench.Resources.CustomControls;
 namespace Hitbench.Test.Presentation;
@@ -9,7 +10,7 @@ public sealed class PianoRollRegionAutoscrollTests
     [TestCase("zoom")]
     public void ChangingSelectionScaleCancelsWithoutEditing(string change)
     {
-        var roll = new PianoRollView { IsAdditionMode = false, Offsets = [0], Bpms = [120], Duration = TimeSpan.FromSeconds(10), ContentWidth = 2000 };
+        var roll = new PianoRollView { IsAdditionMode = false, UninheritedPoints = TimingTestData.Points([0], [120]), Duration = TimeSpan.FromSeconds(10), ContentWidth = 2000 };
         UiTestPump.Layout(roll,400,150);
         var edits = 0; roll.NoteEditRequested += (_, _) => edits++;
         roll.BeginPointerInteraction(new Point(100,30)); roll.UpdatePointerPosition(new Point(450,200));
@@ -25,7 +26,7 @@ public sealed class PianoRollRegionAutoscrollTests
     {
         var a = new Hitbench.Resources.DataModels.InstrumentalNoteSnapshot(Guid.NewGuid(), "C4", 1000);
         var b = new Hitbench.Resources.DataModels.InstrumentalNoteSnapshot(Guid.NewGuid(), "C#4", 1250);
-        var roll = new PianoRollView { Notes = [a,b], IsAdditionMode = false, Offsets = [0], Bpms = [120], Duration = TimeSpan.FromSeconds(10), ContentWidth = 1000, HorizontalOffset = 50, VerticalOffset = 70 * 36 };
+        var roll = new PianoRollView { Notes = [a,b], IsAdditionMode = false, UninheritedPoints = TimingTestData.Points([0], [120]), Duration = TimeSpan.FromSeconds(10), ContentWidth = 1000, HorizontalOffset = 50, VerticalOffset = 70 * 36 };
         UiTestPump.Layout(roll, 400, 150);
         Hitbench.Resources.CustomControls.InstrumentalNoteSelectionRequestedEventArgs? selected = null;
         var edits = 0;
@@ -43,7 +44,7 @@ public sealed class PianoRollRegionAutoscrollTests
     [Test]
     public void OutsidePointerScrollsBothAxesAndCancelStops()
     {
-        var roll = new PianoRollView { IsAdditionMode = false, Offsets = [0], Bpms = [120], Duration = TimeSpan.FromSeconds(10), ContentWidth = 2000, VerticalOffset = 500 };
+        var roll = new PianoRollView { IsAdditionMode = false, UninheritedPoints = TimingTestData.Points([0], [120]), Duration = TimeSpan.FromSeconds(10), ContentWidth = 2000, VerticalOffset = 500 };
         UiTestPump.Layout(roll, 400, 150);
         Assert.That(roll.BeginPointerInteraction(new Point(100, 30)), Is.True);
         roll.UpdatePointerPosition(new Point(450, 200));

@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
@@ -48,7 +49,7 @@ public class WorkstationSampleReloadIntegrationTests
         {
             calls++;
             return Task.FromResult(new WorkstationSource("map", "song", new ProjectData
-            { Tracks = [new InstrumentalTrack { Name = calls == 1 ? "initial" : "reloaded", SelectedSampleFileName = "hit.wav" }], Offsets = [0], BPMs = [120] }));
+            { Tracks = [new InstrumentalTrack { Name = calls == 1 ? "initial" : "reloaded", SelectedSampleFileName = "hit.wav" }], UninheritedPoints = TimingTestData.Points([0], [120]) }));
         } };
         var vm = new WorkstationPageVM(source, new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay),
             new ImmediateUiScheduler(), new StubSampleFileService(["hit.wav"]), projectFiles: saves,
@@ -95,7 +96,7 @@ public class WorkstationSampleReloadIntegrationTests
     {
         var tracks = Enumerable.Range(0, 30).Select(_ => new Track { SelectedSampleFileName = "hit.wav" }).ToList();
         var source = new StubWorkstationSourceService { Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song",
-            new ProjectData { Tracks = tracks, Offsets = [0], BPMs = [120] })) };
+            new ProjectData { Tracks = tracks, UninheritedPoints = TimingTestData.Points([0], [120]) })) };
         var files = new StubSampleFileService(["hit.wav"]);
         var vm = new WorkstationPageVM(source, new MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(), files);
         var page = new WorkstationPage(vm); page.SetProjectPath("project.json");

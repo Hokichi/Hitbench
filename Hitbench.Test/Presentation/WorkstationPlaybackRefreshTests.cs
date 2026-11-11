@@ -1,3 +1,4 @@
+using Hitbench.Test;
 using System.Windows;
 using Hitbench.Core.Entities;
 using Hitbench.Resources.CustomControls;
@@ -140,7 +141,7 @@ public class WorkstationPlaybackRefreshTests
         {
             Load = (_, _) => Task.FromResult(new WorkstationSource("map", "song", new ProjectData
             {
-                Offsets = [0, 1000], BPMs = [120, 240],
+                UninheritedPoints = TimingTestData.Points([0, 1000], [120, 240]),
                 Tracks = [new Track { Samples = [new Sample { FileName = "hit.wav", Timestamp = 10 }] }]
             }))
         };
@@ -157,7 +158,7 @@ public class WorkstationPlaybackRefreshTests
     {
         if (audio.Disposed || !vm.IsPlaying && !audio.Snapshot.IsPlaying) return;
         var expected = audio.Snapshot;
-        var clock = new Hitbench.Services.PlaybackMarkerClock([0,1000],[120,240]);
+        var clock = new Hitbench.Services.PlaybackMarkerClock(TimingTestData.Points([0,1000], [120,240]));
         var position = expected.IsPlaying ? clock.GetPosition(expected.Position, TimeSpan.FromSeconds(10)) : expected.Position;
         UiTestPump.Run(StubWorkstationAudioService.WaitUntilAsync(() =>
             playback.Latest.Playback.IsPlaying == expected.IsPlaying &&
