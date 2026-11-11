@@ -27,4 +27,14 @@ public class OHsMidiImportPopupVMTests
         Assert.That(vm.ProjectBpmText, Does.Contain(180.ToString(CultureInfo.CurrentCulture)));
         Assert.That(vm.FullTimingText, Does.Contain("240").And.Contain("1000").And.Contain("-100"));
     }
+
+    [Test]
+    public void TimingSummaryUsesFirstEffectiveProjectPoint()
+    {
+        var vm = new OHsMidiImportPopupVM(Services.OHsMidiImportMapperTests.Source(),
+            [new() { Offset = 500, BPM = 240 }, new() { Offset = 0, BPM = 100 }, new() { Offset = 0, BPM = 180 }]);
+        Assert.That(vm.ProjectBpmText, Does.StartWith("180 BPM"));
+        Assert.That(vm.FullTimingText, Does.Contain("500 ms: 240 BPM"));
+        Assert.That(vm.FullTimingText, Does.Not.Contain("0 ms: 100 BPM"));
+    }
 }
