@@ -22,6 +22,7 @@
     <PackageReference Include="LottieSharp" Version="2.4.3" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.11" />
     <PackageReference Include="NAudio" Version="2.2.1" />
+    <PackageReference Include="Melanchall.DryWetMidi" Version="8.0.3" />
     <PackageReference Include="NAudio.Vorbis" Version="1.5.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageReference Include="OggVorbisEncoder" Version="1.2.2" />
