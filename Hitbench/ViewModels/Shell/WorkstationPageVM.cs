@@ -609,7 +609,13 @@ public partial class WorkstationPageVM(
             await UpdatePlaybackAsync(projectPath, generation, token, skinSnapshot.WasReplaced);
             if (audioService.GetSnapshot().Error?.StartsWith("Unable to prepare audio:", StringComparison.Ordinal) == true)
                 await CommitAsync(generation, CancellationToken.None, () => Waveform = null);
-            if (addedOffsetControlPoint || skinChanged)
+            if (source.RequiresTimingMigration && Waveform is not null && projectFiles is not null)
+            {
+                token.ThrowIfCancellationRequested();
+                if (generation != loadGeneration || deactivated) return;
+                await projectFiles.SaveAsync(projectPath, ProjectDataSerializer.Serialize(source.Project), token);
+            }
+            else if (addedOffsetControlPoint || skinChanged)
                 await CommitAsync(generation, token, () => { if (Waveform is not null) QueueSave(isChange: false); });
 
         }

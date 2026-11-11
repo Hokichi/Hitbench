@@ -18,7 +18,7 @@ public sealed class WorkstationSourceService(ISampleFileService? sampleFiles = n
     {
         token.ThrowIfCancellationRequested();
         var projectJson = File.ReadAllText(projectPath);
-        var project = ProjectDataSerializer.Deserialize(projectJson);
+        var project = ProjectDataSerializer.Deserialize(projectJson, out var requiresTimingMigration);
         if (string.IsNullOrWhiteSpace(project.BeatmapPath))
             throw new InvalidDataException("Project does not identify a song folder.");
 
@@ -70,7 +70,7 @@ public sealed class WorkstationSourceService(ISampleFileService? sampleFiles = n
         RejectReparsePoints(songFolder, audioPath);
         BeatmapTimingReader.Populate(project, beatmapPath, token);
         Directory.CreateDirectory(Path.Combine(Path.GetDirectoryName(Path.GetFullPath(projectPath))!, "Samples"));
-        return new WorkstationSource(beatmapPath, audioPath, project);
+        return new WorkstationSource(beatmapPath, audioPath, project, requiresTimingMigration);
     }
 
     private static void RejectReparsePoints(string root, string path)

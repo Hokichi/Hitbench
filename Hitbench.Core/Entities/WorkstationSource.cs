@@ -1,3 +1,3 @@
 namespace Hitbench.Core.Entities;
 
-public sealed record WorkstationSource(string BeatmapPath, string AudioPath, ProjectData Project);
+public sealed record WorkstationSource(string BeatmapPath, string AudioPath, ProjectData Project, bool RequiresTimingMigration = false);
