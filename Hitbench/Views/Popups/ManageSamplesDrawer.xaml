@@ -38,8 +38,14 @@
             </Style.Triggers>
         </Style>
         <Style
-            x:Key="OHsManageSamplesDragSourceStyle"
+            x:Key="OHsManageSamplesRowStyle"
             BasedOn="{StaticResource BaseControlStyle}"
+            TargetType="c:OHsSampleRow">
+            <Setter Property="WaveformMargin" Value="0,4" />
+        </Style>
+        <Style
+            x:Key="OHsManageSamplesDragSourceStyle"
+            BasedOn="{StaticResource OHsManageSamplesRowStyle}"
             TargetType="c:OHsSampleRow">
             <Style.Triggers>
                 <Trigger Property="IsDragSource" Value="True">
@@ -82,7 +88,7 @@
                 IsPlaying="{Binding IsPlaying, Mode=OneWay}"
                 PlayCommand="{Binding DataContext.PlayCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}, Mode=OneWay}"
                 PlayCommandParameter="{Binding Mode=OneWay}"
-                Style="{StaticResource BaseControlStyle}"
+                Style="{StaticResource OHsManageSamplesRowStyle}"
                 Waveform="{Binding Waveform, Mode=OneWay}"
                 WaveformRequested="OnSharedWaveformRequested" />
         </DataTemplate>
