@@ -32,6 +32,8 @@ public sealed partial class InstrumentalArrangementDrawerVM : ObservableObject
     public IReadOnlyDictionary<string, string> KeyFiles => snapshot.KeyFiles;
     public IReadOnlyList<UninheritedPoint> UninheritedPoints => timeline.UninheritedPoints;
     public TimeSpan Duration => timeline.Duration;
+    public double DisplayStartMilliseconds => Math.Min(0, Notes.Count == 0 ? 0 : Notes.Min(n => n.Timestamp));
+    public double DisplayEndMilliseconds => Math.Max(Duration.TotalMilliseconds, Notes.Count == 0 ? 0 : Notes.Max(n => n.Timestamp));
     public TimeSpan Position => timeline.Position;
     public bool IsPlaying => timeline.IsPlaying;
     public bool CanEdit => !closed && timeline.CanEdit;
@@ -88,7 +90,7 @@ public sealed partial class InstrumentalArrangementDrawerVM : ObservableObject
             var old = timeline; timeline = m.Snapshot;
             if (old.Position != timeline.Position) OnPropertyChanged(nameof(Position));
             if (old.IsPlaying != timeline.IsPlaying) OnPropertyChanged(nameof(IsPlaying));
-            if (old.Duration != timeline.Duration) { OnPropertyChanged(nameof(Duration)); SetNoteSelection(SelectedNoteIds, SelectedNoteId); }
+            if (old.Duration != timeline.Duration) { OnPropertyChanged(nameof(Duration)); OnPropertyChanged(nameof(DisplayEndMilliseconds)); SetNoteSelection(SelectedNoteIds, SelectedNoteId); }
             if (!ReferenceEquals(old.UninheritedPoints, timeline.UninheritedPoints) &&
                 !old.UninheritedPoints.Select(p => (p.Offset, p.BPM)).SequenceEqual(timeline.UninheritedPoints.Select(p => (p.Offset, p.BPM))))
                 OnPropertyChanged(nameof(UninheritedPoints));
@@ -108,7 +110,7 @@ public sealed partial class InstrumentalArrangementDrawerVM : ObservableObject
         {
             if (m.Snapshot.Context != snapshot.Context || m.Snapshot.Revision < snapshot.Revision) return;
             snapshot = m.Snapshot;
-            foreach (var name in new[] { nameof(TrackColor), nameof(TrackColorIndex), nameof(Notes), nameof(KeyFiles), nameof(PopupTitle), nameof(MappingStatus), nameof(EditingHint) }) OnPropertyChanged(name);
+            foreach (var name in new[] { nameof(TrackColor), nameof(TrackColorIndex), nameof(Notes), nameof(KeyFiles), nameof(PopupTitle), nameof(MappingStatus), nameof(EditingHint), nameof(DisplayStartMilliseconds), nameof(DisplayEndMilliseconds) }) OnPropertyChanged(name);
             SetNoteSelection(SelectedNoteIds, SelectedNoteId);
         }));
         messenger.Register<InstrumentalEditResultMessage>(this, (_, m) => Schedule(() =>

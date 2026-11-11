@@ -16,7 +16,13 @@ public sealed partial class PianoRollView : Control
     public bool IsPlaybackMarkerStatic { get => (bool)GetValue(IsPlaybackMarkerStaticProperty); set => SetValue(IsPlaybackMarkerStaticProperty, value); }
     public static readonly DependencyProperty HorizontalScrollPaddingProperty = DependencyProperty.Register(nameof(HorizontalScrollPadding), typeof(double), typeof(PianoRollView), new PropertyMetadata(0d));
     public double HorizontalScrollPadding { get => (double)GetValue(HorizontalScrollPaddingProperty); set => SetValue(HorizontalScrollPaddingProperty, value); }
-    private (double Minimum, double Maximum) HorizontalBounds => Helpers.OHsTimelineViewport.GetHorizontalBounds(ContentWidth, TimeViewportWidth, HorizontalScrollPadding);
+    public static readonly DependencyProperty MinimumHorizontalOffsetProperty = DependencyProperty.Register(nameof(MinimumHorizontalOffset), typeof(double), typeof(PianoRollView), new PropertyMetadata(double.NaN));
+    public static readonly DependencyProperty MaximumHorizontalOffsetProperty = DependencyProperty.Register(nameof(MaximumHorizontalOffset), typeof(double), typeof(PianoRollView), new PropertyMetadata(double.NaN));
+    public double MinimumHorizontalOffset { get => (double)GetValue(MinimumHorizontalOffsetProperty); set => SetValue(MinimumHorizontalOffsetProperty, value); }
+    public double MaximumHorizontalOffset { get => (double)GetValue(MaximumHorizontalOffsetProperty); set => SetValue(MaximumHorizontalOffsetProperty, value); }
+    private (double Minimum, double Maximum) HorizontalBounds => double.IsFinite(MinimumHorizontalOffset) && double.IsFinite(MaximumHorizontalOffset) && MinimumHorizontalOffset <= MaximumHorizontalOffset
+        ? (MinimumHorizontalOffset, MaximumHorizontalOffset) : Helpers.OHsTimelineViewport.GetHorizontalBounds(ContentWidth, TimeViewportWidth, HorizontalScrollPadding);
+    internal bool IsNoteEditable(InstrumentalNoteSnapshot note) => !note.IsReadOnly && note.Timestamp >= 0 && note.Timestamp < Duration.TotalMilliseconds;
     public static readonly DependencyProperty IsAdditionModeProperty=DependencyProperty.Register(nameof(IsAdditionMode),typeof(bool),typeof(PianoRollView),new FrameworkPropertyMetadata(true,FrameworkPropertyMetadataOptions.AffectsRender,(d,_)=>((PianoRollView)d).CancelInteraction()));
     public bool IsAdditionMode {get=>(bool)GetValue(IsAdditionModeProperty);set=>SetValue(IsAdditionModeProperty,value);}
     public static readonly DependencyProperty SelectedNoteIdsProperty=DependencyProperty.Register(nameof(SelectedNoteIds),typeof(IReadOnlyList<Guid>),typeof(PianoRollView),new FrameworkPropertyMetadata(Array.Empty<Guid>(),FrameworkPropertyMetadataOptions.AffectsRender));
@@ -26,7 +32,12 @@ public sealed partial class PianoRollView : Control
     private ModifierKeys pointerModifiers;
     private Point pointerLast;
     private IReadOnlyList<Guid> gestureIds=[];
-    private void SelectIds(IReadOnlyList<Guid> ids,Guid? anchor)=>RaiseEvent(new InstrumentalNoteSelectionRequestedEventArgs(NoteSelectionRequestedEvent,ids,anchor));
+    private void SelectIds(IReadOnlyList<Guid> ids,Guid? anchor)
+    {
+        var editable = Notes.Where(n => IsNoteEditable(n) && ids.Contains(n.Id)).Select(n => n.Id).ToArray();
+        Guid? selectedAnchor = anchor is { } id && editable.Contains(id) ? id : editable.Length > 0 ? editable[0] : null;
+        RaiseEvent(new InstrumentalNoteSelectionRequestedEventArgs(NoteSelectionRequestedEvent, editable, selectedAnchor));
+    }
     internal void InitializeActiveCell()
     {
         activeKey=Math.Clamp(107-(int)Math.Floor(VerticalOffset/Math.Max(1,LaneHeight)),0,107);
@@ -141,7 +152,7 @@ public sealed partial class PianoRollView : Control
             for (var i = Notes.Count - 1; i >= 0; i--)
             {
                 var note = Notes[i];
-                if ((note.Id == SelectedNoteId) == (layer == 0) && GetNoteBounds(note).Contains(p)) return note;
+                if (IsNoteEditable(note) && (note.Id == SelectedNoteId) == (layer == 0) && GetNoteBounds(note).Contains(p)) return note;
             }
         return null;
     }
@@ -162,12 +173,18 @@ public sealed partial class PianoRollView : Control
          .OrderBy(l => Math.Abs(l.Milliseconds - ms)).FirstOrDefault();
         return Math.Abs(nearest.Milliseconds - ms) <= .500001 ? nearest.Milliseconds : ms;
     }
-    private void Request(InstrumentalNoteEditKind kind, Guid id, string key, double ms) => RaiseEvent(new InstrumentalNoteEditRequestedEventArgs(NoteEditRequestedEvent, kind, id, key, ms, kind==InstrumentalNoteEditKind.Place ? [] : gestureIds.Count>0 ? gestureIds : SelectedNoteIds.Count>0 && SelectedNoteIds.Contains(id) ? SelectedNoteIds : new[]{id}));
+    private void Request(InstrumentalNoteEditKind kind, Guid id, string key, double ms)
+    {
+        if (kind != InstrumentalNoteEditKind.Place && !Notes.Any(n => n.Id == id && IsNoteEditable(n))) return;
+        var candidates = gestureIds.Count > 0 ? gestureIds : SelectedNoteIds.Count > 0 && SelectedNoteIds.Contains(id) ? SelectedNoteIds : new[] { id };
+        var ids = kind == InstrumentalNoteEditKind.Place ? [] : Notes.Where(n => IsNoteEditable(n) && candidates.Contains(n.Id)).Select(n => n.Id).ToArray();
+        RaiseEvent(new InstrumentalNoteEditRequestedEventArgs(NoteEditRequestedEvent, kind, id, key, ms, ids));
+    }
     public bool HandleEditorKey(Key key, ModifierKeys modifiers, bool repeat)
     {
         if (!CanEdit) return false;
         if (repeat && (key is Key.Enter or Key.Delete || modifiers == ModifierKeys.Alt)) return true;
-        var selected = Notes.FirstOrDefault(n => n.Id == SelectedNoteId);
+        var selected = Notes.FirstOrDefault(n => n.Id == SelectedNoteId && IsNoteEditable(n));
         if (modifiers == ModifierKeys.Alt && key is Key.Left or Key.Right or Key.Up or Key.Down)
         {
             if (selected is null) return true;
@@ -180,7 +197,7 @@ public sealed partial class PianoRollView : Control
         }
         if(key==Key.Enter && modifiers is ModifierKeys.None or ModifierKeys.Control)
         {
-            var hit=Notes.FirstOrDefault(n=>n.Key==InstrumentalKeys.GetName(activeKey) && BeatGridCalculator.GetContainingInterval(UninheritedPoints,Subdivision,activeMs,Duration.TotalMilliseconds) is {} interval && n.Timestamp==Math.Round(interval.StartMilliseconds,MidpointRounding.AwayFromZero));
+            var hit=Notes.FirstOrDefault(n=>IsNoteEditable(n) && n.Key==InstrumentalKeys.GetName(activeKey) && BeatGridCalculator.GetContainingInterval(UninheritedPoints,Subdivision,activeMs,Duration.TotalMilliseconds) is {} interval && n.Timestamp==Math.Round(interval.StartMilliseconds,MidpointRounding.AwayFromZero));
             if(hit is not null){var ids=modifiers==ModifierKeys.Control ? SelectedNoteIds.Contains(hit.Id) ? SelectedNoteIds.Where(id=>id!=hit.Id).ToArray() : [..SelectedNoteIds,hit.Id] : new[]{hit.Id};SelectIds(ids,hit.Id);}
             else if(modifiers==ModifierKeys.None){if(IsAdditionMode)Request(InstrumentalNoteEditKind.Place,Guid.Empty,InstrumentalKeys.GetName(activeKey),activeMs);else SelectIds([],null);}
             return true;

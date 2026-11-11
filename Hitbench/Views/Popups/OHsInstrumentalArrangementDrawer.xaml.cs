@@ -53,6 +53,10 @@ public partial class OHsInstrumentalArrangementDrawer : UserControl, IOHsShellDr
     public double TimelineContentWidth { get => (double)GetValue(TimelineContentWidthProperty); set => SetValue(TimelineContentWidthProperty, value); }
     public double TimelineViewportWidth { get => (double)GetValue(TimelineViewportWidthProperty); set => SetValue(TimelineViewportWidthProperty, value); }
     public double TimelineHorizontalOffset { get => (double)GetValue(TimelineHorizontalOffsetProperty); set => SetValue(TimelineHorizontalOffsetProperty, value); }
+    public static readonly DependencyProperty MinimumHorizontalOffsetProperty = DependencyProperty.Register(nameof(MinimumHorizontalOffset), typeof(double), typeof(OHsInstrumentalArrangementDrawer), new PropertyMetadata(double.NaN));
+    public static readonly DependencyProperty MaximumHorizontalOffsetProperty = DependencyProperty.Register(nameof(MaximumHorizontalOffset), typeof(double), typeof(OHsInstrumentalArrangementDrawer), new PropertyMetadata(double.NaN));
+    public double MinimumHorizontalOffset { get => (double)GetValue(MinimumHorizontalOffsetProperty); set => SetValue(MinimumHorizontalOffsetProperty, value); }
+    public double MaximumHorizontalOffset { get => (double)GetValue(MaximumHorizontalOffsetProperty); set => SetValue(MaximumHorizontalOffsetProperty, value); }
     private static readonly DependencyPropertyKey PianoKeyColumnWidthPropertyKey = DependencyProperty.RegisterReadOnly(
         nameof(PianoKeyColumnWidth), typeof(double), typeof(OHsInstrumentalArrangementDrawer), new PropertyMetadata(0d));
     public static readonly DependencyProperty PianoKeyColumnWidthProperty = PianoKeyColumnWidthPropertyKey.DependencyProperty;
@@ -104,6 +108,8 @@ public partial class OHsInstrumentalArrangementDrawer : UserControl, IOHsShellDr
         if (!double.IsFinite(value)) return;
         if (!IsPlaybackMarkerStatic) viewModel.RequestFollow(false);
         var bounds = Hitbench.Resources.Helpers.OHsTimelineViewport.GetHorizontalBounds(TimelineContentWidth, TimelineViewportWidth, TimelineEdgePadding);
+        if (double.IsFinite(MinimumHorizontalOffset) && double.IsFinite(MaximumHorizontalOffset) && MinimumHorizontalOffset <= MaximumHorizontalOffset)
+            bounds = (MinimumHorizontalOffset, MaximumHorizontalOffset);
         HorizontalOffsetRequested?.Invoke(Math.Clamp(value, bounds.Minimum, bounds.Maximum));
     }
     private void OnStateChanged(object? sender, PropertyChangedEventArgs e)
@@ -161,7 +167,7 @@ public partial class OHsInstrumentalArrangementDrawer : UserControl, IOHsShellDr
             if (index >= 0) { if (!repeat) viewModel.RequestSubdivision(index); return true; }
         }
         if (modifiers == ModifierKeys.None && key is Key.Home or Key.End)
-        { if (!repeat) RequestOffset(key == Key.Home ? -TimelineEdgePadding : TimelineContentWidth + TimelineEdgePadding); return true; }
+        { if (!repeat) RequestOffset(key == Key.Home ? double.IsFinite(MinimumHorizontalOffset) ? MinimumHorizontalOffset : -TimelineEdgePadding : double.IsFinite(MaximumHorizontalOffset) ? MaximumHorizontalOffset : TimelineContentWidth + TimelineEdgePadding); return true; }
         return false;
     }
     internal bool HandleArrangementWheel(ModifierKeys modifiers, int delta, DependencyObject? origin)

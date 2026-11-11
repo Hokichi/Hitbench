@@ -61,7 +61,7 @@ public partial class OHsWorkstationTimeline : UserControl
     public void ScrollToHorizontalOffset(double offset)
     {
         if (viewModel?.IsStaticMarker == true) { PublishPresentationOffset(offset); return; }
-        if (double.IsFinite(offset)) WaveformScrollViewer.ScrollToHorizontalOffset(Math.Clamp(offset, MinimumHorizontalOffset, ScrollableWidth) + TimelineEdgePadding);
+        if (double.IsFinite(offset)) WaveformScrollViewer.ScrollToHorizontalOffset(Math.Clamp(offset, MinimumHorizontalOffset, ScrollableWidth) + TimelineScrollOriginPadding);
     }
     public void ScrollFromUser(double offset)
     {
@@ -71,6 +71,14 @@ public partial class OHsWorkstationTimeline : UserControl
         {
             requestedOffset = Math.Clamp(offset, MinimumHorizontalOffset, ScrollableWidth);
             ScrollToHorizontalOffset(requestedOffset.Value);
+            var center = requestedOffset.Value + TimelineViewportWidth / 2;
+            if (!viewModel.IsPlaying && (center < 0 || center > TimelineContentWidth))
+            {
+                inspectingPreservedNotes = true;
+                inspectionPosition = viewModel.Position;
+                return;
+            }
+            inspectingPreservedNotes = false;
             SeekViewportPosition(TimelineViewportWidth / 2, requestedOffset.Value);
             return;
         }
@@ -140,8 +148,8 @@ public partial class OHsWorkstationTimeline : UserControl
         var viewportChanged = e.ViewportWidthChange != 0;
         TimelineViewportWidth = e.ViewportWidth;
         RefreshTimelineGeometry();
-        WaveformDisplay.LayoutHorizontalOffset = e.HorizontalOffset - TimelineEdgePadding;
-        if (viewModel?.IsStaticMarker != true) TimelineHorizontalOffset = e.HorizontalOffset - TimelineEdgePadding;
+        WaveformDisplay.LayoutHorizontalOffset = e.HorizontalOffset - TimelineScrollOriginPadding;
+        if (viewModel?.IsStaticMarker != true) TimelineHorizontalOffset = e.HorizontalOffset - TimelineScrollOriginPadding;
         if (!navigating && requestedOffset is { } requested && Math.Abs(requested - TimelineHorizontalOffset) < .01) requestedOffset = null;
         if (scrollBar is not null) scrollBar.Value = TimelineHorizontalOffset;
         ApplyPendingZoomAnchor();
@@ -164,7 +172,7 @@ public partial class OHsWorkstationTimeline : UserControl
         var viewport = WaveformScrollViewer.ViewportWidth;
         if (!double.IsFinite(extent) || extent <= 0 || !double.IsFinite(viewport) || viewport <= 0) return;
         var expectedExtent = WaveformDisplay.ViewportWidth * viewModel.ZoomFactor;
-        if (Math.Abs(extent - expectedExtent) > 1 || Math.Abs(WaveformScrollViewer.ExtentWidth - extent - 2 * TimelineEdgePadding) > 1) return;
+        if (Math.Abs(extent - expectedExtent) > 1 || Math.Abs(WaveformScrollViewer.ExtentWidth - extent - WaveformExtent.Padding.Left - WaveformExtent.Padding.Right) > 1) return;
 
         var offset = Math.Clamp(zoomAnchorFraction * extent - zoomAnchorViewportX, MinimumHorizontalOffset, ScrollableWidth);
         hasPendingZoomAnchor = false;

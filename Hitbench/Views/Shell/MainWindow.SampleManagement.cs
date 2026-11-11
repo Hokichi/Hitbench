@@ -183,6 +183,10 @@ public partial class MainWindow
                 piano.SetBinding(OHsInstrumentalArrangementDrawer.TimelineViewportWidthProperty, new Binding(nameof(page.Timeline.TimelineViewportWidth)) { Source = page.Timeline, Mode = BindingMode.OneWay });
                 piano.SetBinding(OHsInstrumentalArrangementDrawer.TimelineHorizontalOffsetProperty, new Binding(nameof(page.Timeline.TimelineHorizontalOffset)) { Source = page.Timeline, Mode = BindingMode.OneWay });
                 piano.SetBinding(OHsInstrumentalArrangementDrawer.TimelineEdgePaddingProperty, new Binding(nameof(page.Timeline.TimelineEdgePadding)) { Source = page.Timeline, Mode = BindingMode.OneWay });
+                piano.SetBinding(OHsInstrumentalArrangementDrawer.MinimumHorizontalOffsetProperty, new Binding(nameof(page.Timeline.MinimumHorizontalOffset)) { Source = page.Timeline, Mode = BindingMode.OneWay });
+                piano.SetBinding(OHsInstrumentalArrangementDrawer.MaximumHorizontalOffsetProperty, new Binding(nameof(page.Timeline.ScrollableWidth)) { Source = page.Timeline, Mode = BindingMode.OneWay });
+                page.Timeline.SetBinding(OHsWorkstationTimeline.DisplayStartMillisecondsProperty, new Binding("DataContext.DisplayStartMilliseconds") { Source = piano, Mode = BindingMode.OneWay });
+                page.Timeline.SetBinding(OHsWorkstationTimeline.DisplayEndMillisecondsProperty, new Binding("DataContext.DisplayEndMilliseconds") { Source = piano, Mode = BindingMode.OneWay });
                 piano.SetBinding(OHsInstrumentalArrangementDrawer.IsPlaybackMarkerStaticProperty, new Binding("DataContext.IsStaticMarker") { Source = page, Mode = BindingMode.OneWay });
                 scrollPiano = offset => { if (ReferenceEquals(state.Host.Content, piano) && ReferenceEquals(PageHost.Content, page)) page.Timeline.ScrollFromUser(offset); };
                 piano.HorizontalOffsetRequested += scrollPiano;
@@ -235,6 +239,13 @@ public partial class MainWindow
                     BindingOperations.ClearBinding(piano, OHsInstrumentalArrangementDrawer.TimelineViewportWidthProperty);
                     BindingOperations.ClearBinding(piano, OHsInstrumentalArrangementDrawer.TimelineHorizontalOffsetProperty);
                     BindingOperations.ClearBinding(piano, OHsInstrumentalArrangementDrawer.TimelineEdgePaddingProperty);
+                    BindingOperations.ClearBinding(piano, OHsInstrumentalArrangementDrawer.MinimumHorizontalOffsetProperty);
+                    BindingOperations.ClearBinding(piano, OHsInstrumentalArrangementDrawer.MaximumHorizontalOffsetProperty);
+                    if (workstation is not null)
+                    {
+                        BindingOperations.ClearBinding(workstation.Timeline, OHsWorkstationTimeline.DisplayStartMillisecondsProperty);
+                        BindingOperations.ClearBinding(workstation.Timeline, OHsWorkstationTimeline.DisplayEndMillisecondsProperty);
+                    }
                     BindingOperations.ClearBinding(piano, OHsInstrumentalArrangementDrawer.IsPlaybackMarkerStaticProperty);
                 }
                 if (ReferenceEquals(state.Completion, completion)) ResetDrawerAnimation(state);

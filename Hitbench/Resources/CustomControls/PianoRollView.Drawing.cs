@@ -100,10 +100,20 @@ public sealed partial class PianoRollView
         dc.Pop(); dc.Pop();
         foreach (var note in Notes.OrderBy(n => n.Id == SelectedNoteId))
         {
-            var rect = RetainedBounds(GetNoteBounds(note)); if (rect.IsEmpty || !rect.IntersectsWith(new Rect(KeyColumnWidth + retainedViewport.Start, 0, retainedViewport.Width, ActualHeight)) || dragging && !IsAdditionMode && gestureIds.Contains(note.Id)) continue;
+            var rect = RetainedBounds(GetNoteBounds(note)); if (rect.IsEmpty || !rect.IntersectsWith(new Rect(KeyColumnWidth + retainedViewport.Start, 0, retainedViewport.Width, ActualHeight)) || dragging && !IsAdditionMode && IsNoteEditable(note) && gestureIds.Contains(note.Id)) continue;
             var chosen = SelectedNoteIds.Contains(note.Id) || note.Id == SelectedNoteId;
-            OHsSampleNodeDrawing.Draw(dc, marker, chosen ? new Pen(cue, 2) : border, OHsSampleNodeDrawing.Inset(rect));
-            if (note == pressedNote) OHsSampleNodeDrawing.Draw(dc, null, new Pen(chosen ? cue : hc ? SystemColors.HighlightTextBrush : BrushOr(PressedBrush, "Brush.Navy.Pressed"), 2), OHsSampleNodeDrawing.Inset(rect));
+            if (!IsNoteEditable(note))
+            {
+                var lockedBorder = new Pen(hc ? SystemColors.WindowTextBrush : BrushOr(null, "Brush.Border.Subtle"), 1) { DashStyle = DashStyles.Dash };
+                dc.PushOpacity(hc ? 1 : TryFindResource("Opacity.Disabled") is double opacity ? opacity : .4);
+                OHsSampleNodeDrawing.Draw(dc, marker, lockedBorder, OHsSampleNodeDrawing.Inset(rect));
+                dc.Pop();
+            }
+            else
+            {
+                OHsSampleNodeDrawing.Draw(dc, marker, chosen ? new Pen(cue, 2) : border, OHsSampleNodeDrawing.Inset(rect));
+                if (note == pressedNote) OHsSampleNodeDrawing.Draw(dc, null, new Pen(chosen ? cue : hc ? SystemColors.HighlightTextBrush : BrushOr(PressedBrush, "Brush.Navy.Pressed"), 2), OHsSampleNodeDrawing.Inset(rect));
+            }
         }
         dc.Pop();
     }
@@ -123,7 +133,7 @@ public sealed partial class PianoRollView
         {
             InstrumentalKeys.TryGetIndex(anchor.Key,out var originalPitch);InstrumentalKeys.TryGetIndex(destination.Key,out var targetPitch);
             var time=BeatGridCalculator.GetNearestTimestamp(UninheritedPoints,Subdivision,destination.Time,Duration.TotalMilliseconds);
-            if(time is {} timestamp)foreach(var note in Notes.Where(n=>gestureIds.Contains(n.Id)))
+            if(time is {} timestamp)foreach(var note in Notes.Where(n=>IsNoteEditable(n) && gestureIds.Contains(n.Id)))
             {
                 InstrumentalKeys.TryGetIndex(note.Key,out var pitch);pitch+=targetPitch-originalPitch;
                 var movedTime=(long)note.Timestamp+timestamp-anchor.Timestamp;

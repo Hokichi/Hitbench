@@ -2,6 +2,14 @@ namespace Hitbench.Resources.Helpers;
 
 public static class OHsTimelineViewport
 {
+    public static (double Minimum, double Maximum) GetHorizontalBounds(double contentWidth, double viewportWidth,
+        double edgePadding, double minimumContentX, double maximumContentX)
+    {
+        if (!double.IsFinite(contentWidth) || contentWidth <= 0 || !double.IsFinite(viewportWidth) || viewportWidth <= 0 ||
+            !double.IsFinite(edgePadding) || edgePadding < 0 || !double.IsFinite(minimumContentX) || !double.IsFinite(maximumContentX)) return (0, 0);
+        var minimum = Math.Min(0, minimumContentX) - edgePadding;
+        return (minimum, Math.Max(minimum, Math.Max(contentWidth, maximumContentX) + edgePadding - viewportWidth));
+    }
     public static (double Minimum, double Maximum) GetHorizontalBounds(double contentWidth, double viewportWidth, double edgePadding)
     {
         if (!double.IsFinite(contentWidth) || contentWidth <= 0 || !double.IsFinite(viewportWidth) || viewportWidth <= 0 ||

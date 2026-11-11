@@ -66,6 +66,8 @@
     ContentWidth="{Binding TimelineContentWidth,ElementName=Drawer,Mode=OneWay}" ViewportWidth="{Binding TimelineViewportWidth,ElementName=Drawer,Mode=OneWay}"
     HorizontalOffset="{Binding TimelineHorizontalOffset,ElementName=Drawer,Mode=OneWay}"
     HorizontalScrollPadding="{Binding TimelineEdgePadding,ElementName=Drawer,Mode=OneWay}"
+    MinimumHorizontalOffset="{Binding MinimumHorizontalOffset,ElementName=Drawer,Mode=OneWay}"
+    MaximumHorizontalOffset="{Binding MaximumHorizontalOffset,ElementName=Drawer,Mode=OneWay}"
     IsPlaybackMarkerStatic="{Binding IsPlaybackMarkerStatic,ElementName=Drawer,Mode=OneWay}"
     CanEdit="{Binding CanEdit,Mode=OneWay}" IsEnabled="{Binding CanEdit,Mode=OneWay}" NoteEditRequested="OnNoteEdit"
     AutomationProperties.Name="Instrumental piano roll" AutomationProperties.HelpText="Arrows navigate keys and beats. Enter places or selects a note. Delete removes the selected note. Alt+arrows move notes. Right click removes a note. Escape cancels drag, clears selection, then closes. Space plays or pauses; Shift+Space stops." Background="{DynamicResource Brush.Background.Deepened}" Foreground="{DynamicResource Brush.Text.Primary}" TrackColor="{Binding TrackColor, Mode=OneWay}" TrackColorIndex="{Binding TrackColorIndex, Mode=OneWay}" SelectionBrush="{DynamicResource Brush.Navy}" SelectionCueBrush="{DynamicResource Brush.Node.SelectedOutline}" PressedBrush="{DynamicResource Brush.Navy}" HoverBrush="{DynamicResource Brush.Background.Hover}" NodeBorderBrush="{DynamicResource Brush.Border.Default}" PlaybackMarkerBrush="{DynamicResource Brush.Playhead}" />

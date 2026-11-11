@@ -611,7 +611,7 @@
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"
                     helpers:KeyboardNavigationPolicy.AllowTabNavigation="True"
-                    AutomationProperties.HelpText="Map at least one key before opening the arrangement."
+                    AutomationProperties.HelpText="Edit instrumental notes. Use Keys Mapping to assign samples for playback."
                     AutomationProperties.Name="View Arrangement"
                     ButtonIcon="{StaticResource Eye}"
                     ButtonText="View Arrangement"
@@ -622,7 +622,7 @@
                     IsTabStop="True"
                     ShouldShowText="True"
                     Style="{StaticResource OHsWorkstationInstrumentMutedActionStyle}"
-                    ToolTip="Edit instrumental notes (map at least one key first)"
+                    ToolTip="Edit instrumental notes"
                     ToolTipService.ShowOnDisabled="True"
                     ToolTipService.ShowsToolTipOnKeyboardFocus="True" />
 
