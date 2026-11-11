@@ -1,0 +1,53 @@
+<c:BasePopup x:Class="Hitbench.Views.Popups.OHsMidiImportPopup"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:c="clr-namespace:Hitbench.Resources.CustomControls"
+ xmlns:h="clr-namespace:Hitbench.Resources.Helpers"
+ xmlns:m="clr-namespace:Hitbench.Resources.DataModels"
+ PopupTitle="Import MIDI" ShowCloseButton="False" Width="640" SizeToContent="Height"
+ h:KeyboardNavigationPolicy.SuppressTabNavigation="True">
+ <c:BasePopup.Resources>
+  <Style x:Key="OHsMidiModesStyle" TargetType="c:SegmentedToggleGroup" BasedOn="{StaticResource {x:Type c:SegmentedToggleGroup}}">
+   <Setter Property="ItemsPanel" Value="{StaticResource VerticalStackItemsPanelTemplate}" />
+  </Style>
+  <Style x:Key="OHsMidiModeStyle" TargetType="c:SegmentedToggleOption" BasedOn="{StaticResource {x:Type c:SegmentedToggleOption}}">
+   <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+  </Style>
+  <DataTemplate x:Key="OHsMidiProjectBpmTemplate">
+   <StackPanel Style="{StaticResource BaseStackPanelStyle}">
+    <TextBlock Text="Import and resnap to the current BPM" TextWrapping="Wrap" Style="{StaticResource BaseTextBlockStyle}" />
+    <Grid Style="{StaticResource BaseGridStyle}">
+     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+     <TextBlock x:Name="MidiBpmValue" Text="{Binding MidiBpmText, Mode=OneWay}" TextWrapping="Wrap" Style="{StaticResource BaseTextBlockStyle}" />
+     <c:Icon Grid.Column="1" Width="{StaticResource Size.Icon.Default}" Height="{StaticResource Size.Icon.Default}" Margin="8,0"
+      Path="{StaticResource AngleRight}" Color="{Binding Foreground, ElementName=MidiBpmValue, Mode=OneWay}" />
+     <TextBlock Grid.Column="2" Text="{Binding ProjectBpmText, Mode=OneWay}" TextWrapping="Wrap" Style="{StaticResource BaseTextBlockStyle}" />
+    </Grid>
+   </StackPanel>
+  </DataTemplate>
+ </c:BasePopup.Resources>
+ <ScrollViewer Style="{StaticResource BaseScrollViewerStyle}" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
+  h:KeyboardNavigationPolicy.SuppressTabNavigation="True">
+  <StackPanel Margin="24,8,24,24" Style="{StaticResource BaseStackPanelStyle}">
+   <c:SegmentedToggleGroup x:Name="TimingModes" Style="{StaticResource OHsMidiModesStyle}"
+    SelectedValue="{Binding SelectedMode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+    AutomationProperties.Name="MIDI import timing" AutomationProperties.HelpText="{Binding FullTimingText, Mode=OneWay}">
+    <c:SegmentedToggleOption Value="{x:Static m:OHsMidiImportMode.AsIs}" Content="Import as-is"
+     AutomationProperties.Name="Import as-is" Style="{StaticResource OHsMidiModeStyle}" />
+    <c:SegmentedToggleOption Value="{x:Static m:OHsMidiImportMode.ClosestBeat}" Content="Import and resnap to closest beat"
+     AutomationProperties.Name="Import and resnap to closest beat" Style="{StaticResource OHsMidiModeStyle}" />
+    <c:SegmentedToggleOption Value="{x:Static m:OHsMidiImportMode.ProjectBpm}" Content="{Binding Mode=OneWay}"
+     ContentTemplate="{StaticResource OHsMidiProjectBpmTemplate}" AutomationProperties.Name="Import and resnap to the current BPM"
+     AutomationProperties.HelpText="{Binding FullTimingText, Mode=OneWay}" Style="{StaticResource OHsMidiModeStyle}" />
+   </c:SegmentedToggleGroup>
+   <Grid Margin="0,16,0,0" Style="{StaticResource BaseGridStyle}">
+    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="8" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+    <c:BalloonButton x:Name="CloseAction" Grid.Column="1" ButtonIcon="{StaticResource Close}"
+     Style="{StaticResource OHsPopupCloseActionStyle}" AutomationProperties.Name="Cancel MIDI import" ToolTip="Cancel MIDI import (Esc)" Click="OnCancel" />
+    <c:BalloonButton x:Name="ImportAction" Grid.Column="3" ButtonText="Import" ButtonIcon="{StaticResource Download}" ShouldShowText="True"
+     Style="{StaticResource OHsBalloonConfirmActionStyle}" AutomationProperties.Name="Import MIDI" ToolTip="Import MIDI (Enter)"
+     IsEnabled="{Binding CanImport, Mode=OneWay}" Click="OnImport" />
+   </Grid>
+  </StackPanel>
+ </ScrollViewer>
+</c:BasePopup>
