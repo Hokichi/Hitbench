@@ -2,13 +2,15 @@ using System.Windows;
 using System.Windows.Threading;
 using Hitbench.Resources.DataModels;
 using Hitbench.Services.FileSystem;
+using Hitbench.Services.Ui;
 using Hitbench.ViewModels.Popups;
 using Hitbench.Views.Popups;
 
 namespace Hitbench.Services.Dialogs;
 
 public sealed class OHsHitNormalDialogService(Func<Window?> getOwner, Dispatcher dispatcher, OHsHitNormalSamples samples,
-    Func<OHsHitNormalPopupVM, CancellationToken, Task<bool>>? present = null) : IOHsHitNormalDialogService
+    Func<OHsHitNormalPopupVM, CancellationToken, Task<bool>>? present = null,
+    Func<ISampleBrowserService>? createWaveformReader = null, IUiScheduler? scheduler = null) : IOHsHitNormalDialogService
 {
     public async Task<OHsHitNormalConfiguration?> RequestAsync(string projectPath, string mapsetDirectory, OHsHitNormalConfiguration current, CancellationToken token)
     {
@@ -17,10 +19,13 @@ public sealed class OHsHitNormalDialogService(Func<Window?> getOwner, Dispatcher
         return await dispatcher.InvokeAsync(async () =>
         {
             token.ThrowIfCancellationRequested();
-            var vm = new OHsHitNormalPopupVM(current, choices);
+            var reader = createWaveformReader?.Invoke();
+            OHsHitNormalPopupVM? vm = null;
             OHsHitNormalPopup? popup = null;
             try
             {
+                vm = new(current, choices, projectPath, mapsetDirectory, reader, scheduler);
+                await vm.InitializeAsync(token);
                 bool accepted;
                 if (present is not null) accepted = await present(vm, token);
                 else
@@ -35,7 +40,16 @@ public sealed class OHsHitNormalDialogService(Func<Window?> getOwner, Dispatcher
                 token.ThrowIfCancellationRequested();
                 return accepted ? vm.CreateResult() : null;
             }
-            finally { if (popup is not null) popup.Owner = null; }
+            finally
+            {
+                popup?.ReleaseOwner();
+                try { if (vm is not null) await vm.DeactivateAsync(); }
+                finally
+                {
+                    if (reader is IDisposable disposable) disposable.Dispose();
+                    if (popup is not null) popup.Owner = null;
+                }
+            }
         }).Task.Unwrap();
     }
 }

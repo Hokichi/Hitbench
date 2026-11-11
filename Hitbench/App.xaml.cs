@@ -74,7 +74,9 @@ public partial class App : Application
             () => Current.MainWindow, Current.Dispatcher));
         registrations.AddSingleton<OHsHitNormalSamples>();
         registrations.AddSingleton<IOHsHitNormalDialogService>(provider => new OHsHitNormalDialogService(
-            () => Current.MainWindow, Current.Dispatcher, provider.GetRequiredService<OHsHitNormalSamples>()));
+            () => Current.MainWindow, Current.Dispatcher, provider.GetRequiredService<OHsHitNormalSamples>(),
+            createWaveformReader: () => new SampleBrowserService(memoryBudget: provider.GetRequiredService<AudioMemoryBudget>()),
+            scheduler: provider.GetRequiredService<IUiScheduler>()));
         registrations.AddSingleton<IOHsTrackAppearanceDialogService>(_ => new OHsTrackAppearanceDialogService(() => Current.MainWindow, Current.Dispatcher, (request, color) => new OHsTrackAppearancePopupVM(request, color)));
         registrations.AddSingleton<ITrackRemovalDialogService>(_ =>
             new TrackRemovalDialogService(() => Current.MainWindow, Current.Dispatcher));

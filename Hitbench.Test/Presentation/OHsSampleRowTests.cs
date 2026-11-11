@@ -11,6 +11,49 @@ namespace Hitbench.Test.Presentation;
 public sealed class OHsSampleRowTests
 {
     [Test]
+    public void PlayIsAvailableByDefaultAndCanBeRemovedFromInteraction()
+    {
+        new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
+        var row = new OHsSampleRow { FileName = "hit.wav" };
+        UiTestPump.Layout(row, 500, 120);
+        var play = (BalloonButton)row.FindName("PlayAction");
+        Assert.That(row.ShowPlayButton, Is.True);
+        Assert.That(play.Visibility, Is.EqualTo(Visibility.Visible));
+        row.ShowPlayButton = false;
+        UiTestPump.Layout(row, 500, 120);
+        Assert.That(play.Visibility, Is.EqualTo(Visibility.Collapsed));
+        Assert.That(row.FocusPreview(), Is.False);
+        row.ShowPlayButton = true;
+        Assert.That(play.Visibility, Is.EqualTo(Visibility.Visible));
+    }
+
+    [Test]
+    public void TrailingTemplateBindsInheritedContentAndCanBeRemoved()
+    {
+        new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
+        var resources = (ResourceDictionary)XamlReader.Parse("""
+            <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+                <DataTemplate x:Key="TestSampleTrailingTemplate">
+                    <TextBlock Text="{Binding Mode=OneWay}" Style="{StaticResource BodyTextStyle}" />
+                </DataTemplate>
+            </ResourceDictionary>
+            """);
+        var template = (DataTemplate)resources["TestSampleTrailingTemplate"];
+        var row = new OHsSampleRow { FileName = "hit.wav", DataContext = "first", NameTrailingTemplate = template };
+        UiTestPump.Layout(row, 500, 120);
+        Assert.That(row.NameTrailingTemplate, Is.SameAs(template));
+        Assert.That(Children(row).OfType<TextBlock>().Select(t => t.Text), Does.Contain("first"));
+        row.DataContext = "second";
+        UiTestPump.Layout(row, 500, 120);
+        Assert.That(Children(row).OfType<TextBlock>().Select(t => t.Text), Does.Contain("second").And.Not.Contain("first"));
+        row.NameTrailingTemplate = null;
+        UiTestPump.Layout(row, 500, 120);
+        Assert.That(Children(row).OfType<TextBlock>().Select(t => t.Text), Does.Not.Contain("second"));
+        Assert.That(row.DataContext, Is.EqualTo("second"));
+    }
+
+    [Test]
     public void MissingActionsTemplateDoesNotRenderEntryFallback()
     {
         new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();

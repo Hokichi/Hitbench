@@ -10,11 +10,16 @@ public sealed class OHsHitNormalSamples(ISampleFileService files)
         token.ThrowIfCancellationRequested();
         var projectFiles = await files.ListAsync(projectPath, token, includeSubfolders: true);
         var mapFiles = Directory.Exists(mapsetDirectory) ? await OHsMapsetSamples.FindAsync(mapsetDirectory, token) : [];
+        var skinDirectory = SamplePaths.ResolveFolder(projectPath, OHsDefaultSamples.FolderName);
+        var skinFiles = Directory.Exists(skinDirectory) ? await OHsMapsetSamples.FindAsync(skinDirectory, token) : [];
         token.ThrowIfCancellationRequested();
         return Array.AsReadOnly(new[] { new OHsHitNormalChoice("", "Default") }
             .Concat(projectFiles.Where(p => GetPathError(p) is null && p.Length > 0)
-                .Select(p => new OHsHitNormalChoice(p.Replace('\\', '/'), "Samples/" + p.Replace('\\', '/')))
-                .Concat(mapFiles.Select(p => new OHsHitNormalChoice(p, p)))
+                .Select(p => new OHsHitNormalChoice(p.Replace('\\', '/'), "Samples/" + p.Replace('\\', '/'),
+                    IsSkinPath(p) ? OHsHitNormalSampleSource.Skin : OHsMapsetSamples.IsMapsetSamplePath(p)
+                        ? OHsHitNormalSampleSource.Mapset : OHsHitNormalSampleSource.Project))
+                .Concat(skinFiles.Select(p => new OHsHitNormalChoice(SamplePaths.Relative(projectPath, p), p, OHsHitNormalSampleSource.Skin)))
+                .Concat(mapFiles.Select(p => new OHsHitNormalChoice(p, p, OHsHitNormalSampleSource.Mapset)))
                 .DistinctBy(c => c.Path, StringComparer.OrdinalIgnoreCase)
                 .OrderBy(c => c.DisplayName, StringComparer.OrdinalIgnoreCase).ThenBy(c => c.DisplayName, StringComparer.Ordinal))
             .ToArray());
@@ -25,10 +30,17 @@ public sealed class OHsHitNormalSamples(ISampleFileService files)
         if (path.Length == 0) return null;
         if (Path.IsPathFullyQualified(path))
             return SampleFileNames.GetFileNameError(Path.GetFileName(path));
-        if (path.Replace('\\', '/').StartsWith(OHsDefaultSamples.FolderName + "/", StringComparison.OrdinalIgnoreCase))
-            return "Skin defaults cannot be configured as custom hitnormal samples.";
+        if (IsSkinPath(path))
+        {
+            var parts = path.Replace('\\', '/').Split('/');
+            if (parts.Length != 2 || !OHsMapsetSamples.IsMatchingFileName(parts[1]))
+                return "Use a skin hitsound directly inside SkinDefault.";
+        }
         return SamplePaths.GetRelativePathError(path);
     }
+
+    private static bool IsSkinPath(string path) =>
+        path.Replace('\\', '/').StartsWith(OHsDefaultSamples.FolderName + "/", StringComparison.OrdinalIgnoreCase);
 
     public static string Resolve(string projectPath, string mapsetDirectory, string path)
     {

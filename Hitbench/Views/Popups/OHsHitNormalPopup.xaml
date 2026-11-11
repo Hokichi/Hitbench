@@ -8,123 +8,198 @@
     PopupTitle="Config Hitnormal"
     ShowInTaskbar="False">
     <c:BasePopup.Resources>
-        <DataTemplate x:Key="OHsHitNormalChoiceTemplate">
-            <TextBlock
-                Style="{StaticResource BaseTextBlockStyle}"
-                Text="{Binding DisplayName, Mode=OneWay}"
-                TextTrimming="CharacterEllipsis"
-                ToolTip="{Binding DisplayName, Mode=OneWay}"
-                ToolTipService.ShowsToolTipOnKeyboardFocus="True" />
+        <Style x:Key="OHsHitNormalPillTextStyle" TargetType="TextBlock" BasedOn="{StaticResource BodyTextStyle}">
+            <Setter Property="FontSize" Value="{StaticResource FontSize.Caption}" />
+            <Setter Property="TextWrapping" Value="NoWrap" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style x:Key="OHsHitNormalPillStyle" TargetType="Border" BasedOn="{StaticResource BaseBorderStyle}">
+            <Setter Property="Height" Value="{StaticResource Size.Control.Min}" />
+            <Setter Property="CornerRadius" Value="{StaticResource Radius.Card}" />
+            <Setter Property="Padding" Value="8,0" />
+            <Setter Property="Margin" Value="4,0" />
+            <Setter Property="Background" Value="{DynamicResource Brush.Background.Surface}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Control}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Visibility" Value="Collapsed" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="OHsHitNormalDefaultPillStyle" TargetType="Border" BasedOn="{StaticResource OHsHitNormalPillStyle}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsDefault, Mode=OneWay}" Value="True">
+                    <Setter Property="Visibility" Value="Visible" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="OHsHitNormalCurrentPillStyle" TargetType="Border" BasedOn="{StaticResource OHsHitNormalPillStyle}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsCurrent, Mode=OneWay}" Value="True">
+                    <Setter Property="Visibility" Value="Visible" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <DataTemplate x:Key="OHsHitNormalPillsTemplate">
+            <StackPanel Orientation="Horizontal" Style="{StaticResource BaseStackPanelStyle}">
+                <Border Style="{StaticResource OHsHitNormalDefaultPillStyle}">
+                    <TextBlock Text="default" Style="{StaticResource OHsHitNormalPillTextStyle}" />
+                </Border>
+                <Border Style="{StaticResource OHsHitNormalCurrentPillStyle}">
+                    <TextBlock Text="current" Style="{StaticResource OHsHitNormalPillTextStyle}" />
+                </Border>
+            </StackPanel>
         </DataTemplate>
-        <Style
-            x:Key="OHsHitNormalComboBoxStyle"
-            BasedOn="{StaticResource OHsComboBoxStyle}"
-            TargetType="ComboBox">
+        <DataTemplate x:Key="OHsHitNormalSlotTemplate">
+            <c:OHsSampleRow FileName="{Binding Name, Mode=OneWay}"
+                FileToolTip="{Binding Sample.DisplayName, Mode=OneWay}"
+                Waveform="{Binding Sample.Waveform, Mode=OneWay}" ShowPlayButton="False"
+                Style="{StaticResource BaseControlStyle}" WaveformRequested="OnWaveformRequested" />
+        </DataTemplate>
+        <DataTemplate x:Key="OHsHitNormalSampleTemplate">
+            <c:OHsSampleRow FileName="{Binding DisplayFileName, Mode=OneWay}"
+                FileToolTip="{Binding DisplayName, Mode=OneWay}" Waveform="{Binding Waveform, Mode=OneWay}"
+                NameTrailingTemplate="{StaticResource OHsHitNormalPillsTemplate}" ShowPlayButton="False"
+                Style="{StaticResource BaseControlStyle}" WaveformRequested="OnWaveformRequested" />
+        </DataTemplate>
+        <ControlTemplate x:Key="OHsHitNormalSelectionTemplate" TargetType="ListBoxItem">
+            <Border Style="{StaticResource BaseBorderStyle}"
+                Padding="{TemplateBinding Padding}" Background="{TemplateBinding Background}"
+                BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
+                CornerRadius="{StaticResource Radius.Control}">
+                <Grid Style="{StaticResource BaseGridStyle}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="24" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <c:Icon x:Name="SelectionMark" Width="12" Height="12" Path="{StaticResource Check}"
+                        Color="{TemplateBinding Foreground}" Visibility="Hidden" IsHitTestVisible="False" />
+                    <ContentPresenter Grid.Column="1" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                        VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                </Grid>
+            </Border>
+            <ControlTemplate.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter TargetName="SelectionMark" Property="Visibility" Value="Visible" />
+                </Trigger>
+            </ControlTemplate.Triggers>
+        </ControlTemplate>
+        <Style x:Key="OHsHitNormalItemStyle" TargetType="ListBoxItem" BasedOn="{StaticResource PlainListBoxItemStyle}">
+            <Setter Property="Template" Value="{StaticResource OHsHitNormalSelectionTemplate}" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="MinHeight" Value="{StaticResource Size.Control.Primary}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+            <Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="True" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource Brush.Background.Hover}" />
+                </Trigger>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource Brush.Navy.Tint}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Navy}" />
+                </Trigger>
+                <Trigger Property="IsMouseCaptureWithin" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource Brush.Background.Pressed}" />
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Disabled}" />
+                </Trigger>
+                <DataTrigger Binding="{Binding Path=(SystemParameters.HighContrast), Mode=OneWay}" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+                    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="OHsHitNormalSlotItemStyle" TargetType="ListBoxItem" BasedOn="{StaticResource OHsHitNormalItemStyle}">
+            <Setter Property="AutomationProperties.Name" Value="{Binding Name, Mode=OneWay}" />
+            <Setter Property="ToolTip" Value="{Binding Sample.DisplayName, Mode=OneWay}" />
+        </Style>
+        <Style x:Key="OHsHitNormalSampleItemStyle" TargetType="ListBoxItem" BasedOn="{StaticResource OHsHitNormalItemStyle}">
+            <Setter Property="AutomationProperties.Name" Value="{Binding DisplayName, Mode=OneWay}" />
+            <Setter Property="ToolTip" Value="{Binding DisplayName, Mode=OneWay}" />
+        </Style>
+        <Style x:Key="OHsHitNormalListStyle" TargetType="ListBox" BasedOn="{StaticResource BaseListBoxStyle}">
+            <Setter Property="FocusVisualStyle" Value="{StaticResource DefaultFocusVisualStyle}" />
+            <Setter Property="Template" Value="{StaticResource OHsVirtualizedDrawerItemsTemplate}" />
             <Setter Property="ItemsPanel" Value="{StaticResource OHsVirtualizedDrawerItemsPanel}" />
             <Setter Property="VirtualizingPanel.IsVirtualizing" Value="True" />
             <Setter Property="VirtualizingPanel.VirtualizationMode" Value="Recycling" />
             <Setter Property="VirtualizingPanel.ScrollUnit" Value="Pixel" />
             <Setter Property="ScrollViewer.CanContentScroll" Value="True" />
-            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-            <Setter Property="ItemTemplate" Value="{StaticResource OHsHitNormalChoiceTemplate}" />
-            <Setter Property="SelectedValuePath" Value="Path" />
+            <Setter Property="SelectionMode" Value="Single" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
             <Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="True" />
         </Style>
-        <Style
-            x:Key="OHsHitNormalLabelStyle"
-            BasedOn="{StaticResource BodyTextStyle}"
-            TargetType="TextBlock">
-            <Setter Property="VerticalAlignment" Value="Center" />
-            <Setter Property="Margin" Value="0,0,16,0" />
+        <Style x:Key="OHsHitNormalSlotListStyle" TargetType="ListBox" BasedOn="{StaticResource OHsHitNormalListStyle}">
+            <Setter Property="ItemTemplate" Value="{StaticResource OHsHitNormalSlotTemplate}" />
+            <Setter Property="ItemContainerStyle" Value="{StaticResource OHsHitNormalSlotItemStyle}" />
         </Style>
-        <Style
-            x:Key="OHsHitNormalScrollStyle"
-            BasedOn="{StaticResource {x:Type ScrollViewer}}"
-            TargetType="ScrollViewer">
-            <Setter Property="HorizontalScrollBarVisibility" Value="Disabled" />
-            <Setter Property="VerticalScrollBarVisibility" Value="Auto" />
-            <Setter Property="Focusable" Value="False" />
+        <Style x:Key="OHsHitNormalSampleListStyle" TargetType="ListBox" BasedOn="{StaticResource OHsHitNormalListStyle}">
+            <Setter Property="ItemTemplate" Value="{StaticResource OHsHitNormalSampleTemplate}" />
+            <Setter Property="ItemContainerStyle" Value="{StaticResource OHsHitNormalSampleItemStyle}" />
+            <Setter Property="VirtualizingPanel.IsVirtualizingWhenGrouping" Value="True" />
         </Style>
+        <ControlTemplate x:Key="OHsHitNormalPinnedGroupTemplate" TargetType="GroupItem">
+            <ItemsPresenter />
+        </ControlTemplate>
+        <ControlTemplate x:Key="OHsHitNormalSourceGroupTemplate" TargetType="GroupItem">
+            <Expander x:Name="SectionExpander" Style="{StaticResource {x:Type Expander}}"
+                Header="{Binding Name.Name, Mode=OneWay}" AutomationProperties.Name="{Binding Name.Name, Mode=OneWay}"
+                ToolTip="{Binding Name.Name, Mode=OneWay}" ToolTipService.ShowsToolTipOnKeyboardFocus="True"
+                HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                IsExpanded="{Binding Name.IsExpanded, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                <ItemsPresenter />
+            </Expander>
+        </ControlTemplate>
+        <Style x:Key="OHsHitNormalGroupStyle" TargetType="GroupItem" BasedOn="{StaticResource BaseGroupItemStyle}">
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Template" Value="{StaticResource OHsHitNormalSourceGroupTemplate}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Name.IsPinned, Mode=OneWay}" Value="True">
+                    <Setter Property="Template" Value="{StaticResource OHsHitNormalPinnedGroupTemplate}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <GroupStyle x:Key="OHsHitNormalCatalogGroupStyle"
+            ContainerStyle="{StaticResource OHsHitNormalGroupStyle}"
+            Panel="{StaticResource OHsVirtualizedDrawerItemsPanel}" />
     </c:BasePopup.Resources>
-    <ScrollViewer
-        x:Name="ContentScroll"
-        Width="400"
-        h:KeyboardNavigationPolicy.SuppressTabNavigation="True"
-        Style="{StaticResource OHsHitNormalScrollStyle}">
-        <Grid Margin="24,8,24,24" Style="{StaticResource BaseGridStyle}">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="16" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="16" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="24" />
-                <RowDefinition Height="Auto" />
-            </Grid.RowDefinitions>
-            <TextBlock Style="{StaticResource OHsHitNormalLabelStyle}" Text="Normal" />
-            <ComboBox
-                x:Name="NormalInput"
-                Grid.Column="1"
-                AutomationProperties.Name="Normal"
-                ItemsSource="{Binding Choices, Mode=OneWay}"
-                SelectedValue="{Binding NormalPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                Style="{StaticResource OHsHitNormalComboBoxStyle}"
-                ToolTip="Normal (Alt+N)" />
-            <TextBlock
-                Grid.Row="2"
-                Style="{StaticResource OHsHitNormalLabelStyle}"
-                Text="Soft" />
-            <ComboBox
-                x:Name="SoftInput"
-                Grid.Row="2"
-                Grid.Column="1"
-                AutomationProperties.Name="Soft"
-                ItemsSource="{Binding Choices, Mode=OneWay}"
-                SelectedValue="{Binding SoftPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                Style="{StaticResource OHsHitNormalComboBoxStyle}"
-                ToolTip="Soft (Alt+S)" />
-            <TextBlock
-                Grid.Row="4"
-                Style="{StaticResource OHsHitNormalLabelStyle}"
-                Text="Drum" />
-            <ComboBox
-                x:Name="DrumInput"
-                Grid.Row="4"
-                Grid.Column="1"
-                AutomationProperties.Name="Drum"
-                ItemsSource="{Binding Choices, Mode=OneWay}"
-                SelectedValue="{Binding DrumPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                Style="{StaticResource OHsHitNormalComboBoxStyle}"
-                ToolTip="Drum (Alt+D)" />
-            <WrapPanel
-                Grid.Row="6"
-                Grid.ColumnSpan="2"
-                HorizontalAlignment="Right">
-                <c:BalloonButton
-                    x:Name="CancelAction"
-                    Margin="0,0,8,0"
-                    AutomationProperties.Name="Cancel"
-                    ButtonIcon="{StaticResource Ban}"
-                    ButtonText="Cancel"
-                    Click="OnCancel"
-                    ShouldShowText="True"
-                    Style="{StaticResource OHsBalloonDestructiveActionStyle}"
-                    ToolTip="Cancel (Esc, Alt+C)" />
-                <c:BalloonButton
-                    x:Name="SaveAction"
-                    AutomationProperties.Name="Save"
-                    ButtonIcon="{StaticResource Check}"
-                    ButtonText="Save"
-                    Click="OnSave"
-                    IsEnabled="{Binding CanSave, Mode=OneWay}"
-                    ShouldShowText="True"
-                    Style="{StaticResource OHsBalloonConfirmActionStyle}"
-                    ToolTip="Save (Enter, Alt+V)" />
-            </WrapPanel>
-        </Grid>
-    </ScrollViewer>
+    <Grid x:Name="ContentGrid" Margin="24,8,24,24" Style="{StaticResource BaseGridStyle}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="2*" />
+            <ColumnDefinition Width="16" />
+            <ColumnDefinition Width="3*" />
+        </Grid.ColumnDefinitions>
+        <ListBox x:Name="SlotList" Style="{StaticResource OHsHitNormalSlotListStyle}"
+            AutomationProperties.Name="Hitnormal slots"
+            ToolTip="Select slot (Alt+N: Normal, Alt+S: Soft, Alt+D: Drum; Alt+L: slots)"
+            ItemsSource="{Binding Slots, Mode=OneWay}"
+            SelectedItem="{Binding SelectedSlot, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+        <ListBox x:Name="SampleList" Grid.Column="2" Style="{StaticResource OHsHitNormalSampleListStyle}"
+            AutomationProperties.Name="Assign hitnormal sample" SelectionChanged="OnSampleSelectionChanged"
+            ToolTip="Assign sample (Alt+R; Alt+1: Skin Defaults, Alt+2: Mapset Samples, Alt+3: Project Samples)">
+            <ListBox.GroupStyle>
+                <StaticResource ResourceKey="OHsHitNormalCatalogGroupStyle" />
+            </ListBox.GroupStyle>
+        </ListBox>
+        <WrapPanel Grid.Row="1" Grid.ColumnSpan="3" Margin="0,16,0,0" HorizontalAlignment="Right">
+            <c:BalloonButton x:Name="CancelAction" Margin="0,0,8,0" AutomationProperties.Name="Cancel"
+                ButtonIcon="{StaticResource Ban}" ButtonText="Cancel" Click="OnCancel" ShouldShowText="True"
+                Style="{StaticResource OHsBalloonDestructiveActionStyle}" ToolTip="Cancel (Esc, Alt+C)" />
+            <c:BalloonButton x:Name="SaveAction" AutomationProperties.Name="Save"
+                ButtonIcon="{StaticResource Check}" ButtonText="Save" Click="OnSave" ShouldShowText="True"
+                IsEnabled="{Binding CanSave, Mode=OneWay}"
+                Style="{StaticResource OHsBalloonConfirmActionStyle}" ToolTip="Save (Enter, Alt+V)" />
+        </WrapPanel>
+    </Grid>
 </c:BasePopup>

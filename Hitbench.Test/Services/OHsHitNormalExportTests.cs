@@ -8,6 +8,28 @@ namespace Hitbench.Test.Services;
 
 public class OHsHitNormalExportTests
 {
+    [TestCase(false)] [TestCase(true)]
+    public async Task ExplicitCachedSkinFallbackExportsRegardlessOfDefaultTrackGate(bool allowDefaults)
+    {
+        using var folder = new TestProjectFolder();
+        var root = Path.GetDirectoryName(folder.ProjectPath)!;
+        var map = Path.Combine(root, "Song [Original].osu");
+        await File.WriteAllTextAsync(map, "[TimingPoints]\n0,500,4,1,1,100,1,0\n");
+        var skin = Directory.CreateDirectory(Path.Combine(root, "Samples", "SkinDefault"));
+        using var audio = DecodedAudio.CopyFrom([.25f, .25f]);
+        var fallback = Path.Combine(skin.FullName, "soft-hitclap.wav");
+        await OHsExportAudio.WriteFileAsync(fallback, audio, default);
+        await OHsExportAudio.WriteFileAsync(Path.Combine(root, "Samples", "clap.wav"), audio, default);
+        var project = new ProjectData { AllowDefaults = allowDefaults, NormalHitNormalPath = "SkinDefault/soft-hitclap.wav",
+            Tracks = [new() { Addition = "Normal", SampleType = SampleType.Clap,
+                Samples = [new() { FileName = "clap.wav", Timestamp = 100 }] }] };
+        var request = new OHsExportRequest(Guid.NewGuid(), folder.ProjectPath, map, "unused.wav",
+            ProjectDataSerializer.Serialize(project), new("Hitsounds", 2, ".wav", ".wav", false));
+        var output = await new OHsExportService().ExportAsync(request, default);
+        Assert.That(await File.ReadAllBytesAsync(Path.Combine(output, "normal-hitnormal2.wav")),
+            Is.EqualTo(await File.ReadAllBytesAsync(fallback)));
+    }
+
     [Test]
     public void PlaybackOracleLayersAudibleNativeHitnormal()
     {

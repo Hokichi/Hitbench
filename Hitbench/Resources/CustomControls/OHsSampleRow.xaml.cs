@@ -5,6 +5,10 @@ namespace Hitbench.Resources.CustomControls;
 
 public partial class OHsSampleRow : UserControl
 {
+    public static readonly DependencyProperty ShowPlayButtonProperty = DependencyProperty.Register(nameof(ShowPlayButton), typeof(bool), typeof(OHsSampleRow), new PropertyMetadata(true));
+    public bool ShowPlayButton { get => (bool)GetValue(ShowPlayButtonProperty); set => SetValue(ShowPlayButtonProperty, value); }
+    public static readonly DependencyProperty NameTrailingTemplateProperty = DependencyProperty.Register(nameof(NameTrailingTemplate), typeof(DataTemplate), typeof(OHsSampleRow), new PropertyMetadata(null));
+    public DataTemplate? NameTrailingTemplate { get => (DataTemplate?)GetValue(NameTrailingTemplateProperty); set => SetValue(NameTrailingTemplateProperty, value); }
     public static readonly DependencyProperty IsDragSourceProperty = DependencyProperty.Register(nameof(IsDragSource), typeof(bool), typeof(OHsSampleRow), new PropertyMetadata(false));
     public bool IsDragSource { get => (bool)GetValue(IsDragSourceProperty); set => SetValue(IsDragSourceProperty, value); }
     public static readonly DependencyProperty FileNameProperty = DependencyProperty.Register(nameof(FileName), typeof(string), typeof(OHsSampleRow), new PropertyMetadata(string.Empty));
@@ -27,5 +31,5 @@ public partial class OHsSampleRow : UserControl
     public DataTemplate? ActionsTemplate { get => (DataTemplate?)GetValue(ActionsTemplateProperty); set => SetValue(ActionsTemplateProperty, value); }
     public event EventHandler? WaveformRequested;
     public OHsSampleRow() { InitializeComponent(); Loaded += (_, _) => WaveformRequested?.Invoke(this, EventArgs.Empty); DataContextChanged += (_, _) => { if (IsLoaded) WaveformRequested?.Invoke(this, EventArgs.Empty); }; }
-    public bool FocusPreview() => PlayAction.Focus();
+    public bool FocusPreview() => ShowPlayButton && PlayAction.Focus();
 }

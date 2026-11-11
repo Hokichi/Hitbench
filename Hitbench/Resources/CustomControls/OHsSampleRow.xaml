@@ -37,6 +37,19 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
+        <Style x:Key="OHsSampleRowNameTrailingStyle" TargetType="ContentPresenter" BasedOn="{StaticResource BaseContentPresenterStyle}">
+            <Setter Property="Content" Value="{Binding DataContext, RelativeSource={RelativeSource AncestorType=c:OHsSampleRow}, Mode=OneWay}"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding NameTrailingTemplate, RelativeSource={RelativeSource AncestorType=c:OHsSampleRow}, Mode=OneWay}" Value="{x:Null}">
+                    <Setter Property="Content" Value="{x:Null}"/>
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsEditing, RelativeSource={RelativeSource AncestorType=c:OHsSampleRow}, Mode=OneWay}" Value="True">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
         <Style x:Key="OHsSampleRowActionsStyle" TargetType="ContentPresenter" BasedOn="{StaticResource BaseContentPresenterStyle}">
             <Setter Property="Content" Value="{Binding DataContext, RelativeSource={RelativeSource AncestorType=c:OHsSampleRow}, Mode=OneWay}"/>
             <Style.Triggers>
@@ -63,6 +76,9 @@
             <Setter Property="FocusVisualStyle" Value="{StaticResource OHsSampleManagerKeyboardFocusStyle}"/>
             <Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="True"/>
             <Style.Triggers>
+                <DataTrigger Binding="{Binding ShowPlayButton, RelativeSource={RelativeSource AncestorType=c:OHsSampleRow}, Mode=OneWay}" Value="False">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                </DataTrigger>
                 <DataTrigger Binding="{Binding IsPlaying, RelativeSource={RelativeSource AncestorType=c:OHsSampleRow}, Mode=OneWay}" Value="True">
                     <Setter Property="ButtonIcon" Value="{StaticResource MediaPause}"/>
                     <Setter Property="ButtonText" Value="Pause"/>
@@ -81,8 +97,15 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
-            <TextBlock Grid.ColumnSpan="3" Style="{StaticResource OHsSampleRowNameStyle}" Text="{Binding FileName, RelativeSource={RelativeSource AncestorType=c:OHsSampleRow}, Mode=OneWay}" ToolTip="{Binding FileToolTip, RelativeSource={RelativeSource AncestorType=c:OHsSampleRow}, Mode=OneWay}"/>
-            <ContentPresenter Grid.ColumnSpan="3" Content="{Binding DataContext, RelativeSource={RelativeSource AncestorType=c:OHsSampleRow}, Mode=OneWay}" ContentTemplate="{Binding NameEditorTemplate, RelativeSource={RelativeSource AncestorType=c:OHsSampleRow}, Mode=OneWay}" Style="{StaticResource OHsSampleRowEditorStyle}"/>
+            <Grid Grid.ColumnSpan="3" Style="{StaticResource BaseGridStyle}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Style="{StaticResource OHsSampleRowNameStyle}" Text="{Binding FileName, RelativeSource={RelativeSource AncestorType=c:OHsSampleRow}, Mode=OneWay}" ToolTip="{Binding FileToolTip, RelativeSource={RelativeSource AncestorType=c:OHsSampleRow}, Mode=OneWay}"/>
+                <ContentPresenter Content="{Binding DataContext, RelativeSource={RelativeSource AncestorType=c:OHsSampleRow}, Mode=OneWay}" ContentTemplate="{Binding NameEditorTemplate, RelativeSource={RelativeSource AncestorType=c:OHsSampleRow}, Mode=OneWay}" Style="{StaticResource OHsSampleRowEditorStyle}"/>
+                <ContentPresenter Grid.Column="1" ContentTemplate="{Binding NameTrailingTemplate, RelativeSource={RelativeSource AncestorType=c:OHsSampleRow}, Mode=OneWay}" Style="{StaticResource OHsSampleRowNameTrailingStyle}"/>
+            </Grid>
             <Border Grid.Row="1" Margin="8,4" Style="{StaticResource OHsSampleRowWaveformBacking}">
                 <c:WaveformView Height="32" Data="{Binding Waveform, RelativeSource={RelativeSource AncestorType=c:OHsSampleRow}, Mode=OneWay}" ShowPlaybackMarker="False" CenterWaveform="True" WaveformBrush="{Binding Path=(TextElement.Foreground), RelativeSource={RelativeSource AncestorType=Border}, Mode=OneWay}" IsHitTestVisible="False"/>
             </Border>
