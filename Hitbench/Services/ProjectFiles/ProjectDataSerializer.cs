@@ -227,8 +227,13 @@ public static class ProjectDataSerializer
         {
             if (item is not JObject note) throw new InvalidDataException("Instrumental note must be an object.");
             var key = Member(note, "Key"); var time = Member(note, "Timestamp");
+            var readOnly = Member(note, nameof(InstrumentalNote.IsReadOnly));
+            if (readOnly is not null && readOnly.Type != JTokenType.Boolean)
+                throw new InvalidDataException("Instrumental note IsReadOnly must be a boolean.");
+            var locked = readOnly?.Value<bool>() == true;
             if (key?.Type!=JTokenType.String || !InstrumentalKeys.TryGetIndex(key.Value<string>()!,out _) ||
-                !IsIntegerInRange(time, int.MaxValue))
+                time?.Type != JTokenType.Integer || !long.TryParse(time.ToString(Formatting.None), out var timestamp) ||
+                timestamp < (locked ? int.MinValue : 0) || timestamp > int.MaxValue)
                 throw new InvalidDataException("Instrumental note needs a valid key and integer timestamp.");
             if (!seen.Add((key.Value<string>()!,time!.Value<int>()))) throw new InvalidDataException("Duplicate instrumental note key/timestamp.");
         }
