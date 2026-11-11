@@ -50,7 +50,7 @@ public partial class WorkstationPageVM
         activeInstrumentContext == context && Project is not null && context.ProjectSessionId == sampleSession
         ? tracks.OfType<InstrumentalTrack>().FirstOrDefault(t => InstrumentId(t) == context.TrackId) : null;
     private InstrumentalNoteSnapshot[] NoteSnapshots(InstrumentalTrack track) =>
-        track.Notes.Select(n => new InstrumentalNoteSnapshot(InstrumentNoteId(n), n.Key, n.Timestamp)).ToArray();
+        track.Notes.Select(n => new InstrumentalNoteSnapshot(InstrumentNoteId(n), n.Key, n.Timestamp, n.IsReadOnly)).ToArray();
     private InstrumentalTrackSnapshot InstrumentSnapshot(InstrumentalTrack track, InstrumentalTrackContext context) =>
         new(context, track.Name, track.Volume, track.KeyFiles, NoteSnapshots(track), sampleFiles is null ? null : availableSamples.ToArray(), instrumentRevision, track.FolderName,
             tracks.OfType<InstrumentalTrack>().Where(t => t != track && t.FolderName.Length > 0).Select(t => t.FolderName).ToArray(), InstrumentHistory(track).CanUndo, InstrumentHistory(track).CanRedo, tracks.IndexOf(track), track.Color);
@@ -97,7 +97,7 @@ public partial class WorkstationPageVM
         { if (ActiveInstrument(m.Context) is not null) { PublishInstrumentSnapshot(); PublishInstrumentSaveState(); PublishInstrumentTimeline(); } });
     }
     private bool CanViewArrangement(InstrumentalTrack? track) =>
-        CanOpenInstrumentalEditor && track is not null && tracks.Contains(track) && track.KeyFiles.Count > 0;
+        CanOpenInstrumentalEditor && track is not null && tracks.Contains(track) && (track.KeyFiles.Count > 0 || track.Notes.Count > 0);
     [RelayCommand(CanExecute = nameof(CanViewArrangement), AllowConcurrentExecutions = true)]
     private Task ViewArrangementAsync(InstrumentalTrack track) =>
         CanViewArrangement(track) ? OpenInstrumentAsync(track, true) : Task.CompletedTask;
@@ -169,7 +169,7 @@ public partial class WorkstationPageVM
             if (request != drawerRequestGeneration || session != sampleSession || !CanRequestDrawer) return;
             await SettleInstrumentalFoldersAsync();
             if (request != drawerRequestGeneration || session != sampleSession || !CanRequestDrawer || projectPath is null) return;
-            if (track is null || !tracks.Contains(track) || kind == OHsWorkstationDrawerKind.Arrangement && track.KeyFiles.Count == 0) return;
+            if (track is null || !tracks.Contains(track) || kind == OHsWorkstationDrawerKind.Arrangement && track.KeyFiles.Count == 0 && track.Notes.Count == 0) return;
             instrumentBusy = true;
             instrumentCancellation = CancellationTokenSource.CreateLinkedTokenSource(loadCancellation?.Token ?? default);
             activeInstrumentContext = new(projectPath, Project!.BeatmapPath, sampleSession, Guid.NewGuid(), InstrumentId(track));
@@ -301,8 +301,13 @@ public partial class WorkstationPageVM
     }
     private bool TryApplyInstrumentNotes(InstrumentalTrack track, IReadOnlyList<InstrumentalNoteSnapshot> desired)
     {
-        if (Waveform is null || desired.Any(n => n.Id == Guid.Empty || n.Timestamp < 0 || n.Timestamp >= Waveform.Duration.TotalMilliseconds || !InstrumentalKeys.TryGetIndex(n.Key, out _)) || desired.Select(n => n.Id).Distinct().Count() != desired.Count) return false;
-        var replacement = desired.Select(n => new InstrumentalNote { Key = n.Key, Timestamp = n.Timestamp }).ToArray();
+        if (Waveform is null || desired.Any(n => n.Id == Guid.Empty || !InstrumentalKeys.TryGetIndex(n.Key, out _)) || desired.Select(n => n.Id).Distinct().Count() != desired.Count) return false;
+        var before = NoteSnapshots(track).ToDictionary(n => n.Id);
+        var protectedNotes = before.Values.Where(n => n.IsReadOnly || n.Timestamp < 0 || n.Timestamp >= Waveform.Duration.TotalMilliseconds).ToArray();
+        if (protectedNotes.Any(n => !desired.Contains(n)) || desired.Any(n =>
+            (n.IsReadOnly || n.Timestamp < 0 || n.Timestamp >= Waveform.Duration.TotalMilliseconds) &&
+            (!before.TryGetValue(n.Id, out var oldNote) || n != oldNote))) return false;
+        var replacement = desired.Select(n => new InstrumentalNote { Key = n.Key, Timestamp = n.Timestamp, IsReadOnly = n.IsReadOnly }).ToArray();
         var old = track.Notes.ToArray();
         var desiredIds = desired.Select(n => n.Id).ToHashSet();
         if (!track.TryReplaceNotes(replacement)) return false;

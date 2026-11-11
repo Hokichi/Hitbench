@@ -8,6 +8,13 @@ namespace Hitbench.Test.Services;
 
 public class OHsExportInputTests
 {
+    [Test]
+    public void PreservedNotesAreFilteredBeforeSampleMappingValidation()
+    {
+        var track = new InstrumentalTrack { KeyFiles = new() { ["C4"] = "piano.wav" }, Notes = [new() { Key = "D4", Timestamp = -100, IsReadOnly = true }, new() { Key = "C4", Timestamp = 100 }, new() { Key = "D4", Timestamp = 1000 }] };
+        var input = OHsExportInputFactory.Create(new() { Tracks = [track] }, Map(), Options(), default, durationMilliseconds: 1000);
+        Assert.That(input.Voices.Select(v => v.Timestamp), Is.EqualTo(new[] { 100 }));
+    }
     private static OHsExportOptions Options(int index = 1) => new("Hitsounds", index, ".ogg", ".ogg", false);
     private static OHsExportBeatmap Map() => OHsExportBeatmap.Parse("osu file format v14\n[TimingPoints]\n123.456,428.571428571429,4,2,4,60,1,0\n200,-50,4,2,4,60,0,1\n");
 

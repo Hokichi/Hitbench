@@ -463,7 +463,7 @@ public partial class WorkstationPageVM(
         {
             if(instrument.IsTrackMuted || hasSolo && !instrument.IsTrackSoloed) continue;
             events.AddRange(InstrumentalPlaybackEvents.BuildWithLookup(instrument.KeyFiles,NoteSnapshots(instrument),instrument.Volume,
-                availableLookup,InstrumentEventId));
+                availableLookup,InstrumentEventId, Waveform?.Duration.TotalMilliseconds ?? 0));
         }
         foreach (var track in tracks)
         {
@@ -555,7 +555,7 @@ public partial class WorkstationPageVM(
             source.Project.CurrentSkin = skinSnapshot.SkinName;
             var addedOffsetControlPoint = source.Project.EnsureOffsetControlPoint();
             var waveform = await audioService.AnalyzeAsync(source.AudioPath, token);
-            if(source.Project.Tracks.OfType<InstrumentalTrack>().SelectMany(t=>t.Notes).Any(n=>n.Timestamp>=waveform.Duration.TotalMilliseconds))
+            if(source.Project.Tracks.OfType<InstrumentalTrack>().SelectMany(t=>t.Notes).Any(n=>!n.IsReadOnly && n.Timestamp>=waveform.Duration.TotalMilliseconds))
                 throw new InvalidDataException("Instrumental note lies beyond the song duration.");
             token.ThrowIfCancellationRequested();
             await CommitAsync(generation, token, () =>

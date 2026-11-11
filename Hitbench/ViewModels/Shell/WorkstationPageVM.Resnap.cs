@@ -92,6 +92,7 @@ public partial class WorkstationPageVM
         for (var index = 0; index < notes.Count; index++)
         {
             var note = notes[index];
+            if (note.IsReadOnly || note.Timestamp < 0 || note.Timestamp >= Waveform!.Duration.TotalMilliseconds) continue;
             var target = BeatGridCalculator.GetNearestTimestamp(timing.AsSpan(), Subdivision,
                 note.Timestamp, Waveform!.Duration.TotalMilliseconds);
             if (target is null) return null;

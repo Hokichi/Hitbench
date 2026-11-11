@@ -5,6 +5,13 @@ namespace Hitbench.Test.Services;
 public class InstrumentalPlaybackEventsTests
 {
     [Test]
+    public void LockedAndOutsideAudioNotesEmitNoEvents()
+    {
+        InstrumentalNoteSnapshot[] notes = [new(Guid.NewGuid(), "C4", -100, true), new(Guid.NewGuid(), "C4", 100), new(Guid.NewGuid(), "C4", 1000), new(Guid.NewGuid(), "C4", 200, true)];
+        var events = InstrumentalPlaybackEvents.Build(new Dictionary<string, string> { ["C4"] = "piano.wav" }, notes, 100, null, _ => 1, 1000);
+        Assert.That(events.Select(e => e.Timestamp), Is.EqualTo(new[] { 100 }));
+    }
+    [Test]
     public void SharedLookupKeepsCanonicalCasingAndPlacementIdentity()
     {
         var notes = Enumerable.Range(0, 10000).Select(i => new InstrumentalNoteSnapshot(Guid.NewGuid(), "C4", i)).ToArray();

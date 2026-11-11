@@ -88,7 +88,7 @@ public sealed partial class InstrumentalArrangementDrawerVM : ObservableObject
             var old = timeline; timeline = m.Snapshot;
             if (old.Position != timeline.Position) OnPropertyChanged(nameof(Position));
             if (old.IsPlaying != timeline.IsPlaying) OnPropertyChanged(nameof(IsPlaying));
-            if (old.Duration != timeline.Duration) OnPropertyChanged(nameof(Duration));
+            if (old.Duration != timeline.Duration) { OnPropertyChanged(nameof(Duration)); SetNoteSelection(SelectedNoteIds, SelectedNoteId); }
             if (!ReferenceEquals(old.UninheritedPoints, timeline.UninheritedPoints) &&
                 !old.UninheritedPoints.Select(p => (p.Offset, p.BPM)).SequenceEqual(timeline.UninheritedPoints.Select(p => (p.Offset, p.BPM))))
                 OnPropertyChanged(nameof(UninheritedPoints));
@@ -130,8 +130,8 @@ public sealed partial class InstrumentalArrangementDrawerVM : ObservableObject
     public void RequestFollow(bool value) { if (!closed && ScrollWithMarker != value) messenger.Send(new OHsInstrumentalTimelineEditRequestedMessage(snapshot.Context, ++requestSequence, ScrollWithMarker: value)); }
     public void SelectNote(Guid? id) => SetNoteSelection(id is {} value ? new[] { value } : Array.Empty<Guid>(), id);
     public void PlaceNote(string key, double ms) { if (!CanEdit) return; pendingRequest = Guid.NewGuid(); messenger.Send(new PlaceInstrumentalNoteRequestedMessage(snapshot.Context, pendingRequest, key, ms, Subdivision)); }
-    public void MoveNote(Guid id, string key, double ms) { if (!CanEdit) return; pendingRequest = Guid.NewGuid(); messenger.Send(new MoveInstrumentalNoteRequestedMessage(snapshot.Context, pendingRequest, id, key, ms, Subdivision)); }
-    public void RemoveNote(Guid id) { if (!CanEdit) return; pendingRequest = Guid.NewGuid(); messenger.Send(new RemoveInstrumentalNoteRequestedMessage(snapshot.Context, pendingRequest, id)); }
+    public void MoveNote(Guid id, string key, double ms) { if (!CanEdit || !Notes.Any(n => n.Id == id && IsNoteEditable(n))) return; pendingRequest = Guid.NewGuid(); messenger.Send(new MoveInstrumentalNoteRequestedMessage(snapshot.Context, pendingRequest, id, key, ms, Subdivision)); }
+    public void RemoveNote(Guid id) { if (!CanEdit || !Notes.Any(n => n.Id == id && IsNoteEditable(n))) return; pendingRequest = Guid.NewGuid(); messenger.Send(new RemoveInstrumentalNoteRequestedMessage(snapshot.Context, pendingRequest, id)); }
 
     public async Task DeactivateAsync()
     {

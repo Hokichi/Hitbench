@@ -23,9 +23,10 @@ public sealed partial class InstrumentalArrangementDrawerVM
     public bool CanCopyNotes => CanEdit && SelectedNoteIds.Count > 0;
     public bool CanPasteNotes => CanEdit && clipboard.Length > 0;
     public bool CanDeleteNotes => CanCopyNotes;
+    private bool IsNoteEditable(InstrumentalNoteSnapshot note) => !note.IsReadOnly && note.Timestamp >= 0 && note.Timestamp < Duration.TotalMilliseconds;
     public void SetNoteSelection(IReadOnlyList<Guid> ids, Guid? anchorId)
     {
-        var liveIds = Notes.Select(n => n.Id).ToHashSet();
+        var liveIds = Notes.Where(IsNoteEditable).Select(n => n.Id).ToHashSet();
         selectedNoteIds = Array.AsReadOnly(ids.Distinct().Where(liveIds.Contains).ToArray());
         SelectedNoteId = anchorId is { } anchor && selectedNoteIds.Contains(anchor) ? anchor : selectedNoteIds.Count > 0 ? selectedNoteIds[0] : null;
         if (selectedNoteIds.Count > 0) RequestFollow(false);
@@ -41,11 +42,11 @@ public sealed partial class InstrumentalArrangementDrawerVM
     public void MoveNotes(IReadOnlyList<Guid> ids, Guid anchorId, string targetKey, double requestedMilliseconds)
     {
         var anchor=Notes.FirstOrDefault(n=>n.Id==anchorId);
-        if (!CanEdit || anchor is null || !ids.Contains(anchorId) || !InstrumentalKeys.TryGetIndex(targetKey,out var targetPitch) || !InstrumentalKeys.TryGetIndex(anchor.Key,out var originalPitch) || !double.IsFinite(requestedMilliseconds) || requestedMilliseconds < 0 || requestedMilliseconds >= Duration.TotalMilliseconds) return;
+        if (!CanEdit || anchor is null || !IsNoteEditable(anchor) || !ids.Contains(anchorId) || !InstrumentalKeys.TryGetIndex(targetKey,out var targetPitch) || !InstrumentalKeys.TryGetIndex(anchor.Key,out var originalPitch) || !double.IsFinite(requestedMilliseconds) || requestedMilliseconds < 0 || requestedMilliseconds >= Duration.TotalMilliseconds) return;
         var time=BeatGridCalculator.GetNearestTimestamp(UninheritedPoints,Subdivision,requestedMilliseconds,Duration.TotalMilliseconds);
         if(time is null)return;
         var delta=(long)time.Value-anchor.Timestamp; var pitches=targetPitch-originalPitch;
-        var movingIds = ids.ToHashSet();
+        var movingIds = Notes.Where(n => ids.Contains(n.Id) && IsNoteEditable(n)).Select(n => n.Id).ToHashSet();
         var result=new List<InstrumentalNoteSnapshot>();
         foreach(var note in Notes)
         {
@@ -54,13 +55,13 @@ public sealed partial class InstrumentalArrangementDrawerVM
             if(pitch+pitches is <0 or >107 || timestamp<0 || timestamp>=Duration.TotalMilliseconds || timestamp>int.MaxValue){ErrorMessage="The selected notes do not fit within the piano roll.";return;}
             result.Add(note with{Key=InstrumentalKeys.GetName(pitch+pitches),Timestamp=(int)timestamp});
         }
-        ReplaceNotes(result,ids);
+        ReplaceNotes(result,movingIds.ToArray());
     }
     public void RemoveNotes(IReadOnlyList<Guid> ids)
-    { var removed = ids.ToHashSet(); ReplaceNotes(Notes.Where(n=>!removed.Contains(n.Id)).ToArray(),ids); }
+    { var removed = Notes.Where(n => ids.Contains(n.Id) && IsNoteEditable(n)).Select(n => n.Id).ToHashSet(); if (removed.Count > 0) ReplaceNotes(Notes.Where(n=>!removed.Contains(n.Id)).ToArray(),removed.ToArray()); }
     [RelayCommand(CanExecute=nameof(CanEdit))] private void SelectAllNotes()=>SetNoteSelection(Notes.Select(n=>n.Id).ToArray(),Notes.FirstOrDefault()?.Id);
     [RelayCommand(CanExecute=nameof(CanCopyNotes))] private void CopyNotes()
-    { var selected = SelectedNoteIds.ToHashSet(); var notes=Notes.Where(n=>selected.Contains(n.Id)).ToArray(); if(notes.Length==0)return; var first=notes.Min(n=>n.Timestamp); clipboard=notes.Select(n=>n with{Timestamp=n.Timestamp-first}).ToArray();NotifyNoteCommands(); }
+    { var selected = SelectedNoteIds.ToHashSet(); var notes=Notes.Where(n=>selected.Contains(n.Id) && IsNoteEditable(n)).ToArray(); if(notes.Length==0)return; var first=notes.Min(n=>n.Timestamp); clipboard=notes.Select(n=>n with{Timestamp=n.Timestamp-first}).ToArray();NotifyNoteCommands(); }
     [RelayCommand(CanExecute=nameof(CanPasteNotes))] private void PasteNotes()
     {
         var anchor=BeatGridCalculator.GetNearestTimestamp(UninheritedPoints,Subdivision,Position.TotalMilliseconds,Duration.TotalMilliseconds);if(anchor is null)return;

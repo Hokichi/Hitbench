@@ -9,6 +9,30 @@ namespace Hitbench.Test.Presentation;
 public class InstrumentalArrangementEditingTests
 {
     [Test]
+    public async Task MixedSelectionsCannotCopyOrDeleteReadOnlyNotes()
+    {
+        var ctx = new InstrumentalTrackContext("project.json", null, Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
+        var locked = new InstrumentalNoteSnapshot(Guid.NewGuid(), "C4", 100, true);
+        var editable = new InstrumentalNoteSnapshot(Guid.NewGuid(), "D4", 200);
+        var snap = new InstrumentalTrackSnapshot(ctx, "Piano", 100, new Dictionary<string, string>(), [locked, editable], null, 0);
+        var messenger = new WeakReferenceMessenger();
+        ReplaceInstrumentalNotesRequestedMessage? request = null;
+        messenger.Register<ReplaceInstrumentalNotesRequestedMessage>(this, (_, m) => request = m);
+        var vm = new InstrumentalArrangementDrawerVM(InstrumentalArrangementTestContext.Create(snap, [0], [120], TimeSpan.Zero, 4, 32), messenger, new ImmediateUiScheduler());
+        try
+        {
+            await vm.InitializeAsync(default);
+            vm.SetNoteSelection([locked.Id, editable.Id], locked.Id);
+            Assert.That(vm.SelectedNoteIds, Is.EqualTo(new[] { editable.Id }));
+            vm.RemoveNotes([locked.Id, editable.Id]);
+            Assert.That(request!.DesiredNotes, Is.EqualTo(new[] { locked }));
+            request = null;
+            vm.MoveNotes([locked.Id], locked.Id, "D4", 300);
+            Assert.That(request, Is.Null);
+        }
+        finally { await vm.DeactivateAsync(); messenger.UnregisterAll(this); }
+    }
+    [Test]
     public async Task GroupMovementPreservesSpacingAndRejectsPitchOverflow()
     {
         var ctx=new InstrumentalTrackContext("project.json",null,Guid.NewGuid(),Guid.NewGuid(),Guid.NewGuid());

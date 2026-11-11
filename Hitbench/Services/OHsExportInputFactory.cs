@@ -71,6 +71,7 @@ public static class OHsExportInputFactory
                 foreach (var note in instrument.Notes)
                 {
                     token.ThrowIfCancellationRequested();
+                    if (note.IsReadOnly || note.Timestamp < 0 || note.Timestamp >= durationMilliseconds) continue;
                     if (!InstrumentalKeys.TryGetIndex(note.Key, out _) || !instrument.KeyFiles.TryGetValue(note.Key, out var file)) throw new InvalidDataException("Instrumental note has no valid sample mapping.");
                     Add(note.Timestamp, file);
                 }
