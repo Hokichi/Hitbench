@@ -9,6 +9,34 @@ namespace Hitbench.Test.Presentation;
 [Apartment(ApartmentState.STA), NonParallelizable]
 public sealed class OHsWorkstationToolbarTests
 {
+    [Test]
+    public void MidiOptionUsesSharedMenuContract()
+    {
+        new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
+        var vm = new Hitbench.ViewModels.Shell.WorkstationPageVM(new StubWorkstationSourceService(),
+            new Hitbench.Services.MarkerPlaybackCoordinator(new StubWorkstationAudioService(), Task.Delay), new ImmediateUiScheduler(),
+            midiReader: new StubOHsMidiFileReader(), midiDialogs: new StubOHsMidiImportDialogService { Path = null });
+        var page = new WorkstationPage(vm);
+        using var view = new InMemoryView(new Window { Content = page, Width = 1100, Height = 700 });
+        try
+        {
+            UiTestPump.Run(vm.LoadAsync("project.json", default)); vm.AcknowledgePresentationReady(vm.LoadGeneration);
+            view.UpdateLayout(); view.UpdateLayout();
+            var toolbar = WorkstationControlTree.Descendants(page).OfType<OHsWorkstationToolbar>().Single();
+            var menu = (BalloonMenu)toolbar.FindName("ProjectActionsButton");
+            WorkstationActionMenus.Prepare(menu);
+            var option = menu.Options.Single(o => o.ButtonText == "Import MIDI");
+            UiControlContract.AssertStyle<BalloonMenuOption>(option, "BaseBalloonMenuOptionStyle");
+            Assert.That(option.Command, Is.SameAs(vm.ImportMidiCommand));
+            Assert.That(option.ButtonIcon, Is.SameAs(option.FindResource("Download")));
+            Assert.That(AutomationProperties.GetName(option), Is.EqualTo("Import MIDI"));
+            Assert.That(option.IsTabStop, Is.False);
+            Assert.That(option.Command!.CanExecute(null), Is.True);
+            WorkstationActionMenus.Invoke(option);
+            Assert.That(vm.Project!.Tracks, Is.Empty);
+        }
+        finally { UiTestPump.Run(page.DeactivateAsync()); }
+    }
     [TestCase(640, FlowDirection.LeftToRight)] [TestCase(1200, FlowDirection.RightToLeft)]
     public void PopupKeepsToolbarAndContentInPlace(double width, FlowDirection direction)
     {

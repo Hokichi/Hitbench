@@ -369,6 +369,13 @@
                         Style="{StaticResource BaseBalloonMenuOptionStyle}"
                         ToolTip="Import mapset samples" />
                     <customControls:BalloonMenuOption
+                        AutomationProperties.Name="Import MIDI"
+                        ButtonIcon="{StaticResource Download}"
+                        ButtonText="Import MIDI"
+                        Command="{Binding ImportMidiCommand, Mode=OneWay}"
+                        Style="{StaticResource BaseBalloonMenuOptionStyle}"
+                        ToolTip="Import MIDI" />
+                    <customControls:BalloonMenuOption
                         ButtonIcon="{StaticResource ArrowsRotateSolid}"
                         ButtonText="Refresh samples"
                         Command="{Binding ReloadSamplesCommand, Mode=OneWay}"

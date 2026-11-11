@@ -14,6 +14,14 @@ namespace Hitbench.Test.Presentation;
 public class InstrumentalTrackCompositionTests
 {
     [Test]
+    public void MidiBoundariesResolveWithoutCreatingRuntimeWindows()
+    {
+        new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
+        using var services = Hitbench.App.CreateServices(null, null, new ImmediateUiScheduler());
+        Assert.That(Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<Hitbench.Services.FileSystem.IOHsMidiFileReader>(services), Is.TypeOf<Hitbench.Services.FileSystem.OHsMidiFileReader>());
+        Assert.That(Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<Hitbench.Services.Dialogs.IOHsMidiImportDialogService>(services), Is.TypeOf<Hitbench.Services.Dialogs.OHsMidiImportDialogService>());
+    }
+    [Test]
     public void InstrumentRowHasArrangementAndMappingInsteadOfSampleSelectors()
     {
         new SharedUiResourceIntegrationTests().SharedResources_LoadTogetherAndProvideReusableControlContracts();
