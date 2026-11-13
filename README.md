@@ -1,6 +1,6 @@
-# Hitbench
+[![Banner](docs/images/banner.png)](https://hokichi.github.io/Hitbench/)
 
-A Windows hitsounding workstation for osu! mappers.
+A hitsounding workstation for osu! mappers.
 
 Arrange samples on a beat-snapped timeline, write instrumental parts in a piano roll, and preview everything alongside the song. Export your arrangement as a hitsound difficulty with its generated samples.
 
