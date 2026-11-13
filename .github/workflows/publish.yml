@@ -48,7 +48,7 @@ jobs:
           $publishDir = Join-Path $env:RUNNER_TEMP 'hitbench-publish'
           dotnet publish Hitbench/Hitbench.csproj -c Release -p:PublishProfile=FolderProfile -o $publishDir "-p:OHsReleaseVersion=$env:BUILD_VERSION" "-p:VersionPrefix=$env:NUMERIC_VERSION" "-p:SourceRevisionId=$env:GITHUB_SHA"
           if ($LASTEXITCODE -ne 0) { throw 'Self-contained single-file publish failed.' }
-          $archive = Join-Path $env:RUNNER_TEMP "Hitbench-$env:BUILD_VERSION-win-x64.zip"
+          $archive = Join-Path $env:RUNNER_TEMP 'hitbench-latest.zip'
           & ./.github/scripts/New-HitbenchReleasePackage.ps1 -PublishDirectory $publishDir -Version $env:BUILD_VERSION -Commit $env:GITHUB_SHA -DestinationZip $archive
 
       - name: Create or update tag and GitHub Release
@@ -58,5 +58,5 @@ jobs:
           BUILD_VERSION: ${{ steps.version.outputs.version }}
           GH_TOKEN: ${{ github.token }}
         run: |
-          $archive = Join-Path $env:RUNNER_TEMP "Hitbench-$env:BUILD_VERSION-win-x64.zip"
+          $archive = Join-Path $env:RUNNER_TEMP 'hitbench-latest.zip'
           & ./.github/scripts/Publish-HitbenchRelease.ps1 -Version $env:BUILD_VERSION -Commit $env:GITHUB_SHA -Archive $archive
