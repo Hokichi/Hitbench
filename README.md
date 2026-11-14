@@ -6,11 +6,11 @@ Arrange samples on a beat-snapped timeline, write instrumental parts in a piano 
 
 ![Hitbench workstation with waveform, sample tracks, and control points](docs/images/workstation.png)
 
-[Getting started](#getting-started) · [Features](#features) · [Keyboard shortcuts](#keyboard-shortcuts) · [Building from source](#building-from-source) · [Changelog](#changelog) · [Feedback](#feedback)
+[User guide](https://hokichi.github.io/Hitbench/documentation.html) · [Getting started](#getting-started) · [Features](#features) · [Keyboard shortcuts](#keyboard-shortcuts) · [Building from source](#building-from-source) · [Changelog](#changelog) · [Feedback](#feedback)
 
 ## Getting started
 
-1. Download the Windows x64 ZIP from [Releases](https://github.com/Hokichi/osuHitsounder/releases).
+1. Download the Windows x64 ZIP from [Releases](https://github.com/Hokichi/Hitbench/releases).
 2. Extract it into a writable folder and launch `Hitbench.exe`. Release packages include the .NET runtime.
 3. Locate your osu! installation or mapsets folder.
 4. Select a mapset, choose **Create a new project**, and enter a project name.
@@ -59,7 +59,7 @@ Projects save automatically as you work. Project files live in the `projects` fo
 - Preview instrumental notes alongside sample tracks and the song.
 - Use keyboard navigation to select keys, place notes, and adjust their positions.
 
-![Instrumental piano roll with arranged notes alongside sample tracks](docs/images/instrumental.png)
+![Expanded instrumental piano roll with a descending note pattern](docs/images/instrumental.png)
 
 ![Keys Mapping keyboard for assigning samples to musical notes](docs/images/key-mapping.png)
 
@@ -72,7 +72,7 @@ Projects save automatically as you work. Project files live in the `projects` fo
 - Refresh project samples after editing or replacing audio files externally.
 - Keep the sample manager and instrumental arrangement open together while working.
 
-Mapset samples are imported automatically when you create a project.
+When you create a project, Hitbench offers available mapset samples for you to select and import.
 
 ![Sample manager showing skin hitsounds and waveform previews](docs/images/samples.png)
 
@@ -93,7 +93,7 @@ Mapset samples are imported automatically when you create a project.
 - Preview volume changes during playback, including their effect on sample tails.
 - Export control-point and ramp behavior with the arrangement.
 
-![Control point volume and sample-set editor beside a volume ramp](docs/images/control-points.png)
+![Control point volume and sample-set editor](docs/images/control-points.png)
 
 ### Playback and navigation
 
@@ -107,7 +107,7 @@ Mapset samples are imported automatically when you create a project.
 
 ### Beatmap export
 
-Open **Actions → Export** to configure:
+Open the toolbar’s **Export** button to configure:
 
 - The exported difficulty name.
 - The starting sample index.
@@ -193,4 +193,4 @@ Selected changes from the project's Git history.
 
 ## Feedback
 
-Report bugs and suggest improvements through [GitHub Issues](https://github.com/Hokichi/osuHitsounder/issues).
+Report bugs and suggest improvements through [GitHub Issues](https://github.com/Hokichi/Hitbench/issues).

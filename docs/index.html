@@ -11,12 +11,16 @@
   <script src="./carousel.js" defer></script>
 </head>
 <body>
-  <a target="_blank" rel="noopener noreferrer" class="skip-link" href="#main">Skip to content</a>
+  <a class="skip-link" href="#main">Skip to content</a>
   <header class="site-header container">
-    <a target="_blank" rel="noopener noreferrer" class="brand" href="#main" aria-label="Hitbench home">
+    <a class="brand" href="./index.html" aria-label="Hitbench home">
       <img src="./assets/hitbench.png" width="36" height="36" alt="">
       <span>Hitbench</span>
     </a>
+    <nav class="page-nav" aria-label="Main navigation">
+      <a href="./index.html" aria-current="page">Home</a>
+      <a href="./documentation.html">Documentation</a>
+    </nav>
     <a target="_blank" rel="noopener noreferrer" class="creator" href="https://osu.ppy.sh/users/6607303">
       <span>Made by</span>
       <img class="creator-avatar" src="./assets/hokichi-avatar.png" width="40" height="40" alt="Hokichi">
@@ -32,20 +36,17 @@
         <p class="mapper-line">By an osu! mapper, for osu! mappers</p>
       </div>
       <div class="hero-actions">
-        <a target="_blank" rel="noopener noreferrer" class="button button-primary" href="https://github.com/Hokichi/hitbench/releases/latest/download/hitbench-latest.zip" data-download>
+        <a target="_blank" rel="noopener noreferrer" class="button button-primary" href="https://github.com/Hokichi/Hitbench/releases/latest/download/hitbench-latest.zip" data-download>
           Download Hitbench
         </a>
         <div class="social-links">
           <a target="_blank" rel="noopener noreferrer" class="social-link social-link-github" href="https://github.com/Hokichi/Hitbench">
             <img src="./assets/github-mark.svg" width="20" height="20" alt="" aria-hidden="true">GitHub
           </a>
-          <a target="_blank" rel="noopener noreferrer" class="social-link social-link-osu" href="https://osu.ppy.sh/community/forums/topics/2262740?n=1" data-osu-post>
-            <img src="./assets/osu-mark.svg" width="24" height="24" alt="" aria-hidden="true">osu! Post
-          </a>
         </div>
       </div>
       <figure class="workstation">
-        <img src="./images/workstation.png" width="1920" height="1080" fetchpriority="high" alt="Hitbench’s dark workstation with a song waveform, sample tracks, and control points on the timeline.">
+        <img src="./images/workstation.png" width="1600" height="900" fetchpriority="high" alt="Hitbench’s dark workstation with a song waveform, sample tracks, and control points on the timeline.">
       </figure>
     </section>
 
@@ -70,23 +71,23 @@
       <p class="carousel-hint">Scroll or swipe to explore all six features.</p>
       <div class="feature-track" data-carousel-track tabindex="0" role="group" aria-label="Feature screenshots">
         <article class="feature-slide" id="feature-timeline" data-carousel-slide role="group" aria-roledescription="slide" aria-label="1 of 6: Timeline">
-          <div class="feature-image"><img src="./images/timeline.png" width="1920" height="1080" loading="lazy" alt="Beat-snapped sample placements arranged against the song waveform."></div>
+          <div class="feature-image"><img src="./images/timeline.png" width="1600" height="900" loading="lazy" alt="Beat-snapped sample placements arranged against the song waveform."></div>
           <div class="feature-copy"><p class="feature-number">01 / Timeline</p><h3>Right on the beat.</h3><p>Place samples against the song waveform. Snap to the beat, zoom into the details, and hear your arrangement as you work.</p><ul class="feature-tags" aria-label="Timeline highlights"><li>Beat snapping</li><li>Undo & redo</li></ul></div>
         </article>
         <article class="feature-slide" id="feature-tracks" data-carousel-slide role="group" aria-roledescription="slide" aria-label="2 of 6: Tracks">
-          <div class="feature-image"><img src="./images/tracks.png" width="1920" height="1080" loading="lazy" alt="Expanded sample tracks with volume, mute, solo, and sample settings."></div>
+          <div class="feature-image"><img src="./images/tracks.png" width="1600" height="900" loading="lazy" alt="Expanded sample tracks with volume, mute, solo, and sample settings."></div>
           <div class="feature-copy"><p class="feature-number">02 / Tracks</p><h3>Every layer, in its place.</h3><p>Give each sound its own track. Rename, recolor, reorder, and audition parts with volume, mute, and solo controls.</p><ul class="feature-tags" aria-label="Track highlights"><li>Track colors</li><li>Mute & solo</li></ul></div>
         </article>
         <article class="feature-slide" id="feature-instruments" data-carousel-slide role="group" aria-roledescription="slide" aria-label="3 of 6: Instruments">
-          <div class="feature-image"><img src="./images/instrumental.png" width="1920" height="1080" loading="lazy" alt="Piano roll with instrumental notes arranged alongside sample tracks."></div>
+          <div class="feature-image"><img src="./images/instrumental.png" width="1600" height="900" loading="lazy" alt="Expanded piano roll showing a descending instrumental note pattern."></div>
           <div class="feature-copy"><p class="feature-number">03 / Instruments</p><h3>Let the melody in.</h3><p>Write instrumental parts in a dedicated piano roll. Map samples to musical keys and preview notes alongside your hitsounds.</p><ul class="feature-tags" aria-label="Instrument highlights"><li>Piano roll</li><li>Key mapping</li></ul></div>
         </article>
         <article class="feature-slide" id="feature-samples" data-carousel-slide role="group" aria-roledescription="slide" aria-label="4 of 6: Samples">
-          <div class="feature-image"><img src="./images/samples.png" width="1920" height="1080" loading="lazy" alt="Sample manager with project and skin sounds and waveform previews."></div>
+          <div class="feature-image"><img src="./images/samples.png" width="1600" height="900" loading="lazy" alt="Sample manager with project and skin sounds and waveform previews."></div>
           <div class="feature-copy"><p class="feature-number">04 / Samples</p><h3>Your sounds, close at hand.</h3><p>Browse and preview project and skin samples. Import WAV, OGG, and MP3 files, or drag audio straight into your workstation.</p><ul class="feature-tags" aria-label="Sample highlights"><li>Audio previews</li><li>Drag & drop</li></ul></div>
         </article>
         <article class="feature-slide" id="feature-control-points" data-carousel-slide role="group" aria-roledescription="slide" aria-label="5 of 6: Control points">
-          <div class="feature-image"><img src="./images/control-points.png" width="1920" height="1080" loading="lazy" alt="Control-point volume and sample-set editor next to a volume ramp."></div>
+          <div class="feature-image"><img src="./images/control-points.png" width="1600" height="900" loading="lazy" alt="Control-point editor with volume and sample-set settings."></div>
           <div class="feature-copy"><p class="feature-number">05 / Control points</p><h3>Shape the dynamics.</h3><p>Change volume and sample sets along the timeline. Add volume ramps for gradual transitions and preview their effect on sample tails.</p><ul class="feature-tags" aria-label="Control point highlights"><li>Volume ramps</li><li>Sample sets</li></ul></div>
         </article>
         <article class="feature-slide" id="feature-export" data-carousel-slide role="group" aria-roledescription="slide" aria-label="6 of 6: Export">
@@ -110,7 +111,7 @@
       <p class="eyebrow">From one mapper to another</p>
       <h2 id="closing-title">Make every beat your own.</h2>
       <p>Your next hitsounding project is waiting.</p>
-      <a target="_blank" rel="noopener noreferrer" class="button button-primary" href="https://github.com/Hokichi/hitbench/releases/latest/download/hitbench-latest.zip" data-download>Download Hitbench</a>
+      <a target="_blank" rel="noopener noreferrer" class="button button-primary" href="https://github.com/Hokichi/Hitbench/releases/latest/download/hitbench-latest.zip" data-download>Download Hitbench</a>
     </section>
   </main>
 
